@@ -4,25 +4,25 @@ title: InjectedVendorSlices
 
 # How an injected vendor slice is typed
 
-Several seams in this package take a vendor's class by injection rather than
-importing it: the era arms take the ledger module they compose against, and the
-retained-engine seams take the pre-fork runtime they execute through. A seam
-that takes a class by injection still has to name the shape it expects, and
+Several functions in this package take a vendor's class by injection rather than
+importing it: the era paths take the ledger module they compose against, and the
+retained-engine functions take the pre-fork runtime they execute through. A
+function that takes a class by injection still has to name the shape it expects, and
 this document records how that shape is written down.
 
 There are three choices, and each one is made for a reason:
 
 - **Derived** from the vendor's own class, where exactly one era can satisfy
   the shape.
-- **Structural** — a hand-written declaration — where the seam genuinely serves
+- **Structural** — a hand-written declaration — where the function genuinely serves
   both eras.
-- **Narrowed** to the members the seam actually calls, which every slice is,
+- **Narrowed** to the members the function actually calls, which every slice is,
   and which sometimes buys something beyond a smaller surface.
 
 Injection itself is a separate rule from any of this, and belongs to
 [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md): a value import
 of either era's module would statically link that era's WASM into whatever
-bundle reaches the importing module, so a seam that needs a vendor's classes at
+bundle reaches the importing module, so a function that needs a vendor's classes at
 runtime takes them by injection. Naming a type links nothing — the
 `import type * as` every declaration below reads through is erased with the rest
 of the type layer — so deriving a slice from the vendor's class leaves the lazy
@@ -40,35 +40,35 @@ runtime no longer has.
 `Pick<typeof OnchainRuntimeV3.ContractState, 'deserialize'>` — the pre-fork
 `ContractState` statics, so a signature change in onchain-runtime-v3 fails the
 build here. It is narrowed to `deserialize` because that is the only member its
-seam calls. That narrowing carries one further consequence: it pins the slice to
+function calls. That narrowing carries one further consequence: it pins the slice to
 the pre-fork era, so a post-fork module cannot satisfy it. That consequence is
 recorded in [RetainedEraExecution](./retained-era-execution.md).
 
-## Structural where a seam serves both eras
+## Structural where a function serves both eras
 
 The counterpart to derivation is a hand-written structural declaration, and the
 contrast is the point: derived where there is one era, structural where there
-are two. Naming either era's type on a two-era seam would pick a side.
+are two. Naming either era's type on a two-era function would pick a side.
 
 `ContractStateDecoder` (`lib/shared/contract-state.ts`) is declared structurally
 rather than derived from one era's class, because that decoder genuinely serves
-BOTH axes — the v9 arm passes ledger-v9, the v8 leg passes the module
-`loadLedger8` handed it. `Ledger8ContractState` is the single-era counterpart,
+BOTH axes — the v9 path passes ledger-v9, the v8 leg passes the module
+`loadLedger8Protocol` handed it. `Ledger8ContractState` is the single-era counterpart,
 and IS derived from the vendor for that reason.
 
 `UnshieldedOfferLedger` (`lib/shared/unshielded.ts`) stays a hand-written slice
-for the same reason: the function above it runs on both eras, the v9 arm passing
-ledger-v9 and the v8 leg passing the module `loadLedger8` handed it, so
+for the same reason: the function above it runs on both eras, the v9 path passing
+ledger-v9 and the v8 leg passing the module `loadLedger8Protocol` handed it, so
 deriving the shape from either era's class would pick a side. Its `inputs` and
 `signatures` are typed `never[]` rather than the ledger's own parameter types,
-because this seam only ever aggregates OUTPUTS, so `[]` is the only value that
+because this function only ever aggregates OUTPUTS, so `[]` is the only value that
 can be passed and the type says so instead of a comment.
 
 ## The retained engine no longer injects its runtime
 
 It used to. Three slices — `Ledger8CompactRuntime` (down-convert),
 `Ledger8ExecutionRuntime` (circuit execution) and `Ledger8ConstructorRuntime`
-(constructor execution) — reached the retained engine's seams by injection, and
+(constructor execution) — reached the retained engine's functions by injection, and
 `createLedger8Engine` assembled all three out of one acquisition so that
 nothing on the engine's public surface took a runtime parameter.
 
@@ -123,7 +123,7 @@ declared once against ledger-v9 and identical on all three axes.
 
 That identity is pinned. The compile-time drift gate that asserts it across
 the three axes — `_CallContextUnchanged`, `_EffectsUnchanged`,
-`_V8CallContextUnchanged`, `_V8EffectsUnchanged` and the payload-type
+`_Ledger8CallContextUnchanged`, `_Ledger8EffectsUnchanged` and the payload-type
 assertions beside them — lived at the bottom of `v8-down-convert.test.ts` and
 went with that file when the hand-maintained execution layer was retired. It
 was restored at the bottom of `v8-executable.test.ts`, which is where it now

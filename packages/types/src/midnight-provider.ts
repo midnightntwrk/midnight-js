@@ -16,7 +16,7 @@
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { readEraEntries } from './internal/read-era-entries';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
@@ -28,7 +28,7 @@ export interface MidnightProvider {
   /**
    * The ledger eras THIS INSTANCE serves. See
    * {@link ProofProvider.supportedEras} — the field means the same on all three
-   * transaction seams, and all three are read together before an operation
+   * transaction providers, and all three are read together before an operation
    * starts.
    */
   readonly supportedEras: readonly LedgerVersion[];
@@ -40,23 +40,23 @@ export interface MidnightProvider {
    *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
    * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
    *          transaction identifier is era-independent.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
 }
 
 /**
- * Submits a CURRENT-era transaction, which crosses this seam as a live ledger
+ * Submits a CURRENT-era transaction, which is passed to `submitTx` as a live ledger
  * object.
  */
 export type CurrentEraSubmitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
 
 /**
- * Submits a RETAINED-era transaction, which crosses this seam as serialized
+ * Submits a RETAINED-era transaction, which is passed to `submitTx` as serialized
  * bytes.
  *
- * Unlike the other two seams this one answers untagged, because a transaction
+ * Unlike the other two transaction methods this one answers untagged, because a transaction
  * identifier is era-independent — the eras differ only in what they are handed.
  */
 export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionId>;
@@ -69,7 +69,7 @@ export interface MidnightProviderHandlers {
   /** Required: every submitter serves the current era. */
   readonly currentEra: CurrentEraSubmitter;
   /** Optional, one entry per retained era this submitter serves. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraSubmitter>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraSubmitter>;
 }
 
 /**
@@ -112,13 +112,13 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  *
  * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+ * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
  * {@link createMidnightProviderFromHandlers}.
  *
  * @param submitTx The v9-only submission function to wrap.
  * @returns A {@link MidnightProvider} that narrows inbound payloads.
- * @see {@link SeamEraDeclarations} for the compiler error this avoids.
+ * @see {@link ProviderEraDeclarations} for the compiler error this avoids.
  *
  * @example
  * ```typescript

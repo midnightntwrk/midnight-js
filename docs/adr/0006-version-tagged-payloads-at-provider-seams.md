@@ -496,3 +496,28 @@ can no longer be a devDependency of `types`. Two things follow: their names say
 reaches the registry any more; and each such assertion is paired with
 `toBeInstanceOf`, which the guard used to supply. Without that pairing a
 rejection that stopped being an `Error` at all would have kept the suite green.
+
+## Amendment — "seam" leaves the names (2026-10-14)
+
+Issue #1489. The decision is unchanged; only names change. This ADR says
+"seam" for a provider method that carries a version-tagged payload. A caller
+never writes anything called a seam, so the public names and messages now say
+"method" or "provider":
+
+- `ProviderSeam`, `ReadSeam` and `Seam` are `TransactionMethod`, `ReadMethod`
+  and `ProviderMethod`; the field `seam` is `method` on every error that
+  carried it, and so is the `seam` key of a decode failure's `details` (the full
+  list is in `docs/releases/v5.0.0/breaking-changes.md`, section 12);
+- `SeamEraUnsupportedError` is `ProviderEraUnsupportedError`, with code
+  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
+  `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
+
+The era prefix is now `Ledger8` / `Ledger9` everywhere, never `V8` / `V9`:
+`VersionedTx`, `V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
+`VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
+`unwrapLedger9` and `Ledger8PayloadUnsupportedError` (code
+`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`). The tag values `'v8'` / `'v9'`
+stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
+
+The title and file name of this ADR keep the old word, and so do the
+amendments above.

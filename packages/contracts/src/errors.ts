@@ -16,28 +16,17 @@
 import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
   PrivateStateId,
-  Seam,
+  ProviderMethod,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
-import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
-
-/**
- * The seams this flow narrows an era at: the three transaction-flow provider
- * methods, plus the two read-surface methods that report a finalized record.
- *
- * An alias for {@link Seam} in `@midnight-ntwrk/midnight-js-types`, which owns
- * the vocabulary because it declares both the provider seams and the read
- * surface. Kept under this name so the error below reads in the era vocabulary
- * of this package.
- */
-export type EraSeam = Seam;
 
 // `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
 // carries several. Each id is quoted individually so a two-circuit list cannot
@@ -62,7 +51,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * An error indicating that a provider, or the read surface, answered in a
  * different ledger era from the one the flow submitted.
  *
- * The provider seams and the read surface both carry two eras, but any ONE
+ * The transaction methods and the read methods both carry two eras, but any ONE
  * flow through this package tags every outgoing payload with a single era and
  * cannot submit or report anything else. An answer in the other era therefore
  * means the provider re-tagged or converted the payload it was handed, or that
@@ -72,7 +61,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * accept back, and so which direction the violation went. For the current
  * era's flows that is the era they submit, which is always `'v9'` — the
  * default, so call sites that predate the retained-era pipelines read exactly
- * as they did before it existed. The retained era's finalizing arm passes the
+ * as they did before it existed. The retained era's finalizing path passes the
  * network HEAD instead: it composes retained-era transactions but is recorded
  * by whichever ledger the head is on, so the head, not the pipeline, is what
  * the record has to agree with.
@@ -87,26 +76,26 @@ export class EraInvariantViolationError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION];
 
   /**
-   * @param seam The provider method that returned the payload.
+   * @param method The provider method that returned the payload.
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
    * @param expected The only era this flow can accept back. Defaults to
    *                 `'v9'`. See the class comment for which fact this names
-   *                 on each arm.
+   *                 on each path.
    * @param received The era the payload actually carried, when it carried a
    *                 readable one. Named in the message: a refusal that states
    *                 only what it wanted leaves the reader to find out what it
    *                 got.
    */
   constructor(
-    readonly seam: EraSeam,
+    readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
     readonly received?: LedgerVersion
   ) {
     super(
-      `${seam} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+      `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
@@ -269,9 +258,9 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
  * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
  * rather than written to the chain in an era the network has left.
  */
-export class Ledger8DeployOnV9Error extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9];
+export class Ledger8DeployOnLedger9Error extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9];
 
   constructor() {
     super(
@@ -280,7 +269,7 @@ export class Ledger8DeployOnV9Error extends MidnightJsError {
         'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
         'current toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
     );
-    this.name = 'Ledger8DeployOnV9Error';
+    this.name = 'Ledger8DeployOnLedger9Error';
   }
 }
 
@@ -394,7 +383,7 @@ export class LedgerParametersUnservedError extends MidnightJsError {
  * output as a transient and needs no chain state. Only spends of previously
  * held coins are.
  *
- * @see {@link ErrorTaxonomy} for what the retained arm is missing and why this
+ * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this
  * refuses before the offer is built.
  */
 export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
@@ -418,7 +407,7 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
 
 /**
  * An error indicating that a provider rejected a retained-era transaction at
- * one of the three transaction-flow seams, with the provider's own failure
+ * one of the three transaction methods, with the provider's own failure
  * SANITIZED onto `cause`.
  *
  * ## Why the external failure does not travel as-is
@@ -432,32 +421,32 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  * no own properties, and no further `cause` chain.
  *
  * This package's own coded errors are NOT wrapped: they carry no external
- * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
+ * payload, and a caller narrowing on `Ledger8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} must keep seeing them.
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8SeamFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED];
+export class Ledger8ProviderFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED];
 
   /**
-   * @param seam The provider method that rejected.
+   * @param method The provider method that rejected.
    * @param circuitId The circuit this flow was running.
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
-    readonly seam: EraSeam,
+    readonly method: ProviderMethod,
     readonly circuitId: string,
     cause: Error
   ) {
     super(
-      `${seam} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+      `${method} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
         'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
         'material; read the provider\'s own logs for the unredacted detail.',
       { cause }
     );
-    this.name = 'Ledger8SeamFailedError';
+    this.name = 'Ledger8ProviderFailedError';
   }
 }
 
@@ -485,8 +474,8 @@ export interface SubmittedOperation {
   /**
    * The era the network head was on when this operation started.
    *
-   * One field, two uses, and they are the same fact: it decides which arm of
-   * the provider seams the transaction crossed on, and it is the `startEra` a
+   * One field, two uses, and they are the same fact: it decides which payload
+   * variant the transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;
@@ -519,8 +508,8 @@ export interface SubmittedOperation {
 // thing to check, because "verify it did not finalize" is not an instruction a
 // caller with several operations in flight can act on otherwise.
 //
-// Both arms are reachable in production: the `call` arm through `submitCallTx`,
-// the `deploy` arm through `deployContract`'s retained-era arm. `kind: 'deploy'`
+// Both kinds are reachable in production: `call` through `submitCallTx`, and
+// `deploy` through `deployContract`'s retained-era overload. `kind: 'deploy'`
 // is set at exactly one place, inside `runLedger8Deploy`.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
@@ -557,7 +546,7 @@ const STALE_HEAD_MESSAGES: Readonly<
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
- * {@link Ledger8SeamFailedError}, which is the form it arrives in.
+ * {@link Ledger8ProviderFailedError}, which is the form it arrives in.
  *
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.
@@ -667,7 +656,7 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
  *
  * @see {@link ErrorTaxonomy} for why the two codes name different things.
- * @see {@link StaleHeadRemediation} for the two arms.
+ * @see {@link StaleHeadRemediation} for the two reasons.
  */
 export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -774,11 +763,13 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
  * tag is a guess, and the caller would then read the result through the wrong
  * era's shape. Every result this framework builds carries one of the two
  * literals; a value that does not has been round-tripped through something
- * that dropped it -- a queue, a JSON boundary, a structured clone.
+ * that dropped it -- a queue, a JSON boundary, a structured clone -- or was
+ * stored under a 5.0.0 pre-release, which tagged results `'ledger9'` /
+ * `'ledger8'`.
  */
-export class UnrecognisedResultEraError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA];
+export class UnknownResultEraError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA];
 
   /**
    * @param received What the result's `era` field actually held.
@@ -786,11 +777,12 @@ export class UnrecognisedResultEraError extends MidnightJsError {
   constructor(readonly received: unknown) {
     super(
       `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
-        `Results are tagged '${CURRENT_PIPELINE_ERA}' or '${RETAINED_PIPELINE_ERA}' by the pipeline that built ` +
+        `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
         `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
-        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
+        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
+        `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
     );
-    this.name = 'UnrecognisedResultEraError';
+    this.name = 'UnknownResultEraError';
   }
 }
 
@@ -830,7 +822,7 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  *
- * The current era's arm of {@link AnyEraTxFailedError}: its record is always
+ * The current era's subclass of {@link AnyEraTxFailedError}: its record is always
  * the v9 one. Catch the base to catch both eras.
  */
 export class TxFailedError extends AnyEraTxFailedError {
@@ -859,7 +851,7 @@ export class TxFailedError extends AnyEraTxFailedError {
     );
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Always the v9 arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.finalizedTxData;
   }
@@ -1026,9 +1018,9 @@ export class ContractTypeError extends MidnightJsError {
  * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
  * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
-export class ScopedTxEraUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED];
+export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED];
 
   /**
    * @param head The era the network head is on, as the scope resolved it.
@@ -1041,7 +1033,7 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
         `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
         `the network head has crossed the fork.`
     );
-    this.name = 'ScopedTxEraUnsupportedError';
+    this.name = 'ScopedTransactionEraUnsupportedError';
   }
 }
 
@@ -1050,11 +1042,11 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
  * Compact toolchain was handed a contract-scoped transaction to join.
  *
  * A scope merges live CURRENT-era transactions, and a retained-era call crosses
- * the provider seams as its own transaction, so there is nothing to merge it
+ * the provider methods as its own transaction, so there is nothing to merge it
  * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
- * arm previously accepted a scope context and ran outside it.
+ * path previously accepted a scope context and ran outside it.
  *
  * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
@@ -1140,8 +1132,8 @@ export class IncompleteFindContractPrivateStateConfig extends MidnightJsError {
  * This prevents silent state mismatches when batching calls to different contracts.
  */
 export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH];
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH];
 
   constructor(
     readonly cached: { contractAddress: string; privateStateId?: PrivateStateId },
@@ -1226,7 +1218,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * inherited {@link AnyEraTxFailedError.code}, and read the record off
  * {@link txData} rather than out of the message.
  *
- * @see {@link ErrorTaxonomy} for why this arm registers no code, and for the
+ * @see {@link ErrorTaxonomy} for why this retained-era class registers no code, and for the
  * local-versus-chain consequence the message states per status.
  */
 export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
@@ -1246,7 +1238,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8CallTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1300,7 +1292,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8DeployTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1334,7 +1326,7 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  *
  * Branch on `cause` for the underlying failure — an unreachable indexer, a
  * timeout, an untagged payload, an era violation. It is wrapped rather than
- * replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+ * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
  * registered code all stay reachable.
  *
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
@@ -1423,7 +1415,7 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
  * balance and submit, and leave the recipient owning a coin it could never
  * discover.
  *
- * @see {@link KeepStatePipeline} for how the retained arm resolves each
+ * @see {@link KeepStatePipeline} for how the retained-era path resolves each
  *      recipient's encryption key.
  */
 /** The entry-point name a retained-era deploy reports its constructor under. */

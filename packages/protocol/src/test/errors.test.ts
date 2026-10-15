@@ -339,7 +339,7 @@ describe('ComposeFailedError', () => {
     // The facade method a caller actually invokes, not the internal leg it
     // dispatches to: only one of the two is reachable from a consumer.
     expect(error.message).toContain('composeDeployTx');
-    expect(error.message).not.toContain('composeV8DeployTx');
+    expect(error.message).not.toContain('composeLedger8DeployTx');
   });
 
   it('carries the deploy-unknown-circuit stage and explains that the address would change', () => {
@@ -574,12 +574,12 @@ describe('ComposeOptionError', () => {
   // "this call cannot be composed on this era at all" — which was a refusal of
   // the whole capability, not a diagnosis of the bytes.
   it('diagnoses unreadable Zswap offer bytes the same way on both eras', () => {
-    const onV8 = new ComposeOptionError('v8', 'zswapOffer').message;
-    const onV9 = new ComposeOptionError('v9', 'zswapOffer').message;
+    const onLedger8 = new ComposeOptionError('v8', 'zswapOffer').message;
+    const onLedger9 = new ComposeOptionError('v9', 'zswapOffer').message;
 
-    expect(onV8).toMatch(/could not be read/i);
-    expect(onV9).toMatch(/could not be read/i);
-    expect(onV8).toBe(onV9.replaceAll('v9', 'v8'));
+    expect(onLedger8).toMatch(/could not be read/i);
+    expect(onLedger9).toMatch(/could not be read/i);
+    expect(onLedger8).toBe(onLedger9.replaceAll('v9', 'v8'));
   });
 });
 
@@ -651,7 +651,7 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
   });
 
-  // `loadLedger8()` resolves @midnightntwrk/ledger-v8, which exports its own
+  // `loadLedger8Protocol()` resolves @midnightntwrk/ledger-v8, which exports its own
   // ContractState with a matching `static deserialize` on a second, unrelated
   // WASM instance. A remediation naming it therefore hands the caller a class
   // that satisfies the duck-typed guard and decodes on the wrong copy, so the

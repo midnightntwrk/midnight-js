@@ -14,10 +14,10 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
 import { DeployTxFailedError } from './errors';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitTx } from './submit-tx';
@@ -114,7 +114,7 @@ export async function submitDeployTx<C extends Contract.Any>(
     unprovenDeployTxData.private.signingKey
   );
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     private: unprovenDeployTxData.private,
     public: {
       ...finalizedTxData,

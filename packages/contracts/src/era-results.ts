@@ -28,14 +28,14 @@
  * These are the WIDEST instantiations. A generic union over both eras would
  * need four type parameters -- a contract and a circuit id per era -- which is
  * a signature nobody writes; a caller that does hold concrete contract types
- * can union the two arms itself and narrow it with the same guard, which is
+ * can union the two variants itself and narrow it with the same guard, which is
  * asserted in the typecheck suite.
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { CURRENT_PIPELINE_ERA, type PipelineEra, RETAINED_PIPELINE_ERA, type RetainedPipelineEra } from './era';
-import { UnrecognisedResultEraError } from './errors';
+import { UnknownResultEraError } from './errors';
 import type {
   Ledger8CircuitId,
   Ledger8Contract,
@@ -88,20 +88,20 @@ export type AnyEraSubmittedCallTx =
  * What the guard narrows a result to.
  *
  * `Extract` for a union, an intersection for a value whose `era` is the whole
- * `PipelineEra` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
+ * `LedgerVersion` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
  * conditional distributing.
  *
- * @see {@link OverloadTyping} for why the fallback arm has to be there.
+ * @see {@link OverloadTyping} for why the fallback branch has to be there.
  */
-type NarrowedToRetained<T> = [Extract<T, { readonly era: RetainedPipelineEra }>] extends [never]
-  ? T & { readonly era: RetainedPipelineEra }
-  : Extract<T, { readonly era: RetainedPipelineEra }>;
+type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
+  ? T & { readonly era: 'v8' }
+  : Extract<T, { readonly era: 'v8' }>;
 
 /**
  * Whether a result came from the RETAINED pipeline, narrowing it to that era's
- * arm.
+ * variant.
  *
- * Reads `era`, which every result carries and which each arm declares as its
+ * Reads `era`, which every result carries and which each variant declares as its
  * own literal -- so this narrows a union of any two result shapes that carry
  * the tag, not only the published unions above.
  *
@@ -115,15 +115,17 @@ type NarrowedToRetained<T> = [Extract<T, { readonly era: RetainedPipelineEra }>]
  * @param result Any result carrying an era tag.
  * @returns `true` when the retained pipeline produced it.
  */
-export const isLedger8Result = <T extends { readonly era: PipelineEra }>(
+export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
   result: T
 ): result is NarrowedToRetained<T> => {
   switch (result?.era) {
-    case RETAINED_PIPELINE_ERA:
+    case 'v8':
       return true;
-    case CURRENT_PIPELINE_ERA:
+    case CURRENT_LEDGER_VERSION:
       return false;
-    default:
-      throw new UnrecognisedResultEraError(result?.era);
+    default: {
+      const unhandled: never = result?.era;
+      throw new UnknownResultEraError(unhandled);
+    }
   }
 };

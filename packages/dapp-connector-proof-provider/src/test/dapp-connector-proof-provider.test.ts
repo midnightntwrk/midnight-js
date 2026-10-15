@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   COMMON_ERROR_CODES,
   InvalidArgumentError,
@@ -103,7 +103,7 @@ describe('dappConnectorProofProvider', () => {
   // Set equality rather than `toContain`: this provider serves both eras, and
   // an era silently dropped from the declaration would have a retained-era
   // operation refused before it started -- which `toContain` would not catch.
-  it('declares both eras, matching the two arms it is built from', async () => {
+  it('declares both eras, matching the two handlers it is built from', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
     expect([...proofProvider.supportedEras].sort()).toEqual(['v8', 'v9']);
@@ -123,7 +123,7 @@ describe('dappConnectorProofProvider', () => {
       mockCostModel
     );
     // Identity, not structural equality: the whole premise of the versioned
-    // seam is that ledger objects from different WASM instances must not be
+    // method is that ledger objects from different WASM instances must not be
     // interchanged, so a structurally-equal-but-different object must fail.
     expect(result.version).toBe('v9');
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
@@ -169,19 +169,19 @@ describe('dappConnectorProofProvider', () => {
     });
   });
 
-  // The retained arm's body lives in this package, so these cases cover code the
+  // The retained-era handler's body lives in this package, so these cases cover code the
   // types package's tests do not reach.
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
     let circuitDrivingTxBytes: Uint8Array;
 
     beforeAll(async () => {
-      const v8 = await loadLedger8();
+      const v8 = await loadLedger8Protocol();
       retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
 
       // Carries one Zswap output, so proving it drives a real circuit. The
       // empty transaction above has nothing to prove, so it cannot show which
-      // proving provider -- if any -- the seam handed to the runtime.
+      // proving provider -- if any -- the provider handed to the runtime.
       const rawTokenType = v8.sampleRawTokenType();
       const output = v8.ZswapOutput.new(
         v8.createShieldedCoinInfo(rawTokenType, 100n),
@@ -195,7 +195,7 @@ describe('dappConnectorProofProvider', () => {
       ).serialize();
     });
 
-    it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
+    it('answers the v8 variant with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
       const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
       const result = await proofProvider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
@@ -210,7 +210,7 @@ describe('dappConnectorProofProvider', () => {
       expect(returned).toBeInstanceOf(Uint8Array);
 
       // Derived from the input's own tag rather than spelled out -- see the
-      // matching case in `http-client-proof-provider`. The two seams answer the
+      // matching case in `http-client-proof-provider`. The two providers answer the
       // same contract, so they are asserted at the same strictness.
       const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
       // Without this, a vendor rename of the stage marker would make `replace`

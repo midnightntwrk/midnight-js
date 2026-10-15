@@ -114,7 +114,7 @@ export const RETAINED_ERA_TX_TAG = 'midnight:transaction[v9](signature[v1],proof
  * This is the first place in the tree the current-era literal is written down.
  * The two tags DIFFER — 71 bytes against 72, `transaction[v9]`/`signature[v1]`
  * against `transaction[v12]`/`signature[v2]` — which is what makes the tag a
- * usable corroboration of which ledger produced a transaction. The seam's own
+ * usable corroboration of which ledger produced a transaction. The provider payload's own
  * `version` field remains the primary discriminator: it is this framework's,
  * while a tag is a ledger serialization detail that can move on a vendor bump.
  */
@@ -374,7 +374,7 @@ export interface ReplayExpectations {
    */
   readonly constructorArgs?: readonly unknown[];
   /**
-   * The private state the CONSTRUCTOR arm answers with, standing in for a
+   * The private state the CONSTRUCTOR path answers with, standing in for a
    * constructor that ADVANCED the state it was handed.
    *
    * Omitted, the double threads its input straight back, which is what the real
@@ -385,7 +385,7 @@ export interface ReplayExpectations {
    */
   readonly advancedConstructorPrivateState?: unknown;
   /**
-   * The Zswap local state the CONSTRUCTOR arm answers with. Defaults to an
+   * The Zswap local state the CONSTRUCTOR path answers with. Defaults to an
    * empty one — the ordinary constructor mints nothing — so a test that wants a
    * minting constructor says so here rather than the fixture pretending to one.
    */
@@ -398,7 +398,7 @@ export interface ReplayExpectations {
  *
  * @param recording The committed recording to replay.
  * @param log The orchestration log to append each call to.
- * @param constructedState The serialized state the constructor arm replays —
+ * @param constructedState The serialized state the constructor path replays —
  * the committed retained-era envelope for this same contract.
  * @param expectations What else the pipeline must have handed the engine.
  * @returns An engine satisfying the pipeline's slice at {@link ReplayState}.
@@ -425,7 +425,7 @@ export const createReplayEngine = (
     // happily, because the recording answers regardless of what it is given.
     // `provableCircuits` is the map the REAL engine indexes -- asserting on
     // `impureCircuits` instead would pass for a contract whose two maps
-    // disagree, which is precisely what the real seam would refuse.
+    // disagree, which is precisely what the real engine would refuse.
     expect(Object.keys((options.contract as { readonly provableCircuits: object }).provableCircuits)).toContain(
       recording.circuitId
     );
@@ -572,7 +572,7 @@ export const recordEraCalls = (
     if (zswapOffer === undefined) {
       return era.composeCallTx(options);
     }
-    // Logged like every other seam, so a test can count how often the offer is
+    // Logged like every other era call, so a test can count how often the offer is
     // built: the composer resolves the split once and calls back once, and a
     // second entry here would mean that stopped being true.
     return era.composeCallTx({

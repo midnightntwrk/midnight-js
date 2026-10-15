@@ -34,7 +34,7 @@ import {
 import { createMockContractAddress } from './test-mocks';
 
 // `loadLedgerEra` is the one door to either era's decoder, so which era it is ASKED for is the
-// whole of this function's dispatch. Spied here rather than deeper: `loadLedger8` is called from
+// whole of this function's dispatch. Spied here rather than deeper: `loadLedger8Protocol` is called from
 // inside protocol's own module and a mocked export cannot observe it, and whether an acquired era
 // is memoised afterwards is `loadLedgerEra`'s documented property, not this function's.
 //
@@ -123,7 +123,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // The two fixtures are one contract, migrated. A reader that silently decoded the
     // retained envelope with the current era -- or answered from the block rather than
     // the bytes -- could still satisfy each test above on its own; only comparing the
-    // two reads establishes that the retained arm returns the contract's real content
+    // two reads establishes that the retained path returns the contract's real content
     // rather than something merely well-formed.
 
     // Arrange / Act.
@@ -143,7 +143,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
 
     // The PRIMARY STATE, which no other test in this file reads, and which is the member both
     // READMEs tell a consumer to decode. Equal across the eras is the strongest statement
-    // available here: it says the retained arm returned the contract's real content rather than
+    // available here: it says the retained path returned the contract's real content rather than
     // something merely well-formed.
     expect(retained?.state).toEqual(current?.state);
 

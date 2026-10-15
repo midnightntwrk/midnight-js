@@ -52,7 +52,7 @@ below, written at the call sites, not the type system. Do not read the check as
 covering it.
 
 **What it does and does not cover.** The framework's types are real, so result
-shapes are fully checked on both arms, and so is every member of a current-era
+shapes are fully checked in both eras, and so is every member of a current-era
 options object. A retained options object is checked for its own members —
 `compiledContract` against `contract` is exactly that — but not for `circuitId`
 or `args`, which its `any` instance leaves open. The wrapped contracts cannot be
@@ -213,7 +213,7 @@ not the same size, deliberately.
 
 **One leg carries the whole claim about the network.** It starts a call before
 the fork, on a real pre-fork head, and really composes, proves and balances it
-there. Only the SUBMISSION is held -- at the `midnightProvider.submitTx` seam --
+there. Only the SUBMISSION is held -- at `midnightProvider.submitTx` --
 until the head reports `v9`. Then the bytes go to the real node, and it really
 refuses them. In its own words, from `stack-logs/node.log` on a run where the
 diagnosis had been removed:
@@ -234,14 +234,14 @@ real composition through the keep-state pipeline, a real proof, a real
 balancing. They ask what the diagnosis DECIDES on the strength of one head
 reading, which is not a question about the network -- and the leg above is what
 establishes that this decision is reached on a live chain at all. Re-proving
-that for each arm would cost another balanced transaction on the one shared
+that for each leg would cost another balanced transaction on the one shared
 wallet, and another slice of the fork window, to assert nothing new.
 
 | Leg | Real | Injected |
 |---|---|---|
 | a retained call parked across the fork is refused as STALE | the operation, the refusal, the re-read | when the submission leaves |
 | a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
-| a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the arm its payload took | the refusal, and the re-read's answer |
+| a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the payload variant it took | the refusal, and the re-read's answer |
 
 The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` --
 the three that decide which remediation wording it carries -- and also
@@ -249,14 +249,14 @@ the three that decide which remediation wording it carries -- and also
 sends an operator to go and read; without those two the leg would pass on an
 error naming a different operation. The other two read `reason` off the
 `SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
-the arm carries **both** failures, in order, and that the second of them is the
+the error carries **both** failures, in order, and that the second of them is the
 injected one, since carrying only one is the defect its `errors` list (rejection first)
 exists to rule out; and that the injected reading was consulted exactly once, so
 a framework that took its re-read somewhere else would not pass unnoticed.
 
-The last is an arm no chain produces at all -- a head does not move backwards --
+The last is a case no chain produces at all -- a head does not move backwards --
 so it could not be driven any other way. What the live chain still contributes
-there is the era the operation starts on and the arm its payload takes, both
+there is the era the operation starts on and the payload variant it takes, both
 asserted as `v9`, so a leg that had quietly begun measuring its own injection
 would fail.
 
@@ -265,14 +265,14 @@ would fail.
 the shard exits 1. That rules out the classic e2e failure -- an assertion that
 never runs -- and shows each leg reaches the real diagnosis and can colour the
 exit code. It does not, on its own, show that each leg is sensitive to a *wrong*
-diagnosis rather than only to a missing one; the ablation removes every arm at
-once. Per-arm mutations are the stronger claim and have not been run.
+diagnosis rather than only to a missing one; the ablation removes every branch of the
+diagnosis at once. Per-branch mutations are the stronger claim and have not been run.
 
 **Do not replace the holding with a faked head reading on a chain that has
 already forked.** Measured: a composition that has resolved a `v8` head after the
 boundary refuses the v9-tagged ledger parameters the block serves, with
 `ComposeOptionError`, before anything is proven -- so that mechanism never
-reaches the submit seam at all, and a leg built on it would be asserting on the
+reaches `submitTx` at all, and a leg built on it would be asserting on the
 composer. (A retained contract composes perfectly well after the fork; the two
 injected legs do it. The refusal is specific to a composition that believes the
 head is still pre-fork.)
@@ -397,8 +397,8 @@ Each was hiding the next, which is why they are worth naming.
    at +27s, shielded at +30s. `syncWallet` now also requires
    `state.protocol._tag === 'Settled'`, which is the reading the SDK documents
    for exactly this hazard.
-3. **`submitCallTx` was called with the wrong option names.** The retained arm
-   wants `compiledContract`, not `contract`, and a nullary circuit's options
+3. **`submitCallTx` was called with the wrong option names.** The retained-era
+   overload wants `compiledContract`, not `contract`, and a nullary circuit's options
    carry no `args` at all. `.mjs` meant `tsc` never looked — which it now does,
    see [These scripts are typechecked](#these-scripts-are-typechecked). This is
    the defect that check was built against. Reverting the NAME half is the
@@ -453,14 +453,14 @@ should say so.
 
 **Superseded, and recorded because the reasoning was cited elsewhere.** This
 paragraph used to say that two fork-crossing legs were out of reach at this
-tier: `deployContract`'s retained arm refused unconditionally before any head
+tier: `deployContract`'s retained-era path refused unconditionally before any head
 was read, so the retained contract had to be deployed through protocol's era
 facade, and the stale-head remediation could not be provoked from an entry point
 at all.
 
-The first no longer holds: the retained deploy arm was wired, and every retained
+The first no longer holds: the retained-era deploy path was wired, and every retained
 twin is now deployed through `deployContract` — the surface a consumer has — so a
-regression in that arm is visible to the matrix instead of being measured around.
+regression in that path is visible to the matrix instead of being measured around.
 
 The second holds **only for the deploy branch**, which is what it was originally
 about. The stale-head path is now driven, and asserted, but by calls, so the

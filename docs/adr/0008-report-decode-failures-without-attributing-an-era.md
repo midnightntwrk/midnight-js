@@ -92,3 +92,12 @@ Era *resolution* failures are unaffected and stay `IndexerError` subclasses:
   provider-specific error class whose only content is "one of two things
   happened", while burying the actionable mitigation one level down. The
   underlying error already says as much, better.
+
+## Amendment — the two errors are renamed (2026-10-14)
+
+Issue #1489. `EraUnresolvableError` is `UnknownRecordEraError`
+(`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`), and `EraUnsupportedError` is
+`DecoderEraUnsupportedError` (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`). The
+`IndexerDataError` kind `'unresolvable-era'` is `'unknown-record-era'`. The
+decision is unchanged, and the sections above keep the names that were current
+when they were written.

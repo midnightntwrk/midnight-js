@@ -60,7 +60,7 @@ export interface Counter016Module {
 // happens when a circuit has real arguments. That gap hid a defect that made the retained-era
 // overload unselectable for any such contract: widening `Ledger8Circuit`'s argument tail to
 // `unknown[]` broke contravariance, so `(context, coin: ShieldedCoinInfo)` failed the
-// `Ledger8Contract` constraint and the call fell through to the current-era arms. Nothing caught it,
+// `Ledger8Contract` constraint and the call fell through to the current-era overloads. Nothing caught it,
 // because nothing tested it.
 //
 // `coin-receiver-016` is a real `compact-runtime@0.16` artifact whose own arity guard is

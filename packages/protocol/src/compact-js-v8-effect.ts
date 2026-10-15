@@ -22,7 +22,7 @@
  *
  * `executeCircuit` does NOT take one of these containers — it takes a
  * {@link RetainedContract}, the constructed artifact the previous toolchain
- * emits, and `containerFor` adapts it at that seam. Making `CompiledContract`
+ * emits, and `containerFor` adapts it at that point. Making `CompiledContract`
  * the retained era's public surface was attempted and reverted; see ADR 0015.
  */
 

@@ -98,9 +98,9 @@ const STAND_IN_VERIFIER_KEY = readFileSync(fixturePath('twin-contract', 'compile
 
 const RECORDING_PATH = fixturePath('coin-receiver-016', 'receive-coin-transcript.recording.json');
 const STATE_V6_NAME = 'coin-receiver-016/state-v6-envelope.hex';
-const STATE_V9_NAME = 'coin-receiver-016/state-v9.hex';
+const STATE_LEDGER9_NAME = 'coin-receiver-016/state-v9.hex';
 const STATE_V6_PATH = fixturePath(STATE_V6_NAME);
-const STATE_V9_PATH = fixturePath(STATE_V9_NAME);
+const STATE_LEDGER9_PATH = fixturePath(STATE_LEDGER9_NAME);
 
 /** The slice of the compiled fixture module this suite drives. */
 interface CompiledReceiverContract extends CompactContract.Contract<Record<string, never>> {
@@ -271,7 +271,7 @@ const buildRecording = (execution: RealExecution): RecordingFile => {
   };
 };
 
-/** The retained-era (`contract-state[v6]`) envelope the v8-native arm dispatches against. */
+/** The retained-era (`contract-state[v6]`) envelope the v8-native path dispatches against. */
 const mintV6Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ocrt3.ContractState();
   contractState.data = execution.initialData;
@@ -281,8 +281,8 @@ const mintV6Envelope = (execution: RealExecution): Uint8Array => {
   return contractState.serialize();
 };
 
-/** The current-era (`contract-state[v8]`) envelope the keep-state arm dispatches against. */
-const mintV9Envelope = (execution: RealExecution): Uint8Array => {
+/** The current-era (`contract-state[v8]`) envelope the keep-state path dispatches against. */
+const mintLedger9Envelope = (execution: RealExecution): Uint8Array => {
   const contractState = new ledgerV9.ContractState();
   contractState.data = new ledgerV9.ChargedState(ledgerV9.StateValue.decode(execution.preState));
   const operation = new ledgerV9.ContractOperation();
@@ -295,8 +295,8 @@ const ERAS = ['v8', 'v9'] as const;
 
 // One assembly per era, each against its own module and its own state, because
 // the two `ContractState` types are distinct nominal WASM classes -- the same
-// reason `era-partition-received-coin.test.ts` writes a thunk per arm.
-const ARMS: Readonly<
+// reason `era-partition-received-coin.test.ts` writes a thunk per era.
+const ASSEMBLE_PER_ERA: Readonly<
   Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext, preState: ledgerV9.EncodedStateValue) => unknown>
 > = {
   v8: (transcript, partitionContext, preState) => {
@@ -304,7 +304,7 @@ const ARMS: Readonly<
     return assembleCallPrototype(LedgerV8, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
-      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
       ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
@@ -316,11 +316,11 @@ const ARMS: Readonly<
     });
   },
   v9: (transcript, partitionContext, preState) => {
-    const contractState = ledgerV9.ContractState.deserialize(readHexFixture(STATE_V9_NAME));
+    const contractState = ledgerV9.ContractState.deserialize(readHexFixture(STATE_LEDGER9_NAME));
     return assembleCallPrototype(ledgerV9, {
       circuitId: CIRCUIT_ID,
       contractAddress: ocrt3.dummyContractAddress(),
-      // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+      // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
       ledgerParametersBytes: 'initial',
       transcript: { kind: 'unpartitioned', preState, publicTranscript: transcript.publicTranscript, partitionContext },
       privateTranscriptOutputs: transcript.privateTranscriptOutputs,
@@ -342,7 +342,7 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     if (process.env.MINT_HF_FIXTURES === '1') {
       writeFileSync(RECORDING_PATH, `${JSON.stringify(buildRecording(execution), null, 2)}\n`, 'utf8');
       writeFileSync(STATE_V6_PATH, `${Buffer.from(mintV6Envelope(execution)).toString('hex')}\n`, 'utf8');
-      writeFileSync(STATE_V9_PATH, `${Buffer.from(mintV9Envelope(execution)).toString('hex')}\n`, 'utf8');
+      writeFileSync(STATE_LEDGER9_PATH, `${Buffer.from(mintLedger9Envelope(execution)).toString('hex')}\n`, 'utf8');
     }
   });
 
@@ -356,12 +356,12 @@ describe('coin-receiver-016 fixtures: minted by real retained-era execution, the
     expect(Buffer.from(readHexFixture(STATE_V6_NAME)).toString('hex')).toBe(
       Buffer.from(mintV6Envelope(execution)).toString('hex')
     );
-    expect(Buffer.from(readHexFixture(STATE_V9_NAME)).toString('hex')).toBe(
-      Buffer.from(mintV9Envelope(execution)).toString('hex')
+    expect(Buffer.from(readHexFixture(STATE_LEDGER9_NAME)).toString('hex')).toBe(
+      Buffer.from(mintLedger9Envelope(execution)).toString('hex')
     );
   });
 
   it.each(ERAS)('the recording still composes on %s', (version) => {
-    expect(ARMS[version](execution.transcript, execution.transcript.partitionContext, execution.preState)).toBeDefined();
+    expect(ASSEMBLE_PER_ERA[version](execution.transcript, execution.transcript.partitionContext, execution.preState)).toBeDefined();
   });
 });

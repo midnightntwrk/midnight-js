@@ -17,7 +17,7 @@ import { describe, expect, test } from 'vitest';
 
 import { MATRIX_CONTRACTS, RETAINED_TWINS, resolveContractSelection } from './personas.mjs';
 
-// WHAT THESE ARE FOR. `resolveContractSelection` decides which arms a Hard fork
+// WHAT THESE ARE FOR. `resolveContractSelection` decides which legs a Hard fork
 // shard runs, and every way it can be wrong is silent: a shard that narrows to
 // nothing runs nothing and reports green, and a shard that narrows to the wrong
 // half measures a contract the job was not named after. Nothing in the fork lane
@@ -26,7 +26,7 @@ import { MATRIX_CONTRACTS, RETAINED_TWINS, resolveContractSelection } from './pe
 //
 // The asymmetric keys are what make it non-trivial, so they are the subject:
 // `events` has no retained twin that can exist (`emit` is not a language-0.23
-// form) and `private-counter` has no current-era arm worth running (a post-fork
+// form) and `private-counter` has no current-era leg worth running (a post-fork
 // deploy has no pre-fork private state to carry).
 
 describe('[Unit tests] resolveContractSelection', () => {
@@ -47,7 +47,7 @@ describe('[Unit tests] resolveContractSelection', () => {
    * @when the selection is resolved
    * @then both halves name it
    */
-  test('keeps a contract that has both arms in both halves', () => {
+  test('keeps a contract that has both legs in both halves', () => {
     const selection = resolveContractSelection(['simple']);
 
     expect(selection).toEqual({ current: ['simple'], retained: ['simple'] });
@@ -68,7 +68,7 @@ describe('[Unit tests] resolveContractSelection', () => {
   });
 
   /**
-   * @given a request naming `private-counter`, which has no current-era arm
+   * @given a request naming `private-counter`, which has no current-era leg
    * @when the selection is resolved
    * @then the current half is empty and nothing is refused
    *

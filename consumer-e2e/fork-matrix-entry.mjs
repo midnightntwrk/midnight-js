@@ -114,7 +114,7 @@ for (const event of ['uncaughtException', 'unhandledRejection']) {
 /**
  * An error, its stack, and every `cause` beneath it.
  *
- * The chain is the point. `Ledger8SeamFailedError` says only that a seam
+ * The chain is the point. `Ledger8ProviderFailedError` says only that a provider
  * rejected and puts the provider's own failure -- class name intact, message
  * redacted -- on `cause`, so a report that prints `error.message` alone says a
  * transaction was refused and never says by what. That is what happened on the
@@ -178,7 +178,7 @@ const leg = async (name, run, ms = LEG_TIMEOUT) => {
   } catch (error) {
     // The stack and the cause chain, not just the message: a WASM class-identity
     // failure says only "expected instance of X" and is undiagnosable without the
-    // frame it came from, and a seam refusal names the provider only on `cause`.
+    // frame it came from, and a provider refusal names the provider only on `cause`.
     const message = describeError(error);
     observed[name] = `FAILED: ${message}`;
     failures.push(`${name}: ${message}`);
@@ -454,7 +454,7 @@ const waitForHead = async (publicDataProvider, era, timeoutMs) => {
  */
 const environmentFor = (era) => ({
   ...config.environment,
-  proofServer: era === 'v8' ? config.proofServerV8 : config.proofServerV9
+  proofServer: era === 'v8' ? config.ledger8ProofServer : config.ledger9ProofServer
 });
 
 /**
@@ -571,7 +571,7 @@ const RETAINED_MATRIX = [
     // across the boundary.
     //
     // That read used to be REFUSED here, and the refusal was the framework's:
-    // the retained arm handed the runtime a `ChargedState`, which carries no
+    // the retained-era path handed the runtime a `ChargedState`, which carries no
     // balance, so every retained circuit executed against an empty one. A read
     // of a HELD colour therefore built a transcript claiming zero, and the node
     // refused it for disagreeing with the balance it really held (#1345). An
@@ -947,10 +947,10 @@ const retainedProvidersFor = (era, wallet, key) =>
 /**
  * Deploys one retained twin on the pre-fork chain, through the public entry point.
  *
- * `deployContract`'s retained arm, which is the surface a consumer has. This
- * used to hand-roll the deploy against protocol's era facade, because the arm
+ * `deployContract`'s retained-era path, which is the surface a consumer has. This
+ * used to hand-roll the deploy against protocol's era facade, because the path
  * refused unconditionally: that route measured `protocol` and left a regression
- * in the public arm invisible to every twin in the matrix.
+ * in the public path invisible to every twin in the matrix.
  *
  * Options read exactly like `callRetained`'s: `compiledContract` takes the RAW
  * instance -- the retained era has no `CompiledContract` container -- and every
@@ -968,14 +968,14 @@ const retainedProvidersFor = (era, wallet, key) =>
  *
  * THE TWO OPTIONS OBJECTS ARE WRITTEN OUT IN FULL rather than built by spreading
  * `privateStateId` in conditionally. `Ledger8DeployContractOptions` is a union
- * whose private-state arm REQUIRES the id while the other arm forbids it, so a
+ * whose private-state variant REQUIRES the id while the other variant forbids it, so a
  * conditionally spread member -- which the checker sees as optional -- matches
  * neither. Unlike `args` there is no neutral value to pass: an explicit
  * `privateStateId: undefined` is refused by the entry point itself, and
- * deliberately, as a caller who believes they named an id. A branch per arm is
+ * deliberately, as a caller who believes they named an id. A branch per variant is
  * the only form that both typechecks and says what it means.
  *
- * The arm resolves a verifier key per entry point the artifact declares, so the
+ * The path resolves a verifier key per entry point the artifact declares, so the
  * `keys/*.verifier` sweep this used to do by hand is gone. Same set either way:
  * every twin circuit is an `export circuit`, so each one lands in
  * `impureCircuits` AND ships a key on disk.
@@ -996,14 +996,14 @@ const deployRetained = async (key, providers) => {
   const state = await waitForContract(providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
 
   // `deployTxData` is a `VersionedFinalizedTxData`, which carries `txId` at the
-  // top level on BOTH arms -- not under `.public`, which is where the CURRENT
+  // top level on BOTH variants -- not under `.public`, which is where the CURRENT
   // era's `DeployedContract` puts it. The two results differ exactly here.
   return {
     txId: deployed.deployTxData.txId,
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw),
-    // The key the arm persisted for this address, CARRIED IN PROCESS ONLY so the
+    // The key the path persisted for this address, CARRIED IN PROCESS ONLY so the
     // post-fork `findDeployedContract` leg has something to compare against that
     // was observed rather than assumed. `reportableDeployment` is what keeps it
     // off the report -- see there for why that is not optional.
@@ -1044,7 +1044,7 @@ const reportableDeployment = (deployed) => ({
  * `internal/ledger8-entry.ts`, `unproven-call-tx.ts`) -- and it is what lets
  * this call site be TYPECHECKED. The options types make `args` conditional on
  * the circuit's own parameter list, and a conditionally SPREAD member reaches
- * the checker as optional, which no arm of that conditional accepts. This
+ * the checker as optional, which no branch of that conditional accepts. This
  * helper is deliberately generic over every twin and circuit, so it cannot
  * satisfy the conditional by being specific; passing the empty tuple does it
  * instead. `args: undefined` would NOT: `'args' in options` is then true and
@@ -1056,7 +1056,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   const args = call.args === undefined ? [] : call.args(context);
   const privateState = retainedEntry(key).privateState;
   // Two literals, for SYMMETRY with `deployRetained` rather than for its reason.
-  // `Ledger8CallTxOptions`' base arm merely omits `privateStateId` -- no
+  // `Ledger8CallTxOptions`' base variant merely omits `privateStateId` -- no
   // `?: never` -- and the retained entry reads the value, so an explicit
   // `undefined` here would typecheck and would mean "no id named". The branch is
   // kept anyway: a call site that looks like the deploy above is one a reader can
@@ -1072,12 +1072,12 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
           privateStateId: privateState.id
         });
 
-  // Read through the SAME shape the current-era arm answers with -- `public` for
+  // Read through the SAME shape the current-era path answers with -- `public` for
   // the finalized record, `private` for the circuit's own return value. The
-  // retained arm used to answer a thin `{ circuitId, nextPrivateState, txData }`
+  // retained-era path used to answer a thin `{ circuitId, nextPrivateState, txData }`
   // and `result` was unreachable from here.
   //
-  // `status` is recorded, not asserted. Both arms of `submitCallTx` throw before
+  // `status` is recorded, not asserted. Both paths of `submitCallTx` throw before
   // resolving if the chain reported anything but `SucceedEntirely`
   // (`internal/transaction.ts`, `internal/ledger8-entry.ts`), so a resolved call
   // has already cleared that check and a rejected one arrives in `leg`'s catch.
@@ -1089,13 +1089,13 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
     retainedCaptures.set(key, { ...retainedCaptures.get(key), [call.capture]: submitted.private.result });
   }
 
-  // THROWS rather than pushing onto `failures`, unlike the current-era arm's
+  // THROWS rather than pushing onto `failures`, unlike the current-era path's
   // check. A retained call's return value is asserted at most once per leg and
   // the legs that follow build on it, so a wrong figure has to stop the leg
   // rather than let the next call run against state the assertion just said was
   // not there. `leg` turns it into the row and the failure.
   // `!== undefined` rather than `'expect' in call`, matching the current-era
-  // arm at the bottom of this file: a circuit whose correct answer IS `undefined`
+  // check at the bottom of this file: a circuit whose correct answer IS `undefined`
   // cannot be asserted this way. No twin needs that today.
   if (call.expect !== undefined && submitted.private.result !== call.expect) {
     throw new Error(
@@ -1453,15 +1453,15 @@ let deployment;
 await leg('pre-fork head era', () => networkHeadVersion(session.providers.publicDataProvider));
 
 // The contract every leg below the boundary is measured against, deployed
-// through `deployContract`'s retained arm -- the entry point a consumer has, and
+// through `deployContract`'s retained-era path -- the entry point a consumer has, and
 // the one the rest of the file then calls, finds and reads. It stands in for the
 // pre-fork dApp that would already have deployed on the previous framework
-// major, and it is now also the run's only coverage of that arm: the arm is
+// major, and it is now also the run's only coverage of that path: the path is
 // reachable ONLY against a pre-fork head, and refuses a post-fork one with
-// `Ledger8DeployOnV9Error`, so nothing after the boundary can exercise it.
+// `Ledger8DeployOnLedger9Error`, so nothing after the boundary can exercise it.
 //
 // This leg used to compose the deploy by hand against protocol's era facade,
-// because the arm refused before reading any head. That made the deploy a
+// because the path refused before reading any head. That made the deploy a
 // measurement of `protocol` rather than of `contracts`.
 await leg('pre-fork retained deploy', async () => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
@@ -1500,10 +1500,10 @@ await leg('pre-fork retained call', async () => {
     circuitId: CIRCUIT_ID,
     args: []
   });
-  // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // The RETAINED-era path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
-  // exactly as the current era does, so the id is read the same way on both arms.
-  // `submitted.txId` is NOT it: neither arm puts the id at the top level.
+  // exactly as the current era does, so the id is read the same way in both eras.
+  // `submitted.txId` is NOT it: neither path puts the id at the top level.
   return { txId: submitted.public.txId };
 });
 
@@ -1673,7 +1673,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 // them is re-measured.
 //
 // What someone editing these lines has to know, and no more: the call is
-// composed, proven and balanced against a real pre-fork head, and the only seam
+// composed, proven and balanced against a real pre-fork head, and the only method
 // wrapped is `midnightProvider.submitTx`. The framework code under test is
 // `handleSubmitRejection`, in `packages/contracts/src/internal/stale-head.ts`.
 
@@ -1681,7 +1681,7 @@ await probe('pre-fork deploy of a current-era contract', async () => {
 const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
 
 /**
- * A provider set whose submission is HELD at the seam until it is let go.
+ * A provider set whose submission is HELD at `submitTx` until it is let go.
  *
  * Two exits, and the difference is not cosmetic. `release()` SUBMITS: the bytes
  * reach the real node, and what comes back is the answer a verdict leg reads.
@@ -1697,21 +1697,21 @@ const DRIVES_STALE_HEAD = covers(SELECTED.retained, 'simple');
  *
  * @param providers The provider set to wrap.
  * @returns The wrapped set, a promise that settles when the submission reaches
- * the seam, and the two ways to let it go.
+ * `submitTx`, and the two ways to let it go.
  */
 const parkSubmission = (providers) => {
-  const seam = providers.midnightProvider;
-  let reachSeam;
+  const midnightProvider = providers.midnightProvider;
+  let reachSubmit;
   let letGo;
-  const reachedSeam = new Promise((resolve) => {
-    reachSeam = resolve;
+  const reachedSubmit = new Promise((resolve) => {
+    reachSubmit = resolve;
   });
   // Resolves with whether the submission is to be ABANDONED rather than sent.
   const letGone = new Promise((resolve) => {
     letGo = resolve;
   });
   return {
-    reachedSeam,
+    reachedSubmit,
     release: () => letGo(false),
     discard: () => letGo(true),
     providers: {
@@ -1720,13 +1720,13 @@ const parkSubmission = (providers) => {
         // Carried over, never restated. The era gate reads this before the
         // operation starts, and a wrapper that narrowed it would refuse the very
         // payload these legs exist to submit.
-        supportedEras: seam.supportedEras,
+        supportedEras: midnightProvider.supportedEras,
         submitTx: async (tx) => {
-          reachSeam(tx.version);
+          reachSubmit(tx.version);
           if (await letGone) {
             throw new Error('the parked submission was discarded rather than sent');
           }
-          return seam.submitTx(tx);
+          return midnightProvider.submitTx(tx);
         }
       }
     }
@@ -1737,7 +1737,7 @@ const parkSubmission = (providers) => {
  * What a parked call is given to compose, prove and balance.
  *
  * A call's FULL round trip measured ~18s -- see `IN_FLIGHT_CALL_TIMEOUT` -- and a
- * parked one stops at the submit seam, so it is shorter than that. Three minutes
+ * parked one stops at `submitTx`, so it is shorter than that. Three minutes
  * is deliberate headroom over a slow prover, not a fitted figure.
  */
 const PARK_TIMEOUT = 3 * 60_000;
@@ -1751,11 +1751,11 @@ const describeParkFailure = (settled) => {
   }
   return settled.outcome === 'admitted'
     ? `it was admitted as ${settled.txId}`
-    : `it failed before the seam: ${describeError(settled.error)}`;
+    : `it failed before submitTx: ${describeError(settled.error)}`;
 };
 
 /**
- * Starts a baseline call and returns once it is parked at the submit seam.
+ * Starts a baseline call and returns once it is parked at `submitTx`.
  *
  * `submitCallTxAsync`, NOT `submitCallTx`. The second waits on `watchForTxData`,
  * which has no timeout and never returns for a transaction the network declines
@@ -1764,7 +1764,7 @@ const describeParkFailure = (settled) => {
  * instead of as itself. These legs assert on a rejection AT SUBMIT and have no
  * use for a finalized record.
  *
- * Bounded on its own and FATALLY so: a call that never reaches the seam is still
+ * Bounded on its own and FATALLY so: a call that never reaches `submitTx` is still
  * proving or balancing, and stepping over it would leave an operation holding
  * the wallet every leg below draws on, to surface later under another contract's
  * name. That is the hazard `withDeadline` is written about. It is discarded
@@ -1776,14 +1776,14 @@ const describeParkFailure = (settled) => {
  * @param providers The provider set the call runs on, already carrying whatever
  * the calling leg injects.
  * @returns The two ways to let the submission go, the promise of what the
- * framework made of it, and the era arm the payload crossed the seam on.
+ * framework made of it, and the payload variant it was submitted as.
  * @throws LegTimeoutError if the call never parks; the run stops there.
  * @throws Error if the call finished or failed instead of parking.
  */
 const parkBaselineCall = async (name, providers) => {
   const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
   const parked = parkSubmission(providers);
-  // Mapped to a value on BOTH arms here, where it is created, and not awaited
+  // Mapped to a value on BOTH outcomes here, where it is created, and not awaited
   // until the release leg: an unobserved rejection in between would be an
   // unhandled one. Tagged with an explicit `outcome` rather than discriminated
   // on `error === undefined`, because a rejection is not obliged to be an Error
@@ -1800,7 +1800,7 @@ const parkBaselineCall = async (name, providers) => {
     (error) => ({ outcome: 'refused', txId: undefined, error })
   );
   const first = await Promise.race([
-    parked.reachedSeam.then((version) => ({ payloadVersion: version, settled: undefined })),
+    parked.reachedSubmit.then((version) => ({ payloadVersion: version, settled: undefined })),
     settles.then((settled) => ({ payloadVersion: undefined, settled })),
     delay(PARK_TIMEOUT, undefined, { ref: false }).then(() => ({ payloadVersion: undefined, settled: undefined }))
   ]);
@@ -1809,7 +1809,7 @@ const parkBaselineCall = async (name, providers) => {
     if (first.settled === undefined) {
       throw new LegTimeoutError(name, PARK_TIMEOUT);
     }
-    throw new Error(`the call never reached the submit seam: ${describeParkFailure(first.settled)}`, {
+    throw new Error(`the call never reached submitTx: ${describeParkFailure(first.settled)}`, {
       cause: first.settled.error
     });
   }
@@ -1882,7 +1882,7 @@ const withHeadReadAnswer = (real, answer) =>
  *
  * ONE leg in this file carries the full-fidelity claim: the parked call above,
  * where a real node refuses real pre-fork bytes after a real fork. That is what
- * establishes this diagnosis runs on a live chain at all. The remaining arms are
+ * establishes this diagnosis runs on a live chain at all. The remaining cases are
  * decisions taken on the strength of one head reading, and re-proving the
  * network path for each of them would cost another balanced transaction on the
  * one shared wallet and another slice of the fork window to assert nothing new.
@@ -1891,16 +1891,16 @@ const withHeadReadAnswer = (real, answer) =>
  * composition through the keep-state pipeline, a real proof and a real
  * balancing.
  *
- * The injected rejection is uncoded, which is deliberate -- `atSeam` wraps it
- * into the same `Ledger8SeamFailedError` a provider's own failure would arrive
+ * The injected rejection is uncoded, which is deliberate -- `atProviderMethod` wraps it
+ * into the same `Ledger8ProviderFailedError` a provider's own failure would arrive
  * as, so the diagnosis sees exactly the shape it gates on.
  *
  * @param headAnswer What the head re-read should do once the submission has been
  * refused: return an integer, or throw. Every reading BEFORE that point is the
  * real one, which is what makes the era the operation starts on real too.
  * @returns The error the entry point rejected with, how many times the injected
- * reading was consulted, and the era arm the payload took.
- * @throws Error if the call was admitted, which would mean the injected seam
+ * reading was consulted, and the payload variant it was submitted as.
+ * @throws Error if the call was admitted, which would mean the injected `submitTx`
  * never ran.
  */
 const callWithRefusedSubmission = async (headAnswer) => {
@@ -1938,7 +1938,7 @@ const callWithRefusedSubmission = async (headAnswer) => {
     (error) => ({ outcome: 'refused', txId: undefined, error })
   );
   if (outcome.outcome === 'admitted') {
-    throw new Error(`the call was admitted as ${outcome.txId} although the submit seam refused it`);
+    throw new Error(`the call was admitted as ${outcome.txId} although submitTx refused it`);
   }
   return { error: outcome.error, injectedHeadReads, submittedVersion };
 };
@@ -1954,7 +1954,7 @@ const callWithRefusedSubmission = async (headAnswer) => {
 // promise resolves. That window is the only place an in-flight transaction can
 // meet the boundary, and it is what the probe drives calls into.
 const forkEnacted = awaitFork();
-// WHICH of the two, not merely THAT one of them happened. Both arms stop the
+// WHICH of the two, not merely THAT one of them happened. Both outcomes stop the
 // probe -- it must not keep driving calls at a fork that failed -- but a boolean
 // made the two indistinguishable afterwards, so a failed fork reported
 // `stoppedBecause: 'the fork was enacted'` next to the gate below saying it had
@@ -1980,7 +1980,7 @@ let parkedStaleHead;
 let preForkProtocolVersion;
 
 if (DRIVES_STALE_HEAD) {
-  await leg('park a retained call at the submit seam', async () => {
+  await leg('park a retained call at submitTx', async () => {
     if (deployment === undefined) {
       throw new Error('the pre-fork baseline deploy did not complete, so there is nothing to call');
     }
@@ -1999,14 +1999,14 @@ if (DRIVES_STALE_HEAD) {
     // literal would make that leg a statement about this environment's version
     // numbering rather than about the diagnosis.
     preForkProtocolVersion = await session.providers.publicDataProvider.queryLatestProtocolVersion();
-    parkedStaleHead = await parkBaselineCall('park a retained call at the submit seam', session.providers);
-    // The arm the payload crossed the seam on is the only direct evidence that
+    parkedStaleHead = await parkBaselineCall('park a retained call at submitTx', session.providers);
+    // The payload variant it was submitted as is the only direct evidence that
     // this call was composed against a pre-fork head. Judged HERE, where the
     // answer is precise, rather than left to surface a leg later as a refusal
     // that reads like a framework regression.
     if (parkedStaleHead.payloadVersion !== 'v8') {
       throw new Error(
-        `the parked call crossed the seam on '${parkedStaleHead.payloadVersion}', not on the retained arm`
+        `the parked call was submitted on '${parkedStaleHead.payloadVersion}', not as the retained-era payload variant`
       );
     }
     return { payload: parkedStaleHead.payloadVersion, preForkProtocolVersion };
@@ -2071,8 +2071,8 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
       'a retained call parked across the fork is refused as STALE',
       parkedStaleHead
     );
-    // The whole chain, and the refusal on `cause`: a `Ledger8SeamFailedError`
-    // says only that a seam rejected and puts the provider's own failure on
+    // The whole chain, and the refusal on `cause`: a `Ledger8ProviderFailedError`
+    // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
     if (!(refusal instanceof StaleHeadError)) {
@@ -2216,10 +2216,10 @@ await leg('post-fork keep-state call through the same call site', async () => {
     circuitId: CIRCUIT_ID,
     args: []
   });
-  // The RETAINED arm resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
+  // The RETAINED-era path resolves a `Ledger8FinalizedCallTxData` -- `{ circuitId,
   // public, private }` -- which now carries the finalized record on `public`
-  // exactly as the current era does, so the id is read the same way on both arms.
-  // `submitted.txId` is NOT it: neither arm puts the id at the top level.
+  // exactly as the current era does, so the id is read the same way in both eras.
+  // `submitted.txId` is NOT it: neither path puts the id at the top level.
   return { txId: submitted.public.txId };
 });
 
@@ -2372,7 +2372,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
       }, context);
     } catch (error) {
       const described = describeError(error);
-      // Only a SEAM refusal is the pass. An unresolvable import, a provider
+      // Only a PROVIDER refusal is the pass. An unresolvable import, a provider
       // misconfiguration, an indexer 5xx, a `LegTimeoutError` or any harness
       // `TypeError` would otherwise be recorded as the ledger checking the
       // balance -- which would make the surviving-balance row above decorative
@@ -2381,25 +2381,25 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // `balanceTx` and `submitTx` both count, and `proveTx` does not: a
       // balance the contract cannot serve is refused either when the
       // transaction is balanced or when the node re-runs it, but never by the
-      // prover. `Ledger8SeamFailedError` renders `<seam> rejected`, and
+      // prover. `Ledger8ProviderFailedError` renders `<method> rejected`, and
       // `describeError` walks the cause chain, so the shape is readable here.
       //
       // The framework's OWN guards -- `executeCircuit` refusing a balance, the
       // pipeline refusing an envelope -- run inside this `try` too, and they are
-      // not seam refusals, so they land in the branch below rather than being
+      // not provider refusals, so they land in the branch below rather than being
       // read as the ledger doing its job. That is deliberate: a framework that
       // refused to build the transaction at all would prove nothing about what
       // the ledger checks.
       if (!/(?:balanceTx|submitTx) rejected/.test(described)) {
         throw new Error(
-          'the oversized send failed, but not with a seam refusal, so this leg proves nothing about the ' +
+          'the oversized send failed, but not with a provider refusal, so this leg proves nothing about the ' +
             `ledger checking the balance:\n${described}`,
           { cause: error }
         );
       }
       // `submitTx` is the NODE. It re-ran the transcript against the balance the
       // contract really holds and disagreed, which is exactly the finding this
-      // leg is after, and nothing else reaches that seam.
+      // leg is after, and nothing else reaches that method.
       //
       // Recorded rather than swallowed so the run carries which failure shape
       // answered -- a node rejection and a balancing refusal are different
@@ -2538,13 +2538,13 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // process minted before the fork, which is the one thing a restarted dApp
 // cannot do.
 //
-// WHAT IT ASSERTS BEYOND "the address answers". The retained arm resolves a
+// WHAT IT ASSERTS BEYOND "the address answers". The retained-era path resolves a
 // verifier key for every one of the artifact's IMPURE circuits -- the set
 // `callTx` is built from -- and refuses the attach if one does not match the
 // chain, so a successful find is the chain and the pre-fork artifact still
 // agreeing, after migration re-versioned the state
 // envelope. And `signingKey` comes back from the private-state store rather than
-// from the chain: the arm reports the key already stored and samples none, so
+// from the chain: the path reports the key already stored and samples none, so
 // this is also the assertion that the maintenance key the deploy persisted
 // before the fork survived it. That key is not on chain and not derivable from
 // anything that is, so losing it silently would leave a contract nobody can ever
@@ -2562,8 +2562,8 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     const privateState = entry.privateState;
     // Two literals again. Here `Ledger8FindDeployedContractOptions` is a single
     // interface with an OPTIONAL `privateStateId` rather than a union, so the
-    // type would accept a conditional spread -- but the arm refuses an explicit
-    // `privateStateId: undefined` at run time, for the same reason the deploy arm
+    // type would accept a conditional spread -- but the path refuses an explicit
+    // `privateStateId: undefined` at run time, for the same reason the deploy path
     // does, so the branch is what keeps the two from diverging.
     //
     // NO `signingKey` member on either: supplying one REPLACES what is stored,
@@ -2578,7 +2578,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
             privateStateId: privateState.id
           });
 
-    // NOT `found.contractAddress === deployed.contractAddress`. The retained arm
+    // NOT `found.contractAddress === deployed.contractAddress`. The retained-era path
     // returns `contractAddress: options.contractAddress` verbatim
     // (`find-deployed-contract.ts`), so comparing them compares the argument with
     // itself and can never fail. What a restarted dApp actually needs is a handle
@@ -2816,7 +2816,7 @@ const compiledContractFor = async (entry, zkConfigPath) => {
   const module = await import(`@midnight-ntwrk/fork-current-${entry.key}`);
   // Annotated, because the specifier is a template literal: a dynamic import
   // resolves to `any` however the package is declared, and `make` would then
-  // infer `PS` as `unknown` and match no `deployContract` arm -- taking the
+  // infer `PS` as `unknown` and match no `deployContract` overload -- taking the
   // whole leg's options object out of the check with it. `ForkCurrentContractCtor`
   // carries what every wrapper in this matrix actually is; the `typeof` guard
   // below is what makes the annotation honest at run time rather than asserted.
@@ -2864,7 +2864,7 @@ const runMatrixContract = async (entry) => {
         contractAddress,
         circuitId: call.circuitId,
         // Always present, `[]` for a nullary circuit -- `callRetained` carries
-        // why, and it holds identically on this arm: `unproven-call-tx.ts`
+        // why, and it holds identically on this path: `unproven-call-tx.ts`
         // normalises an absent `args` to the empty tuple, and a conditionally
         // SPREAD member reaches the checker as optional, which the options type
         // does not admit.
@@ -2903,7 +2903,7 @@ for (const entry of MATRIX.filter((candidate) => covers(SELECTED.current, candid
   await leg(`post-fork ${entry.key}`, () => runMatrixContract(entry));
 }
 
-// ── (d) last of all: the arms a live chain does not hand you ─────────────
+// ── (d) last of all: the cases a live chain does not hand you ────────────
 //
 // Both refuse the submission by injection, for the reason
 // {@link callWithRefusedSubmission} gives: the parked leg above is what shows
@@ -2942,7 +2942,7 @@ if (DRIVES_STALE_HEAD) {
     }
     // NEITHER failure is dropped, and in this order: the submission's rejection
     // first, the read's failure second. Carrying only one of the two is what
-    // this arm's `errors` list (rejection first) exists to rule out, and reading the
+    // this case's `errors` list (rejection first) exists to rule out, and reading the
     // second one's message is what proves it is the injected failure rather than
     // whatever else was to hand.
     const second = error.errors[1];
@@ -2969,8 +2969,8 @@ if (DRIVES_STALE_HEAD) {
         cause: error
       });
     }
-    // The era the operation STARTED on, read from the live chain, and the arm
-    // its payload actually took. A leg that let either be the pre-fork value
+    // The era the operation STARTED on, read from the live chain, and the payload
+    // variant it actually took. A leg that let either be the pre-fork value
     // would be measuring its own injection.
     if (error.startEra !== 'v9' || submittedVersion !== 'v9') {
       throw new Error(
@@ -2978,7 +2978,7 @@ if (DRIVES_STALE_HEAD) {
         { cause: error }
       );
     }
-    // ONE carried failure on this arm, against the other arm's two: the head was
+    // ONE carried failure in this case, against the other case's two: the head was
     // read successfully here, so there is no second failure to carry, and an
     // extra entry would mean the framework attached something it should not.
     if (error.errors.length !== 1) {

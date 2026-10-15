@@ -56,7 +56,7 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // the other half of that diagnosis, for a head that could not be re-read or that reported an
 // EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
-// behaves the same whichever failure came first. `ScopedTxEraUnsupportedError` and
+// behaves the same whichever failure came first. `ScopedTransactionEraUnsupportedError` and
 // `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
 // head era that composes only one call per transaction, and a retained-toolchain call cannot join
 // a scope at all.
@@ -82,7 +82,6 @@ export {
   type EraArtifactMismatchOptions,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
-  type EraSeam,
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IncompleteCallTxPrivateStateConfig,
@@ -93,15 +92,15 @@ export {
   MixedEraScopeError,
   PrivateStateNotFoundError,
   RetainedArtifactOnCurrentEraStateError,
+  ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
-  ScopedTxEraUnsupportedError,
   StaleHeadError,
   type StaleHeadOperationKind,
   type SubmitRejectionUndiagnosedCause,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   TxFailedError,
-  UnrecognisedResultEraError,
+  UnknownResultEraError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
 export {
@@ -136,15 +135,6 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The era vocabulary, which BOTH pipelines are named by, so a caller that tags or branches on an
-// era never reaches for the retained-era namespace to do it.
-export {
-  CURRENT_PIPELINE_ERA,
-  type CurrentPipelineEra,
-  type PipelineEra,
-  RETAINED_PIPELINE_ERA,
-  type RetainedPipelineEra
-} from './era';
 // The receiving half of the era surface: the overloads hand a caller one era's
 // result by inference, and these let a caller who RECEIVES either one declare a
 // parameter for both and narrow it by name.
@@ -176,7 +166,7 @@ export {
   FinalizedDeployTxPublicData,
   FoundDeployTxData,
   FoundDeployTxPublicData,
-  FoundDeployTxPublicDataV8,
+  type Ledger8FoundDeployTxPublicData,
   SubmittedCallTx,
   UnsubmittedCallTxData,
   UnsubmittedCallTxPrivateData,

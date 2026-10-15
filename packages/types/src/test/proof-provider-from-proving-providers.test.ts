@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { RetainedEraHandlers } from '../era-handlers';
-import { PROVIDER_ERROR_CODES, V8PayloadUnsupportedError } from '../errors';
-import { createProofProviderForEras, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
+import type { RetainedEraEntries } from '../era-entries';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES } from '../errors';
+import { createProofProviderFromProvingProviders, type ProvingProvidersByEra, type UnboundTransaction } from '../proof-provider';
 
 const PROVING_REFUSED = 'proving refused';
 
@@ -106,12 +106,12 @@ const createStubUnprovenTx = (provenAs: UnboundTransaction): UnprovenTransaction
 const partialCostModel: Partial<CostModel> = { toString: () => 'stub-cost-model' };
 const stubCostModel = partialCostModel as CostModel;
 
-describe('createProofProviderForEras', () => {
+describe('createProofProviderFromProvingProviders', () => {
   let retainedEraTxBytes: Uint8Array;
   let circuitDrivingTxBytes: Uint8Array;
 
   beforeAll(async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
     retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
 
     // Carries one Zswap output, so proving it actually drives the proving
@@ -134,7 +134,7 @@ describe('createProofProviderForEras', () => {
     it('proves a v9 payload with that provider and the cost model it was given', async () => {
       const unboundTx = createStubUnboundTx();
       const unprovenTx = createStubUnprovenTx(unboundTx);
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         costModel: stubCostModel
       });
@@ -149,7 +149,7 @@ describe('createProofProviderForEras', () => {
 
     it('defaults to a cost model when none is given', async () => {
       const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
-      const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+      const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
       await provider.proveTx({ version: 'v9', tx: unprovenTx });
 
@@ -157,26 +157,26 @@ describe('createProofProviderForEras', () => {
     });
 
     it('declares exactly the current era', () => {
-      const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+      const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
       expect([...provider.supportedEras].sort()).toEqual(['v9']);
     });
 
     it('refuses a v8 payload with its stable unsupported-payload code', async () => {
-      const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+      const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
       const rejection = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes }).then(
         () => undefined,
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-      expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+      expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
     });
 
     it('refuses a v8 payload carrying a timeout as unsupported, not as a bad timeout', async () => {
-      const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+      const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
       const rejection = await provider
         .proveTx({ version: 'v8', txBytes: retainedEraTxBytes }, { timeout: 5_000 })
@@ -185,8 +185,8 @@ describe('createProofProviderForEras', () => {
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-      expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
     });
 
     describe('proveTxConfig.timeout', () => {
@@ -195,7 +195,7 @@ describe('createProofProviderForEras', () => {
         ['a zero timeout', 0]
       ])('refuses a v9 proof with %s before proving starts', async (_desc, timeout) => {
         const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
-        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+        const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
         await expect(provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout })).rejects.toThrow(
           timeoutRefusal
@@ -209,7 +209,7 @@ describe('createProofProviderForEras', () => {
       ])('proves a v9 transaction when the config %s', async (_desc, config) => {
         const unboundTx = createStubUnboundTx();
         const unprovenTx = createStubUnprovenTx(unboundTx);
-        const provider = createProofProviderForEras({ currentEra: inertCurrentEraProvider });
+        const provider = createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider });
 
         const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, config);
 
@@ -220,7 +220,7 @@ describe('createProofProviderForEras', () => {
 
   describe('built with a proving provider per era', () => {
     it('declares both eras, derived from the providers supplied', () => {
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: inertRetainedEraProvider }
       });
@@ -233,7 +233,7 @@ describe('createProofProviderForEras', () => {
     // provider must leave the era unserved, rather than build a handler that
     // reaches the retained runtime with nothing to prove with.
     it('leaves an era unserved when its provider is absent, refusing that era', async () => {
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: undefined }
       });
@@ -245,7 +245,7 @@ describe('createProofProviderForEras', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
     });
 
     it.each([
@@ -263,7 +263,7 @@ describe('createProofProviderForEras', () => {
       ['an array', [inertRetainedEraProvider], 'an array']
     ])('refuses %s registered as a retained era entry at construction', (_desc, value: unknown, received) => {
       const act = () =>
-        createProofProviderForEras({
+        createProofProviderFromProvingProviders({
           currentEra: inertCurrentEraProvider,
           retainedEras: { v8: value as RetainedEraProvingProvider }
         });
@@ -272,7 +272,7 @@ describe('createProofProviderForEras', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam: 'proveTx',
+          method: 'proveTx',
           era: 'v8',
           expected: 'proving-provider',
           received
@@ -285,13 +285,13 @@ describe('createProofProviderForEras', () => {
       ['null', null, 'null'],
       ['a function', () => inertCurrentEraProvider, 'a function']
     ])('refuses %s registered as the current era entry at construction', (_desc, value: unknown, received) => {
-      const act = () => createProofProviderForEras({ currentEra: value as ProvingProvider });
+      const act = () => createProofProviderFromProvingProviders({ currentEra: value as ProvingProvider });
 
       expect(act).toThrow(
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam: 'proveTx',
+          method: 'proveTx',
           era: 'v9',
           expected: 'proving-provider',
           received
@@ -307,9 +307,9 @@ describe('createProofProviderForEras', () => {
       ['a Map', new Map([['v8', inertRetainedEraProvider]]), 'got an instance of Map']
     ])('refuses %s as the retained era map at construction', (_desc, retainedEras: unknown, detail) => {
       const act = () =>
-        createProofProviderForEras({
+        createProofProviderFromProvingProviders({
           currentEra: inertCurrentEraProvider,
-          retainedEras: retainedEras as RetainedEraHandlers<RetainedEraProvingProvider>
+          retainedEras: retainedEras as RetainedEraEntries<RetainedEraProvingProvider>
         });
 
       expect(act).toThrow(
@@ -325,7 +325,7 @@ describe('createProofProviderForEras', () => {
       ['undefined', undefined],
       ['null', null]
     ])('refuses %s as the proving providers at construction', (_desc, provingProviders: unknown) => {
-      const act = () => createProofProviderForEras(provingProviders as ProvingProvidersByEra);
+      const act = () => createProofProviderFromProvingProviders(provingProviders as ProvingProvidersByEra);
 
       expect(act).toThrow(
         expect.objectContaining({ name: 'InvalidArgumentError', code: COMMON_ERROR_CODES.INVALID_ARGUMENT })
@@ -337,7 +337,7 @@ describe('createProofProviderForEras', () => {
       ['a string', 'initial', 'got a string']
     ])('refuses %s as the cost model at construction', (_desc, costModel: unknown, detail) => {
       const act = () =>
-        createProofProviderForEras({ currentEra: inertCurrentEraProvider, costModel: costModel as CostModel });
+        createProofProviderFromProvingProviders({ currentEra: inertCurrentEraProvider, costModel: costModel as CostModel });
 
       expect(act).toThrow(
         expect.objectContaining({
@@ -360,7 +360,7 @@ describe('createProofProviderForEras', () => {
           return Promise.reject(new Error(PROVING_REFUSED));
         }
       }
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: new PrototypeProvingProvider() }
       });
@@ -374,8 +374,8 @@ describe('createProofProviderForEras', () => {
       expect(consulted, `proveTx rejected with: ${String(rejection)}`).toEqual(['prove']);
     });
 
-    it('answers the v8 arm with the PROVEN serialization of the transaction', async () => {
-      const provider = createProofProviderForEras({
+    it('answers the v8 variant with the PROVEN serialization of the transaction', async () => {
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: inertRetainedEraProvider }
       });
@@ -383,10 +383,10 @@ describe('createProofProviderForEras', () => {
       const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
 
       // A caller narrows this record and rejects the other era, so answering in
-      // the wrong arm strands a submit mid-flight. Assert the arm first.
+      // the wrong variant strands a submit mid-flight. Assert the variant first.
       expect(result.version).toBe('v8');
       if (result.version !== 'v8') {
-        expect.fail(`expected the v8 arm, got '${result.version}'`);
+        expect.fail(`expected the v8 variant, got '${result.version}'`);
       }
 
       // Proven, not merely round-tripped: the stage marker in the tag moves
@@ -405,7 +405,7 @@ describe('createProofProviderForEras', () => {
     // between a consumer and a proof the node refuses at submit.
     it('drives the retained-era provider for a v8 payload, never the current-era one', async () => {
       const consulted: string[] = [];
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: recordingCurrentEraProvider(consulted, 'currentEra'),
         retainedEras: { v8: recordingRetainedEraProvider(consulted, 'v8') }
       });
@@ -422,7 +422,7 @@ describe('createProofProviderForEras', () => {
       const consulted: string[] = [];
       const currentEraProvider = recordingCurrentEraProvider(consulted, 'currentEra');
       const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: currentEraProvider,
         retainedEras: { v8: recordingRetainedEraProvider(consulted, 'v8') }
       });
@@ -441,7 +441,7 @@ describe('createProofProviderForEras', () => {
     // rejection and answered with the unproven bytes -- the consulted log is
     // written before the proving provider refuses.
     it('propagates a retained-era proving failure to the caller', async () => {
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: recordingRetainedEraProvider([], 'v8') }
       });
@@ -455,7 +455,7 @@ describe('createProofProviderForEras', () => {
       const partial: Partial<UnprovenTransaction> = {
         prove: vi.fn().mockRejectedValue(new Error(PROVING_REFUSED)) as UnprovenTransaction['prove']
       };
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: inertRetainedEraProvider }
       });
@@ -470,7 +470,7 @@ describe('createProofProviderForEras', () => {
       ['a zero timeout', 0]
     ])('refuses a v8 proof with %s before proving starts', async (_desc, timeout) => {
       const consulted: string[] = [];
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: recordingRetainedEraProvider(consulted, 'v8') }
       });
@@ -485,7 +485,7 @@ describe('createProofProviderForEras', () => {
       ['carries no timeout', {}],
       ['has the timeout key present but undefined', { timeout: undefined }]
     ])('proves a v8 transaction when the config %s', async (_desc, config) => {
-      const provider = createProofProviderForEras({
+      const provider = createProofProviderFromProvingProviders({
         currentEra: inertCurrentEraProvider,
         retainedEras: { v8: inertRetainedEraProvider }
       });

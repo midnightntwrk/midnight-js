@@ -401,7 +401,7 @@ cannot place on the era timeline. The second is the one asymmetry with
 `contractStateObservable`, which tolerates such an integer and decodes on the
 envelope alone; on the raw reads `version` is a required field with nothing to
 fall back to, so the read is refused rather than guessed. Both surface as an
-`IndexerDataError` (`kind: 'unresolvable-era'` for the second), so one
+`IndexerDataError` (`kind: 'unknown-record-era'` for the second), so one
 `instanceof IndexerError` still catches every failure from this provider.
 
 ### Observable Configuration
@@ -492,8 +492,8 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 `IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
 `Promise<VersionedFinalizedTxData>` — the closed union of `FinalizedTxData`
-(v9) and `FinalizedTxDataV8` — exactly as the `PublicDataProvider` interface
-they satisfy does. Narrow on `version` before reading `tx`: the two arms carry
+(v9) and `Ledger8FinalizedTxData` — exactly as the `PublicDataProvider` interface
+they satisfy does. Narrow on `version` before reading `tx`: the two variants carry
 transaction objects from different ledger runtimes, and neither runtime's
 object can be handed to the other.
 
@@ -503,14 +503,14 @@ first use — a session that meets no v8 record never instantiates that WASM.
 
 The discriminant is resolved from the record's own `protocolVersion`, never
 asserted, so it cannot disagree with the `protocolVersion` beside it. Era
-resolution itself can refuse the read one way: `EraUnresolvableError`, an
+resolution itself can refuse the read one way: `UnknownRecordEraError`, an
 `IndexerError` naming the raw `protocolVersion` and the record, when that
 integer maps to no known ledger era. A `raw` that is not a whole hex byte
 string is refused as `IndexerDataError` before any decoder runs.
 
 Bytes that will not decode on the era selected for them surface as the
 `DeserializationError` the runtime produced, carrying the era, the
-`protocolVersion`, the seam and the record on `context.details`. This provider
+`protocolVersion`, the method and the record on `context.details`. This provider
 does not re-attribute that failure: a self-contradicting record and a
 `@midnightntwrk/ledger`-vN in your dApp of a different vintage than the
 network's are indistinguishable from here, and the error's own mitigation

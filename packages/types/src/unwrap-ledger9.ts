@@ -13,24 +13,24 @@
  * limitations under the License.
  */
 
-import { type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
-import type { VersionedTx } from './versioned';
+import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
+import type { VersionedTransaction } from './versioned';
 
 /**
  * Narrows a version-tagged transaction payload to its live v9 ledger object,
  * throwing if it carries any other era.
  *
  * Use this at the top of a provider that implements only the v9 era, and in
- * consumer code that only ever sends v9 payloads. It is the narrowing the seam
- * types require, written once. The alternative — an ad-hoc
+ * consumer code that only ever sends v9 payloads. It is the narrowing the provider
+ * method types require, written once. The alternative — an ad-hoc
  * `if (payload.version !== 'v9') throw new Error(...)` — produces an error with
  * no `code`, which a caller cannot act on, and silently reports "expected v9"
  * for an era that does not exist yet.
  *
  * @param payload The version-tagged payload to narrow.
- * @param seam The provider method being implemented, used in error messages.
+ * @param method The provider method being implemented, used in error messages.
  * @returns The live v9 ledger transaction.
- * @throws V8PayloadUnsupportedError if the payload is a v8 payload.
+ * @throws Ledger8PayloadUnsupportedError if the payload is a v8 payload.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
  *         types make that unrepresentable, so it is reachable only from
  *         JavaScript, from a consumer built against a pre-5.0.0
@@ -38,18 +38,18 @@ import type { VersionedTx } from './versioned';
  *
  * @example
  * ```typescript
- * const proven = unwrapV9(
+ * const proven = unwrapLedger9(
  *   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
  *   'proveTx'
  * );
  * ```
  */
-export const unwrapV9 = <T>(payload: VersionedTx<T>, seam: ProviderSeam): T => {
+export const unwrapLedger9 = <T>(payload: VersionedTransaction<T>, method: TransactionMethod): T => {
   // Guards the JavaScript-caller case before the switch, so a null or
   // primitive payload reports the same coded error as a bad tag rather than
   // throwing a bare TypeError on property access.
   if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
   switch (payload.version) {
     case 'v9':
@@ -60,16 +60,16 @@ export const unwrapV9 = <T>(payload: VersionedTx<T>, seam: ProviderSeam): T => {
       // `undefined` rather than reading `.byteLength` off whatever arrived
       // makes the message say the field was malformed instead of quietly
       // omitting the size.
-      throw new V8PayloadUnsupportedError(
-        seam,
+      throw new Ledger8PayloadUnsupportedError(
+        method,
         payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
       );
     default: {
-      // Keeps the switch exhaustive: if an era is added to `VersionedTx`
+      // Keeps the switch exhaustive: if an era is added to `VersionedTransaction`
       // without a case here, `payload` stops being `never` and this
       // assignment fails to compile.
       const unhandled: never = payload;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 };

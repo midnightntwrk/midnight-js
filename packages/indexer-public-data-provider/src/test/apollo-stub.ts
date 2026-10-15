@@ -45,7 +45,7 @@ export type SubscribeStub = (request: ApolloRequest) => unknown;
  * `ApolloClient` is a class with private fields and invariant generics, so a
  * structural stub cannot be written as a plain value of that type — injecting
  * a custom ApolloLink into the provider's internal client construction is the
- * only alternative, and that is a far larger seam than these tests need. The
+ * only alternative, and that is a far larger change than these tests need. The
  * narrowing is therefore done exactly once, here, so the suites themselves
  * stay free of assertions.
  *

@@ -25,8 +25,8 @@
  *
  * `./keep-state.test.ts` is the same contract, the same recording and the same
  * pipeline against a POST-FORK head. Read the two together: the only thing
- * that differs is which era object the pipeline is handed, and which arm of the
- * provider seams the result crosses on.
+ * that differs is which era object the pipeline is handed, and which variant of the
+ * provider payloads the result is passed as.
  */
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
@@ -37,7 +37,7 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   type LedgerEra,
-  loadLedger8,
+  loadLedger8Protocol,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
@@ -54,15 +54,15 @@ import {
   createWalletProvider,
   FailEntirely,
   FailFallible,
+  Ledger8PayloadUnsupportedError,
   ProofServerError,
+  ProviderEraUnsupportedError,
   type RawContractState,
-  SeamEraUnsupportedError,
   type TxStatus,
   UntaggedPayloadError,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedFinalizedTxData,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -70,7 +70,6 @@ import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { RETAINED_PIPELINE_ERA } from '../era';
 import { isLedger8Result } from '../era-results';
 import {
   AnyEraTxFailedError,
@@ -81,11 +80,11 @@ import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnV9Error,
+  Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8ProviderFailedError,
   Ledger8RecipientUnmappableError,
-  Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
   VerifierKeyMismatchError
@@ -181,28 +180,28 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
   readFileSync(hfFixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
 );
 
-/** What each provider seam was handed, captured for assertion. */
+/** What each provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
-/** The network id and intent TTL of the retained-era transaction a seam was handed. */
-const retainedTxFacts = async (tx: VersionedTx<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
+/** The network id and intent TTL of the retained-era transaction a provider method was handed. */
+const retainedTxFacts = async (tx: VersionedTransaction<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
   if (tx?.version !== 'v8') throw new Error(`Expected a v8 transaction, got ${String(tx?.version)}`);
-  const decoded = (await loadLedger8()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
+  const decoded = (await loadLedger8Protocol()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
   const [intent, ...others] = decoded.intents?.values() ?? [];
   expect(others).toEqual([]);
   return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
 };
 
-/** The retained overload's provider set, plus what its seams were handed. */
+/** The retained overload's provider set, plus what its methods were handed. */
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
   readonly seen: SeenPayloads;
 };
 
-// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// Minted per era, because a block's parameters are era-tagged and the path that composes reads them
 // with its OWN era: a pre-fork block's parameters go to the retained composer and a post-fork
 // block's to the current one. Handing either the other's bytes is refused on the header tag, which
 // is the whole reason this option exists.
@@ -210,7 +209,7 @@ let retainedLedgerParameters: Uint8Array;
 let currentLedgerParameters: Uint8Array;
 
 beforeAll(async () => {
-  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  retainedLedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
@@ -231,7 +230,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
  * USER-owned recipient, paying the given coin public key.
  *
  * Needed because the recording's own output is CONTRACT-owned
- * (`is_left: false`), and that arm of the offer builder never consults the
+ * (`is_left: false`), and that branch of the offer builder never consults the
  * encryption-key resolver at all — `ZswapOutput.newContractOwned` takes no
  * encryption key, only an address. So NO test built on the recording exactly
  * as committed can say anything about which key an output is encrypted to,
@@ -263,7 +262,7 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
 };
 
 /**
- * The per-stage markers each write seam appends to the bytes it answers with.
+ * The per-stage markers each transaction method appends to the bytes it answers with.
  *
  * Distinct, and distinct from anything the era composes, so "these bytes came
  * out of proveTx" is a checkable claim rather than an assumption.
@@ -272,13 +271,13 @@ const PROVEN_MARKER = Uint8Array.from([0xf0, 0x0d, 0x01]);
 const BALANCED_MARKER = Uint8Array.from([0xf0, 0x0d, 0x02]);
 
 /**
- * The retained-arm payload with a stage marker appended to its bytes.
+ * The retained-era payload with a stage marker appended to its bytes.
  *
- * @param payload The payload the seam was handed.
+ * @param payload The payload the method was handed.
  * @param marker The marker for the stage that is answering.
- * @returns The same arm, carrying the input bytes plus the marker.
+ * @returns The same variant, carrying the input bytes plus the marker.
  */
-const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): VersionedTx<unknown> => {
+const withStageMarker = (payload: VersionedTransaction<unknown>, marker: Uint8Array): VersionedTransaction<unknown> => {
   if (payload.version !== 'v8') {
     return payload;
   }
@@ -289,18 +288,18 @@ const withStageMarker = (payload: VersionedTx<unknown>, marker: Uint8Array): Ver
 };
 
 /**
- * The bytes a retained-arm payload carries, for a chaining assertion.
+ * The bytes a retained-era payload carries, for a chaining assertion.
  *
- * @param payload The payload a seam was handed.
- * @returns Its bytes, or `undefined` if it is not the retained arm.
+ * @param payload The payload a method was handed.
+ * @returns Its bytes, or `undefined` if it is not the retained variant.
  */
-const retainedBytes = (payload: VersionedTx<unknown> | undefined): Uint8Array | undefined =>
+const retainedBytes = (payload: VersionedTransaction<unknown> | undefined): Uint8Array | undefined =>
   payload?.version === 'v8' ? payload.txBytes : undefined;
 
 /**
  * Whether `bytes` ends with every marker in `markers`, in order.
  *
- * @param bytes The bytes a seam received.
+ * @param bytes The bytes a method received.
  * @param markers The stage markers expected at the tail, earliest first.
  * @returns `true` if the tail matches.
  */
@@ -314,7 +313,7 @@ const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8A
 
 /**
  * The provider set both retained-era describes start from: a pre-fork head,
- * the committed envelope, and a recorder on each of the three seams.
+ * the committed envelope, and a recorder on each of the three transaction methods.
  *
  * Module scope rather than a closure inside one `describe`, because the attach
  * suite below needs the same set and a second copy would drift from this one.
@@ -325,12 +324,12 @@ const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8A
  *
  * The shared fixture is `'v9'`-tagged with a node 2.x `protocolVersion`, which
  * on a pre-fork head describes a transaction the operation cannot have
- * produced -- and the finalizing arm now refuses exactly that. Every pre-fork
+ * produced -- and the finalizing path now refuses exactly that. Every pre-fork
  * expectation in this file has to start from a record the head could have
  * recorded, or it asserts against a record the framework rightly rejects.
  *
- * `tx` is `undefined` for the same reason the read-surface retained arm is
- * supplied by hand below: no provider builds that arm yet, and a v9 handle is
+ * `tx` is `undefined` for the same reason the read-surface retained variant is
+ * supplied by hand below: no provider builds that variant yet, and a v9 handle is
  * not assignable to it.
  */
 const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
@@ -391,23 +390,23 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // The recording was made against this coin public key, and the replay
   // engine refuses to replay for any other one.
   providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-  // The three seams, implemented against the version-tagged interfaces
+  // The three transaction methods, implemented against the version-tagged interfaces
   // directly rather than through `createWalletProvider`/`createMidnightProvider`:
   // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
-  // retained arm by design, which is asserted as its own negative below.
+  // retained variant by design, which is asserted as its own negative below.
   //
-  // Each write seam answers with DISTINCT bytes -- its input with its own stage
+  // Each transaction method answers with DISTINCT bytes -- its input with its own stage
   // marker appended. Identity mocks (`(tx) => tx`) made every mis-chaining
   // invisible: `balanceTx({ txBytes })` in place of
   // `balanceTx({ txBytes: proven })` passed the whole suite while submitting an
   // UNPROVEN transaction. Appending rather than replacing keeps the retained
   // tag at the head of the bytes, so the tag assertions still mean what they
   // say.
-  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
     seen.proveTx = tx;
     return Promise.resolve(withStageMarker(tx, PROVEN_MARKER));
   });
-  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
     seen.balanceTx = tx;
     return Promise.resolve(withStageMarker(tx, BALANCED_MARKER));
   });
@@ -495,7 +494,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       'era.v8.composeCallTx',
       // INSIDE the composition, not before it: the composer resolves the split
       // and only then asks for the offer to route against it. The RETAINED era
-      // does both on this arm -- the log names the era so that stays checked.
+      // does both on this path -- the log names the era so that stays checked.
       'era.v8.zswapOffer'
     ]);
     expect(result.txBytes).toBeInstanceOf(Uint8Array);
@@ -688,7 +687,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     // -- so there is an offer to place at all.
     expect(recording.transcript.zswapLocalState.outputs).toHaveLength(1);
     // GUARANTEED because this recording's ops PARTITION that way, not because
-    // the arm cannot route: the pipeline now resolves the split before it builds
+    // the path cannot route: the pipeline now resolves the split before it builds
     // the offer, so a fallible transcript places its movements in the fallible
     // offer. See 'routes a coin the partition places in the fallible half'.
     expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
@@ -699,7 +698,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     expect(routed?.fallibleBytes).toBeUndefined();
   });
 
-  // The regression #731/#877 named, on the arm that did not have it. Before the
+  // The regression #731/#877 named, on the path that did not have it. Before the
   // pipeline resolved the partition ahead of building the offer, the routing
   // helper's fourth argument defaulted to `[undefined, undefined]` and EVERY
   // movement went to the guaranteed segment however the transcript partitioned.
@@ -795,7 +794,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     const offerIgnoringEra: LedgerEra = {
       ...recorded,
       // Drops the factory on the floor, exactly as a third-party era that never
-      // read the seam's contract would.
+      // read the era boundary's contract would.
       composeCallTx: ({ zswapOffer: _ignored, ...rest }) => recorded.composeCallTx(rest)
     };
 
@@ -979,7 +978,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     });
   });
 
-  it('refuses more than one call on the retained arm, naming the option it refused', async () => {
+  it('refuses more than one call on the retained path, naming the option it refused', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = createMockProviders();
@@ -1107,7 +1106,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect((await retainedTxFacts(undeployed.seen.proveTx)).networkId).toBe('undeployed');
   });
 
-  it('passes the providers.config TTL to the wallet on the retained-era arm', async () => {
+  it('passes the providers.config TTL to the wallet on the retained-era path', async () => {
     const providers = { ...preForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
     const before = Date.now();
 
@@ -1146,9 +1145,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The two facts, side by side. `resolveArtifactEra` reads the artifact; the
     // record says which ledger recorded the transaction. Pre-fork they happen
     // to agree on the era being retained -- post-fork the record reads `'v9'`
-    // for this same call, and the tag must still say `'ledger8'`.
+    // for this same call, and the tag must still say `'v8'`.
     expect(finalized.era).toBe(await resolveArtifactEra(contract, providers.zkConfigProvider));
-    expect(finalized.era).toBe('ledger8');
+    expect(finalized.era).toBe('v8');
   });
 
   it('publishes the POST-call contract state as the retained runtime own handle', async () => {
@@ -1192,7 +1191,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // Both members are plain data in BOTH runtimes, so both survive a clone:
     // after submission the transaction is already composed, and re-running the
     // circuit to recover them would compose a second one.
-    // Structural rather than by identity: this arm runs its own replay engine,
+    // Structural rather than by identity: this path runs its own replay engine,
     // which decodes the recording again, so the object is equal but not the
     // same one. Identity is asserted at the pipeline test above.
     expect(finalized.private.nextZswapLocalState).toStrictEqual(recording.transcript.zswapLocalState);
@@ -1201,14 +1200,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.private.newCoins).toEqual([]);
   });
 
-  it('hands every provider seam the RETAINED arm, as serialized bytes carrying the retained tag', async () => {
+  it('hands every provider method the RETAINED variant, as serialized bytes carrying the retained tag', async () => {
     const providers = preForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
 
-    // The WRITE surface's retained arm carries `txBytes`, not `tx` -- these are
-    // genuinely different unions, and the read surface's retained arm carries
-    // `tx`. Each is asserted against the shape its own seam declares.
+    // The WRITE surface's retained variant carries `txBytes`, not `tx` -- these are
+    // genuinely different unions, and the read surface's retained variant carries
+    // `tx`. Each is asserted against the shape its own method declares.
     for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
       expect(payload).toBeDefined();
       expect(payload?.version).toBe('v8');
@@ -1218,7 +1217,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     }
 
     // THE CHAIN, asserted stage by stage. The three assertions above are the
-    // same claim three times over -- each seam got SOMETHING retained-tagged --
+    // same claim three times over -- each method got SOMETHING retained-tagged --
     // and every one of them passes when the stages are wired in the wrong
     // order. These are what fail then: `balanceTx` must receive what `proveTx`
     // answered, and `submitTx` must receive what `balanceTx` answered.
@@ -1247,7 +1246,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const submitted = await submitCallTxAsync(providers, callOptions());
 
-    // Not waiting for finalization is a reason this arm has no finalized
+    // Not waiting for finalization is a reason this path has no finalized
     // RECORD to answer with. It is not a reason to drop the execution data,
     // which is already computed by the time the transaction is submitted and
     // is unrecoverable afterwards without composing a second one.
@@ -1395,7 +1394,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('refuses a retained-era deploy whose key map does not name the entry points the state declares', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    // `verifierKeys` is REQUIRED by the request type on this arm -- omitting it
+    // `verifierKeys` is REQUIRED by the request type on this path -- omitting it
     // does not type-check -- so the reachable failure is a map that names the
     // wrong set. The retained constructor leaves every slot blank and the
     // retained deploy registers no keys of its own, which is why the map cannot
@@ -1430,15 +1429,15 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         privateState: {},
         resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
       })
-    ).rejects.toBeInstanceOf(Ledger8DeployOnV9Error);
+    ).rejects.toBeInstanceOf(Ledger8DeployOnLedger9Error);
     // Refused before ANY work: no constructor executed, nothing composed.
     expect(log).toEqual([]);
   });
 
-  it('refuses a malformed contract address on the CALL arm, without a single provider call', async () => {
+  it('refuses a malformed contract address on the CALL path, without a single provider call', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    // The same local refusal the current-era arm makes, and the reason it is
+    // The same local refusal the current-era path makes, and the reason it is
     // local: a malformed address would otherwise cost a head read and a state
     // read to discover, and the state read would answer "no contract deployed
     // there" -- which points at the chain for a fault in the caller's own
@@ -1510,12 +1509,12 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the FIRST seam, proveTx, when a proof provider serves the current era only', async () => {
+  it('refuses at the FIRST method, proveTx, when a proof provider serves the current era only', async () => {
     // `createProofProvider` lifts a current-era-only proving implementation,
     // which is what a dApp has until its providers are widened. That provider
     // DECLARES the current era only, and the operation reads that declaration
     // before it composes anything -- so the refusal names `proveTx`, the first
-    // of the three seams, and the proving implementation below is never
+    // of the three transaction methods, and the proving implementation below is never
     // reached. That is asserted rather than assumed.
     let provingReached = false;
     const provingProvider: ProvingProvider = {
@@ -1538,18 +1537,18 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('proveTx');
-    expect((caught as SeamEraUnsupportedError).era).toBe('v8');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('proveTx');
+    expect((caught as ProviderEraUnsupportedError).era).toBe('v8');
     expect(provingReached).toBe(false);
     expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the balanceTx seam when only the wallet serves the current era, WITHOUT proving first', async () => {
-    // Covered separately from the first seam, because reaching it proves
-    // something different. The refusal is PER SEAM, so a partly widened
-    // provider set is refused at whichever seam has not been widened rather
+  it('refuses at balanceTx when only the wallet serves the current era, WITHOUT proving first', async () => {
+    // Covered separately from the first method, because reaching it proves
+    // something different. The refusal is PER PROVIDER, so a partly widened
+    // provider set is refused at whichever provider has not been widened rather
     // than slipping through the ones that have -- and, because the check reads
     // declarations up front, the refusal lands BEFORE the proof this wallet
     // could never have balanced was paid for. `proveTx` not having been called
@@ -1571,13 +1570,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('balanceTx');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('balanceTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
 
-  it('refuses at the submitTx seam when only the submission provider serves the current era', async () => {
+  it('refuses at submitTx when only the submission provider serves the current era', async () => {
     const providers: RetainedProviders = {
       ...preForkProviders(v6Envelope),
       midnightProvider: createMidnightProvider(() => Promise.reject(new Error('never reached')))
@@ -1590,17 +1589,17 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((caught as SeamEraUnsupportedError).seam).toBe('submitTx');
+    expect(caught).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((caught as ProviderEraUnsupportedError).method).toBe('submitTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
   });
 
-  it('returns the finalized record as the read surface reported it, retained arm included', async () => {
+  it('returns the finalized record as the read surface reported it, retained variant included', async () => {
     const providers = preForkProviders(v6Envelope);
-    // The READ surface's retained arm is a DIFFERENT union from the write
+    // The READ surface's retained variant is a DIFFERENT union from the write
     // surface's: it carries `tx`, never `txBytes`. No provider produces this
-    // arm yet -- the read path decodes with the current-era deserializer -- so
+    // variant yet -- the read path decodes with the current-era deserializer -- so
     // it is spelled out here rather than taken from `retainedEraRecord`, to
     // prove this flow does not narrow it away against a literal this test owns.
     // Refusing it would refuse exactly the records the retained pipelines exist
@@ -1615,7 +1614,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // of the literal above would only restate the fixture.
     expect(finalized.public).toMatchObject(retainedRecord);
     // And the two surfaces really are different unions -- the WRITE surface's
-    // retained arm, which this same flow produced, carries `txBytes` and no
+    // retained variant, which this same flow produced, carries `txBytes` and no
     // `tx`. Asserting the read record lacks `txBytes` would be tautological on
     // a literal that never had one; asserting the contrast is not.
     expect(providers.seen.submitTx).toHaveProperty('txBytes');
@@ -1632,8 +1631,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // submitted retained-era bytes, so a `'v9'` record describes a transaction
     // this operation cannot have produced.
     //
-    // The current era already refuses the mirror of this at the same seam, via
-    // `requireV9Record`. This is the retained arm's half, and it compares the
+    // The current era already refuses the mirror of this in the same read method, via
+    // `requireLedger9Record`. This is the retained path's half, and it compares the
     // record against the HEAD rather than against a fixed era, because a
     // retained-era call is legitimately recorded by EITHER era.
     providers.publicDataProvider.watchForTxData = vi
@@ -1647,9 +1646,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     expect(rejection).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
     // The era this operation could accept is the HEAD's own, NOT the class's
-    // `'v9'` default -- which is the whole difference from `requireV9Record`.
+    // `'v9'` default -- which is the whole difference from `requireLedger9Record`.
     expect((rejection as EraInvariantViolationError).expected).toBe('v8');
     expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
   });
@@ -1662,9 +1661,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // `era` already discriminates a union on its own. The guard is the NAMED
     // way to do it: it keeps the literal in one place, and it narrows any of
     // the result shapes rather than one, so a caller does not write
-    // `=== 'ledger8'` against a string of its own spelling.
+    // `=== 'v8'` against a string of its own spelling.
     expect(isLedger8Result(finalized)).toBe(true);
-    // Narrowing, not just a boolean: `txBytes` is reachable only on this arm.
+    // Narrowing, not just a boolean: `txBytes` is reachable only on this variant.
     if (isLedger8Result(finalized)) {
       expect(finalized.private.txBytes).toBeInstanceOf(Uint8Array);
     }
@@ -1714,13 +1713,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     // The CODE, not only the class: a consumer that cannot import this package's
     // classes -- a JavaScript caller, or one narrowing across a bundle boundary
     // -- branches on `code`, so that is the surface the negative has to pin.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
-    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
+    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
 
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
@@ -1732,7 +1731,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // And the check is not vacuous: those bytes really are in the raw rejection.
     expect(inspect(rejection, { depth: null })).toContain(leakedStateHex);
 
-    // Still diagnostic: the seam survives, and the redaction marker says where
+    // Still diagnostic: the method survives, and the redaction marker says where
     // the material was removed rather than leaving a silently truncated message.
     expect(serialized).toContain('proveTx');
     const cause = (caught as { readonly cause?: unknown }).cause;
@@ -1742,7 +1741,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('refuses a provider that answers this PRE-FORK flow in the current era, naming the era it expected', async () => {
     const providers = preForkProviders(v6Envelope);
-    // The mirror of the keep-state case: nothing in the seam types ties a
+    // The mirror of the keep-state case: nothing in the provider method types ties a
     // provider's output era to its input era, so a provider that accepted
     // retained-era bytes and answered with a current-era handle is checked
     // rather than assumed. `expected` is what says WHICH direction was
@@ -1757,7 +1756,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     }
 
     expect(caught).toBeInstanceOf(EraInvariantViolationError);
-    expect((caught as EraInvariantViolationError).seam).toBe('proveTx');
+    expect((caught as EraInvariantViolationError).method).toBe('proveTx');
     expect((caught as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as EraInvariantViolationError).expected).toBe('v8');
     // The message has to name the era too, or a caller reading a log rather
@@ -1767,7 +1766,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('refuses an UNTAGGED payload from a provider on the pre-fork flow', async () => {
     const providers = preForkProviders(v6Envelope);
-    // A JavaScript caller's provider, or one built before the seams were
+    // A JavaScript caller's provider, or one built before the provider methods were
     // version-tagged: it answers with no `version` at all. Reported as an
     // untagged payload rather than assumed to be either era.
     providers.proofProvider.proveTx = vi.fn().mockResolvedValue(undefined);
@@ -1779,10 +1778,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const providers = preForkProviders(v6Envelope);
     // The sanitizing wrapper must not swallow the refusal a current-era-only
     // provider raises: a caller narrowing on it would otherwise see a generic
-    // seam failure and lose the one diagnosis that says "widen your provider".
-    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 42));
+    // provider failure and lose the one diagnosis that says "widen your provider".
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Ledger8PayloadUnsupportedError('proveTx', 42));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(V8PayloadUnsupportedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8PayloadUnsupportedError);
   });
 
   it('sanitizes a coded provider error that carries an external failure on cause', async () => {
@@ -1800,12 +1799,12 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const caught = await submitCallTx(providers, callOptions()).catch((error: unknown) => error);
 
     // Assert
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     expect(inspect(caught, { depth: null, showHidden: true })).not.toContain(leakedStateHex);
     expect(inspect(caught, { depth: null, showHidden: true })).toContain('Proof Server request failed');
   });
 
-  it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the seam failure', async () => {
+  it('re-reads the head on a SUBMIT rejection and, finding the same era, re-throws the provider failure', async () => {
     const providers = preForkProviders(v6Envelope);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
 
@@ -1815,9 +1814,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('submitTx');
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('submitTx');
 
     // TWO head reads: one for the routing, and one on the rejection to ask
     // whether the network moved under this call. This head has not moved, so
@@ -1827,14 +1826,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
   });
 
-  it('does not re-read the head when a rejection comes from a seam OTHER than submit', async () => {
+  it('does not re-read the head when a rejection comes from a method OTHER than submit', async () => {
     const providers = preForkProviders(v6Envelope);
     // A proving failure cannot mean the network moved -- the proof server
     // touches no chain state -- so asking the network about it would be a round
     // trip that could not change the answer.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server refused the request'));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8SeamFailedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8ProviderFailedError);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -1913,7 +1912,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
    * point rather than against a resolver in isolation.
    *
    * The resolver helpers have their own unit tests. What those cannot see is
-   * whether this arm BUILDS one: handing the offer builder a bare encryption
+   * whether this path BUILDS one: handing the offer builder a bare encryption
    * key is silently accepted and coerced into `() => key`, a resolver that can
    * never refuse and answers with the caller's own key for every recipient. The
    * three cases below are the smallest set that tells a real resolver from that
@@ -1924,7 +1923,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     it("refuses an output paying a THIRD PARTY, rather than encrypting it to the caller's own key", async () => {
       const providers = preForkProviders(v6Envelope);
       // Some other wallet's coin public key: not this caller's, and not the
-      // burn address, so nothing this arm knows can map it to an encryption
+      // burn address, so nothing this path knows can map it to an encryption
       // key. The caller supplied no additional mappings.
       const thirdPartyCoinPublicKey = sampleCoinPublicKey();
       engineSlot.engine = createReplayEngine(
@@ -2059,7 +2058,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     it('maps the well-known BURN address as the current era does, rather than refusing it', async () => {
       const providers = preForkProviders(v6Envelope);
       // A burn output is a deliberate send to an unspendable key, and the
-      // current era maps it to `BURN_ENCRYPTION_PUBLIC_KEY`. The retained arm
+      // current era maps it to `BURN_ENCRYPTION_PUBLIC_KEY`. The retained path
       // must not refuse what the current era accepts: dropping that mapping
       // would make every pre-fork contract that burns a coin uncallable.
       engineSlot.engine = createReplayEngine(
@@ -2127,7 +2126,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
    * catch a missing normalization: the retained runtime's `encodeCoinPublicKey`
    * accepts hex only and throws `Invalid character 'm' at position 0` from
    * inside the WASM on anything else, which is a total failure of the retained
-   * arm for every Bech32m wallet and a green suite everywhere else.
+   * path for every Bech32m wallet and a green suite everywhere else.
    */
   describe("the wallet's coin public key", () => {
     // The committed vector from `packages/utils/src/test/hex-utils.test.ts`, so
@@ -2204,7 +2203,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
       // TYPED, and carrying the record: the current era throws
       // `CallTxFailedError` with the record on it, and a caller narrowing on a
-      // failed call must be able to read the status off this arm too rather
+      // failed call must be able to read the status off this path too rather
       // than parse it out of a message.
       expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
       // And a caller that catches the era-agnostic base gets this one too --
@@ -2261,7 +2260,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).not.toContain(payloadHex);
     // Non-vacuity: the payload IS in the raw rejection, so its absence above is
@@ -2288,7 +2287,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null });
     expect(rendered).toContain('fetch failed');
     expect(rendered).toContain('ECONNREFUSED');
@@ -2315,7 +2314,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).toContain('::1:6300');
     expect(rendered).toContain('127.0.0.1:6300');
@@ -2361,7 +2360,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       } catch (error) {
         return inspect(error, { depth: null, showHidden: true });
       }
-      throw new Error('the seam did not reject');
+      throw new Error('the provider did not reject');
     };
 
     it.each(REDACTED_CASES)('redacts %s', async (_label, payload) => {
@@ -2381,8 +2380,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('cannot be made to throw FROM ITS OWN CATCH BLOCK by an unrenderable rejection', async () => {
     const providers = preForkProviders(v6Envelope);
     // `String(Object.create(null))` throws. Unguarded, that TypeError would
-    // replace the provider's rejection entirely -- no seam, no circuit, and the
-    // original value gone -- so the seam machinery would report its own bug as
+    // replace the provider's rejection entirely -- no method, no circuit, and the
+    // original value gone -- so the provider-call wrapper would report its own bug as
     // the application's.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(Object.create(null));
 
@@ -2393,9 +2392,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
-    expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
-    expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
+    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
   });
 
 });
@@ -2404,10 +2403,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
  * Deploying a retained-era contract through the public `deployContract` — a
  * WRITE path, so it composes, submits and waits for the record.
  *
- * Every assertion below is newly reachable: the arm refused unconditionally
+ * Every assertion below is newly reachable: the path refused unconditionally
  * until a maintenance authority was set on the constructed state, so nothing
  * downstream of the constructor had ever run through this entry point. On top
- * of the claims the call arm makes, it owns two of its own: that the address
+ * of the claims the call path makes, it owns two of its own: that the address
  * the deploy minted is the one the private state is written under, and that the
  * chain's deploy record is checked BEFORE anything local is stored.
  */
@@ -2498,7 +2497,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, { compiledContract: contract });
 
-    expect(deployed.era).toBe(RETAINED_PIPELINE_ERA);
+    expect(deployed.era).toBe('v8');
     expect(deployed.compiledContract).toBe(contract);
     // READ OFF the composition record: a deploy mints a fresh nonce, so the
     // same initial state deploys to a different address every time.
@@ -2519,7 +2518,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.deployTxData.version).toBe('v8');
     expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
-    // The retained tag on the bytes that crossed the write seams, which is what
+    // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
     expect(providers.seen.proveTx?.version).toBe('v8');
   });
@@ -2588,7 +2587,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     // POSITIVE evidence that the fetched map is the one the composer checks:
-    // an arm that built its own map, or dropped the caller's, would compose.
+    // a path that built its own map, or dropped the caller's, would compose.
     expect(caught).toBeInstanceOf(ComposeFailedError);
     expect((caught as ComposeFailedError).stage).toBe('deploy-verifier-key');
   });
@@ -2688,7 +2687,7 @@ describe('deploying a retained-era contract through deployContract', () => {
   it('stores the private state the CONSTRUCTOR produced, and only after the record has been checked', async () => {
     const providers = deployProviders();
     // A constructor that ADVANCED what it was handed. The double otherwise
-    // threads the input back, and then an arm that stored `options.initialPrivateState`
+    // threads the input back, and then a path that stored `options.initialPrivateState`
     // instead of the constructor's result passes this test unchanged.
     engineSlot.engine = createReplayEngine(recording, [], v6Envelope, {
       advancedConstructorPrivateState: ADVANCED_PRIVATE_STATE
@@ -2776,7 +2775,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
   it('hands the constructor the initial private state the caller supplied', async () => {
     const providers = deployProviders();
-    // The engine is told what the arm MUST have handed it. Asserting only that
+    // The engine is told what the path MUST have handed it. Asserting only that
     // the deploy succeeded leaves `privateState: undefined` fully green, because
     // the constructor replays regardless -- and that is the failure this names:
     // a contract seeded from a state it never saw.
@@ -2811,7 +2810,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
   it('hands the constructor UNDEFINED when the caller supplied no initial private state', async () => {
     const providers = deployProviders();
-    // THE MEASUREMENT this arm owes: a caller on the no-private-state arm has
+    // THE MEASUREMENT this path owes: a caller on the no-private-state variant has
     // nothing to pass, so the retained constructor is handed `undefined` rather
     // than an empty object. Asserted on what the engine RECEIVED, because the
     // deploy composes either way and the difference is invisible downstream.
@@ -2836,7 +2835,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // Reachable through this entry point at last: the unconditional refusal
     // that stood in front of it is gone, so the era pairing table decides.
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnV9Error
+      Ledger8DeployOnLedger9Error
     );
     expect(log).toEqual([]);
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -2917,7 +2916,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     await deployContract(providers, { compiledContract: contract });
 
-    // The call arm forbids exactly this: a resolver built against a different key than the one the
+    // The call path forbids exactly this: a resolver built against a different key than the one the
     // circuit executed under is the mismatch that mis-encrypts a minted coin. Two reads of a
     // provider method are two chances to answer differently.
     expect(getCoinPublicKey).toHaveBeenCalledTimes(1);
@@ -2940,7 +2939,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // A caller that wrote `privateStateId: cfg.someId` with an undefined `someId` BELIEVES it named
     // one. Read as "no id given", the deploy stores nothing and hands `callTx` an undefined id, so
     // every later call proves against a state the contract never had and writes nothing back --
-    // with nothing erroring. The attach arm refuses exactly this shape.
+    // with nothing erroring. The attach path refuses exactly this shape.
     await expect(
       deployContract(providers, { compiledContract: contract, privateStateId: undefined })
     ).rejects.toMatchObject({
@@ -2983,7 +2982,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
 
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnV9Error
+      Ledger8DeployOnLedger9Error
     );
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
@@ -2991,7 +2990,7 @@ describe('deploying a retained-era contract through deployContract', () => {
   it('refuses a wallet that cannot carry the era before the ZK config provider is asked for a single key', async () => {
     const base = deployProviders();
     // A v9-only wallet on a pre-fork head. A proof is the expensive step and the first of the
-    // three, so a seam that cannot take this payload has to be found before one is paid for -- and
+    // three, so a provider that cannot take this payload has to be found before one is paid for -- and
     // before anything is fetched on its behalf.
     const providers: RetainedProviders = {
       ...base,
@@ -3006,7 +3005,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
 
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      SeamEraUnsupportedError
+      ProviderEraUnsupportedError
     );
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
@@ -3015,7 +3014,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     const providers = deployProviders();
     // `FailFallible`, specifically: a `ContractDeploy` sits in the Intent -- the GUARANTEED part --
     // so the contract landed, under the authority built from this key. Discarded, that address is
-    // one nobody can ever maintain, which is the harm this arm exists to remove.
+    // one nobody can ever maintain, which is the harm this path exists to remove.
     providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailFallible));
 
     let caught: unknown;
@@ -3044,13 +3043,13 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     // One refusal for every way the record fails to arrive usable, with the era violation kept on
-    // `cause` -- so the condition a caller branches on, its seam and its registered code are all
+    // `cause` -- so the condition a caller branches on, its method and its registered code are all
     // still reachable, and the original stack is not thrown away.
     expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
     const cause = (caught as Ledger8DeployUnconfirmedError).cause;
     expect(cause).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((cause as EraInvariantViolationError).seam).toBe('watchForDeployTxData');
+    expect((cause as EraInvariantViolationError).method).toBe('watchForDeployTxData');
     // The transaction is already on the network by the time this is raised, so discarding the key
     // here leaves whatever does finalize permanently unmaintainable.
     expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
@@ -3105,9 +3104,9 @@ describe('deploying a retained-era contract through deployContract', () => {
     // The store is the CURRENT era's and its key is `{ tag, value }`, where the retained era's is
     // the bare hex string. Both runtimes sample the same 32-byte Schnorr key and the retained one
     // reads a current-era key's `value` verbatim, so the wrapper is the whole difference -- which
-    // is why this arm adds it here instead of widening the provider interface.
+    // is why this path adds it here instead of widening the provider interface.
     //
-    // No private state is named by this deploy, so the write is pinned on the arm that has no
+    // No private state is named by this deploy, so the write is pinned on the variant that has no
     // private-state write to ride along with.
     // Against the FIXTURE rather than against `deployed.signingKey`: read off the handle, this
     // cannot tell "stored the sampled key" from "stored and reported the same wrong value".
@@ -3208,7 +3207,7 @@ describe('deploying a retained-era contract through deployContract', () => {
  * Attaching to an already-deployed retained-era contract — a READ path, so it
  * composes nothing and submits nothing.
  *
- * It gets the same treatment as the two write arms because it makes the same
+ * It gets the same treatment as the two write paths because it makes the same
  * two safety claims they do, and neither is free: that a mis-dispatched
  * artifact is caught at ATTACH time rather than at the first call, and that the
  * whole attach runs against ONE chain snapshot.
@@ -3258,7 +3257,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.contractAddress).toBe(recording.contractAddress);
     // The deploy record is passed through VERSION-TAGGED rather than narrowed:
     // a retained-era contract was deployed in whichever era was current then,
-    // and refusing the pre-fork arm would refuse the contracts this arm exists
+    // and refusing the pre-fork variant would refuse the contracts this path exists
     // to keep callable.
     expect(found.deployTxData.version).toBe('v9');
     expect(found.deployTxData.txId).toBe(createMockFinalizedTxData().txId);
@@ -3266,7 +3265,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     // Every declared circuit is checked, and this artifact declares exactly one.
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith(CIRCUIT_ID);
-    // The same two per-operation invariants the write arms hold to.
+    // The same two per-operation invariants the write paths hold to.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
   });
@@ -3279,7 +3278,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const found = await findDeployedContract(providers, attachOptions());
 
-    // The current era hands back a handle a caller can invoke; the retained arm
+    // The current era hands back a handle a caller can invoke; the retained path
     // answered with data only, so a caller who attached had to go back to
     // `submitCallTx` and re-state the contract and address it had just supplied.
     expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
@@ -3333,7 +3332,7 @@ describe('attaching to a retained-era contract already on chain', () => {
   // below are the current era's rule applied unchanged: the two configurations that act, and the
   // three that are refused rather than guessed at. The rule itself lives in one place --
   // `setOrGetInitialPrivateState` in `find-deployed-contract.ts` -- so what these pin is that the
-  // retained arm reaches it, not a second copy of the rule.
+  // retained path reaches it, not a second copy of the rule.
   //
   it('names the contract address before it writes, so the seed lands in this contract namespace', async () => {
     const providers = attachProviders(v6Envelope);
@@ -3519,7 +3518,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     await expect(
       findDeployedContract(providers, { ...attachOptions(), contractAddress: 'not-a-contract-address' })
     ).rejects.toThrow(/Invalid hex-digit/);
-    // The same local refusal the current-era arm makes. A malformed address
+    // The same local refusal the current-era path makes. A malformed address
     // would otherwise cost a network round trip to discover.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
@@ -3548,8 +3547,8 @@ describe('attaching to a retained-era contract already on chain', () => {
   // there is no era to compare the record against. What IS refusable is a
   // record carrying no usable tag at all. `version` selects the runtime of the
   // live `tx` handle beside it, so an unreadable tag hands a caller a handle it
-  // cannot attribute, which is the failure the current era's arm refuses
-  // through `requireV9Record`'s own default branch.
+  // cannot attribute, which is the failure the current era's path refuses
+  // through `requireLedger9Record`'s own default branch.
   it.each([
     ['absent', undefined],
     ['unrecognised', 'v10'],
@@ -3563,7 +3562,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
   });
 
-  it('names the seam and the tag it actually received when it refuses one', async () => {
+  it('names the method and the tag it actually received when it refuses one', async () => {
     const providers = attachProviders(v6Envelope);
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
@@ -3572,7 +3571,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
 
     expect(caught).toBeInstanceOf(UntaggedPayloadError);
-    expect((caught as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+    expect((caught as UntaggedPayloadError).method).toBe('watchForDeployTxData');
     expect((caught as UntaggedPayloadError).received).toContain('v10');
   });
 
@@ -3589,7 +3588,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     }
   });
 
-  // THE SIGNING KEY. The deploy arm persists it against the address it minted, so this arm is the
+  // THE SIGNING KEY. The deploy path persists it against the address it minted, so this path is the
   // side of that round trip that reads it back -- and the field that used to be documented as
   // discarded is now the way to seed a key the deploy happened elsewhere.
   //
@@ -3656,14 +3655,14 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.signingKey).toBeUndefined();
     // The current era samples a fresh key in this case. The retained era must not: a sampled key
     // bears no relation to the authority the chain holds for a contract deployed by someone else,
-    // and this arm carries no maintenance interface for one to be used through, so storing it
+    // and this path carries no maintenance interface for one to be used through, so storing it
     // would report a key that can maintain nothing.
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
   // The store is shared with the current era, whose keys may legitimately be `ecdsa`, and a stored
   // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the key is
-  // reported on the handle and consumed by nothing on this arm, so a circuit call that never looks
+  // reported on the handle and consumed by nothing on this path, so a circuit call that never looks
   // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
   // and the breadcrumb is what keeps absent from meaning silent.
   it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {

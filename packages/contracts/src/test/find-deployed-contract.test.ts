@@ -29,7 +29,7 @@ import {
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
-  createMockFinalizedTxDataV8,
+  createMockLedger8FinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
@@ -120,15 +120,15 @@ describe('findDeployedContract', () => {
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+      expect((rejection as UntaggedPayloadError).method).toBe('watchForDeployTxData');
     });
   });
 
   describe('a contract deployed before the ledger fork, found with recompiled artifacts', () => {
-    const v8DeployRecord = createMockFinalizedTxDataV8();
+    const ledger8DeployRecord = createMockLedger8FinalizedTxData();
 
     beforeEach(() => {
-      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(v8DeployRecord);
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(ledger8DeployRecord);
       vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
       vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
     });
@@ -139,7 +139,7 @@ describe('findDeployedContract', () => {
       expect(result.contractAddress).toBe(contractAddress);
       expect(result.deployTxData.public.version).toBe('v8');
       expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
-      expect(result.deployTxData.public.txId).toBe(v8DeployRecord.txId);
+      expect(result.deployTxData.public.txId).toBe(ledger8DeployRecord.txId);
       expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
       expect(result.callTx).toBeDefined();
       expect(result.circuitMaintenanceTx).toBeDefined();

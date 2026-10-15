@@ -17,12 +17,12 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 import type { submitDeployTx } from '../submit-deploy-tx';
 import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
@@ -61,7 +61,7 @@ describe('deployContract', () => {
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
   const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
@@ -143,9 +143,9 @@ describe('deployContract', () => {
   });
 
   // #1321: `{ compiledContract, privateStateId }` used to compile, because union
-  // excess-property checking admits a member declared on the sibling arm. The type refuses that
+  // excess-property checking admits a member declared on the sibling variant. The type refuses that
   // shape now, so the only way left to reach the entry point with an unusable id is to write the
-  // property with an undefined VALUE -- which the no-private-state arm still admits, and which is
+  // property with an undefined VALUE -- which the no-private-state variant still admits, and which is
   // a caller that believes it named an id.
   it('refuses a private state id written as undefined, before any transaction is built', async () => {
     const options = { ...baseOptions, privateStateId: undefined };

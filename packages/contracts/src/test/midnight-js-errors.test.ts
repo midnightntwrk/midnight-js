@@ -26,7 +26,7 @@ import { describe, expect, it } from 'vitest';
 
 import * as errors from '../errors';
 import * as governance from '../governance/errors';
-import { createMockFinalizedTxData, createMockFinalizedTxDataV8 } from './test-mocks';
+import { createMockFinalizedTxData, createMockLedger8FinalizedTxData } from './test-mocks';
 
 const exported: unknown[] = [...Object.values(errors), ...Object.values(governance)];
 const errorClasses = exported.filter(
@@ -38,7 +38,7 @@ const ADDRESS = '0200'.repeat(8);
 const SIGNING_KEY = 'a1'.repeat(32);
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
-const v8Record = createMockFinalizedTxDataV8(FailFallible);
+const ledger8Record = createMockLedger8FinalizedTxData(FailFallible);
 const noMismatch = { missing: [], keyless: [], mismatched: [] };
 
 type Case = readonly [string, Error, ContractsErrorCode, MidnightJsErrorCategory];
@@ -47,30 +47,30 @@ const cases: readonly Case[] = [
   ['EraInvariantViolationError', new errors.EraInvariantViolationError('submitTx'), CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION, 'INTERNAL'],
   ['EraArtifactMismatchError', new errors.EraArtifactMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH, 'USAGE'],
   ['RetainedArtifactOnCurrentEraStateError', new errors.RetainedArtifactOnCurrentEraStateError(ADDRESS), CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE, 'USAGE'],
-  ['Ledger8DeployOnV9Error', new errors.Ledger8DeployOnV9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9, 'USAGE'],
+  ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
   ['HeadStateEraMismatchError', new errors.HeadStateEraMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
   ['LedgerParametersUnservedError', new errors.LedgerParametersUnservedError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED, 'ENVIRONMENT'],
   ['Ledger8ShieldedSpendUnsupportedError', new errors.Ledger8ShieldedSpendUnsupportedError('spend'), CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED, 'USAGE'],
-  ['Ledger8SeamFailedError', new errors.Ledger8SeamFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED, 'ENVIRONMENT'],
+  ['Ledger8ProviderFailedError', new errors.Ledger8ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED, 'ENVIRONMENT'],
   ['StaleHeadError', new errors.StaleHeadError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.STALE_HEAD, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'head-read-failed', headReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
-  ['UnrecognisedResultEraError', new errors.UnrecognisedResultEraError('v7'), CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA, 'USAGE'],
+  ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
   ['TxFailedError', new errors.TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['DeployTxFailedError', new errors.DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['CallTxFailedError', new errors.CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(v8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(v8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(ledger8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ReplaceMaintenanceAuthorityTxFailedError', new governance.ReplaceMaintenanceAuthorityTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['RemoveVerifierKeyTxFailedError', new governance.RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['InsertVerifierKeyTxFailedError', new governance.InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
-  ['ScopedTxEraUnsupportedError', new errors.ScopedTxEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED, 'USAGE'],
+  ['ScopedTransactionEraUnsupportedError', new errors.ScopedTransactionEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED, 'USAGE'],
   ['MixedEraScopeError', new errors.MixedEraScopeError('increment'), CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE, 'USAGE'],
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteFindContractPrivateStateConfig', new errors.IncompleteFindContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG, 'USAGE'],
-  ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH, 'USAGE'],
+  ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH, 'USAGE'],
   ['BlankVerifierKeySlotError', new errors.BlankVerifierKeySlotError('increment'), CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT, 'INTEGRITY'],
   ['VerifierKeyMismatchError', new errors.VerifierKeyMismatchError('increment'), CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH, 'INTEGRITY'],
   ['Ledger8DeployUnconfirmedError', new errors.Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED, 'UNCERTAIN'],
@@ -105,6 +105,45 @@ describe('contracts error classes', () => {
     expect(error).toBeInstanceOf(MidnightJsError);
     expect(error).toMatchObject({ code, category });
     expect(CONTRACTS_ERROR_CATEGORIES[code]).toBe(category);
+  });
+
+  it.each(cases)('%s message speaks of provider methods, never of seams', (_name, error) => {
+    expect(error.message).not.toMatch(/seam/i);
+  });
+
+  it.each([
+    ['EraInvariantViolationError', new errors.EraInvariantViolationError('watchForTxData'), 'watchForTxData'],
+    ['Ledger8ProviderFailedError', new errors.Ledger8ProviderFailedError('balanceTx', 'increment', CAUSE), 'balanceTx']
+  ] as const)('%s reports the provider method it was raised for as `method`', (_name, error, method) => {
+    expect([error.method, 'seam' in error]).toEqual([method, false]);
+  });
+
+  it('Ledger8ProviderFailedError carries the provider-failed code', () => {
+    const error = new errors.Ledger8ProviderFailedError('proveTx', 'increment', CAUSE);
+
+    expect([error.name, error.code]).toEqual(['Ledger8ProviderFailedError', 'MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED']);
+  });
+
+  it('the retained-deploy refusal carries the Ledger9 name and code', () => {
+    const error = new errors.Ledger8DeployOnLedger9Error();
+
+    expect([error.name, error.code]).toEqual(['Ledger8DeployOnLedger9Error', 'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9']);
+  });
+
+  it.each([
+    ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), 'MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA'],
+    [
+      'ScopedTransactionEraUnsupportedError',
+      new errors.ScopedTransactionEraUnsupportedError('v8'),
+      'MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED'
+    ],
+    [
+      'ScopedTransactionIdentityMismatchError',
+      new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }),
+      'MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH'
+    ]
+  ] as const)('%s carries its name and code', (name, error, code) => {
+    expect([error.name, error.code]).toEqual([name, code]);
   });
 
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {

@@ -37,7 +37,7 @@ const RULE_ID = 'no-restricted-imports';
 const TS_RULE_ID = '@typescript-eslint/no-restricted-imports';
 const SYNTAX_RULE_ID = 'no-restricted-syntax';
 const EXPLICIT_ANY_RULE_ID = '@typescript-eslint/no-explicit-any';
-const V8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
+const LEDGER8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
 const ERROR_SEVERITY = 2;
 const ENGINE_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/engine`;
 
@@ -103,31 +103,31 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
 
 describe('protocol/v8 gate canaries', () => {
   it('flags a runtime import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintMessagesFor(importStatement(V8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
+    const messages = await lintMessagesFor(importStatement(LEDGER8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
     expect(messages).toHaveLength(1);
   });
 
   it('allows a type-only import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintMessagesFor(typeImportStatement(V8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
+    const messages = await lintMessagesFor(typeImportStatement(LEDGER8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
   it('allows a runtime import of protocol/v8 inside packages/protocol/src/', async () => {
-    const messages = await lintMessagesFor(importStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH, TS_RULE_ID);
+    const messages = await lintMessagesFor(importStatement(LEDGER8_SUBPATH), PROTOCOL_INTERNAL_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
   it('flags a dynamic import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), CONSUMER_PATH, SYNTAX_RULE_ID);
+    const messages = await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), CONSUMER_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toHaveLength(1);
   });
 
   it('allows a dynamic import of protocol/v8 inside packages/protocol/src/', async () => {
-    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
+    const messages = await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toEqual([]);
   });
@@ -205,7 +205,7 @@ describe('both no-restricted-syntax gates survive together', () => {
   const UNSAFE_CAST = 'export const y = 0 as any;\n';
 
   it('flags a cast and a dynamic v8 import in one package source file', async () => {
-    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH) + UNSAFE_CAST, CONSUMER_PATH, SYNTAX_RULE_ID);
+    const messages = await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH) + UNSAFE_CAST, CONSUMER_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toHaveLength(2);
   });
@@ -220,7 +220,7 @@ describe('both no-restricted-syntax gates survive together', () => {
     ['a package test file', PACKAGE_TEST_PATH],
     ['a testkit-js file', TESTKIT_PATH]
   ])('keeps the v8 gate in %s, where the cast gate is exempt', async (_name, filePath) => {
-    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), filePath, SYNTAX_RULE_ID);
+    const messages = await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), filePath, SYNTAX_RULE_ID);
 
     expect(messages).toHaveLength(1);
   });
@@ -351,7 +351,7 @@ describe('plain-throw gate', () => {
   it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
     'still bans dynamic imports of protocol/v8 and protocol/engine in %s',
     async (filePath) => {
-      expect((await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
+      expect((await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
       expect((await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
     }
   );

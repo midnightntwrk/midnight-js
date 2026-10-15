@@ -112,7 +112,7 @@ const caught = (assemble: () => unknown): ComposeFailedError => {
   throw new Error('expected the assembly to throw');
 };
 
-// An unpartitioned call is partitioned HERE, against a query context this seam
+// An unpartitioned call is partitioned HERE, against a query context this module
 // rebuilds from bytes. Everything the execution leg's own context carried and
 // the bytes do not — the block it ran against, the effects it started from, the
 // commitment indices it recorded for coins received in-contract — has to travel
@@ -181,7 +181,7 @@ describe('assembleCallPrototype bridges the context an unpartitioned call record
   // Every member of the recorded context is caller data the ledger validates
   // itself, and each of the three shapes below is well-typed: an out-of-range
   // u64, a hex string of the wrong length, a commitment that is not hex at all.
-  // The runtime rejects each from inside wasm, so this seam reports them coded
+  // The runtime rejects each from inside wasm, so this module reports them coded
   // like every other caller fault — and under its OWN stage, because the defect
   // is in the context the execution leg handed over, not in the state bytes
   // read from chain.

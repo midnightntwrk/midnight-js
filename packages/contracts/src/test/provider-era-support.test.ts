@@ -17,9 +17,8 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  SeamEraUnsupportedError,
-  V8PayloadUnsupportedError
-} from '@midnight-ntwrk/midnight-js-types';
+  Ledger8PayloadUnsupportedError,
+  ProviderEraUnsupportedError} from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -38,10 +37,10 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
 });
 
 // The era timeline's own scheme. A pre-fork head puts the retained pipeline on
-// the retained seam arm; a post-fork head is keep-state, which composes on the
-// CURRENT era and therefore crosses the seams on the current arm.
-const V8_HEAD = 1_000_000;
-const V9_HEAD = 2_000_000;
+// the retained payload variant; a post-fork head is keep-state, which composes on the
+// CURRENT era and therefore passes the current variant to the providers.
+const LEDGER8_HEAD = 1_000_000;
+const LEDGER9_HEAD = 2_000_000;
 
 const BOTH_ERAS: readonly LedgerVersion[] = ['v8', 'v9'];
 
@@ -61,7 +60,7 @@ const declaring = (eras: readonly LedgerVersion[]) => ({ supportedEras: Object.f
  */
 const retainedSetup = (
   overrides: Partial<Ledger8RuntimeProviders> = {},
-  head: number = V8_HEAD
+  head: number = LEDGER8_HEAD
 ): { readonly providers: Ledger8RuntimeProviders; readonly proveTx: Mock } => {
   const proveTx: Mock = vi.fn();
   const proofProvider = { ...declaring(BOTH_ERAS), proveTx };
@@ -75,7 +74,7 @@ const retainedSetup = (
   return { providers, proveTx };
 };
 
-describe('a retained-era operation checks the write seams before it pays for a proof', () => {
+describe('a retained-era operation checks the transaction providers before it pays for a proof', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -88,11 +87,11 @@ describe('a retained-era operation checks the write seams before it pays for a p
       (error: unknown) => error
     );
 
-    expect(refusal).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((refusal as SeamEraUnsupportedError).seam).toBe('balanceTx');
-    // The HEAD era, which is what picks the seam arm: on a pre-fork head the
+    expect(refusal).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((refusal as ProviderEraUnsupportedError).method).toBe('balanceTx');
+    // The HEAD era, which is what picks the payload variant: on a pre-fork head the
     // payloads cross as retained-era bytes.
-    expect((refusal as SeamEraUnsupportedError).era).toBe('v8');
+    expect((refusal as ProviderEraUnsupportedError).era).toBe('v8');
     // The whole point of moving the check to the front of the operation: a
     // proof is the expensive step, and a wallet that cannot balance the result
     // makes paying for one pure waste.
@@ -107,8 +106,8 @@ describe('a retained-era operation checks the write seams before it pays for a p
       (error: unknown) => error
     );
 
-    expect(hasErrorCode(refusal, PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED)).toBe(true);
-    expect((refusal as SeamEraUnsupportedError).seam).toBe('submitTx');
+    expect(hasErrorCode(refusal, PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED)).toBe(true);
+    expect((refusal as ProviderEraUnsupportedError).method).toBe('submitTx');
   });
 
   // The check must be invisible to a provider set that can do the work — a gate
@@ -121,15 +120,15 @@ describe('a retained-era operation checks the write seams before it pays for a p
 
   // The case that makes the era checked a variable rather than the constant
   // 'v8'. Keep-state runs a RETAINED-era artifact against a POST-FORK head, and
-  // composes on the current era -- so its payloads cross the seams as
+  // composes on the current era -- so its payloads reach the providers as
   // `{ version: 'v9', tx }`. A wallet that serves only the current era is the
   // ordinary post-fork wallet, and refusing it here would refuse exactly the
   // operations keep-state exists to allow.
-  it('admits keep-state on a post-fork head with seams that serve only the current era', async () => {
+  it('admits keep-state on a post-fork head with providers that serve only the current era', async () => {
     const currentOnly = declaring(['v9']);
     const { providers } = retainedSetup(
       { walletProvider: currentOnly, midnightProvider: currentOnly },
-      V9_HEAD
+      LEDGER9_HEAD
     );
 
     const runtime = await acquireLedger8Runtime(providers, 'call');
@@ -137,20 +136,20 @@ describe('a retained-era operation checks the write seams before it pays for a p
     expect(runtime.resolved.head).toBe('v9');
   });
 
-  it('refuses keep-state when a seam serves neither the head era nor anything else', async () => {
-    const { providers } = retainedSetup({ walletProvider: declaring(['v8']) }, V9_HEAD);
+  it('refuses keep-state when a provider serves neither the head era nor anything else', async () => {
+    const { providers } = retainedSetup({ walletProvider: declaring(['v8']) }, LEDGER9_HEAD);
 
     const refusal = await acquireLedger8Runtime(providers, 'call').then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect((refusal as SeamEraUnsupportedError).era).toBe('v9');
-    expect((refusal as SeamEraUnsupportedError).seam).toBe('balanceTx');
+    expect((refusal as ProviderEraUnsupportedError).era).toBe('v9');
+    expect((refusal as ProviderEraUnsupportedError).method).toBe('balanceTx');
   });
 });
 
-describe('a current-era submission checks the write seams at its entry', () => {
+describe('a current-era submission checks the transaction providers at its entry', () => {
   let providers: MockProviders;
 
   beforeEach(() => {
@@ -173,26 +172,26 @@ describe('a current-era submission checks the write seams at its entry', () => {
       (error: unknown) => error
     );
 
-    expect(refusal).toBeInstanceOf(SeamEraUnsupportedError);
-    expect((refusal as SeamEraUnsupportedError).seam).toBe('proveTx');
-    expect((refusal as SeamEraUnsupportedError).era).toBe('v9');
+    expect(refusal).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect((refusal as ProviderEraUnsupportedError).method).toBe('proveTx');
+    expect((refusal as ProviderEraUnsupportedError).era).toBe('v9');
     expect(gapped.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
   // Defence in depth: the declaration is a claim by the implementation, and the
-  // narrowing at each seam is what actually enforces the arm. A provider that
+  // narrowing in each method is what actually enforces the payload variant. A provider that
   // declares an era it does not serve must still fail the way it failed before
   // this check existed, not silently succeed.
   it('does not weaken the runtime narrowing when a provider declares an era it cannot serve', async () => {
     const lying = withProofEras(BOTH_ERAS);
-    lying.proofProvider.proveTx = vi.fn().mockRejectedValue(new V8PayloadUnsupportedError('proveTx', 3));
+    lying.proofProvider.proveTx = vi.fn().mockRejectedValue(new Ledger8PayloadUnsupportedError('proveTx', 3));
 
     const rejection = await submitTx(lying, options).then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
     expect(lying.proofProvider.proveTx).toHaveBeenCalled();
   });
 });

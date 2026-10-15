@@ -15,43 +15,43 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
-import { unwrapV9 } from '../unwrap-v9';
-import type { VersionedTx } from '../versioned';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
+import { unwrapLedger9 } from '../unwrap-ledger9';
+import type { VersionedTransaction } from '../versioned';
 
 // Covered directly rather than through the `create*Provider` adapters. Those
-// route through `narrowToEra` now, so exercising `unwrapV9` only through
+// route through `narrowToEra` now, so exercising `unwrapLedger9` only through
 // them would leave this published helper — the narrowing every v9-only
 // consumer and third-party provider is told to use — with no test of its own.
 
 const caught = (payload: unknown): unknown => {
   try {
-    unwrapV9(payload as VersionedTx<string>, 'proveTx');
+    unwrapLedger9(payload as VersionedTransaction<string>, 'proveTx');
   } catch (error) {
     return error;
   }
-  throw new Error('unwrapV9 accepted a payload it should have refused');
+  throw new Error('unwrapLedger9 accepted a payload it should have refused');
 };
 
-describe('unwrapV9', () => {
-  it('returns the carried ledger object for the v9 arm', () => {
-    expect(unwrapV9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
+describe('unwrapLedger9', () => {
+  it('returns the carried ledger object for the v9 variant', () => {
+    expect(unwrapLedger9({ version: 'v9', tx: 'the-transaction' }, 'proveTx')).toBe('the-transaction');
   });
 
-  it('refuses the v8 arm with its stable code, naming the seam and the payload size', () => {
+  it('refuses the v8 variant with its stable code, naming the method and the payload size', () => {
     const refusal = caught({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
 
-    expect(refusal).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((refusal as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((refusal as V8PayloadUnsupportedError).seam).toBe('proveTx');
-    expect((refusal as V8PayloadUnsupportedError).byteLength).toBe(3);
+    expect(refusal).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((refusal as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((refusal as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
+    expect((refusal as Ledger8PayloadUnsupportedError).byteLength).toBe(3);
   });
 
   // Reachable only from JavaScript or across an untyped boundary, which is
   // exactly the caller that most needs the size reported honestly rather than
   // silently omitted.
-  it('reports an unknown size when the v8 arm carries no byte array', () => {
-    expect((caught({ version: 'v8', txBytes: 'not-bytes' }) as V8PayloadUnsupportedError).byteLength).toBeUndefined();
+  it('reports an unknown size when the v8 variant carries no byte array', () => {
+    expect((caught({ version: 'v8', txBytes: 'not-bytes' }) as Ledger8PayloadUnsupportedError).byteLength).toBeUndefined();
   });
 
   it('refuses an untagged payload — the shape a pre-5.0.0 caller passes', () => {

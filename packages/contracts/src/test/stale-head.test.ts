@@ -28,7 +28,7 @@
  * comparison reports as a fork and this one must not.
  *
  * The second is that the decision is wired into the retained-era pipelines at
- * the submit seam, and that a caller who follows the remediation actually gets
+ * `submitTx`, and that a caller who follows the remediation actually gets
  * somewhere: the re-run after the head has flipped lands on the keep-state
  * pipeline with no change to the caller's code. That half reuses the committed
  * retained-era recording — see `./ledger8-replay.ts` and `./v8-native.test.ts`
@@ -39,20 +39,20 @@ import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerVersion, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  Ledger8PayloadUnsupportedError,
   type RawContractState,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  Ledger8SeamFailedError,
+  Ledger8ProviderFailedError,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
@@ -115,10 +115,10 @@ const headSource = (...protocolVersions: readonly number[]): { queryLatestProtoc
   return { queryLatestProtocolVersion: spy };
 };
 
-/** What a provider seam was handed, captured for assertion. */
+/** What a provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
@@ -126,14 +126,14 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
   readonly seen: SeenPayloads;
 };
 
-// Minted per era, because a block's parameters are era-tagged and the arm that composes reads them
+// Minted per era, because a block's parameters are era-tagged and the path that composes reads them
 // with its OWN era: a pre-fork block's go to the retained composer, a post-fork block's to the
 // current one. Handing either the other's bytes is refused on the header tag.
 let retainedLedgerParameters: Uint8Array;
 let currentLedgerParameters: Uint8Array;
 
 beforeAll(async () => {
-  retainedLedgerParameters = (await loadLedger8()).LedgerParameters.initialParameters().serialize();
+  retainedLedgerParameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
@@ -152,7 +152,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
  * A submission provider that RECORDS what it was handed and then rejects.
  *
  * Recording before rejecting is what lets each test below assert that the
- * transaction really reached the seam -- that this is a submit-time failure
+ * transaction really reached `submitTx` -- that this is a submit-time failure
  * rather than a refusal raised before anything was composed.
  */
 const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
@@ -182,12 +182,12 @@ const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
 });
 
 describe('handleSubmitRejection (the fork-crossing decision, exercised directly)', () => {
-  // A rejection in the shape the submit seam actually produces: the sanitizing
+  // A rejection in the shape `submitTx` actually produces: the sanitizing
   // wrapper has already rebuilt the provider's failure onto `cause`, which is
   // what this handler receives and what it re-throws unchanged when the head
   // has not moved.
-  const wrappedRejection = (): Ledger8SeamFailedError =>
-    new Ledger8SeamFailedError('submitTx', CIRCUIT_ID, new Error('Error: node refused the transaction'));
+  const wrappedRejection = (): Ledger8ProviderFailedError =>
+    new Ledger8ProviderFailedError('submitTx', CIRCUIT_ID, new Error('Error: node refused the transaction'));
 
   it('reads the head AFRESH and refuses with the two-step remediation, in order, when the era flipped', async () => {
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
@@ -321,7 +321,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
     await expect(handleSubmitRejection(pdp, callOperation('v9'), rejection)).rejects.toBe(rejection);
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    // The original failure travels on `cause`, already sanitized by the seam
+    // The original failure travels on `cause`, already sanitized by the provider-call
     // wrapper -- the handler adds no second wrapping layer of its own.
     expect(rejection.cause).toBeInstanceOf(Error);
   });
@@ -338,11 +338,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   });
 
   it("keeps this framework's own coded refusals unwrapped, and makes no head read for one", async () => {
-    // A provider that does not serve the pre-fork arm refuses on the way IN.
+    // A provider that does not serve the pre-fork variant refuses on the way IN.
     // That is not fork evidence, a caller narrowing on it must keep seeing it,
     // and asking the network about it would be a round trip for nothing.
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
-    const refusal = new V8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
+    const refusal = new Ledger8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
 
     await expect(handleSubmitRejection(pdp, callOperation(), refusal)).rejects.toBe(refusal);
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -350,7 +350,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
   it('makes NO fork claim about a rejection carrying no registered code at all', async () => {
     // Nothing uncoded is evidence of a fork. The sanitizing wrapper normally
-    // guarantees a code, so this arm fires when the sanitizer ITSELF failed --
+    // guarantees a code, so this case fires when the sanitizer ITSELF failed --
     // and it fires during a fork window, the only time the head moves at all.
     // Diagnosing it would attach a confident "the network crossed the fork"
     // verdict, and a two-step on-chain reconciliation, to a failure that has
@@ -405,7 +405,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   it('CARRIES A REGISTERED CODE when it cannot diagnose, so a retry handler does not intermittently escalate', async () => {
     // A node rejection and an unreachable indexer are the same network, so they
     // correlate. Without a code of its own, one and the same node rejection
-    // would reach a handler branching on `hasErrorCode` as a coded seam failure
+    // would reach a handler branching on `hasErrorCode` as a coded provider failure
     // when the indexer answered, and as an uncoded error when it did
     // not -- retrying in one case and escalating in the other.
     const rejection = wrappedRejection();
@@ -430,7 +430,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       // The code is its OWN, never copied off `errors[0]` -- copying would make
       // one error report two different codes depending on which failure came
       // first.
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(false);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(false);
       // And it is in the registry, so `hasErrorCode(e)` with no argument
       // recognises it as one of this framework's own.
       expect(hasErrorCode(error)).toBe(true);
@@ -456,7 +456,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope);
   });
 
-  /** A retained-era provider set on a PRE-FORK head, with the three seams recorded. */
+  /** A retained-era provider set on a PRE-FORK head, with the three transaction methods recorded. */
   const preForkProviders = (): RetainedProviders => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
       getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.16.0'),
@@ -479,11 +479,11 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.proveTx = tx;
       return Promise.resolve(tx);
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.balanceTx = tx;
       return Promise.resolve(tx);
     });
@@ -535,7 +535,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect((caught as Error).message).toMatch(/re-run/);
     // Two head reads and no more: one for the routing, one on the rejection.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
-    // The transaction really did reach the seam -- this is a submit-time
+    // The transaction really did reach `submitTx` -- this is a submit-time
     // failure, not a refusal before anything was composed.
     expect(providers.seen.submitTx?.version).toBe('v8');
   });
@@ -635,7 +635,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
 
     // THE RE-RUN. The contract's STORED STATE is untouched -- the fork does not rewrite it, and
     // nothing has called this contract since -- so `raw` is still the very same retained-era
-    // envelope, which is precisely what sends the re-run down the keep-state arm.
+    // envelope, which is precisely what sends the re-run down the keep-state path.
     //
     // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
     // chain tip, so once the head has crossed, the record it returns carries a post-fork
@@ -655,8 +655,8 @@ describe('the fork-crossing failure through the retained-era entry points', () =
 
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
-    // The keep-state arm: an ORDINARY current-era transaction carrying a
-    // retained-era call, so it crosses the seams as a live handle rather than
+    // The keep-state path: an ORDINARY current-era transaction carrying a
+    // retained-era call, so it is passed to the providers as a live handle rather than
     // as retained-era bytes.
     expect(providers.seen.submitTx?.version).toBe('v9');
     expect(providers.seen.submitTx).not.toHaveProperty('txBytes');

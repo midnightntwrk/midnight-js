@@ -17,17 +17,16 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/e
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { type AnyProvableCircuitId, type LoggerProvider, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
-import { CURRENT_PIPELINE_ERA } from '../era';
 import {
   CallTxFailedError,
   MixedEraScopeError,
-  ScopedTransactionIdentityMismatchError,
-  ScopedTxEraUnsupportedError
-} from '../errors';
+  ScopedTransactionEraUnsupportedError,
+  ScopedTransactionIdentityMismatchError} from '../errors';
 import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
@@ -111,7 +110,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * @param pdp The read surface, for the single head read.
  * @param logger The optional logger the head-resolution breadcrumb is written to.
  * @returns The era facts the scope runs under.
- * @throws ScopedTxEraUnsupportedError if the head era composes only one call
+ * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @see {@link StaleHeadRemediation} for why both properties of this placement
@@ -126,7 +125,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new ScopedTxEraUnsupportedError(reading.head);
+    throw new ScopedTransactionEraUnsupportedError(reading.head);
   }
 
   return acquireHeadEra(reading);
@@ -229,7 +228,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       circuitId,
       private: unprovenCallTxData.private,
       public: {
@@ -325,12 +324,12 @@ export const isTransactionContext = <
  * @param circuitId The circuit whose call was made.
  * @param transactionContext The scope the caller passed, if any. Typed as
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
- * implementation signature widens both arms, and a JavaScript caller can pass
+ * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
  * @throws MixedEraScopeError if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
- *      scope, and why the malformed-argument arm is an `InvalidArgumentError`.
+ *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
 export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
   if (transactionContext === undefined) {
@@ -411,11 +410,11 @@ const runScope = async <
       //disable-next-line: no-throw-literal
       throw new InvalidArgumentError('No calls were submitted.');
     }
-    // ANNOTATED, not asserted: this function answers both scope arms and so
+    // ANNOTATED, not asserted: this function answers both scope cases and so
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
@@ -507,7 +506,7 @@ export const scopedTransaction = async <
   // into it -- would otherwise have it read as an options bag. A fresh scope
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
-  // it was handed" failure `MixedEraScopeError` exists to stop, one arm over.
+  // it was handed" failure `MixedEraScopeError` exists to stop, one case over.
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,

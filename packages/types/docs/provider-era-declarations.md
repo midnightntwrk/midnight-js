@@ -1,22 +1,22 @@
 ---
-title: SeamEraDeclarations
+title: ProviderEraDeclarations
 ---
 
-# What a seam says it serves, and what happens when it is wrong
+# What a provider says it serves, and what happens when it is wrong
 
-Three provider seams carry a transaction: `proveTx`, `balanceTx`, `submitTx`, in
-that order. Each declares a `supportedEras` set. This document records why the
+Three provider methods carry a transaction: `proveTx`, `balanceTx`, `submitTx`, in
+that order. The provider behind each declares a `supportedEras` set. This document records why the
 declaration is read up front, why it is not trusted, and why the two refusals
 that result are two rather than one.
 
-The payloads these seams carry are
+The payloads these methods carry are
 [VersionTaggedPayloads](./version-tagged-payloads.md). The multi-era construction
 is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`.
 
 ## The pre-flight check is about WHERE it runs
 
-`assertSeamsSupportEra` refuses an operation whose era is not served by all three
-seams, before the operation does any work.
+`assertProvidersSupportEra` refuses an operation whose era is not served by all three
+providers, before the operation does any work.
 
 The point is the placement, not the test. Proving is the expensive step and it is
 the FIRST of the three. A wallet that cannot balance a retained-era transaction
@@ -27,11 +27,11 @@ It is generic in the era, so a further ledger era needs no change there.
 
 ## The declaration is a claim, and nothing verifies it
 
-The pre-flight check does not make the seams safe by itself, and is not meant to.
+The pre-flight check does not make the providers safe by itself, and is not meant to.
 `supportedEras` is what an implementation SAYS about itself.
 
-So each seam still narrows its own payload, and still reports
-`V8PayloadUnsupportedError` when a declaration turns out to have been wrong. The
+So each provider still narrows its own payload, and still reports
+`Ledger8PayloadUnsupportedError` when a declaration turns out to have been wrong. The
 narrowing is unchanged and is what actually holds.
 
 ## Why the two errors stay distinct
@@ -40,16 +40,16 @@ They mean different things to whoever is reading them:
 
 | Error | What it means | What to do |
 |---|---|---|
-| `SeamEraUnsupportedError` | A seam declared it does not serve this era, and the operation stopped before doing any work | Wire a different provider |
-| `V8PayloadUnsupportedError` | A seam was handed a retained-era payload and could not take it | The implementation on that seam does not serve it — its declaration was wrong, or there is no declaration to be had |
+| `ProviderEraUnsupportedError` | A provider declared it does not serve this era, and the operation stopped before doing any work | Wire a different provider |
+| `Ledger8PayloadUnsupportedError` | A provider was handed a retained-era payload and could not take it | That provider's implementation does not serve it — its declaration was wrong, or there is no declaration to be had |
 
 Collapsing them would lose the distinction between "configured wrong, nothing
-spent" and "failed at the seam, possibly after paying to prove".
+spent" and "failed in the provider, possibly after paying to prove".
 
 ## An unusable handler is refused before the provider exists
 
 The factories check each handler when the provider is built. A handler that is
-not a function — or, for `createProofProviderForEras`, not an object with callable
+not a function — or, for `createProofProviderFromProvingProviders`, not an object with callable
 `check` and `prove` — is refused with `UnusableEraEntryError`; a `retainedEras`
 that is not a plain object keyed only by retained eras is refused with
 `InvalidArgumentError`. This checks shape only: `supportedEras` never names an
@@ -60,8 +60,8 @@ passes
 
 ## Which providers refuse the retained era, and why
 
-`V8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It
-means the specific implementation on that seam does not serve the retained era.
+`Ledger8PayloadUnsupportedError` does not mean "the framework cannot do this yet". It
+means the specific implementation of that provider does not serve the retained era.
 Two quite different cases produce it:
 
 **Permanently, from the lifting adapters.** `createProofProvider`,
@@ -69,8 +69,8 @@ Two quite different cases produce it:
 implementation into the version-tagged interface. Refusing the retained era is
 the adapter accurately reporting what it wraps, not a gap to be filled. To serve
 both eras, use the `…FromHandlers` constructors, or implement the interface
-directly. On the proof seam there is a shorter route for the common case:
-`createProofProviderForEras` takes one `ProvingProvider` per era and derives the
+directly. For the proof provider there is a shorter route for the common case:
+`createProofProviderFromProvingProviders` takes one `ProvingProvider` per era and derives the
 handlers and the declaration from them. The section below says when you want it.
 
 ## Why an in-process prover needs one proving provider per era
@@ -91,7 +91,7 @@ generated as separate generations, and a node rejects a proof made with the
 other era's, so one prover instance cannot serve both. The refusal lands at
 `submitTx`, after the proving has been paid for.
 
-`createProofProviderForEras` is where each prover is paired with the era it
+`createProofProviderFromProvingProviders` is where each prover is paired with the era it
 serves. It does not verify the pairing, and cannot:
 
 - the current era's `ProvingProvider` shape is a structural superset of the
@@ -109,7 +109,7 @@ of every consumer assembling the handlers by hand.
 serialized bytes. Other implementations that have not been widened still raise
 it.
 
-`V8PayloadUnsupportedError` lives in this package rather than in each provider
+`Ledger8PayloadUnsupportedError` lives in this package rather than in each provider
 package because the payload union it rejects is defined here, on the provider
 interfaces every implementation shares. Catch it via its stable `code`, using
 `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
@@ -122,7 +122,7 @@ is a compiler diagnostic.
 `balanceTx`'s return type is covariant, so an implementation still resolving a
 bare `FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript
 reports the PARAMETER mismatch first, so the error names the twenty-odd ledger
-methods `V8TxBytes` lacks — rather than the missing `version` tag, which is the
+methods `Ledger8TransactionBytes` lacks — rather than the missing `version` tag, which is the
 actual problem. An implementer meeting that error has no path from it to the fix.
 
 Tagging through `createWalletProvider` or `createMidnightProvider` means the

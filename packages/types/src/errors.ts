@@ -26,7 +26,7 @@ import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midn
  * Closed rather than a bare `string` so a caught error can be switched on
  * exhaustively, and so a typo in a throw site is a compile error.
  */
-export type ProviderSeam = 'proveTx' | 'balanceTx' | 'submitTx';
+export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 
 /**
  * The {@link PublicDataProvider} methods that report a version-tagged
@@ -36,25 +36,25 @@ export type ProviderSeam = 'proveTx' | 'balanceTx' | 'submitTx';
  * in a consuming package — otherwise every consumer outside that package falls
  * back to `string` and the closure is lost exactly where it is needed.
  */
-export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
+export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 
 /**
- * Every seam at which a payload's ledger era is resolved or narrowed — the
- * three transaction seams plus the two read-surface methods.
+ * Every provider method at which a payload's ledger era is resolved or
+ * narrowed — the three transaction methods plus the two read methods.
  *
- * This is the vocabulary to type a caught error's `seam` against when the
+ * This is the vocabulary to type a caught error's `method` against when the
  * error can come from either surface.
  */
-export type Seam = ProviderSeam | ReadSeam;
+export type ProviderMethod = TransactionMethod | ReadMethod;
 
 /**
  * Stable error-code strings for the providers.
  *
- * Most of the group belongs to the provider seams. `PRIVATE_STATE_NOT_SERIALIZABLE`
+ * Most of the group belongs to the provider methods. `PRIVATE_STATE_NOT_SERIALIZABLE`
  * does not: it belongs to the private-state provider, and is here because this is
  * the one provider-scoped group there is.
  *
- * Declared in this package because this is where the payload union the seam codes
+ * Declared in this package because this is where the payload union the provider codes
  * refuse is defined, and where the classes for three of them live; two others
  * come from
  * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
@@ -62,15 +62,15 @@ export type Seam = ProviderSeam | ReadSeam;
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
-  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
+  LEDGER8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED',
   UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
-  ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
-  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE',
-  // Distinct from ERA_UNSUPPORTED above, which belongs to the READ surface:
+  DECODER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED',
+  UNKNOWN_RECORD_ERA: 'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA',
+  // Distinct from DECODER_ERA_UNSUPPORTED above, which belongs to the READ surface:
   // that one means "this record cannot be decoded", raised while decoding. This
   // one means "this provider states it does not serve that era", raised from a
   // declaration before any payload exists.
-  SEAM_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED',
+  PROVIDER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED',
   PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE',
   INVALID_PROTOCOL_SCHEME: 'MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME',
   ARTIFACT_RUNTIME_VERSION_UNAVAILABLE: 'MIDNIGHT_JS_PR_ARTIFACT_RUNTIME_VERSION_UNAVAILABLE',
@@ -104,11 +104,11 @@ export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVI
 const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
-  [PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED]: USAGE,
+  [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
-  [PROVIDER_ERROR_CODES.ERA_UNSUPPORTED]: ENVIRONMENT,
-  [PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE]: ENVIRONMENT,
-  [PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED]: USAGE,
+  [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_NOT_SERIALIZABLE]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_PROTOCOL_SCHEME]: USAGE,
   [PROVIDER_ERROR_CODES.ARTIFACT_RUNTIME_VERSION_UNAVAILABLE]: ENVIRONMENT,
@@ -138,9 +138,9 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
 });
 
 const {
-  V8_PAYLOAD_UNSUPPORTED,
+  LEDGER8_PAYLOAD_UNSUPPORTED,
   UNTAGGED_PAYLOAD,
-  SEAM_ERA_UNSUPPORTED,
+  PROVIDER_ERA_UNSUPPORTED,
   PRIVATE_STATE_NOT_SERIALIZABLE,
   INVALID_PROTOCOL_SCHEME,
   ARTIFACT_RUNTIME_VERSION_UNAVAILABLE,
@@ -166,21 +166,21 @@ const {
  * transaction object.
  *
  * Catching this does NOT mean "the framework cannot do it yet". It means the
- * specific implementation on that seam does not serve v8 payloads — permanently
+ * specific implementation behind that method does not serve v8 payloads — permanently
  * for the lifting adapters, contingently for a concrete provider.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
  *
- * @see {@link SeamEraDeclarations} for which providers raise it and why, and for
- * how it differs from {@link SeamEraUnsupportedError}.
+ * @see {@link ProviderEraDeclarations} for which providers raise it and why, and for
+ * how it differs from {@link ProviderEraUnsupportedError}.
  */
-export class V8PayloadUnsupportedError extends MidnightJsError {
-  readonly code = V8_PAYLOAD_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[V8_PAYLOAD_UNSUPPORTED];
+export class Ledger8PayloadUnsupportedError extends MidnightJsError {
+  readonly code = LEDGER8_PAYLOAD_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER8_PAYLOAD_UNSUPPORTED];
 
   /**
-   * @param seam The provider method that received the payload.
+   * @param method The provider method that received the payload.
    * @param byteLength Size of the rejected payload, recorded so a report of
    *                   this error says something about what arrived. `undefined`
    *                   when the payload's `txBytes` was missing or not a
@@ -188,20 +188,20 @@ export class V8PayloadUnsupportedError extends MidnightJsError {
    *                   caller has a second problem worth knowing about.
    */
   constructor(
-    readonly seam: ProviderSeam,
+    readonly method: TransactionMethod,
     readonly byteLength?: number
   ) {
     super(
-      `${seam} received a v8-era transaction payload (serialized bytes${
+      `${method} received a v8-era transaction payload (serialized bytes${
         byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
       }), which this provider does not serve. ` +
         `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ` +
         `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
-        `Send a v9 payload ({ version: 'v9', tx }) on this seam, or use an implementation that serves ` +
+        `Send a v9 payload ({ version: 'v9', tx }) to this method, or use an implementation that serves ` +
         `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
         `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
     );
-    this.name = 'V8PayloadUnsupportedError';
+    this.name = 'Ledger8PayloadUnsupportedError';
   }
 }
 
@@ -237,12 +237,30 @@ const describeVersion = (payload: unknown): string => {
     : `'${version}'`;
 };
 
+const UNTAGGED_SUBJECT = {
+  proveTx: 'payload',
+  balanceTx: 'payload',
+  submitTx: 'payload',
+  watchForTxData: 'record',
+  watchForDeployTxData: 'record'
+} as const satisfies Record<ProviderMethod, 'payload' | 'record'>;
+
+const describeUntagged = (method: ProviderMethod, received: string): string =>
+  UNTAGGED_SUBJECT[method] === 'record'
+    ? `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
+      `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
+      `transaction, and { version: 'v8', tx } a v8 one.`
+    : `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
+      `Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ` +
+      `transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`;
+
 /**
- * Thrown when a payload crossing a version-tagged seam carries no recognised
- * `version` discriminant — most often a transaction passed untagged, the shape
- * these seams took before 5.0.0.
+ * Thrown when a payload passed to, or returned from, a provider method carries
+ * no recognised `version` discriminant — most often a transaction passed
+ * untagged, the shape these methods took before 5.0.0. A read method's record
+ * is reported as a record, because its v8 variant carries `tx`, not `txBytes`.
  *
- * The seam types make this unrepresentable in TypeScript, so it is reachable
+ * The method signatures make this unrepresentable in TypeScript, so it is reachable
  * only from JavaScript, from a consumer compiled against a pre-5.0.0
  * `midnight-js-types`, or from a payload that crossed an untyped boundary.
  * It carries a `code` so a caller can tell this apart from an arbitrary crash.
@@ -255,78 +273,74 @@ export class UntaggedPayloadError extends MidnightJsError {
   readonly received: string;
 
   /**
-   * @param seam The method that received the payload. Typed as the full
-   *             {@link Seam} vocabulary because this error is thrown from both
-   *             the transaction seams and the read surface.
+   * @param method The method the payload was passed to or returned from. Typed as the full
+   *               {@link ProviderMethod} vocabulary because this error is thrown
+   *               from both the transaction methods and the read methods.
    * @param payload The offending payload. Only its `version` field is read;
    *                the payload's contents never reach the message.
    */
   constructor(
-    readonly seam: Seam,
+    readonly method: ProviderMethod,
     payload: unknown
   ) {
     const received = describeVersion(payload);
-    super(
-      `${seam} received a transaction payload with no recognised 'version' discriminant (got: ${received}). ` +
-        `Payloads cross this seam version-tagged: wrap a live v9 ledger transaction as ` +
-        `{ version: 'v9', tx }, or v8-era serialized bytes as { version: 'v8', txBytes }.`
-    );
+    super(describeUntagged(method, received));
     this.name = 'UntaggedPayloadError';
     this.received = received;
   }
 }
 
 /**
- * Thrown BEFORE an operation starts, when one of the three transaction seams
- * declares that it does not serve the ledger era that operation needs.
+ * Thrown BEFORE an operation starts, when the provider behind one of the three
+ * transaction methods declares that it does not serve the ledger era that operation needs.
  *
  * This is a pre-flight refusal, not a payload rejection. It is raised by
- * `assertSeamsSupportEra` from the provider set alone — no payload has been
+ * `assertProvidersSupportEra` from the provider set alone — no payload has been
  * built, no proof has been requested — and it exists so that an operation whose
  * wallet cannot balance the result is refused before its proof is paid for,
  * rather than after.
  *
- * Distinct from {@link V8PayloadUnsupportedError} on purpose, and the two are
+ * Distinct from {@link Ledger8PayloadUnsupportedError} on purpose, and the two are
  * not interchangeable:
  *
  * - This error means the provider SAID SO, in `supportedEras`, before it was
  *   asked to do anything. The remedy is to wire a different provider.
- * - `V8PayloadUnsupportedError` means a payload reached a seam that will not
+ * - `Ledger8PayloadUnsupportedError` means a payload reached a method that will not
  *   take it. That remains the defence in depth: a declaration is a claim by the
- *   implementation, and nothing verifies it, so the narrowing at each seam still
+ *   implementation, and nothing verifies it, so the narrowing in each method still
  *   runs and still reports its own error when a declaration turns out to be
  *   wrong.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
  */
-export class SeamEraUnsupportedError extends MidnightJsError {
-  readonly code = SEAM_ERA_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[SEAM_ERA_UNSUPPORTED];
+export class ProviderEraUnsupportedError extends MidnightJsError {
+  readonly code = PROVIDER_ERA_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[PROVIDER_ERA_UNSUPPORTED];
 
   /**
-   * @param seam The seam whose provider does not declare `era`. Reported in
-   *             pipeline order, so this names the first seam the operation
-   *             would have reached.
-   * @param era The ledger era the operation needs every seam to serve.
+   * @param method The method whose provider does not declare `era`. Reported
+   *               in pipeline order, so this names the first method the
+   *               operation would have reached.
+   * @param era The ledger era the operation needs every provider to serve.
    * @param declared What that provider does declare. An empty list is the
    *                 honest reading of a provider carrying no declaration at all
    *                 — which a JavaScript caller, or a consumer built against an
    *                 older `midnight-js-types`, really can supply.
    */
   constructor(
-    readonly seam: ProviderSeam,
+    readonly method: TransactionMethod,
     readonly era: string,
     readonly declared: readonly string[]
   ) {
     super(
-      `This operation runs on the ${era} ledger era, but the provider wired to ${seam} declares that it serves ` +
+      `This operation runs on the ${era} ledger era, but the provider wired to ${method} declares that it serves ` +
         `${declared.length === 0 ? 'no era at all' : declared.join(', ')}. ` +
         `Refused before any proof was requested, because a transaction this set cannot carry end to end is not ` +
-        `worth proving. Wire a provider that serves ${era} on ${seam}, or run this operation on an era the ` +
+        `worth proving. Wire a provider that serves ${era} for ${method}, or run this operation on an era the ` +
         `whole set serves.`
     );
-    this.name = 'SeamEraUnsupportedError';
+    this.name = 'ProviderEraUnsupportedError';
   }
 }
 
@@ -334,7 +348,7 @@ export class SeamEraUnsupportedError extends MidnightJsError {
  * The shape a provider factory needs for each era entry — the value passed as
  * `currentEra` or under `retainedEras`: a `handler` function
  * for the `…FromHandlers` factories, a `proving-provider` with callable
- * `check` and `prove` for `createProofProviderForEras`.
+ * `check` and `prove` for `createProofProviderFromProvingProviders`.
  */
 export type EraEntryShape = 'handler' | 'proving-provider';
 
@@ -362,7 +376,7 @@ export class UnusableEraEntryError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[UNUSABLE_ERA_ENTRY];
 
   /**
-   * @param seam The provider method the rejected entry would have served.
+   * @param method The provider method the rejected entry would have served.
    * @param era The ledger era whose entry was rejected.
    * @param expected The shape the factory needs for that entry.
    * @param received What was passed instead, for the message only: for example
@@ -370,7 +384,7 @@ export class UnusableEraEntryError extends MidnightJsError {
    *                 `"an object without callable 'prove'"`.
    */
   constructor(
-    readonly seam: ProviderSeam,
+    readonly method: TransactionMethod,
     readonly era: LedgerVersion,
     readonly expected: EraEntryShape,
     readonly received: string
@@ -378,7 +392,7 @@ export class UnusableEraEntryError extends MidnightJsError {
     const shape = ERA_ENTRY_SHAPE_DESCRIPTIONS[expected];
     const field = era === CURRENT_LEDGER_VERSION ? 'currentEra' : `retainedEras.${era}`;
     super(
-      `Cannot use ${field} passed for ${seam}: expected ${shape}, got ${received}. ` +
+      `Cannot use ${field} passed for ${method}: expected ${shape}, got ${received}. ` +
         (era === CURRENT_LEDGER_VERSION
           ? `Pass ${shape} as ${field}: every provider serves the current era.`
           : `Pass ${shape} as ${field}, or leave the entry out (or set it to undefined) if this era is not served.`)

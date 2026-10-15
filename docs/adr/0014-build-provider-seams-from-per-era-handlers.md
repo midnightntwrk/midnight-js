@@ -243,7 +243,7 @@ for. The factory does not verify the pairing — the two provider shapes are
 structurally compatible and one prover's two accessors return equivalent objects
 — so what it buys is one place where the pairing is written down, with
 `supportedEras` still derived. See
-[the package document](../../packages/types/docs/seam-era-declarations.md).
+[the package document](../../packages/types/docs/provider-era-declarations.md).
 
 `createProofProvider` now goes through it: it is one line over
 `createProofProviderForEras`, which builds the handlers and calls
@@ -257,7 +257,7 @@ it now also checks them. All four factories refuse a handler of the wrong shape
 with `UnusableEraEntryError`, and a `retainedEras` that is not a plain object
 keyed only by retained eras with `InvalidArgumentError`, before the provider
 exists. The check is shape only: a handler built for the wrong era still passes.
-See [the package document](../../packages/types/docs/seam-era-declarations.md).
+See [the package document](../../packages/types/docs/provider-era-declarations.md).
 
 ## Amendment — "arm" leaves the public surface (2026-10-14)
 
@@ -282,3 +282,27 @@ The public names now say what they are:
 
 The decision is unchanged. The amendments above keep the names that were current
 when they were written.
+
+## Amendment — consistent public names (2026-10-14)
+
+Issue #1489. The decision is unchanged; only names change.
+
+- `RetainedEraHandlers<T>` is `RetainedEraEntries<T>`, and `era-handlers.ts` is
+  `era-entries.ts`. In `ProvingProvidersByEra.retainedEras` the entries are
+  `ProvingProvider`s, not handlers, so the type takes the word the amendment
+  above already chose for both.
+- "seam" leaves the public names, as recorded in
+  [ADR-0006](./0006-version-tagged-payloads-at-provider-seams.md):
+  `assertSeamsSupportEra` is `assertProvidersSupportEra`, `TransactionSeams` is
+  `TransactionProviders`, `SeamEraUnsupportedError` is
+  `ProviderEraUnsupportedError` (code `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` is
+  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), and `seam-era-declarations.md` is
+  `provider-era-declarations.md`.
+- `PROVIDER_ERROR_CODES.ERA_UNSUPPORTED`, the read-side code this ADR keeps
+  apart from the pre-flight one, is `DECODER_ERA_UNSUPPORTED`
+  (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), raised by `DecoderEraUnsupportedError`.
+- `createProofProviderForEras` is `createProofProviderFromProvingProviders`.
+  Like the `…FromHandlers` factories, it is named after what it takes:
+  `ProvingProvidersByEra`, one `ProvingProvider` per era.
+
+The amendments above keep the names that were current when they were written.

@@ -23,7 +23,7 @@ import {
   PROTOCOL_ERROR_CODES,
   UnknownLedgerVersionError
 } from '../errors';
-import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
+import { extractEncodedStateValue, extractLedger9EncodedStateValue } from '../lib/era/envelope';
 import { structurallyEqual } from '../lib/v8/executable';
 import { readHexFixture } from './fixtures';
 
@@ -56,10 +56,10 @@ describe('reading a real migrated state', () => {
   // pin is the property that comparison exists to protect -- that both
   // envelopes carry the SAME primary state.
   it('reads a migrated post-fork envelope to the pre-migration v8 state', () => {
-    const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
-    const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
+    const ledger9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
+    const ledger8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
 
-    expect(v9Encoded).toEqual(v8Encoded);
+    expect(ledger9Encoded).toEqual(ledger8Encoded);
   });
 
   // The CROSS-CODEC round trip, on real committed migrated states. This is the
@@ -75,13 +75,13 @@ describe('reading a real migrated state', () => {
     'decodes %s with the retained runtime and re-encodes it to the same bytes',
     (fixture) => {
       // Arrange. Extracted by the era that WROTE it, as the pipeline does.
-      const v9Encoded = extractEncodedStateValue(readHexFixture(fixture), 'v9', ocrt3.ContractState);
+      const ledger9Encoded = extractEncodedStateValue(readHexFixture(fixture), 'v9', ocrt3.ContractState);
 
       // Act. Decoded by the retained runtime, which is the other codec.
-      const decoded = ocrt3.StateValue.decode(v9Encoded);
+      const decoded = ocrt3.StateValue.decode(ledger9Encoded);
 
       // Assert.
-      expect(structurallyEqual(decoded.encode(), v9Encoded)).toBe(true);
+      expect(structurallyEqual(decoded.encode(), ledger9Encoded)).toBe(true);
     }
   );
 
@@ -157,17 +157,17 @@ describe('tampered goldens', () => {
 // into a v8 read would otherwise have no runtime to reach for. That makes the
 // v9 read unavailable to anything that has not already paid for the pre-fork
 // WASM. The standalone decoder is the same read without that requirement.
-describe('extractV9EncodedStateValue', () => {
+describe('extractLedger9EncodedStateValue', () => {
   it('reads a real migrated envelope to exactly what the dispatching entry produces', () => {
     const raw = readHexFixture('state-migrated-v9.hex');
 
-    expect(extractV9EncodedStateValue(raw)).toEqual(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState));
+    expect(extractLedger9EncodedStateValue(raw)).toEqual(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState));
   });
 
   it('rejects a corrupted envelope with the same code and stage the dispatching entry reports', () => {
     let caught: unknown;
     try {
-      extractV9EncodedStateValue(readHexFixture('state-tampered-bytes.hex'));
+      extractLedger9EncodedStateValue(readHexFixture('state-tampered-bytes.hex'));
     } catch (error) {
       caught = error;
     }

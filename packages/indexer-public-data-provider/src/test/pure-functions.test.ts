@@ -45,7 +45,7 @@ import {
 } from '../errors';
 import type { TransactionResult } from '../gen/schema-types';
 import { extractRegularDeployTransaction } from '../mapping';
-import { mintV9ContractStateHex, mintV9LedgerParametersBytes, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { LEDGER9_ERA_PROTOCOL_VERSION,mintLedger9ContractStateHex, mintLedger9LedgerParametersBytes } from './state-fixtures';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -499,7 +499,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
    */
   const TAG_BYTES = 32;
   const envelopedGarbageHex = (): string => {
-    const hex = mintV9ContractStateHex();
+    const hex = mintLedger9ContractStateHex();
     const bodyBytes = hex.length / 2 - TAG_BYTES;
     if (bodyBytes <= 0) {
       throw new Error('test setup: the minted state is too short to keep an envelope and corrupt a body');
@@ -513,7 +513,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
 
     let caught: unknown;
     try {
-      parseHexContractState(envelopedGarbageHex(), V9_ERA_PROTOCOL_VERSION);
+      parseHexContractState(envelopedGarbageHex(), LEDGER9_ERA_PROTOCOL_VERSION);
     } catch (e) {
       caught = e;
     }
@@ -569,7 +569,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
    * assumed to be a fixed width; the two families' tags differ in length.
    */
   const envelopedGarbageParametersHex = (): string => {
-    const bytes = mintV9LedgerParametersBytes();
+    const bytes = mintLedger9LedgerParametersBytes();
     // `+ 1` for the colon the tag is terminated by, which belongs to the envelope, not the body.
     const tagBytes = parseSerializedTag(bytes).tag.length + 1;
     return toHex(bytes).slice(0, tagBytes * 2) + 'ff'.repeat(bytes.length - tagBytes);

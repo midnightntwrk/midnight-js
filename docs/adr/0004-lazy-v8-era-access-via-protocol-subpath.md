@@ -133,3 +133,10 @@ Specifically:
 
 `loadLedger8` moved from `src/lib/load-v8.ts` to `src/lib/v8/load.ts`. Paths and
 the quoted specifier above track that move; the decision itself is unchanged.
+
+## Amendment — the accessor is renamed (2026-10-14)
+
+Issue #1489. `loadLedger8` is `loadLedger8Protocol`, and `ProtocolV8` is
+`Ledger8Protocol`: the name now says what the accessor returns. The decision is
+unchanged, and the sections above keep the names that were current when they
+were written.

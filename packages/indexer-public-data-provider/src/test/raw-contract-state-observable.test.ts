@@ -31,13 +31,12 @@ import {
 } from '../query-definitions';
 import { type ApolloRequest, resumableSubscribe, stubApolloHandle, subscribedOffsets } from './apollo-stub';
 import {
-  mintV8ContractStateHex,
-  mintV9ContractStateHex,
-  mintV9TransactionHex,
-  UNRESOLVABLE_PROTOCOL_VERSION,
-  V8_ERA_PROTOCOL_VERSION,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  LEDGER8_ERA_PROTOCOL_VERSION,
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger8ContractStateHex,
+  mintLedger9ContractStateHex,
+  mintLedger9TransactionHex,
+  UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 const INVALID_ADDRESS = 'not-a-contract-address' as ContractAddress;
@@ -111,11 +110,11 @@ describe('rawContractStateObservable — latest', () => {
   ]);
 
   test('carries a pre-fork state through undecoded', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -129,7 +128,7 @@ describe('rawContractStateObservable — latest', () => {
       {
         value: {
           version: 'v8',
-          protocolVersion: V8_ERA_PROTOCOL_VERSION,
+          protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
           raw: new Uint8Array(fromHex(hexState)),
           ledgerParameters: undefined
         },
@@ -146,8 +145,8 @@ describe('rawContractStateObservable — latest', () => {
     // subscription. The two assertions live in one test on purpose — the raw
     // stream's value is only visible against what the decoded one does with
     // the identical bytes.
-    const hexState = await mintV8ContractStateHex();
-    const frames = [actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)];
+    const hexState = await mintLedger8ContractStateHex();
+    const frames = [actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)];
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, frames)
@@ -162,13 +161,13 @@ describe('rawContractStateObservable — latest', () => {
   });
 
   test('carries one contract across the fork boundary in a single stream', async () => {
-    const v8State = await mintV8ContractStateHex();
-    const v9State = mintV9ContractStateHex();
+    const ledger8State = await mintLedger8ContractStateHex();
+    const ledger9State = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(v8State, V8_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(v9State, V9_ERA_PROTOCOL_VERSION, 11)
+        actionFrame(ledger8State, LEDGER8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(ledger9State, LEDGER9_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -186,7 +185,7 @@ describe('rawContractStateObservable — latest', () => {
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(mintV9TransactionHex(), V9_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(mintLedger9TransactionHex(), LEDGER9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -206,7 +205,7 @@ describe('rawContractStateObservable — latest', () => {
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION, 10)
+        actionFrame(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -215,7 +214,7 @@ describe('rawContractStateObservable — latest', () => {
     expect(rejection).toBeInstanceOf(IndexerError);
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
-      kind: 'unresolvable-era',
+      kind: 'unknown-record-era',
       protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
     });
     // The protocol-level failure is preserved rather than discarded.
@@ -226,7 +225,7 @@ describe('rawContractStateObservable — latest', () => {
     // The contrast that makes the asymmetry a documented fact rather than an
     // accident: the decoded path treats "cannot place this integer" as a
     // withheld check, not a failure, and decodes on the envelope.
-    const hexState = mintV9ContractStateHex();
+    const hexState = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
@@ -246,11 +245,11 @@ describe('rawContractStateObservable — latest', () => {
     // v8 envelope under a v9 transaction indefinitely, so `version` and the envelope
     // disagree for exactly the records this member was added to serve. A
     // caller that needs the writing era reads it off `raw`.
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V9_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -280,11 +279,11 @@ describe('rawContractStateObservable — address validation', () => {
 
 describe('rawContractStateObservable — every configuration branch', () => {
   test('blockHeight: streams the blocks from the requested height', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -296,11 +295,11 @@ describe('rawContractStateObservable — every configuration branch', () => {
   });
 
   test('blockHash: streams the blocks from the requested hash', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -316,17 +315,17 @@ describe('rawContractStateObservable — every configuration branch', () => {
     // stream: it replays from the deploy, so a contract deployed before the
     // fork always hits its own pre-fork state, and no later write can change
     // what an earlier block already contains.
-    const v8State = await mintV8ContractStateHex();
-    const v9State = mintV9ContractStateHex();
+    const ledger8State = await mintLedger8ContractStateHex();
+    const ledger9State = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
         new Map([
-          [CONTRACT_STATE_QUERY, { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: v9State } }]
+          [CONTRACT_STATE_QUERY, { block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: ledger9State } }]
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(v8State, V8_ERA_PROTOCOL_VERSION),
-        actionFrame(v9State, V9_ERA_PROTOCOL_VERSION)
+        actionFrame(ledger8State, LEDGER8_ERA_PROTOCOL_VERSION),
+        actionFrame(ledger9State, LEDGER9_ERA_PROTOCOL_VERSION)
       ])
     });
 
@@ -337,11 +336,11 @@ describe('rawContractStateObservable — every configuration branch', () => {
   });
 
   test('txId: streams the states from the named transaction onward', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -355,13 +354,13 @@ describe('rawContractStateObservable — every configuration branch', () => {
     // The feed starts at the named transaction's block, so an earlier
     // transaction in that block is served too. The two payloads differ by era
     // so the emitted bytes say which transaction they came from.
-    const earlier = await mintV8ContractStateHex();
-    const named = mintV9ContractStateHex();
+    const earlier = await mintLedger8ContractStateHex();
+    const named = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(earlier, V9_ERA_PROTOCOL_VERSION, 10, ['a-different-tx-id']),
-        actionFrame(named, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID])
+        actionFrame(earlier, LEDGER9_ERA_PROTOCOL_VERSION, 10, ['a-different-tx-id']),
+        actionFrame(named, LEDGER9_ERA_PROTOCOL_VERSION, 10, [TX_ID])
       ])
     });
 
@@ -371,13 +370,13 @@ describe('rawContractStateObservable — every configuration branch', () => {
   });
 
   test('txId: inclusive false drops the state of the named transaction itself', async () => {
-    const first = mintV9ContractStateHex();
-    const second = await mintV8ContractStateHex();
+    const first = mintLedger9ContractStateHex();
+    const second = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(first, V9_ERA_PROTOCOL_VERSION, 10, [TX_ID]),
-        actionFrame(second, V8_ERA_PROTOCOL_VERSION, 10, ['a-later-tx-id'])
+        actionFrame(first, LEDGER9_ERA_PROTOCOL_VERSION, 10, [TX_ID]),
+        actionFrame(second, LEDGER8_ERA_PROTOCOL_VERSION, 10, ['a-later-tx-id'])
       ])
     });
 
@@ -392,14 +391,14 @@ describe('rawContractStateObservable — every configuration branch', () => {
     // This branch skips a BLOCK, while `txId` above skips a TRANSACTION. The
     // two readings diverge exactly when the first block carries more than one
     // action, which is what this fixture builds.
-    const dropped = mintV9ContractStateHex();
-    const kept = await mintV8ContractStateHex();
+    const dropped = mintLedger9ContractStateHex();
+    const kept = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(dropped, V9_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(dropped, V9_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(kept, V8_ERA_PROTOCOL_VERSION, 11)
+        actionFrame(dropped, LEDGER9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(dropped, LEDGER9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(kept, LEDGER8_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -422,13 +421,13 @@ describe('rawContractStateObservable — every record carries the block that ser
     ['blockHeight', { type: 'blockHeight', blockHeight: 10 }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
     ['blockHash', { type: 'blockHash', blockHash: '0x10' }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
   ] as const)('%s: two states in one block both carry that block', async (_name, config, pollDocument, pollAnswer) => {
-    const v8 = await mintV8ContractStateHex();
-    const v9 = mintV9ContractStateHex();
+    const v8 = await mintLedger8ContractStateHex();
+    const v9 = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map<DocumentNode, unknown>([[pollDocument, pollAnswer]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(v8, LEDGER9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(v9, LEDGER9_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -442,17 +441,17 @@ describe('rawContractStateObservable — every record carries the block that ser
   });
 
   test('all: each state carries the block of its own transaction', async () => {
-    const v8 = await mintV8ContractStateHex();
-    const v9 = mintV9ContractStateHex();
+    const v8 = await mintLedger8ContractStateHex();
+    const v9 = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
         new Map([
-          [CONTRACT_STATE_QUERY, { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: v9 } }]
+          [CONTRACT_STATE_QUERY, { block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: v9 } }]
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(v8, V8_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 11)
+        actionFrame(v8, LEDGER8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(v9, LEDGER9_ERA_PROTOCOL_VERSION, 11)
       ])
     });
 
@@ -466,11 +465,11 @@ describe('rawContractStateObservable — every record carries the block that ser
   });
 
   test('txId: the named transaction’s state carries its block', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
@@ -496,13 +495,13 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
     records.map((record) => `${record.blockHeight}:${contractStateEnvelopeVersion(record.value.raw)}`);
 
   const arrange = async () => {
-    const v8 = await mintV8ContractStateHex();
-    const v9 = mintV9ContractStateHex();
+    const v8 = await mintLedger8ContractStateHex();
+    const v9 = mintLedger9ContractStateHex();
     const subscribe = resumableSubscribe(
       [
-        { height: 10, frame: actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 10) },
-        { height: 10, frame: actionFrame(v9, V9_ERA_PROTOCOL_VERSION, 10) },
-        { height: 11, frame: actionFrame(v8, V9_ERA_PROTOCOL_VERSION, 11) }
+        { height: 10, frame: actionFrame(v8, LEDGER9_ERA_PROTOCOL_VERSION, 10) },
+        { height: 10, frame: actionFrame(v9, LEDGER9_ERA_PROTOCOL_VERSION, 10) },
+        { height: 11, frame: actionFrame(v8, LEDGER9_ERA_PROTOCOL_VERSION, 11) }
       ],
       2,
       STUBBED_FAILURE
@@ -549,7 +548,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
 
 describe('rawContractStateObservable — the bytes are the indexer’s, unchanged', () => {
   test('hands back exactly the bytes served, envelope included', async () => {
-    const hexState = await mintV8ContractStateHex();
+    const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
         new Map([
@@ -557,7 +556,7 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, V8_ERA_PROTOCOL_VERSION, 10)
+        actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 

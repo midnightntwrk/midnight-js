@@ -240,11 +240,11 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ## Step 13 — Narrow the version-tagged provider payloads
 
-The three transaction seams carry a `version` discriminant in both directions,
+The three transaction methods carry a `version` discriminant in both directions,
 and the read surface reports a `version`-discriminated record. This is the half
 of 5.0.0 that type-checking will not let you defer.
 
-Only the first call needs wrapping. Each seam's output is already the tagged
+Only the first call needs wrapping. Each method's output is already the tagged
 input the next one expects, so a straight pipeline changes in one place:
 
 ```diff
@@ -254,25 +254,25 @@ input the next one expects, so a straight pipeline changes in one place:
   const txId = await midnightProvider.submitTx(balanced);
 ```
 
-You only narrow where you need the ledger object itself. `unwrapV9` throws a
+You only narrow where you need the ledger object itself. `unwrapLedger9` throws a
 coded error rather than letting a bare `TypeError` surface from inside a WASM
 call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
-const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
-The read surface is a *different* union — its v8 arm carries `tx`, not
-`txBytes` — so `unwrapV9` does not accept it. Both arms are records you will
+The read surface is a *different* union — its v8 variant carries `tx`, not
+`txBytes` — so `unwrapLedger9` does not accept it. Both variants are records you will
 receive, so handle both:
 
 ```ts
 import { types, utils } from '@midnight-ntwrk/midnight-js';
 
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
@@ -287,12 +287,12 @@ const summarize = (record: types.VersionedFinalizedTxData): string => {
 ```
 
 `describeNative` and `describeRetained` stand in for your own code. They are two
-separate functions on purpose: `record.tx` is a different ledger type on each arm,
+separate functions on purpose: `record.tx` is a different ledger type on each variant,
 which is the whole reason this union has to be narrowed rather than unwrapped. Swap
 the two calls over and the recipe stops compiling.
 
 Close the switch with `assertNever`. While your switch covers the union it
-compiles; the moment the union carries an arm your switch does not handle,
+compiles; the moment the union carries a variant your switch does not handle,
 **that line stops compiling and points at the switch that has to change**.
 
 Be clear about which direction that buys you, because it is not the one you
@@ -302,7 +302,7 @@ era, the now-stale `case 'v8':` label is already a compile error on its own —
 removal visible. What it uniquely catches is the other direction: a union that
 *grows* a further era. For a switch that returns a value, the compiler can
 sometimes catch that at the function signature instead; for a `void`,
-side-effecting switch it catches nothing at all, and the unhandled arm falls
+side-effecting switch it catches nothing at all, and the unhandled variant falls
 through in silence. That is the case `assertNever` closes.
 
 The second argument is required. `assertNever` never puts the unhandled value into
@@ -316,8 +316,8 @@ and a dApp that reads its own pre-fork history will meet one.
 
 `findDeployedContract` reports the deploy record the same way. A contract deployed
 before the ledger fork keeps a ledger-8 deploy record forever, so
-`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
-on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`found.deployTxData.public` is tagged too. `contractAddress` is on both variants; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` variant has no
 `initialContractState`, because the current runtime cannot decode a ledger-8
 deploy-time state — read the current state with `queryContractState` instead.
 
@@ -337,11 +337,11 @@ That is why a v8-era network is served rather than refused: the indexer
 provider decodes each record with the runtime of the era that record reports,
 acquiring the pre-fork runtime lazily on first use. What throws at the read
 boundary is a `protocolVersion` this client cannot place on the era timeline at
-all (`EraUnresolvableError`), where before it would have returned a record that
+all (`UnknownRecordEraError`), where before it would have returned a record that
 failed later inside the codec. Bytes that will not decode on the era selected
 for them — whether the record disagrees with itself or your ledger package is a
 different vintage than the network's — surface as `DeserializationError`,
-carrying the era, the `protocolVersion`, the seam and the record on
+carrying the era, the `protocolVersion`, the provider method and the record on
 `context.details`.
 
 ---
@@ -399,7 +399,7 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-Both arms are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+Both kinds are reachable. `kind: 'deploy'` comes from a retained-era deploy that
 was built on a pre-fork head and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
@@ -433,8 +433,8 @@ For a **deploy** the remediation is different, and it is also two steps:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8.DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
+This section is linked from `Ledger8.DeployOnLedger9Error`
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
@@ -442,7 +442,7 @@ up a new contract per user, per market, per game — read this before the fork.
 The retained era stays supported for **calls against contracts deployed before
 the fork**. New deployments of a retained-toolchain artifact work **only on a
 pre-fork head**. On a post-fork head `deployContract` refuses one with
-`Ledger8.DeployOnV9Error`, before the constructor runs and before any verifier
+`Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either
@@ -473,8 +473,7 @@ is the result type below, `Ledger8.Contract` the constraint for a helper of
 your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
 dropped inside, so each member is the retained twin of the flat current-era
 name it mirrors, where one exists. The half that serves BOTH eras --
-`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`, the
-`*_PIPELINE_ERA` vocabulary -- stays flat, so a handler that only receives
+`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError` -- stays flat, so a handler that only receives
 results imports nothing era-specific. When the fork window closes, the whole
 namespace goes in one step; the fork-window refusals (`StaleHeadError` and the
 rest of that group) are published flat and go in a separate one.
@@ -482,7 +481,7 @@ rest of that group) are published flat and go in a separate one.
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
 unchanged — you pass the raw contract instance instead of a `CompiledContract`
-container, and an additive overload picks the retained arm. What comes BACK is
+container, and an additive overload picks the retained-era path. What comes BACK is
 the same two-level shape (`public` / `private`), built from the same shared
 bases, so `private.result`, `public.txId` and `public.status` read identically
 in both eras.
@@ -490,17 +489,18 @@ in both eras.
 Six differences are worth knowing before you write a handler that has to accept
 either era.
 
-- **Every result names its era.** `result.era` is `'ledger8'` or `'ledger9'`,
-  read off the compiled artifact. Narrow with `isLedger8Result(result)`, and
+- **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
+  `LedgerVersion`, the same values as `public.version`), read off the compiled
+  artifact. Narrow with `isLedger8Result(result)`, and
   declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
   `AnyEraSubmittedCallTx`.
 - **`era` is not `public.version`.** `era` names the pipeline that produced the
   objects; `public.version` names the ledger that recorded the transaction.
-  After the fork they disagree for every retained-era call: `era: 'ledger8'`
+  After the fork they disagree for every retained-era call: `era: 'v8'`
   with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
   on `era` to decide which module an object came from, on `version` before
   touching `public.tx`.
-- **`public.version` is a union on the retained arm.** A retained-era call is
+- **`public.version` is a union on the retained-era path.** A retained-era call is
   recorded by whichever era the head is on, so narrow it. The current era's is
   pinned `'v9'`.
 - **`public.nextContractState` is a different KIND of object per era.** The
@@ -510,7 +510,7 @@ either era.
   ledger runtimes. That is the member to read, persist, `structuredClone` or
   post to a worker; the handles are valid only inside the process that built
   them.
-- **No `logEvents` on the retained arm.** The previous toolchain has no
+- **No `logEvents` on the retained-era path.** The previous toolchain has no
   log-event concept at any layer, so there is no value to read rather than an
   empty list to read.
 - **`private.txBytes` instead of `private.unprovenTx`.** The retained composer
@@ -520,12 +520,11 @@ either era.
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
 HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), its `deployTxData` is
+interfaces (the retained era has no governance API), its `deployTxData` is
 the flat record where the current era's is `{ era, public, private }`, its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
 recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates` have no retained
-arm: they decode with the current-era deserializer and refuse anything else, so
+data at a different path (table below). And `getStates` / `getPublicStates` do not support the retained era: they decode with the current-era deserializer and refuse anything else, so
 for a contract whose state envelope is still pre-fork, read the state through
 `queryRawContractState` and narrow on its `version`, or read
 `public.nextContractStateEncoded` off a call result.
@@ -763,7 +762,7 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
 - [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
 - [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).
-- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era arm cannot fall through unhandled.
+- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
 - [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.

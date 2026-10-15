@@ -73,12 +73,12 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexContractState` dates the envelope
   before decoding and refuses an era it cannot read; `parseHexLedgerParameters` now does the same;
-  `decodeVersionedTransaction` dispatches per record to a table with one entry per era.
+  `decodeRecordTransaction` dispatches per record to a table with one entry per era.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
-### Decoders that are correct because the arm owns the era
+### Decoders that are correct because the code path owns the era
 
-Each of these lives inside an era arm and reads bytes that arm's caller selected. Most classify a
+Each of these lives inside one era's code path and reads bytes that path's caller selected. Most classify a
 rejected payload rather than letting a raw decoder failure escape, but they do not all classify it
 the same way, and one does not classify it at all:
 
@@ -89,24 +89,24 @@ the same way, and one does not classify it at all:
 - `packages/protocol/src/lib/shared/contract-state.ts` — wraps a `deserialize` failure in
   `StateDecodeFailedError` and any later failure in `StateInconsistentError`, not
   `ComposeOptionError`; takes the era's module slice as an argument
-- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveV8Transaction` runs
+- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveLedger8Transaction` runs
   `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with
-  nothing around it, so a raw decoder failure escapes unclassified. The era is still the arm's own,
+  nothing around it, so a raw decoder failure escapes unclassified. The era is still the path's own,
   so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
-  failure does not name the seam.
+  failure does not name the provider method.
 
-### Decoders that are correct because the payload is version-tagged at the seam
+### Decoders that are correct because the payload is version-tagged at the provider method
 
-The provider seams carry `{ version, tx | txBytes }`, so the era is on the payload rather than
+The provider methods carry `{ version, tx | txBytes }`, so the era is on the payload rather than
 inferred (ADR 0006).
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransactionV8`
-- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt seams
+- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`
+- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt functions
 
 ### Decoders that never see chain bytes
 
 - `packages/contracts/src/internal/ledger8-entry.ts` — reads back bytes the current era has just
-  composed, inside the current-era arm
+  composed, inside the current-era path
 - `packages/contracts/src/internal/utils/ledger-utils.ts` — round-trips a live in-memory object through its
   own `serialize()`, via the `utils` wrappers below
 
@@ -140,11 +140,11 @@ these methods sees all of it.
 **`DAppConnectorWalletAdapter`** (`testkit-js/testkit-js/src/wallet/dapp-connector-wallet-adapter.ts`)
 decodes DApp-supplied transaction hex with the current era's `LedgerTransaction` at three points
 (`balanceAndProveTransaction`, and both submit paths). Unlike its sibling
-`wallet/wallet-transaction.ts`, these are not behind a `{ version, txBytes }` seam — the adapter
+`wallet/wallet-transaction.ts`, these do not receive a version-tagged payload — the adapter
 implements the connector API, whose shape is fixed by the connector rather than by us, so the era
 cannot be carried on the payload without changing that API. Testkit only, and the bytes originate
 from a wallet this process just handed a transaction to, so the era is in practice the composing
-era. Recorded rather than changed because the fix is an ADR-0006-shaped seam change to a
+era. Recorded rather than changed because the fix is an ADR-0006-shaped method change to a
 third-party-facing interface, not a local guard.
 
 **The fork window between the head read and the state read.** A retained-era operation resolves the
@@ -156,7 +156,7 @@ them as `ComposeOptionError('v8', 'ledgerParameters')`. The opposite skew — a 
 pre-fork parameters — is excluded by that same ordering.
 
 The refusal is loud and fails fast, but it is not *diagnosed*: `handleSubmitRejection` recognises
-only submission rejections (`LEDGER8_SEAM_FAILED`), so a caller sees an error naming the parameter
+only submission rejections (`LEDGER8_PROVIDER_FAILED`), so a caller sees an error naming the parameter
 bytes rather than one naming the fork window they just crossed. It belongs with the in-flight
 fork-crossing work, because a unit test cannot show that the diagnosis is the right one — only a run
 across a real enactment can.

@@ -85,10 +85,10 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
 };
 
 // One assembly per era, each against its own module and its own contract
-// state. Written as a thunk per arm rather than a shared options record: the
+// state. Written as a thunk per era rather than a shared options record: the
 // two `ContractState` types are distinct nominal WASM classes, so only the
 // call site can be shared, not the operands.
-const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext) => unknown>> =
+const ASSEMBLE_PER_ERA: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext) => unknown>> =
   {
     v8: (transcript, partitionContext) => {
       const contractState = new LedgerV8.ContractState();
@@ -98,7 +98,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
       return assembleCallPrototype(LedgerV8, {
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
-        // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+        // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
         ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
@@ -122,7 +122,7 @@ const ARMS: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitio
       return assembleCallPrototype(ledgerV9, {
         circuitId: CIRCUIT_ID,
         contractAddress: ocrt3.dummyContractAddress(),
-        // Named explicitly: these arms compare era ASSEMBLY, not cost models.
+        // Named explicitly: these thunks compare era ASSEMBLY, not cost models.
         ledgerParametersBytes: 'initial',
         transcript: {
           kind: 'unpartitioned',
@@ -162,7 +162,7 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
 
     // The fixture is only worth anything while it emits the SYNC codegen the
     // retained leg runs. A recompile with the repo's own pinned compactc would
-    // silently produce current-era async codegen that never reaches the seam under
+    // silently produce current-era async codegen that never reaches the code under
     // test, so the artifact carries its provenance and this asserts it.
     expect(info['runtime-version']).toBe('0.16.0');
     expect(info['compiler-version']).toBe('0.31.1');
@@ -181,7 +181,7 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
   });
 
   it.each(ERAS)('composes the call once the recorded commitments travel with it on %s', (version) => {
-    expect(ARMS[version](transcript, transcript.partitionContext)).toBeDefined();
+    expect(ASSEMBLE_PER_ERA[version](transcript, transcript.partitionContext)).toBeDefined();
   });
 
   it.each(ERAS)('refuses the same call when the recorded commitments are dropped on %s', (version) => {
@@ -189,7 +189,7 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
 
     let caught: unknown;
     try {
-      ARMS[version](transcript, withoutCommitments);
+      ASSEMBLE_PER_ERA[version](transcript, withoutCommitments);
     } catch (error) {
       caught = error;
     }

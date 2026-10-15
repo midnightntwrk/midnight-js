@@ -16,12 +16,12 @@
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import type { FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
@@ -44,29 +44,29 @@ import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } fro
 import type { FinalizedDeployTxData } from './tx-model';
 
 /**
- * What both {@link deployContract} option arms carry, and nothing either arm
+ * What both {@link deployContract} option variants carry, and nothing either variant
  * decides. Identical to {@link ContractConstructorOptionsWithArguments} except
  * the `signingKey` is now optional, since {@link deployContract} will generate a
  * fresh signing key in the event that `signingKey` is undefined.
  *
- * Neither arm extends the other. Written as an intersection alias, an arm
+ * Neither variant extends the other. Written as an intersection alias, a variant
  * declaring `privateStateId: PrivateStateId` over a base declaring
  * `privateStateId?: never` collapses that member to `never` and leaves the
- * private-state arm uninhabitable — so the pairing rule can only be stated by
- * making the two arms siblings over this.
+ * private-state variant uninhabitable — so the pairing rule can only be stated by
+ * making the two variants siblings over this.
  *
  * {@link Ledger8DeployContractOptionsShared} plays the same role for the
- * retained era, which arrives there by a different route: its arms are
+ * retained era, which arrives there by a different route: its variants are
  * interfaces, and an interface redeclaring the member is rejected outright as an
  * incompatible extension. This era cannot use interfaces, because `args` reaches
- * both arms through the {@link ContractConstructorOptionsWithArguments}
+ * both variants through the {@link ContractConstructorOptionsWithArguments}
  * conditional and an interface cannot extend a conditional type.
  *
  * PUBLISHED, unlike its retained-era counterpart, purely so the two members
  * below keep a documented page of their own: TypeDoc inlines the members an
  * interface inherits, but renders an unexported alias as bare text, which would
  * delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the
- * reference for both arms.
+ * reference for both variants.
  */
 export type DeployContractOptionsShared<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
@@ -87,18 +87,18 @@ export type DeployContractOptionsShared<C extends Contract.Any> = ContractConstr
 };
 
 /**
- * The {@link deployContract} arm for a contract whose private state is stored
+ * The {@link deployContract} options variant for a contract whose private state is stored
  * NOWHERE: the constructor runs against `undefined` and nothing is written.
  *
- * The other arm is {@link DeployContractOptionsWithPrivateState}.
+ * The other variant is {@link DeployContractOptionsWithPrivateState}.
  */
 export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOptionsShared<C> & {
   /**
-   * DECLARED on this arm, and only ever `undefined`.
+   * DECLARED on this variant, and only ever `undefined`.
    *
-   * Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+   * Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
    * compiled: union excess-property checking admits a member declared on the
-   * SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+   * SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
    * satisfies this one. The constructor then ran against `undefined`,
    * `undefined` was stored under the caller's id, and
    * `deployTxData.private.initialPrivateState` was typed non-optional while
@@ -106,7 +106,7 @@ export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOp
    */
   readonly privateStateId?: never;
   /**
-   * DECLARED on this arm, and only ever `undefined` — see
+   * DECLARED on this variant, and only ever `undefined` — see
    * {@link DeployContractOptionsBase.privateStateId} for why the member is
    * present rather than absent.
    */
@@ -154,7 +154,7 @@ export interface DeployedContract<C extends Contract.Any> extends FoundContract<
 
 /**
  * Narrows on the id's KEY. Only reached after `assertDeployPrivateStatePairing`, so the key names
- * the arm and the id is defined.
+ * the variant and the id is defined.
  */
 const namesPrivateState = <C extends Contract.Any>(
   options: DeployContractOptions<C>
@@ -183,17 +183,18 @@ const createDeployTxOptions = <C extends Contract.Any>(
 };
 
 /*
- * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
- * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
- * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * overload that was already LAST stays last. Do not append. Pinned by
+ * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
+ * gives an uncommented signature the comment of the first commented sibling -- which published
+ * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
- * artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+ * artifact against a post-fork head is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
  * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
  * against contracts deployed before the fork.
  *
@@ -240,7 +241,7 @@ export async function deployContract<C extends Contract.Any>(
  * @param options Configuration.
  *
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
- *                             when executed by the node. Current-era arms only; the retained arm
+ *                             when executed by the node. Current-era overloads only; the retained-era one
  *                             raises `Ledger8DeployTxFailedError`, which carries a version-tagged
  *                             record and the signing key, instead.
  * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, is
@@ -250,7 +251,7 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
- * @throws Ledger8DeployOnV9Error If a retained-era artifact is deployed against a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed against a post-fork head.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
  * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success
@@ -281,7 +282,7 @@ export async function deployContract<C extends Contract.Any>(
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
     // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
-    // type -- a nullary constructor carries no `args` at all, and the no-private-state arm admits
+    // type -- a nullary constructor carries no `args` at all, and the no-private-state variant admits
     // only `undefined` for the other two -- so each is read with an `in` check rather than accessed.
     const deployed = await submitLedger8DeployTx(providers, {
       compiledContract: options.compiledContract,
@@ -291,7 +292,7 @@ export async function deployContract<C extends Contract.Any>(
       signingKey: options.signingKey
     });
     return {
-      era: RETAINED_PIPELINE_ERA,
+      era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: deployed.contractAddress,
       deployTxData: deployed.deployTxData,
@@ -312,7 +313,7 @@ export async function deployContract<C extends Contract.Any>(
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     compiledContract: options.compiledContract,
     contractAddress: deployTxData.public.contractAddress,
     deployTxData,

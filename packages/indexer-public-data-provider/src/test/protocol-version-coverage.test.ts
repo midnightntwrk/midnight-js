@@ -21,7 +21,7 @@ import * as documents from '../query-definitions';
 /**
  * Every place a document asks for `protocolVersion`, as a dotted path through
  * the selection set. Inline fragments contribute their type condition as a path
- * segment, so the three arms of a `contractAction` selection stay distinguishable.
+ * segment, so the three members of a `contractAction` selection stay distinguishable.
  */
 const protocolVersionPaths = (document: DocumentNode): string[] => {
   const found: string[] = [];

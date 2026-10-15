@@ -24,7 +24,7 @@ import type {
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, type TransactionMethod, UntaggedPayloadError } from '../errors';
 import {
   createMidnightProviderFromHandlers,
   type MidnightProviderHandlers
@@ -85,7 +85,7 @@ describe('createProofProviderFromHandlers', () => {
     expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
   });
 
-  // The declaration is read by the pre-flight check in `assertSeamsSupportEra`,
+  // The declaration is read by the pre-flight check in `assertProvidersSupportEra`,
   // so a consumer must not be able to widen it after construction and make the
   // check pass for an era the handlers do not serve.
   it('freezes the declaration', () => {
@@ -105,7 +105,7 @@ describe('createProofProviderFromHandlers', () => {
     expect(currentEra).toHaveBeenCalledWith(unproven, { timeout: 5 });
     expect(result.version).toBe('v9');
     // Identity, not structural equality: two structurally-equal ledger objects
-    // can come from different WASM instances, which is what these seams exist
+    // can come from different WASM instances, which is what these provider methods exist
     // to keep apart.
     expect(result.version === 'v9' && result.tx).toBe(unbound);
   });
@@ -146,9 +146,9 @@ describe('createProofProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -164,7 +164,7 @@ describe('createProofProviderFromHandlers', () => {
       );
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-    expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+    expect((rejection as UntaggedPayloadError).method).toBe('proveTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 });
@@ -239,9 +239,9 @@ describe('createWalletProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('balanceTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -349,7 +349,7 @@ describe('createMidnightProviderFromHandlers', () => {
     expect(txId).toBe('tx-id');
   });
 
-  // A transaction id is era-independent, so this seam answers untagged in both
+  // A transaction id is era-independent, so submitTx answers untagged in both
   // eras — the retained handler differs only in what it is handed.
   it('drives the retained-era handler with the bare bytes and returns its id', async () => {
     const requested = new Uint8Array([9]);
@@ -374,9 +374,9 @@ describe('createMidnightProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('submitTx');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -397,26 +397,26 @@ describe('createMidnightProviderFromHandlers', () => {
 });
 
 describe('era entry validation at construction', () => {
-  const v8TxBytes = new Uint8Array([1, 2, 3]);
+  const ledger8TxBytes = new Uint8Array([1, 2, 3]);
   const servedBytes = new Uint8Array([9]);
 
   interface BuiltProvider {
     readonly supportedEras: readonly LedgerVersion[];
-    readonly sendV8: () => Promise<unknown>;
-    readonly sendV9: () => Promise<unknown>;
+    readonly sendLedger8: () => Promise<unknown>;
+    readonly sendLedger9: () => Promise<unknown>;
   }
 
   // Each factory is fed `unknown` handlers on purpose: the cases below are the
   // values a JavaScript caller can pass but the types rule out.
   const factories: readonly {
-    readonly seam: ProviderSeam;
+    readonly method: TransactionMethod;
     readonly currentEra: unknown;
     readonly retainedHandler: () => unknown;
     readonly otherHandlers: object;
     readonly create: (handlers: unknown) => BuiltProvider;
   }[] = [
     {
-      seam: 'proveTx',
+      method: 'proveTx',
       currentEra: async () => stubUnbound(),
       retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: {},
@@ -424,13 +424,13 @@ describe('era entry validation at construction', () => {
         const provider = createProofProviderFromHandlers(handlers as ProofProviderHandlers);
         return {
           supportedEras: provider.supportedEras,
-          sendV8: () => provider.proveTx({ version: 'v8', txBytes: v8TxBytes }),
-          sendV9: () => provider.proveTx({ version: 'v9', tx: stubUnproven() })
+          sendLedger8: () => provider.proveTx({ version: 'v8', txBytes: ledger8TxBytes }),
+          sendLedger9: () => provider.proveTx({ version: 'v9', tx: stubUnproven() })
         };
       }
     },
     {
-      seam: 'balanceTx',
+      method: 'balanceTx',
       currentEra: async () => stubFinalized(),
       retainedHandler: () => vi.fn(async () => servedBytes),
       otherHandlers: keyReaders,
@@ -438,13 +438,13 @@ describe('era entry validation at construction', () => {
         const provider = createWalletProviderFromHandlers(handlers as WalletProviderHandlers);
         return {
           supportedEras: provider.supportedEras,
-          sendV8: () => provider.balanceTx({ version: 'v8', txBytes: v8TxBytes }),
-          sendV9: () => provider.balanceTx({ version: 'v9', tx: stubUnbound() })
+          sendLedger8: () => provider.balanceTx({ version: 'v8', txBytes: ledger8TxBytes }),
+          sendLedger9: () => provider.balanceTx({ version: 'v9', tx: stubUnbound() })
         };
       }
     },
     {
-      seam: 'submitTx',
+      method: 'submitTx',
       currentEra: async () => 'tx-id' as TransactionId,
       retainedHandler: () => vi.fn(async () => 'v8-tx-id' as TransactionId),
       otherHandlers: {},
@@ -452,14 +452,14 @@ describe('era entry validation at construction', () => {
         const provider = createMidnightProviderFromHandlers(handlers as MidnightProviderHandlers);
         return {
           supportedEras: provider.supportedEras,
-          sendV8: () => provider.submitTx({ version: 'v8', txBytes: v8TxBytes }),
-          sendV9: () => provider.submitTx({ version: 'v9', tx: stubFinalized() })
+          sendLedger8: () => provider.submitTx({ version: 'v8', txBytes: ledger8TxBytes }),
+          sendLedger9: () => provider.submitTx({ version: 'v9', tx: stubFinalized() })
         };
       }
     }
   ];
 
-  describe.each(factories)('for $seam', ({ seam, currentEra, retainedHandler, otherHandlers, create }) => {
+  describe.each(factories)('for $method', ({ method, currentEra, retainedHandler, otherHandlers, create }) => {
     const build = (entries: { readonly currentEra: unknown; readonly retainedEras?: unknown }): BuiltProvider =>
       create({ ...otherHandlers, ...entries });
 
@@ -467,8 +467,8 @@ describe('era entry validation at construction', () => {
       const provider = build({ currentEra, retainedEras: { v8: undefined } });
 
       expect([...provider.supportedEras].sort()).toEqual(['v9']);
-      await expect(provider.sendV8()).rejects.toThrow(
-        expect.objectContaining({ name: 'V8PayloadUnsupportedError', code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED })
+      await expect(provider.sendLedger8()).rejects.toThrow(
+        expect.objectContaining({ name: 'Ledger8PayloadUnsupportedError', code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED })
       );
     });
 
@@ -488,7 +488,7 @@ describe('era entry validation at construction', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam,
+          method,
           era: 'v8',
           expected: 'handler',
           received
@@ -507,7 +507,7 @@ describe('era entry validation at construction', () => {
         expect.objectContaining({
           name: 'UnusableEraEntryError',
           code: PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY,
-          seam,
+          method,
           era: 'v9',
           expected: 'handler',
           received
@@ -576,7 +576,7 @@ describe('era entry validation at construction', () => {
       const provider = create(handlers);
 
       handlers.currentEra = vi.fn();
-      await provider.sendV9();
+      await provider.sendLedger9();
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
@@ -588,7 +588,7 @@ describe('era entry validation at construction', () => {
       );
       const provider = build({ currentEra: handler });
 
-      await provider.sendV9();
+      await provider.sendLedger9();
 
       expect(handler).toHaveBeenCalledTimes(1);
     });
@@ -605,7 +605,7 @@ describe('era entry validation at construction', () => {
         }
       });
 
-      await provider.sendV8();
+      await provider.sendLedger8();
 
       expect(receivers).toEqual([undefined]);
     });
@@ -616,7 +616,7 @@ describe('era entry validation at construction', () => {
       const provider = build({ currentEra, retainedEras });
 
       retainedEras.v8 = null;
-      await provider.sendV8();
+      await provider.sendLedger8();
 
       expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
       expect(handler).toHaveBeenCalledTimes(1);
@@ -633,7 +633,7 @@ describe('era entry validation at construction', () => {
       const handlers = Object.assign(new Handlers(), otherHandlers);
       const provider = create(handlers);
 
-      await provider.sendV9();
+      await provider.sendLedger9();
 
       expect(receivers).toHaveLength(1);
       expect(receivers[0]).toBe(handlers);

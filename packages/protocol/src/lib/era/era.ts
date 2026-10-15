@@ -36,7 +36,7 @@ import type { LedgerVersion } from '../shared/ledger-version';
  * runtime is acquired, so by the time a caller holds one of these there is
  * nothing left to await.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface LedgerEra {
   /** The era this object is bound to — the value that was passed to `loadLedgerEra`. */
@@ -80,7 +80,7 @@ export interface LedgerEra {
    *
    * The returned bytes are what `Transaction.serialize()` produces before
    * `.prove()` is ever called; proving needs a proving provider and a running
-   * proof server, neither of which this seam has.
+   * proof server, neither of which this method has.
    *
    * The retained pre-fork era composes exactly ONE call and refuses a longer
    * list. A Zswap offer is NOT refused on either era.
@@ -97,7 +97,7 @@ export interface LedgerEra {
    * @throws ComposeFailedError if a call cannot be assembled; `stage` names
    * which step refused it.
    * @see {@link ComposeRefusalOrder}
-   * @see {@link EraSeam}
+   * @see {@link EraBoundary}
    */
   composeCallTx(options: ComposeCallOptions): ComposeCallResultPojo;
 

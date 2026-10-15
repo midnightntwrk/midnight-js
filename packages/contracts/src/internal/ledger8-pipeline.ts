@@ -23,7 +23,7 @@
  * even a development one: the engine's construction guard exists to detect a
  * second acquisition path, and an alias here would create one.
  *
- * @see {@link KeepStatePipeline} for the two arms, why `wrapKeepStateCall` is
+ * @see {@link KeepStatePipeline} for the two paths, why `wrapKeepStateCall` is
  *      not called from here, and why the engine is a narrowed generic slice.
  */
 
@@ -460,7 +460,7 @@ export interface Ledger8CallPipelineResult<TState> {
    * trades plain data whatever ADR-0010 allows one layer up, so there is no
    * handle here to hold in the first place.
    *
-   * Which form it crosses the PROVIDER SEAMS in is a separate question decided
+   * Which form it is passed to the PROVIDERS in is a separate question decided
    * by the network head, not by this field — a post-fork head deserializes
    * these bytes and crosses as a live current-era handle. See
    * `submitLedger8Tx`.
@@ -599,7 +599,7 @@ export const runLedger8CallPipeline = async <TState>(
   // pipeline reads no Zswap chain state, so a coin the contract already held
   // cannot be located in the chain's commitment tree. Without this the
   // condition surfaced as a bare assertion inside the offer builder, naming
-  // neither the era nor the circuit. Supplying the retained arm with a chain
+  // neither the era nor the circuit. Supplying the retained path with a chain
   // state is the real fix and is tracked separately; until then this refuses in
   // the caller's own test run rather than in production.
   if (spendsHeldCoin(transcript.zswapLocalState)) {
@@ -607,7 +607,7 @@ export const runLedger8CallPipeline = async <TState>(
   }
 
   // Also before the offer is built, and for the same reason: a recipient this
-  // arm cannot resolve is refused by name here rather than by a bare assertion
+  // path cannot resolve is refused by name here rather than by a bare assertion
   // inside the offer builder.
   assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
 
@@ -671,7 +671,7 @@ export const runLedger8CallPipeline = async <TState>(
       // composer that answered with fewer partitions than calls would hand
       // `undefined` to the router below, whose own parameter then defaults to
       // `[undefined, undefined]` and routes every movement into the guaranteed
-      // segment -- silently, which is the failure this seam exists to prevent.
+      // segment -- silently, which is the failure this check exists to prevent.
       const [partition] = partitions;
       assertDefined(
         partition,
@@ -692,7 +692,7 @@ export const runLedger8CallPipeline = async <TState>(
   });
 
   // The factory is the ONLY place this pipeline builds its offer, and
-  // `zswapOffer` is optional on the seam -- so an era that never calls back
+  // `zswapOffer` is optional at the era boundary -- so an era that never calls back
   // composes a transaction carrying none of the circuit's coin movements, and
   // reports offers indistinguishable from a call that legitimately moved none.
   // The wallet would diagnose that as `Wallet.InsufficientFunds`, naming
@@ -776,7 +776,7 @@ export interface Ledger8DeployPipelineRequest {
   readonly networkId: string;
   readonly ttl: Date;
   /**
-   * REQUIRED for the same reason the call arm requires it: a constructor may
+   * REQUIRED for the same reason the call path requires it: a constructor may
    * mint a coin, and encrypting that output to its recipient needs a key this
    * pipeline cannot derive on its own.
    */
@@ -872,9 +872,9 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   });
 
   // Refused by name here rather than by a bare assertion inside the offer
-  // builder, exactly as the call arm refuses it. A constructor cannot SPEND --
+  // builder, exactly as the call path refuses it. A constructor cannot SPEND --
   // a contract that does not exist yet holds nothing -- so the recipient check
-  // is the only one this arm needs.
+  // is the only one this path needs.
   assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, LEDGER8_CONSTRUCTOR_ENTRY_POINT);
 
   // A deploy has no transcript to partition against, and `composeDeployTx`

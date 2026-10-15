@@ -13,54 +13,54 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
- * The v8 variant of every transaction payload crossing a provider seam
+ * The v8 variant of every transaction payload passed to a provider method
  * (`proveTx`, `balanceTx`, `submitTx`), in both directions.
  *
  * A v8-era transaction crosses as serialized, tag-prefixed bytes rather than as
  * a live ledger object, and `version` says which runtime produced them.
  *
  * NOT VALIDATED: any `Uint8Array` satisfies `txBytes`, and nothing here checks
- * the tag prefix. The variant is identical for all three seams, so it says nothing
+ * the tag prefix. The variant is identical for all three methods, so it says nothing
  * about which pipeline stage the transaction has reached — on this path, stage
  * is the caller's responsibility.
  *
  * @see {@link VersionTaggedPayloads} for why a live object cannot cross.
  */
-export interface V8TxBytes {
+export interface Ledger8TransactionBytes {
   readonly version: 'v8';
   /** Serialized, tag-prefixed byte form. Unvalidated — see the note above. */
   readonly txBytes: Uint8Array;
 }
 
 /**
- * The v9 variant of every transaction payload crossing a provider seam: the live
- * ledger object, carried directly because both sides of the seam share the v9
+ * The v9 variant of every transaction payload passed to a provider method: the live
+ * ledger object, carried directly because the caller and the provider share the v9
  * WASM instance.
  *
  * @typeParam T - The v9 ledger transaction type for the pipeline stage in
  *                question — unproven, unbound, or finalized.
  */
-export interface V9Tx<T> {
+export interface Ledger9Transaction<T> {
   readonly version: 'v9';
   readonly tx: T;
 }
 
 /**
- * A transaction payload crossing a provider seam, discriminated by the ledger
- * runtime it belongs to: serialized bytes for the v8 era ({@link V8TxBytes}),
- * or the live ledger object for v9 ({@link V9Tx}).
+ * A transaction payload passed to a provider method, discriminated by the ledger
+ * runtime it belongs to: serialized bytes for the v8 era ({@link Ledger8TransactionBytes}),
+ * or the live ledger object for v9 ({@link Ledger9Transaction}).
  *
  * Consumers must narrow on `version` before touching the payload — there is
  * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
  * nobody can tell) is never assignable where this type is expected.
  *
- * The seam types do not tie the input era to the output era: nothing here
+ * The provider method types do not tie the input era to the output era: nothing here
  * stops a provider returning a v9 result for a v8 input. A v9-only flow is
  * expected to check that at its own boundary.
  *
@@ -73,11 +73,11 @@ export interface V9Tx<T> {
  *   case 'v9':
  *     return proven.tx; // live v9 ledger object
  *   case 'v8':
- *     return decodeV8(proven.txBytes); // serialized, tag-prefixed bytes
+ *     return decodeLedger8(proven.txBytes); // serialized, tag-prefixed bytes
  * }
  * ```
  */
-export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
@@ -95,9 +95,9 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * returns, not a placeholder. Contract-STATE reads are a separate question and
  * remain v9-only — see the provider's own documentation.
  */
-export interface FinalizedTxDataV8 extends FinalizedTxRecord {
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
   readonly version: 'v8';
-  readonly tx: V8Transaction;
+  readonly tx: Ledger8FinalizedTransaction;
 }
 
 /**
@@ -111,7 +111,7 @@ export interface FinalizedTxDataV8 extends FinalizedTxRecord {
  * type system obliges a third-party `PublicDataProvider` to do the same, so the
  * discriminant is exactly as trustworthy as the provider that produced it.
  */
-export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
@@ -128,15 +128,15 @@ export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
 // assertion holds no matter what the two sides say. `[D] extends [never]`
 // compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
-type _EveryEraHasAnArm = Assert<
-  [Exclude<LedgerVersion, VersionedTx<unknown>['version']>] extends [never] ? true : false
+type _EveryEraHasAVariant = Assert<
+  [Exclude<LedgerVersion, VersionedTransaction<unknown>['version']>] extends [never] ? true : false
 >;
-type _NoArmOutsideTheEraSet = Assert<
-  [Exclude<VersionedTx<unknown>['version'], LedgerVersion>] extends [never] ? true : false
+type _NoVariantOutsideTheEraSet = Assert<
+  [Exclude<VersionedTransaction<unknown>['version'], LedgerVersion>] extends [never] ? true : false
 >;
-type _EveryEraHasAReadArm = Assert<
+type _EveryEraHasAReadVariant = Assert<
   [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false
 >;
-type _NoReadArmOutsideTheEraSet = Assert<
+type _NoReadVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
 >;

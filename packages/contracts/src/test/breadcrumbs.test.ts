@@ -29,8 +29,8 @@
  * Several era decisions a reader might expect are REFUSALS rather than
  * choices, and a refusal already carries a registered error code and
  * remediation text, so it is not breadcrumbed a second time: the retained-era
- * deploy arm refuses, a scope on a pre-fork head refuses, and a provider that
- * answers on the wrong era's arm refuses. The fourth decision is the inverse
+ * deploy path refuses, a scope on a pre-fork head refuses, and a provider that
+ * answers on the wrong era's payload variant refuses. The fourth decision is the inverse
  * case, and the reason it needs a breadcrumb: it refuses nothing and returns
  * nothing, so an operator has no other way to see it happened.
  *
@@ -54,8 +54,8 @@ import {
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnV9Error,
-  Ledger8SeamFailedError,
+  Ledger8DeployOnLedger9Error,
+  Ledger8ProviderFailedError,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
@@ -68,7 +68,7 @@ import {
   emitPipelineSelection,
   emitRetainedSigningKeyEntry
 } from '../internal/breadcrumbs';
-import { type PipelineEra, resolveContractStateEra, resolveOperationEra } from '../internal/era';
+import { resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
@@ -95,11 +95,11 @@ const readHexFixture = (name: string): Uint8Array =>
   Uint8Array.from(Buffer.from(readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim(), 'hex'));
 
 // The era timeline's own scheme, `node-major * 1_000_000 + node-minor * 1_000`.
-const V8_HEAD = 1_000_000;
-const V9_HEAD = 2_000_000;
+const LEDGER8_HEAD = 1_000_000;
+const LEDGER9_HEAD = 2_000_000;
 // A same-era minor node bump: a different integer on the SAME era, which is
 // what makes the raw integer worth carrying beside the era name.
-const V9_HEAD_MINOR_BUMP = 2_001_000;
+const LEDGER9_HEAD_MINOR_BUMP = 2_001_000;
 
 // A real, well-formed address from this repo's own sampler rather than a
 // hand-typed one: the attach path validates the address before it resolves an
@@ -130,9 +130,9 @@ const ALL_PROVENANCES: Record<HeadReadingProvenance, HeadReadingProvenance> = {
   'post-rejection-re-read': 'post-rejection-re-read'
 };
 
-const ALL_PIPELINES: Record<PipelineEra, PipelineEra> = {
-  ledger8: 'ledger8',
-  ledger9: 'ledger9'
+const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
+  v8: 'v8',
+  v9: 'v9'
 };
 
 /** The same exhaustive-by-compilation shape, over why a stored signing-key entry was unusable. */
@@ -165,9 +165,9 @@ const headSource = (...protocolVersions: readonly number[]): { readonly queryLat
 };
 
 // The provider set `acquireLedger8Runtime` consults: the head source under test,
-// plus three write seams that declare both eras so the seam check is never what
+// plus three transaction providers that declare both eras so the provider check is never what
 // a breadcrumb assertion here fails on. The gap case is covered on its own, in
-// `seam-era-support.test.ts`.
+// `provider-era-support.test.ts`.
 const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
   const bothEras = { supportedEras: Object.freeze<LedgerVersion[]>(['v8', 'v9']) };
   return {
@@ -249,7 +249,7 @@ describe('the breadcrumb emitters', () => {
     const error = vi.fn();
     const sink = { ...createSink(), info, warn, error };
 
-    emitHeadResolution(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start');
+    emitHeadResolution(sink, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'operation-start');
 
     expect(sink.debug).toHaveBeenCalledTimes(1);
     expect(info).not.toHaveBeenCalled();
@@ -260,7 +260,7 @@ describe('the breadcrumb emitters', () => {
   it('writes the breadcrumb as a STRUCTURED payload beside a fixed message', () => {
     const sink = createSink();
 
-    emitHeadResolution(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start');
+    emitHeadResolution(sink, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'operation-start');
 
     // The payload first and the message second: an operator filters on the
     // fields, so they must not be interpolated into the message string.
@@ -269,7 +269,7 @@ describe('the breadcrumb emitters', () => {
       {
         decision: 'head-resolution',
         version: 'v9',
-        protocolVersion: V9_HEAD,
+        protocolVersion: LEDGER9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'operation-start'
       }
@@ -279,16 +279,16 @@ describe('the breadcrumb emitters', () => {
   it('carries the pipeline and the contract address when the operation names a contract', () => {
     const sink = createSink();
 
-    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'ledger8', CONTRACT_ADDRESS);
+    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: LEDGER8_HEAD }, 'v8', CONTRACT_ADDRESS);
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'pipeline-selection',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8',
+        path: 'v8',
         contractAddress: CONTRACT_ADDRESS
       }
     ]);
@@ -300,7 +300,7 @@ describe('the breadcrumb emitters', () => {
     // deployment at the zero address.
     const sink = createSink();
 
-    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: V8_HEAD }, 'ledger8');
+    emitPipelineSelection(sink, { head: 'v8', headProtocolVersion: LEDGER8_HEAD }, 'v8');
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -308,10 +308,10 @@ describe('the breadcrumb emitters', () => {
       {
         decision: 'pipeline-selection',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8'
+        path: 'v8'
       }
     ]);
     expect('contractAddress' in breadcrumb).toBe(false);
@@ -354,8 +354,8 @@ describe('the breadcrumb emitters', () => {
   it('does nothing at all when no logger is configured', () => {
     // The logger provider is OPTIONAL on every provider set, so this is the
     // ordinary case and must not be a throw.
-    expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start')).not.toThrow();
-    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: V9_HEAD }, 'ledger9')).not.toThrow();
+    expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'operation-start')).not.toThrow();
+    expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'v9')).not.toThrow();
     expect(() => emitEncoding(undefined, 'v9')).not.toThrow();
     expect(() => emitRetainedSigningKeyEntry(undefined, CONTRACT_ADDRESS, 'malformed-value')).not.toThrow();
   });
@@ -365,7 +365,7 @@ describe('the breadcrumb emitters', () => {
     // a logger with no `debug` is a legal provider and not a broken one.
     const sink = {};
 
-    expect(() => emitHeadResolution(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, 'operation-start')).not.toThrow();
+    expect(() => emitHeadResolution(sink, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'operation-start')).not.toThrow();
   });
 });
 
@@ -373,13 +373,13 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
   it('reports the raw head integer beside the era it resolved to', async () => {
     const sink = createSink();
 
-    await resolveOperationEra(headSource(V9_HEAD), sink);
+    await resolveOperationEra(headSource(LEDGER9_HEAD), sink);
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v9',
-        protocolVersion: V9_HEAD,
+        protocolVersion: LEDGER9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'operation-start'
       }
@@ -392,20 +392,20 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
     const first = createSink();
     const second = createSink();
 
-    await resolveOperationEra(headSource(V9_HEAD), first);
-    await resolveOperationEra(headSource(V9_HEAD_MINOR_BUMP), second);
+    await resolveOperationEra(headSource(LEDGER9_HEAD), first);
+    await resolveOperationEra(headSource(LEDGER9_HEAD_MINOR_BUMP), second);
 
     expect(emitted(first)[0]).toStrictEqual({
       decision: 'head-resolution',
       version: 'v9',
-      protocolVersion: V9_HEAD,
+      protocolVersion: LEDGER9_HEAD,
       source: 'public-data-provider',
       readingProvenance: 'operation-start'
     });
     expect(emitted(second)[0]).toStrictEqual({
       decision: 'head-resolution',
       version: 'v9',
-      protocolVersion: V9_HEAD_MINOR_BUMP,
+      protocolVersion: LEDGER9_HEAD_MINOR_BUMP,
       source: 'public-data-provider',
       readingProvenance: 'operation-start'
     });
@@ -417,7 +417,7 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
     // so there are two breadcrumbs and they disagree, which is the observable
     // form of that rule.
     const sink = createSink();
-    const pdp = headSource(V8_HEAD, V9_HEAD);
+    const pdp = headSource(LEDGER8_HEAD, LEDGER9_HEAD);
 
     await resolveOperationEra(pdp, sink);
     await resolveOperationEra(pdp, sink);
@@ -431,7 +431,7 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
   });
 
   it('emits nothing when no logger is configured, and still resolves', async () => {
-    const resolved = await resolveOperationEra(headSource(V9_HEAD));
+    const resolved = await resolveOperationEra(headSource(LEDGER9_HEAD));
 
     expect(resolved.head).toBe<LedgerVersion>('v9');
   });
@@ -441,13 +441,13 @@ describe('the scope head read leaves a breadcrumb, and a refused scope leaves on
   it('breadcrumbs the one head reading a scope resolves', async () => {
     const sink = createSink();
 
-    await resolveScopeEra(headSource(V9_HEAD), sink);
+    await resolveScopeEra(headSource(LEDGER9_HEAD), sink);
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v9',
-        protocolVersion: V9_HEAD,
+        protocolVersion: LEDGER9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'operation-start'
       }
@@ -460,13 +460,13 @@ describe('the scope head read leaves a breadcrumb, and a refused scope leaves on
     // operator needs to see, and it is reported BEFORE the refusal.
     const sink = createSink();
 
-    await expect(resolveScopeEra(headSource(V8_HEAD), sink)).rejects.toThrow();
+    await expect(resolveScopeEra(headSource(LEDGER8_HEAD), sink)).rejects.toThrow();
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'operation-start'
       }
@@ -478,23 +478,23 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   it('breadcrumbs the retained pipeline on a pre-fork head, after the era gate accepted it', async () => {
     const sink = createSink();
 
-    await acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'operation-start'
       },
       {
         decision: 'pipeline-selection',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'artifact-runtime-version-declaration',
         readingProvenance: 'operation-start',
-        path: 'ledger8',
+        path: 'v8',
         contractAddress: CONTRACT_ADDRESS
       }
     ]);
@@ -503,18 +503,18 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
   it('breadcrumbs the SAME pipeline against a post-fork head, which is the keep-state route', async () => {
     // The pipeline and the head era together identify the route, and they are
     // reported as the pair rather than as a derived third value that could
-    // disagree with it: `path: 'ledger8'` with `version: 'v9'` IS keep-state.
+    // disagree with it: `path: 'v8'` with `version: 'v9'` IS keep-state.
     const sink = createSink();
 
-    await acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
 
     expect(emitted(sink).at(-1)).toStrictEqual({
       decision: 'pipeline-selection',
       version: 'v9',
-      protocolVersion: V9_HEAD,
+      protocolVersion: LEDGER9_HEAD,
       source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
-      path: 'ledger8',
+      path: 'v8',
       contractAddress: CONTRACT_ADDRESS
     });
   });
@@ -526,8 +526,8 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     const sink = createSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'deploy', { logger: sink })
-    ).rejects.toThrow(Ledger8DeployOnV9Error);
+      acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
+    ).rejects.toThrow(Ledger8DeployOnLedger9Error);
 
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['head-resolution']);
   });
@@ -537,7 +537,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     const providers = createMockProviders();
     const publicDataProvider = {
       ...providers.publicDataProvider,
-      queryLatestProtocolVersion: vi.fn<() => Promise<number>>().mockResolvedValue(V8_HEAD),
+      queryLatestProtocolVersion: vi.fn<() => Promise<number>>().mockResolvedValue(LEDGER8_HEAD),
       // Resolves ABSENT, so the attach refuses right after the selection
       // breadcrumb. That keeps this test about the breadcrumb rather than
       // about a state fixture, and the refusal is what proves the breadcrumb
@@ -559,10 +559,10 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
     expect(emitted(sink).at(-1)).toStrictEqual({
       decision: 'pipeline-selection',
       version: 'v8',
-      protocolVersion: V8_HEAD,
+      protocolVersion: LEDGER8_HEAD,
       source: 'artifact-runtime-version-declaration',
       readingProvenance: 'operation-start',
-      path: 'ledger8',
+      path: 'v8',
       contractAddress: CONTRACT_ADDRESS
     });
   });
@@ -570,13 +570,13 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
 
 
 describe('the encoding breadcrumb dates the fetched state from its envelope tag', () => {
-  const v8Envelope = readHexFixture('state-v8.hex');
-  const v9Envelope = readHexFixture('state-migrated-v9.hex');
+  const ledger8Envelope = readHexFixture('state-v8.hex');
+  const ledger9Envelope = readHexFixture('state-migrated-v9.hex');
 
   it('reports the envelope era on an agreeing head, carrying none of the state bytes', async () => {
     const sink = createSink();
 
-    await resolveContractStateEra('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
+    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD, 'v8'), headSource(), sink);
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -588,7 +588,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     // than through a `??` fallback -- a fallback here would compare the
     // breadcrumb against a hand-built copy of the expectation if none had been
     // emitted, which is the shape of an assertion that cannot fail.
-    expectCarriesNoSecrets(breadcrumb, [v8Envelope]);
+    expectCarriesNoSecrets(breadcrumb, [ledger8Envelope]);
   });
 
   it('dates the envelope by its TAG, not by the era the record claims', async () => {
@@ -599,7 +599,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     // is what tells an operator which decoder the bytes went to.
     const sink = createSink();
 
-    await resolveContractStateEra('v9', rawState(v8Envelope, V9_HEAD, 'v9'), headSource(), sink);
+    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD, 'v9'), headSource(), sink);
 
     expect(emitted(sink)[0]).toStrictEqual({
       decision: 'encoding',
@@ -616,7 +616,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), headSource(V9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -624,7 +624,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
       {
         decision: 'head-resolution',
         version: 'v9',
-        protocolVersion: V9_HEAD,
+        protocolVersion: LEDGER9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'disagreement-re-read'
       }
@@ -635,7 +635,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const transportFailure = new Error('indexer unreachable');
     const failing = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
 
-    const error = await resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), failing, createSink()).catch(
+    const error = await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), failing, createSink()).catch(
       (e: unknown) => e
     );
 
@@ -653,7 +653,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      resolveContractStateEra('v8', rawState(v9Envelope, V9_HEAD, 'v9'), headSource(V8_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER9_HEAD, 'v9'), headSource(LEDGER8_HEAD), sink)
     ).rejects.toThrow(IndexerInconsistencyError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -661,7 +661,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
       {
         decision: 'head-resolution',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'disagreement-re-read'
       }
@@ -672,7 +672,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
     const pdp = headSource();
 
-    await resolveContractStateEra('v9', rawState(v8Envelope, V9_HEAD_MINOR_BUMP, 'v9'), pdp, sink);
+    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD_MINOR_BUMP, 'v9'), pdp, sink);
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['encoding']);
@@ -680,7 +680,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
 });
 
 describe('no breadcrumb carries a payload, a key or decoded state', () => {
-  const v8Envelope = readHexFixture('state-v8.hex');
+  const ledger8Envelope = readHexFixture('state-v8.hex');
   const verifierKey = Uint8Array.from(
     readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'))
   );
@@ -692,8 +692,8 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
-    await acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
-    await resolveContractStateEra('v8', rawState(v8Envelope, V8_HEAD, 'v8'), headSource(), sink);
+    await acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
+    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD, 'v8'), headSource(), sink);
     breadcrumbs = emitted(sink);
   });
 
@@ -705,7 +705,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
   it('carries no state envelope and no verifier key in any field, in any breadcrumb', () => {
     for (const breadcrumb of breadcrumbs) {
-      expectCarriesNoSecrets(breadcrumb, [v8Envelope, verifierKey]);
+      expectCarriesNoSecrets(breadcrumb, [ledger8Envelope, verifierKey]);
     }
   });
 
@@ -735,7 +735,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 
   it('places every pipeline the type admits on the allow-listed field, so a new one cannot leak', () => {
     // A REAL exhaustiveness gate, via ALL_PIPELINES above. The earlier form
-    // here was `const pipelines: readonly PipelineEra[] = [...]`, which only
+    // here was a plain array of pipeline eras, which only
     // asserted that each element IS a member and never that all members are
     // listed -- so a third pipeline compiled and tested clean. This test was
     // also the model the provenance gate below was copied from, so the
@@ -744,7 +744,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     const sink = createSink();
 
     for (const pipeline of pipelines) {
-      emitPipelineSelection(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, pipeline);
+      emitPipelineSelection(sink, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, pipeline);
     }
 
     expect(emitted(sink).map((breadcrumb) => ('path' in breadcrumb ? breadcrumb.path : undefined))).toEqual(pipelines);
@@ -752,10 +752,10 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 });
 
 describe('the post-rejection head read leaves a breadcrumb too', () => {
-  // The rejection in the shape the submit seam actually produces: already
+  // The rejection in the shape `submitTx` actually produces: already
   // sanitized, with the provider's failure on `cause`.
-  const wrappedRejection = (): Ledger8SeamFailedError =>
-    new Ledger8SeamFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
+  const wrappedRejection = (): Ledger8ProviderFailedError =>
+    new Ledger8ProviderFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
 
   const callOperation = (head: LedgerVersion): SubmittedOperation => ({
     head,
@@ -772,14 +772,14 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
     const sink = createSink();
 
     await expect(
-      handleSubmitRejection(headSource(V9_HEAD), callOperation('v8'), wrappedRejection(), sink)
+      handleSubmitRejection(headSource(LEDGER9_HEAD), callOperation('v8'), wrappedRejection(), sink)
     ).rejects.toThrow(StaleHeadError);
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v9',
-        protocolVersion: V9_HEAD,
+        protocolVersion: LEDGER9_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'post-rejection-re-read'
       }
@@ -792,9 +792,9 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
     // fork verdict rested on -- the whole point of carrying it.
     const sink = createSink();
 
-    await resolveOperationEra(headSource(V8_HEAD), sink);
+    await resolveOperationEra(headSource(LEDGER8_HEAD), sink);
     await expect(
-      handleSubmitRejection(headSource(V9_HEAD), callOperation('v8'), wrappedRejection(), sink)
+      handleSubmitRejection(headSource(LEDGER9_HEAD), callOperation('v8'), wrappedRejection(), sink)
     ).rejects.toThrow(StaleHeadError);
 
     expect(emitted(sink).map((breadcrumb) => 'readingProvenance' in breadcrumb ? breadcrumb.readingProvenance : undefined))
@@ -802,20 +802,20 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
   });
 
   it('reports the reading even when the head did NOT move, so the re-thrown rejection is accounted for', async () => {
-    // The same-era arm re-throws the rejection unchanged, so without the
+    // The same-era path re-throws the rejection unchanged, so without the
     // breadcrumb there is no record that the network was asked at all.
     const sink = createSink();
     const rejection = wrappedRejection();
 
     await expect(
-      handleSubmitRejection(headSource(V8_HEAD), callOperation('v8'), rejection, sink)
+      handleSubmitRejection(headSource(LEDGER8_HEAD), callOperation('v8'), rejection, sink)
     ).rejects.toBe(rejection);
 
     expect(emitted(sink)).toStrictEqual([
       {
         decision: 'head-resolution',
         version: 'v8',
-        protocolVersion: V8_HEAD,
+        protocolVersion: LEDGER8_HEAD,
         source: 'public-data-provider',
         readingProvenance: 'post-rejection-re-read'
       }
@@ -835,7 +835,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
 
   it('never asks the network about one of this framework\'s own coded refusals, so emits nothing', async () => {
     const sink = createSink();
-    const pdp = headSource(V9_HEAD);
+    const pdp = headSource(LEDGER9_HEAD);
     const ownRefusal = new StaleHeadError(callOperation('v8'), 'v9', new Error('inner'));
 
     await expect(handleSubmitRejection(pdp, callOperation('v8'), ownRefusal, sink)).rejects.toBe(ownRefusal);
@@ -854,7 +854,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
     const sink = createSink();
 
     for (const readingProvenance of provenances) {
-      emitHeadResolution(sink, { head: 'v9', headProtocolVersion: V9_HEAD }, readingProvenance);
+      emitHeadResolution(sink, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, readingProvenance);
     }
 
     expect(
@@ -877,7 +877,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
   it('resolves the era despite the logger throwing, instead of rejecting', async () => {
     const sink = throwingSink();
 
-    await expect(resolveOperationEra(headSource(V9_HEAD), sink)).resolves.toBeDefined();
+    await expect(resolveOperationEra(headSource(LEDGER9_HEAD), sink)).resolves.toBeDefined();
 
     // The logger really was called and really did throw -- otherwise this test
     // would pass against a build that had stopped emitting altogether.
@@ -888,8 +888,8 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
   it('returns the SAME result as a run with no logger at all', async () => {
     // The second direction, and the one that matters: not failing is not
     // enough if the guard changed what the operation produced.
-    const withoutLogger = await resolveOperationEra(headSource(V9_HEAD_MINOR_BUMP));
-    const withBrokenLogger = await resolveOperationEra(headSource(V9_HEAD_MINOR_BUMP), throwingSink());
+    const withoutLogger = await resolveOperationEra(headSource(LEDGER9_HEAD_MINOR_BUMP));
+    const withBrokenLogger = await resolveOperationEra(headSource(LEDGER9_HEAD_MINOR_BUMP), throwingSink());
 
     expect(withBrokenLogger.head).toBe(withoutLogger.head);
     expect(withBrokenLogger.headProtocolVersion).toBe(withoutLogger.headProtocolVersion);
@@ -902,8 +902,8 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(V9_HEAD), 'deploy', { logger: sink })
-    ).rejects.toThrow(Ledger8DeployOnV9Error);
+      acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
+    ).rejects.toThrow(Ledger8DeployOnLedger9Error);
   });
 
   it('still completes the pipeline selection that follows a failed emission', async () => {
@@ -913,7 +913,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
 
     await expect(
-      acquireLedger8Runtime(retainedRuntime(V8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
+      acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS })
     ).resolves.toBeDefined();
 
     expect(sink.debug).toHaveBeenCalledTimes(2);
@@ -923,10 +923,10 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const sink = throwingSink();
     // The impossible direction -- an envelope newer than the block dating it -- with a fresh read
     // that agrees with the envelope, which is the branch that reports a stale head reading.
-    const v9Envelope = readHexFixture('state-migrated-v9.hex');
+    const ledger9Envelope = readHexFixture('state-migrated-v9.hex');
 
     await expect(
-      resolveContractStateEra('v8', rawState(v9Envelope, V8_HEAD, 'v8'), headSource(V9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
     ).rejects.toThrow(HeadStateEraMismatchError);
   });
 });

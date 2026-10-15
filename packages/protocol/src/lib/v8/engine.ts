@@ -57,7 +57,7 @@ export type {
  * crossing it is still plain data or an era handle, and no `Effect` reaches a
  * caller.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface Ledger8Engine {
   /**
@@ -122,7 +122,7 @@ export interface Ledger8Engine {
  * check on THIS repo's lockfile, not on a consumer's process.
  *
  * @returns The engine surface.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  * @see {@link ModuleGraphAndLazyLoading}
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> =>

@@ -21,7 +21,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PROVIDER_ERROR_CODES, UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
 import { createMidnightProvider } from '../midnight-provider';
 import type { UnboundTransaction, VersionedUnboundTransaction } from '../proof-provider';
 import { createWalletProvider, type VersionedFinalizedTransaction } from '../wallet-provider';
@@ -29,7 +29,7 @@ import { createWalletProvider, type VersionedFinalizedTransaction } from '../wal
 const coinPublicKey = 'coin-pk' as CoinPublicKey;
 const encryptionPublicKey = 'enc-pk' as EncPublicKey;
 
-const v8Payload = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) } as const;
+const ledger8Payload = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) } as const;
 
 const stubUnbound = (): UnboundTransaction => ({}) as UnboundTransaction;
 const stubFinalized = (): FinalizedTransaction => ({}) as FinalizedTransaction;
@@ -41,7 +41,7 @@ describe('createWalletProvider', () => {
     getEncryptionPublicKey: () => encryptionPublicKey
   });
 
-  it('tags the implementation result as the v9 arm', async () => {
+  it('tags the implementation result as the v9 variant', async () => {
     const balanced = stubFinalized();
     const provider = createWalletProvider(buildImpl(balanced));
 
@@ -77,14 +77,14 @@ describe('createWalletProvider', () => {
     const impl = buildImpl(stubFinalized());
     const provider = createWalletProvider(impl);
 
-    const rejection = await provider.balanceTx(v8Payload).then(
+    const rejection = await provider.balanceTx(ledger8Payload).then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('balanceTx');
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
@@ -100,7 +100,7 @@ describe('createWalletProvider', () => {
       );
 
     expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-    expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+    expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
@@ -135,14 +135,14 @@ describe('createMidnightProvider', () => {
     const submit = vi.fn(async () => 'tx-id' as TransactionId);
     const provider = createMidnightProvider(submit);
 
-    const rejection = await provider.submitTx(v8Payload).then(
+    const rejection = await provider.submitTx(ledger8Payload).then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
-    expect((rejection as V8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
+    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('submitTx');
     expect(submit).not.toHaveBeenCalled();
   });
 

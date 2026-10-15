@@ -21,13 +21,13 @@ import {
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  assertSeamsSupportEra,
+  assertProvidersSupportEra,
   type FinalizedTxData,
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { requireV9, requireV9Record } from './internal/era';
+import { requireLedger9, requireLedger9Record } from './internal/era';
 
 declare const __DEBUG__: boolean;
 
@@ -87,18 +87,18 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   options: SubmitTxOptions<PCK>
 ): Promise<string> {
   const { circuitId } = options;
-  // Before the first seam call, not after it. This flow is current-era only —
+  // Before the first provider call, not after it. This flow is current-era only —
   // every payload below is tagged `'v9'` — so a provider set missing that era
   // cannot carry the transaction, and finding out at `balanceTx` would mean
   // paying for a proof first.
-  assertSeamsSupportEra(CURRENT_LEDGER_VERSION, providers);
+  assertProvidersSupportEra(CURRENT_LEDGER_VERSION, providers);
   assertValidMidnightConfig(providers.config);
-  const provenTx = requireV9(
+  const provenTx = requireLedger9(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
     'proveTx',
     circuitId
   );
-  const toSubmit = requireV9(
+  const toSubmit = requireLedger9(
     await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }, intentTtl(providers.config)),
     'balanceTx',
     circuitId
@@ -152,7 +152,7 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
   options: SubmitTxOptions<PCK>
 ): Promise<FinalizedTxData> => {
   const txId = await submitTxCore(providers, options);
-  return requireV9Record(
+  return requireLedger9Record(
     await providers.publicDataProvider.watchForTxData(txId),
     'watchForTxData',
     options.circuitId

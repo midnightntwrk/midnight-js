@@ -22,9 +22,9 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/v8/compose';
+import { type ComposeLedger8CallOptions, composeLedger8CallTx } from '../lib/v8/compose';
 import type { TranscriptPojo } from '../lib/v8/executable';
-import { emptyPartitionContext, emptyZswapLocalState, V8_UNPROVEN_TX_TAG } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState, LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
@@ -65,7 +65,7 @@ const buildRegisteredOperation = (): LedgerV8.ContractOperation => {
   return op;
 };
 
-const buildV8ContractStateWithOperation = (circuitId: string): LedgerV8.ContractState => {
+const buildLedger8ContractStateWithOperation = (circuitId: string): LedgerV8.ContractState => {
   const contractState = new LedgerV8.ContractState();
   contractState.setOperation(circuitId, buildRegisteredOperation());
   return contractState;
@@ -76,7 +76,7 @@ const buildV8ContractStateWithOperation = (circuitId: string): LedgerV8.Contract
 // pre-fork handle may travel. This helper does the one conversion that used to
 // happen inside the leg, so every case below still starts from a realistic
 // `executeCircuit` result.
-const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallOptions => {
+const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeLedger8CallOptions => {
   const transcript = buildTranscript();
   return {
     circuitId: transcript.circuitId,
@@ -98,23 +98,23 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
   };
 };
 
-describe('composeV8CallTx (real ledger-v8 WASM)', () => {
+describe('composeLedger8CallTx (real ledger-v8 WASM)', () => {
   it('composes and serializes a v8-native call transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
-    const contractState = buildV8ContractStateWithOperation('increment');
+    const contractState = buildLedger8ContractStateWithOperation('increment');
 
-    const { txBytes: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { txBytes: bytes } = composeLedger8CallTx(buildCallOptions(contractState), LedgerV8);
 
     expect(bytes).toBeInstanceOf(Uint8Array);
-    const tag = Buffer.from(bytes.subarray(0, V8_UNPROVEN_TX_TAG.length)).toString('latin1');
+    const tag = Buffer.from(bytes.subarray(0, LEDGER8_UNPROVEN_TX_TAG.length)).toString('latin1');
     // The tag itself carries `proof-preimage`, so this one assertion is also
     // what shows the transaction was never proven.
-    expect(tag).toBe(V8_UNPROVEN_TX_TAG);
+    expect(tag).toBe(LEDGER8_UNPROVEN_TX_TAG);
   });
 
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
-    const contractState = buildV8ContractStateWithOperation('increment');
+    const contractState = buildLedger8ContractStateWithOperation('increment');
 
-    const { txBytes: bytes } = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    const { txBytes: bytes } = composeLedger8CallTx(buildCallOptions(contractState), LedgerV8);
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
 
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));
@@ -163,10 +163,10 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
         captured.keyLocation = keyLocation;
       }
     }
-    const capturingV8: typeof LedgerV8 = { ...LedgerV8, ContractCallPrototype: CapturingContractCallPrototype };
-    const options = buildCallOptions(buildV8ContractStateWithOperation('increment'));
+    const capturingLedger8: typeof LedgerV8 = { ...LedgerV8, ContractCallPrototype: CapturingContractCallPrototype };
+    const options = buildCallOptions(buildLedger8ContractStateWithOperation('increment'));
 
-    composeV8CallTx(options, capturingV8);
+    composeLedger8CallTx(options, capturingLedger8);
 
     expect(captured.op?.serialize()).toEqual(buildRegisteredOperation().serialize());
     expect(captured.entryPoint).toBe('increment');
@@ -188,7 +188,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
 
     let caught: unknown;
     try {
-      composeV8CallTx(buildCallOptions(blankContractState), LedgerV8);
+      composeLedger8CallTx(buildCallOptions(blankContractState), LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -210,7 +210,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
 
     let caught: unknown;
     try {
-      composeV8CallTx(buildCallOptions(withBlankOperation), LedgerV8);
+      composeLedger8CallTx(buildCallOptions(withBlankOperation), LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -222,18 +222,18 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   });
 
   it('throws a plain Error when partitionTranscripts returns no result for the single call submitted', () => {
-    const contractState = buildV8ContractStateWithOperation('increment');
-    const poisonedV8: typeof LedgerV8 = { ...LedgerV8, partitionTranscripts: () => [] };
+    const contractState = buildLedger8ContractStateWithOperation('increment');
+    const poisonedLedger8: typeof LedgerV8 = { ...LedgerV8, partitionTranscripts: () => [] };
 
-    expect(() => composeV8CallTx(buildCallOptions(contractState), poisonedV8)).toThrow(/partitionTranscripts returned no result/);
+    expect(() => composeLedger8CallTx(buildCallOptions(contractState), poisonedLedger8)).toThrow(/partitionTranscripts returned no result/);
   });
 
   it('refuses an empty network id rather than baking it into the transaction', () => {
-    const options = { ...buildCallOptions(buildV8ContractStateWithOperation('increment')), networkId: '' };
+    const options = { ...buildCallOptions(buildLedger8ContractStateWithOperation('increment')), networkId: '' };
 
     let caught: unknown;
     try {
-      composeV8CallTx(options, LedgerV8);
+      composeLedger8CallTx(options, LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -245,11 +245,11 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   });
 
   it('refuses an invalid ttl rather than composing a transaction the ledger dates to the epoch', () => {
-    const options = { ...buildCallOptions(buildV8ContractStateWithOperation('increment')), ttl: new Date('not-a-date') };
+    const options = { ...buildCallOptions(buildLedger8ContractStateWithOperation('increment')), ttl: new Date('not-a-date') };
 
     let caught: unknown;
     try {
-      composeV8CallTx(options, LedgerV8);
+      composeLedger8CallTx(options, LedgerV8);
     } catch (error) {
       caught = error;
     }

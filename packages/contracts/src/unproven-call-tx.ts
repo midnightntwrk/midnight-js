@@ -19,6 +19,7 @@ import { type CoinPublicKey, type ContractModuleProvider, type ContractState } f
 import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { exitResultOrError, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -29,7 +30,6 @@ import type {
   CallOptionsWithProviderDataDependencies
 } from './call';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
 import { HeadReadFailedError, IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
@@ -182,7 +182,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
 
     return {
-      era: CURRENT_PIPELINE_ERA,
+      era: CURRENT_LEDGER_VERSION,
       public: {
         nextContractState: rootCall.public.contractState,
         nextContractStateEncoded: rootCall.public.contractState.encode(),

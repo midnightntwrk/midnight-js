@@ -25,6 +25,8 @@ export * as utils from '@midnight-ntwrk/midnight-js-utils';
 // cost, and why these come off leaf subpaths rather than protocol's root
 // barrel are all recorded in BarrelPublishedSurface.
 export {
+  CURRENT_LEDGER_VERSION,
+  type CurrentLedgerVersion,
   LEDGER_VERSIONS,
   type LedgerVersion,
   networkHeadVersion,

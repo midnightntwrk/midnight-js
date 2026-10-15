@@ -13,14 +13,23 @@ Everything in this package that carries a `version` discriminant follows from
 that one fact. This document records what the tag lets a caller do, and — more
 importantly — the three things it deliberately does not establish.
 
-The seams themselves are [SeamEraDeclarations](./seam-era-declarations.md). The
+Two families of names, and the word that tells them apart. A name that spells
+out `Transaction` is a transaction itself: the payload a provider method takes or
+returns (`VersionedTransaction`, `Ledger9Transaction`, `Ledger8TransactionBytes`,
+`VersionedFinalizedTransaction`), whose v8 variant carries `txBytes`. A name with
+`Tx` is data about a transaction, kept from 4.x: the record a read method returns
+(`FinalizedTxData`, `Ledger8FinalizedTxData`, `VersionedFinalizedTxData`), whose
+v8 variant carries a live `tx`.
+
+What each provider declares about the eras it serves is covered in
+[ProviderEraDeclarations](./provider-era-declarations.md). The
 decision this implements is
 `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
 
 ## The retained variant crosses as bytes, the current variant as an object
 
-`V8TxBytes` is the retained variant of every transaction payload crossing a provider
-seam — `proveTx`, `balanceTx`, `submitTx` — in both directions. It carries
+`Ledger8TransactionBytes` is the retained variant of every transaction payload passed to a provider
+method — `proveTx`, `balanceTx`, `submitTx` — in both directions. It carries
 serialized, tag-prefixed bytes rather than a live ledger object, because a live
 object cannot survive the crossing.
 
@@ -39,7 +48,7 @@ deserializes anything, instead of guessing and failing deep inside a decoder.
 nothing in this package checks for the tag prefix.
 
 **It does not say which pipeline stage a transaction has reached.** The retained
-variant is identical for all three seams. On that path, stage is the caller's
+variant is identical for all three methods. On that path, stage is the caller's
 responsibility — the type carries no statement about it.
 
 **On a read, it does not promise the bytes agree with it.** Nothing here compares

@@ -28,9 +28,8 @@ import {
   type LedgerParameters,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
-
-import type { CurrentPipelineEra } from './era';
 
 /**
  * Describes the target of a circuit invocation.
@@ -225,5 +224,5 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
 }

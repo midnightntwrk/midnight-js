@@ -75,3 +75,35 @@ Three rules make it usable:
   called.** Rejected: it works only while the call site and the handling code
   are the same code. A result passed to a helper, stored, or handled by a
   shared error path carries no such context.
+
+## Amendment — one set of era values (2026-10-14)
+
+Issue #1489. The decision stands: every result is tagged with the pipeline that
+produced it, read off the compiled artifact. What changes is the value set.
+
+`result.era` used `'ledger8' | 'ledger9'`, while `error.era`, `supportedEras`
+and a payload's `version` used `'v8' | 'v9'`. One concept spelt two ways sent a
+reader to this ADR to learn why. `result.era` is now a `LedgerVersion`,
+`'v8' | 'v9'`.
+
+- Rule 2 holds with new literals: a current-era result declares
+  `CurrentLedgerVersion` (`'v9'`), a `Ledger8` result declares `'v8'`, so
+  `result.era` still discriminates. The `Ledger8` results take the literal
+  rather than `RetainedLedgerVersion`, because that type widens when a further
+  era is retained, and the `Ledger8` pipeline is v8 for good.
+- Rule 3 is withdrawn. `PipelineEra`, `CurrentPipelineEra`,
+  `RetainedPipelineEra`, `CURRENT_PIPELINE_ERA` and `RETAINED_PIPELINE_ERA` are
+  removed, and `packages/contracts/src/era.ts` with them. The vocabulary a
+  consumer names is the `LedgerVersion` family from
+  `@midnight-ntwrk/midnight-js-protocol`.
+- The reason the two spellings existed — a retained-era call after the fork has
+  `era: 'v8'` and `version: 'v9'` — is now carried by the field names alone. The
+  two fields name different facts; they do not need different alphabets.
+- What the shared alphabet gives up: a value in the wrong field still type-checks.
+  A caller comparing `result.era` where it meant `public.version` is no longer
+  stopped by the compiler, and inside the package `assertEraCompatible(pipeline,
+  head, kind)` no longer refuses its two era arguments passed the other way round.
+  Both call sites pass the literal `'v8'` first, and tests of their behaviour on
+  a post-fork head pin the order.
+
+The sections above keep the names that were current when they were written.

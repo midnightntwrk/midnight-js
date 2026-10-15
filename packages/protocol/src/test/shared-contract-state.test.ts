@@ -21,7 +21,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError, StateInconsistentError } from '../errors';
-import { extractV9EncodedStateValue } from '../lib/era/envelope';
+import { extractLedger9EncodedStateValue } from '../lib/era/envelope';
 import {
   type ContractBalance,
   type ContractStateDecoder,
@@ -70,7 +70,7 @@ describe('decodeContractStateWith', () => {
   it('carries exactly the encoded state the envelope reader produces', () => {
     const raw = readHexFixture('state-migrated-v9.hex');
 
-    expect(decodeContractStateWith(raw, 'v9', ledgerV9).state).toEqual(extractV9EncodedStateValue(raw));
+    expect(decodeContractStateWith(raw, 'v9', ledgerV9).state).toEqual(extractLedger9EncodedStateValue(raw));
   });
 
   // A blank slot is not a key of zero bytes: hashing nothing would produce a
@@ -296,7 +296,7 @@ describe('decodeContractStateWith carries the contract balance', () => {
   });
 });
 
-// The RETAINED arm is the only place this code path runs in production, and
+// The RETAINED-era path is the only place this code path runs in production, and
 // every test above it reads a v9 state. `DecodableContractState.balance` is
 // structural, so a retained state whose `.balance` resolved to `undefined`
 // would decode to an empty map and reproduce #1345 with the v9 tests all green.
@@ -315,7 +315,7 @@ describe('decodeContractStateWith carries the balance off a RETAINED-era state',
 
 // `DecodableContractState.balance` is structural and both vendors declare it
 // non-optional, so only an INJECTED decoder can answer without one. That is
-// exactly the seam worth failing loudly at: `new Map(undefined)` is an empty
+// exactly the place worth failing loudly at: `new Map(undefined)` is an empty
 // map, indistinguishable from a contract that holds nothing, which is the
 // substitution #1345 was made of.
 describe('decodeContractStateWith refuses a state that resolves no balance', () => {

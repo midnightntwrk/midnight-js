@@ -21,16 +21,18 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { type ProviderSeam, UntaggedPayloadError, V8PayloadUnsupportedError } from './errors';
-import type { VersionedTx } from './versioned';
+import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
+import type { VersionedTransaction } from './versioned';
 
 /**
- * The handlers a provider registers for the eras that cross its seam as
- * serialized bytes — one optional entry per {@link RetainedLedgerVersion}.
+ * The entries a provider registers for the eras that reach it as
+ * serialized bytes — one optional entry per {@link RetainedLedgerVersion}. An
+ * entry is a handler function in the `create*FromHandlers` factories and a
+ * `ProvingProvider` in `ProvingProvidersByEra`.
  *
  * The current era is EXCLUDED from the key set on purpose, and that exclusion
- * is the point of the type: the current era crosses the seam as a live ledger
- * object, never as bytes, so a handler registered against it would have the
+ * is the point of the type: a current-era transaction is passed to the provider as a live ledger
+ * object, never as bytes, so an entry registered against it would have the
  * wrong signature and serve a request that can never arrive. Registering one is
  * a build failure rather than a comment asking implementers not to.
  *
@@ -39,25 +41,25 @@ import type { VersionedTx } from './versioned';
  * registrable here on its own — no change to this type, and no change to any
  * provider that already declines to register it.
  *
- * @typeParam H - The handler signature for one retained era at this seam.
+ * @typeParam H - The entry type for one retained era.
  */
-export type RetainedEraHandlers<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
+export type RetainedEraEntries<H> = Partial<Readonly<Record<RetainedLedgerVersion, H>>>;
 
 /**
- * The era list a provider assembled from these handlers serves.
+ * The era list a provider assembled from these entries serves.
  *
- * Derived from the handlers actually supplied rather than written out beside them:
+ * Derived from the entries actually supplied rather than written out beside them:
  * a hand-written list is a second statement of the same fact, and the two drift
- * the first time a handler is added or removed. The current era is always present
- * because {@link RetainedEraHandlers} is the only optional half — a provider
- * with no current-era handler cannot be constructed.
+ * the first time an entry is added or removed. The current era is always present
+ * because {@link RetainedEraEntries} is the only optional half — a provider
+ * with no current-era entry cannot be constructed.
  *
- * @param retainedEras The retained handlers supplied to the factory, if any.
+ * @param retainedEras The retained entries supplied to the factory, if any.
  * @returns The eras this provider declares, frozen so a consumer cannot widen
  *          the declaration after construction and make
- *          `assertSeamsSupportEra` pass for an era the handlers do not serve.
+ *          `assertProvidersSupportEra` pass for an era the entries do not serve.
  */
-export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): readonly LedgerVersion[] =>
+export const erasServedBy = (retainedEras?: RetainedEraEntries<unknown>): readonly LedgerVersion[] =>
   Object.freeze<LedgerVersion[]>([
     CURRENT_LEDGER_VERSION,
     ...RETAINED_LEDGER_VERSIONS.filter((era) => retainedEras?.[era] !== undefined)
@@ -68,8 +70,8 @@ export const erasServedBy = (retainedEras?: RetainedEraHandlers<unknown>): reado
  * current-era object, or a retained era's bytes together with the handler
  * registered for that era.
  *
- * @typeParam T - The current era's ledger transaction type at this seam.
- * @typeParam H - The retained-era handler signature at this seam.
+ * @typeParam T - The current era's ledger transaction type.
+ * @typeParam H - The retained-era handler signature.
  */
 export type EraRequest<T, H> =
   | { readonly era: CurrentLedgerVersion; readonly tx: T }
@@ -79,16 +81,16 @@ export type EraRequest<T, H> =
  * Narrows a version-tagged payload onto the era that serves it, refusing an era
  * no handler was registered for.
  *
- * This is `unwrapV9` generalised to a provider that serves more than one era,
+ * This is `unwrapLedger9` generalised to a provider that serves more than one era,
  * and it reports the same two errors for the same two reasons — so widening a
  * provider to a second era does not change what a caller catches when it sends
  * an era that provider still does not serve.
  *
- * @param payload The version-tagged payload that arrived at the seam.
- * @param seam The provider method being implemented, used in error messages.
+ * @param payload The version-tagged payload that arrived at the method.
+ * @param method The provider method being implemented, used in error messages.
  * @param retainedEras The retained handlers this provider was built with.
  * @returns The era to run, the payload it takes, and for a retained era its handler.
- * @throws V8PayloadUnsupportedError if the payload carries a retained era for
+ * @throws Ledger8PayloadUnsupportedError if the payload carries a retained era for
  *         which no handler was registered.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised. The
  *         types make that unrepresentable, so it is reachable only from
@@ -96,15 +98,15 @@ export type EraRequest<T, H> =
  *         `midnight-js-types`, or across an untyped boundary.
  */
 export const narrowToEra = <T, H>(
-  payload: VersionedTx<T>,
-  seam: ProviderSeam,
-  retainedEras: RetainedEraHandlers<H> | undefined
+  payload: VersionedTransaction<T>,
+  method: TransactionMethod,
+  retainedEras: RetainedEraEntries<H> | undefined
 ): EraRequest<T, H> => {
   // Guards the JavaScript-caller case before the switch, so a null or primitive
   // payload reports the same coded error as a bad tag rather than throwing a
   // bare TypeError on property access.
   if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
   switch (payload.version) {
     case CURRENT_LEDGER_VERSION:
@@ -116,22 +118,22 @@ export const narrowToEra = <T, H>(
       const handler = retainedEras?.[payload.version];
       if (handler === undefined) {
         // The same error a v9-only provider raises, for the same reason: this
-        // seam does not serve the era that arrived. `txBytes` is required by
+        // method does not serve the era that arrived. `txBytes` is required by
         // the type, so the instance check is for the JavaScript caller the
         // object guard above exists for.
-        throw new V8PayloadUnsupportedError(
-          seam,
+        throw new Ledger8PayloadUnsupportedError(
+          method,
           payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
         );
       }
       return { era: payload.version, handler, txBytes: payload.txBytes };
     }
     default: {
-      // Keeps the switch exhaustive: if an era is added to `VersionedTx`
+      // Keeps the switch exhaustive: if an era is added to `VersionedTransaction`
       // without a case here, `payload` stops being `never` and this assignment
       // fails to compile.
       const unhandled: never = payload;
-      throw new UntaggedPayloadError(seam, unhandled);
+      throw new UntaggedPayloadError(method, unhandled);
     }
   }
 };

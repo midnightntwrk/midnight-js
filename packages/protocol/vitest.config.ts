@@ -36,7 +36,7 @@ export default defineConfig({
         branches: 100,
         statements: 100,
         // Per-file floors for the version module and the dual-ledger engine
-        // seam. All at 100 — every one of these files currently achieves full
+        // boundary. All at 100 — every one of these files currently achieves full
         // coverage. If a lower bound is ever PR-justified, replace the literal
         // 100 for that path with the real achieved number and say why in a
         // comment here, never silently relax it. If v8 coverage
@@ -88,7 +88,7 @@ export default defineConfig({
         'src/lib/shared/ledger-version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Shared by BOTH eras' deploy legs, and the three refusals it owns are
         // what stop a deploy landing at an address the caller's artifacts do
-        // not describe. Floored for the same reason every other seam file is.
+        // not describe. Floored for the same reason every other era-boundary file is.
         'src/lib/shared/verifier-keys.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/shared/compose-options.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/shared/assemble-call.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },

@@ -23,7 +23,7 @@ import {
   type Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CURRENT_LEDGER_VERSION,
@@ -32,9 +32,9 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraHandlers } from './era-handlers';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
-import type { VersionedTx } from './versioned';
+import type { VersionedTransaction } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
@@ -42,14 +42,14 @@ export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding
  * An unproven transaction on its way to a {@link ProofProvider}: either the
  * live v9 ledger object, or the serialized bytes of a v8-era transaction.
  */
-export type VersionedUnprovenTransaction = VersionedTx<UnprovenTransaction>;
+export type VersionedUnprovenTransaction = VersionedTransaction<UnprovenTransaction>;
 
 /**
  * A proven-but-unbalanced transaction coming back from a {@link ProofProvider}:
  * either the live v9 ledger object, or the serialized bytes of a v8-era
  * transaction.
  */
-export type VersionedUnboundTransaction = VersionedTx<UnboundTransaction>;
+export type VersionedUnboundTransaction = VersionedTransaction<UnboundTransaction>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -63,7 +63,7 @@ export interface ProveTxConfig {
    *
    * Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
    * `InvalidArgumentError` instead of ignoring it: {@link createProofProvider},
-   * {@link createProofProviderForEras} and `dappConnectorProofProvider`.
+   * {@link createProofProviderFromProvingProviders} and `dappConnectorProofProvider`.
    */
   readonly timeout?: number;
 }
@@ -76,7 +76,7 @@ export interface ProofProvider {
   /**
    * The ledger eras THIS INSTANCE serves.
    *
-   * Read before an operation starts, by `assertSeamsSupportEra`, so a set of
+   * Read before an operation starts, by `assertProvidersSupportEra`, so a set of
    * providers that cannot carry a transaction end to end is refused before its
    * proof is paid for. A provider built by one of the `create*` factories has
    * this computed from the handlers it was given; a provider implementing this
@@ -98,8 +98,8 @@ export interface ProofProvider {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    * @returns The proven transaction, version-tagged, and always in the SAME era the request
-   *          carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
+   *          carried. Narrow on `version` — or call `unwrapLedger9` — before reading the payload.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
    *         implementations do is worth knowing before you send one: `httpClientProofProvider`
    *         and `dappConnectorProofProvider` both serve it, taking and returning serialized
    *         bytes. {@link createProofProvider} does NOT — it adapts a v9-only `ProvingProvider`,
@@ -111,7 +111,7 @@ export interface ProofProvider {
    *         against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-   *         apply it. {@link createProofProvider}, {@link createProofProviderForEras} and
+   *         apply it. {@link createProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
    *         `httpClientProofProvider` honours it.
    */
@@ -122,13 +122,13 @@ export interface ProofProvider {
 }
 
 /**
- * Proves a CURRENT-era transaction, which crosses this seam as a live ledger
+ * Proves a CURRENT-era transaction, which is passed to `proveTx` as a live ledger
  * object because both sides share the current era's WASM instance.
  */
 export type CurrentEraProver = (tx: UnprovenTransaction, config?: ProveTxConfig) => Promise<UnboundTransaction>;
 
 /**
- * Proves a RETAINED-era transaction, which crosses this seam as serialized
+ * Proves a RETAINED-era transaction, which is passed to `proveTx` as serialized
  * bytes in both directions: the runtime that owns such a transaction is loaded
  * lazily and its instances are not interchangeable with the current era's.
  */
@@ -147,7 +147,7 @@ export interface ProofProviderHandlers {
   /** Required: every provider serves the current era. */
   readonly currentEra: CurrentEraProver;
   /** Optional, one entry per retained era this provider serves. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraProver>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraProver>;
 }
 
 /**
@@ -171,7 +171,7 @@ export interface ProofProviderHandlers {
  * ```typescript
  * const proofProvider = createProofProviderFromHandlers({
  *   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
- *   retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+ *   retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
  * });
  * // proofProvider.supportedEras === ['v9', 'v8']
  * ```
@@ -199,7 +199,7 @@ export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers)
 
 /**
  * One {@link ProvingProvider} per ledger era, for
- * {@link createProofProviderForEras}.
+ * {@link createProofProviderFromProvingProviders}.
  */
 export interface ProvingProvidersByEra {
   readonly currentEra: ProvingProvider;
@@ -207,21 +207,21 @@ export interface ProvingProvidersByEra {
    * One entry per retained era served, in that era's own `ProvingProvider`
    * shape. An entry present but `undefined` leaves the era unserved, exactly as
    * omitting it does: `supportedEras` excludes it, and a payload arriving on
-   * that era is refused with `V8PayloadUnsupportedError`.
+   * that era is refused with `Ledger8PayloadUnsupportedError`.
    *
    * Register the provider built for the era the entry names. Nothing verifies
    * that — the current era's shape is a structural superset of the retained
    * era's, so the wrong one type-checks.
    *
-   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
    */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraProvingProvider>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraProvingProvider>;
   /**
    * Cost model for the CURRENT era, defaulting to the initial cost model. A
    * retained era always proves with its own era's initial cost model, which
    * this cannot override.
    *
-   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+   * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
    */
   readonly costModel?: CostModel;
 }
@@ -239,13 +239,13 @@ const PROVE_BY_RETAINED_ERA: Readonly<
     (txBytes: Uint8Array, provingProvider: RetainedEraProvingProvider) => Promise<Uint8Array>
   >
 > = {
-  v8: proveV8Transaction
+  v8: proveLedger8Transaction
 };
 
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {
   if (config?.timeout !== undefined) {
     throw new InvalidArgumentError(
-      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderForEras: ' +
+      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderFromProvingProviders: ' +
         'a ProvingProvider takes no per-request configuration, so the timeout could not reach the proving call. ' +
         'Omit it, or use httpClientProofProvider, which honours it.'
     );
@@ -253,8 +253,8 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
 };
 
 const toRetainedEraHandlers = (
-  provingProviders: RetainedEraHandlers<RetainedEraProvingProvider>
-): RetainedEraHandlers<RetainedEraProver> => {
+  provingProviders: RetainedEraEntries<RetainedEraProvingProvider>
+): RetainedEraEntries<RetainedEraProver> => {
   const handlers: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
   for (const era of RETAINED_LEDGER_VERSIONS) {
     const provingProvider = provingProviders[era];
@@ -290,7 +290,7 @@ const toRetainedEraHandlers = (
  *         if `proveTxConfig.timeout` is set (including `0`): a `ProvingProvider`
  *         takes no per-request configuration. To bound proving time, use
  *         `httpClientProofProvider`, which honours it.
- * @throws V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
+ * @throws Ledger8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
  *         a retained era no provider was registered for.
  * @throws UntaggedPayloadError raised by `proveTx` if `version` is missing or
  *         unrecognised.
@@ -305,16 +305,16 @@ const toRetainedEraHandlers = (
  *
  * @example
  * ```typescript
- * const proofProvider = createProofProviderForEras({
+ * const proofProvider = createProofProviderFromProvingProviders({
  *   currentEra: currentEraProver.asProvingProvider(),
  *   retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
  * });
  * // supportedEras is ['v9', 'v8']
  * ```
  *
- * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md | Seam era declarations}
+ * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
  */
-export const createProofProviderForEras = (provingProviders: ProvingProvidersByEra): ProofProvider => {
+export const createProofProviderFromProvingProviders = (provingProviders: ProvingProvidersByEra): ProofProvider => {
   const { currentEra, retainedEras } = readEraEntries('proveTx', provingProviders, 'proving-provider');
   const { costModel = CostModel.initialCostModel() } = provingProviders;
   if (!isObject(costModel)) {
@@ -335,13 +335,13 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
  *
  * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a single current-era
- * `ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
+ * `ProvingProvider`. It rejects a v8 payload with `Ledger8PayloadUnsupportedError`,
  * and an untagged one with `UntaggedPayloadError`. It also rejects any
  * `proveTxConfig.timeout`, including `0`, with `InvalidArgumentError` before
  * proving starts: a `ProvingProvider` takes no per-request configuration. To
  * bound proving time, use `httpClientProofProvider`. To serve a retained era as
  * well, pass that era's own proving provider to
- * {@link createProofProviderForEras}, or, where the proving itself is not a
+ * {@link createProofProviderFromProvingProviders}, or, where the proving itself is not a
  * `ProvingProvider` call, write the handlers directly with
  * {@link createProofProviderFromHandlers}.
  *
@@ -352,4 +352,4 @@ export const createProofProviderForEras = (provingProviders: ProvingProvidersByE
 export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
-): ProofProvider => createProofProviderForEras({ currentEra: provingProvider, costModel });
+): ProofProvider => createProofProviderFromProvingProviders({ currentEra: provingProvider, costModel });

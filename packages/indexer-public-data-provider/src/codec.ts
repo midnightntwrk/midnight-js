@@ -16,7 +16,7 @@
 import {
   LEDGER_VERSIONS,
   type LedgerVersion,
-  loadLedger8,
+  loadLedger8Protocol,
   protocolVersionToLedger,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -33,10 +33,10 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 // Type-only, so nothing here links the v8 chunk: the runtime is acquired
-// through `loadLedger8()` and only when a v8-era record asks for it. Same
-// precedent as `FinalizedTxDataV8` in `@midnight-ntwrk/midnight-js-types`.
-import type { FinalizedTransaction as V8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { RawContractState, ReadSeam, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+// through `loadLedger8Protocol()` and only when a v8-era record asks for it. Same
+// precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { RawContractState, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -62,7 +62,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
-import { EraUnsupportedError, IndexerDataError } from './errors';
+import { DecoderEraUnsupportedError, IndexerDataError } from './errors';
 import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 /**
@@ -81,14 +81,14 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
 /**
  * Facts identifying one read, carried onto a decode failure so it names the
- * record and the seam rather than only the era.
+ * record and the method rather than only the era.
  */
 type ReadDetails = Readonly<Record<string, string | number>>;
 
 /**
  * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
  *
- * Deliberately narrower than {@link decodeVersionedTransaction}, which dispatches per record across
+ * Deliberately narrower than {@link decodeRecordTransaction}, which dispatches per record across
  * both eras. `queryRawContractState` serves both era-tagged payloads undecoded for a caller that
  * needs the other runtime: the contract state, dated by the block that only upper-bounds its
  * envelope (see {@link parseHexContractState}), and the block's own ledger parameters, whose era the
@@ -152,17 +152,17 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters => {
 
 /**
  * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
- * runtime through `loadLedger8()` — the only sanctioned path to it — and reads
+ * runtime through `loadLedger8Protocol()` — the only sanctioned path to it — and reads
  * the payload with the same marker convention the v9 wrapper uses.
  *
  * Routed through `withDeserializationContext` so a v8 failure arrives
  * classified exactly as a v9 failure does, including a binding that throws a
  * bare string rather than an `Error`.
  */
-const parseHexTransactionV8 = async (s: string, details?: ReadDetails): Promise<V8FinalizedTransaction> => {
-  const v8 = await loadLedger8();
+const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Promise<Ledger8FinalizedTransaction> => {
+  const v8 = await loadLedger8Protocol();
   return withDeserializationContext(
-    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseHexTransactionV8`, details },
+    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseLedger8HexTransaction`, details },
     () => v8.Transaction.deserialize('signature', 'proof', 'binding', toByteArray(s))
   );
 };
@@ -172,35 +172,35 @@ const parseHexTransactionV8 = async (s: string, details?: ReadDetails): Promise<
  * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
  *
  * `DistributivePick` rather than a bare `Pick`: distributed over the union it
- * yields one arm per era, so a v8 tag can never be paired with a v9 object.
+ * yields one variant per era, so a v8 tag can never be paired with a v9 object.
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
-export type DecodedVersionedTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
+export type DecodedRecordTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
 
 /**
- * One decoder per {@link LedgerVersion}, each returning only its own arm of
- * {@link DecodedVersionedTransaction}.
+ * One decoder per {@link LedgerVersion}, each returning only its own variant of
+ * {@link DecodedRecordTransaction}.
  *
  * A total `Record` on a null prototype, frozen — see
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
  * `LedgerVersion`: an era added there stops this table type-checking. That an
- * era also has a *read arm* is asserted separately, by `_EveryEraHasAReadArm`
+ * era also has a *read variant* is asserted separately, by `_EveryEraHasAReadVariant`
  * in `@midnight-ntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
   readonly [V in LedgerVersion]: (
     hexTransaction: string,
     details: ReadDetails
-  ) => Promise<Extract<DecodedVersionedTransaction, { version: V }>>;
+  ) => Promise<Extract<DecodedRecordTransaction, { version: V }>>;
 };
 
 const transactionDecoders = {
   v8: async (hexTransaction: string, details: ReadDetails) => ({
     version: 'v8' as const,
-    tx: await parseHexTransactionV8(hexTransaction, details)
+    tx: await parseLedger8HexTransaction(hexTransaction, details)
   }),
-  // Wrapped in a resolved promise rather than decoded eagerly: both arms have
+  // Wrapped in a resolved promise rather than decoded eagerly: both decoders have
   // to be awaited the same way, and the v9 read stays the same synchronous
   // call `parseHexTransaction` already makes.
   v9: (hexTransaction: string, details: ReadDetails) =>
@@ -215,7 +215,7 @@ const TRANSACTION_DECODERS: TransactionDecoders = Object.freeze(
  * Which record a decode was for, and where it was read from.
  */
 export interface TransactionDecodeContext {
-  readonly seam: ReadSeam;
+  readonly method: ReadMethod;
   readonly protocolVersion: number;
   readonly recordRef: string;
 }
@@ -230,7 +230,7 @@ export interface TransactionDecodeContext {
  * returned record are the same fact.
  *
  * A payload that will not decode leaves as the `DeserializationError` the
- * runtime produced, carrying the era, the `protocolVersion`, the seam and the
+ * runtime produced, carrying the era, the `protocolVersion`, the method and the
  * record on its context. This layer deliberately does not re-attribute the
  * failure: whether the record disagrees with itself or the consumer's ledger
  * package is a different vintage than the network's are indistinguishable from
@@ -240,31 +240,31 @@ export interface TransactionDecodeContext {
  *                       serves it.
  * @param era The era whose runtime reads the payload. Validated at runtime, not
  *            merely type-checked.
- * @param context The record and seam a failure should name.
+ * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
- * @throws EraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
+ * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
  *   runtime and it cannot be acquired. From
  *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
  *   `IndexerError` — see {@link IndexerError}.
  * @throws DeserializationError for every decode failure.
  */
-export const decodeVersionedTransaction = async (
+export const decodeRecordTransaction = async (
   hexTransaction: string,
   era: LedgerVersion,
   context: TransactionDecodeContext
-): Promise<DecodedVersionedTransaction> => {
+): Promise<DecodedRecordTransaction> => {
   if (!isHex(hexTransaction)) {
     throw IndexerDataError.malformedTransactionEncoding();
   }
   const decode = TRANSACTION_DECODERS[era];
   if (typeof decode !== 'function') {
-    throw new EraUnsupportedError(context.seam, era, context.protocolVersion, context.recordRef);
+    throw new DecoderEraUnsupportedError(context.method, era, context.protocolVersion, context.recordRef);
   }
   return decode(hexTransaction, {
     era,
     protocolVersion: context.protocolVersion,
-    seam: context.seam,
+    method: context.method,
     recordRef: context.recordRef
   });
 };

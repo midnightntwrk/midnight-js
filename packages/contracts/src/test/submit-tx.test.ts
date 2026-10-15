@@ -281,8 +281,8 @@ describe('submit-tx', () => {
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
         // Without this the test passes even if both throw sites name 'proveTx',
-        // since the seam is the only difference between the two cases.
-        expect((rejection as EraInvariantViolationError).seam).toBe('proveTx');
+        // since the method is the only difference between the two cases.
+        expect((rejection as EraInvariantViolationError).method).toBe('proveTx');
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
 
@@ -296,7 +296,7 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-        expect((rejection as EraInvariantViolationError).seam).toBe('balanceTx');
+        expect((rejection as EraInvariantViolationError).method).toBe('balanceTx');
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
 
@@ -337,9 +337,9 @@ describe('submit-tx', () => {
     });
 
     // The pre-5.0.0 shapes a JavaScript caller, or a consumer built against an
-    // older `midnight-js-types`, actually produces. `requireV9` is a second,
-    // independent copy of the narrowing in `unwrapV9`, deliberately throwing a
-    // different error for the v8 arm — so the types-package tests cover none of
+    // older `midnight-js-types`, actually produces. `requireLedger9` is a second,
+    // independent copy of the narrowing in `unwrapLedger9`, deliberately throwing a
+    // different error for the v8 variant — so the types-package tests cover none of
     // this, and a copy-paste slip here would be invisible.
     describe('untagged payloads from a provider', () => {
       const rejectionOf = async (): Promise<unknown> => {
@@ -362,7 +362,7 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(UntaggedPayloadError);
         expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-        expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+        expect((rejection as UntaggedPayloadError).method).toBe('proveTx');
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
 
@@ -373,7 +373,7 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf();
 
         expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-        expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+        expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
 
@@ -390,7 +390,7 @@ describe('submit-tx', () => {
         );
 
         expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-        expect((rejection as UntaggedPayloadError).seam).toBe('watchForTxData');
+        expect((rejection as UntaggedPayloadError).method).toBe('watchForTxData');
       });
     });
 
@@ -413,7 +413,7 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-        expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+        expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
       });
 
       it('returns the v9 record unchanged when the read surface reports v9', async () => {

@@ -602,7 +602,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * is the one asymmetry with {@link contractStateObservable}, which tolerates
    * such an integer and decodes on the envelope alone; here `version` is a
    * required field with nothing to fall back to, so the read is refused as
-   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
+   * {@link IndexerDataError} with `kind: 'unknown-record-era'` rather than
    * guessed. Both arrive as an `IndexerError`, like every other failure from
    * this package.
    *

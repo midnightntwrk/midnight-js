@@ -17,7 +17,7 @@ import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnig
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { RetainedEraHandlers } from '../era-handlers';
+import type { RetainedEraEntries } from '../era-entries';
 import { createMidnightProviderFromHandlers, type MidnightProvider } from '../midnight-provider';
 import { createProofProviderFromHandlers, type ProofProvider, type UnboundTransaction } from '../proof-provider';
 import { createWalletProviderFromHandlers, type WalletProvider } from '../wallet-provider';
@@ -35,13 +35,13 @@ const keyReaders = {
   getEncryptionPublicKey: () => 'enc-pk' as never
 };
 
-describe('RetainedEraHandlers', () => {
+describe('RetainedEraEntries', () => {
   // The keying is what makes "raz a dobrze" a type-level fact rather than a
   // convention: the current era is EXCLUDED from the key set, so a handler
   // registered against it is a build failure — and a further era becomes
   // registrable on its own, with no change to this type.
   it('keys every era except the current one', () => {
-    expectTypeOf<keyof RetainedEraHandlers<string>>().toEqualTypeOf<Exclude<LedgerVersion, 'v9'>>();
+    expectTypeOf<keyof RetainedEraEntries<string>>().toEqualTypeOf<Exclude<LedgerVersion, 'v9'>>();
   });
 });
 
@@ -58,8 +58,8 @@ describe('createProofProviderFromHandlers', () => {
   it('refuses a retained handler registered for the current era', () => {
     createProofProviderFromHandlers({
       currentEra: async () => stubUnbound(),
-      // @ts-expect-error the current era is not a retained era: it crosses the
-      // seam as a live ledger object, not as bytes.
+      // @ts-expect-error the current era is not a retained era: it is passed
+      // to the provider as a live ledger object, not as bytes.
       retainedEras: { v9: async (bytes: Uint8Array) => bytes }
     });
   });

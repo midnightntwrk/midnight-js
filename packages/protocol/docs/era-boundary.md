@@ -1,8 +1,8 @@
 ---
-title: EraSeam
+title: EraBoundary
 ---
 
-# The era seam
+# The era boundary
 
 `@midnightntwrk/midnight-js-protocol` puts one boundary between a caller and
 the two ledger eras it supports. On one side a caller holds a `LedgerEra`
@@ -11,11 +11,11 @@ object, or — for the operations only the retained pre-fork era can perform —
 mixed. This document records why that boundary is shaped the way it is: how the
 surface is split between the two objects, and how each side is acquired.
 
-## What may cross the seam
+## What may cross the boundary
 
 What is allowed across the era boundary is decided in
 `docs/adr/0010-publish-era-handles-alongside-their-plain-data.md`. The half that
-governs THIS seam is the strict one: the era-agnostic facade trades plain data
+governs THIS boundary is the strict one: the era-agnostic facade trades plain data
 only, encoded at the crossing point. The `structuredClone` gate in
 `src/test/era-parity.test.ts` records that rule but does not enforce it — a
 `wasm-bindgen` handle clones without throwing, so the gate would pass one
@@ -81,7 +81,7 @@ resolving. That property is gated by `v8-load-engine-laziness.test.ts`.
 ## One memo slot per era
 
 `loadLedgerEra` is memoised per era, so the retained pre-fork WASM is
-instantiated at most once per process. `loadLedger8` and `loadLedger8Engine`
+instantiated at most once per process. `loadLedger8Protocol` and `loadLedger8Engine`
 memoise their own imports for the same reason, one slot each.
 
 The memoisation is one slot per era, not one shared slot. A shared slot would
@@ -98,7 +98,7 @@ stay broken for the life of the process.
 
 The same rule holds one level down, at each accessor:
 
-- In `loadLedger8`, a failed load is not memoised: the rejection propagates as
+- In `loadLedger8Protocol`, a failed load is not memoised: the rejection propagates as
   `Ledger8RuntimeMissingError` and the next call retries the import.
 - In `loadLedger8Engine`, a failed load is not memoised either: the next call
   retries the import.
@@ -109,12 +109,12 @@ convert a repairable environment problem into a process-lifetime one.
 
 ## Acquisition is hoisted, so the era methods stay synchronous
 
-`createV8Era` acquires the retained pre-fork ledger through `loadLedger8` — the
+`createLedger8Era` acquires the retained pre-fork ledger through `loadLedger8Protocol` — the
 only sanctioned runtime path to it — and binds it into closure, so the era's
 own methods stay synchronous.
 
 Hoisting the acquisition there, rather than deferring it into each method, is
-what makes the two arms symmetrical. It costs a v9-only consumer nothing:
+what makes the two eras symmetrical. It costs a v9-only consumer nothing:
 asking for the v8 era IS the observation of v8, and nothing reaches that
 function until someone does.
 
@@ -124,12 +124,12 @@ acquired, so there is nothing left to await — the acquisition happens once, in
 `createLedger8Engine`, and the runtime instance it obtained is captured in
 closure.
 
-The v9 arm needs no hoisting to reach the same shape. `createV9Era` is wholly
+The v9 era needs no hoisting to reach the same shape. `createLedger9Era` is wholly
 synchronous: `@midnightntwrk/ledger-v9` is this package's current era and is
 already linked by the package root, so there is nothing to acquire and nothing
 that can fail there.
 
-The result is that both arms hand back an object whose methods are synchronous,
+The result is that both eras hand back an object whose methods are synchronous,
 for two eras whose acquisition costs are not remotely alike.
 
 ## `loadLedgerEra` is the entry point
@@ -139,7 +139,7 @@ Pass the version resolved from a record or from the network head (see
 `protocolVersionToLedger` in `packages/protocol/src/version.ts`) rather than a
 string chosen by hand.
 
-## The v8 arm composes exactly one call
+## The v8 era composes exactly one call
 
 The two eras are not equivalent in `composeCallTx`, and the difference is
 deliberate rather than hidden: the retained pre-fork era composes exactly one
@@ -157,12 +157,12 @@ would drop the rest without a word. The refusal is raised
 `composeCallTx` answers with the bytes `Transaction.serialize()` produces before
 `.prove()` is ever called, alongside the guaranteed/fallible split each call was
 built from. Proving needs a proving provider and a running proof server, neither
-of which this seam has.
+of which this boundary has.
 
 The split is on the answer because it is also on the way in: a call's Zswap
 offer arrives as a factory the composer calls back with that split, never as
 ready-made bytes. A coin has to be routed into the segment its movement belongs
 to, and until the transcripts are split there is no segment to route by — so
 there is deliberately no shape of this call that builds an offer before one
-exists. Being handed the split is what the seam guarantees; using it remains the
+exists. Being handed the split is what the boundary guarantees; using it remains the
 factory's own responsibility.

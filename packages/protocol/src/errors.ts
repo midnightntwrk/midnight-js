@@ -231,7 +231,7 @@ export type RetainedEraSubpath = '/v8' | '/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
- * runtime could not be acquired at all. Raised by `loadLedger8`
+ * runtime could not be acquired at all. Raised by `loadLedger8Protocol`
  * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
  * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
  *
@@ -243,7 +243,7 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * @param cause The underlying module-resolution or initialisation failure,
  *   preserved unchanged. Read it for which module actually failed.
  * @see {@link ModuleGraphAndLazyLoading}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
@@ -355,7 +355,7 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
 /**
  * Thrown when a raw contract-state envelope, or an already-extracted
  * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
- * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`) and by
  * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
  * that decodes but does not re-encode to the bytes it came from.
  *
@@ -392,7 +392,7 @@ export class DownConvertFailedError extends MidnightJsError {
  * NOTHING RAISES THIS ANY MORE: the walk it served
  * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
  * hand-maintained execution layer, and the condition it named cannot reach the
- * seam that replaced it. Execution now takes an already-encoded
+ * code that replaced it. Execution now takes an already-encoded
  * `EncodedStateValue`, and a tree's rehash state does not survive that
  * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
  * decoding either yields the same root. Being un-rehashed is a property of a
@@ -870,7 +870,7 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
       'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
         'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
         'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +
-        'loadLedger8() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
+        'loadLedger8Protocol() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
         'separate WASM instance. Read `missingMember` on this error for the absent member.'
     );
     this.name = 'Ledger8RuntimeInvalidError';
@@ -996,7 +996,7 @@ const describeType = (value: unknown): string => {
 };
 
 /**
- * Thrown when a payload handed to a proving seam is not a serialized
+ * Thrown when a payload handed to a proving function is not a serialized
  * transaction at all.
  *
  * Distinct from a decode failure inside the ledger runtime: this is raised
@@ -1005,7 +1005,7 @@ const describeType = (value: unknown): string => {
  * can happen — a `txBytes` field that is not a byte string, a byte string
  * shorter than the tag prefix, and one that does not open with the prefix.
  *
- * @remarks Raised by `proveV8Transaction`, so it reaches application code as a
+ * @remarks Raised by `proveLedger8Transaction`, so it reaches application code as a
  * `proveTx` rejection. Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
@@ -1015,7 +1015,7 @@ export class PayloadNotATransactionError extends MidnightJsError {
 
   private constructor(detail: string) {
     super(
-      `${detail} Pass the bytes produced by a sanctioned composition seam; a contract state, a ` +
+      `${detail} Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a ` +
         'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
     );
     this.name = 'PayloadNotATransactionError';

@@ -15,7 +15,7 @@
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
@@ -94,12 +94,12 @@ export const dappConnectorProofProvider = async <K extends string>(
       refuseTimeout(config);
       return tx.prove(provingProvider, costModel);
     },
-    // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object. See
-    // the `costModel` parameter above for why this arm does not take one.
+    // Bytes in, bytes out: a retained-era transaction cannot reach this method as a live object. See
+    // the `costModel` parameter above for why this handler does not take one.
     retainedEras: {
       v8: (txBytes, config) => {
         refuseTimeout(config);
-        return proveV8Transaction(txBytes, provingProvider);
+        return proveLedger8Transaction(txBytes, provingProvider);
       }
     }
   });

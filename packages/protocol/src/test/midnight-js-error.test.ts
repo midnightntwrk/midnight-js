@@ -37,6 +37,7 @@ import {
   PROTOCOL_ERROR_CODES,
   StateDecodeFailedError,
   StateInconsistentError,
+  TRANSACTION_TAG_PREFIX,
   UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
@@ -139,6 +140,22 @@ describe('protocol error classes', () => {
 
   it.each(instances)('%s carries a registered code and the category the table gives that code', (_name, error) => {
     expect(error.category).toBe(categoryOf(error.code));
+  });
+
+  it.each(instances)('%s message never speaks of seams', (_name, error) => {
+    expect(error.message).not.toMatch(/seam/i);
+  });
+
+  it('PayloadNotATransactionError names the transaction tag and the sanctioned source of the bytes', () => {
+    // Act
+    const error = PayloadNotATransactionError.wrongTag(5);
+
+    // Assert
+    expect(error.message).toEqual(
+      `Refusing to prove a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
+        'ledger transaction. Pass the bytes of a transaction produced by a sanctioned composition function; a contract ' +
+        'state, a Zswap offer or a proof preimage is not a transaction and cannot be proved.'
+    );
   });
 
   it('reads the category of a dynamically coded error from the table', () => {

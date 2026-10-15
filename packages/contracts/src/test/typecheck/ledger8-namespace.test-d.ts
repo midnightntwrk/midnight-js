@@ -66,7 +66,7 @@ declare const providers: Ledger8.ContractProviders<C, K>;
 declare const options: Ledger8.CallTxOptionsBase<C, K>;
 
 describe('a consumer can name the retained era through the namespace alone', () => {
-  it('declares the result the retained arm resolves to', () => {
+  it('declares the result the retained-era overload resolves to', () => {
     expectTypeOf(submitCallTx(providers, options)).toEqualTypeOf<Promise<Ledger8.FinalizedCallTxData<C, K>>>();
   });
 

@@ -36,7 +36,7 @@
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 
-import type { HeadEraReading, PipelineEra } from './era';
+import type { HeadEraReading } from './era';
 
 /**
  * Where a head reading came from.
@@ -97,7 +97,7 @@ export interface PipelineSelectionBreadcrumb {
   readonly source: 'artifact-runtime-version-declaration';
   readonly readingProvenance: HeadReadingProvenance;
   /** The pipeline the artifact belongs to. */
-  readonly path: PipelineEra;
+  readonly path: LedgerVersion;
   /**
    * The contract being operated on, present exactly when the operation names
    * one. ABSENT rather than empty for a deploy — an empty string would read as
@@ -236,7 +236,7 @@ export const emitHeadResolution = (
 export const emitPipelineSelection = (
   sink: BreadcrumbSink | undefined,
   reading: HeadEraReading,
-  path: PipelineEra,
+  path: LedgerVersion,
   contractAddress?: string
 ): void =>
   emit(sink, {
