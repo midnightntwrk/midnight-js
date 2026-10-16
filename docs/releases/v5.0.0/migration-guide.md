@@ -446,8 +446,8 @@ pre-fork head**. On a post-fork head `deployContract` refuses one with
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either
-`options.signingKey` or a freshly sampled one. The key is reported on the
-handle's `signingKey` and stored against the new address through
+`options.signingKey` or a freshly sampled one. The key is reported at
+`deployTxData.private.signingKey` and stored against the new address through
 `privateStateProvider`. That store is the only copy besides the handle: lose it
 and no verifier key on that contract can ever be inserted, removed or replaced.
 
@@ -519,31 +519,43 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance API), its `deployTxData` is
-`{ public }` where the current era's is `{ era, public, private }`, its
+HANDLES differ in only two places: the retained handle has no maintenance
+interfaces (the retained era has no governance API), and its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
-recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates`
+recipient key mappings (see below). And `getStates` / `getPublicStates`
 return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
 ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
 on `version` before reading the state.
 
-Where a deployed handle keeps the deployer's data. The paths stay different
-until the retained era is removed, so branch on `deployed.era` before reading
-them:
+`deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
+a found handle and on a deployed one. The retained-era handle used to keep the
+deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 
-| Fact | Current era (`DeployedContract`) | Retained era (`Ledger8.DeployedContract`) |
+| Fact | Before (retained era, up to rc.4) | Now (both eras) |
 |---|---|---|
-| Signing key | `deployTxData.private.signingKey` | `signingKey` |
-| Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
-| Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
-| Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
-| Initial contract state (bytes) | — | `initialContractStateBytes` |
+| Deploy record | `deployTxData.public` | `deployTxData.public` |
+| Contract address | `contractAddress` | `deployTxData.public.contractAddress` (and `contractAddress`) |
+| Signing key | `signingKey` | `deployTxData.private.signingKey` |
+| Private state from the constructor | `initialPrivateState` | `deployTxData.private.initialPrivateState` |
+| Zswap state from the constructor | `initialZswapState` | `deployTxData.private.initialZswapState` |
+| Initial contract state (live handle) | `initialContractState` | `deployTxData.public.initialContractState` |
+| Initial contract state (bytes, retained era only) | `initialContractStateBytes` | `deployTxData.public.initialContractStateBytes` |
 
-The signing key differs on a found handle too: `findDeployedContract` reports it
-at `deployTxData.private.signingKey` in the current era and at the top-level
-`signingKey` in the retained era.
+The retained era's signing key is now the same `SigningKey` the current era
+uses, `{ tag, value }`, on `deployTxData.private.signingKey`, on the
+`signingKey` option of `deployContract` and `findDeployedContract`, and on the
+`signingKey` member of `Ledger8.DeployTxFailedError`,
+`Ledger8.DeployUnconfirmedError` and `Ledger8.DeployNotStoredError`. The retained
+era signs with `schnorr` only: an `ecdsa` key, or a value that is not exactly 64
+hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError` before
+anything is composed or stored.
+
+```diff
+- await deployContract(providers, { compiledContract: retained, signingKey: keyHex });
+- const key = deployed.signingKey;
++ await deployContract(providers, { compiledContract: retained, signingKey: { tag: 'schnorr', value: keyHex } });
++ const key = deployed.deployTxData.private.signingKey;
+```
 
 `initialContractStateBytes` was called `initialState` in the earlier 5.0.0
 release candidates. It holds the same bytes under the new name.

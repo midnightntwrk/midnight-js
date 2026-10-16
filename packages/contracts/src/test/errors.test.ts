@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AnyProvableCircuitId,
   FailEntirely,
@@ -215,7 +216,7 @@ describe('the incomplete private-state configuration refusals', () => {
 });
 
 describe('Ledger8DeployTxFailedError', () => {
-  const SIGNING_KEY = 'a1'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
   const ADDRESS = '0200'.repeat(8);
 
   it('reads the record through the era-agnostic member and names the address it composed', () => {
@@ -251,12 +252,12 @@ describe('Ledger8DeployTxFailedError', () => {
     // The key is a SECRET. Named as a member to read, never rendered: an error message reaches
     // logs, crash reporters and issue trackers, and this one is the only copy of the authority
     // over the deployed contract.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
 describe('Ledger8DeployUnconfirmedError', () => {
-  const SIGNING_KEY = 'b2'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'b2'.repeat(32) };
   const ADDRESS = '0300'.repeat(8);
   const eraViolation = (): EraInvariantViolationError =>
     new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9');
@@ -310,7 +311,7 @@ describe('Ledger8DeployUnconfirmedError', () => {
     expect(error.message).toContain('signingKey');
     // The key is a SECRET, and after submission this error holds the only copy. Named as a member
     // to read, never rendered into text that reaches a log or an issue tracker.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
@@ -336,7 +337,7 @@ describe('the recorded-failure code', () => {
 });
 
 describe('Ledger8DeployNotStoredError', () => {
-  const SIGNING_KEY = 'c3'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'c3'.repeat(32) };
   const ADDRESS = '0400'.repeat(8);
 
   it('keeps the store rejection on cause, unreplaced', () => {
@@ -377,7 +378,7 @@ describe('Ledger8DeployNotStoredError', () => {
     expect(error.contractAddress).toBe(ADDRESS);
     expect(error.message).toContain('signingKey');
     // The key is a SECRET, and on the refused-key path this error holds the only copy of it.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
@@ -391,7 +392,16 @@ describe('Ledger8SigningKeyUnusableError', () => {
     expect(error.name).toBe('Ledger8SigningKeyUnusableError');
     expect(error.message).toContain(ADDRESS);
     expect(error.message).toContain('signingKey');
+    expect(error.message).toContain('schnorr');
     expect(error.message).toContain('64');
+  });
+
+  it('refuses a key supplied before any address exists, without naming one', () => {
+    const error = new Ledger8SigningKeyUnusableError();
+
+    expect(error.contractAddress).toBeUndefined();
+    expect(error.message).toContain('signingKey');
+    expect(error.message).not.toContain('undefined');
   });
 
   it('never renders the value it refused, and does not carry it as a member either', () => {

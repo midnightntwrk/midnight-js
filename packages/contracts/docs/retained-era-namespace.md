@@ -130,7 +130,9 @@ era's own family and a SECOND step for the fork-window group.
 
 `Ledger8DeployedContract` is published, under the rule that a caller who can
 obtain a value must be able to name its type: `deployContract`, called with a
-retained-era contract, composes, submits and hands one back.
+retained-era contract, composes, submits and hands one back. Its
+`deployTxData` and the found handle's are published for the same reason, as
+`Ledger8.DeployTxData` and `Ledger8.FoundDeployTxData`.
 
 `Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
 artifact against a post-fork head, and it is reachable: it is what a caller

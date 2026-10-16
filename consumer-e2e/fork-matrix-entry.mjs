@@ -1051,7 +1051,7 @@ const deployRetained = async (key, providers) => {
     // post-fork `findDeployedContract` leg has something to compare against that
     // was observed rather than assumed. `reportableDeployment` is what keeps it
     // off the report -- see there for why that is not optional.
-    signingKey: deployed.signingKey
+    signingKey: deployed.deployTxData.private.signingKey
   };
 };
 
@@ -2754,12 +2754,19 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // attach reports after it. Compared only when the deploy actually reported
     // one -- an absent key on both sides is a different finding from a key that
     // changed, and saying "they match" about two undefineds would hide it.
+    const foundSigningKey = found.deployTxData.private.signingKey;
+    // By tag and value: both handles carry their own `{ tag, value }` object, so identity says nothing.
+    const signingKeySurvived =
+      deployed.signingKey !== undefined &&
+      foundSigningKey !== undefined &&
+      foundSigningKey.tag === deployed.signingKey.tag &&
+      foundSigningKey.value === deployed.signingKey.value;
     if (deployed.signingKey === undefined) {
       failures.push(`${name}: the pre-fork deploy reported no signing key, so there is nothing to have survived`);
-    } else if (found.signingKey !== deployed.signingKey) {
+    } else if (!signingKeySurvived) {
       failures.push(
         `${name}: the stored signing key did not survive the fork -- the attach reports ` +
-          `${found.signingKey === undefined ? 'none' : 'a different key'}`
+          `${foundSigningKey === undefined ? 'none' : 'a different key'}`
       );
     }
     // THE HANDLE IS USED, not just inspected, where the twin declares an
@@ -2778,7 +2785,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     return {
       contractAddress: found.contractAddress,
       callable,
-      signingKeySurvived: deployed.signingKey !== undefined && found.signingKey === deployed.signingKey,
+      signingKeySurvived,
       ...(called === undefined ? {} : { afterFindCall: { circuitId: called.circuitId, txId: called.public.txId } }),
       ...((await checkLedgerState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {}),
       ...((await checkPrivateState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {})

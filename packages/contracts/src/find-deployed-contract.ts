@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
@@ -37,7 +36,6 @@ import {
   ContractTypeError,
   EraInvariantViolationError,
   IncompleteFindContractPrivateStateConfig,
-  Ledger8SigningKeyUnusableError,
   PrivateStateNotFoundError
 } from './errors';
 import {
@@ -49,7 +47,11 @@ import {
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
 import { isLedger8Request, requireLedger9ContractState,requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
-import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
+import {
+  fromStoredLedger8SigningKey,
+  requireLedger8SigningKey,
+  toStoredLedger8SigningKey
+} from './internal/ledger8-signing-key';
 import { requireDeployedContract } from './internal/required-reads';
 import {
   type AnyLedger8FindDeployedContractOptions,
@@ -118,8 +120,7 @@ const queryFoundDeployTxPublicData = async (
  * The RETAINED era's half of the same rule. It differs in THREE ways, not one.
  *
  * Supplied key: VALIDATED through the read's own rule and then stored. Nothing supplied and a
- * retained-era entry stored: that key is reported, unwrapped back to the bare string the retained
- * runtime takes. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
+ * retained-era entry stored: that key is reported. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
  * entry that is not usable, or one that cannot be read at all: reported as nothing stored, with a
  * breadcrumb.
  *
@@ -140,23 +141,16 @@ const queryFoundDeployTxPublicData = async (
 const setOrGetLedger8SigningKey = async (
   privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>,
   contractAddress: ContractAddress,
-  signingKey: Ledger8SigningKey | undefined,
+  signingKey: SigningKey | undefined,
   sink: BreadcrumbSink | undefined
-): Promise<Ledger8SigningKey | undefined> => {
+): Promise<SigningKey | undefined> => {
   if (signingKey !== undefined) {
-    const entry = toStoredLedger8SigningKey(signingKey);
     // Through the READ's own rule, so a key this attach accepts is one a later attach reports.
-    // The sink is deliberately not passed: the refusal below is how this case is reported, and a
-    // breadcrumb beside it would record the same fact twice under a decision name that says an
-    // entry was read out of the store.
-    const roundTripped = fromStoredLedger8SigningKey(entry, contractAddress, undefined);
-    if (roundTripped === undefined) {
-      throw new Ledger8SigningKeyUnusableError(contractAddress);
-    }
+    // Re-wrapped rather than stored as given, so the handle cannot claim more than the store will
+    // give back.
+    const entry = toStoredLedger8SigningKey(requireLedger8SigningKey(signingKey, contractAddress));
     await privateStateProvider.setSigningKey(contractAddress, entry);
-    // The round-tripped value rather than the input, so the handle cannot claim more than the
-    // store will give back.
-    return roundTripped;
+    return entry;
   }
   let stored: SigningKey | null;
   try {
@@ -183,7 +177,7 @@ const setOrGetLedger8SigningKey = async (
   if (!stored) {
     return undefined;
   }
-  return fromStoredLedger8SigningKey(stored, contractAddress, sink);
+  return fromStoredLedger8SigningKey(stored, contractAddress, sink) === undefined ? undefined : stored;
 };
 
 /**
@@ -560,17 +554,15 @@ export async function findDeployedContract<C extends Contract.Any>(
     // many words that it does not require `setContractAddress` first, and the level-backed provider
     // keys those entries by the argument.
     providers.privateStateProvider.setContractAddress(options.contractAddress);
-    // The result is DISCARDED on purpose. This call is here to apply the six-case rule -- seed the
-    // named id, or refuse a configuration that cannot be honoured -- not to report a state:
-    // `Ledger8FoundContract` publishes no private-state member, and a caller that wants the state
-    // reads it back from the provider under the id it just named. What the read buys is the refusal
-    // arriving at ATTACH time rather than at the first call.
+    // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
+    // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
+    // refusal arrives at ATTACH time rather than at the first call.
     //
     // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
     // implementation signature has already widened the retained options to
     // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
     // overloads above are what type the caller.
-    await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
+    const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
       providers.privateStateProvider,
       options
     );
@@ -584,8 +576,11 @@ export async function findDeployedContract<C extends Contract.Any>(
       era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
-      deployTxData: { public: found.deployTxData },
-      signingKey,
+      deployTxData: {
+        era: 'v8',
+        public: { ...found.deployTxData, contractAddress: options.contractAddress },
+        private: { signingKey, initialPrivateState }
+      },
       // Built AFTER the attach has checked every declared circuit's key, so a
       // handle a caller receives is one whose circuits the chain can serve.
       callTx: createLedger8CircuitCallTxInterface(

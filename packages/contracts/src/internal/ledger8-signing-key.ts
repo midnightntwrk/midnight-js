@@ -51,6 +51,7 @@ import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
+import { Ledger8SigningKeyUnusableError } from '../errors';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './breadcrumbs';
 
 /**
@@ -108,6 +109,28 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
 });
 
 /**
+ * Why a structured key is not a retained-era key, or `undefined` when it is one.
+ *
+ * The ONE rule both directions apply: {@link fromStoredLedger8SigningKey}, which
+ * reports an unusable stored entry as absent, and {@link requireLedger8SigningKey}, which refuses a
+ * key a caller supplied.
+ */
+const unusableLedger8SigningKey = (key: SigningKey): 'other-signature-kind' | 'malformed-value' | undefined => {
+  if (key.tag !== LEDGER8_SIGNING_KEY_TAG) {
+    return 'other-signature-kind';
+  }
+  // The WHOLE entry through `isValidSigningKey`, and not just its value: that is
+  // the rule the level-backed provider validates an import against, so an entry
+  // this read admits is one a restore will too. The length is checked SEPARATELY
+  // because that rule is the import format's and not this era's -- see
+  // `fromStoredLedger8SigningKey`.
+  if (!isValidSigningKey(key) || key.value.length !== LEDGER8_SIGNING_KEY_HEX_LENGTH) {
+    return 'malformed-value';
+  }
+  return undefined;
+};
+
+/**
  * Reads a stored entry back as the bare string the retained runtime takes, or
  * reports ABSENT for an entry that is not a retained-era key.
  *
@@ -151,17 +174,35 @@ export const fromStoredLedger8SigningKey = (
   contractAddress: string,
   sink: BreadcrumbSink | undefined
 ): Ledger8SigningKey | undefined => {
-  if (stored.tag !== LEDGER8_SIGNING_KEY_TAG) {
-    emitLedger8SigningKeyEntry(sink, contractAddress, 'other-signature-kind');
-    return undefined;
-  }
-  // The WHOLE entry through `isValidSigningKey`, and not just its value: that is
-  // the rule the level-backed provider validates an import against, so an entry
-  // this read admits is one a restore will too. The length is checked SEPARATELY
-  // because that rule is the import format's and not this era's -- see above.
-  if (!isValidSigningKey(stored) || stored.value.length !== LEDGER8_SIGNING_KEY_HEX_LENGTH) {
-    emitLedger8SigningKeyEntry(sink, contractAddress, 'malformed-value');
+  const unusable = unusableLedger8SigningKey(stored);
+  if (unusable !== undefined) {
+    emitLedger8SigningKeyEntry(sink, contractAddress, unusable);
     return undefined;
   }
   return stored.value;
+};
+
+/**
+ * Unwraps a key a CALLER supplied into the bare string the retained runtime
+ * takes, refusing one the retained era cannot sign with.
+ *
+ * The public surface types a retained-era key as the current era's
+ * `{ tag, value }`, so a caller holds one key shape in both eras. This is where
+ * that shape crosses into the retained era, and the only place it does.
+ *
+ * @param signingKey The key the caller supplied.
+ * @param contractAddress The address it was supplied for, or `undefined` for a
+ * deploy, which has none yet.
+ * @returns The retained-era key.
+ * @throws Ledger8SigningKeyUnusableError If the key is not a `schnorr` key of
+ * {@link LEDGER8_SIGNING_KEY_HEX_LENGTH} hex characters. The key is not rendered.
+ */
+export const requireLedger8SigningKey = (
+  signingKey: SigningKey,
+  contractAddress: string | undefined
+): Ledger8SigningKey => {
+  if (unusableLedger8SigningKey(signingKey) !== undefined) {
+    throw new Ledger8SigningKeyUnusableError(contractAddress);
+  }
+  return signingKey.value;
 };

@@ -269,6 +269,41 @@ export interface FoundDeployTxData<C extends Contract.Any> {
 reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` or
 `initialContractState`.
 
+### Retained-era deploy data and signing key (#1514)
+
+```ts
+export namespace Ledger8 {
+  export interface FoundDeployTxData<C extends Contract> {
+    readonly era: 'v8';
+    readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+    readonly private: {
+      readonly signingKey: SigningKey | undefined;
+      readonly initialPrivateState: PrivateState<C>;
+    };
+  }
+  export interface DeployTxData<C extends Contract> extends FoundDeployTxData<C> {
+    readonly public: FoundDeployTxData<C>['public'] & {
+      readonly initialContractState: { serialize(): Uint8Array };
+      readonly initialContractStateBytes: Uint8Array;
+    };
+    readonly private: {
+      readonly signingKey: SigningKey;
+      readonly initialPrivateState: PrivateState<C>;
+      readonly initialZswapState: ZswapLocalState;
+    };
+  }
+}
+// Ledger8.FoundContract<C>['deployTxData'] is FoundDeployTxData<C>;
+// Ledger8.DeployedContract<C>['deployTxData'] is DeployTxData<C>.
+// The top-level signingKey / initial* members are removed.
+```
+
+Every retained-era signing key on the public surface is the structured `SigningKey`:
+the `signingKey` deploy and find options, `deployTxData.private.signingKey`, and the
+`signingKey` member of `Ledger8.DeployTxFailedError`, `Ledger8.DeployUnconfirmedError`
+and `Ledger8.DeployNotStoredError`. `Ledger8.SigningKeyUnusableError.contractAddress`
+is optional: a refused deploy key has no address yet.
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`

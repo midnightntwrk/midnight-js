@@ -328,3 +328,21 @@ Only the record moves. The rest of the note above stands: the retained handle ke
 `signingKey`, `initialPrivateState`, `initialZswapState` and the initial contract state at the
 top level, because a found handle's `deployTxData` still has no private half.
 
+
+## Amendment — the deployer's data moves under `deployTxData` (2026-10-16)
+
+Issue #1514. This supersedes "The layout stays as it is" above and the last paragraph of the
+#1508 amendment. Both rested on one fact: a found handle's `deployTxData` had no private half to
+nest a key in. It now has one. `Ledger8FoundContract.deployTxData` is
+`{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey,
+initialPrivateState } }`, and `Ledger8DeployedContract.deployTxData` adds `initialContractState`
+and `initialContractStateBytes` to `public` and `initialZswapState` to `private`. The top-level
+members are removed.
+
+`deployTxData` therefore has the same shape on every found or deployed handle in both eras, so
+`deployTxData.private.signingKey` reads without branching on `era`. The retained key is published
+as the current era's `SigningKey`, `{ tag: 'schnorr', value }`, which is the shape the store
+already holds it in; the bare hex string the retained runtime signs with stays internal.
+
+The handle-and-bytes rule above is unchanged: `initialContractState` and
+`initialContractStateBytes` both stay, now under `deployTxData.public`.

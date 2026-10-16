@@ -794,6 +794,43 @@ Match errors on their `code`, not their message (ADR 0017).
 
 ---
 
+## 16. Retained-era handles: one `deployTxData` shape and one signing-key type (#1514)
+
+`Ledger8.FoundContract` and `Ledger8.DeployedContract` now carry `deployTxData` as
+`{ era, public, private }`, the shape the current era's handles have. The deployer's data moved
+off the top level, and the retained era's signing key is now the current era's `SigningKey`,
+`{ tag, value }`.
+
+| Where | Before | After |
+|---|---|---|
+| `Ledger8.FoundContract.deployTxData` | `{ public: VersionedFinalizedTxData }` | `Ledger8.FoundDeployTxData<C>`: `{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey, initialPrivateState } }` |
+| `Ledger8.DeployedContract.deployTxData` | `{ public: VersionedFinalizedTxData }` | `Ledger8.DeployTxData<C>`: `public` adds `initialContractState`, `initialContractStateBytes`; `private` adds `initialZswapState` |
+| `Ledger8.FoundContract.signingKey` | `Ledger8SigningKey \| undefined` (bare hex) | removed; `deployTxData.private.signingKey: SigningKey \| undefined` |
+| `Ledger8.DeployedContract.signingKey` | `Ledger8SigningKey` | removed; `deployTxData.private.signingKey: SigningKey` |
+| `Ledger8.DeployedContract.initialContractState`, `initialContractStateBytes` | top level | `deployTxData.public.*` |
+| `Ledger8.DeployedContract.initialPrivateState`, `initialZswapState` | top level | `deployTxData.private.*` |
+| `Ledger8.DeployContractOptions.signingKey`, `Ledger8.FindDeployedContractOptions.signingKey` | `Ledger8SigningKey` (bare hex) | `SigningKey` |
+| `Ledger8.DeployTxFailedError.signingKey`, `Ledger8.DeployUnconfirmedError.signingKey`, `Ledger8.DeployNotStoredError.signingKey` | `Ledger8SigningKey` | `SigningKey` |
+| `Ledger8.SigningKeyUnusableError` | raised by `findDeployedContract` only; `contractAddress: string` | also raised by `deployContract`, before anything is composed; `contractAddress?: string` (absent on a deploy) |
+
+The retained era signs with `schnorr` only. An `ecdsa` key, or a `schnorr` key whose value is not
+exactly 64 hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError`
+(`LEDGER8_SIGNING_KEY_UNUSABLE`).
+
+```diff
+  const deployed = await deployContract(providers, {
+    compiledContract: retained,
+-   signingKey: keyHex
++   signingKey: { tag: 'schnorr', value: keyHex }
+  });
+- deployed.signingKey;
+- deployed.initialPrivateState;
++ deployed.deployTxData.private.signingKey;
++ deployed.deployTxData.private.initialPrivateState;
+```
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

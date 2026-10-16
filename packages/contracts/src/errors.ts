@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
@@ -1323,7 +1323,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   constructor(
     readonly txData: VersionedFinalizedTxData,
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey
+    readonly signingKey: SigningKey
   ) {
     super(
       `The ledger 8 deployment of the contract at '${contractAddress}' was recorded on chain with ` +
@@ -1399,7 +1399,7 @@ export class Ledger8DeployUnconfirmedError extends MidnightJsError {
    */
   constructor(
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey,
+    readonly signingKey: SigningKey,
     cause: unknown
   ) {
     super(
@@ -1530,7 +1530,7 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
    */
   constructor(
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey,
+    readonly signingKey: SigningKey,
     readonly stage: 'signing-key' | 'private-state',
     cause: unknown
   ) {
@@ -1542,7 +1542,7 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
             'exists. The contract is on chain under a maintenance authority built from it, and without it ' +
             'no verifier key can ever be inserted, removed or replaced there. Keep it, fix what the store ' +
             "refused - see this error's cause - and write it back with " +
-            "`privateStateProvider.setSigningKey(address, { tag: 'schnorr', value: <key> })`."
+            "`privateStateProvider.setSigningKey(address, error.signingKey)`."
           : "The INITIAL PRIVATE STATE could not be stored. The signing key was written first and is held " +
             "by the provider, and is on this error's 'signingKey' as well. Reconcile the local state " +
             "against the chain before calling this contract - see this error's cause for what the store " +
@@ -1556,8 +1556,8 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the `signingKey` supplied on a retained-era attach
- * is not one this framework can store and read back.
+ * An error indicating that the `signingKey` supplied on a retained-era deploy
+ * or attach is not one the retained era can sign with.
  *
  * Refused BEFORE the write rather than after it. Stored unchecked, a key the
  * read rejects is reported on the attach that supplied it and read as ABSENT on
@@ -1577,15 +1577,17 @@ export class Ledger8SigningKeyUnusableError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE];
 
   /**
-   * @param contractAddress The address the key was supplied for.
+   * @param contractAddress The address the key was supplied for, or `undefined`
+   * for a deploy, which has no address until it is composed.
    */
-  constructor(readonly contractAddress: string) {
+  constructor(readonly contractAddress?: string) {
     super(
-      `The 'signingKey' supplied for the ledger 8 contract at '${contractAddress}' is not a key this ` +
-        'framework can store and read back, so it was not stored. A ledger 8 key is exactly 64 ' +
-        "hexadecimal characters - 32 bytes - which is what that era's `sampleSigningKey` produces. The " +
-        'supplied value is not rendered here: it is secret material, and an error message reaches logs and ' +
-        'issue trackers.'
+      "The 'signingKey' supplied for the ledger 8 contract" +
+        (contractAddress === undefined ? '' : ` at '${contractAddress}'`) +
+        ' is not a key that era can sign with, so nothing was composed or stored. A ledger 8 key is a ' +
+        "`schnorr` key whose value is exactly 64 hexadecimal characters - 32 bytes - which is what that era's " +
+        '`sampleSigningKey` produces. The supplied value is not rendered here: it is secret material, and an ' +
+        'error message reaches logs and issue trackers.'
     );
     this.name = 'Ledger8SigningKeyUnusableError';
   }

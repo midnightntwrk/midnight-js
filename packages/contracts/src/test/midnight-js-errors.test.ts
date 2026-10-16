@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { FailFallible } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -35,7 +35,7 @@ const errorClasses = exported.filter(
 );
 
 const ADDRESS = '0200'.repeat(8);
-const SIGNING_KEY = 'a1'.repeat(32);
+const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
 const ledger8Record = createMockLedger8FinalizedTxData(FailFallible);

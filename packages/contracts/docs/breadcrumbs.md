@@ -21,7 +21,7 @@ Four decisions get a breadcrumb: `HeadResolutionBreadcrumb`,
 
 The fourth is there for the opposite reason to the other three. It is the one era
 discrimination in this package that neither refuses nor returns a value a caller
-can inspect: `Ledger8FoundContract.signingKey` is `undefined` either way, so
+can inspect: `deployTxData.private.signingKey` on the found handle is `undefined` either way, so
 without the breadcrumb "nothing was ever stored" and "an entry was there and this
 framework could not use it" are indistinguishable to an operator.
 

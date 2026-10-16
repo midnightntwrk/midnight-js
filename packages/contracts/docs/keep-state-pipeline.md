@@ -393,7 +393,7 @@ era boundary needed no new field: `ComposeDeployOptions` already carries the
 serialized `contractStateBytes`, which is where the authority lives.
 
 The key is the caller's own when one is supplied, and a freshly sampled one
-otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey` and
+otherwise. Either way it is reported at `deployTxData.private.signingKey` and
 stored against the minted address through `privateStateProvider.setSigningKey`,
 which is where the current era's deploy writes its own key too.
 
@@ -509,8 +509,8 @@ mode recorded above is why passing `undefined` down instead is not an option.
 ## The signing key on the attach path
 
 `Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
-is stored against the contract address, and `Ledger8FoundContract.signingKey`
-reports whatever is then held — the key a deploy on this machine persisted, when
+is stored against the contract address, and `deployTxData.private.signingKey`
+on the found handle reports whatever is then held — the key a deploy on this machine persisted, when
 the caller supplies none. `undefined` there means either nothing stored or an
 entry this framework did not write; the breadcrumb above is what separates the
 two.
@@ -532,8 +532,8 @@ The blast-radius argument for the content half is at
 
 **3. A supplied key is REFUSED rather than reported back.** A supplied key is
 validated through the read's own rule before it is stored, where the current era
-stores whatever it was handed. `Ledger8SigningKey` is `string`, so
-`signingKey: ''` type-checks; stored unchecked it would be reported on THIS
+stores whatever it was handed. The option is the current era's `SigningKey`, so
+`{ tag: 'ecdsa', value }` and `{ tag: 'schnorr', value: '' }` type-check; stored unchecked it would be reported on THIS
 attach and read as absent on the NEXT one, out of the same store, with nothing
 erroring either time — and the entry it replaced would already be gone. The
 caller passed this value in this call, so a refusal is cheap here in a way it is
@@ -549,12 +549,24 @@ A supplied key REPLACES whatever is held for that address rather than falling
 back to it, because replacing is the documented remedy for an entry this
 framework cannot use.
 
+### One key shape on the public surface
+
+A retained-era key is published as the current era's `SigningKey`,
+`{ tag: 'schnorr', value }`, on every member a caller reads or writes: the
+deploy and find options, `deployTxData.private.signingKey`, and the deploy
+errors that carry the key. That is the shape the store already holds it in, so
+a key read off a handle can be written back, exported or passed to the other
+era unchanged. The bare hex string the retained runtime signs with stays
+inside: `requireLedger8SigningKey` unwraps a supplied key at the entry, and
+refuses one that is not `schnorr` or not 64 hex characters, before anything is
+composed or stored.
+
 ### Why the reported key is always present and possibly `undefined`
 
-`Ledger8FoundContract.signingKey` is declared as `Ledger8SigningKey | undefined`
-rather than as an optional member. It is written on every attach,
+`deployTxData.private.signingKey` on `Ledger8FoundContract` is declared as
+`SigningKey | undefined` rather than as an optional member. It is written on every attach,
 `exactOptionalPropertyTypes` is off in this package, and an optional member
-invites `found.signingKey!` at a call site where the absent case is the ordinary
+invites `found.deployTxData.private.signingKey!` at a call site where the absent case is the ordinary
 one.
 
 It is REQUIRED on `Ledger8DeployedContract`, and that is the whole difference

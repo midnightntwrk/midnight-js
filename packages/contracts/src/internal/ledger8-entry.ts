@@ -41,6 +41,7 @@ import {
   loadLedgerEra,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
@@ -106,7 +107,7 @@ import {
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
-import { toStoredLedger8SigningKey } from './ledger8-signing-key';
+import { requireLedger8SigningKey, toStoredLedger8SigningKey } from './ledger8-signing-key';
 import { handleSubmitRejection } from './stale-head';
 import {
   atProviderMethod,
@@ -680,7 +681,7 @@ const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: s
 const assertLedger8DeploySucceeded = (
   record: VersionedFinalizedTxData,
   contractAddress: string,
-  signingKey: Ledger8SigningKey
+  signingKey: SigningKey
 ): void => {
   if (record.status === SucceedEntirely) {
     return;
@@ -1010,7 +1011,7 @@ export interface Ledger8DeployEntryOptions {
   readonly args?: readonly unknown[];
   readonly privateStateId?: PrivateStateId;
   readonly initialPrivateState?: unknown;
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -1030,7 +1031,7 @@ export interface Ledger8DeployedState {
   /** The address the composition minted, which no other deployment shares. */
   readonly contractAddress: string;
   readonly deployTxData: VersionedFinalizedTxData;
-  readonly signingKey: Ledger8SigningKey;
+  readonly signingKey: SigningKey;
   readonly initialContractStateBytes: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
   /** The private state the CONSTRUCTOR produced. */
@@ -1065,6 +1066,8 @@ export interface Ledger8DeployedState {
  * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
+ * @throws Ledger8SigningKeyUnusableError if a supplied key is not one the
+ * retained era can sign with. Raised before the head is read.
  * @throws Every error {@link runLedger8Deploy} raises.
  * @see {@link KeepStatePipeline} for why every slot has to be registered, and
  * for the order after submission.
@@ -1074,6 +1077,8 @@ export const submitLedger8DeployTx = async (
   options: Ledger8DeployEntryOptions
 ): Promise<Ledger8DeployedState> => {
   const { privateStateId } = options;
+  const suppliedSigningKey =
+    options.signingKey === undefined ? undefined : requireLedger8SigningKey(options.signingKey, undefined);
 
   const { deploy, head } = await runLedger8Deploy(providers, {
     contract: options.compiledContract,
@@ -1083,8 +1088,9 @@ export const submitLedger8DeployTx = async (
     // than ahead of them.
     resolveVerifierKeys: async () =>
       new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
-    signingKey: options.signingKey
+    signingKey: suppliedSigningKey
   });
+  const signingKey = toStoredLedger8SigningKey(deploy.signingKey);
 
   // PAST THIS POINT the transaction is on the network and may finalize whatever
   // happens here, so every refusal below carries the signing key. A sampled key
@@ -1104,9 +1110,9 @@ export const submitLedger8DeployTx = async (
     // caller holding the same problem, so one class carries the key over all of
     // them. The failure itself rides on `cause`, so an era violation keeps its
     // method and its registered code where a caller branches on them.
-    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, deploy.signingKey, error);
+    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, signingKey, error);
   }
-  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
+  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, signingKey);
 
   // FIRST the address, for the PRIVATE-STATE write below and for that one
   // only. A provider namespaces every private-state entry by the address last
@@ -1141,25 +1147,22 @@ export const submitLedger8DeployTx = async (
   // retry mints a fresh nonce and a SECOND contract at a different address while
   // the first sits on chain unmaintainable.
   try {
-    await providers.privateStateProvider.setSigningKey(
-      deploy.contractAddress,
-      toStoredLedger8SigningKey(deploy.signingKey)
-    );
+    await providers.privateStateProvider.setSigningKey(deploy.contractAddress, signingKey);
   } catch (error) {
-    throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'signing-key', error);
+    throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'signing-key', error);
   }
   if (privateStateId !== undefined) {
     try {
       await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
     } catch (error) {
-      throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'private-state', error);
+      throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'private-state', error);
     }
   }
 
   return {
     contractAddress: deploy.contractAddress,
     deployTxData,
-    signingKey: deploy.signingKey,
+    signingKey,
     initialContractStateBytes: deploy.initialContractStateBytes,
     initialContractState: deploy.initialContractState,
     initialPrivateState: deploy.nextPrivateState,

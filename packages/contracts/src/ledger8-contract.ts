@@ -37,14 +37,9 @@
  * @see {@link EraDispatch} for the runtime decision and what it may not use.
  */
 
-// `Ledger8SigningKey` by NAME, never respelled as the `string` it resolves to: the two eras' keys
-// are different shapes, and a local restatement would keep type-checking after the retained runtime
-// changed its own. It reaches here through the protocol barrel, so this package still takes no
-// dependency on the retained runtime, type-only or otherwise.
 import type {
   ConstructorResultPojo,
   EncodedStateValue,
-  Ledger8SigningKey,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
 
@@ -62,6 +57,7 @@ type Ledger8SerializableContractState = Pick<ConstructorResultPojo['contractStat
 import type {
   CommunicationCommitmentData,
   ContractAddress,
+  SigningKey,
   ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
@@ -580,8 +576,13 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
   /**
    * The signing key to register as the deployed contract's maintenance
    * authority. If undefined, a fresh one is sampled.
+   *
+   * The same `{ tag, value }` shape the current era takes. The retained era
+   * signs with `schnorr` only, so any other key -- or a value that is not
+   * exactly 64 hexadecimal characters -- is refused with
+   * `Ledger8SigningKeyUnusableError` before anything is composed.
    */
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -694,16 +695,17 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The key to record as this contract's maintenance authority key, for a
    * caller that holds one and deployed the contract somewhere else.
    *
-   * VALIDATED BEFORE IT IS STORED. A retained-era key is exactly 64 hexadecimal
-   * characters, which is what that era's `sampleSigningKey` produces; this type
-   * is `string`, so a shorter one type-checks and is refused with
-   * `Ledger8SigningKeyUnusableError`. Nothing is written when it is refused.
+   * VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
+   * value is exactly 64 hexadecimal characters, which is what that era's
+   * `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
+   * length, and those are refused with `Ledger8SigningKeyUnusableError`.
+   * Nothing is written when it is refused.
    *
    * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}
-   * in the private-state provider, which is the same storage
-   * {@link Ledger8DeployedContract.signingKey} is written to -- so a key
-   * supplied here REPLACES whatever is held for that address, and is what
-   * {@link Ledger8FoundContract.signingKey} then reports.
+   * in the private-state provider, which is the same storage a deploy writes its
+   * key to -- so a key supplied here REPLACES whatever is held for that
+   * address, and is what `deployTxData.private.signingKey` on the found
+   * handle then reports.
    *
    * OMITTING it reports the key already stored, and stores nothing. It does NOT
    * sample a fresh key when none is stored, where the current era's
@@ -713,7 +715,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * @see {@link KeepStatePipeline} for why this path samples nothing, and why a
    * supplied key replaces a stored one rather than falling back to it.
    */
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -730,6 +732,140 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
     ...args: Ledger8CircuitParameters<C, K>
   ) => Promise<Ledger8FinalizedCallTxData<C, K>>;
 };
+
+/**
+ * The deploy data of a retained-era contract found on chain: the same
+ * `{ era, public, private }` structure the current era's `FoundDeployTxData`
+ * has, so a caller reads `deployTxData.public.txId` and
+ * `deployTxData.private.signingKey` identically in both eras.
+ *
+ * @remarks **Privacy-sensitive.** `private` carries signing-key material and
+ * private state. Read only `public` when logging or transmitting.
+ */
+export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
+  /**
+   * The pipeline this handle runs on: always the retained era here. The era
+   * that recorded the deploy transaction is `public.version`.
+   */
+  readonly era: 'v8';
+  /**
+   * The record of the transaction that DEPLOYED the contract, and the address
+   * it created. Version-tagged because a retained-era contract was deployed in
+   * whichever era was current at the time — narrow it with
+   * `switch (deployTxData.public.version)`.
+   */
+  readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+  /**
+   * What this device holds for the contract.
+   *
+   * @remarks **Privacy-sensitive.** Signing-key material and private state.
+   */
+  readonly private: {
+    /**
+     * The key this framework holds for the contract's maintenance authority, or
+     * `undefined` when it holds none it can use.
+     *
+     * ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
+     * {@link Ledger8DeployTxData}: a deploy always has a key, because it built
+     * the authority; an attach has one only if a deploy on this machine stored
+     * it, or the caller supplied one through
+     * {@link Ledger8FindDeployedContractOptions.signingKey}.
+     *
+     * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
+     * apart has to look at the logger rather than at this field:
+     *
+     * 1. nothing is stored for this address;
+     * 2. something is stored that this framework did not write -- an entry naming
+     *    the other signature kind, which the CURRENT era legitimately stores
+     *    under the same address in the same provider, or one whose value is not
+     *    the shape a retained-era key has;
+     * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
+     *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
+     *    provider refuses as not a signing key.
+     *
+     * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
+     * as a DEBUG-level dispatch breadcrumb, which is the only place the three
+     * cases are distinguishable.
+     *
+     * The remedy for case 2, and for a refused entry in case 3, is the caller's
+     * either way: pass the retained-era key on
+     * {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
+     * entry, or remove the entry with
+     * `privateStateProvider.removeSigningKey(address)` first.
+     *
+     * @remarks **Privacy-sensitive.** Signing-key material.
+     * @see {@link KeepStatePipeline} for why the member is not optional, and why
+     * an unreadable entry does not fail the attach.
+     */
+    readonly signingKey: SigningKey | undefined;
+    /**
+     * The private state the attach seeded, or the one already stored under the
+     * id it named; `undefined` when it named none.
+     *
+     * @remarks **Privacy-sensitive.**
+     */
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+  };
+}
+
+/**
+ * The deploy data of a retained-era contract deployed by the caller: the
+ * {@link Ledger8FoundDeployTxData} structure, carrying what the constructor
+ * produced as well.
+ *
+ * @remarks **Privacy-sensitive.** `private` carries signing-key material,
+ * private state and shielded coin material.
+ */
+export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+  readonly public: Ledger8FoundDeployTxData<C>['public'] & {
+    /**
+     * The state the contract was deployed with, as the LIVE handle the retained
+     * constructor built. See ADR-0010 for its lifetime, and prefer
+     * `initialContractStateBytes` for anything that has to outlive the runtime
+     * instance.
+     */
+    readonly initialContractState: Ledger8SerializableContractState;
+    /**
+     * The same state, serialized — the bytes the contract address was derived
+     * from. A deploy mints a fresh nonce, so these bytes and that address belong
+     * to each other and to no other deployment.
+     */
+    readonly initialContractStateBytes: Uint8Array;
+  };
+  readonly private: {
+    /**
+     * The key the deployed contract's maintenance authority was built from: ONE
+     * verifying key at threshold 1, so this single key is the whole authority.
+     *
+     * SAMPLED when the caller named none on the deploy options, and stored
+     * against the contract address in the private-state provider once the chain
+     * has recorded the deployment — the same storage and the same moment the
+     * current era's deploy writes its own key to. Attaching to the same address
+     * through the same provider reports it again.
+     *
+     * The provider is the ONLY copy besides this handle. It is not on chain and
+     * not derivable from anything that is, so a store that is lost, cleared or
+     * never persisted takes the authority with it: no verifier key can then be
+     * inserted, removed or replaced on that contract by anyone.
+     *
+     * @remarks **Privacy-sensitive.** Signing-key material.
+     */
+    readonly signingKey: SigningKey;
+    /**
+     * The private state the constructor produced.
+     *
+     * @remarks **Privacy-sensitive.**
+     */
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+    /**
+     * The Zswap local state the constructor ended on, carrying any coin it
+     * minted. Empty for a constructor that minted none.
+     *
+     * @remarks **Privacy-sensitive.** Shielded coin material.
+     */
+    readonly initialZswapState: ZswapLocalState;
+  };
+}
 
 /**
  * A retained-era contract found on the blockchain.
@@ -755,12 +891,11 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
   /** The address on chain every call made through {@link Ledger8FoundContract.callTx} targets. */
   readonly contractAddress: ContractAddress;
   /**
-   * The record of the transaction that DEPLOYED this contract, under `public`
-   * as on the current era's `FoundContract.deployTxData`. It is version-tagged
-   * because a retained-era contract was deployed in whichever era was current
-   * at the time — narrow it with `switch (deployTxData.public.version)`.
+   * The deploy record under `public` and what this device holds for the
+   * contract under `private`, at the same paths as on the current era's
+   * `FoundContract.deployTxData`.
    */
-  readonly deployTxData: { readonly public: VersionedFinalizedTxData };
+  readonly deployTxData: Ledger8FoundDeployTxData<C>;
   /**
    * One function per circuit the artifact declares, each bound to
    * {@link Ledger8FoundContract.contractAddress} and to the private state id
@@ -768,106 +903,22 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * arguments.
    */
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
-  /**
-   * The key this framework holds for the contract's maintenance authority, or
-   * `undefined` when it holds none it can use.
-   *
-   * ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
-   * {@link Ledger8DeployedContract}: a deploy always has a key, because it built
-   * the authority; an attach has one only if a deploy on this machine stored it,
-   * or the caller supplied one through
-   * {@link Ledger8FindDeployedContractOptions.signingKey}.
-   *
-   * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
-   * apart has to look at the logger rather than at this field:
-   *
-   * 1. nothing is stored for this address;
-   * 2. something is stored that this framework did not write -- an entry naming
-   *    the other signature kind, which the CURRENT era legitimately stores
-   *    under the same address in the same provider, or one whose value is not
-   *    the shape a retained-era key has;
-   * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
-   *    provider refuses as not a signing key.
-   *
-   * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
-   * as a DEBUG-level dispatch breadcrumb, which is the only place the three
-   * cases are distinguishable.
-   *
-   * The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
-   * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
-   * entry, or remove the entry with
-   * `privateStateProvider.removeSigningKey(address)` first.
-   *
-   * @remarks **Privacy-sensitive.** Signing-key material.
-   * @see {@link KeepStatePipeline} for why the member is not optional, and why
-   * an unreadable entry does not fail the attach.
-   */
-  readonly signingKey: Ledger8SigningKey | undefined;
 }
 
 /**
  * A retained-era contract deployed by the caller.
  *
- * It differs from {@link Ledger8FoundContract} in two ways. Its
- * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
- * handle's may be `undefined`. The key itself is no longer something only a
- * deployer has -- the deploy stores it, and an attach through the same provider
- * reports it back -- so what a deploy guarantees is that there IS one, not that
- * nobody else could hold it. And it carries what the constructor produced:
- * the initial contract state, as a handle and as bytes, and the initial private
- * and Zswap states.
+ * It differs from {@link Ledger8FoundContract} only in its
+ * {@link Ledger8DeployedContract.deployTxData}, which carries what the
+ * constructor produced and a signing key that is always present.
  *
  * Published under the retained-era namespace so a caller that receives one by
  * inference can also NAME it. This is what `deployContract`'s retained-era overload
  * answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
-  /**
-   * The key the deployed contract's maintenance authority was built from: ONE
-   * verifying key at threshold 1, so this single key is the whole authority.
-   *
-   * SAMPLED here when the caller named none on the deploy options, and stored
-   * against {@link Ledger8FoundContract.contractAddress} in the private-state
-   * provider once the chain has recorded the deployment — the same storage and
-   * the same moment the current era's deploy writes its own key to. Attaching
-   * to the same address through the same provider reports it again on
-   * {@link Ledger8FoundContract.signingKey}.
-   *
-   * The provider is the ONLY copy besides this handle. It is not on chain and
-   * not derivable from anything that is, so a store that is lost, cleared or
-   * never persisted takes the authority with it: no verifier key can then be
-   * inserted, removed or replaced on that contract by anyone.
-   *
-   * @remarks **Privacy-sensitive.** Signing-key material.
-   */
-  readonly signingKey: Ledger8SigningKey;
-  /**
-   * The state the contract was deployed with, as the LIVE handle the retained
-   * constructor built. See ADR-0010 for its lifetime, and prefer
-   * {@link Ledger8DeployedContract.initialContractStateBytes} for anything that has to
-   * outlive the runtime instance.
-   */
-  readonly initialContractState: Ledger8SerializableContractState;
-  /**
-   * The same state, serialized — the bytes the contract address was derived
-   * from. A deploy mints a fresh nonce, so these bytes and that address belong
-   * to each other and to no other deployment.
-   */
-  readonly initialContractStateBytes: Uint8Array;
-  /**
-   * The private state the constructor produced.
-   *
-   * @remarks **Privacy-sensitive.**
-   */
-  readonly initialPrivateState: Ledger8PrivateState<C>;
-  /**
-   * The Zswap local state the constructor ended on, carrying any coin it
-   * minted. Empty for a constructor that minted none.
-   *
-   * @remarks **Privacy-sensitive.** Shielded coin material.
-   */
-  readonly initialZswapState: ZswapLocalState;
+  /** See {@link Ledger8DeployTxData}. */
+  readonly deployTxData: Ledger8DeployTxData<C>;
 }
 
 /**
