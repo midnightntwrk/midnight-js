@@ -681,9 +681,9 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * `RawContractState.version` cannot answer this either: it is derived from the record's
- * `protocolVersion` alone and is explicitly not a verified statement about the envelope the bytes
- * carry (see its own documentation in `packages/types/src/raw-contract-state.ts`).
+ * The envelope is read here from the bytes themselves rather than taken from
+ * `RawContractState.version`: the decoder chosen below is chosen for these exact bytes, and a
+ * provider outside this framework may tag a record wrongly.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
  * `@midnight-ntwrk/midnight-js-utils`.

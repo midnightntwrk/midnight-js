@@ -87,8 +87,8 @@ queryLatestProtocolVersion(): Promise<number>
 ### Reading State Across the Ledger Fork
 
 `queryRawContractState` returns the serialized bytes exactly as the network
-sent them, still in their envelope, alongside the era the record is dated to.
-Use it when the deserializer you need depends on that era:
+sent them, still in their envelope, alongside the era that wrote them. Use it
+when the deserializer you need depends on that era:
 
 ```typescript
 const state = await provider.queryRawContractState(contractAddress);
@@ -105,8 +105,10 @@ if (state !== null) {
 }
 ```
 
-`state.version` is derived from `state.protocolVersion`; this provider does not
-check it against the envelope inside `state.raw`.
+`state.version` is read from the envelope inside `state.raw`.
+`state.protocolVersion` dates the block, which can be newer: a pre-fork record
+read under a post-fork block is `version: 'v8'`. An envelope newer than a pinned
+dating block is refused as an `IndexerDataError` of kind `era-disagreement`.
 
 The methods that deserialize for you — `queryContractState`,
 `queryDeployContractState`, `queryZSwapAndContractState`, `watchForContractState`
@@ -196,10 +198,9 @@ if (read !== null) {
 
 Two things that look interchangeable and are not:
 
-- `read.envelopeVersion` is the era that **wrote the bytes**.
-  `queryRawContractState(...).version` is derived from `protocolVersion` and is
-  a statement about the **block**. When they disagree, the envelope is the one
-  that decides which runtime can decode the bytes.
+- `read.version` is the era that **wrote the bytes**, as is
+  `queryRawContractState(...).version`. `protocolVersion` is a statement about
+  the **block**, and can be newer.
 - `read.state` is encoded, not a live handle. A handle minted inside the
   framework belongs to the framework's copy of the WASM module and is rejected
   by a dApp's own `ledger()`; encoded state crosses that boundary, and also
@@ -379,7 +380,7 @@ contract action becomes.
 
 | | `contractStateObservable` | `rawContractStateObservable` |
 |---|---|---|
-| `value` | `VersionedContractState`: decoded for v9, the stored bytes for v8 | `RawContractState`: the bytes, plus the era the record is dated to |
+| `value` | `VersionedContractState`: decoded for v9, the stored bytes for v8 | `RawContractState`: the bytes, plus the era that wrote them |
 | A state from a retained era | flows through as a v8 value; the caller narrows on `version` | flows through; the caller narrows on `version` |
 | `ledgerParameters` | n/a | absent on the stream; read `queryRawContractState` with the record's `blockHash` — see below |
 | Reach for it when | you want v9 states decoded for you | you want the bytes of every era, plus the block's ledger parameters on a query |
@@ -429,18 +430,12 @@ provider
   });
 ```
 
-Withholding the deserialization does not withhold the fail-fast, but be precise
-about what is withheld: the deserialization, and the envelope-versus-block era
-cross-check that `queryContractState` runs. The envelope **tag** is still read,
-so a payload carrying no supported contract-state envelope still errors the
-stream. Two things can still end the stream on era grounds — an envelope from an
-era this client's tag table does not list, and a `protocolVersion` integer it
-cannot place on the era timeline. The second is the one asymmetry with
-`contractStateObservable`, which tolerates such an integer and decodes on the
-envelope alone; on the raw reads `version` is a required field with nothing to
-fall back to, so the read is refused rather than guessed. Both surface as an
-`IndexerDataError` (`kind: 'unknown-record-era'` for the second), so one
-`instanceof IndexerError` still catches every failure from this provider.
+Withholding the deserialization does not withhold the fail-fast: only the
+deserialization is withheld. The envelope **tag** is still read, so a payload
+carrying no supported contract-state envelope still errors the stream, and the
+envelope is checked against its dating block as on `contractStateObservable`.
+Both surface as an `IndexerError`, so one `instanceof IndexerError` still
+catches every failure from this provider.
 
 ### Observable Configuration
 

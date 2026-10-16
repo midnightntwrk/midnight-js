@@ -158,7 +158,7 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 // `@midnight-ntwrk/midnight-js-utils` when only v9 is handled.
 // To decode a contract state of either era, read the era off the envelope:
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
-// read.envelopeVersion — the era that wrote the bytes
+// read.version         — the era that wrote the bytes
 // read.state           — EncodedStateValue, for your own contract's runtime
 
 // Watch for changes (polling); resolves to a VersionedContractState

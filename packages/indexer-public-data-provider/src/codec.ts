@@ -354,6 +354,20 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
  */
 export type EnvelopeUpperBound = 'enforced' | 'withheld';
 
+const assertEnvelopeNotNewerThanBlock = (
+  envelopeVersion: LedgerVersion,
+  protocolVersion: number,
+  upperBound: EnvelopeUpperBound = 'enforced'
+): void => {
+  if (upperBound === 'withheld') {
+    return;
+  }
+  const reportedVersion = reportedEra(protocolVersion);
+  if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
+    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+  }
+};
+
 /**
  * Deserialize a contract state the indexer served, after establishing which
  * ledger runtime wrote it — and only if that runtime is one this path can
@@ -407,12 +421,7 @@ export const parseHexContractState = (
   options?: { readonly upperBound?: EnvelopeUpperBound }
 ): ContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  if ((options?.upperBound ?? 'enforced') === 'enforced') {
-    const reportedVersion = reportedEra(protocolVersion);
-    if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
-      throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
-    }
-  }
+  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
   if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
     throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);
   }
@@ -498,56 +507,27 @@ export const toVersionedPublicStates = (
 
 /**
  * Builds the raw (undeserialized) contract-state record served by
- * `PublicDataProvider.queryRawContractState`.
+ * `PublicDataProvider.queryRawContractState` and `rawContractStateObservable`.
  *
- * This is the single construction point for the record's `version` field: it
- * is always derived here from `protocolVersion`, using the read-path resolver,
- * and is never passed in or chosen by a caller. Keeping the derivation in one
- * place is what makes "`version` always agrees with `protocolVersion`" true by
- * construction rather than by convention.
+ * `version` is the era that wrote the bytes, read off their envelope. `protocolVersion` dates the
+ * block and bounds the envelope as in {@link parseHexContractState}: an envelope newer than an
+ * enforced dating block is {@link IndexerDataError.eraDisagreement}.
  *
- * @param hexState The hex-encoded serialized contract state, as the indexer
- *                 serves it.
- * @param protocolVersion The protocol-version integer the network reported for
- *                        that state.
+ * @param hexState The hex-encoded serialized contract state, as the indexer serves it.
+ * @param protocolVersion The protocol-version integer of the block that dates the state.
+ * @param hexLedgerParameters The block's ledger parameters, when the read selects them.
+ * @param options `upperBound`, as in {@link parseHexContractState}.
  */
-/**
- * The era a raw contract-state record is tagged with, or an {@link IndexerDataError} if this build
- * cannot place the integer at all.
- *
- * Re-reported rather than propagated so every failure of the raw reads reaches consumers as an
- * `IndexerError`, which is the single `instanceof` this package's errors promise. The protocol-layer
- * failure is preserved on `cause`.
- *
- * Deliberately NOT the tolerant treatment {@link reportedEra} gives the decode path. There the
- * reported version is only a cross-check and the envelope can decide alone; here it is the value of
- * a required field, so there is nothing to fall back to and guessing would put a wrong era on the
- * record.
- */
-const resolveRecordEra = (protocolVersion: number): LedgerVersion => {
-  try {
-    return protocolVersionToLedger(protocolVersion, 'read');
-  } catch (error) {
-    if (error instanceof UnknownProtocolVersionError) {
-      throw IndexerDataError.unresolvableEra(protocolVersion, error);
-    }
-    throw error;
-  }
-};
-
 export const toRawContractState = (
   hexState: string,
   protocolVersion: number,
-  hexLedgerParameters?: string
+  hexLedgerParameters?: string,
+  options?: { readonly upperBound?: EnvelopeUpperBound }
 ): RawContractState => {
-  // Validates the encoding and rejects anything that is not a contract state
-  // from a supported runtime. The envelope reading is deliberately not compared
-  // against `protocolVersion` here: this record's contract is that `version`
-  // reports what the network said, and agreement with the envelope is the
-  // caller's to establish.
-  const { raw } = stateBytesAndEnvelopeVersion(hexState);
+  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
+  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
   return {
-    version: resolveRecordEra(protocolVersion),
+    version: envelopeVersion,
     protocolVersion,
     raw,
     // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function

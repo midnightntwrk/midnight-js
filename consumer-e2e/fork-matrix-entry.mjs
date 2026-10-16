@@ -2173,7 +2173,7 @@ if (MEASURES_READ_SURFACE) {
       return state === null
         ? 'the indexer served no state'
         : {
-            envelopeVersion: state.envelopeVersion,
+            version: state.version,
             protocolVersion: state.protocolVersion,
             entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
           };

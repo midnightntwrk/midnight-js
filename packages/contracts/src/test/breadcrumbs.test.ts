@@ -592,11 +592,11 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
   });
 
   it('dates the envelope by its TAG, not by the era the record claims', async () => {
-    // The record's own `version` says v9 and its envelope says v8. The
-    // breadcrumb reports the envelope, which is the byte-level truth --
-    // `RawContractState.version` is explicitly not a verified statement about
-    // the envelope. This is keep-state, so it is accepted, and the breadcrumb
-    // is what tells an operator which decoder the bytes went to.
+    // The record's own `version` says v9 and its envelope says v8, as a
+    // provider that tags records wrongly would serve. The breadcrumb reports
+    // the envelope, which is the byte-level truth. This is keep-state, so it is
+    // accepted, and the breadcrumb is what tells an operator which decoder the
+    // bytes went to.
     const sink = createSink();
 
     await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD, 'v9'), headSource(), sink);

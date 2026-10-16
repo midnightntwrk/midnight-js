@@ -146,7 +146,7 @@ import { Counter } from './managed/counter/contract/index.cjs';
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 
 if (read !== null) {
-  // `read.envelopeVersion` is the era that WROTE the bytes, read off the
+  // `read.version` is the era that WROTE the bytes, read off the
   // envelope — not the era of the block that dated the read.
   // `read.state` is encoded, so decode it with your own contract's runtime.
   const ledgerState = Counter.ledger(StateValue.decode(read.state));

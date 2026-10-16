@@ -331,11 +331,9 @@ frozen nor null-prototyped.
 `assertHeadStateEraAgreement` refuses an operation whose network head and
 fetched contract state belong to different ledger eras.
 
-`RawContractState.version` cannot answer this. It is derived from the record's
-`protocolVersion` alone and is explicitly not a verified statement about the
-envelope the bytes carry — see its own documentation in
-`packages/types/src/raw-contract-state.ts`. The gap is closed by reading the
-envelope itself.
+The envelope is read from the bytes themselves, not taken from
+`RawContractState.version`: the decoder is chosen for these exact bytes, and a
+provider outside this framework may tag a record wrongly.
 
 The order is load-bearing:
 

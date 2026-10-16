@@ -16,6 +16,7 @@
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
 import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 import {
   createLogger,
   getTestEnvironment,
@@ -131,7 +132,7 @@ describe('Indexer API', () => {
     expect(LEDGER_VERSIONS).toContain(versionOfRecord({ protocolVersion: version }));
   });
 
-  test('queryRawContractState - should return the exact state bytes the indexer serves, dated by the same read', async () => {
+  test('queryRawContractState - should return the exact state bytes the indexer serves, tagged with the era that wrote them', async () => {
     const address = finalizedDeployTxData.public.contractAddress;
 
     const record = await publicDataProvider.queryRawContractState(address);
@@ -141,7 +142,7 @@ describe('Indexer API', () => {
     assert(parsed?.version === 'v9', `expected a v9 contract state, got ${parsed?.version ?? 'null'}`);
     if (record) {
       expect(record.raw).toEqual(new Uint8Array(parsed.state.serialize()));
-      expect(record.version).toEqual(versionOfRecord({ protocolVersion: record.protocolVersion }));
+      expect(record.version).toEqual(contractStateEnvelopeVersion(record.raw));
       expect(record.protocolVersion).toEqual(await publicDataProvider.queryLatestProtocolVersion());
     }
   });

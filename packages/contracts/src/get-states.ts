@@ -110,14 +110,10 @@ export interface AnyEraContractState extends ContractStatePojo {
   /**
    * The ledger era that wrote these bytes, read from the envelope they carry.
    *
-   * Not the `version` of the raw record, which is derived from `protocolVersion` and so describes
-   * the BLOCK. Two different things make the two disagree legitimately, and neither is a fault:
-   * an indexer older than `4.4.0-rc.6` serves a contract untouched since the fork with an OLDER
-   * envelope under a newer block (midnight-indexer #1605), and an unpinned read resolves the state
-   * and the block as independent Query-root siblings that can land either side of the boundary.
-   * See `EnvelopeUpperBound` in `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
+   * It can be older than the era of the block that dated the read (see {@link protocolVersion}):
+   * a record keeps the encoding it was written in.
    */
-  readonly envelopeVersion: LedgerVersion;
+  readonly version: LedgerVersion;
   /**
    * The protocol-version integer the network reported for the block that dated the read.
    *
@@ -172,13 +168,13 @@ export const getAnyEraContractState = async (
   if (served === null) {
     return null;
   }
-  const envelopeVersion = contractStateEnvelopeVersion(served.raw);
-  const era = await loadLedgerEra(envelopeVersion);
+  const version = contractStateEnvelopeVersion(served.raw);
+  const era = await loadLedgerEra(version);
   // ONE decode, not an `extractState` beside a `decodeContractState`. Those two are kept separate
   // in the keep-state pipeline because there the extraction feeds execution and the decode feeds
   // the key check, and each has to be able to fail without the other. Here both members are
   // returned together or not at all, so a second deserialization of the same bytes would buy
   // nothing and cost a full WASM pass over them.
   const decoded = era.decodeContractState(served.raw);
-  return { envelopeVersion, protocolVersion: served.protocolVersion, raw: served.raw, ...decoded };
+  return { version, protocolVersion: served.protocolVersion, raw: served.raw, ...decoded };
 };

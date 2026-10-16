@@ -231,7 +231,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // caller a wrong answer that reads exactly like a correct one.
       throw IndexerDataError.undatedState();
     }
-    return toRawContractState(state, block.protocolVersion, block.ledgerParameters);
+    // Unpinned, `block` and `contract` are siblings that can straddle a fork; see `queryContractState`.
+    return toRawContractState(state, block.protocolVersion, block.ledgerParameters, {
+      upperBound: offset === null ? 'withheld' : 'enforced'
+    });
   }
 
   queryContractState(
@@ -568,18 +571,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Every branch and every replay-suppression rule is exactly
    * {@link contractStateObservable}'s; only the element type differs.
    *
-   * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
-   * served-era cross-check {@link parseHexContractState} runs. The envelope tag
-   * is still read, so a payload carrying no supported contract-state envelope
-   * still fails the stream. Two things can still end it on era grounds — an
-   * envelope from an era this client's tag table does not list, and a
-   * `protocolVersion` integer it cannot place on the era timeline. The second
-   * is the one asymmetry with {@link contractStateObservable}, which tolerates
-   * such an integer and decodes on the envelope alone; here `version` is a
-   * required field with nothing to fall back to, so the read is refused as
-   * {@link IndexerDataError} with `kind: 'unknown-record-era'` rather than
-   * guessed. Both arrive as an `IndexerError`, like every other failure from
-   * this package.
+   * WHAT IS WITHHELD, PRECISELY: the deserialization only. `version` is the era
+   * read off the envelope, and the envelope is checked against the record's
+   * dating block exactly as {@link contractStateObservable} checks it, so a
+   * payload carrying no supported contract-state envelope, or an envelope newer
+   * than its dating block, still fails the stream as an `IndexerError`.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.

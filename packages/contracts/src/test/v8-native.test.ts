@@ -3527,8 +3527,8 @@ describe('attaching to a retained-era contract already on chain', () => {
   it("routes on the ENVELOPE, not on the record's own era label, when attaching after the fork", async () => {
     const providers = attachProviders(v6Envelope);
     // The record labels itself current-era and the head agrees with the label, while the bytes
-    // carry a retained envelope. The label is derived from `protocolVersion` alone and is not a
-    // verified statement about the bytes -- and the bytes are what a decoder has to read.
+    // carry a retained envelope, as a provider that tags records by the block would serve. The
+    // bytes are what a decoder has to read.
     //
     // This is a contract deployed before the fork and attached to after it, as an indexer older
     // than 4.4.0-rc.6 serves it (midnight-indexer #1605). It must attach, not be refused.

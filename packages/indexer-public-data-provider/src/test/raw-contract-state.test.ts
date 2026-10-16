@@ -34,7 +34,9 @@ import {
   LEDGER8_ERA_PROTOCOL_VERSION,
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateHex,
-  mintLedger9ContractStateHex} from './state-fixtures';
+  mintLedger9ContractStateHex,
+  UNRESOLVABLE_PROTOCOL_VERSION
+} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -208,16 +210,48 @@ describe('queryRawContractState', () => {
       );
     });
 
-    test('derives the era only from the protocol version, never from the envelope tag', async () => {
-      // A v8-era protocol version paired with a v9 envelope: `version` still
-      // follows the protocol version, because that is the single construction
-      // point. Catching the disagreement is the era cross-check's job, not
-      // this record's.
-      const record = await providerServing(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION).queryRawContractState(
+    test('tags a pre-fork state served under a post-fork block with the era that wrote it', async () => {
+      const record = await providerServing(await mintLedger8ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION).queryRawContractState(
         ADDRESS
       );
 
       expect(record?.version).toBe('v8');
+      expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
+    });
+
+    test('tags an unpinned state newer than its sibling block with the envelope era', async () => {
+      // Unpinned, `block` and `contract` follow the chain tip independently, so the fork block can
+      // land between them. The bound is withheld; the envelope still says who wrote the bytes.
+      const record = await providerServing(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION).queryRawContractState(
+        ADDRESS
+      );
+
+      expect(record?.version).toBe('v9');
+    });
+
+    test('refuses a pinned state whose envelope is newer than the block that dates it', async () => {
+      const rejection = await providerServing(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION)
+        .queryRawContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 })
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({
+        kind: 'era-disagreement',
+        protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
+        reportedVersion: 'v8',
+        envelopeVersion: 'v9'
+      });
+    });
+
+    test('tags the state by its envelope when the block reports a version this build cannot place', async () => {
+      const record = await providerServing(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION).queryRawContractState(
+        ADDRESS
+      );
+
+      expect(record?.version).toBe('v9');
     });
   });
 
