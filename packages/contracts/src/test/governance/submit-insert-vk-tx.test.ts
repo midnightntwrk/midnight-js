@@ -114,7 +114,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockProviders.config
       );
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
 
     it('should insert a key into a registered operation that carries no verifier key', async () => {
@@ -137,7 +137,7 @@ describe('submitInsertVerifierKeyTx', () => {
       );
 
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
   });
 

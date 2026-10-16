@@ -48,6 +48,7 @@ import {
   IndexerInconsistencyError,
   Ledger8ContractStateUnsupportedError,
   Ledger8DeployOnLedger9Error,
+  Ledger8MaintenanceOnLedger9Error,
   type StaleHeadOperationKind} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
@@ -404,6 +405,21 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
 };
 
 /**
+ * Whether a contract has the retained toolchain's SHAPE: the raw generated instance rather than the
+ * current toolchain's `CompiledContract` container.
+ *
+ * Shape only, with no artifact read, so it is synchronous. It is for enumerating the circuits a
+ * contract declares, never for choosing a pipeline: {@link resolveArtifactEra} remains the one era
+ * decision, and every operation reached through the circuits enumerated here makes it.
+ *
+ * @param compiledContract The contract a caller passed.
+ * @returns `true` for the retained toolchain's shape.
+ * @throws EraArtifactMismatchError if the object belongs to neither toolchain's shape.
+ */
+export const hasLedger8ContractShape = <L extends Ledger8Contract>(compiledContract: object | L): compiledContract is L =>
+  artifactShapeOf(compiledContract) === 'ledger8-candidate';
+
+/**
  * Decides which pipeline a caller's contract belongs to, from what the artifact DECLARES.
  *
  * Two answers, one per era, and neither rests on a property of generated JavaScript that a
@@ -487,6 +503,19 @@ export const isLedger8Request = <L extends { readonly compiledContract: Ledger8C
   _options: { readonly compiledContract: unknown } | L,
   era: LedgerVersion
 ): _options is L => era === 'v8';
+
+/**
+ * {@link isLedger8Request} for an entry point that takes the contract as its own argument rather than
+ * on an options object: the governance functions.
+ *
+ * @param _compiledContract The contract an entry point received. Read by the type system only.
+ * @param era The era {@link resolveArtifactEra} resolved for that contract.
+ * @returns Whether this is a retained-era contract.
+ */
+export const isLedger8Contract = <C extends object>(
+  _compiledContract: C | Ledger8Contract,
+  era: LedgerVersion
+): _compiledContract is Ledger8Contract => era === 'v8';
 
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
@@ -625,19 +654,21 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * Refuses an operation whose artifact era and network head era cannot be run together.
  *
  * Rules every cell of {@link ERA_PAIRING} rather than letting one fall through. A retained-era
- * DEPLOY on a post-fork head is the one cell where calls and deploys differ, and the `'call-only'`
- * verdict is where that difference lives.
+ * DEPLOY or MAINTENANCE update on a post-fork head is the one cell where the operation kinds differ,
+ * and the `'call-only'` verdict is where that difference lives.
  *
  * Returns nothing: this decides only whether the `(pipeline, head)` pair the caller already holds
  * may run.
  *
  * @param pipeline The pipeline the artifact belongs to, from {@link resolveArtifactEra}.
  * @param head The era the network head is on, from {@link resolveOperationEra}.
- * @param kind Whether this operation deploys a contract or calls one already deployed. Anything
- * that is not a call is treated as a deploy, which is the refusing side.
+ * @param kind Whether this operation deploys a contract, calls one already deployed, or maintains
+ * one already deployed. Anything that is not a call or a maintenance update is treated as a deploy,
+ * which is a refusing side.
  * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-head'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
+ * @throws Ledger8MaintenanceOnLedger9Error for a retained-era maintenance update on a post-fork head.
  * @throws UnknownLedgerVersionError carrying whichever argument has no cell here, if an era is
  * added without extending the table -- and also from the closing case, carrying a verdict rather
  * than an era, if a verdict is ever added without one. The class does not distinguish the three;
@@ -681,10 +712,13 @@ export const assertEraCompatible = (
       // read the same for a typed caller and differ for every other value, and this is the one
       // asymmetric cell in the fork window -- so the value nobody anticipated must land on the
       // refusing side.
-      if (kind !== 'call') {
-        throw new Ledger8DeployOnLedger9Error();
+      if (kind === 'call') {
+        return;
       }
-      return;
+      if (kind === 'maintenance') {
+        throw new Ledger8MaintenanceOnLedger9Error();
+      }
+      throw new Ledger8DeployOnLedger9Error();
     case 'artifact-newer-than-head':
       throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head');
     default: {

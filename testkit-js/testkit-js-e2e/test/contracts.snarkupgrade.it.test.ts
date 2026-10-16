@@ -72,7 +72,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
   test('should successfully remove verifier key using submitRemoveVerifierKeyTx', async () => {
     const finalizedTxData = await submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
   });
 
   /**
@@ -93,7 +93,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     );
     const finalizedTxData = await circuitMaintenanceTxInterface.removeVerifierKey();
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
   });
 
   /**
@@ -113,7 +113,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
       contractAddress
     );
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
 
     logger.info('Interact with contract');
     const contractCircuitsInterface = createCircuitCallTxInterface(
@@ -151,7 +151,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
   });
 
   /**

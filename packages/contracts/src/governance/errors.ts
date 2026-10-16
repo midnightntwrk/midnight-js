@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxData, Ledger8FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
-import { TxFailedError } from '../errors';
+import { AnyEraTxFailedError, TxFailedError } from '../errors';
 
 /**
  * An error indicating that a contract maintenance authority replacement transaction failed.
@@ -44,5 +44,55 @@ export class InsertVerifierKeyTxFailedError extends TxFailedError {
   constructor(finalizedTxData: FinalizedTxData) {
     super(finalizedTxData);
     this.name = 'InsertVerifierKeyTxFailedError';
+  }
+}
+
+/**
+ * The retained-era counterpart of the three classes above: a maintenance update composed by the
+ * ledger 8 pipeline that the chain recorded with a status other than `SucceedEntirely`.
+ *
+ * Not a subclass of {@link TxFailedError}, which carries a current-era `FinalizedTxData`; the record
+ * here is the ledger 8 one. Carries no registered error code of its own, exactly as
+ * `Ledger8CallTxFailedError` does: branch on the class, or on the inherited
+ * {@link AnyEraTxFailedError.code}.
+ */
+abstract class Ledger8MaintenanceTxFailedError extends AnyEraTxFailedError {
+  constructor(
+    readonly txData: Ledger8FinalizedTxData,
+    update: string
+  ) {
+    super(
+      `The ledger 8 ${update} was recorded on chain with status '${txData.status}' rather ` +
+        `than 'SucceedEntirely' (transaction id '${txData.txId}').`
+    );
+  }
+
+  /** See {@link AnyEraTxFailedError.record}. Always the ledger 8 variant on this class. */
+  get record(): Ledger8FinalizedTxData {
+    return this.txData;
+  }
+}
+
+/** A retained-era maintenance authority replacement that the chain recorded as failed. */
+export class Ledger8ReplaceMaintenanceAuthorityTxFailedError extends Ledger8MaintenanceTxFailedError {
+  constructor(txData: Ledger8FinalizedTxData) {
+    super(txData, 'maintenance authority replacement');
+    this.name = 'Ledger8ReplaceMaintenanceAuthorityTxFailedError';
+  }
+}
+
+/** A retained-era verifier key removal that the chain recorded as failed. */
+export class Ledger8RemoveVerifierKeyTxFailedError extends Ledger8MaintenanceTxFailedError {
+  constructor(txData: Ledger8FinalizedTxData) {
+    super(txData, 'verifier key removal');
+    this.name = 'Ledger8RemoveVerifierKeyTxFailedError';
+  }
+}
+
+/** A retained-era verifier key insertion that the chain recorded as failed. */
+export class Ledger8InsertVerifierKeyTxFailedError extends Ledger8MaintenanceTxFailedError {
+  constructor(txData: Ledger8FinalizedTxData) {
+    super(txData, 'verifier key insertion');
+    this.name = 'Ledger8InsertVerifierKeyTxFailedError';
   }
 }

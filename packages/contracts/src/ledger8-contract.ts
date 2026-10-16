@@ -65,10 +65,12 @@ import type {
   CallResultPrivateBase,
   CallResultPublicBase,
   ContractCallPrivateBase,
+  Ledger8FinalizedTxData,
   MidnightProviders,
   PrivateStateId,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase,
+  VerifierKey,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
@@ -868,15 +870,64 @@ export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8F
 }
 
 /**
+ * What a retained-era maintenance update resolves with once the chain has recorded it: the
+ * retained era's counterpart of the current era's `FinalizedMaintenanceTxData`.
+ *
+ * `public` is always the ledger 8 record. A retained-era artifact maintains a contract only before
+ * the fork, so no other era can record the update.
+ */
+export interface Ledger8FinalizedMaintenanceTxData {
+  /** The pipeline that produced this result: always the retained era here. */
+  readonly era: 'v8';
+  /** The finalized record of the maintenance transaction. */
+  readonly public: Ledger8FinalizedTxData;
+}
+
+/**
+ * Maintenance updates for one circuit of a retained-era contract, bound to one address: the
+ * retained era's counterpart of `CircuitMaintenanceTxInterface`.
+ */
+export interface Ledger8CircuitMaintenanceTxInterface {
+  /** Removes the verifier key the contract holds for this circuit. */
+  removeVerifierKey(): Promise<Ledger8FinalizedMaintenanceTxData>;
+  /**
+   * Inserts a verifier key for this circuit into a slot that holds none.
+   *
+   * @param newVk The verifier key to insert.
+   */
+  insertVerifierKey(newVk: VerifierKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+
+/** One {@link Ledger8CircuitMaintenanceTxInterface} per circuit the retained-era contract declares. */
+export type Ledger8CircuitMaintenanceTxInterfaces<C extends Ledger8Contract> = Record<
+  Ledger8CircuitId<C>,
+  Ledger8CircuitMaintenanceTxInterface
+>;
+
+/**
+ * Maintenance updates for a whole retained-era contract, bound to one address: the retained era's
+ * counterpart of `ContractMaintenanceTxInterface`.
+ */
+export interface Ledger8ContractMaintenanceTxInterface {
+  /**
+   * Replaces the contract's maintenance authority with one built from `newAuthority`, and stores
+   * that key for the address once the chain has recorded the replacement.
+   *
+   * @param newAuthority The new authority's key: a `schnorr` key, as every ledger 8 key is.
+   */
+  replaceAuthority(newAuthority: SigningKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+
+/**
  * A retained-era contract found on the blockchain.
  *
  * Carries a {@link Ledger8CircuitCallTxInterface} for the same reason the
  * current era's `FoundContract` carries one: a caller that has just supplied
  * the contract and its address should not have to supply them again to call it.
  *
- * The maintenance interfaces the current era's `FoundContract` also carries are
- * NOT here: the retained era has no governance API at all, so there is nothing
- * for them to reach.
+ * It carries the maintenance interfaces the current era's `FoundContract` carries,
+ * for the same reason. They work only before the fork; after it, the same contract
+ * is maintained through a handle built from the recompiled artifact.
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {
   /**
@@ -903,6 +954,10 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * arguments.
    */
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
+  /** One maintenance interface per circuit the artifact declares, bound to this address. */
+  readonly circuitMaintenanceTx: Ledger8CircuitMaintenanceTxInterfaces<C>;
+  /** The contract-wide maintenance interface, bound to this address. */
+  readonly contractMaintenanceTx: Ledger8ContractMaintenanceTxInterface;
 }
 
 /**

@@ -304,6 +304,57 @@ the `signingKey` deploy and find options, `deployTxData.private.signingKey`, and
 and `Ledger8.DeployNotStoredError`. `Ledger8.SigningKeyUnusableError.contractAddress`
 is optional: a refused deploy key has no address yet.
 
+### Contract maintenance in both eras (#1514)
+
+```ts
+export interface FinalizedMaintenanceTxData {
+  readonly era: 'v9';
+  readonly public: FinalizedTxData;
+}
+export type AnyEraMaintenanceTxData = FinalizedMaintenanceTxData | Ledger8.FinalizedMaintenanceTxData;
+
+export function submitInsertVerifierKeyTx<C extends Ledger8.Contract>(
+  providers: Ledger8.ContractProviders<C, Ledger8.CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  circuitId: Ledger8.CircuitId<C>,
+  newVk: VerifierKey
+): Promise<Ledger8.FinalizedMaintenanceTxData>;
+export function submitInsertVerifierKeyTx<C extends Contract.Any>(
+  providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>,
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C>,
+  newVk: VerifierKey
+): Promise<FinalizedMaintenanceTxData>;
+// submitRemoveVerifierKeyTx and submitReplaceAuthorityTx take the same two overloads;
+// so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
+
+export namespace Ledger8 {
+  export interface FinalizedMaintenanceTxData {
+    readonly era: 'v8';
+    readonly public: Ledger8FinalizedTxData;
+  }
+  export interface CircuitMaintenanceTxInterface {
+    removeVerifierKey(): Promise<FinalizedMaintenanceTxData>;
+    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedMaintenanceTxData>;
+  }
+  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, CircuitMaintenanceTxInterface>;
+  export interface ContractMaintenanceTxInterface {
+    replaceAuthority(newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData>;
+  }
+  // FoundContract<C> and DeployedContract<C> gain
+  //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
+  //   contractMaintenanceTx: ContractMaintenanceTxInterface
+  // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
+  //   InsertVerifierKeyTxFailedError, RemoveVerifierKeyTxFailedError,
+  //   ReplaceMaintenanceAuthorityTxFailedError.
+}
+```
+
+`StaleHeadOperationKind` gains `'maintenance'`. The `@midnight-ntwrk/midnight-js-protocol` engine
+gains `Ledger8Engine.composeMaintenanceTx` and the `MaintenanceAuthorityMismatchError` class.
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`

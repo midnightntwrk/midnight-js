@@ -519,10 +519,11 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only two places: the retained handle has no maintenance
-interfaces (the retained era has no governance API), and its
+HANDLES differ in one place: the retained handle's
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
-recipient key mappings (see below). And `getStates` / `getPublicStates`
+recipient key mappings (see below). Both handles carry the maintenance
+interfaces; the retained one works only before the fork, and after it the same
+contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
 return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
 ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
 on `version` before reading the state.
@@ -604,6 +605,28 @@ try {
   throw error;
 }
 ```
+
+### Maintaining a contract in either era
+
+`submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx`
+and the maintenance interfaces on both handles take either era's artifact. Their
+result is now nested like every other result, so read the record under `public`:
+
+```diff
+- const { status } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
++ const { public: { status } } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
+```
+
+Before the fork, a contract deployed with ledger 8 artifacts is maintained with
+those artifacts and the key the deploy stored. After the fork, the retained
+artifact is refused with `Ledger8.MaintenanceOnLedger9Error`: recompile the
+contract with the ledger 9 Compact toolchain and call the same function with
+that artifact. The stored key is unchanged.
+
+A retained-era update reads the stored key before it composes anything, and
+refuses a missing, foreign-kind or unreadable entry with
+`Ledger8.SigningKeyUnavailableError`, and a key that is not the contract's
+authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
 
 ### The ledger 8 (pre-fork) toolchain stays where it is
 

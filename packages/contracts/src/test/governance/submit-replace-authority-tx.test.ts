@@ -95,7 +95,7 @@ describe('submitReplaceAuthorityTx', () => {
       );
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
   });
 

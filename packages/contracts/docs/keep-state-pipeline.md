@@ -520,10 +520,9 @@ It diverges from the current era in THREE cases, each deliberate.
 **1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
 when the store holds none, the retained-era path reports `undefined`. A key sampled at
 attach time bears no relation to the authority the chain already holds for a
-contract this caller did not deploy, and the retained era has no governance API
-at all, so there is no maintenance interface on `Ledger8FoundContract` for such a
-key to be used through. Storing one would put a key on record that can maintain
-nothing and report it as though it could.
+contract this caller did not deploy, so a maintenance update signed with it is
+refused (`MaintenanceAuthorityMismatchError`). Storing one would put a key on
+record that can maintain nothing and report it as though it could.
 
 **2. An unusable or unreadable entry reads as absent**, and the attach still
 succeeds — where the current era reports whatever the store answered, unchecked.
@@ -576,8 +575,47 @@ caller supplied one.
 
 `undefined` collapses three cases — nothing stored; something stored this
 framework did not write; the entry could not be read at all. Neither of the last
-two fails the attach, because nothing on this path CONSUMES the key: the retained
-era exposes no maintenance interface, so a circuit call would otherwise stop
-working over a value it never reads. Both are reported to the logger provider as
+two fails the attach, because a circuit call never CONSUMES the key, and would
+otherwise stop working over a value it never reads. The maintenance interfaces on
+the same handle do consume it, and for them the same three cases are a refusal,
+`Ledger8SigningKeyUnavailableError`, raised before anything is composed: a
+maintenance update cannot proceed without the key. Both are reported to the logger provider as
 a DEBUG-level dispatch breadcrumb, which is the only place the three are
 distinguishable.
+
+## Contract maintenance on the retained era
+
+`submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` and
+`submitReplaceAuthorityTx`, and the interfaces built on them, take a retained-era
+artifact through the same overloads the current era's artifact takes, and dispatch on
+the artifact's era like `deployContract` and `submitCallTx`. The retained path is
+`submitLedger8MaintenanceTx`, in this order:
+
+1. Refuse a circuit the artifact does not declare, and a replacement key the
+   retained era cannot sign with (`Ledger8SigningKeyUnusableError`). Nothing is read
+   yet.
+2. Acquire the era. A post-fork head is refused with
+   `Ledger8MaintenanceOnLedger9Error` before the signing key is read.
+3. Read the signing key. Missing, unusable or unreadable is
+   `Ledger8SigningKeyUnavailableError`.
+4. Read ONE snapshot, check the slot the update targets (an insert needs it empty, a
+   remove needs a key in it), and hand the snapshot's own bytes to the engine.
+5. The engine builds and signs the update through compact-js, after checking the key
+   is the authority's first committee member (`MaintenanceAuthorityMismatchError`
+   otherwise). See `packages/protocol/docs/retained-era-execution.md`.
+6. Prove, balance and submit as a `{ version: 'v8', txBytes }` payload, with
+   `kind: 'maintenance'` for the fork-crossing diagnosis.
+7. Refuse a record from any era but ledger 8, then a non-success status with
+   `Ledger8InsertVerifierKeyTxFailedError`, `Ledger8RemoveVerifierKeyTxFailedError`
+   or `Ledger8ReplaceMaintenanceAuthorityTxFailedError`.
+8. After a confirmed replacement, store the new key. A store that refuses it raises
+   `Ledger8SigningKeyNotStoredError`, which carries the key: the old one no longer
+   authorizes anything.
+
+The result is `{ era: 'v8', public: Ledger8FinalizedTxData }`. The record is always
+the ledger 8 one, because step 2 refuses every other head.
+
+The engine is handed the chain's serialized state rather than the decoded
+`ContractStatePojo`: the decoded form carries no maintenance authority, and the
+update is signed against that authority's counter and committee.
+

@@ -588,7 +588,9 @@ export async function findDeployedContract<C extends Contract.Any>(
         options.compiledContract,
         options.contractAddress,
         options.privateStateId
-      )
+      ),
+      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, options.contractAddress),
+      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, options.contractAddress)
     };
   }
   const { compiledContract, contractAddress } = options;

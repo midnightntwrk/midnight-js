@@ -116,6 +116,9 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `LEDGER8_RECIPIENT_UNMAPPABLE` | USAGE | `Ledger8RecipientUnmappableError` |
 | C | `LEDGER8_DEPLOY_NOT_STORED` | ENVIRONMENT | `Ledger8DeployNotStoredError` |
 | C | `LEDGER8_SIGNING_KEY_UNUSABLE` | USAGE | `Ledger8SigningKeyUnusableError` |
+| C | `LEDGER8_MAINTENANCE_ON_LEDGER9` | USAGE | `Ledger8MaintenanceOnLedger9Error` |
+| C | `LEDGER8_SIGNING_KEY_UNAVAILABLE` | USAGE | `Ledger8SigningKeyUnavailableError` |
+| C | `LEDGER8_SIGNING_KEY_NOT_STORED` | ENVIRONMENT | `Ledger8SigningKeyNotStoredError` |
 | C | `HEAD_READ_FAILED` | TRANSIENT | `HeadReadFailedError`* |
 | C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError`* |
 | C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError`* |

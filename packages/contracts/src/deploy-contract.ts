@@ -319,7 +319,9 @@ export async function deployContract<C extends Contract.Any>(
         options.compiledContract,
         deployed.contractAddress,
         'privateStateId' in options ? options.privateStateId : undefined
-      )
+      ),
+      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, deployed.contractAddress),
+      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, deployed.contractAddress)
     };
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));

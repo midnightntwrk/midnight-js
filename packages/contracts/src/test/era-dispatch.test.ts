@@ -31,7 +31,8 @@ import {
   EraArtifactMismatchError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  Ledger8DeployOnLedger9Error} from '../errors';
+  Ledger8DeployOnLedger9Error,
+  Ledger8MaintenanceOnLedger9Error} from '../errors';
 import {
   assertEraCompatible,
   ERA_PAIRING,
@@ -247,7 +248,9 @@ const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
   { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'deploy', route: 'v9' },
   { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v9', kind: 'call', route: 'keep-state' },
   { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'call', route: 'v8' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' }
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' },
+  { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'maintenance', route: 'v9' },
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'maintenance', route: 'v8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
@@ -278,6 +281,22 @@ const REFUSED_CELLS: readonly (DispatchCell & {
     kind: 'deploy',
     errorClass: Ledger8DeployOnLedger9Error,
     code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9
+  },
+  {
+    artifact: 'current-era (0.18)',
+    pipeline: 'v9',
+    head: 'v8',
+    kind: 'maintenance',
+    errorClass: EraArtifactMismatchError,
+    code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH
+  },
+  {
+    artifact: 'retained-era (0.16)',
+    pipeline: 'v8',
+    head: 'v9',
+    kind: 'maintenance',
+    errorClass: Ledger8MaintenanceOnLedger9Error,
+    code: CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9
   }
 ];
 
@@ -296,7 +315,8 @@ const ALL_HEADS: Record<LedgerVersion, LedgerVersion> = {
 
 const ALL_KINDS: Record<OperationKind, OperationKind> = {
   call: 'call',
-  deploy: 'deploy'
+  deploy: 'deploy',
+  maintenance: 'maintenance'
 };
 
 // The values the run-time guards exist for, asserted back in one named place so the negative tests
@@ -368,6 +388,17 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect(error).toBeInstanceOf(Ledger8DeployOnLedger9Error);
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
       expect((error as Ledger8DeployOnLedger9Error).message).toMatch(/runtime-deploy|0\.18 artifacts/);
+    }
+  });
+
+  it('points a retained-era maintenance update on a post-fork head at the recompiled artifact', () => {
+    try {
+      assertEraCompatible('v8', 'v9', 'maintenance');
+      expect.unreachable('a retained-era maintenance update was accepted on a post-fork head');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Ledger8MaintenanceOnLedger9Error);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9)).toBe(true);
+      expect((error as Ledger8MaintenanceOnLedger9Error).message).toMatch(/Recompile the contract with the ledger 9/);
     }
   });
 

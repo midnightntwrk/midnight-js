@@ -204,6 +204,21 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
 export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
 
 /**
+ * What a contract maintenance update -- a verifier key inserted or removed, or the maintenance
+ * authority replaced -- resolves with once the chain has recorded it.
+ *
+ * Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
+ * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
+ * are `AnyEraMaintenanceTxData`.
+ */
+export interface FinalizedMaintenanceTxData {
+  /** The pipeline that produced this result: always the current era here. */
+  readonly era: CurrentLedgerVersion;
+  /** The finalized record of the maintenance transaction. */
+  readonly public: FinalizedTxData;
+}
+
+/**
  * Data for a deployment found on chain by `findDeployedContract`.
  *
  * @remarks

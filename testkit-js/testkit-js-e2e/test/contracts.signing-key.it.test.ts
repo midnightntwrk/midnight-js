@@ -100,7 +100,7 @@ describe('Contract maintenance authority signing keys', () => {
         CompiledCounterContract,
         contractAddress
       )(ecdsaKey);
-      expect(replaceWithEcdsa.status).toBe(SucceedEntirely);
+      expect(replaceWithEcdsa.public.status).toBe(SucceedEntirely);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
 
       const nextSchnorrKey = sampleSigningKey('schnorr');
@@ -109,7 +109,7 @@ describe('Contract maintenance authority signing keys', () => {
         CompiledCounterContract,
         contractAddress
       )(nextSchnorrKey);
-      expect(replaceWithSchnorr.status).toBe(SucceedEntirely);
+      expect(replaceWithSchnorr.public.status).toBe(SucceedEntirely);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(nextSchnorrKey);
     },
     SLOW_TEST_TIMEOUT
@@ -148,7 +148,7 @@ describe('Contract maintenance authority signing keys', () => {
         CompiledCounterContract,
         contractAddress
       )(nextEcdsaKey);
-      expect(replaceWithEcdsa.status).toBe(SucceedEntirely);
+      expect(replaceWithEcdsa.public.status).toBe(SucceedEntirely);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(nextEcdsaKey);
     },
     SLOW_TEST_TIMEOUT
@@ -192,7 +192,7 @@ describe('Contract maintenance authority signing keys', () => {
         contractAddress,
         CIRCUIT_ID_INCREMENT
       );
-      expect(removeResult.status).toBe(SucceedEntirely);
+      expect(removeResult.public.status).toBe(SucceedEntirely);
 
       const insertResult = await submitInsertVerifierKeyTx(
         providers,
@@ -201,7 +201,7 @@ describe('Contract maintenance authority signing keys', () => {
         CIRCUIT_ID_INCREMENT,
         incrementVk
       );
-      expect(insertResult.status).toBe(SucceedEntirely);
+      expect(insertResult.public.status).toBe(SucceedEntirely);
 
       // The authority key kind is unchanged by verifier-key maintenance actions.
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);

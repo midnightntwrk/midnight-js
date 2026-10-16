@@ -829,6 +829,46 @@ exactly 64 hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableEr
 + deployed.deployTxData.private.initialPrivateState;
 ```
 
+## 17. Contract maintenance in both eras, with results tagged by era (#1514)
+
+The maintenance functions take a retained-era artifact as well, on a pre-fork head, and every
+maintenance result is now nested like every other `contracts` result.
+
+| Where | Before | After |
+|---|---|---|
+| `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>`, `{ era: 'v9', public: FinalizedTxData }`; a retained-era artifact resolves `Promise<Ledger8.FinalizedMaintenanceTxData>`, `{ era: 'v8', public: Ledger8FinalizedTxData }` |
+| `submitReplaceAuthorityTx(...)` | `(newAuthority) => Promise<FinalizedTxData>` | `(newAuthority) => Promise<FinalizedMaintenanceTxData>`, or the retained-era result for a retained-era artifact |
+| `CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` methods | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>` |
+| `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8.CircuitMaintenanceTxInterface(s)` / `Ledger8.ContractMaintenanceTxInterface` |
+| `Ledger8.FoundContract`, `Ledger8.DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
+| `StaleHeadOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
+
+```diff
+  const result = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
+- result.status;
++ result.public.status;
+```
+
+`AnyEraMaintenanceTxData` is the union of both results; narrowing on `era` narrows `public`. The
+`*TxFailedError` records are unchanged.
+
+A retained-era maintenance update on a post-fork head is refused with
+`Ledger8.MaintenanceOnLedger9Error` (`LEDGER8_MAINTENANCE_ON_LEDGER9`). After the fork, recompile
+the contract with the ledger 9 Compact toolchain and call the same function with that artifact.
+
+New refusals on the retained path:
+
+| Class | Code | When |
+|---|---|---|
+| `Ledger8.MaintenanceOnLedger9Error` | `LEDGER8_MAINTENANCE_ON_LEDGER9` (USAGE) | retained-era artifact on a post-fork head |
+| `Ledger8.SigningKeyUnavailableError` | `LEDGER8_SIGNING_KEY_UNAVAILABLE` (USAGE) | no usable key stored, or the store cannot be read (on `cause`) |
+| `Ledger8.SigningKeyNotStoredError` | `LEDGER8_SIGNING_KEY_NOT_STORED` (ENVIRONMENT) | a confirmed replacement whose new key the store refused; carries the key |
+| `MaintenanceAuthorityMismatchError` (protocol) | `MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH` (USAGE) | the stored key is not the contract's authority; raised before proving |
+| `Ledger8.InsertVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TX_FAILED` (inherited from `AnyEraTxFailedError`) | the chain recorded a non-success status |
+
+A retained-era replacement key must be a `schnorr` key; any other is refused with
+`Ledger8.SigningKeyUnusableError` before anything is composed.
+
 ---
 
 ## Non-breaking additions worth noting

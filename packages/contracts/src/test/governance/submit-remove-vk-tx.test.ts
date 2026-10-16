@@ -100,7 +100,7 @@ describe('submitRemoveVerifierKeyTx', () => {
         mockProviders.config
       );
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
   });
 

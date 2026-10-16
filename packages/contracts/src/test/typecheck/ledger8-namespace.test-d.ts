@@ -34,6 +34,8 @@ import type {
   Ledger8CircuitCallTxInterface,
   Ledger8CircuitContext,
   Ledger8CircuitId,
+  Ledger8CircuitMaintenanceTxInterface,
+  Ledger8CircuitMaintenanceTxInterfaces,
   Ledger8CircuitParameters,
   Ledger8CircuitResult,
   Ledger8CircuitReturnType,
@@ -41,6 +43,7 @@ import type {
   Ledger8Contract,
   Ledger8ContractCall,
   Ledger8ContractCallPublic,
+  Ledger8ContractMaintenanceTxInterface,
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
   Ledger8DeployContractOptionsBase,
@@ -48,6 +51,7 @@ import type {
   Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData,
+  Ledger8FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
   Ledger8InitialStateResult,
@@ -133,5 +137,12 @@ describe('every namespace member is the declaration it renames', () => {
     expectTypeOf<Ledger8.DeployedContract<C>>().toEqualTypeOf<Ledger8DeployedContract<C>>();
     expectTypeOf<Ledger8.FindDeployedContractOptions<C>>().toEqualTypeOf<Ledger8FindDeployedContractOptions<C>>();
     expectTypeOf<Ledger8.FoundContract<C>>().toEqualTypeOf<Ledger8FoundContract<C>>();
+  });
+
+  it('renames the maintenance declarations', () => {
+    expectTypeOf<Ledger8.FinalizedMaintenanceTxData>().toEqualTypeOf<Ledger8FinalizedMaintenanceTxData>();
+    expectTypeOf<Ledger8.CircuitMaintenanceTxInterface>().toEqualTypeOf<Ledger8CircuitMaintenanceTxInterface>();
+    expectTypeOf<Ledger8.CircuitMaintenanceTxInterfaces<C>>().toEqualTypeOf<Ledger8CircuitMaintenanceTxInterfaces<C>>();
+    expectTypeOf<Ledger8.ContractMaintenanceTxInterface>().toEqualTypeOf<Ledger8ContractMaintenanceTxInterface>();
   });
 });

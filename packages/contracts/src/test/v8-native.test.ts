@@ -2522,7 +2522,16 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.deployTxData.public.version).toBe('v8');
     expect(deployed.deployTxData.public.txId).toBe(retainedEraRecord().txId);
     expect(deployed.deployTxData.public.contractAddress).toBe(deployed.contractAddress);
-    expect(Object.keys(deployed).sort()).toEqual(['callTx', 'compiledContract', 'contractAddress', 'deployTxData', 'era']);
+    expect(Object.keys(deployed).sort()).toEqual([
+      'callTx',
+      'circuitMaintenanceTx',
+      'compiledContract',
+      'contractAddress',
+      'contractMaintenanceTx',
+      'deployTxData',
+      'era'
+    ]);
+    expect(Object.keys(deployed.circuitMaintenanceTx)).toEqual([CIRCUIT_ID]);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
     // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
@@ -3294,7 +3303,16 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.deployTxData.public.version).toBe('v9');
     expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
     expect(found.deployTxData.public.contractAddress).toBe(recording.contractAddress);
-    expect(Object.keys(found).sort()).toEqual(['callTx', 'compiledContract', 'contractAddress', 'deployTxData', 'era']);
+    expect(Object.keys(found).sort()).toEqual([
+      'callTx',
+      'circuitMaintenanceTx',
+      'compiledContract',
+      'contractAddress',
+      'contractMaintenanceTx',
+      'deployTxData',
+      'era'
+    ]);
+    expect(Object.keys(found.circuitMaintenanceTx)).toEqual([CIRCUIT_ID]);
 
     // Every declared circuit is checked, and this artifact declares exactly one.
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);

@@ -17,15 +17,22 @@ import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/comp
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import {
-  type FinalizedTxData,
-  SucceedEntirely,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
+import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
+import type {
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8FinalizedMaintenanceTxData
+} from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
+import type { FinalizedMaintenanceTxData } from '../tx-model';
 import { InsertVerifierKeyTxFailedError } from './errors';
 import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
 
@@ -61,25 +68,54 @@ import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
  * @param circuitId The circuit for which the verifier key should be inserted.
  * @param newVk The new verifier key for the circuit.
  *
- * @returns A promise that resolves with the finalized transaction data, or rejects if
- *          an error occurs along the way.
+ * @returns A promise that resolves with the finalized transaction data under `public`, tagged
+ *          with the pipeline's `era`, or rejects if an error occurs along the way.
  *
  * @throws {InsertVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
- *         The error contains the finalized transaction data for debugging.
+ *         The error contains the finalized transaction data for debugging. The retained-era overload
+ *         raises `Ledger8InsertVerifierKeyTxFailedError` instead.
+ * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used on a post-fork head.
+ * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable key.
+ * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
+ *         the contract's maintenance authority. Raised before anything is proven.
  *
  * TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
  *       automatically rotated in this function. This likely involves storing key versions
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
+export async function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  circuitId: Ledger8CircuitId<C>,
+  newVk: VerifierKey
+): Promise<Ledger8FinalizedMaintenanceTxData>;
+export async function submitInsertVerifierKeyTx<C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>,
   newVk: VerifierKey
-): Promise<FinalizedTxData> => {
+): Promise<FinalizedMaintenanceTxData>;
+export async function submitInsertVerifierKeyTx<C extends Contract.Any>(
+  providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C> | string,
+  newVk: VerifierKey
+): Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   assertValidMidnightConfig(providers.config);
+  if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
+    return {
+      era: 'v8',
+      public: await submitLedger8MaintenanceTx(providers, {
+        contract: compiledContract,
+        contractAddress,
+        update: { kind: 'insert-verifier-key', circuitId, verifierKey: newVk }
+      })
+    };
+  }
   assertIsContractAddress(contractAddress);
   const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
   const existingVerifierKey: Uint8Array | undefined = contractState.operation(circuitId)?.verifierKey;
@@ -102,5 +138,5 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
   if (submitTxResult.status !== SucceedEntirely) {
     throw new InsertVerifierKeyTxFailedError(submitTxResult);
   }
-  return submitTxResult;
-};
+  return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
+}

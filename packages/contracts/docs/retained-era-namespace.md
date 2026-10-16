@@ -8,10 +8,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 31 types, 11 error classes and one interface factory, 43 names --
+era's family -- 37 types, 17 error classes and one interface factory, 55 names --
 goes when the window closes.
 
-Published flat, side by side, those 43 would be 43 published API names, and
+Published flat, side by side, those 55 would be 55 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -89,7 +89,7 @@ A name that serves BOTH eras stays on the flat surface, so a consumer that only
 RECEIVES results never imports the transitional half:
 
 - `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
-  `AnyEraDeployedContract` and `isLedger8Result` -- the unions a shared handler
+  `AnyEraDeployedContract`, `AnyEraMaintenanceTxData` and `isLedger8Result` -- the unions a shared handler
   declares, and the guard that narrows them.
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
@@ -171,5 +171,5 @@ would have removed 40 published names instead of one.
 - `src/test/typecheck/ledger8-namespace.test-d.ts` asserts that what the entry
   points resolve to is namable THROUGH the namespace -- the other compile-level
   suites import the source modules, which a consumer cannot -- and compares all
-  31 type members against the declarations they rename, which is what catches a
+  37 type members against the declarations they rename, which is what catches a
   transposed pair in the rename table.

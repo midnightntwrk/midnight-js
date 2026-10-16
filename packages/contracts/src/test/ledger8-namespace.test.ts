@@ -34,10 +34,18 @@ import {
   Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyNotStoredError,
+  Ledger8SigningKeyUnavailableError,
   Ledger8SigningKeyUnusableError
 } from '../errors';
+import {
+  Ledger8InsertVerifierKeyTxFailedError,
+  Ledger8RemoveVerifierKeyTxFailedError,
+  Ledger8ReplaceMaintenanceAuthorityTxFailedError
+} from '../governance/errors';
 // Imported from the package BARREL, because the barrel is what this suite is about: the retained
 // era reaches a consumer through ONE name, and everything it publishes is reachable under it.
 import * as barrel from '../index';
@@ -59,8 +67,14 @@ const LEDGER8_MEMBERS = [
   'DeployOnLedger9Error',
   'DeployTxFailedError',
   'DeployUnconfirmedError',
+  'InsertVerifierKeyTxFailedError',
+  'MaintenanceOnLedger9Error',
   'RecipientUnmappableError',
+  'RemoveVerifierKeyTxFailedError',
+  'ReplaceMaintenanceAuthorityTxFailedError',
   'ShieldedSpendUnsupportedError',
+  'SigningKeyNotStoredError',
+  'SigningKeyUnavailableError',
   'SigningKeyUnusableError',
   'createCircuitCallTxInterface'
 ];
@@ -113,7 +127,7 @@ describe('the retained era is published as one namespace', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 43 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 37 of the 55 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.
@@ -137,6 +151,12 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
     expect(Ledger8.SigningKeyUnusableError).toBe(Ledger8SigningKeyUnusableError);
+    expect(Ledger8.MaintenanceOnLedger9Error).toBe(Ledger8MaintenanceOnLedger9Error);
+    expect(Ledger8.SigningKeyUnavailableError).toBe(Ledger8SigningKeyUnavailableError);
+    expect(Ledger8.SigningKeyNotStoredError).toBe(Ledger8SigningKeyNotStoredError);
+    expect(Ledger8.InsertVerifierKeyTxFailedError).toBe(Ledger8InsertVerifierKeyTxFailedError);
+    expect(Ledger8.RemoveVerifierKeyTxFailedError).toBe(Ledger8RemoveVerifierKeyTxFailedError);
+    expect(Ledger8.ReplaceMaintenanceAuthorityTxFailedError).toBe(Ledger8ReplaceMaintenanceAuthorityTxFailedError);
     expect(Ledger8.createCircuitCallTxInterface).toBe(createLedger8CircuitCallTxInterface);
   });
 

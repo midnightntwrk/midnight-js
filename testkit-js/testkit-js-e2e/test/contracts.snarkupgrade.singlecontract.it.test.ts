@@ -87,7 +87,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     const newAuthority = sampleSigningKey();
     const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, contractAddress)(newAuthority);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
   });
 
   test('submitReplaceAuthorityTx - successful replace authority with same key [@slow]', async () => {
@@ -96,7 +96,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     if (authority) {
       const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, contractAddress)(authority);
 
-      expect(finalizedTxData.status).toEqual(SucceedEntirely);
+      expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
     }
   });
 
@@ -134,7 +134,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
       vk
     );
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
   });
 
   test('submitInsertVerifierKeyTx - should fail on contract not present on contract address', async () => {
@@ -178,12 +178,12 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     const contractMaintenanceTxInterface = createContractMaintenanceTxInterface(counterProviders, CompiledCounterContract, contractAddress);
     const finalizedTxData = await contractMaintenanceTxInterface.replaceAuthority(authority);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
 
     logger.info('Remove key');
     const finalizedTxData1 = await submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_DECREMENT);
 
-    expect(finalizedTxData1.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData1.public.status).toEqual(SucceedEntirely);
   });
 
   test('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the same one [@slow]', async () => {
@@ -193,7 +193,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
       const contractMaintenanceTxInterface = createContractMaintenanceTxInterface(counterProviders, CompiledCounterContract, contractAddress);
       const finalizedTxData = await contractMaintenanceTxInterface.replaceAuthority(authority);
 
-      expect(finalizedTxData.status).toEqual(SucceedEntirely);
+      expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
     }
   });
 
@@ -237,7 +237,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     await circuitMaintenanceTxInterface.removeVerifierKey();
     const finalizedTxData = await circuitMaintenanceTxInterface.insertVerifierKey(vk);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
     await api.increment(deployedCounterContract);
   });
 
@@ -264,7 +264,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk);
 
-    expect(finalizedTxData.status).toEqual(SucceedEntirely);
+    expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
     await api.increment(deployedCounterContract);
   });
 
