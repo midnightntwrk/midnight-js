@@ -282,6 +282,9 @@ New functionality must include unit and integration tests (TDD — tests first).
 | Private State | State updated by witnesses, stored on user's device |
 | Circuit | Smart contract function that can be executed and proven |
 | ZKIR | Zero-Knowledge Intermediate Representation |
+| Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerVersion`, the `currentEra` handler slot) stay correct across forks |
+| Retained era | A ledger before the last hard fork that this build still serves, as serialized bytes. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerVersion`, `retainedEras`, `RetainedEraProver`) stay correct across forks |
+| `Ledger8*` / `Ledger9*` | Names bound to one ledger. They never change meaning at a fork |
 
 ## Detailed
 

@@ -51,7 +51,7 @@ const DIST_INDEX_PATH = 'dist/index.js';
 const PROTOCOL_BARREL = '@midnight-ntwrk/midnight-js-protocol';
 
 /** The subpaths carrying the retained pre-fork runtime. Off the eager path in any form. */
-const RETAINED_ERA_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/engine`];
+const LEDGER8_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/engine`];
 
 // Never skipped when dist/ is absent: a skip is reported as a pass, so the gate
 // would silently stop guarding. Turbo's `test` task dependsOn `build`, so dist/
@@ -115,7 +115,7 @@ describe('dist laziness gate', () => {
     // Deliberately a plain substring check rather than an import-shaped one:
     // a dynamic `import()` of these from the barrel would be just as wrong as
     // a static one, because the barrel has no era-dispatch job to do.
-    for (const subpath of RETAINED_ERA_SUBPATHS) {
+    for (const subpath of LEDGER8_SUBPATHS) {
       expect(content).not.toContain(subpath);
     }
   });

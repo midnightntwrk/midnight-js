@@ -426,7 +426,7 @@ describe('Ledger8RecipientUnmappableError', () => {
     expect(error.circuitId).toBe('initialState');
     expect(error.message).toContain(RECIPIENT);
     expect(error.message).toMatch(/constructor/);
-    expect(error.message).toMatch(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    expect(error.message).toMatch(/ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`/);
     expect(error.message).not.toMatch(/on the call options/);
   });
 });

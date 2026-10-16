@@ -94,7 +94,7 @@ const LEDGER9_HEAD = 2_000_000;
 // A bundle declaring the retained toolchain, which is what the retained-era path of the dispatch
 // reads. Declared here rather than mocked per test: every case below that reaches it wants the same
 // answer, and the cases that must NOT reach it assert that separately.
-const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
 describe('resolveArtifactEra: which execution pipeline an artifact belongs to', () => {
   it('routes the current-era CompiledContract container to the ledger9 pipeline', async () => {
@@ -103,7 +103,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     const container = createMockCompiledContract();
 
     // Act + Assert
-    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 
   it('does not consult the artifact bundle for a current-era container', async () => {
@@ -131,7 +131,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
       initialState: (): Record<string, never> => ({})
     };
 
-    await expect(resolveArtifactEra(retained, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(retained, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   describe('the near-miss a JavaScript caller actually hits', () => {
@@ -154,14 +154,14 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
       // in the refusing direction and unsound in the accepting one.
       expect(rawCurrentEraContract.initialState.constructor.name).toBe('AsyncFunction');
 
-      await expect(resolveArtifactEra(rawCurrentEraContract, RETAINED_BUNDLE)).rejects.toBeInstanceOf(
+      await expect(resolveArtifactEra(rawCurrentEraContract, LEDGER8_BUNDLE)).rejects.toBeInstanceOf(
         EraArtifactMismatchError
       );
-      const error = await resolveArtifactEra(rawCurrentEraContract, RETAINED_BUNDLE).catch(
+      const error = await resolveArtifactEra(rawCurrentEraContract, LEDGER8_BUNDLE).catch(
         (thrown: unknown) => thrown
       );
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('unwrapped-current-era-contract');
+      expect((error as EraArtifactMismatchError).reason).toBe('unwrapped-ledger9-contract');
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
       // The message has to name the actual mistake, because the fix is one step: wrap it.
       expect((error as EraArtifactMismatchError).message).toMatch(/CompiledContract/);
@@ -176,7 +176,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     ['an object with a non-string tag', { tag: 7 }],
     ['an object whose initialState is not a function', { impureCircuits: {}, initialState: 'nope' }]
   ])('refuses %s as belonging to neither era', async (_label, candidate) => {
-    const error = await resolveArtifactEra(candidate, RETAINED_BUNDLE).catch((thrown: unknown) => thrown);
+    const error = await resolveArtifactEra(candidate, LEDGER8_BUNDLE).catch((thrown: unknown) => thrown);
 
     expect(error).toBeInstanceOf(EraArtifactMismatchError);
     expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
@@ -204,7 +204,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     // from this reading at all -- it only earns the right to have its bundle asked.
     const candidate = { impureCircuits: { increment: (): void => undefined }, initialState };
 
-    const error = await resolveArtifactEra(candidate, RETAINED_BUNDLE).catch((thrown: unknown) => thrown);
+    const error = await resolveArtifactEra(candidate, LEDGER8_BUNDLE).catch((thrown: unknown) => thrown);
 
     expect(error).toBeInstanceOf(EraArtifactMismatchError);
     expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
@@ -224,7 +224,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     expect('pipe' in container).toBe(false);
     // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
     // the spread that drops the brand.
-    await expect(resolveArtifactEra(container, RETAINED_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 });
 
@@ -356,7 +356,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('current-era-artifact-on-pre-fork-head');
+      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-head');
     }
   });
 

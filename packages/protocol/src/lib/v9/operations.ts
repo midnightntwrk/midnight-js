@@ -19,20 +19,20 @@ import { ComposeOptionError } from '../../errors';
 import type { ContractEntryPointPojo } from '../shared/contract-state';
 
 /**
- * Re-expresses a retained-era contract's entry points as a CURRENT-era contract state.
+ * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state.
  *
  * What crosses the era boundary here is the OPERATION REGISTRY, not the state. The primary state is
  * deliberately left at its default: a caller that needs the state itself reads it from
  * {@link ContractStatePojo.state}.
  *
- * @param entryPoints The entry points a retained-era contract state declared, as the retained
+ * @param entryPoints The entry points a ledger 8 contract state declared, as the ledger 8
  * decoder read them.
- * @returns The serialized current-era contract state, carrying those entry points and their keys.
+ * @returns The serialized ledger 9 contract state, carrying those entry points and their keys.
  * @throws ComposeOptionError if no entry point carries a key.
  * @see {@link CrossEraOperationRegistry} for why re-expressing the operations is faithful rather
  * than a substitution, and why the empty registry is refused here rather than one layer down.
  */
-export const reexpressOperationsForCurrentEra = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
+export const reexpressOperationsForLedger9 = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
   const state = new ledgerV9.ContractState();
   let registered = 0;
 

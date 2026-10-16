@@ -66,13 +66,14 @@ export interface WalletProvider {
 }
 
 /**
- * Balances a CURRENT-era transaction, which is passed to `balanceTx` as a live ledger
- * object.
+ * Balances a ledger 9 transaction, which is passed to `balanceTx` as a live ledger
+ * object. It fills the `currentEra` slot while ledger 9 is the current era.
  */
-export type CurrentEraBalancer = (tx: UnboundTransaction, ttl?: Date) => Promise<FinalizedTransaction>;
+export type Ledger9Balancer = (tx: UnboundTransaction, ttl?: Date) => Promise<FinalizedTransaction>;
 
 /**
- * Balances a RETAINED-era transaction, which is passed to `balanceTx` as serialized
+ * Balances a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
+ * ledger 8), which is passed to `balanceTx` as serialized
  * bytes in both directions.
  */
 export type RetainedEraBalancer = (txBytes: Uint8Array, ttl?: Date) => Promise<Uint8Array>;
@@ -88,7 +89,7 @@ export type RetainedEraBalancer = (txBytes: Uint8Array, ttl?: Date) => Promise<U
  */
 export interface WalletProviderHandlers {
   /** Required: every wallet balances the current era. */
-  readonly currentEra: CurrentEraBalancer;
+  readonly currentEra: Ledger9Balancer;
   /** Optional, one entry per retained era this wallet balances. */
   readonly retainedEras?: RetainedEraEntries<RetainedEraBalancer>;
   readonly getCoinPublicKey: () => CoinPublicKey;

@@ -47,13 +47,14 @@ export interface MidnightProvider {
 }
 
 /**
- * Submits a CURRENT-era transaction, which is passed to `submitTx` as a live ledger
- * object.
+ * Submits a ledger 9 transaction, which is passed to `submitTx` as a live ledger
+ * object. It fills the `currentEra` slot while ledger 9 is the current era.
  */
-export type CurrentEraSubmitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
+export type Ledger9Submitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
 
 /**
- * Submits a RETAINED-era transaction, which is passed to `submitTx` as serialized
+ * Submits a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
+ * ledger 8), which is passed to `submitTx` as serialized
  * bytes.
  *
  * Unlike the other two transaction methods this one answers untagged, because a transaction
@@ -67,7 +68,7 @@ export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionI
  */
 export interface MidnightProviderHandlers {
   /** Required: every submitter serves the current era. */
-  readonly currentEra: CurrentEraSubmitter;
+  readonly currentEra: Ledger9Submitter;
   /** Optional, one entry per retained era this submitter serves. */
   readonly retainedEras?: RetainedEraEntries<RetainedEraSubmitter>;
 }

@@ -92,7 +92,6 @@ export {
   MixedEraScopeError,
   PrivateStateNotFoundError,
   ProviderFailedError,
-  RetainedArtifactOnCurrentEraStateError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
   StaleHeadError,

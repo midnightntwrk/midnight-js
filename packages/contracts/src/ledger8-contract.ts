@@ -56,8 +56,8 @@ import type {
  * compact-js's ledger-8 types, and naming them structurally keeps this package
  * free of any dependency on the retained runtime.
  */
-type RetainedStateValue = TranscriptPojo['postContractState'];
-type RetainedConstructedState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
+type Ledger8StateValue = TranscriptPojo['postContractState'];
+type Ledger8SerializableContractState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
 
 import type {
   CommunicationCommitmentData,
@@ -357,7 +357,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * means nothing outside its module. Serialize it yourself if you need to
    * keep it; see ADR-0010.
    */
-  readonly nextContractState: RetainedStateValue;
+  readonly nextContractState: Ledger8StateValue;
   /**
    * The same state as an {@link EncodedStateValue}: the form that survives this
    * process, a `structuredClone`, a worker transfer and storage.
@@ -446,7 +446,7 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * @typeParam TState - The retained-era state type; the framework's own
  * retained runtime fills it with compact-js's ledger-8 state handle.
  */
-export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends CallResultPublicBase {
+export interface Ledger8ContractCallPublic<TState = Ledger8StateValue> extends CallResultPublicBase {
   /**
    * The state this call ENDED on.
    *
@@ -495,7 +495,7 @@ export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends 
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
-export interface Ledger8ContractCall<TState = RetainedStateValue> {
+export interface Ledger8ContractCall<TState = Ledger8StateValue> {
   readonly contractAddress: ContractAddress;
   readonly circuitId: string;
   readonly public: Ledger8ContractCallPublic<TState>;
@@ -848,7 +848,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
    * {@link Ledger8DeployedContract.initialContractStateBytes} for anything that has to
    * outlive the runtime instance.
    */
-  readonly initialContractState: RetainedConstructedState;
+  readonly initialContractState: Ledger8SerializableContractState;
   /**
    * The same state, serialized — the bytes the contract address was derived
    * from. A deploy mints a fresh nonce, so these bytes and that address belong
@@ -915,17 +915,16 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
  *      an overload.
  */
-// WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
+// WHY LEDGER NUMBERS, NOT TOOLCHAIN VERSIONS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
 // a consumer on `0.19.0-rc.0`, which that release pinned, was told their object matched neither of
-// two versions, neither of which was theirs. The message is about which ERA an object belongs to,
-// and the eras are named by role everywhere else in this package, so it names them that way here
-// too and no future toolchain release invalidates it.
+// two versions, neither of which was theirs. The message is about which LEDGER an object belongs to,
+// so it names the ledger, not the toolchain version, and no future toolchain release invalidates it.
 // ONE string literal deliberately, never a `+` concatenation: TypeScript widens `'a' + 'b'` to
 // `string`, which would cost {@link NeitherContractShape} its string LITERAL member and break the
 // verbatim pin in `src/test/typecheck/overloads.test-d.ts`.
 export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a retained-era nor a current-era generated contract.';
+  'Object is neither a ledger 8 nor a ledger 9 generated contract.';
 
 /**
  * The type the catch-all overload of every era-dispatching entry point expects, so that an object

@@ -2620,7 +2620,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
 //
 // WHY THE SECOND CALL WORKS AT ALL, since the two facts look contradictory.
 // The fork's translation rewrites the ENVELOPE but keeps the RETAINED verifier keys:
-// `reexpressOperationsForCurrentEra` copies `entryPoint.verifierKey` unchanged
+// `reexpressOperationsForLedger9` copies `entryPoint.verifierKey` unchanged
 // into a ledger-v9 `ContractState`. Measured on the committed goldens rather
 // than assumed -- a real migrated 8-to-9 state carries byte-identical
 // `midnight:verifier-key[v6]:` keys, and the current-era decoder reads them. So

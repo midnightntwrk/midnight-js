@@ -27,14 +27,14 @@ import {
   type WalletFacade,
   WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
-// From the same copy `retainedLedger()` loads at runtime.
-import type * as RetainedLedger from '@midnightntwrk/wallet-sdk/ledger/v8';
+// From the same copy `loadWalletLedger8()` loads at runtime.
+import type * as LedgerV8 from '@midnightntwrk/wallet-sdk/ledger/v8';
 import { Either } from 'effect';
 import * as Rx from 'rxjs';
 
 import { FORK_SCHEDULE } from './wallet-configuration-mapper';
 
-let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
+let walletLedger8Module: Promise<typeof LedgerV8> | undefined;
 
 /**
  * The ledger-v8 module retained payloads are deserialized with: the wallet SDK's
@@ -49,10 +49,10 @@ let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
  *
  * @see docs/architecture/retained-era-coverage.md
  */
-export const retainedLedger = (): Promise<typeof RetainedLedger> =>
-  (retainedLedgerModule ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
-    retainedLedgerModule = undefined;
-    throw new Error("the wallet SDK's retained ledger ('@midnightntwrk/wallet-sdk/ledger/v8') could not be loaded", {
+export const loadWalletLedger8 = (): Promise<typeof LedgerV8> =>
+  (walletLedger8Module ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
+    walletLedger8Module = undefined;
+    throw new Error("the wallet SDK's ledger 8 module ('@midnightntwrk/wallet-sdk/ledger/v8') could not be loaded", {
       cause: error
     });
   }));
@@ -117,7 +117,7 @@ export const adoptVersionedUnbound = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Unbound', payload.tx, active);
   }
-  const v8 = await retainedLedger();
+  const v8 = await loadWalletLedger8();
   return WalletTransaction.adopt(
     'Unbound',
     v8.Transaction.deserialize('signature', 'proof', 'pre-binding', payload.txBytes),
@@ -135,7 +135,7 @@ export const adoptVersionedFinalized = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Finalized', payload.tx, active);
   }
-  const v8 = await retainedLedger();
+  const v8 = await loadWalletLedger8();
   return WalletTransaction.adopt(
     'Finalized',
     v8.Transaction.deserialize('signature', 'proof', 'binding', payload.txBytes),
@@ -161,6 +161,6 @@ export const unwrapVersionedFinalized = async (
   }
   return {
     version: 'v8',
-    txBytes: unwrapWithinActive<RetainedLedger.FinalizedTransaction>(handle, accepted).serialize()
+    txBytes: unwrapWithinActive<LedgerV8.FinalizedTransaction>(handle, accepted).serialize()
   };
 };

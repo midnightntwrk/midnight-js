@@ -44,7 +44,7 @@ export interface WrapKeepStateCallOptions {
 }
 
 /**
- * Wraps a {@link TranscriptPojo} — the output of {@link runRetainedCircuit}
+ * Wraps a {@link TranscriptPojo} — the output of {@link runLedger8Circuit}
  * (`../v8/executable.ts`) — into a v9-native `ContractCallPrototype`, ready for
  * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
  * (`./assemble-call.ts`) against the ledger-v9 module.

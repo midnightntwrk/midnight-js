@@ -60,9 +60,9 @@ const readHexFixture = (name: string): Uint8Array => {
  * Both are around 4.6 KB, small enough that hashing their verifier keys under coverage stays well
  * inside the default timeout.
  */
-export const RETAINED_ENVELOPE = readHexFixture('state-v8.hex');
+export const LEDGER8_ENVELOPE = readHexFixture('state-v8.hex');
 
-/** The current-era twin of {@link RETAINED_ENVELOPE}. */
+/** The current-era twin of {@link LEDGER8_ENVELOPE}. */
 export const CURRENT_ENVELOPE = readHexFixture('state-migrated-v9.hex');
 
 /**
@@ -72,7 +72,7 @@ export const CURRENT_ENVELOPE = readHexFixture('state-migrated-v9.hex');
  * The tag is network-supplied and is what chooses the runtime, so this is the shape a swapped tag
  * takes. The chosen decoder has to fail closed on it.
  */
-export const TAG_CLAIMS_RETAINED_ERA = readHexFixture('state-tampered-keyset-v9to8.hex');
+export const TAG_CLAIMS_LEDGER8 = readHexFixture('state-tampered-keyset-v9to8.hex');
 
 /** A well-formed current-era envelope with one payload byte flipped past the header. */
 export const CORRUPTED_PAYLOAD = readHexFixture('state-tampered-bytes.hex');

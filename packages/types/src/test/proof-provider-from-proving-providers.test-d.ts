@@ -14,7 +14,7 @@
  */
 
 import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import { createProofProviderFromProvingProviders, type ProofProvider } from '../proof-provider';
@@ -29,7 +29,7 @@ const currentEraProvingProvider: ProvingProvider = {
 };
 
 // What an in-process prover's `asV8ProvingProvider()` is declared to return.
-const retainedEraProvingProvider: RetainedEraProvingProvider = {
+const retainedEraProvingProvider: Ledger8ProvingProvider = {
   check: async () => [],
   prove: async () => new Uint8Array()
 };

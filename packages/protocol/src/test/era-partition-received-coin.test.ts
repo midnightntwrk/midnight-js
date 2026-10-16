@@ -26,7 +26,7 @@ import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
-import { runRetainedCircuit, type TranscriptPojo } from '../lib/v8/executable';
+import { runLedger8Circuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
 // The fixture's compiled module imports `@midnight-ntwrk/compact-runtime`
@@ -70,7 +70,7 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
 
-  return runRetainedCircuit({
+  return runLedger8Circuit({
     contract,
     circuitId: CIRCUIT_ID,
     args: [RECEIVED_COIN],

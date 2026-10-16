@@ -60,14 +60,13 @@ import {
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
 } from '../errors';
-import type { DispatchBreadcrumb, HeadReadingProvenance, RetainedSigningKeyEntryBreadcrumb } from '../internal/breadcrumbs';
+import type { DispatchBreadcrumb, HeadReadingProvenance, Ledger8SigningKeyEntryBreadcrumb } from '../internal/breadcrumbs';
 import {
   DISPATCH_BREADCRUMB_MESSAGE,
   emitEncoding,
   emitHeadResolution,
-  emitPipelineSelection,
-  emitRetainedSigningKeyEntry
-} from '../internal/breadcrumbs';
+  emitLedger8SigningKeyEntry,
+  emitPipelineSelection} from '../internal/breadcrumbs';
 import { resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
@@ -136,7 +135,7 @@ const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
 };
 
 /** The same exhaustive-by-compilation shape, over why a stored signing-key entry was unusable. */
-type SigningKeyEntryOutcome = RetainedSigningKeyEntryBreadcrumb['outcome'];
+type SigningKeyEntryOutcome = Ledger8SigningKeyEntryBreadcrumb['outcome'];
 const ALL_SIGNING_KEY_ENTRY_OUTCOMES: Record<SigningKeyEntryOutcome, SigningKeyEntryOutcome> = {
   'other-signature-kind': 'other-signature-kind',
   'malformed-value': 'malformed-value',
@@ -195,7 +194,7 @@ const REQUIRED_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly 
   encoding: ['decision', 'version', 'source'],
   // No `version`: the decision name already says which era the read was made
   // for, and a field that can only ever hold one value states nothing.
-  'retained-signing-key-entry': ['decision', 'source', 'outcome', 'contractAddress']
+  'ledger8-signing-key-entry': ['decision', 'source', 'outcome', 'contractAddress']
 };
 
 // Present only when the operation has a value for them. `contractAddress` is
@@ -206,7 +205,7 @@ const OPTIONAL_FIELDS: Readonly<Record<DispatchBreadcrumb['decision'], readonly 
   encoding: [],
   // `contractAddress` is REQUIRED above rather than optional here: this
   // decision is only ever made about a named contract.
-  'retained-signing-key-entry': []
+  'ledger8-signing-key-entry': []
 };
 
 /**
@@ -332,7 +331,7 @@ describe('the breadcrumb emitters', () => {
     (outcome) => {
       const sink = createSink();
 
-      emitRetainedSigningKeyEntry(sink, CONTRACT_ADDRESS, outcome);
+      emitLedger8SigningKeyEntry(sink, CONTRACT_ADDRESS, outcome);
 
       // The whole breadcrumb, so the assertion also says what is NOT on it: no
       // stored value, and no `tag` read off the entry -- a hand-edited entry's
@@ -342,7 +341,7 @@ describe('the breadcrumb emitters', () => {
       expect(breadcrumb).toBeDefined();
       expect([breadcrumb]).toStrictEqual([
         {
-          decision: 'retained-signing-key-entry',
+          decision: 'ledger8-signing-key-entry',
           source: 'private-state-provider',
           outcome,
           contractAddress: CONTRACT_ADDRESS
@@ -357,7 +356,7 @@ describe('the breadcrumb emitters', () => {
     expect(() => emitHeadResolution(undefined, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'operation-start')).not.toThrow();
     expect(() => emitPipelineSelection(undefined, { head: 'v9', headProtocolVersion: LEDGER9_HEAD }, 'v9')).not.toThrow();
     expect(() => emitEncoding(undefined, 'v9')).not.toThrow();
-    expect(() => emitRetainedSigningKeyEntry(undefined, CONTRACT_ADDRESS, 'malformed-value')).not.toThrow();
+    expect(() => emitLedger8SigningKeyEntry(undefined, CONTRACT_ADDRESS, 'malformed-value')).not.toThrow();
   });
 
   it('does nothing when the configured logger implements no debug level', () => {

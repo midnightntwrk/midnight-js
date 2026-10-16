@@ -16,7 +16,7 @@
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { RetainedEraEntries } from '../era-entries';
@@ -36,7 +36,7 @@ const timeoutRefusal = expect.objectContaining({
  * what makes the record readable: a case that asserts WHICH provider was driven
  * does not need a proof back, and a stub that answered would have to fake one.
  */
-const recordingRetainedEraProvider = (consulted: string[], label: string): RetainedEraProvingProvider => ({
+const recordingRetainedEraProvider = (consulted: string[], label: string): Ledger8ProvingProvider => ({
   check: (_preimage, keyLocation) => {
     consulted.push(`${label}:check:${keyLocation}`);
     return Promise.reject(new Error(PROVING_REFUSED));
@@ -64,7 +64,7 @@ const revokedProxy = (): object => {
   return proxy;
 };
 
-const inertRetainedEraProvider: RetainedEraProvingProvider = {
+const inertRetainedEraProvider: Ledger8ProvingProvider = {
   check: () => Promise.resolve([]),
   prove: () => Promise.resolve(new Uint8Array())
 };
@@ -265,7 +265,7 @@ describe('createProofProviderFromProvingProviders', () => {
       const act = () =>
         createProofProviderFromProvingProviders({
           currentEra: inertCurrentEraProvider,
-          retainedEras: { v8: value as RetainedEraProvingProvider }
+          retainedEras: { v8: value as Ledger8ProvingProvider }
         });
 
       expect(act).toThrow(
@@ -309,7 +309,7 @@ describe('createProofProviderFromProvingProviders', () => {
       const act = () =>
         createProofProviderFromProvingProviders({
           currentEra: inertCurrentEraProvider,
-          retainedEras: retainedEras as RetainedEraEntries<RetainedEraProvingProvider>
+          retainedEras: retainedEras as RetainedEraEntries<Ledger8ProvingProvider>
         });
 
       expect(act).toThrow(
@@ -350,7 +350,7 @@ describe('createProofProviderFromProvingProviders', () => {
 
     it('accepts a retained proving provider whose methods live on its prototype, and drives it', async () => {
       const consulted: string[] = [];
-      class PrototypeProvingProvider implements RetainedEraProvingProvider {
+      class PrototypeProvingProvider implements Ledger8ProvingProvider {
         check(): Promise<(bigint | undefined)[]> {
           consulted.push('check');
           return Promise.reject(new Error(PROVING_REFUSED));

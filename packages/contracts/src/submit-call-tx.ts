@@ -182,7 +182,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     // believed had been batched with the rest of its scope. The retained-era
     // overload declares no parameter for one, so this is reachable from
     // JavaScript only.
-    Transaction.assertScopeAdmitsRetainedEraCall(options.circuitId, transactionContext);
+    Transaction.assertScopeAdmitsLedger8Call(options.circuitId, transactionContext);
 
     return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }

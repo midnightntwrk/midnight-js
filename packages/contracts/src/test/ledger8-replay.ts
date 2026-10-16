@@ -105,7 +105,7 @@ export const readHfHexFixture = (...segments: readonly string[]): Uint8Array => 
  * nothing to do with the ledger era. Never infer an era from a bracketed
  * version alone; compare the whole tag.
  */
-export const RETAINED_ERA_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
+export const LEDGER8_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 /**
  * The exact tag the CURRENT ledger's `Transaction.serialize()` emits for an
@@ -118,7 +118,7 @@ export const RETAINED_ERA_TX_TAG = 'midnight:transaction[v9](signature[v1],proof
  * `version` field remains the primary discriminator: it is this framework's,
  * while a tag is a ledger serialization detail that can move on a vendor bump.
  */
-export const CURRENT_ERA_TX_TAG = 'midnight:transaction[v12](signature[v2],proof-preimage,embedded-fr[v1]):';
+export const LEDGER9_TX_TAG = 'midnight:transaction[v12](signature[v2],proof-preimage,embedded-fr[v1]):';
 
 /**
  * Reads the leading `tag.length` bytes of a serialized transaction as latin-1.
@@ -456,8 +456,8 @@ export const createReplayEngine = (
   // holds no retained-runtime dependency to delegate through. The real
   // conversion is tested where it lives, in
   // `packages/protocol/src/test/v9-operations.test.ts`.
-  reexpressOperationsForCurrentEra: (entryPoints): Uint8Array => {
-    log.push('engine.reexpressOperationsForCurrentEra');
+  reexpressOperationsForLedger9: (entryPoints): Uint8Array => {
+    log.push('engine.reexpressOperationsForLedger9');
     const state = new ContractState();
     for (const entryPoint of entryPoints) {
       if (entryPoint.verifierKey === undefined) {
@@ -475,7 +475,7 @@ export const createReplayEngine = (
     // the constructor declares, and a pipeline that handed over a reader nobody
     // exercised would look identical here.
     expect(options.coinPk).toBe(recording.coinPublicKey);
-    // The real `runRetainedConstructor` refuses a key that is not 32 bytes of
+    // The real `runLedger8Constructor` refuses a key that is not 32 bytes of
     // hex, by name and before anything runs. A double that took any string
     // would let a pipeline forward a `0x`-prefixed or bech32 key and stay green.
     if (options.signingKey !== undefined && !/^[0-9a-fA-F]{64}$/.test(options.signingKey)) {

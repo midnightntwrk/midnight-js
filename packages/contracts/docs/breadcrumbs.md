@@ -17,7 +17,7 @@ themselves are is [EraDispatch](./era-dispatch.md).
 
 Four decisions get a breadcrumb: `HeadResolutionBreadcrumb`,
 `PipelineSelectionBreadcrumb`, `EncodingBreadcrumb` and
-`RetainedSigningKeyEntryBreadcrumb`.
+`Ledger8SigningKeyEntryBreadcrumb`.
 
 The fourth is there for the opposite reason to the other three. It is the one era
 discrimination in this package that neither refuses nor returns a value a caller

@@ -41,12 +41,12 @@ export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bi
   return a.toString(false) === b.toString(false);
 };
 
-const currentEraDeployPublicData = <C extends Contract.Any>(
+const ledger9DeployPublicData = <C extends Contract.Any>(
   foundDeployTxData: FoundDeployTxData<C>
 ): FinalizedDeployTxPublicData => {
   const found = foundDeployTxData.public;
   if (found.version !== 'v9') {
-    throw new Error(`expected a contract deployed in the current ledger era, found one recorded in '${found.version}'`);
+    throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.version}'`);
   }
   return found;
 };
@@ -55,7 +55,7 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FoundDeployTxData<C>
 ): void => {
-  const found = currentEraDeployPublicData(foundDeployTxData);
+  const found = ledger9DeployPublicData(foundDeployTxData);
   expect(
     stateValueEqual(deployTxData.public.initialContractState.data.state, found.initialContractState.data.state)
   ).toBeTruthy();
@@ -92,7 +92,7 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   privateStateId?: PrivateStateId,
   initialPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
-  const found = currentEraDeployPublicData(foundDeployTxData);
+  const found = ledger9DeployPublicData(foundDeployTxData);
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );

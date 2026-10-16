@@ -12,7 +12,7 @@ The current ledger's composer cannot deserialize those bytes — it accepts only
 its own envelope — so a keep-state call had nothing to hand it and could not be
 composed at all.
 
-`reexpressOperationsForCurrentEra` (`packages/protocol/src/lib/v9/operations.ts`)
+`reexpressOperationsForLedger9` (`packages/protocol/src/lib/v9/operations.ts`)
 is what closes that gap. This document records what actually crosses the era
 boundary there, why it is a faithful re-expression rather than a substitution,
 and what it deliberately leaves behind.

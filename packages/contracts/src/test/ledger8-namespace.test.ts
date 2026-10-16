@@ -27,6 +27,7 @@ import { describe, expect, it } from 'vitest';
 // wrong one of the two leaves every gate green.
 import {
   Ledger8AmbiguousEntryPointError,
+  Ledger8ArtifactOnLedger9StateError,
   Ledger8CallTxFailedError,
   Ledger8ContractStateUnsupportedError,
   Ledger8DeployNotStoredError,
@@ -49,8 +50,9 @@ import { createLedger8CircuitCallTxInterface } from '../tx-interfaces';
  * Asserted by strict equality in both directions, so a member dropped from the namespace and a
  * member that leaked into it fail the same test.
  */
-const RETAINED_ERA_MEMBERS = [
+const LEDGER8_MEMBERS = [
   'AmbiguousEntryPointError',
+  'ArtifactOnLedger9StateError',
   'CallTxFailedError',
   'ContractStateUnsupportedError',
   'DeployNotStoredError',
@@ -104,14 +106,14 @@ describe('the retained era is published as one namespace', () => {
   it('publishes exactly the retained-era runtime members under it', () => {
     const published = Object.keys(Ledger8).sort();
 
-    expect(published).toEqual([...RETAINED_ERA_MEMBERS].sort());
+    expect(published).toEqual([...LEDGER8_MEMBERS].sort());
   });
 
   it('leaves no retained-era RUNTIME name on the flat surface', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 40 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 43 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.
@@ -125,6 +127,7 @@ describe('the retained era is published as one namespace', () => {
     // Identity, not spelling. Every assertion below fails if the rename table in `src/ledger8.ts`
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
+    expect(Ledger8.ArtifactOnLedger9StateError).toBe(Ledger8ArtifactOnLedger9StateError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
     expect(Ledger8.ContractStateUnsupportedError).toBe(Ledger8ContractStateUnsupportedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
@@ -140,7 +143,7 @@ describe('the retained era is published as one namespace', () => {
   it('ships the same members in the built bundle', async () => {
     const shipped = await distNamespaceMembers();
 
-    expect(shipped).toEqual([...RETAINED_ERA_MEMBERS].sort());
+    expect(shipped).toEqual([...LEDGER8_MEMBERS].sort());
   });
 
   it('keeps the era-neutral half flat, so receiving a result needs no opt-in', () => {

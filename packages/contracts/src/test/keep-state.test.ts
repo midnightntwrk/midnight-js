@@ -39,11 +39,10 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
+  type Ledger8CircuitOptions,
+  type Ledger8EngineContract,
   type LedgerEra,
-  loadLedgerEra,
-  type RetainedContract,
-  type RunRetainedCircuitOptions
-} from '@midnight-ntwrk/midnight-js-protocol';
+  loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
@@ -58,9 +57,8 @@ import {
   EraInvariantViolationError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  LedgerParametersUnservedError,
-  RetainedArtifactOnCurrentEraStateError
-} from '../errors';
+  Ledger8ArtifactOnLedger9StateError,
+  LedgerParametersUnservedError} from '../errors';
 import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
@@ -72,18 +70,18 @@ import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-f
  * about which OPTIONS the engine requires, not about any particular artifact,
  * so the narrowest contract that satisfies compact-js's constraint is used.
  */
-type AnyRetainedContract = RetainedContract;
+type AnyLedger8EngineContract = Ledger8EngineContract;
 import {
   type CoinReceiverRecording,
   createReplayEngine,
-  CURRENT_ERA_TX_TAG,
   hfFixturePath,
+  LEDGER8_TX_TAG,
+  LEDGER9_TX_TAG,
   loadCoinReceiverRecording,
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
   type ReplayState,
-  RETAINED_ERA_TX_TAG,
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
@@ -265,7 +263,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       'era.v8.extractState',
       'era.v8.decodeContractState',
       'engine.executeCircuit',
-      'engine.reexpressOperationsForCurrentEra',
+      'engine.reexpressOperationsForLedger9',
       'era.v9.composeCallTx',
       // The CURRENT era's, inside its own composition: the split is drawn by the
       // era that composes, so the offer is routed against the same pair the
@@ -292,8 +290,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ContractState.deserialize(registry!).operation(CIRCUIT_ID)?.verifierKey).toEqual(chainKey);
 
     // The CURRENT era tagged this one, and the retained tag does not match it.
-    expect(txTagPrefix(result.txBytes, CURRENT_ERA_TX_TAG)).toBe(CURRENT_ERA_TX_TAG);
-    expect(txTagPrefix(result.txBytes, RETAINED_ERA_TX_TAG)).not.toBe(RETAINED_ERA_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment here too', async () => {
@@ -452,7 +450,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     // A LIVE HANDLE, not merely a `'v9'` tag over anything.
-    // `readCurrentEraTransaction` could be replaced with `() => undefined` and
+    // `readLedger9Transaction` could be replaced with `() => undefined` and
     // every assertion above would still pass, handing `undefined` down the
     // whole chain: `{ version: 'v9', tx: undefined }` satisfies both the tag
     // check and the absence of `txBytes`.
@@ -644,8 +642,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(RetainedArtifactOnCurrentEraStateError);
-    expect((caught as RetainedArtifactOnCurrentEraStateError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(Ledger8ArtifactOnLedger9StateError);
+    expect((caught as Ledger8ArtifactOnLedger9StateError).contractAddress).toBe(recording.contractAddress);
     // Refused before anything is paid for: a proof against a key the chain does
     // not hold is rejected on submission, which is the late failure this
     // ordering exists to prevent.
@@ -683,7 +681,7 @@ type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K
 type _RequestNamesEveryEngineOption = Assert<
   [
     Exclude<
-      RequiredKeys<RunRetainedCircuitOptions<AnyRetainedContract, undefined>>,
+      RequiredKeys<Ledger8CircuitOptions<AnyLedger8EngineContract, undefined>>,
       keyof Ledger8ExecuteRequest
     >
   ] extends [never]
@@ -693,7 +691,7 @@ type _RequestNamesEveryEngineOption = Assert<
 type _RequestAgreesOnTheState = Assert<
   MutuallyAssignable<
     Ledger8ExecuteRequest['contractState'],
-    RunRetainedCircuitOptions<AnyRetainedContract, undefined>['contractState']
+    Ledger8CircuitOptions<AnyLedger8EngineContract, undefined>['contractState']
   >
 >;
 // And on the CONTRACT. ONE-directional deliberately: the request is narrower
@@ -705,5 +703,5 @@ type _RequestAgreesOnTheState = Assert<
 // contract is, and the engine failed only at run time with a message naming
 // neither the contract nor the real cause.
 type _RequestContractSatisfiesTheEngine = Assert<
-  Ledger8ExecuteRequest['contract'] extends RetainedContract ? true : false
+  Ledger8ExecuteRequest['contract'] extends Ledger8EngineContract ? true : false
 >;

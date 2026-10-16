@@ -435,7 +435,7 @@ describe('submit-tx', () => {
       );
 
       expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
-      expect((rejection as EraArtifactMismatchError).reason).toBe('retained-era-transaction-on-post-fork-head');
+      expect((rejection as EraArtifactMismatchError).reason).toBe('ledger8-transaction-on-ledger9-head');
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
@@ -459,7 +459,7 @@ describe('submit-tx', () => {
       );
 
       expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
-      expect((rejection as EraArtifactMismatchError).reason).toBe('current-era-transaction-on-pre-fork-head');
+      expect((rejection as EraArtifactMismatchError).reason).toBe('ledger9-transaction-on-ledger8-head');
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
