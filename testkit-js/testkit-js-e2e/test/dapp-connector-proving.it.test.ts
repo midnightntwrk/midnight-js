@@ -14,12 +14,15 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import {
+  dappConnectorProofProvider,
+  dappConnectorWalletProviders,
+} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { type MidnightProvider, type PrivateStateId, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DAppConnectorWalletAdapter,
@@ -61,21 +64,14 @@ describe('DApp Connector Proving', () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
   });
 
-  /**
-   * @given A DAppConnectorWalletAdapter wrapping a started MidnightWalletProvider
-   * @and A dappConnectorProofProvider created from the adapter's getProvingProvider
-   * @when Deploying a simple contract (no private state) using wallet-delegated proving
-   * @and Calling a circuit on the deployed contract
-   * @then Deploy transaction should succeed and be confirmed on-chain
-   * @and Call transaction should succeed and be confirmed on-chain
-   * @and No proof server should be needed (proving happens locally via WASM)
-   */
-  test('should deploy and call contract using dapp-connector-proof-provider with wallet-delegated proving [@slow]', async () => {
+  const deployAndCall = async (
+    providersFromWallet: (
+      zkConfigProvider: NodeZkConfigProvider<SimpleCircuit>,
+    ) => Promise<{ proofProvider: SimpleProviders['proofProvider']; walletProvider: WalletProvider; midnightProvider: MidnightProvider }>,
+  ): Promise<void> => {
     const contractConfiguration = new api.SimpleConfiguration();
     const zkConfigProvider = new NodeZkConfigProvider<SimpleCircuit>(contractConfiguration.zkConfigPath);
-    const costModel = CostModel.initialCostModel();
-
-    const proofProvider = await dappConnectorProofProvider(walletAdapter, zkConfigProvider, costModel);
+    const { proofProvider, walletProvider, midnightProvider } = await providersFromWallet(zkConfigProvider);
 
     const coinPublicKey = wallet.getCoinPublicKey();
     const accountId = Buffer.from(coinPublicKey).toString('hex');
@@ -91,8 +87,8 @@ describe('DApp Connector Proving', () => {
       publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
       zkConfigProvider,
       proofProvider,
-      walletProvider: wallet,
-      midnightProvider: wallet,
+      walletProvider,
+      midnightProvider,
       config: { networkId: environmentConfiguration.networkId, ttlSeconds: 3600 },
     };
 
@@ -103,5 +99,36 @@ describe('DApp Connector Proving', () => {
 
     const callTxData = await deployedContract.callTx.noop();
     await expectSuccessfulCallTx(providers, callTxData);
+  };
+
+  /**
+   * @given A DAppConnectorWalletAdapter wrapping a started MidnightWalletProvider
+   * @and A dappConnectorProofProvider created from the adapter's getProvingProvider
+   * @when Deploying a simple contract (no private state) using wallet-delegated proving
+   * @and Calling a circuit on the deployed contract
+   * @then Deploy transaction should succeed and be confirmed on-chain
+   * @and Call transaction should succeed and be confirmed on-chain
+   * @and No proof server should be needed (proving happens locally via WASM)
+   */
+  test('should deploy and call contract using dapp-connector-proof-provider with wallet-delegated proving [@slow]', async () => {
+    await deployAndCall(async (zkConfigProvider) => ({
+      proofProvider: await dappConnectorProofProvider(walletAdapter, zkConfigProvider, CostModel.initialCostModel()),
+      walletProvider: wallet,
+      midnightProvider: wallet,
+    }));
+  });
+
+  /**
+   * @given A DAppConnectorWalletAdapter wrapping a started MidnightWalletProvider
+   * @and The proof, wallet and midnight providers all built from the adapter
+   * @when Deploying a simple contract and calling a circuit on it
+   * @then Both transactions are balanced through balanceUnsealedTransaction, submitted through submitTransaction
+   * @and confirmed on-chain
+   */
+  test('should deploy and call contract with every transaction provider built from the DApp Connector [@slow]', async () => {
+    await deployAndCall(async (zkConfigProvider) => ({
+      proofProvider: await dappConnectorProofProvider(walletAdapter, zkConfigProvider, CostModel.initialCostModel()),
+      ...(await dappConnectorWalletProviders(walletAdapter)),
+    }));
   });
 });

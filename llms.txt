@@ -37,7 +37,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js` | Barrel package for Midnight.js core framework |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
-| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating to DApp Connector wallet |
+| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof, wallet and midnight providers delegating to a DApp Connector wallet |
 | `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
 | `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
@@ -349,6 +349,15 @@ const provingProvider = await dappConnectorProvingProvider(
   walletConnectedAPI,
   zkConfigProvider
 );
+```
+
+### DApp Connector Balancing and Submission
+
+```typescript
+import { dappConnectorWalletProviders } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// Both serve ledger 8 and ledger 9. Wallet rejections reach the caller unchanged.
+const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(walletConnectedAPI);
 ```
 
 ### Barrel Package

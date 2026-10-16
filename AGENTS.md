@@ -214,6 +214,7 @@ yarn test --coverage
 - Two abstraction levels: high-level (`dappConnectorProofProvider`) and low-level (`dappConnectorProvingProvider`)
 - Minimal interface coupling via `Pick<WalletConnectedAPI, 'getProvingProvider'>`
 - Proving provider is obtained once during setup and cached — do not re-obtain per call
+- `dappConnectorWalletProviders` builds `WalletProvider` + `MidnightProvider` from `Pick<ConnectedAPI, 'getShieldedAddresses' | 'balanceUnsealedTransaction' | 'submitTransaction'>`, both eras; wallet errors are not wrapped
 
 ### @midnight-ntwrk/midnight-js
 
