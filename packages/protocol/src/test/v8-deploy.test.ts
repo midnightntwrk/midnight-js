@@ -25,7 +25,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { entryPointName } from '../lib/shared/verifier-keys';
 import { type ComposeLedger8DeployOptions, composeLedger8DeployTx } from '../lib/v8/deploy';
-import { runRetainedConstructor } from '../lib/v8/executable';
+import { runLedger8Constructor } from '../lib/v8/executable';
 import { LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'test-network';
@@ -108,7 +108,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const { Contract, ledger } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
 
     const initialPrivateState: Record<string, never> = {};
-    const result = await runRetainedConstructor({
+    const result = await runLedger8Constructor({
       contract: new Contract({}),
       args: [],
       privateState: initialPrivateState,
@@ -116,14 +116,14 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
       verifierKeys: readFixtureVerifierKey
     });
 
-    // Every assertion reads runRetainedConstructor's OWN result. `ledger()` is the
+    // Every assertion reads runLedger8Constructor's OWN result. `ledger()` is the
     // contract's projector over a native onchain-runtime-v3 state, so the
     // round is read off the pre-fork state directly; crossing a
     // ledger-v8-bridged ChargedState through it would mix two WASM instances.
     const constructed = result.contractState;
     expect(constructed).toBeInstanceOf(ocrt3.ContractState);
     if (!(constructed instanceof ocrt3.ContractState)) {
-      throw new Error('runRetainedConstructor did not return the pre-fork ContractState the fixture built');
+      throw new Error('runLedger8Constructor did not return the pre-fork ContractState the fixture built');
     }
     expect(ledger(constructed.data).round).toBe(0n);
     expect(result.privateState).toEqual(initialPrivateState);
@@ -171,7 +171,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const signingKey = ocrt3.sampleSigningKey();
 
-    const result = await runRetainedConstructor({
+    const result = await runLedger8Constructor({
       contract: new Contract({}),
       args: [],
       privateState: {},
@@ -209,7 +209,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
   it('composes a deploy whose initial state is byte-identical to the state the constructor built, given the same verifier keys', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const verifierKey = new Uint8Array(readFileSync(resolve(FIXTURE_DIR, 'compiled', 'keys', 'increment.verifier')));
-    const result = await runRetainedConstructor({
+    const result = await runLedger8Constructor({
       contract: new Contract({}),
       args: [],
       privateState: {},
@@ -233,7 +233,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 
   it('overwrites the key the constructor registered with the one the deploy is given', async () => {
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
-    const result = await runRetainedConstructor({
+    const result = await runLedger8Constructor({
       contract: new Contract({}),
       args: [],
       privateState: {},
@@ -270,9 +270,9 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
       verifierKeys: readFixtureVerifierKey
     };
 
-    const first = await runRetainedConstructor(request);
+    const first = await runLedger8Constructor(request);
     const firstBytes = first.contractState.serialize();
-    const second = await runRetainedConstructor(request);
+    const second = await runLedger8Constructor(request);
 
     expect(first.signingKey).not.toBe(second.signingKey);
     const authority = LedgerV8.ContractState.deserialize(firstBytes).maintenanceAuthority;
@@ -285,7 +285,7 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
     const uppercase = 'AB'.repeat(32);
 
-    const result = await runRetainedConstructor({
+    const result = await runLedger8Constructor({
       contract: new Contract({}),
       args: [],
       privateState: {},

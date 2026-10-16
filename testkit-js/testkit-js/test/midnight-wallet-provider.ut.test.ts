@@ -37,7 +37,7 @@ import type { EnvironmentConfiguration } from '../src/test-environment/environme
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
-import { retainedLedger } from '../src/wallet/wallet-transaction';
+import { loadWalletLedger8 } from '../src/wallet/wallet-transaction';
 
 // Two versions, one on each side of the fork. The retained one is what the
 // refusal-is-gone tests run at; the current one is what the v9 variant needs, since
@@ -174,7 +174,7 @@ describe('MidnightWalletProvider', () => {
   describe('the ledger the retained variant deserializes with', () => {
     it('is the module the wallet SDK publishes, so a revert to another copy fails here', async () => {
       // Arrange / Act.
-      const deserializer = await retainedLedger();
+      const deserializer = await loadWalletLedger8();
 
       // Assert: identity, not structural equality -- the copies are structurally
       // identical, which is why this went unseen.

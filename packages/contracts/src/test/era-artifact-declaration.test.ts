@@ -84,7 +84,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       EraArtifactMismatchError
     );
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toMatchObject({
-      reason: 'unwrapped-current-era-contract'
+      reason: 'unwrapped-ledger9-contract'
     });
   });
 
@@ -165,7 +165,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     };
 
     await expect(resolveArtifactEra(rawCurrentEra, source)).rejects.toMatchObject({
-      reason: 'unwrapped-current-era-contract'
+      reason: 'unwrapped-ledger9-contract'
     });
     expect(source.getArtifactRuntimeVersion).not.toHaveBeenCalled();
   });

@@ -60,7 +60,7 @@ fork-crossing work:
 | `executeCircuit` | Runs a pre-fork circuit, on a state either era's reader may have decoded. Asynchronous. |
 | `executeConstructor` | Runs a pre-fork constructor. Asynchronous. |
 | `wrapKeepStateCall` | Binds a pre-fork transcript natively onto v9. |
-| `reexpressOperationsForCurrentEra` | Re-expresses a retained contract's entry points as a current-era state. |
+| `reexpressOperationsForLedger9` | Re-expresses a retained contract's entry points as a current-era state. |
 
 `Ledger8Engine` is the public surface `createLedger8Engine` builds: the
 retained pre-fork EXECUTION capabilities. No method there takes a runtime or

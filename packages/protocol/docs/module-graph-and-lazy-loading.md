@@ -94,14 +94,14 @@ rather than of a convention spread across files.
 
 `lib/v8/load-engine.ts` re-exports engine option and result types type-only —
 `ConstructorResultPojo`, `EncodedStateValue`, `Ledger8Engine`,
-`Ledger8SigningKey`, `RetainedContract`, `RunRetainedCircuitOptions`,
-`RunRetainedConstructorOptions`, `TranscriptPojo`, `VerifierKeyReader` and
+`Ledger8SigningKey`, `Ledger8EngineContract`, `Ledger8CircuitOptions`,
+`Ledger8ConstructorOptions`, `TranscriptPojo`, `VerifierKeyReader` and
 `WrapKeepStateCallOptions` — so a consumer holding a `Ledger8Engine` can
 annotate a variable or write a helper without a second, subpath-gated import,
 and without linking the engine chunk.
 
 The list is complete for the execution engine: `executeConstructor(options:
-RunRetainedConstructorOptions): Promise<ConstructorResultPojo>`
+Ledger8ConstructorOptions): Promise<ConstructorResultPojo>`
 (`lib/v8/engine.ts`) has both its argument and its result type on the list
 above, so every method on the engine can be annotated without the gated
 import.

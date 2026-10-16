@@ -222,12 +222,12 @@ export class UnknownProtocolVersionError extends MidnightJsError {
 
 /**
  * Which lazily-loaded subpath export {@link Ledger8RuntimeMissingError} failed
- * to acquire. Each chunk pulls a different set of retained-era dependencies, so
+ * to acquire. Each chunk pulls a different set of ledger 8 dependencies, so
  * naming the wrong one sends an operator to an entry point that loaded fine.
  *
  * @see {@link ModuleGraphAndLazyLoading}
  */
-export type RetainedEraSubpath = '/v8' | '/engine';
+export type Ledger8Subpath = '/v8' | '/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
@@ -239,7 +239,7 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * Distinct from {@link Ledger8RuntimeInvalidError}, which reports a runtime
  * that WAS acquired and then handed over incomplete.
  *
- * @param subpath Which chunk failed to load — see {@link RetainedEraSubpath}.
+ * @param subpath Which chunk failed to load — see {@link Ledger8Subpath}.
  * @param cause The underlying module-resolution or initialisation failure,
  *   preserved unchanged. Read it for which module actually failed.
  * @see {@link ModuleGraphAndLazyLoading}
@@ -250,11 +250,11 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING];
 
   constructor(
-    readonly subpath: RetainedEraSubpath,
+    readonly subpath: Ledger8Subpath,
     cause: unknown
   ) {
     super(
-      `Failed to load the retained pre-fork runtime via the midnight-js-protocol${subpath} subpath export. ` +
+      `Failed to load the ledger 8 (pre-fork) runtime via the midnight-js-protocol${subpath} subpath export. ` +
         'Read the wrapped cause for which module actually failed to resolve or initialise. This usually means ' +
         'a broken or partial install of the protocol package — reinstall dependencies and retry.',
       { cause }

@@ -37,7 +37,7 @@
  *   in another package and a wrapped key it stopped admitting is one a restore
  *   drops without a word;
  * - a change in the LENGTH a retained sampler answers, which is what the
- *   assertion against `RETAINED_SIGNING_KEY_HEX_LENGTH` measures.
+ *   assertion against `LEDGER8_SIGNING_KEY_HEX_LENGTH` measures.
  *
  * `isValidSigningKey` admits exactly 64 hex characters, so the 70-character
  * version-prefixed value the `onchain-runtime-v3` typings describe would fail
@@ -60,7 +60,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import {
   fromStoredLedger8SigningKey,
-  RETAINED_SIGNING_KEY_HEX_LENGTH,
+  LEDGER8_SIGNING_KEY_HEX_LENGTH,
   toStoredLedger8SigningKey
 } from '../internal/ledger8-signing-key';
 import { createMockContractAddress } from './test-mocks';
@@ -103,7 +103,7 @@ describe('a retained-era signing key crossing the private-state provider', () =>
     // The rule in the source is a number, and a number written down only restates what that source
     // was told. This is where it is measured. A sampler that changed length fails here, rather than
     // the read admitting an entry the retained runtime cannot build an authority from.
-    expect(retainedKey).toHaveLength(RETAINED_SIGNING_KEY_HEX_LENGTH);
+    expect(retainedKey).toHaveLength(LEDGER8_SIGNING_KEY_HEX_LENGTH);
   });
 
   it.each([

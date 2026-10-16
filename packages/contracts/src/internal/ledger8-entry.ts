@@ -101,8 +101,8 @@ import {
   type Ledger8ConstructedState,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
+  type Ledger8StateValue,
   readLedger8Snapshot,
-  type RetainedStateValue,
   runLedger8CallPipeline,
   runLedger8DeployPipeline
 } from './ledger8-pipeline';
@@ -126,7 +126,7 @@ import { createEncryptionPublicKeyResolver } from './utils';
  * @param txBytes The serialized unproven current-era transaction.
  * @returns The live transaction.
  */
-const readCurrentEraTransaction = (txBytes: Uint8Array): UnprovenTransaction =>
+const readLedger9Transaction = (txBytes: Uint8Array): UnprovenTransaction =>
   Transaction.deserialize('signature', 'pre-proof', 'pre-binding', txBytes);
 
 /**
@@ -171,7 +171,7 @@ export interface Ledger8RuntimeProviders extends TransactionProviders {
  */
 export interface Ledger8Runtime {
   readonly resolved: ResolvedOperationEra;
-  readonly engine: Ledger8ExecutionEngine<RetainedStateValue>;
+  readonly engine: Ledger8ExecutionEngine<Ledger8StateValue>;
   /**
    * The RETAINED era facade, which reads the contract's on-chain state.
    *
@@ -297,7 +297,7 @@ export const submitLedger8Tx = async (
   // package closes the same way -- see `assertEraCompatible`.
   switch (head) {
     case 'v9':
-      return proveBalanceSubmitLedger9Payload(providers, readCurrentEraTransaction(txBytes), circuitId, submit);
+      return proveBalanceSubmitLedger9Payload(providers, readLedger9Transaction(txBytes), circuitId, submit);
     case 'v8':
       return proveBalanceSubmitLedger8Payload(providers, txBytes, circuitId, submit);
     default: {
@@ -320,7 +320,7 @@ export interface Ledger8CallRequest {
 /** A composed and submitted retained-era call. */
 export interface Ledger8SubmittedCall {
   readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<RetainedStateValue>;
+  readonly call: Ledger8CallPipelineResult<Ledger8StateValue>;
   /**
    * The era the network head was on when this call started.
    *
@@ -774,7 +774,7 @@ const readLedger8PrivateState = async (
   // from "there is no way to store anything under it".
   if (privateState === undefined || privateState === null) {
     throw new PrivateStateNotFoundError(
-      `No private state found at private state ID '${privateStateId}'. A retained-era call cannot ` +
+      `No private state found at private state ID '${privateStateId}'. A ledger 8 call cannot ` +
         'seed one - only `deployContract` and `findDeployedContract` take an `initialPrivateState`, ' +
         'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
         'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
@@ -834,7 +834,7 @@ export const toLedger8CallEntryOptions = (options: AnyLedger8CallTxOptions): Led
  * same call.
  */
 const toLedger8CallTxData = (
-  call: Ledger8CallPipelineResult<RetainedStateValue>
+  call: Ledger8CallPipelineResult<Ledger8StateValue>
 ): AnyLedger8UnsubmittedCallTxData => ({
   era: 'v8',
   public: {

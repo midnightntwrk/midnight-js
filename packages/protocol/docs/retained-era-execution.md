@@ -93,7 +93,7 @@ took.
 
 The refusal is a runtime one, not only a type. `tsc` reaches neither a
 JavaScript caller nor an options object assembled dynamically, and both
-`RunRetainedCircuitOptions` and `ContractStatePojo` are on the published
+`Ledger8CircuitOptions` and `ContractStatePojo` are on the published
 surface. It covers more than nullish: `new Map(...)` turns an empty array, an
 empty `Set` and an empty string alike into an empty map, and a JSON round trip
 turns a `Map` into a plain object — `structuredClone` carries a `Map`,
@@ -199,10 +199,10 @@ in [DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## Circuit dispatch
 
-`runRetainedCircuit` runs one circuit by asking compact-js's
+`runLedger8Circuit` runs one circuit by asking compact-js's
 `ContractExecutable` for it, by branded `ProvableCircuitId`. compact-js indexes
 `provableCircuits`, so that — not `impureCircuits` — is the map
-`RetainedContract` declares and the one a caller's artifact is read through.
+`Ledger8EngineContract` declares and the one a caller's artifact is read through.
 
 A caller still passes the CONSTRUCTED artifact the previous toolchain
 generates, which is not compact-js's `CompiledContract`: that container is a
@@ -267,7 +267,7 @@ and the node rejects that as unbalanced on submission.
 
 ## Constructor execution
 
-`runRetainedConstructor` runs a retained contract's constructor through the
+`runLedger8Constructor` runs a retained contract's constructor through the
 same `ContractExecutable`, as `initialize`.
 
 It FAILS EARLIER AND HARDER than the leg it replaced. `initialize` registers a

@@ -46,7 +46,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/breadcrumbs';
+import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
 import { isLedger8Request, requireLedger9ContractState,requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
@@ -175,7 +175,7 @@ const setOrGetLedger8SigningKey = async (
     // store I/O messages name paths and OS-level metadata that must be redacted before they reach
     // a user-facing surface, and a log line is read by more people than a return value is. The
     // breadcrumb is the signal, and it is emitted on every pass through here.
-    emitRetainedSigningKeyEntry(sink, contractAddress, 'unreadable-entry');
+    emitLedger8SigningKeyEntry(sink, contractAddress, 'unreadable-entry');
     return undefined;
   }
   // Truthiness rather than `=== null`: the interface answers `null` for "nothing stored", and a

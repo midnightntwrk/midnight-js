@@ -143,7 +143,7 @@ crossing that passes BYTES rather than a handle is immune by construction,
 because no object is handed between the two physical copies at all.
 
 The deploy path is that case: `.serialize()` is how a caller turns the state
-handle `runRetainedConstructor` returned into the bytes every deploy leg takes,
+handle `runLedger8Constructor` returned into the bytes every deploy leg takes,
 and `ConstructorResultPojo.contractState` is typed off compact-js's own result
 rather than restated. This is why the guard's blast radius is the crossings
 that pass handles, and why widening it to cover the byte crossings would assert

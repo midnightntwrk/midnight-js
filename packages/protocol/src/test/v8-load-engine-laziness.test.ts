@@ -63,12 +63,12 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
 
     // Constructed but never used is a weaker claim than constructed and usable:
     // a method that reached for this package's v8 loader lazily would pass the
-    // assertion above and fail here. `reexpressOperationsForCurrentEra` is the
+    // assertion above and fail here. `reexpressOperationsForLedger9` is the
     // cheapest real work on the surface and targets the CURRENT era, so it has
     // no business touching the retained ledger at all. It refuses an empty
     // entry-point list, so a real registered key is supplied.
     expect(
-      engine.reexpressOperationsForCurrentEra([
+      engine.reexpressOperationsForLedger9([
         {
           circuitId: 'increment',
           verifierKey: new Uint8Array(readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))),
@@ -124,7 +124,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     expect(Object.keys(engine).sort()).toEqual([
       'executeCircuit',
       'executeConstructor',
-      'reexpressOperationsForCurrentEra',
+      'reexpressOperationsForLedger9',
       'wrapKeepStateCall'
     ]);
   });

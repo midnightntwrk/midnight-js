@@ -429,7 +429,7 @@ entry at the same address may legitimately be `ecdsa`, and unwrapped blindly
 that value would build an authority whose verifying key nobody holds. Anything
 else reads as ABSENT rather than failing the read — nothing on the retained-era path
 consumes the key, so a circuit call must not stop working over a value it never
-looks at — and each such case leaves a `retained-signing-key-entry` breadcrumb,
+looks at — and each such case leaves a `ledger8-signing-key-entry` breadcrumb,
 which is what keeps absent from meaning silent.
 
 The write happens only after the chain has recorded the deployment, alongside the

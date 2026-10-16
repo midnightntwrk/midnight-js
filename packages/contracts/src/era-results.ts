@@ -122,7 +122,7 @@ export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Con
  *
  * @see {@link OverloadTyping} for why the fallback branch has to be there.
  */
-type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
+type NarrowedToLedger8<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
   ? T & { readonly era: 'v8' }
   : Extract<T, { readonly era: 'v8' }>;
 
@@ -146,7 +146,7 @@ type NarrowedToRetained<T> = [Extract<T, { readonly era: 'v8' }>] extends [never
  */
 export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
   result: T
-): result is NarrowedToRetained<T> => {
+): result is NarrowedToLedger8<T> => {
   switch (result?.era) {
     case 'v8':
       return true;

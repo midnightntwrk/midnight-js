@@ -643,7 +643,7 @@ nine top-level state fixtures. Reach these by path, through `hfFixturePath`.
 > glue stamped the wall clock when a circuit context was built and the engine
 > took no clock — so a recording that kept them would have been a different file
 > on every run. `executeCircuit` now takes the execution clock as an input
-> (`RunRetainedCircuitOptions.nowSeconds`), so the recording is the runtime's own
+> (`Ledger8CircuitOptions.nowSeconds`), so the recording is the runtime's own
 > output end to end. The minting suite asserts that it matches a live execution,
 > and that it still composes on **both** eras.
 

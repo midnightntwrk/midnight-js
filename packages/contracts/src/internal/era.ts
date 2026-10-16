@@ -324,7 +324,7 @@ const hasOwnProperty = <K extends string>(value: object, key: K): value is objec
   Object.hasOwn(value, key);
 
 /** What the artifact's own shape can establish, which is never an era on its own. */
-type ArtifactShape = 'current-era-container' | 'retained-era-candidate';
+type ArtifactShape = 'ledger9-container' | 'ledger8-candidate';
 
 /**
  * The one read {@link resolveArtifactEra} makes on the ZK config provider.
@@ -360,7 +360,7 @@ const eraOfRuntimeVersion = (runtimeVersion: string): LedgerVersion | undefined 
  * @param compiledContract The value a caller passed as its contract. `unknown`, because a
  * JavaScript caller can pass anything and the point of this function is to say what it passed.
  * @returns Which of the two recognised shapes it has.
- * @throws EraArtifactMismatchError with reason `'unwrapped-current-era-contract'` for a raw
+ * @throws EraArtifactMismatchError with reason `'unwrapped-ledger9-contract'` for a raw
  * current-era contract instance whose `async` survived the caller's build, and
  * `'unrecognised-contract-shape'` for an object matching neither era.
  * @see {@link EraDispatch} for the shape table each branch below implements, the brand-loss
@@ -380,7 +380,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
     // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
     // being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
-      return 'current-era-container';
+      return 'ledger9-container';
     }
     throw new EraArtifactMismatchError('unrecognised-contract-shape');
   }
@@ -394,9 +394,9 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
 
   switch (initialState.constructor.name) {
     case PLAIN_FUNCTION:
-      return 'retained-era-candidate';
+      return 'ledger8-candidate';
     case ASYNC_FUNCTION:
-      throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+      throw new EraArtifactMismatchError('unwrapped-ledger9-contract');
     default:
       // A codegen shape neither era produces. Refused rather than routed anywhere by default.
       throw new EraArtifactMismatchError('unrecognised-contract-shape');
@@ -419,7 +419,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
  * @param source The ZK config provider serving that contract's artifacts.
  * @returns The pipeline that contract belongs to.
  * @throws EraArtifactMismatchError with reason `'unrecognised-contract-shape'` or
- * `'unwrapped-current-era-contract'` before the provider is consulted at all;
+ * `'unwrapped-ledger9-contract'` before the provider is consulted at all;
  * `'artifact-era-undeclared'` when the provider cannot report a runtime version, carrying its
  * failure on `cause`; and `'unknown-artifact-runtime-version'` for a toolchain this framework
  * cannot place.
@@ -429,7 +429,7 @@ export const resolveArtifactEra = async (
   compiledContract: unknown,
   source: ArtifactRuntimeVersionSource
 ): Promise<LedgerVersion> => {
-  if (artifactShapeOf(compiledContract) === 'current-era-container') {
+  if (artifactShapeOf(compiledContract) === 'ledger9-container') {
     return CURRENT_LEDGER_VERSION;
   }
 
@@ -460,7 +460,7 @@ export const resolveArtifactEra = async (
   // exists to catch: a current-era contract passed raw, with its `async` erased by the caller's
   // build. It reads as retained and is not.
   if (era === CURRENT_LEDGER_VERSION) {
-    throw new EraArtifactMismatchError('unwrapped-current-era-contract');
+    throw new EraArtifactMismatchError('unwrapped-ledger9-contract');
   }
 
   return era;
@@ -635,7 +635,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * @param head The era the network head is on, from {@link resolveOperationEra}.
  * @param kind Whether this operation deploys a contract or calls one already deployed. Anything
  * that is not a call is treated as a deploy, which is the refusing side.
- * @throws EraArtifactMismatchError with reason `'current-era-artifact-on-pre-fork-head'` for a
+ * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-head'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws UnknownLedgerVersionError carrying whichever argument has no cell here, if an era is
@@ -686,7 +686,7 @@ export const assertEraCompatible = (
       }
       return;
     case 'artifact-newer-than-head':
-      throw new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head');
+      throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head');
     default: {
       const unhandled: never = verdict;
       throw new UnknownLedgerVersionError(String(unhandled));

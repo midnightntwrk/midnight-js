@@ -24,12 +24,12 @@ import {
   BBOARD_ENTRY_POINTS,
   CORRUPTED_PAYLOAD,
   CURRENT_ENVELOPE,
+  LEDGER8_ENVELOPE,
   POST_FORK_PROTOCOL_VERSION,
   PRE_FORK_PROTOCOL_VERSION,
-  RETAINED_ENVELOPE,
   surfaceServing,
   surfaceServingNothing,
-  TAG_CLAIMS_RETAINED_ERA
+  TAG_CLAIMS_LEDGER8
 } from './any-era-fixtures';
 import { createMockContractAddress } from './test-mocks';
 
@@ -78,7 +78,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
 
   it('decodes a retained-era state served under a retained-era block', async () => {
     // Arrange.
-    const surface = surfaceServing(RETAINED_ENVELOPE, PRE_FORK_PROTOCOL_VERSION);
+    const surface = surfaceServing(LEDGER8_ENVELOPE, PRE_FORK_PROTOCOL_VERSION);
 
     // Act.
     const read = await getAnyEraContractState(surface, contractAddress);
@@ -101,7 +101,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // by the envelope is the whole of the fix.
 
     // Arrange.
-    const surface = surfaceServing(RETAINED_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
+    const surface = surfaceServing(LEDGER8_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
 
     // Act.
     const read = await getAnyEraContractState(surface, contractAddress);
@@ -125,7 +125,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
 
     // Arrange / Act.
     const retained = await getAnyEraContractState(
-      surfaceServing(RETAINED_ENVELOPE, PRE_FORK_PROTOCOL_VERSION),
+      surfaceServing(LEDGER8_ENVELOPE, PRE_FORK_PROTOCOL_VERSION),
       contractAddress
     );
     const current = await getAnyEraContractState(
@@ -158,13 +158,13 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // copy that had been through a decoder would make that unreachable.
 
     // Arrange.
-    const surface = surfaceServing(RETAINED_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
+    const surface = surfaceServing(LEDGER8_ENVELOPE, POST_FORK_PROTOCOL_VERSION);
 
     // Act.
     const read = await getAnyEraContractState(surface, contractAddress);
 
     // Assert.
-    expect(read?.raw).toEqual(RETAINED_ENVELOPE);
+    expect(read?.raw).toEqual(LEDGER8_ENVELOPE);
   });
 
   it('answers null for an address no contract is deployed at', async () => {
@@ -229,7 +229,7 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
     // and a mis-decode is the selected decoder refusing.
 
     // Arrange: a `[v6]` tag over a v9 payload.
-    const surface = surfaceServing(TAG_CLAIMS_RETAINED_ERA, POST_FORK_PROTOCOL_VERSION);
+    const surface = surfaceServing(TAG_CLAIMS_LEDGER8, POST_FORK_PROTOCOL_VERSION);
 
     // Act.
     const rejection = await getAnyEraContractState(surface, contractAddress).catch((error: unknown) => error);

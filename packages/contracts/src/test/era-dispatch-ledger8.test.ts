@@ -72,7 +72,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => {
 // `compiler/contract-info.json`. These fixtures were built by compactc 0.31.1, whose runtime is
 // 0.16.0 -- asserted against the real counter-016 file in
 // `testkit-js/testkit-js/test/counter-016-artifacts.ut.test.ts`, not assumed here.
-const RETAINED_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
 describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
   let counter: Counter016Contract;
@@ -92,13 +92,13 @@ describe('resolveArtifactEra against the REAL retained-era artifacts', () => {
     // bundle declares.
     expect(counter.initialState.constructor.name).toBe('Function');
 
-    await expect(resolveArtifactEra(counter, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(counter, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   it('routes the real argument-taking retained artifact the same way', async () => {
     expect(coinReceiver.initialState.constructor.name).toBe('Function');
 
-    await expect(resolveArtifactEra(coinReceiver, RETAINED_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(coinReceiver, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
   });
 
   it('places the real artifact without consulting the compact-js brand, which it does not carry', () => {

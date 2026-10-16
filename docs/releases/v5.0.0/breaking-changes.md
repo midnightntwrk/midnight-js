@@ -404,8 +404,8 @@ See [ADR 0014](../../adr/0014-build-provider-seams-from-per-era-handlers.md).
 `EraDeclaringProvider`, `RetainedEraEntries`, `EraRequest`, `erasServedBy`,
 `narrowToEra`, `createProofProviderFromHandlers`, `createWalletProviderFromHandlers`,
 `createMidnightProviderFromHandlers`, `ProofProviderHandlers`, `WalletProviderHandlers`,
-`MidnightProviderHandlers`, `CurrentEraProver`, `RetainedEraProver`,
-`CurrentEraBalancer`, `RetainedEraBalancer`, `CurrentEraSubmitter`,
+`MidnightProviderHandlers`, `Ledger9Prover`, `RetainedEraProver`,
+`Ledger9Balancer`, `RetainedEraBalancer`, `Ledger9Submitter`,
 `RetainedEraSubmitter`. Changed: `FinalizedTxData` gained `version: 'v9'`;
 `ProofProvider`, `WalletProvider` and `MidnightProvider` each gained a required
 `supportedEras`.
@@ -672,7 +672,7 @@ depends on the era is a `Versioned*` union; narrow it with `switch (value.versio
 | `IndexerDataError.unresolvableEra` | static factory | removed |
 | `IndexerDataErrorContext` | — | new kinds `mixed-era-public-states` and `malformed-protocol-version`; an exhaustive `switch` on `kind` must handle them |
 | `queryRawContractState`, `rawContractStateObservable` | never compared the envelope with the block | refuse an envelope newer than an enforced dating block (`era-disagreement`) and a malformed `protocolVersion` (`malformed-protocol-version`) |
-| `EraArtifactMismatchReason` | — | new members `current-era-transaction-on-pre-fork-head` and `retained-era-transaction-on-post-fork-head` ([14c](#14c-submittx-routes-on-the-network-head)) |
+| `EraArtifactMismatchReason` | — | new members `ledger9-transaction-on-ledger8-head` and `ledger8-transaction-on-ledger9-head` ([14c](#14c-submittx-routes-on-the-network-head)) |
 
 ### 14b. What a pre-fork state does now
 
@@ -694,8 +694,8 @@ eras are refused as `IndexerDataError` kind `mixed-era-public-states`. On the su
 
 `submitTx` / `submitTxAsync` read the head once and accept only a transaction of the head's era. A
 transaction of the other era is refused before proving, as `EraArtifactMismatchError`: a v9
-transaction on a pre-fork head with reason `current-era-transaction-on-pre-fork-head`, v8 bytes on a
-post-fork head with reason `retained-era-transaction-on-post-fork-head`. Both reasons are new members
+transaction on a pre-fork head with reason `ledger9-transaction-on-ledger8-head`, v8 bytes on a
+post-fork head with reason `ledger8-transaction-on-ledger9-head`. Both reasons are new members
 of `EraArtifactMismatchReason`, so an exhaustive `switch` on `reason` must handle them. An untagged
 transaction is refused as `UntaggedPayloadError` before the head is read.
 
@@ -753,6 +753,44 @@ try {
 
 This framework's own coded errors are not wrapped, so `EraInvariantViolationError`,
 `UntaggedPayloadError` and the other coded refusals still arrive as themselves.
+
+---
+
+## 15. Names bound to one ledger are named after it (#1490)
+
+This section affects you only if you built against a `5.0.0` pre-release. The
+names below were never in a 4.x release. The sections above already use the new
+names.
+
+"Current" and "retained" change meaning at every hard fork: today "current" is
+ledger 9 and "retained" is ledger 8. A name whose code is bound to one ledger
+now says which ledger (ADR 0018). Names that follow the era on purpose keep
+"current" / "retained": `CurrentLedgerVersion`, `RetainedLedgerVersion`,
+`RetainedEraEntries`, the `currentEra` / `retainedEras` keys, `RetainedEraProver`,
+`RetainedEraBalancer`, `RetainedEraSubmitter` and `RetainedEraProvingProvider`.
+The README glossary defines both terms.
+
+| Package | Before | After |
+|---|---|---|
+| `protocol` (`./engine`) | `RetainedContract` | `Ledger8EngineContract` |
+| `protocol` (`./engine`) | `RunRetainedCircuitOptions`, `RunRetainedConstructorOptions` | `Ledger8CircuitOptions`, `Ledger8ConstructorOptions` |
+| `protocol` (`./engine`) | `Ledger8Engine.reexpressOperationsForCurrentEra` | `reexpressOperationsForLedger9` |
+| `protocol` | `RetainedEraSubpath` (also on the `midnight-js` barrel) | `Ledger8Subpath` |
+| `types` | `CurrentEraProver`, `CurrentEraBalancer`, `CurrentEraSubmitter` | `Ledger9Prover`, `Ledger9Balancer`, `Ledger9Submitter` |
+| `contracts` | `RetainedArtifactOnCurrentEraStateError` (flat) | `Ledger8.ArtifactOnLedger9StateError` (in the `Ledger8` namespace, like every other ledger 8 refusal; ADR 0013) |
+| `contracts` | `CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE` (`MIDNIGHT_JS_C_RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE`) | `LEDGER8_ARTIFACT_ON_LEDGER9_STATE` (`MIDNIGHT_JS_C_LEDGER8_ARTIFACT_ON_LEDGER9_STATE`) |
+| `contracts` | `EraArtifactMismatchReason` `'unwrapped-current-era-contract'` | `'unwrapped-ledger9-contract'` |
+| `contracts` | `EraArtifactMismatchReason` `'current-era-artifact-on-pre-fork-head'` | `'ledger9-artifact-on-ledger8-head'` |
+| `contracts` | `EraArtifactMismatchReason` `'current-era-transaction-on-pre-fork-head'` | `'ledger9-transaction-on-ledger8-head'` |
+| `contracts` | `EraArtifactMismatchReason` `'retained-era-transaction-on-post-fork-head'` | `'ledger8-transaction-on-ledger9-head'` |
+| `contracts` | breadcrumb `decision: 'retained-signing-key-entry'` | `'ledger8-signing-key-entry'` |
+
+The breadcrumb `decision` value reaches your logs. Update any log filter or
+alert that matches the old value.
+
+Error messages now name the ledger ("the ledger 8 (pre-fork) Compact
+toolchain", "a ledger 9 state") instead of saying only "retained" or "current".
+Match errors on their `code`, not their message (ADR 0017).
 
 ---
 

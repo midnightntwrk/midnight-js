@@ -59,7 +59,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
 import type { LedgerVersion } from '../lib/shared/ledger-version';
-import { runRetainedCircuit, type TranscriptPojo } from '../lib/v8/executable';
+import { runLedger8Circuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath, readHexFixture } from './fixtures';
 import type { Assert } from './type-assertions';
 
@@ -160,7 +160,7 @@ const runReceiveCoin = async (): Promise<RealExecution> => {
   const initial = contract.initialState(ledger8Runtime.createConstructorContext({}, SAMPLE_COIN_PUBLIC_KEY));
 
 
-  const transcript = await runRetainedCircuit({
+  const transcript = await runLedger8Circuit({
     contract,
     circuitId: CIRCUIT_ID,
     args: [RECEIVED_COIN],

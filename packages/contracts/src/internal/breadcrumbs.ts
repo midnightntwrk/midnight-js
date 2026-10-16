@@ -135,8 +135,8 @@ export interface EncodingBreadcrumb {
  * @see {@link Breadcrumbs} for why this decision is breadcrumbed where the
  * refusals are not, and why the outcome may not carry the entry itself.
  */
-export interface RetainedSigningKeyEntryBreadcrumb {
-  readonly decision: 'retained-signing-key-entry';
+export interface Ledger8SigningKeyEntryBreadcrumb {
+  readonly decision: 'ledger8-signing-key-entry';
   readonly source: 'private-state-provider';
   /** Why the entry could not be read as a retained-era key. */
   readonly outcome:
@@ -161,7 +161,7 @@ export type DispatchBreadcrumb =
   | HeadResolutionBreadcrumb
   | PipelineSelectionBreadcrumb
   | EncodingBreadcrumb
-  | RetainedSigningKeyEntryBreadcrumb;
+  | Ledger8SigningKeyEntryBreadcrumb;
 
 /**
  * The ONE logger member a breadcrumb reaches.
@@ -266,9 +266,9 @@ export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: Ledg
  * @param contractAddress The address the entry was stored against.
  * @param outcome Why the entry was not usable.
  */
-export const emitRetainedSigningKeyEntry = (
+export const emitLedger8SigningKeyEntry = (
   sink: BreadcrumbSink | undefined,
   contractAddress: string,
-  outcome: RetainedSigningKeyEntryBreadcrumb['outcome']
+  outcome: Ledger8SigningKeyEntryBreadcrumb['outcome']
 ): void =>
-  emit(sink, { decision: 'retained-signing-key-entry', source: 'private-state-provider', outcome, contractAddress });
+  emit(sink, { decision: 'ledger8-signing-key-entry', source: 'private-state-provider', outcome, contractAddress });

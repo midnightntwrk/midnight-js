@@ -64,7 +64,6 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'ProviderFailedError',
   'RemoveVerifierKeyTxFailedError',
   'ReplaceMaintenanceAuthorityTxFailedError',
-  'RetainedArtifactOnCurrentEraStateError',
   'ScopedTransactionIdentityMismatchError',
   'ScopedTransactionEraUnsupportedError',
   'StaleHeadError',

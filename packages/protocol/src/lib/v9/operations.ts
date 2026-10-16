@@ -32,7 +32,7 @@ import type { ContractEntryPointPojo } from '../shared/contract-state';
  * @see {@link CrossEraOperationRegistry} for why re-expressing the operations is faithful rather
  * than a substitution, and why the empty registry is refused here rather than one layer down.
  */
-export const reexpressOperationsForCurrentEra = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
+export const reexpressOperationsForLedger9 = (entryPoints: readonly ContractEntryPointPojo[]): Uint8Array => {
   const state = new ledgerV9.ContractState();
   let registered = 0;
 

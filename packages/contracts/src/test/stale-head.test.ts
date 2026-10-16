@@ -65,9 +65,9 @@ import {
   type CoinReceiverRecording,
   createReplayEngine,
   hfFixturePath,
+  LEDGER8_TX_TAG,
   loadCoinReceiverRecording,
   readHfHexFixture,
-  RETAINED_ERA_TX_TAG,
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
@@ -631,7 +631,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const preForkPayload = providers.seen.submitTx;
     expect(preForkPayload?.version).toBe('v8');
     const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
-    expect(txTagPrefix(preForkBytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
+    expect(txTagPrefix(preForkBytes!, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
 
     // THE RE-RUN. Nothing has called this contract since the fork, and an indexer older than
     // 4.4.0-rc.6 serves such a contract untranslated (midnight-indexer #1605) -- so `raw` is still

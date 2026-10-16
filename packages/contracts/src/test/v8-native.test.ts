@@ -123,14 +123,14 @@ import type {
 import {
   type CoinReceiverRecording,
   createReplayEngine,
-  CURRENT_ERA_TX_TAG,
   hfFixturePath,
+  LEDGER8_TX_TAG,
+  LEDGER9_TX_TAG,
   loadCoinReceiverRecording,
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
   type ReplayState,
-  RETAINED_ERA_TX_TAG,
   SAMPLED_SIGNING_KEY,
   txTagPrefix
 } from './ledger8-replay';
@@ -421,7 +421,7 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
 /**
  * A caller-supplied signing key in the shape the retained era actually reads:
  * 32 bytes of hex. The replay double refuses anything else, as the real
- * `runRetainedConstructor` does.
+ * `runLedger8Constructor` does.
  */
 const CALLER_OWN_SIGNING_KEY = 'ab'.repeat(32);
 
@@ -643,12 +643,12 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     // A raw PREFIX slice, never `parseSerializedTag`: that parser scans only
     // the first 64 bytes and both tags are longer than that.
-    expect(txTagPrefix(result.txBytes, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
     // Measured, and worth pinning: the two eras' tags are NOT the same string,
     // so the tag corroborates which ledger produced a transaction. Never read
     // an era off the bracketed version alone -- the retained tag says `[v9]`.
-    expect(CURRENT_ERA_TX_TAG).not.toBe(RETAINED_ERA_TX_TAG);
-    expect(txTagPrefix(result.txBytes, CURRENT_ERA_TX_TAG)).not.toBe(CURRENT_ERA_TX_TAG);
+    expect(LEDGER9_TX_TAG).not.toBe(LEDGER8_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).not.toBe(LEDGER9_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment, with the fallible segment empty', async () => {
@@ -1213,7 +1213,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       expect(payload?.version).toBe('v8');
       const bytes = payload?.version === 'v8' ? payload.txBytes : undefined;
       expect(bytes).toBeInstanceOf(Uint8Array);
-      expect(txTagPrefix(bytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
+      expect(txTagPrefix(bytes!, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
     }
 
     // THE CHAIN, asserted stage by stage. The three assertions above are the
@@ -1275,7 +1275,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // nonce, so the same initial state deploys to a different address each time.
     expect(typeof deployed.deploy.contractAddress).toBe('string');
     expect(deployed.deploy.contractAddress.length).toBeGreaterThan(0);
-    expect(txTagPrefix(deployed.deploy.txBytes, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
+    expect(txTagPrefix(deployed.deploy.txBytes, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
     expect(providers.seen.proveTx?.version).toBe('v8');
   });
 
@@ -1340,7 +1340,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       circuitId: 'initialState',
       recipientCoinPublicKey: thirdPartyCoinPublicKey
     });
-    await expect(deploying).rejects.toThrow(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    await expect(deploying).rejects.toThrow(/ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`/);
     await expect(deploying).rejects.not.toThrow(/on the call options/);
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -1854,9 +1854,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       privateState: { storedBefore: true }
     });
 
-    const finalized = await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
+    const finalized = await submitCallTx(providers, { ...callOptions(), privateStateId: 'ledger8-private-state' });
 
-    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('ledger8-private-state');
     // The recorded `privateStateAfter` is a real value -- this contract
     // declares no private state, so it is an empty object -- and it is what
     // gets written back. Asserting it is not `undefined` is the point: a
@@ -1864,7 +1864,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // caller's real private state, with a green suite.
     expect(finalized.private.nextPrivateState).toEqual({});
     expect(finalized.private.nextPrivateState).not.toBeUndefined();
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('ledger8-private-state', {});
   });
 
   it('refuses a named privateStateId the provider holds nothing under, rather than executing against undefined', async () => {
@@ -1875,11 +1875,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     providers.privateStateProvider.get = vi.fn().mockResolvedValue(undefined);
 
     await expect(
-      submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' })
+      submitCallTx(providers, { ...callOptions(), privateStateId: 'ledger8-private-state' })
     ).rejects.toMatchObject({
       name: 'PrivateStateNotFoundError',
       code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
-      message: expect.stringContaining("No private state found at private state ID 'retained-private-state'")
+      message: expect.stringContaining("No private state found at private state ID 'ledger8-private-state'")
     });
 
     // Refused BEFORE the circuit ran and before anything was proven or stored.
@@ -1956,7 +1956,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
       expect((caught as Error).message).toContain('additionalCoinEncPublicKeyMappings');
       expect((caught as Error).message).not.toMatch(/carry no field/);
-      expect((caught as Error).message).not.toMatch(/current toolchain/);
+      expect((caught as Error).message).not.toMatch(/ledger 9 Compact toolchain/);
 
       // Refused BEFORE the offer is built, so nothing was proven, balanced or submitted.
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
@@ -2188,7 +2188,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         privateState: { storedBefore: true }
       });
       try {
-        await submitCallTx(providers, { ...callOptions(), privateStateId: 'retained-private-state' });
+        await submitCallTx(providers, { ...callOptions(), privateStateId: 'ledger8-private-state' });
         return undefined;
       } catch (error) {
         return error;
@@ -2609,7 +2609,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const caught: unknown = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     }).catch((error: unknown) => error);
 
@@ -2648,7 +2648,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     try {
       await deployContract(providers, {
         compiledContract: contract,
-        privateStateId: 'retained-private-state',
+        privateStateId: 'ledger8-private-state',
         initialPrivateState: {}
       });
     } catch (error) {
@@ -2669,7 +2669,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
@@ -2695,14 +2695,14 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
     // The constructor's OWN output, as the current era stores it too -- not the
     // caller's input, which the constructor may have advanced.
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
-      'retained-private-state',
+      'ledger8-private-state',
       ADVANCED_PRIVATE_STATE
     );
     expect(callOrder(providers.publicDataProvider.watchForDeployTxData)).toBeLessThan(
@@ -2790,7 +2790,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
@@ -2798,7 +2798,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // carries the constructor's ADVANCED output, which no value the caller
     // passed could have produced.
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
-      'retained-private-state',
+      'ledger8-private-state',
       ADVANCED_PRIVATE_STATE
     );
     // The caller's input here is `{}`, distinct from ADVANCED_PRIVATE_STATE, so
@@ -2872,7 +2872,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
@@ -2883,10 +2883,10 @@ describe('deploying a retained-era contract through deployContract', () => {
     await expect(deployed.callTx[CIRCUIT_ID](freshRecording.receivedCoin)).rejects.toBeInstanceOf(
       ComposeFailedError
     );
-    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('ledger8-private-state');
     // And the deploy's own write is still the constructor's output, under the same id.
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
-      'retained-private-state',
+      'ledger8-private-state',
       ADVANCED_PRIVATE_STATE
     );
   });
@@ -3149,7 +3149,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
@@ -3187,7 +3187,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const caught: unknown = await deployContract(providers, {
       compiledContract: contract,
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     }).catch((error: unknown) => error);
 
@@ -3306,13 +3306,13 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const found = await findDeployedContract(providers, {
       ...attachOptions(),
-      privateStateId: 'retained-private-state'
+      privateStateId: 'ledger8-private-state'
     });
     const finalized = await found.callTx[CIRCUIT_ID](recording.receivedCoin);
 
-    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('ledger8-private-state');
     expect(finalized.private.nextPrivateState).toEqual({});
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', {});
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('ledger8-private-state', {});
   });
 
   it('leaves the private state untouched when the caller named no id', async () => {
@@ -3339,7 +3339,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     await findDeployedContract(providers, {
       ...attachOptions(),
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState: {}
     });
 
@@ -3357,7 +3357,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     const providers = attachProviders(v6Envelope);
     providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
 
-    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'ledger8-private-state' });
 
     expect(providers.privateStateProvider.setContractAddress).toHaveBeenCalledWith(recording.contractAddress);
     expect(callOrder(providers.privateStateProvider.setContractAddress)).toBeLessThan(
@@ -3371,11 +3371,11 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     await findDeployedContract(providers, {
       ...attachOptions(),
-      privateStateId: 'retained-private-state',
+      privateStateId: 'ledger8-private-state',
       initialPrivateState
     });
 
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('retained-private-state', initialPrivateState);
+    expect(providers.privateStateProvider.set).toHaveBeenCalledWith('ledger8-private-state', initialPrivateState);
     // Stored, not merged with whatever was there: the caller said what the state is.
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
   });
@@ -3384,9 +3384,9 @@ describe('attaching to a retained-era contract already on chain', () => {
     const providers = attachProviders(v6Envelope);
     providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
 
-    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' });
+    await findDeployedContract(providers, { ...attachOptions(), privateStateId: 'ledger8-private-state' });
 
-    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('retained-private-state');
+    expect(providers.privateStateProvider.get).toHaveBeenCalledWith('ledger8-private-state');
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
   });
 
@@ -3399,11 +3399,11 @@ describe('attaching to a retained-era contract already on chain', () => {
     // error arriving at attach time instead of at the first call, against a state the contract
     // never had.
     await expect(
-      findDeployedContract(providers, { ...attachOptions(), privateStateId: 'retained-private-state' })
+      findDeployedContract(providers, { ...attachOptions(), privateStateId: 'ledger8-private-state' })
     ).rejects.toMatchObject({
       name: 'PrivateStateNotFoundError',
       code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND,
-      message: expect.stringContaining("No private state found at private state ID 'retained-private-state'")
+      message: expect.stringContaining("No private state found at private state ID 'ledger8-private-state'")
     });
     // No handle was built, so there is no `callTx` for a caller to reach the missing state through.
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
@@ -3598,7 +3598,7 @@ describe('attaching to a retained-era contract already on chain', () => {
   // and this suite only needs entries that get past the read's validation.
   const STORED_KEY_SHAPE = '11'.repeat(32);
   const SUPPLIED_KEY_SHAPE = '22'.repeat(32);
-  const CURRENT_ERA_KEY_SHAPE = '33'.repeat(32);
+  const LEDGER9_KEY_SHAPE = '33'.repeat(32);
 
   /**
    * The attach provider set with a breadcrumb sink on it.
@@ -3666,7 +3666,7 @@ describe('attaching to a retained-era contract already on chain', () => {
   // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
   // and the breadcrumb is what keeps absent from meaning silent.
   it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {
-    const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: CURRENT_ERA_KEY_SHAPE });
+    const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: LEDGER9_KEY_SHAPE });
 
     const found = await findDeployedContract(providers, attachOptions());
 
@@ -3676,7 +3676,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.signingKey).toBeUndefined();
     expect(debug).toHaveBeenCalledWith(
       {
-        decision: 'retained-signing-key-entry',
+        decision: 'ledger8-signing-key-entry',
         source: 'private-state-provider',
         outcome: 'other-signature-kind',
         contractAddress: recording.contractAddress
@@ -3684,7 +3684,7 @@ describe('attaching to a retained-era contract already on chain', () => {
       DISPATCH_BREADCRUMB_MESSAGE
     );
     // Named, never rendered: the value is secret material and a breadcrumb reaches logs.
-    expect(JSON.stringify(debug.mock.calls)).not.toContain(CURRENT_ERA_KEY_SHAPE);
+    expect(JSON.stringify(debug.mock.calls)).not.toContain(LEDGER9_KEY_SHAPE);
     // The attach itself completed -- the handle carries the callable circuits.
     expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
   });
@@ -3703,7 +3703,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.signingKey).toBeUndefined();
     expect(debug).toHaveBeenCalledWith(
       {
-        decision: 'retained-signing-key-entry',
+        decision: 'ledger8-signing-key-entry',
         source: 'private-state-provider',
         outcome: 'malformed-value',
         contractAddress: recording.contractAddress
@@ -3784,7 +3784,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
     expect(debug).toHaveBeenCalledWith(
       {
-        decision: 'retained-signing-key-entry',
+        decision: 'ledger8-signing-key-entry',
         source: 'private-state-provider',
         outcome: 'unreadable-entry',
         contractAddress: recording.contractAddress
@@ -3805,7 +3805,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     // The other direction of the same claim: a breadcrumb on every read would drown the one case
     // an operator has to see.
     expect(debug).not.toHaveBeenCalledWith(
-      expect.objectContaining({ decision: 'retained-signing-key-entry' }),
+      expect.objectContaining({ decision: 'ledger8-signing-key-entry' }),
       DISPATCH_BREADCRUMB_MESSAGE
     );
   });

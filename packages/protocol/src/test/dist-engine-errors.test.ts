@@ -84,7 +84,7 @@ describe('dist engine error gate', () => {
     const engine = await loadLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
+      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForLedger9', 'wrapKeepStateCall'].sort()
     );
   });
 

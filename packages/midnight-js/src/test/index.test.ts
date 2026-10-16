@@ -20,11 +20,11 @@ import type {
   ComposeOption,
   ComposeStage,
   CurrentLedgerVersion,
+  Ledger8Subpath,
   LedgerVersion,
   MidnightJsErrorCategory,
   ProtocolVersionSource,
   ProtocolVersionUnknownReason,
-  RetainedEraSubpath,
   VersionedRecord,
   VersionResolutionPath
 } from '../index';
@@ -257,7 +257,7 @@ describe('retained-era error classes', () => {
   });
 
   it('should let a caller read each error payload without a cast', () => {
-    const subpath: RetainedEraSubpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
+    const subpath: Ledger8Subpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
     const stage: ComposeStage = new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment').stage;
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
     const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;

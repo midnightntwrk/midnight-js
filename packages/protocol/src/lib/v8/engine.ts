@@ -17,16 +17,16 @@ import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
-import { reexpressOperationsForCurrentEra } from '../v9/operations';
+import { reexpressOperationsForLedger9 } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
+  type Ledger8CircuitOptions,
+  type Ledger8ConstructorOptions,
+  type Ledger8EngineContract,
   type Ledger8SigningKey,
-  type RetainedContract,
-  runRetainedCircuit,
-  type RunRetainedCircuitOptions,
-  runRetainedConstructor,
-  type RunRetainedConstructorOptions,
+  runLedger8Circuit,
+  runLedger8Constructor,
   type TranscriptPojo,
   type VerifierKeyReader
 } from './executable';
@@ -37,10 +37,10 @@ export type {
   ContractEntryPointPojo,
   ContractStatePojo,
   EncodedStateValue,
+  Ledger8CircuitOptions,
+  Ledger8ConstructorOptions,
+  Ledger8EngineContract,
   Ledger8SigningKey,
-  RetainedContract,
-  RunRetainedCircuitOptions,
-  RunRetainedConstructorOptions,
   TranscriptPojo,
   VerifierKeyReader,
   WrapKeepStateCallOptions
@@ -64,7 +64,7 @@ export interface Ledger8Engine {
    * Runs one circuit against the decoded contract state the chain serves.
    *
    * Takes the state and the balances beside it as ONE value -- see
-   * {@link RunRetainedCircuitOptions.contractState} -- because the balances a
+   * {@link Ledger8CircuitOptions.contractState} -- because the balances a
    * circuit reads do not live inside the primary state, and two separate
    * options could describe two different blocks.
    *
@@ -73,8 +73,8 @@ export interface Ledger8Engine {
    *   balance the retained runtime cannot read.
    * @throws InvalidArgumentError When the contract declares no circuit of that name.
    */
-  executeCircuit<C extends RetainedContract, PS>(
-    options: RunRetainedCircuitOptions<C, PS>
+  executeCircuit<C extends Ledger8EngineContract, PS>(
+    options: Ledger8CircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
   /**
    * Runs one retained-era constructor and returns the state it built.
@@ -89,8 +89,8 @@ export interface Ledger8Engine {
    * @throws ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
    *   ledger refuses the bytes served for a circuit.
    */
-  executeConstructor<C extends RetainedContract, PS>(
-    options: RunRetainedConstructorOptions<C, PS>
+  executeConstructor<C extends Ledger8EngineContract, PS>(
+    options: Ledger8ConstructorOptions<C, PS>
   ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   /**
@@ -100,7 +100,7 @@ export interface Ledger8Engine {
    * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
    * what the retained decoder read off the chain, and the output is for the current ledger.
    */
-  reexpressOperationsForCurrentEra(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
+  reexpressOperationsForLedger9(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }
 
 /**
@@ -127,8 +127,8 @@ export interface Ledger8Engine {
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> =>
   Promise.resolve({
-    executeCircuit: runRetainedCircuit,
-    executeConstructor: runRetainedConstructor,
+    executeCircuit: runLedger8Circuit,
+    executeConstructor: runLedger8Constructor,
     wrapKeepStateCall,
-    reexpressOperationsForCurrentEra
+    reexpressOperationsForLedger9
   });

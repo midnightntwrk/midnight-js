@@ -46,10 +46,10 @@ import { Option } from 'effect';
 import {
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
+  Ledger8ArtifactOnLedger9StateError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   LedgerParametersUnservedError,
-  RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -73,7 +73,7 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * naming it structurally here keeps this package from importing that era's
  * runtime types directly.
  */
-export type RetainedStateValue = TranscriptPojo['postContractState'];
+export type Ledger8StateValue = TranscriptPojo['postContractState'];
 
 /**
  * The transcript members this pipeline is entitled to read, narrowed off the
@@ -89,7 +89,7 @@ export type RetainedStateValue = TranscriptPojo['postContractState'];
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
-export type Ledger8Transcript<TState = RetainedStateValue> = Pick<
+export type Ledger8Transcript<TState = Ledger8StateValue> = Pick<
   TranscriptPojo,
   | 'circuitId'
   | 'result'
@@ -209,7 +209,7 @@ export interface Ledger8ExecutionEngine<TState> {
    * Needed only when the two eras differ, i.e. keep-state. See the call below for why the chain's
    * own bytes cannot be passed through in that case.
    */
-  reexpressOperationsForCurrentEra(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
+  reexpressOperationsForLedger9(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
 }
 
 /**
@@ -320,7 +320,7 @@ export const readLedger8Snapshot = async (
  * @param contractAddress The contract being operated on, named in the era-level refusal.
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
- * @throws RetainedArtifactOnCurrentEraStateError if the keys differ byte for byte AND the state
+ * @throws Ledger8ArtifactOnLedger9StateError if the keys differ byte for byte AND the state
  * carries a current-era envelope, which together mean the contract was built with current-toolchain
  * artifacts — carrying the byte-level mismatch on `cause`.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a retained-era state.
@@ -347,7 +347,7 @@ export const assertSnapshotVerifierKey = (
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
-      throw new RetainedArtifactOnCurrentEraStateError(contractAddress, { cause });
+      throw new Ledger8ArtifactOnLedger9StateError(contractAddress, { cause });
     }
     throw cause;
   }
@@ -447,7 +447,7 @@ export interface Ledger8CallPipelineRequest<TState> {
  * What one retained-era call produced.
  *
  * @typeParam TState - The retained-era state type the engine works in. The
- * framework's own engine fills it with `RetainedStateValue`; the replay double
+ * framework's own engine fills it with `Ledger8StateValue`; the replay double
  * fills it with its own marker.
  */
 export interface Ledger8CallPipelineResult<TState> {
@@ -624,7 +624,7 @@ export const runLedger8CallPipeline = async <TState>(
   // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
   // the local artifact against.
   const registeredOperations =
-    head === 'v9' ? engine.reexpressOperationsForCurrentEra(snapshot.decoded.entryPoints) : snapshot.state.raw;
+    head === 'v9' ? engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints) : snapshot.state.raw;
 
   // Undefined until the composer calls the factory back, which is the fact the
   // refusal below rests on: an offer that is absent because the call moved no

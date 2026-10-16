@@ -32,7 +32,6 @@ import {
   Ledger8,
   LedgerParametersUnservedError,
   PrivateStateNotFoundError,
-  RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError
 } from '../index';
@@ -53,8 +52,8 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
       { error: new PrivateStateNotFoundError('no private state'), code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND },
       {
-        error: new RetainedArtifactOnCurrentEraStateError('addr'),
-        code: CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE
+        error: new Ledger8.ArtifactOnLedger9StateError('addr'),
+        code: CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE
       }
     ];
 
@@ -73,23 +72,23 @@ describe('the era and verification-path errors a caller has to catch are reachab
     // A `Record` keyed by the union rather than a `switch`: total by construction, so a reason
     // added upstream without a branch here is a compile error rather than a fall-through.
     const REMEDIATION: Readonly<Record<EraArtifactMismatchReason, string>> = {
-      'unwrapped-current-era-contract': 'wrap-it',
+      'unwrapped-ledger9-contract': 'wrap-it',
       'unrecognised-contract-shape': 'recompile',
-      'current-era-artifact-on-pre-fork-head': 'wait-for-fork',
-      'current-era-transaction-on-pre-fork-head': 'submit-v8-bytes',
-      'retained-era-transaction-on-post-fork-head': 'recompose-on-v9',
+      'ledger9-artifact-on-ledger8-head': 'wait-for-fork',
+      'ledger9-transaction-on-ledger8-head': 'submit-v8-bytes',
+      'ledger8-transaction-on-ledger9-head': 'recompose-on-v9',
       'artifact-era-undeclared': 'serve-contract-info',
       'provider-cannot-declare-era': 'implement-the-member',
       'unknown-artifact-runtime-version': 'upgrade-midnight-js'
     };
 
-    expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-current-era-contract').reason]).toBe('wrap-it');
+    expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-ledger9-contract').reason]).toBe('wrap-it');
     expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
-    expect(REMEDIATION[new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head').reason]).toBe('wait-for-fork');
-    expect(REMEDIATION[new EraArtifactMismatchError('current-era-transaction-on-pre-fork-head').reason]).toBe(
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head').reason]).toBe('wait-for-fork');
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-transaction-on-ledger8-head').reason]).toBe(
       'submit-v8-bytes'
     );
-    expect(REMEDIATION[new EraArtifactMismatchError('retained-era-transaction-on-post-fork-head').reason]).toBe(
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger8-transaction-on-ledger9-head').reason]).toBe(
       'recompose-on-v9'
     );
     expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');

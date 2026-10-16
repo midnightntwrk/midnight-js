@@ -297,7 +297,7 @@ export class IndexerDataError extends IndexerError {
         return (
           `The indexer served the ledger parameters of a block from ledger ${context.version}, which this read ` +
           'path cannot decode. Ledger parameters are era-tagged and served per block, so a block from before ' +
-          'the fork carries parameters only the retained runtime can read — this is an ordinary pre-fork block, ' +
+          'the fork carries parameters only the ledger 8 runtime can read — this is an ordinary pre-fork block, ' +
           'not a faulty indexer. Use `queryRawContractState`, which serves the parameter bytes together with ' +
           'their block, and decode them with the matching runtime. It serves the contract state undecoded too, ' +
           'but not the zswap chain state — fetch that separately if you need all three.'

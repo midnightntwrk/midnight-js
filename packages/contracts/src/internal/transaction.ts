@@ -338,7 +338,7 @@ export const isTransactionContext = <
  * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
-export const assertScopeAdmitsRetainedEraCall = (circuitId: string, transactionContext: unknown): void => {
+export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionContext: unknown): void => {
   if (transactionContext === undefined) {
     return;
   }

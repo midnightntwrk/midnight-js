@@ -41,7 +41,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
-import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
+import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
@@ -427,7 +427,7 @@ describe('a retained-era call handed a scope', () => {
 
     let caught: unknown;
     try {
-      assertScopeAdmitsRetainedEraCall('retainedCircuit', scope);
+      assertScopeAdmitsLedger8Call('retainedCircuit', scope);
     } catch (error) {
       caught = error;
     }
@@ -441,7 +441,7 @@ describe('a retained-era call handed a scope', () => {
   });
 
   it('runs normally when it was handed no scope at all', () => {
-    expect(() => assertScopeAdmitsRetainedEraCall('retainedCircuit', undefined)).not.toThrow();
+    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined)).not.toThrow();
   });
 
   it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
@@ -486,7 +486,7 @@ describe('a retained-era call handed a scope', () => {
     // contract-scoped transaction" would name a scope it never had.
     let caught: unknown;
     try {
-      assertScopeAdmitsRetainedEraCall('retainedCircuit', bad);
+      assertScopeAdmitsLedger8Call('retainedCircuit', bad);
     } catch (error) {
       caught = error;
     }

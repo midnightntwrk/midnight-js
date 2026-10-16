@@ -283,7 +283,7 @@ const withoutVersions = (info: CompiledContractInfo): Record<string, unknown> =>
   Object.fromEntries(Object.entries(info).filter(([member]) => !VERSION_MEMBERS.includes(member)));
 
 /** The retained build, typed as the engine's own `executeCircuit` demands it. */
-interface RetainedContract extends CompactContract.Contract<CounterPrivateState> {
+interface Ledger8EngineContract extends CompactContract.Contract<CounterPrivateState> {
   initialState(constructorContext: unknown): {
     readonly currentPrivateState: CounterPrivateState;
     readonly currentContractState: { data: { state: { encode(): EncodedStateValue } } };
@@ -291,7 +291,7 @@ interface RetainedContract extends CompactContract.Contract<CounterPrivateState>
 }
 
 interface RetainedModule {
-  readonly Contract: new (witnesses: Witnesses) => RetainedContract;
+  readonly Contract: new (witnesses: Witnesses) => Ledger8EngineContract;
   readonly ledger: (state: unknown) => CounterLedger;
 }
 
