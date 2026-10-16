@@ -71,10 +71,29 @@ const result = await deployed.callTx.increment();
 
 What the snippet expects from you:
 
-- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js.
+- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js. In a browser with a wallet extension, see [In a browser](#in-a-browser).
 - `myContract` is your compiled Compact contract. See [Contracts](#contracts).
 - `PRIVATE_STATE_PASSWORD` encrypts private state at rest. It needs at least 16 characters, at least 3 of uppercase, lowercase, digits and special characters, no more than 3 identical characters in a row, and no sequences such as `1234` or `abcd`.
 - `createMidnightProviders` checks at start-up that every required provider and the `config` are present.
+
+### In a browser
+
+In a browser dApp, the user's wallet extension (for example Lace) proves, balances and submits. Build those three providers from the wallet's `ConnectedAPI` with `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider`:
+
+```typescript
+import {
+  dappConnectorProofProvider,
+  dappConnectorWalletProviders
+} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+
+const connectedAPI = await initialAPI.connect('preview');
+
+const proofProvider = await dappConnectorProofProvider(connectedAPI, zkConfigProvider, CostModel.initialCostModel());
+const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(connectedAPI);
+```
+
+`initialAPI` is the wallet's entry in `window.midnight`. Pass the three providers to `createMidnightProviders` in place of `httpClientProofProvider`, `createWalletProvider` and `createMidnightProvider` above. All three serve ledger 8 and ledger 9 transactions.
 
 ### Ledger eras
 
