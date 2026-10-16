@@ -27,6 +27,7 @@
 import { Buffer } from 'node:buffer';
 import { createInterface } from 'node:readline';
 import process from 'node:process';
+import { clearTimeout, setTimeout } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
 
 // WHERE EACH NAME COMES FROM IS PART OF WHAT THIS FILE TESTS. A consumer holds
@@ -319,6 +320,42 @@ const describeVersionedState = (state) =>
   state.version === 'v9'
     ? { version: 'v9', decoded: true, operations: state.state.operations().length }
     : { version: state.version, decoded: false, stateBytes: state.stateBytes.length };
+
+/**
+ * Collects a contract-state stream's records up to and including its first v9 one.
+ *
+ * Rejects if the stream errors, completes, or emits no v9 record within `ms` -- each of those is
+ * the stream failing to carry a contract across the fork.
+ */
+const recordsUntilFirstLedger9 = (publicDataProvider, contractAddress, streamConfig, ms) =>
+  new Promise((resolve, reject) => {
+    const seen = [];
+    let subscription;
+    let done = false;
+    const finish = (settle) => {
+      if (done) {
+        return;
+      }
+      done = true;
+      clearTimeout(timer);
+      process.nextTick(() => subscription?.unsubscribe());
+      settle();
+    };
+    const timer = setTimeout(
+      () => finish(() => reject(new Error(`no v9 record within ${ms} ms; saw ${JSON.stringify(seen)}`))),
+      ms
+    );
+    subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
+      next: ({ value, blockHeight }) => {
+        seen.push({ version: value.version, blockHeight });
+        if (value.version === 'v9') {
+          finish(() => resolve(seen));
+        }
+      },
+      error: (error) => finish(() => reject(error)),
+      complete: () => finish(() => reject(new Error(`the stream completed; saw ${JSON.stringify(seen)}`)))
+    });
+  });
 
 const watchContractStates = (publicDataProvider, contractAddress, streamConfig) => {
   // `errored` is ALWAYS a string once set -- `describeError` stringifies even a non-Error -- so
@@ -1476,7 +1513,7 @@ await leg('pre-fork retained deploy', async () => {
   // why each of the three is written the way it is.
   const deployed = await deployContract(session.providers, { compiledContract: new Contract({}), args: [] });
 
-  deployment = { contractAddress: deployed.contractAddress };
+  deployment = { contractAddress: deployed.contractAddress, deployBlockHash: deployed.deployTxData.public.blockHash };
   // Announced so the driver can ask the NODE about the same contract. The
   // indexer's answer alone cannot separate "the ledger did not migrate" from
   // "the indexer serves the bytes of the last pre-fork action".
@@ -2176,6 +2213,30 @@ if (MEASURES_READ_SURFACE) {
           };
     })
   );
+
+  await leg('post-fork pinned read of the pre-fork state', async () => {
+    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress, {
+      type: 'blockHash',
+      blockHash: deployment.deployBlockHash
+    });
+    if (state?.version !== 'v8') {
+      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.version ?? 'null'}'`);
+    }
+    return describeVersionedState(state);
+  });
+
+  await leg('post-fork contract-state stream replayed from before the fork', async () => {
+    const seen = await recordsUntilFirstLedger9(
+      session.providers.publicDataProvider,
+      deployment.contractAddress,
+      { type: 'blockHash', blockHash: deployment.deployBlockHash },
+      STREAM_WATCH_MS
+    );
+    if (seen[0]?.version !== 'v8') {
+      throw new Error(`expected the replay to start with a 'v8' record, got ${JSON.stringify(seen)}`);
+    }
+    return { records: seen };
+  });
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
     if (streamHeldAcrossTheBoundary === undefined) {
