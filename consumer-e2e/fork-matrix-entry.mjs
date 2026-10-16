@@ -1197,13 +1197,10 @@ const readRetainedLedger = async (key, providers, contractAddress, read) => {
     import(`@midnight-ntwrk/fork-retained-${key}/runtime`)
   ]);
 
-  // NOT `queryContractState`: that path decodes with the current era only and
-  // refuses a retained envelope by design. This one reads the era off the
-  // envelope's OWN tag and dispatches on it, which is what lets ONE call site
-  // serve both sides of the boundary -- a retained contract keeps its pre-fork
-  // envelope on a v9 chain until something writes to it, and the post-fork leg
-  // CALLS the contract before this read, which is that write. So one read
-  // answers `v8` below the boundary and `v9` above it.
+  // `getAnyEraContractState`, not `queryContractState`: this one hands back the
+  // raw bytes with the era read off the envelope's OWN tag, which is what the
+  // retained runtime below decodes. That lets ONE call site serve both sides of
+  // the boundary: one read answers `v8` below the boundary and `v9` above it.
   const state = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);

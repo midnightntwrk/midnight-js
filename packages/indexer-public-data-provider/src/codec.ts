@@ -96,10 +96,9 @@ type ReadDetails = Readonly<Record<string, string | number>>;
  * The only ledger era {@link parseHexContractState} and {@link parseHexLedgerParameters} can read.
  *
  * Deliberately narrower than {@link decodeRecordTransaction}, which dispatches per record across
- * both eras. `queryRawContractState` serves both era-tagged payloads undecoded for a caller that
- * needs the other runtime: the contract state, dated by the block that only upper-bounds its
- * envelope (see {@link parseHexContractState}), and the block's own ledger parameters, whose era the
- * block states exactly because they are served per block.
+ * both eras. A state or ledger parameters of the other era are never decoded here: the decoding
+ * reads hand them back as their stored bytes ({@link toVersionedContractState},
+ * {@link toVersionedPublicStates}), and `queryRawContractState` serves both eras' payloads undecoded.
  *
  * One constant for two decoders because one runtime import supplies both. A build that ever ships
  * one era's parameters decoder alongside a different era's state decoder has to split it.
@@ -429,7 +428,9 @@ export const parseHexContractState = (
 };
 
 /**
- * Builds the era-tagged state served by `PublicDataProvider.queryDeployContractState`.
+ * Builds the era-tagged state served by the decoding contract-state reads of `PublicDataProvider`:
+ * `queryContractState`, `watchForContractState`, `contractStateObservable` and
+ * `queryDeployContractState`.
  *
  * The envelope picks the variant and `protocolVersion` bounds it, as in
  * {@link parseHexContractState}: a v9 envelope is decoded, a v8 envelope is

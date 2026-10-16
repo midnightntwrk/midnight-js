@@ -472,25 +472,17 @@ export interface PublicDataProvider {
 
   /**
    * Creates a stream of contract states as the raw serialized bytes the network
-   * returned, without deserializing them, each together with the era its record
-   * is dated to. The observable emits a value every time a state is either
+   * returned, without deserializing them, each tagged with the ledger era that
+   * wrote it. The observable emits a value every time a state is either
    * created or updated at the given address.
    * Waits indefinitely for matching data to appear.
    *
-   * THE STREAMING COUNTERPART OF {@link queryRawContractState}, and the reason
-   * to prefer it over {@link contractStateObservable} is the same: it is the
-   * contract-state stream that works across the ledger fork. An implementation
-   * that deserializes inside the stream can only do so with the eras its own
-   * runtime has, and a state from any other era then ENDS the subscription
-   * rather than skipping one emission — a stream started before a fork meets
-   * such states first, as their records keep the encoding they were written
-   * in. Here the era travels on the record instead.
+   * THE STREAMING COUNTERPART OF {@link queryRawContractState}. Prefer it over
+   * {@link contractStateObservable} when the caller decodes the bytes itself.
    *
-   * {@link RawContractState.version} DATES THE RECORD, it does not read the
-   * bytes — see that field's own documentation. A caller that must know which
-   * runtime WROTE the bytes reads the envelope off
-   * {@link RawContractState.raw}; the two can disagree, and where they can is
-   * stated on the field.
+   * {@link RawContractState.version} is the era read off the envelope of
+   * {@link RawContractState.raw}; {@link RawContractState.protocolVersion}
+   * dates the block that served it.
    *
    * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
    * where the same implementation serves it on
@@ -589,8 +581,9 @@ export interface PublicDataProvider {
    * reading held indefinitely is forbidden.
    *
    * PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
-   * is the question — it is dated to the same block as the bytes it describes
-   * and costs no extra request. Reach for this method only where there is no
+   * is the question — it dates the block the read resolved and costs no extra
+   * request. For a contract state that block can be newer than the bytes; the
+   * era that wrote the bytes is the record's `version`. Reach for this method only where there is no
    * record to date: the deploy path.
    *
    * The answer is a LOWER BOUND on the era of the block that will include a
@@ -606,14 +599,13 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the on-chain state of a contract as the raw serialized bytes the
-   * network returned, without deserializing them, together with the era the
-   * record is dated to.
+   * network returned, without deserializing them, tagged with the ledger era
+   * that wrote them.
    *
-   * This is the state input for callers that must work across the ledger fork:
-   * they narrow on {@link RawContractState.version} and then hand the bytes to
-   * that era's deserializer. Both eras' envelopes are returned unchanged. The
-   * era comes from the record's protocol version and is not checked against
-   * the envelope the bytes carry.
+   * For callers that decode the bytes themselves: they narrow on
+   * {@link RawContractState.version} and then hand the bytes to that era's
+   * deserializer. Both eras' envelopes are returned unchanged. The era is read
+   * off the envelope the bytes carry.
    *
    * Immediately returns null if no matching data is found.
    *

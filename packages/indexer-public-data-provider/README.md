@@ -210,11 +210,10 @@ Two things that look interchangeable and are not:
   receiving context.
 
 If you would rather decode the bytes yourself, `queryRawContractState` still
-serves them untouched — pair it with `contractStateEnvelopeVersion` from
-`@midnight-ntwrk/midnight-js-utils` to read the envelope's era, never with the
-record's own `version`. `rawContractStateObservable` serves the same record
-type as a stream (without `ledgerParameters`), and the same caution applies to
-it.
+serves them untouched. Its `version` is the era read off the envelope, the
+same answer `contractStateEnvelopeVersion` from `@midnight-ntwrk/midnight-js-utils`
+gives for those bytes. `rawContractStateObservable` serves the same record type
+as a stream (without `ledgerParameters`).
 
 A state older than the block that dates the read is normal, not a fault: a
 record of a pre-fork contract action keeps its v8 envelope when it is read
@@ -434,8 +433,8 @@ Withholding the deserialization does not withhold the fail-fast: only the
 deserialization is withheld. The envelope **tag** is still read, so a payload
 carrying no supported contract-state envelope still errors the stream, and the
 envelope is checked against its dating block as on `contractStateObservable`.
-Both surface as an `IndexerError`, so one `instanceof IndexerError` still
-catches every failure from this provider.
+A payload with no supported envelope surfaces as a `TagParseError`
+(`midnight-js-utils`); an envelope newer than its block as an `IndexerDataError`.
 
 ### Observable Configuration
 

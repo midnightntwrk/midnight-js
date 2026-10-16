@@ -151,8 +151,7 @@ export type VersionedPublicStates = Ledger8PublicStates | Ledger9PublicStates;
  * A provider that decodes per era produces this variant for any record whose
  * `protocolVersion` places it in the v8 era. A consumer that narrows on
  * `version` therefore has to handle it: it is a value the read surface really
- * returns, not a placeholder. Contract-STATE reads are a separate question and
- * remain v9-only — see the provider's own documentation.
+ * returns, not a placeholder.
  */
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
   readonly version: 'v8';
