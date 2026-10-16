@@ -16,7 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AnyProvableCircuitId,
   ProviderEraUnsupportedError,
@@ -518,7 +518,6 @@ describe('submit-tx', () => {
     });
 
     it('refuses providers that do not serve the head era before proving', async () => {
-      onHead(LEDGER8_HEAD);
       mockProviders = { ...mockProviders, proofProvider: { ...mockProviders.proofProvider, supportedEras: ['v9'] } };
       onHead(LEDGER8_HEAD);
 
@@ -538,6 +537,42 @@ describe('submit-tx', () => {
       const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v8', txBytes: ledger8Bytes() } });
 
       await expect(rejection).rejects.toBeInstanceOf(EraInvariantViolationError);
+      await expect(rejection).rejects.toMatchObject({ method: 'watchForTxData', expected: 'v8', received: 'v9' });
+    });
+
+    it('treats a v8 record on a v9 head as an invariant violation', async () => {
+      onHead(LEDGER9_HEAD);
+      const provenTx = createMockProvenTx();
+      mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: provenTx });
+      mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: provenTx });
+      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+      mockProviders.publicDataProvider.watchForTxData = vi
+        .fn()
+        .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8' });
+
+      const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } });
+
+      await expect(rejection).rejects.toMatchObject({ method: 'watchForTxData', expected: 'v9', received: 'v8' });
+    });
+
+    it('propagates a failed head read before proving', async () => {
+      const headReadFailure = new Error('indexer unreachable');
+      mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockRejectedValue(headReadFailure);
+
+      const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } });
+
+      await expect(rejection).rejects.toBe(headReadFailure);
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses a head this build cannot place on the era timeline before proving', async () => {
+      onHead(99_000_000);
+
+      const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } });
+
+      await expect(rejection).rejects.toBeInstanceOf(UnknownProtocolVersionError);
+      await expect(rejection).rejects.toMatchObject({ path: 'construct', reason: 'unknown' });
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
     it('returns the transaction id of a v8 submission without waiting for it', async () => {
