@@ -111,7 +111,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_TAG:-4.4.0-rc.5}'
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_TAG:-4.4.0-rc.6-68702121}'
     container_name: indexer_$TESTCONTAINERS_UID
     cap_drop:
       - ALL

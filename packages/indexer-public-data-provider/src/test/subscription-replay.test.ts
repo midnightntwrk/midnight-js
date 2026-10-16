@@ -159,11 +159,8 @@ const stateFrame = (height: number, identifier: string, state: string = STATE): 
   data: {
     contractActions: {
       state,
-      transaction: {
-        protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
-        identifiers: [identifier],
-        block: { height, hash: `0x${height}` }
-      }
+      stateAt: { height, hash: `0x${height}`, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION },
+      transaction: { identifiers: [identifier] }
     }
   }
 });
@@ -172,6 +169,7 @@ const stateFrame = (height: number, identifier: string, state: string = STATE): 
 const balanceFrame = (height: number): unknown => ({
   data: {
     contractActions: {
+      stateAt: { hash: `0x${height}` },
       transaction: { block: { height, hash: `0x${height}` } },
       unshieldedBalances: []
     }
@@ -183,7 +181,7 @@ const queryEmission = (data: unknown): Rx.Observable<unknown> =>
 
 /** Every poll a branch issues before it subscribes, each answered as though the contract sits at block 10. */
 const POLLS: ReadonlyMap<DocumentNode, unknown> = new Map<DocumentNode, unknown>([
-  [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }],
+  [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { stateAt: { height: 10 }, transaction: { block: { height: 10 } } } }],
   [CONTRACT_STATE_QUERY, { block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } }],
   [UNSHIELDED_BALANCE_QUERY, { contractAction: { unshieldedBalances: [] } }],
   [BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],

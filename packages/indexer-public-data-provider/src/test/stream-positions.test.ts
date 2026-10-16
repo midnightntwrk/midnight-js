@@ -42,13 +42,14 @@ const clientServing = (payloads: readonly unknown[]) =>
 const toArray = <T>(source: Rx.Observable<T>): Promise<T[]> => Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 describe('stream pipelines carry the block that served each value', () => {
-  test('the per-action state feed reads the block and identifiers off the action’s transaction', async () => {
+  test('the per-action state feed reads the block off stateAt and the identifiers off the transaction', async () => {
     const client = clientServing([
       {
         data: {
           contractActions: {
             state: 'aa',
-            transaction: { protocolVersion: 1, identifiers: [TX_ID], block: { height: 7, hash: '0x07' } }
+            stateAt: { height: 7, hash: '0x07', protocolVersion: 1 },
+            transaction: { identifiers: [TX_ID] }
           }
         }
       }
@@ -61,7 +62,7 @@ describe('stream pipelines carry the block that served each value', () => {
 
   test('the per-action state feed keeps an action carried by a system transaction', async () => {
     const client = clientServing([
-      { data: { contractActions: { state: 'bb', transaction: { protocolVersion: 1, block: { height: 7, hash: '0x07' } } } } }
+      { data: { contractActions: { state: 'bb', stateAt: { height: 7, hash: '0x07', protocolVersion: 1 }, transaction: {} } } }
     ]);
 
     const seen = await toArray(blockOffsetToState$(identity)(client)(ADDRESS)({ height: 7 }));
@@ -72,12 +73,76 @@ describe('stream pipelines carry the block that served each value', () => {
   test('the balance feed reads the block off the action’s transaction', async () => {
     const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
     const client = clientServing([
-      { data: { contractActions: { unshieldedBalances: balances, transaction: { block: { height: 8, hash: '0x08' } } } } }
+      {
+        data: {
+          contractActions: {
+            unshieldedBalances: balances,
+            stateAt: { hash: '0x08' },
+            transaction: { block: { height: 8, hash: '0x08' } }
+          }
+        }
+      }
     ]);
 
     const seen = await toArray(blockOffsetToUnshieldedBalances$(client)(ADDRESS)({ height: 8 }));
 
     expect(seen).toEqual([{ value: toUnshieldedBalances(balances), blockHeight: 8, blockHash: '0x08' }]);
+  });
+
+  test('the balance feed skips an action re-emitted at the fork block, whose balances did not change', async () => {
+    const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
+    const actionInBlock10 = (stateAtHash: string): unknown => ({
+      data: {
+        contractActions: {
+          unshieldedBalances: balances,
+          stateAt: { hash: stateAtHash },
+          transaction: { block: { height: 10, hash: '0x10' } }
+        }
+      }
+    });
+    const client = clientServing([actionInBlock10('0x10'), actionInBlock10('0x12')]);
+
+    const seen = await toArray(blockOffsetToUnshieldedBalances$(client)(ADDRESS)({ height: 10 }));
+
+    expect(seen).toEqual([{ value: toUnshieldedBalances(balances), blockHeight: 10, blockHash: '0x10' }]);
+  });
+});
+
+describe('unshieldedBalancesObservable — latest after a fork', () => {
+  test('starts at the latest action’s own block, not at the fork block that re-dated its state', async () => {
+    const subscribe = vi
+      .fn<(request: ApolloRequest) => unknown>()
+      .mockReturnValue(
+        Rx.of({
+          data: {
+            contractActions: {
+              unshieldedBalances: [],
+              stateAt: { hash: '0x10' },
+              transaction: { block: { height: 10, hash: '0x10' } }
+            }
+          }
+        })
+      );
+    const provider = new IndexerPublicDataProvider(
+      stubApolloHandle({
+        watchQuery: vi.fn<(request: ApolloRequest) => unknown>().mockReturnValue(
+          Rx.of({
+            data: { contractAction: { stateAt: { height: 12 }, transaction: { block: { height: 10 } } } },
+            dataState: 'complete',
+            loading: false,
+            networkStatus: 7,
+            partial: false
+          })
+        ),
+        subscribe
+      }),
+      1000
+    );
+
+    const seen = await toArray(provider.unshieldedBalancesObservable(ADDRESS, { type: 'latest' }));
+
+    expect(subscribedOffsets(subscribe)).toEqual([{ height: 10 }]);
+    expect(seen).toEqual([{ value: toUnshieldedBalances([]), blockHeight: 10, blockHash: '0x10' }]);
   });
 });
 
@@ -85,7 +150,13 @@ describe('unshieldedBalancesObservable — every element carries the block that 
   const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
 
   const balanceFrame = (height: number): unknown => ({
-    data: { contractActions: { unshieldedBalances: balances, transaction: { block: { height, hash: `0x${height}` } } } }
+    data: {
+      contractActions: {
+        unshieldedBalances: balances,
+        stateAt: { hash: `0x${height}` },
+        transaction: { block: { height, hash: `0x${height}` } }
+      }
+    }
   });
 
   const providerAnswering = (pollDocument: DocumentNode, pollAnswer: unknown): IndexerPublicDataProvider =>
@@ -110,7 +181,7 @@ describe('unshieldedBalancesObservable — every element carries the block that 
       'latest',
       { type: 'latest' },
       LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
-      { contractAction: { transaction: { block: { height: 10 } } } }
+      { contractAction: { stateAt: { height: 10 }, transaction: { block: { height: 10 } } } }
     ],
     ['all', { type: 'all' }, UNSHIELDED_BALANCE_QUERY, { contractAction: { unshieldedBalances: balances } }],
     ['blockHeight', { type: 'blockHeight', blockHeight: 10 }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
@@ -130,7 +201,7 @@ describe('unshieldedBalancesObservable — resume from an emitted position', () 
 
   const actionFrame = (height: number, amount: string): unknown => ({
     data: {
-      contractActions: { unshieldedBalances: balanceOf(amount), transaction: { block: { height, hash: `0x${height}` } } }
+      contractActions: { unshieldedBalances: balanceOf(amount), stateAt: { hash: `0x${height}` }, transaction: { block: { height, hash: `0x${height}` } } }
     }
   });
 
@@ -151,7 +222,7 @@ describe('unshieldedBalancesObservable — resume from an emitted position', () 
             data:
               query === BLOCK_QUERY
                 ? { block: { height: 10, hash: '0x10' } }
-                : { contractAction: { transaction: { block: { height: 10 } } } },
+                : { contractAction: { stateAt: { height: 10 }, transaction: { block: { height: 10 } } } },
             dataState: 'complete',
             loading: false,
             networkStatus: 7,

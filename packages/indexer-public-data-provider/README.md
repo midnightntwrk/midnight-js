@@ -49,10 +49,10 @@ queryContractState(
   config?: BlockHeightConfig | BlockHashConfig
 ): Promise<ContractState | null>
 
-// Query contract state at deployment
+// Query contract state at deployment, tagged with the era that wrote it
 queryDeployContractState(
   contractAddress: ContractAddress
-): Promise<ContractState | null>
+): Promise<VersionedContractState | null>
 
 // Query contract and ZSwap state together (returns LedgerParameters as third element)
 queryZSwapAndContractState(
@@ -101,22 +101,33 @@ if (state !== null) {
 check it against the envelope inside `state.raw`.
 
 The methods that *do* deserialize for you — `queryContractState`,
-`queryDeployContractState`, `queryZSwapAndContractState`,
-`watchForContractState` and `contractStateObservable` — decode with the v9
-runtime only. Each reads the ledger era off the state's own envelope and decodes
-only if that era is v9. Otherwise the call fails with an `IndexerDataError` that
-names the era it got and points at `queryRawContractState`, instead of a
-header-tag error from deep inside a decoder.
+`queryZSwapAndContractState`, `watchForContractState` and
+`contractStateObservable` — decode with the v9 runtime only. Each reads the
+ledger era off the state's own envelope and decodes only if that era is v9.
+Otherwise the call fails with an `IndexerDataError` that names the era it got
+and points at `queryRawContractState`, instead of a header-tag error from deep
+inside a decoder.
 
-#### Which contracts this affects, and for how long
+`queryDeployContractState` does not refuse a v8 envelope. It reads the deploy's
+own record, never the latest state, and returns a `VersionedContractState`: the
+decoded state for a v9-era deploy, the stored bytes (`stateBytes`) for a v8-era
+deploy. Narrow on `version` before touching it.
 
-Every contract deployed before the fork, until something writes to it. The
-ledger does not rewrite stored contract state at the fork, and the indexer
-serves the last contract action at or before the block you ask about — so a
-contract that has not been called since the boundary keeps its v8 envelope
-under a v9 head, indefinitely. The five methods above refuse it for as long as
-that lasts. The first post-fork call re-versions the envelope, and from then on
-they read it normally.
+#### Which reads still meet a v8 envelope
+
+The node translates every contract's state to the v9 encoding in the fork
+block. From indexer `4.4.0-rc.6` on, an unpinned read serves that translated
+state, so a contract deployed before the fork and not called since reads
+normally. A v8 envelope is still served in three cases:
+
+- a read pinned to a block before the fork;
+- a record of one contract action's own state, such as the deploy's — a
+  record keeps the encoding it was written in, forever;
+- any read against an indexer older than `4.4.0-rc.6`, which serves an
+  untouched pre-fork contract with its v8 envelope under a v9 head
+  (midnight-indexer #1605).
+
+The four methods above refuse it in those cases.
 
 For `contractStateObservable` the refusal is not a returned error but a
 **terminated stream**: the decode runs inside an `Rx.map`, so a refusal reaches
@@ -131,15 +142,19 @@ and it sits below the decode in any case, so it cannot see a refusal.)
 contract state terminates it. See
 [Which state stream to use](#which-state-stream-to-use).
 
-On the `latest` branch the stream does not fail at subscribe time — it fails on
-the first matching contract action that flows through it.
+On the `latest` branch the stream starts at the block the contract's current
+state is dated by (`stateAt`). From indexer `4.4.0-rc.6` on, that is the fork
+block for a contract not called since the fork, and the first item is the
+translated state, which decodes. Against an older indexer the stream does not
+fail at subscribe time — it fails on the first matching contract action that
+flows through it.
 
 The `all` branch is the harsher case: it replays every contract action from the
 deploy onward, so for a contract deployed before the fork the replay always
-reaches its pre-fork deploy state. No later write can change what an earlier
-block already contains, so that branch does not recover — on the decoded stream
-it is unusable for such a contract for good, and `rawContractStateObservable` is
-the only way to read it.
+reaches its pre-fork deploy state. A `blockHeight` or `blockHash` start before
+the fork does the same. Those pre-fork records keep their v8 envelope, so these
+starts do not recover — on the decoded stream they end at the first pre-fork
+record, and `rawContractStateObservable` is the only way to read them.
 
 #### Reading a contract that may predate the fork
 
@@ -167,8 +182,9 @@ Two things that look interchangeable and are not:
 
 - `read.envelopeVersion` is the era that **wrote the bytes**.
   `queryRawContractState(...).version` is derived from `protocolVersion` and is
-  a statement about the **block**. They disagree for exactly the dormant
-  contracts described above, which is when it matters.
+  a statement about the **block**. They disagree when an indexer older than
+  `4.4.0-rc.6` serves an untouched pre-fork contract under a v9 head, which is
+  when it matters.
 - `read.state` is encoded, not a live handle. A handle minted inside the
   framework belongs to the framework's copy of the WASM module and is rejected
   by a dApp's own `ledger()`; encoded state crosses that boundary, and also
@@ -184,9 +200,9 @@ record's own `version`. `rawContractStateObservable` serves the same record
 type as a stream (without `ledgerParameters`), and the same caution applies to
 it.
 
-A state older than the block that dates the read is normal, not a fault: the
-indexer serves the latest contract action at or before that block, so any
-contract dormant across a fork is exactly that. The protocol version the
+A state older than the block that dates the read is normal, not a fault: an
+indexer older than `4.4.0-rc.6` serves a contract untouched since a fork with
+its pre-fork envelope under a post-fork block. The protocol version the
 indexer reports is therefore an upper bound — only a state whose envelope is
 *newer* than its dating block is reported as an inconsistency, and only where
 the two are known to describe the same block.
@@ -273,7 +289,11 @@ unshieldedBalancesObservable(
 
 All three emit a `PositionedRecord`: `{ value, blockHeight, blockHash }`, where
 `value` is what the stream serves and `blockHeight` / `blockHash` identify the
-block that carried it.
+block it is dated by. On the two contract-state streams that is the state's
+`stateAt` block: the action's own block, or the fork block when the indexer
+re-emits an untouched contract's latest action with its state translated at a
+ledger fork. The balance stream drops that re-emission and uses the action's
+own block.
 
 #### Resuming a stream
 

@@ -92,10 +92,9 @@ describe('getAnyEraContractState: one decoded read that spans both ledger eras',
 
   it('decodes a retained-era state served under a POST-fork block', async () => {
     // THE CASE THIS FUNCTION EXISTS FOR, and the one every current-era-only reader
-    // fails: the fork does not rewrite a contract's stored state, and the indexer
-    // serves the last contract action at or before the requested block. A contract
-    // deployed before the boundary and not yet written to therefore keeps its
-    // retained envelope under a post-fork head, indefinitely.
+    // fails: an indexer older than 4.4.0-rc.6 serves a contract deployed before the
+    // boundary and not yet written to with its retained envelope under a post-fork
+    // head (midnight-indexer #1605).
     //
     // The two signals disagree here ON PURPOSE. The record's `version` says 'v9',
     // because it is derived from `protocolVersion` and documents itself as a

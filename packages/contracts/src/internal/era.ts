@@ -669,16 +669,17 @@ export const assertEraCompatible = (
  * yields a failure and never a wrong answer — which is what makes it safe to route on. It decides
  * which era's decoder may be handed these bytes.
  *
- * The reported **`protocolVersion`** dates the READ, not the bytes: the read surface serves the
- * latest contract action at or before the requested block, and the ledger does not rewrite a
- * contract's stored state at the fork. So a contract deployed before the fork and dormant across it
- * is served with its retained-era envelope under a post-fork head, indefinitely. That is the
- * ORDINARY case, and it is precisely what keep-state operates on. Only the reverse — an envelope
- * NEWER than the block dating it — is impossible and therefore reported.
+ * The reported **`protocolVersion`** dates the READ, not the bytes. The node translates every
+ * contract's state at the fork, and indexer `4.4.0-rc.6` serves the translated state on an
+ * unpinned read. A retained-era envelope under a post-fork head is still served by a read pinned to
+ * a pre-fork block, by a record of one action's own state, and by an indexer older than
+ * `4.4.0-rc.6` (midnight-indexer #1605). That is legitimate, and it is what keep-state operates on.
+ * Only the reverse — an envelope NEWER than the block dating it — is impossible and therefore
+ * reported.
  *
  * DO NOT REINTRODUCE AN EQUALITY CHECK BETWEEN `head` AND THE ENVELOPE. It reads as symmetry and
- * costs the whole keep-state path: every post-fork call against a pre-fork contract is refused, and
- * the error blames the read surface for serving exactly what it is supposed to serve.
+ * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
+ * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
  * `RawContractState.version` cannot answer this either: it is derived from the record's
  * `protocolVersion` alone and is explicitly not a verified statement about the envelope the bytes
@@ -732,15 +733,16 @@ export const resolveContractStateEra = async (
   // From here the state carries a CURRENT-era envelope.
   //
   // Under a post-fork head that is ORDINARY, and it is what makes keep-state
-  // more than a single call: the first post-fork call migrates the contract's
-  // envelope from retained to current-era, and the ledger carries the retained
-  // VERIFIER KEYS across unchanged. So the bytes are the current decoder's to
+  // more than a single call: the fork (or, against an indexer older than
+  // 4.4.0-rc.6, the first post-fork call) migrates the contract's envelope from
+  // retained to current-era, and the ledger carries the retained VERIFIER KEYS
+  // across unchanged. So the bytes are the current decoder's to
   // read while the artifacts that fit the contract are still the retained ones.
   //
   // The envelope answers ONE question -- which decoder may read these bytes --
   // and it is not the question of whether the caller's artifacts fit this
   // contract. Refusing here answered the second question with the first, and
-  // cost every call after a contract's first post-fork one. The key check does
+  // cost every call against a migrated contract. The key check does
   // answer it, against the keys this state actually declares; see
   // `assertSnapshotVerifierKey`.
   if (head === 'v9') {

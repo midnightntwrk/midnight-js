@@ -39,13 +39,20 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 
 /**
+ * The {@link PublicDataProvider} methods that report a version-tagged contract
+ * state.
+ */
+export type StateReadMethod = 'queryDeployContractState';
+
+/**
  * Every provider method at which a payload's ledger era is resolved or
- * narrowed — the three transaction methods plus the two read methods.
+ * narrowed — the three transaction methods, the two record reads and the
+ * version-tagged state read.
  *
  * This is the vocabulary to type a caught error's `method` against when the
  * error can come from either surface.
  */
-export type ProviderMethod = TransactionMethod | ReadMethod;
+export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
 
 /**
  * Stable error-code strings for the providers.
@@ -242,17 +249,32 @@ const UNTAGGED_SUBJECT = {
   balanceTx: 'payload',
   submitTx: 'payload',
   watchForTxData: 'record',
-  watchForDeployTxData: 'record'
-} as const satisfies Record<ProviderMethod, 'payload' | 'record'>;
+  watchForDeployTxData: 'record',
+  queryDeployContractState: 'state'
+} as const satisfies Record<ProviderMethod, 'payload' | 'record' | 'state'>;
 
-const describeUntagged = (method: ProviderMethod, received: string): string =>
-  UNTAGGED_SUBJECT[method] === 'record'
-    ? `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
-      `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
-      `transaction, and { version: 'v8', tx } a v8 one.`
-    : `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
-      `Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ` +
-      `transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`;
+const describeUntagged = (method: ProviderMethod, received: string): string => {
+  switch (UNTAGGED_SUBJECT[method]) {
+    case 'record':
+      return (
+        `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
+        `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
+        `transaction, and { version: 'v8', tx } a v8 one.`
+      );
+    case 'state':
+      return (
+        `${method}: a contract state has no recognised 'version' discriminant (got: ${received}). ` +
+        `Contract states are version-tagged: { version: 'v9', state } carries a decoded v9 state, and ` +
+        `{ version: 'v8', stateBytes } the stored bytes of a v8 one.`
+      );
+    case 'payload':
+      return (
+        `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
+        `Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ` +
+        `transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`
+      );
+  }
+};
 
 /**
  * Thrown when a payload passed to, or returned from, a provider method carries

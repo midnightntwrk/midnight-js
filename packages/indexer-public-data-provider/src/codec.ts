@@ -36,7 +36,12 @@ import {
 // through `loadLedger8Protocol()` and only when a v8-era record asks for it. Same
 // precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { RawContractState, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type {
+  RawContractState,
+  ReadMethod,
+  VersionedContractState,
+  VersionedFinalizedTxData
+} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -50,6 +55,7 @@ import {
   type UnshieldedUtxos
 } from '@midnight-ntwrk/midnight-js-types';
 import {
+  assertNever,
   contractStateEnvelopeVersion,
   deserializeCompactContractState,
   deserializeLedgerParameters,
@@ -354,11 +360,12 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *   proves nothing about the network, but it is the one thing the deserializer
  *   also reads: a mismatched envelope is rejected on the header tag before the
  *   body, so it cannot produce a wrong answer, only a failure.
- * - The reported version dates the *read*, not the bytes. The indexer serves
- *   the latest contract action at or before the requested block, so a state can
- *   legitimately be older than the block that dates it — after a fork, every
- *   contract dormant across it is exactly that. Treating that ordinary case as
- *   a contradiction would send callers hunting a fault that is not there.
+ * - The reported version dates the *read*, not the bytes, so a state can
+ *   legitimately be older than the block that dates it — an indexer older than
+ *   `4.4.0-rc.6` serves a contract untouched since a fork with its pre-fork
+ *   envelope under a post-fork block (midnight-indexer #1605). Treating that
+ *   case as a contradiction would send callers hunting a fault that is not
+ *   there.
  *
  * So an older envelope under a newer block is normal and decided on the
  * envelope alone. The reverse — bytes written by a runtime the dating block
@@ -405,6 +412,30 @@ export const parseHexContractState = (
     throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);
   }
   return deserializeCompactContractState(raw, { caller: `${PKG}:parseHexContractState` });
+};
+
+/**
+ * Builds the era-tagged state served by `PublicDataProvider.queryDeployContractState`.
+ *
+ * The envelope picks the variant and `protocolVersion` bounds it, as in
+ * {@link parseHexContractState}: a v9 envelope is decoded, a v8 envelope is
+ * handed on as the stored bytes, neither decoded nor translated.
+ *
+ * @param hexState The hex-encoded serialized contract state, as the indexer
+ *                 serves it.
+ * @param protocolVersion The protocol-version integer of the block that dates
+ *                        the state.
+ */
+export const toVersionedContractState = (hexState: string, protocolVersion: number): VersionedContractState => {
+  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
+  switch (envelopeVersion) {
+    case 'v8':
+      return { version: 'v8', stateBytes: raw };
+    case 'v9':
+      return { version: 'v9', state: parseHexContractState(hexState, protocolVersion) };
+    default:
+      return assertNever(envelopeVersion, 'toVersionedContractState');
+  }
 };
 
 /**

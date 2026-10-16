@@ -34,6 +34,7 @@ import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/mid
 import { type ContractProviders } from './contract-providers';
 import {
   ContractTypeError,
+  EraInvariantViolationError,
   IncompleteFindContractPrivateStateConfig,
   Ledger8SigningKeyUnusableError,
   PrivateStateNotFoundError
@@ -92,11 +93,14 @@ const queryFoundDeployTxPublicData = async (
     case 'v8':
       return { ...deployRecord, contractAddress };
     case 'v9': {
-      const initialContractState = requireDeployedContract(
+      const deployState = requireDeployedContract(
         await publicDataProvider.queryDeployContractState(contractAddress),
         contractAddress
       );
-      return { ...deployRecord, contractAddress, initialContractState };
+      if (deployState.version !== 'v9') {
+        throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', deployState.version);
+      }
+      return { ...deployRecord, contractAddress, initialContractState: deployState.state };
     }
     default:
       return assertNever(deployRecord, 'findDeployedContract');
@@ -498,8 +502,9 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                                   nothing is stored under it.
  * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
  * @throws IndexerDataError The public data provider cannot decode the current contract state. The
- *               indexer provider throws it for a contract deployed before the ledger fork that has
- *               had no state-changing call since; that call can only be made with the pre-fork
+ *               indexer provider throws it against an indexer older than `4.4.0-rc.6` for a contract
+ *               deployed before the ledger fork that has had no state-changing call since
+ *               (midnight-indexer #1605); there that call can only be made with the pre-fork
  *               artifacts.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract

@@ -211,10 +211,10 @@ export class EraArtifactMismatchError extends MidnightJsError {
  * while the artifacts handed to this operation came from the retained Compact toolchain.
  *
  * The retained era stays supported for a contract whose state the retained ledger wrote, and it
- * stays supported after that state has been MIGRATED: a contract's first post-fork call rewrites
- * its envelope to the current era, and the ledger carries the retained verifier keys across
- * unchanged. So a current-era envelope on its own says nothing about which toolchain built the
- * contract, and this error is not raised for one.
+ * stays supported after that state has been MIGRATED: the fork (or, against an indexer older than
+ * `4.4.0-rc.6`, a contract's first post-fork call) rewrites its envelope to the current era, and
+ * the ledger carries the retained verifier keys across unchanged. So a current-era envelope on its
+ * own says nothing about which toolchain built the contract, and this error is not raised for one.
  *
  * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
  * migrated pre-fork contract still declares the keys the retained toolchain produced, so it does not

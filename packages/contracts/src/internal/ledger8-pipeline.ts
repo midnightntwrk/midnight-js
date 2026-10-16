@@ -290,10 +290,11 @@ export const readLedger8Snapshot = async (
 
   // Read with the era the ENVELOPE names, never with the head's and never with
   // a fixed one. A retained envelope is the retained ledger's to read -- pre-
-  // fork natively, post-fork as keep-state, because the fork does not rewrite a
-  // contract's stored state. A current-era envelope belongs to the head's era,
-  // and post-fork it is what a contract looks like once an earlier call has
-  // migrated it; its retained verifier keys survive that migration unchanged,
+  // fork natively, post-fork as keep-state, where a pinned read or an indexer
+  // older than 4.4.0-rc.6 still serves one. A current-era envelope belongs to
+  // the head's era, and post-fork it is what a contract looks like once the fork
+  // has translated it or an earlier call has migrated it; its retained verifier
+  // keys survive that unchanged,
   // so this pipeline is still the right one to run it.
   //
   // Pinning this to the retained era is what made a migrated contract callable
@@ -621,9 +622,9 @@ export const runLedger8CallPipeline = async <TState>(
   // untouched -- and a constructor-built state will not do, because it declares its entry points
   // with blank keys.
   //
-  // Post-fork they are NOT: the fork does not rewrite a contract's stored state, so a contract
-  // deployed before it is still served carrying the retained envelope, which the current composer
-  // cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
+  // Post-fork they are NOT guaranteed to be: a pinned read or an indexer older than 4.4.0-rc.6
+  // still serves a contract deployed before the fork carrying the retained envelope, which the
+  // current composer cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
   // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
   // the local artifact against.
   const registeredOperations =

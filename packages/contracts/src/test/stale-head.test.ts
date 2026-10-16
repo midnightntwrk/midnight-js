@@ -633,9 +633,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
     expect(txTagPrefix(preForkBytes!, RETAINED_ERA_TX_TAG)).toBe(RETAINED_ERA_TX_TAG);
 
-    // THE RE-RUN. The contract's STORED STATE is untouched -- the fork does not rewrite it, and
-    // nothing has called this contract since -- so `raw` is still the very same retained-era
-    // envelope, which is precisely what sends the re-run down the keep-state path.
+    // THE RE-RUN. Nothing has called this contract since the fork, and an indexer older than
+    // 4.4.0-rc.6 serves such a contract untranslated (midnight-indexer #1605) -- so `raw` is still
+    // the very same retained-era envelope, which is precisely what sends the re-run down the
+    // keep-state path.
     //
     // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
     // chain tip, so once the head has crossed, the record it returns carries a post-fork

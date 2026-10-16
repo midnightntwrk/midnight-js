@@ -123,10 +123,10 @@ export interface AnyEraContractState extends ContractStatePojo {
    *
    * Not the `version` of the raw record, which is derived from `protocolVersion` and so describes
    * the BLOCK. Two different things make the two disagree legitimately, and neither is a fault:
-   * a contract not written to since the fork keeps an OLDER envelope under a newer block, and an
-   * unpinned read resolves the state and the block as independent Query-root siblings that can
-   * land either side of the boundary. See `EnvelopeUpperBound` in
-   * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
+   * an indexer older than `4.4.0-rc.6` serves a contract untouched since the fork with an OLDER
+   * envelope under a newer block (midnight-indexer #1605), and an unpinned read resolves the state
+   * and the block as independent Query-root siblings that can land either side of the boundary.
+   * See `EnvelopeUpperBound` in `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
    */
   readonly envelopeVersion: LedgerVersion;
   /**

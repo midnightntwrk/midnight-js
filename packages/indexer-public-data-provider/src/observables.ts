@@ -70,8 +70,9 @@ export type FeedRecord<T> = PositionedRecord<T> & Identified;
  * provider.
  *
  * @param hexState The action's serialized state, in the indexer's hex encoding.
- * @param protocolVersion The protocol version the indexer reported for the
- *   action's own transaction.
+ * @param protocolVersion The protocol version of the block the state is dated by
+ *   (`stateAt`): the action's own block, or the later block at which a ledger
+ *   fork translated the state.
  */
 export type ContractStateMapper<T> = (hexState: string, protocolVersion: number) => T;
 
@@ -278,14 +279,23 @@ export const transactionToBlockOffset$ =
       pollInterval
     );
 
+/**
+ * The block a `latest` start anchors to. `stateAt` is the block the contract's
+ * current state is dated by, which a ledger fork can move past the latest
+ * action's own block; `action` is that action's block.
+ */
+export type LatestAnchor = 'stateAt' | 'action';
+
 export const contractAddressToLatestBlockOffset$ =
-  (apolloClient: ApolloClient, pollInterval: number) => (contractAddress: ContractAddress) =>
+  (apolloClient: ApolloClient, pollInterval: number) => (contractAddress: ContractAddress, anchor: LatestAnchor) =>
     pollUntilPresent(
       apolloClient,
       LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
       { address: contractAddress },
       hasContractAction,
-      (data) => ({ height: data.contractAction.transaction.block.height }),
+      ({ contractAction }) => ({
+        height: anchor === 'stateAt' ? contractAction.stateAt.height : contractAction.transaction.block.height
+      }),
       pollInterval
     );
 
@@ -295,9 +305,11 @@ export const contractAddressToLatestBlockOffset$ =
  * action from the block at `offset` onward, that block included, then continues
  * live.
  *
- * Emits one element per action, mapped by `mapState`, carrying the block and the
- * identifiers of the action's transaction. A system transaction carries no
- * identifiers.
+ * Emits one element per action, mapped by `mapState`, carrying the block the
+ * state is dated by (`stateAt`) and the identifiers of the action's transaction.
+ * A system transaction carries no identifiers. At a ledger fork the indexer
+ * re-emits an untouched contract's latest action with its state translated; that
+ * element sits in the fork block, while its identifiers stay the pre-fork ones.
  *
  * @see {@link SubscriptionShapes} for how every branch is built on this feed.
  */
@@ -325,10 +337,10 @@ export const blockOffsetToState$ =
           }
           return contractActions;
         }),
-        Rx.map(({ state, transaction }) => ({
-          value: mapState(state, transaction.protocolVersion),
-          blockHeight: transaction.block.height,
-          blockHash: transaction.block.hash,
+        Rx.map(({ state, stateAt, transaction }) => ({
+          value: mapState(state, stateAt.protocolVersion),
+          blockHeight: stateAt.height,
+          blockHash: stateAt.hash,
           identifiers: 'identifiers' in transaction ? transaction.identifiers : []
         }))
       );
@@ -379,6 +391,10 @@ export const waitForUnshieldedBalancesToAppear =
  * Subscribes to `UNSHIELDED_BALANCE_SUB($address, $offset)`: the same
  * server-filtered feed of this contract's actions as {@link blockOffsetToState$},
  * selecting the balances each action leaves instead of the state.
+ *
+ * Drops the indexer's fork-block re-emission of an action (its `stateAt` is not
+ * its own block): a ledger fork translates the state, not the balances, so the
+ * re-emission would repeat the action's balances as a second element.
  */
 export const blockOffsetToUnshieldedBalances$ =
   (apolloClient: ApolloClient) =>
@@ -401,12 +417,14 @@ export const blockOffsetToUnshieldedBalances$ =
           if (!contractAction) {
             throw new IndexerSubscriptionDataError('contractActions');
           }
-          return {
-            value: toUnshieldedBalances(contractAction.unshieldedBalances),
-            blockHeight: contractAction.transaction.block.height,
-            blockHash: contractAction.transaction.block.hash
-          };
-        })
+          return contractAction;
+        }),
+        Rx.filter(({ stateAt, transaction }) => stateAt.hash === transaction.block.hash),
+        Rx.map(({ unshieldedBalances, transaction }) => ({
+          value: toUnshieldedBalances(unshieldedBalances),
+          blockHeight: transaction.block.height,
+          blockHash: transaction.block.hash
+        }))
       );
 
 /**

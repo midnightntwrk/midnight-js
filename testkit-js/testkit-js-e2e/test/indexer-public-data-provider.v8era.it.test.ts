@@ -27,7 +27,7 @@ const logger = createLogger(path.resolve(`${process.cwd()}`, 'logs', 'tests', `v
  * The pre-fork era environment (spec QA-6).
  *
  * This file runs against the `v8era` docker image set -- node 1.0.0, indexer
- * 4.4.0-rc.5, proof server 8.1.0 -- which is a real ledger-v8 network, not a mock
+ * 4.4.0-rc.6-68702121, proof server 8.1.0 -- which is a real ledger-v8 network, not a mock
  * and not a recorded response. It is excluded from the default e2e matrix by its
  * `.v8era.` filename segment and driven by the dedicated lane in
  * `ci-testkit-js.yml`, because the default lane pins the current-era images and

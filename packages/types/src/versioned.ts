@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
@@ -78,6 +79,32 @@ export interface Ledger9Transaction<T> {
  * ```
  */
 export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
+
+/**
+ * The v8 variant of {@link VersionedContractState}: a contract state written by
+ * the v8 ledger runtime, as the serialized, tag-prefixed bytes the network
+ * stored. Not decoded and not translated to the v9 encoding.
+ */
+export interface Ledger8ContractStateBytes {
+  readonly version: 'v8';
+  /** Serialized, tag-prefixed byte form (`contract-state[v6]`). */
+  readonly stateBytes: Uint8Array;
+}
+
+/**
+ * The v9 variant of {@link VersionedContractState}: the decoded contract state.
+ */
+export interface Ledger9ContractState {
+  readonly version: 'v9';
+  readonly state: ContractState;
+}
+
+/**
+ * A contract state discriminated by the ledger runtime that wrote it: the stored
+ * bytes for the v8 era ({@link Ledger8ContractStateBytes}), or the decoded state
+ * for v9 ({@link Ledger9ContractState}). Narrow on `version` before touching it.
+ */
+export type VersionedContractState = Ledger8ContractStateBytes | Ledger9ContractState;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same

@@ -228,24 +228,36 @@ export const DEPLOY_CONTRACT_STATE_TX_QUERY = gql(
   query DEPLOY_CONTRACT_STATE_TX_QUERY($address: HexEncoded!) {
     contractAction(address: $address) {
       ... on ContractDeploy {
-        state
         transaction {
-          protocolVersion
+          contractActions {
+            address
+            state
+            stateAt {
+              protocolVersion
+            }
+          }
         }
       }
       ... on ContractUpdate {
-        state
         transaction {
-          protocolVersion
+          contractActions {
+            address
+            state
+            stateAt {
+              protocolVersion
+            }
+          }
         }
       }
       ... on ContractCall {
         deploy {
           transaction {
-            protocolVersion
             contractActions {
               address
               state
+              stateAt {
+                protocolVersion
+              }
             }
           }
         }
@@ -259,6 +271,9 @@ export const LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY = gql(
   `
   query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {
     contractAction(address: $address) {
+      stateAt {
+        height
+      }
       transaction {
         block {
           height
@@ -303,12 +318,12 @@ export const CONTRACT_STATE_SUB = gql(
   subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
       state
-      transaction {
+      stateAt {
+        height
+        hash
         protocolVersion
-        block {
-          height
-          hash
-        }
+      }
+      transaction {
         ... on RegularTransaction {
           identifiers
         }
@@ -359,6 +374,9 @@ export const UNSHIELDED_BALANCE_SUB = gql(
   `
   subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
+      stateAt {
+        hash
+      }
       transaction {
         block {
           height

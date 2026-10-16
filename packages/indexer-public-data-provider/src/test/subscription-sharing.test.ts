@@ -28,11 +28,8 @@ const stateFrame = (height: number) => ({
   data: {
     contractActions: {
       state: STATE,
-      transaction: {
-        protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
-        identifiers: [`tx-${height}`],
-        block: { height, hash: `0x${height}` }
-      }
+      stateAt: { height, hash: `0x${height}`, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION },
+      transaction: { identifiers: [`tx-${height}`] }
     }
   }
 });
