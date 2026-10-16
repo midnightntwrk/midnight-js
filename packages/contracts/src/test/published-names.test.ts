@@ -23,7 +23,7 @@ const names = publishedNames(resolve(__dirname, '../..'));
 
 describe('published names', () => {
   it('reads every entry point the package publishes', () => {
-    expect(names).toContain('Ledger8.ProviderFailedError');
+    expect(names).toContain('ProviderFailedError');
   });
 
   it('follow the naming rules of the public API', () => {

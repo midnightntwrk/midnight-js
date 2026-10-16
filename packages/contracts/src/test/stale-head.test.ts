@@ -52,7 +52,7 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  Ledger8ProviderFailedError,
+  ProviderFailedError,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
@@ -186,8 +186,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   // wrapper has already rebuilt the provider's failure onto `cause`, which is
   // what this handler receives and what it re-throws unchanged when the head
   // has not moved.
-  const wrappedRejection = (): Ledger8ProviderFailedError =>
-    new Ledger8ProviderFailedError('submitTx', CIRCUIT_ID, new Error('Error: node refused the transaction'));
+  const wrappedRejection = (): ProviderFailedError =>
+    new ProviderFailedError('submitTx', CIRCUIT_ID, new Error('Error: node refused the transaction'));
 
   it('reads the head AFRESH and refuses with the two-step remediation, in order, when the era flipped', async () => {
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
@@ -430,7 +430,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       // The code is its OWN, never copied off `errors[0]` -- copying would make
       // one error report two different codes depending on which failure came
       // first.
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(false);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(false);
       // And it is in the registry, so `hasErrorCode(e)` with no argument
       // recognises it as one of this framework's own.
       expect(hasErrorCode(error)).toBe(true);

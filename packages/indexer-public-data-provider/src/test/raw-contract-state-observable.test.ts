@@ -15,12 +15,12 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PositionedRecord, RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion, fromHex, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { contractStateEnvelopeVersion, fromHex, requireLedger9, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError, IndexerError } from '../errors';
+import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import {
   BLOCK_QUERY,
@@ -116,9 +116,8 @@ const latestAt = (height: number, stateAtHeight = height): unknown => ({
   contractAction: { stateAt: { height: stateAtHeight }, transaction: { block: { height } } }
 });
 
-const collect = (
-  source: Rx.Observable<PositionedRecord<RawContractState>>
-): Promise<PositionedRecord<RawContractState>[]> => Rx.lastValueFrom(source.pipe(Rx.toArray()));
+const collect = <T>(source: Rx.Observable<PositionedRecord<T>>): Promise<PositionedRecord<T>[]> =>
+  Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   work.then(
@@ -167,25 +166,29 @@ describe('rawContractStateObservable — latest', () => {
     expect(envelopesOf(seen)).toEqual(['v8']);
   });
 
-  test('the same payload terminates the decoded stream instead', async () => {
-    // The gap this whole member exists to close: on the decoded stream a
-    // pre-fork state is not a skipped emission, it is the end of the
-    // subscription. The two assertions live in one test on purpose — the raw
-    // stream's value is only visible against what the decoded one does with
-    // the identical bytes.
-    const hexState = await mintLedger8ContractStateHex();
-    const frames = [actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)];
+  test('the decoded stream carries the same pre-fork state as v8 and keeps going across the fork', async () => {
+    const ledger8State = await mintLedger8ContractStateHex();
+    const ledger9State = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, frames)
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(ledger8State, LEDGER8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(ledger9State, LEDGER9_ERA_PROTOCOL_VERSION, 11)
+      ])
     });
 
-    const rejection = await rejectionOf(
-      Rx.lastValueFrom(provider.contractStateObservable(ADDRESS, { type: 'latest' }).pipe(Rx.toArray()))
-    );
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
+    expect(
+      seen.map(({ value, blockHeight }) =>
+        value.version === 'v8'
+          ? { blockHeight, version: 'v8', hex: Buffer.from(value.stateBytes).toString('hex') }
+          : { blockHeight, version: 'v9', hex: Buffer.from(value.state.serialize()).toString('hex') }
+      )
+    ).toEqual([
+      { blockHeight: 10, version: 'v8', hex: ledger8State },
+      { blockHeight: 11, version: 'v9', hex: ledger9State }
+    ]);
   });
 
   test('carries one contract across the fork boundary in a single stream', async () => {
@@ -222,31 +225,51 @@ describe('rawContractStateObservable — latest', () => {
     expect(rejection).toBeInstanceOf(TagParseError);
   });
 
-  test('reports an unplaceable protocol version as an indexer error, not a bare protocol one', async () => {
-    // `version` is not optional on the record, so a `protocolVersion` this
-    // client cannot place on the era timeline ends the stream -- the one
-    // asymmetry with `contractStateObservable`, which withholds only its
-    // upper-bound check and decodes on the envelope alone. What must NOT
-    // happen is that the failure escapes this package's error contract: a
-    // consumer catches every failure from this provider with one
-    // `instanceof IndexerError`.
+  test('tags a record by its envelope when its protocol version cannot be placed, and keeps going', async () => {
+    const hexState = mintLedger9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(latestPoll),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [actionFrame(hexState, UNRESOLVABLE_PROTOCOL_VERSION, 10)])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+
+    expect(seen.map(({ value }) => value.version)).toEqual(['v9']);
+  });
+
+  test('ends the stream on a record whose envelope is newer than the block that dates it', async () => {
+    // The stream dates each record by its own `stateAt`, the same resolution that produced the
+    // bytes, so a newer envelope is an indexer fault rather than a race.
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION, 10)
+        actionFrame(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, 10)
       ])
     });
 
     const rejection = await rejectionOf(collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' })));
 
-    expect(rejection).toBeInstanceOf(IndexerError);
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
-      kind: 'unknown-record-era',
-      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION
+      kind: 'era-disagreement',
+      protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
+      reportedVersion: 'v8',
+      envelopeVersion: 'v9'
     });
-    // The protocol-level failure is preserved rather than discarded.
-    expect((rejection as Error).cause).toBeInstanceOf(Error);
+  });
+
+  test('tags a pre-fork record served under a post-fork block with the era that wrote it', async () => {
+    const hexState = await mintLedger8ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(latestPoll),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [actionFrame(hexState, LEDGER9_ERA_PROTOCOL_VERSION, 10)])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+
+    expect(seen.map(({ value }) => ({ version: value.version, protocolVersion: value.protocolVersion }))).toEqual([
+      { version: 'v8', protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }
+    ]);
   });
 
   test('the decoded stream keeps going on that same unplaceable version', async () => {
@@ -266,25 +289,6 @@ describe('rawContractStateObservable — latest', () => {
     );
 
     expect(seen).toHaveLength(1);
-  });
-
-  test('reports the version the action was served under, not that of the envelope the bytes carry', async () => {
-    // The documented divergence. An indexer older than 4.4.0-rc.6 serves an
-    // untouched pre-fork contract with its v8 envelope under a v9 block
-    // (midnight-indexer #1605), so `version` and the envelope can disagree. A
-    // caller that needs the writing era reads it off `raw`.
-    const hexState = await mintLedger8ContractStateHex();
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, LEDGER9_ERA_PROTOCOL_VERSION, 10)
-      ])
-    });
-
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
-
-    expect(seen[0]!.value.version).toBe('v9');
-    expect(contractStateEnvelopeVersion(seen[0]!.value.raw)).toBe('v8');
   });
 });
 
@@ -629,7 +633,9 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
     );
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
-    expect(Array.from(seen[0]!.value.serialize())).toEqual(Array.from(mintLedger9ContractStateBytes()));
+    expect(Array.from(requireLedger9(seen[0]!.value, 'test').state.serialize())).toEqual(
+      Array.from(mintLedger9ContractStateBytes())
+    );
   });
 
   test('carries the pre-fork action and its re-emission as two records in two blocks', async () => {

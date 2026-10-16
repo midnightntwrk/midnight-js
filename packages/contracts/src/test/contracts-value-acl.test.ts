@@ -61,6 +61,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'LedgerParametersUnservedError',
   'MixedEraScopeError',
   'PrivateStateNotFoundError',
+  'ProviderFailedError',
   'RemoveVerifierKeyTxFailedError',
   'ReplaceMaintenanceAuthorityTxFailedError',
   'RetainedArtifactOnCurrentEraStateError',

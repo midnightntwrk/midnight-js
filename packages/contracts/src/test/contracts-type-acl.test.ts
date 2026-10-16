@@ -90,7 +90,9 @@ describe('Contracts type ACL', () => {
     expect(typeOnlyExportNames()).toEqual([
       'AnyEraContractState',
       'AnyEraContractStateReadSurface',
+      'AnyEraDeployedContract',
       'AnyEraFinalizedCallTxData',
+      'AnyEraFoundContract',
       'AnyEraSubmittedCallTx',
       'CallOptions',
       'CallOptionsBase',
@@ -144,7 +146,6 @@ describe('Contracts type ACL', () => {
       'FoundDeployTxPublicData',
       'Ledger8FoundDeployTxPublicData',
       'LogEvent',
-      'PublicContractStates',
       'ScopedTransactionOptions',
       'StaleHeadOperationKind',
       'SubmitCallTxProviders',

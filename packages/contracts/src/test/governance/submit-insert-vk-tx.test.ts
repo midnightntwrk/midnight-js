@@ -23,7 +23,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
 import { createUnprovenInsertVerifierKeyTx } from '../../governance/unproven-tx';
-import { submitTx } from '../../submit-tx';
+import { submitLedger9Payload } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -83,13 +83,13 @@ describe('submitInsertVerifierKeyTx', () => {
       const circuitId = 'testCircuit';
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitInsertVerifierKeyTx(
         mockProviders,
@@ -113,7 +113,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockCoinPublicKey,
         mockProviders.config
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
 
@@ -121,12 +121,12 @@ describe('submitInsertVerifierKeyTx', () => {
       const circuitId = 'testCircuit';
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(new ContractOperation());
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitInsertVerifierKeyTx(
         mockProviders,
@@ -136,7 +136,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockVerifierKey
       );
 
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
   });
@@ -152,11 +152,11 @@ describe('submitInsertVerifierKeyTx', () => {
         code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
         message: `No contract state found on chain for contract address '${mockContractAddress}'`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
 
@@ -167,13 +167,13 @@ describe('submitInsertVerifierKeyTx', () => {
         code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
         message: `Signing key for contract address '${mockContractAddress}' not found`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should reject before submitting when the operation already carries a verifier key', async () => {
       const circuitId = 'testCircuit';
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockContractState.operation = vi.fn().mockReturnValue(createKeyedOperation());
 
       await expect(
@@ -185,7 +185,7 @@ describe('submitInsertVerifierKeyTx', () => {
       });
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenInsertVerifierKeyTx).not.toHaveBeenCalled();
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
@@ -195,12 +195,12 @@ describe('submitInsertVerifierKeyTx', () => {
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(failedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
       await expect(
         submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)

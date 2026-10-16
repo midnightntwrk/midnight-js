@@ -47,7 +47,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './internal/breadcrumbs';
-import { isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { isLedger8Request, requireLedger9ContractState,requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import { fromStoredLedger8SigningKey, toStoredLedger8SigningKey } from './internal/ledger8-signing-key';
 import { requireDeployedContract } from './internal/required-reads';
@@ -508,7 +508,8 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
  *                                   nothing is stored under it.
  * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
- * @throws IndexerDataError The public data provider cannot decode the current contract state.
+ * @throws Ledger8ContractStateUnsupportedError The current contract state was written by the v8
+ * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
  * @throws UntaggedPayloadError The deploy record or the deploy state carries no readable era tag.
@@ -583,7 +584,7 @@ export async function findDeployedContract<C extends Contract.Any>(
       era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
-      deployTxData: found.deployTxData,
+      deployTxData: { public: found.deployTxData },
       signingKey,
       // Built AFTER the attach has checked every declared circuit's key, so a
       // handle a caller receives is one whose circuits the chain can serve.
@@ -609,10 +610,11 @@ export async function findDeployedContract<C extends Contract.Any>(
     contractAddress
   );
 
-  const currentContractState = requireDeployedContract(
-    await providers.publicDataProvider.queryContractState(contractAddress),
-    contractAddress
-  );
+  const currentContractState = requireLedger9ContractState(
+    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
+    contractAddress,
+    'findDeployedContract'
+  ).state;
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

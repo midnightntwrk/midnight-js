@@ -83,10 +83,10 @@ import {
   Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
-  Ledger8ProviderFailedError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
+  ProviderFailedError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
@@ -1713,13 +1713,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     // The CODE, not only the class: a consumer that cannot import this package's
     // classes -- a JavaScript caller, or one narrowing across a bundle boundary
     // -- branches on `code`, so that is the surface the negative has to pin.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
-    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(true);
+    expect((caught as ProviderFailedError).method).toBe('proveTx');
+    expect((caught as ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
 
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
@@ -1799,7 +1799,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const caught = await submitCallTx(providers, callOptions()).catch((error: unknown) => error);
 
     // Assert
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     expect(inspect(caught, { depth: null, showHidden: true })).not.toContain(leakedStateHex);
     expect(inspect(caught, { depth: null, showHidden: true })).toContain('Proof Server request failed');
   });
@@ -1814,9 +1814,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('submitTx');
+    expect(caught).toBeInstanceOf(ProviderFailedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(true);
+    expect((caught as ProviderFailedError).method).toBe('submitTx');
 
     // TWO head reads: one for the routing, and one on the rejection to ask
     // whether the network moved under this call. This head has not moved, so
@@ -1833,7 +1833,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // trip that could not change the answer.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server refused the request'));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8ProviderFailedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(ProviderFailedError);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -2260,7 +2260,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).not.toContain(payloadHex);
     // Non-vacuity: the payload IS in the raw rejection, so its absence above is
@@ -2287,7 +2287,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null });
     expect(rendered).toContain('fetch failed');
     expect(rendered).toContain('ECONNREFUSED');
@@ -2314,7 +2314,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).toContain('::1:6300');
     expect(rendered).toContain('127.0.0.1:6300');
@@ -2392,9 +2392,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
-    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
+    expect((caught as ProviderFailedError).method).toBe('proveTx');
+    expect((caught as ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
   });
 
 });
@@ -2515,8 +2515,8 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect('initialPrivateState' in deployed).toBe(true);
     expect(deployed.initialPrivateState).toBeUndefined();
     expect(deployed.initialZswapState.outputs).toEqual([]);
-    expect(deployed.deployTxData.version).toBe('v8');
-    expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
+    expect(deployed.deployTxData.public.version).toBe('v8');
+    expect(deployed.deployTxData.public.txId).toBe(retainedEraRecord().txId);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
     // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
@@ -3259,8 +3259,8 @@ describe('attaching to a retained-era contract already on chain', () => {
     // a retained-era contract was deployed in whichever era was current then,
     // and refusing the pre-fork variant would refuse the contracts this path exists
     // to keep callable.
-    expect(found.deployTxData.version).toBe('v9');
-    expect(found.deployTxData.txId).toBe(createMockFinalizedTxData().txId);
+    expect(found.deployTxData.public.version).toBe('v9');
+    expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
 
     // Every declared circuit is checked, and this artifact declares exactly one.
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);
@@ -3527,8 +3527,8 @@ describe('attaching to a retained-era contract already on chain', () => {
   it("routes on the ENVELOPE, not on the record's own era label, when attaching after the fork", async () => {
     const providers = attachProviders(v6Envelope);
     // The record labels itself current-era and the head agrees with the label, while the bytes
-    // carry a retained envelope. The label is derived from `protocolVersion` alone and is not a
-    // verified statement about the bytes -- and the bytes are what a decoder has to read.
+    // carry a retained envelope, as a provider that tags records by the block would serve. The
+    // bytes are what a decoder has to read.
     //
     // This is a contract deployed before the fork and attached to after it, as an indexer older
     // than 4.4.0-rc.6 serves it (midnight-indexer #1605). It must attach, not be refused.
@@ -3584,7 +3584,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
       const found = await findDeployedContract(providers, attachOptions());
 
-      expect(found.deployTxData.version).toBe(version);
+      expect(found.deployTxData.public.version).toBe(version);
     }
   });
 

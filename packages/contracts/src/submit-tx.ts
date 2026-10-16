@@ -14,31 +14,33 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import {
-  type Transaction,
-  type UnprovenTransaction,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
   type FinalizedTxData,
+  UntaggedPayloadError,
+  type VersionedFinalizedTxData,
+  type VersionedUnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
+import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { requireLedger9, requireLedger9Record } from './internal/era';
-
-declare const __DEBUG__: boolean;
+import { EraArtifactMismatchError, type EraArtifactMismatchReason, EraInvariantViolationError } from './errors';
+import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { proveBalanceSubmitLedger8Payload, proveBalanceSubmitLedger9Payload } from './internal/submit-payload';
 
 /**
  * Configuration for {@link submitTx}.
  */
 export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
   /**
-   * The transaction to prove, balance, and submit.
+   * The transaction to prove, balance, and submit, tagged with the ledger era that wrote it:
+   * `{ version: 'v9', tx }` for a live v9 transaction, `{ version: 'v8', txBytes }` for the
+   * serialized bytes of a v8 one.
    */
-  readonly unprovenTx: UnprovenTransaction;
+  readonly unprovenTx: VersionedUnprovenTransaction;
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
@@ -59,59 +61,99 @@ export type SubmitTxProviders<C extends Contract.Any, PCK extends Contract.Prova
   'privateStateProvider'
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function logTransaction(circuitId: string | string[] | undefined, tx: Transaction<any, any, any>) {
-  if (!__DEBUG__) {
-    return;
-  }
-
-  const debug = process.env.MN_DEBUG?.toLowerCase();
-  if (debug !== 'true') {
-    return;
-  }
-
-  const circuitIds = Array.isArray(circuitId) ? circuitId.join('-') : circuitId ?? 'unknown-circuit';
-
-  try {
-    console.log(`Submit tx: ${circuitIds} : ${tx}`);
-    const serialized = tx.serialize();
-
-    console.log(`Serialized tx has length ${serialized.length}`);
-  } catch (error) {
-    console.error('Failed to write debug transaction logs:', error instanceof Error ? error.message : String(error));
-  }
+/** @internal Configuration for {@link submitLedger9PayloadAsync}. */
+export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
+  readonly unprovenTx: UnprovenTransaction;
+  readonly circuitId?: PCK | PCK[];
 }
 
-async function submitTxCore<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+/**
+ * @internal Proves, balances and submits a v9 transaction as v9 payloads, for the pipelines that
+ * built a v9 transaction. Reads no head.
+ */
+export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: Ledger9PayloadSubmitOptions<PCK>
+): Promise<string> => {
+  // Before the first provider call: a provider set that cannot carry a v9 payload has to be
+  // refused before a proof is paid for, not at `balanceTx`.
+  assertProvidersSupportEra('v9', providers);
+  assertValidMidnightConfig(providers.config);
+  return proveBalanceSubmitLedger9Payload(providers, options.unprovenTx, options.circuitId);
+};
+
+/** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */
+export const submitLedger9Payload = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: Ledger9PayloadSubmitOptions<PCK>
+): Promise<FinalizedTxData> => {
+  const txId = await submitLedger9PayloadAsync(providers, options);
+  return requireLedger9Record(
+    await providers.publicDataProvider.watchForTxData(txId),
+    'watchForTxData',
+    options.circuitId
+  );
+};
+
+const transactionEra = (unprovenTx: VersionedUnprovenTransaction): LedgerVersion => {
+  if (typeof unprovenTx !== 'object' || unprovenTx === null) {
+    throw new UntaggedPayloadError('submitTx', unprovenTx);
+  }
+  switch (unprovenTx.version) {
+    case 'v8':
+    case 'v9':
+      return unprovenTx.version;
+    default: {
+      const unhandled: never = unprovenTx;
+      throw new UntaggedPayloadError('submitTx', unhandled);
+    }
+  }
+};
+
+const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
+  v8: 'retained-era-transaction-on-post-fork-head',
+  v9: 'current-era-transaction-on-pre-fork-head'
+};
+
+const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
-): Promise<string> {
-  const { circuitId } = options;
-  // Before the first provider call, not after it. This flow is current-era only —
-  // every payload below is tagged `'v9'` — so a provider set missing that era
-  // cannot carry the transaction, and finding out at `balanceTx` would mean
-  // paying for a proof first.
-  assertProvidersSupportEra(CURRENT_LEDGER_VERSION, providers);
+): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
+  const { unprovenTx, circuitId } = options;
+  const era = transactionEra(unprovenTx);
   assertValidMidnightConfig(providers.config);
-  const provenTx = requireLedger9(
-    await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
-    'proveTx',
-    circuitId
-  );
-  const toSubmit = requireLedger9(
-    await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }, intentTtl(providers.config)),
-    'balanceTx',
-    circuitId
-  );
-  if (__DEBUG__) {
-    logTransaction(circuitId, toSubmit);
+  assertProvidersSupportEra(era, providers);
+  const { head } = await readHeadEra(providers.publicDataProvider);
+  if (era !== head) {
+    throw new EraArtifactMismatchError(ERA_MISMATCH_REASON[era]);
   }
-  return providers.midnightProvider.submitTx({ version: 'v9', tx: toSubmit });
-}
+  const txId =
+    unprovenTx.version === 'v9'
+      ? await proveBalanceSubmitLedger9Payload(providers, unprovenTx.tx, circuitId)
+      : await proveBalanceSubmitLedger8Payload(providers, unprovenTx.txBytes, circuitId);
+  return { txId, head };
+};
 
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
  * the given providers, according to the given options.
+ *
+ * ## Which era it runs on
+ *
+ * It reads the network head once and runs on the head's era. The input's `version` only says how
+ * to read the input:
+ *
+ * | input | head | what happens |
+ * |---|---|---|
+ * | v9 | v9 | proved, balanced and submitted as v9 payloads |
+ * | v8 | v8 | proved, balanced and submitted as v8 payloads (`txBytes`) |
+ * | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
+ * | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+ *
+ * The head is read before proving, not again. If the network crosses the hard fork while the
+ * transaction is being proved, the node refuses it and the refusal arrives as
+ * `ProviderFailedError` from `submitTx`, not as a fork diagnosis. Read the head again and rebuild
+ * the transaction for the new era.
  *
  * ## Blocking Behavior
  *
@@ -144,25 +186,31 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
  *
- * @returns A promise that resolves with the finalized transaction data for the invocation,
- *          or rejects if an error occurs along the way.
+ * @returns A promise that resolves with the finalized transaction data, tagged with the era of
+ *          the head it ran on, or rejects if an error occurs along the way.
+ * @throws UntaggedPayloadError for an untagged transaction, before the head is read.
+ * @throws EraArtifactMismatchError for a transaction whose era is not the head's.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ * @throws EraInvariantViolationError if the record's era differs from the head's. The
+ *         transaction is already on chain; its id is on `txId`.
  */
 export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
-): Promise<FinalizedTxData> => {
-  const txId = await submitTxCore(providers, options);
-  return requireLedger9Record(
-    await providers.publicDataProvider.watchForTxData(txId),
-    'watchForTxData',
-    options.circuitId
-  );
+): Promise<VersionedFinalizedTxData> => {
+  const { txId, head } = await submitOnHead(providers, options);
+  const record = requireTaggedRecord(await providers.publicDataProvider.watchForTxData(txId), 'watchForTxData');
+  if (record.version !== head) {
+    throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.version, undefined, txId);
+  }
+  return record;
 };
 
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
  * the given providers, according to the given options. Unlike {@link submitTx},
  * this function returns immediately after submission without waiting for finalization.
+ * It reads the head and routes on it exactly as {@link submitTx} does.
  *
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
@@ -170,10 +218,14 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
  * @returns A promise that resolves with the transaction ID immediately after submission,
  *          or rejects if an error occurs during preparation or submission.
  *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
+ * @throws UntaggedPayloadError for an untagged transaction, before the head is read.
+ * @throws EraArtifactMismatchError for a transaction whose era is not the head's.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
  */
 export const submitTxAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
 ): Promise<string> => {
-  return submitTxCore(providers, options);
+  const { txId } = await submitOnHead(providers, options);
+  return txId;
 };

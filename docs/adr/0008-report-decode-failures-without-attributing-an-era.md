@@ -101,3 +101,13 @@ Issue #1489. `EraUnresolvableError` is `UnknownRecordEraError`
 `IndexerDataError` kind `'unresolvable-era'` is `'unknown-record-era'`. The
 decision is unchanged, and the sections above keep the names that were current
 when they were written.
+
+## Amendment — the raw reads stop refusing an unplaceable block (2026-10-16)
+
+Issue #1508. `RawContractState.version` is read from the envelope of `raw`, so the raw reads no
+longer need to place `protocolVersion` on the era timeline. A `protocolVersion` this build cannot
+place withholds only the upper-bound check, as on the decoding reads, and the `IndexerDataError`
+kind `'unknown-record-era'` is removed. `UnknownRecordEraError` and its code stay, for the reads
+that still date a record by its block. A `protocolVersion` that is not a non-negative integer is still
+refused, as kind `'malformed-protocol-version'`, because the raw record carries it.
+

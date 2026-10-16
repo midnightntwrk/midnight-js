@@ -89,18 +89,23 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                 got.
    * @param contractAddress The contract the payload was read for, when the
    *                        flow reads one contract's records.
+   * @param txId The transaction the payload belongs to, when it is already on
+   *             chain. A caller needs it to reconcile a transaction it cannot
+   *             take back.
    */
   constructor(
     readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
     readonly received?: LedgerVersion,
-    readonly contractAddress?: string
+    readonly contractAddress?: string,
+    readonly txId?: string
   ) {
     super(
       `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
-        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}. ` +
+        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}` +
+        `${txId === undefined ? '' : ` (transaction '${txId}', already submitted)`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -113,9 +118,9 @@ export class EraInvariantViolationError extends MidnightJsError {
  *
  * One error class over every reason rather than a class per reason: a caller catches "this operation
  * cannot be placed on a ledger era" as one condition, and the reason is what tells it which mistake
- * it made. Two of the reasons are about the CALLER's contract object and two are about the artifact
- * set its ZK config provider serves, which is one condition from the caller's side: something in the
- * bundle it passed does not belong to the era it is being run against.
+ * it made. Some reasons are about the CALLER's contract object, some about the artifact set its ZK
+ * config provider serves, and two about a transaction handed to `submitTx`. From the caller's side
+ * that is one condition: something it passed does not belong to the era it is being run against.
  */
 export type EraArtifactMismatchReason =
   /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
@@ -124,6 +129,10 @@ export type EraArtifactMismatchReason =
   | 'unrecognised-contract-shape'
   /** A current-era artifact, on a network head that is still pre-fork. */
   | 'current-era-artifact-on-pre-fork-head'
+  /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
+  | 'current-era-transaction-on-pre-fork-head'
+  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
+  | 'retained-era-transaction-on-post-fork-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
   /** A ZK config provider that cannot report a declared runtime version at all. */
@@ -149,6 +158,14 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'This contract was produced by the current Compact toolchain, but the network head is still on the ' +
     'pre-fork ledger era, which cannot execute it. Run this operation against a contract produced by the ' +
     'retained toolchain until the network head has crossed the fork.',
+  'current-era-transaction-on-pre-fork-head':
+    'A v9 transaction was handed to submitTx, but the network head is still on the pre-fork ledger era, ' +
+    'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
+    'until the network head has crossed the fork.',
+  'retained-era-transaction-on-post-fork-head':
+    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
+    'v9 ledger and submit it as { version: \'v9\', tx }.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':
@@ -250,6 +267,37 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
       options
     );
     this.name = 'RetainedArtifactOnCurrentEraStateError';
+  }
+}
+
+/**
+ * An error indicating that the contract at this address is held on chain in a state the v8 ledger
+ * wrote, while the operation runs only against states the v9 ledger wrote.
+ *
+ * The contracts-level counterpart of `Ledger8ValueUnsupportedError` from `midnight-js-utils`, for
+ * the reads this package makes on the caller's behalf: it names the contract and the operation,
+ * because the caller has no `switch` of its own to put the v8 branch in.
+ */
+export class Ledger8ContractStateUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED];
+
+  /**
+   * @param contractAddress The contract whose on-chain state was read.
+   * @param operation The operation that handles only v9 states.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly operation: string
+  ) {
+    super(
+      `The contract at '${contractAddress}' is held on chain in a state written by the v8 ledger, and ` +
+        `${operation} runs only against states written by the v9 ledger. Before the hard fork, run the ` +
+        `operation through the contract the retained Compact toolchain produced. After the fork, the ` +
+        `indexer serves every contract's state translated to v9 from version 4.4.0-rc.6 on: upgrade an ` +
+        `older indexer.`
+    );
+    this.name = 'Ledger8ContractStateUnsupportedError';
   }
 }
 
@@ -409,9 +457,9 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
 }
 
 /**
- * An error indicating that a provider rejected a retained-era transaction at
- * one of the three transaction methods, with the provider's own failure
- * SANITIZED onto `cause`.
+ * An error indicating that a provider rejected a transaction at one of the
+ * three transaction methods, with the provider's own failure SANITIZED onto
+ * `cause`. Raised on every submit path, whatever era the transaction belongs to.
  *
  * ## Why the external failure does not travel as-is
  *
@@ -429,27 +477,27 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8ProviderFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED];
+export class ProviderFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PROVIDER_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PROVIDER_FAILED];
 
   /**
    * @param method The provider method that rejected.
-   * @param circuitId The circuit this flow was running.
+   * @param circuitId The circuit, or circuits, the transaction runs, when known.
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
     readonly method: ProviderMethod,
-    readonly circuitId: string,
+    readonly circuitId: string | readonly string[] | undefined,
     cause: Error
   ) {
     super(
-      `${method} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+      `${method} rejected the transaction${formatCircuitClause(circuitId) ?? ''}. The provider's own failure ` +
         'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
         'material; read the provider\'s own logs for the unredacted detail.',
       { cause }
     );
-    this.name = 'Ledger8ProviderFailedError';
+    this.name = 'ProviderFailedError';
   }
 }
 
@@ -549,7 +597,7 @@ const STALE_HEAD_MESSAGES: Readonly<
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
- * {@link Ledger8ProviderFailedError}, which is the form it arrives in.
+ * {@link ProviderFailedError}, which is the form it arrives in.
  *
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.

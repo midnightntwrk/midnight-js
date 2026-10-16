@@ -521,13 +521,13 @@ Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
 HANDLES differ in only four places: the retained handle has no maintenance
 interfaces (the retained era has no governance API), its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`, its
+`{ public }` where the current era's is `{ era, public, private }`, its
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
 recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates` do not support the retained era: they decode with the current-era deserializer and refuse anything else, so
-for a contract whose state envelope is still pre-fork, read the state through
-`queryRawContractState` and narrow on its `version`, or read
-`public.nextContractStateEncoded` off a call result.
+data at a different path (table below). And `getStates` / `getPublicStates`
+return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
+ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
+on `version` before reading the state.
 
 Where a deployed handle keeps the deployer's data. The paths stay different
 until the retained era is removed, so branch on `deployed.era` before reading
@@ -776,6 +776,37 @@ See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-v
 
 ---
 
+## Step 18 — Narrow the contract-state reads, `getPublicStates` and `submitTx`
+
+The contract-state reads, `getPublicStates` / `getStates` and `submitTx` are version-tagged (#1508).
+In code that handles only v9, narrow with `requireLedger9`:
+
+```ts
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+// Before
+const state = await publicDataProvider.queryContractState(address);
+const [zswap, contractState, params] = (await publicDataProvider.queryZSwapAndContractState(address))!;
+await submitTx(providers, { unprovenTx });
+
+// After
+const { state } = requireLedger9(
+  (await publicDataProvider.queryContractState(address))!,
+  'readCounter'
+);
+const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
+  (await publicDataProvider.queryZSwapAndContractState(address))!,
+  'readCounter'
+);
+await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
+```
+
+Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
+`version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
+any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
+match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
+[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -799,3 +830,4 @@ See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-v
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
 - [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.
+- [ ] Every contract-state read, `getPublicStates` / `getStates` result and `submitTx` input is version-tagged and narrowed (`switch` + `assertNever`, or `requireLedger9`).

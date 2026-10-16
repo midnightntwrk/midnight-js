@@ -82,19 +82,22 @@ A name belongs in the namespace when BOTH hold:
 
 The second clause is what the namespace's name commits to: it is `Ledger8`, the
 ERA, not the fork window. The error classes pass both clauses and are inside: a
-consumer catching `Ledger8.ProviderFailedError` has written code that only means
+consumer catching `Ledger8.CallTxFailedError` has written code that only means
 anything while that pipeline runs.
 
 A name that serves BOTH eras stays on the flat surface, so a consumer that only
 RECEIVES results never imports the transitional half:
 
-- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx` and `isLedger8Result` --
-  the union a shared handler declares, and the guard that narrows it.
+- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
+  `AnyEraDeployedContract` and `isLedger8Result` -- the unions a shared handler
+  declares, and the guard that narrows them.
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
 - `UnknownResultEraError` -- raised for a result tagged with neither era,
   which is not a retained-era condition.
+- `ProviderFailedError` -- a provider's rejection at `proveTx`, `balanceTx` or
+  `submitTx`, sanitized the same way on every submit path, whatever the era.
 
 ## A `Ledger8` name that is NOT in here
 

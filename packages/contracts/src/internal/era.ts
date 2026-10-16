@@ -33,7 +33,12 @@ import {
   type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  contractStateEnvelopeVersion,
+  type Ledger9Variant,
+  UnrecognisedEraTagError,
+  ZkArtifactContractInfoError
+} from '@midnight-ntwrk/midnight-js-utils';
 
 import {
   EraArtifactMismatchError,
@@ -41,6 +46,7 @@ import {
   HeadReadFailedError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
+  Ledger8ContractStateUnsupportedError,
   Ledger8DeployOnLedger9Error,
   type StaleHeadOperationKind} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -60,7 +66,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  * @throws EraInvariantViolationError if the payload carries the v8 variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireLedger9<T>(
+export function unwrapLedger9ProviderResult<T>(
   payload: VersionedTransaction<T>,
   method: TransactionMethod,
   circuitId?: string | readonly string[]
@@ -84,7 +90,7 @@ export function requireLedger9<T>(
  * Unwraps the RETAINED variant of a versioned payload a provider returned, on a
  * flow that submitted the retained variant.
  *
- * The mirror of {@link requireLedger9}, and it exists for the same reason: the provider
+ * The mirror of {@link unwrapLedger9ProviderResult}, and it exists for the same reason: the provider
  * method types do not tie a provider's output era to its input era, so a flow that
  * submitted retained-era bytes has to check that retained-era bytes came back.
  *
@@ -106,7 +112,7 @@ export function requireLedger9<T>(
  * @throws EraInvariantViolationError if the payload carries the current-era variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireLedger8<T>(
+export function unwrapLedger8ProviderResult<T>(
   payload: VersionedTransaction<T>,
   method: TransactionMethod,
   circuitId?: string | readonly string[]
@@ -125,6 +131,36 @@ export function requireLedger8<T>(
     }
   }
 }
+
+const isLedger9State = <T extends { readonly version: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
+  value.version === 'v9';
+
+/**
+ * Narrows a contract state this package read on the caller's behalf to its v9 variant.
+ *
+ * @param value The era-tagged state the read surface returned.
+ * @param contractAddress The contract whose state it is, named in the refusal.
+ * @param operation The operation that handles only v9 states, named in the refusal.
+ * @returns The whole v9 variant.
+ * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the state.
+ * @throws UnrecognisedEraTagError if the value is `null`, has no `version`, or carries an unknown era.
+ */
+export const requireLedger9ContractState = <T extends { readonly version: LedgerVersion }>(
+  value: T,
+  contractAddress: string,
+  operation: string
+): Ledger9Variant<T> => {
+  if (typeof value !== 'object' || value === null) {
+    throw new UnrecognisedEraTagError(operation, value);
+  }
+  if (isLedger9State(value)) {
+    return value;
+  }
+  if (value.version === 'v8') {
+    throw new Ledger8ContractStateUnsupportedError(contractAddress, operation);
+  }
+  throw new UnrecognisedEraTagError(operation, value);
+};
 
 /**
  * Refuses a finalized-transaction record that carries no readable era tag,
@@ -681,9 +717,9 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * `RawContractState.version` cannot answer this either: it is derived from the record's
- * `protocolVersion` alone and is explicitly not a verified statement about the envelope the bytes
- * carry (see its own documentation in `packages/types/src/raw-contract-state.ts`).
+ * The envelope is read here from the bytes themselves rather than taken from
+ * `RawContractState.version`: the decoder chosen below is chosen for these exact bytes, and a
+ * provider outside this framework may tag a record wrongly.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
  * `@midnight-ntwrk/midnight-js-utils`.

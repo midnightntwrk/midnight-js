@@ -16,7 +16,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { deployContract, Ledger8, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, type Ledger8, ProviderFailedError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
@@ -322,9 +322,9 @@ describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => 
         // `SubmissionError: Transaction submission error`, with no balance text to
         // match on. The method plus the successful send below is what separates "the
         // ledger compared the amount" from "retained sends fail".
-        expect(rejection).toBeInstanceOf(Ledger8.ProviderFailedError);
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
         expect(
-          rejection instanceof Ledger8.ProviderFailedError
+          rejection instanceof ProviderFailedError
             ? { circuitId: rejection.circuitId, method: rejection.method }
             : rejection
         ).toEqual({ circuitId: 'sendUnshieldedToUserTest', method: 'submitTx' });

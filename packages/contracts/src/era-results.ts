@@ -35,11 +35,15 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
+import type { DeployedContract } from './deploy-contract';
 import { UnknownResultEraError } from './errors';
+import type { FoundContract } from './find-deployed-contract';
 import type {
   Ledger8CircuitId,
   Ledger8Contract,
+  Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
+  Ledger8FoundContract,
   Ledger8SubmittedCallTx
 } from './ledger8-contract';
 import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
@@ -83,6 +87,31 @@ export type AnyEraSubmittedCallTx =
       >;
     })
   | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+
+/**
+ * A contract found on chain by `findDeployedContract`, in either era.
+ *
+ * Generic over both contract types, because a handle's call interfaces are typed by its contract:
+ * a found contract is not assignable to the widest instantiation the call-result unions use.
+ *
+ * @typeParam C - The current-era contract.
+ * @typeParam L8 - The retained-era contract.
+ * @see {@link isLedger8Result} to narrow it.
+ */
+export type AnyEraFoundContract<C extends Contract.Any, L8 extends Ledger8Contract> =
+  | FoundContract<C>
+  | Ledger8FoundContract<L8>;
+
+/**
+ * A contract deployed by `deployContract`, in either era.
+ *
+ * @typeParam C - The current-era contract.
+ * @typeParam L8 - The retained-era contract.
+ * @see {@link isLedger8Result} to narrow it.
+ */
+export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Contract> =
+  | DeployedContract<C>
+  | Ledger8DeployedContract<L8>;
 
 /**
  * What the guard narrows a result to.

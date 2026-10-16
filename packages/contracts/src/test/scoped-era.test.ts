@@ -43,7 +43,7 @@ import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupporte
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
-import { submitTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
@@ -107,7 +107,7 @@ describe('per-scope era resolution', () => {
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
     vi.mocked(createUnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
-    vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+    vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
   const callOptions = (): CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
@@ -148,7 +148,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = new Error('node unreachable');
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
     // Act
@@ -170,7 +170,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = new HeadReadFailedError('head read failed');
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
     // Act
@@ -192,7 +192,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
 
     // Act
     const error = await withContractScopedTransaction(providers, async (txCtx) => {
@@ -237,7 +237,7 @@ describe('per-scope era resolution', () => {
     // composed half against each era.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(createUnprovenCallTx).toHaveBeenCalledTimes(2);
-    expect(submitTx).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a scope on a PRE-FORK head, before the scope body runs at all', async () => {
@@ -260,7 +260,7 @@ describe('per-scope era resolution', () => {
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
     expect(createUnprovenCallTx).not.toHaveBeenCalled();
-    expect(submitTx).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
   it('refuses a PRE-FORK head WITHOUT acquiring that era, and still refuses when the acquisition would fail', async () => {
@@ -327,7 +327,7 @@ describe('per-scope era resolution', () => {
     });
 
     expect(finalized.public.status).toBe('SucceedEntirely');
-    expect(submitTx).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
   it('admits a scope on a post-fork head reported by a LATER node minor release: eras decide, not integers', async () => {
@@ -364,7 +364,7 @@ describe('per-scope era resolution', () => {
 
     // NOTHING was submitted: the outer scope owns the submission, exactly as
     // before. A fresh scope would have submitted here.
-    expect(submitTx).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
     // And no head read either -- a nested call inherits the outer scope's one
     // reading rather than taking a second.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();

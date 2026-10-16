@@ -21,12 +21,7 @@ import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  ContractNotFoundError,
-  ContractTypeError,
-  EraInvariantViolationError,
-  PrivateStateNotFoundError
-} from '../errors';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -72,7 +67,7 @@ describe('findDeployedContract', () => {
       version: 'v9',
       state: contractState
     });
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({ version: 'v9', state: contractState });
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
@@ -255,6 +250,22 @@ describe('findDeployedContract', () => {
       expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({
+        version: 'v8',
+        stateBytes: new Uint8Array([1])
+      });
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 
     it('still refuses an address with no current contract state', async () => {

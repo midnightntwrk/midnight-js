@@ -18,7 +18,14 @@ import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runti
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { type AnyProvableCircuitId, type LoggerProvider, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type AnyProvableCircuitId,
+  type Ledger9PublicStates,
+  type LoggerProvider,
+  type PrivateStateId,
+  SucceedEntirely
+} from '@midnight-ntwrk/midnight-js-types';
+import type { Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -27,8 +34,8 @@ import {
   MixedEraScopeError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError} from '../errors';
-import { type ContractStates,type PublicContractStates } from '../get-states';
-import { submitTx, type SubmitTxOptions } from '../submit-tx';
+import { type ContractStates } from '../get-states';
+import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
@@ -43,7 +50,7 @@ export interface CachedStateIdentity {
 /** @internal */
 export interface CachedStatesWithIdentity<PS> {
   readonly identity: CachedStateIdentity;
-  readonly states: ContractStates<PS> | PublicContractStates;
+  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
   /**
    * The hash of the block the states were read as of. A scoped transaction is a single chain
    * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
@@ -55,7 +62,7 @@ export interface CachedStatesWithIdentity<PS> {
 
 /** @internal The states pinned to a block within a scoped transaction. */
 export interface PinnedContractStates<PS> {
-  readonly states: ContractStates<PS> | PublicContractStates;
+  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
   readonly blockHash: string;
 }
 
@@ -71,9 +78,9 @@ export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/C
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
 const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
-  current: SubmitTxOptions<PCK> | undefined,
-  next: SubmitTxOptions<PCK>
-): SubmitTxOptions<PCK> => {
+  current: Ledger9PayloadSubmitOptions<PCK> | undefined,
+  next: Ledger9PayloadSubmitOptions<PCK>
+): Ledger9PayloadSubmitOptions<PCK> => {
   if (!current) {
     return next;
   }
@@ -167,7 +174,7 @@ export class TransactionContextImpl<
   currentUnsubmittedCall:
     | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
     | undefined;
-  submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
+  submitTxOptions: Ledger9PayloadSubmitOptions<PCK> | undefined = undefined;
 
   constructor(
     providers: ContractProviders<C, PCK>,
@@ -188,7 +195,7 @@ export class TransactionContextImpl<
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
    * for validated access to cached states within scoped transactions.
    */
-  getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
+  getCurrentStates(): Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates | undefined {
     return this.cachedStates?.states;
   }
 
@@ -220,7 +227,7 @@ export class TransactionContextImpl<
       throw new InvalidArgumentError('No calls were submitted.');
     }
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
-    const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
+    const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
       throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
     }
@@ -240,7 +247,7 @@ export class TransactionContextImpl<
   }
 
   [CacheStates](
-    states: ContractStates<Contract.PrivateState<C>> | PublicContractStates,
+    states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates,
     identity: CachedStateIdentity,
     blockHash: string
   ): void {
@@ -273,7 +280,7 @@ export class TransactionContextImpl<
     // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
     // stays pinned to the block its states were first read at.
     this[CacheStates](
-      { contractState, zswapChainState, ledgerParameters, privateState },
+      { version: 'v9', contractState, zswapChainState, ledgerParameters, privateState },
       this.cachedStates.identity,
       this.cachedStates.blockHash
     );

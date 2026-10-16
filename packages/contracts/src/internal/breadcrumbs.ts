@@ -109,12 +109,10 @@ export interface PipelineSelectionBreadcrumb {
 /**
  * The fetched contract state was dated from its envelope tag.
  *
- * The byte-level answer, and NOT the same claim as `RawContractState.version`.
+ * The byte-level answer, read from the bytes themselves.
  *
  * Carries no head integer and no reading provenance: dating an envelope is not
  * a head reading.
- *
- * @see {@link Breadcrumbs} for the difference from `RawContractState.version`.
  */
 export interface EncodingBreadcrumb {
   readonly decision: 'encoding';

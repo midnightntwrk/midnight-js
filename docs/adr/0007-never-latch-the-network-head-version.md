@@ -192,3 +192,11 @@ The gap is real, it is unchanged, and it is recorded here rather than closed.
   all for deploys, which read none. It would also silently substitute an answer
   about specific bytes for an answer about the network, which is the conflation
   the decision above forbids.
+
+## Amendment — the raw record takes its era from the envelope (2026-10-16)
+
+Issue #1508. `RawContractState.version` is no longer derived from `protocolVersion`: it is the era
+read off the envelope of `raw`, the era that wrote the bytes. `protocolVersion` still arrives with
+the data, per record, and still dates the block; on an enforced read it bounds the envelope from
+above. `VersionedFinalizedTxData.version` is still derived from `protocolVersion`, because a
+transaction is written by the era of the block that includes it.

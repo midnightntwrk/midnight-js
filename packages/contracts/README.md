@@ -77,9 +77,22 @@ await submitCallTx(providers, callOptions);
 // Submit a deploy transaction
 await submitDeployTx(providers, deployOptions);
 
-// Generic transaction submission
-await submitTx(providers, txData);
+// Generic transaction submission. Tag the transaction with the era that wrote it;
+// submitTx reads the network head and accepts only a transaction of the head's era.
+await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
+await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
 ```
+
+`submitTx` reads the network head once. The transaction's era must match it:
+
+| input | head | what happens |
+|---|---|---|
+| v9 | v9 | proved, balanced and submitted as v9 payloads |
+| v8 | v8 | proved, balanced and submitted as v8 payloads |
+| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
+| v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+
+It returns `VersionedFinalizedTxData`, tagged with the head's era.
 
 ### Maintenance Operations
 
@@ -120,10 +133,20 @@ const publicStates = await getPublicStates(providers.publicDataProvider, contrac
 const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 ```
 
-`getStates` and `getPublicStates` decode with the current ledger era, so they
-refuse a contract deployed before the fork that has not been written to since.
-For those, and wherever a contract's era is not known in advance, use
-`getAnyEraContractState`:
+`getStates` and `getPublicStates` return the states tagged with the ledger era
+that wrote them (`version: 'v8' | 'v9'`). A v9 block's states are decoded; a v8
+block's contract state and ledger parameters come back as the stored bytes
+(`stateBytes`, `ledgerParametersBytes`). Narrow on `version`, or use
+`requireLedger9` from `@midnight-ntwrk/midnight-js-utils` when your code handles
+only v9:
+
+```typescript
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+const { contractState, ledgerParameters } = requireLedger9(publicStates, 'readCounter');
+```
+
+To decode a contract state of either era, use `getAnyEraContractState`:
 
 ```typescript
 import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
@@ -136,7 +159,7 @@ import { Counter } from './managed/counter/contract/index.cjs';
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 
 if (read !== null) {
-  // `read.envelopeVersion` is the era that WROTE the bytes, read off the
+  // `read.version` is the era that WROTE the bytes, read off the
   // envelope — not the era of the block that dated the read.
   // `read.state` is encoded, so decode it with your own contract's runtime.
   const ledgerState = Counter.ledger(StateValue.decode(read.state));

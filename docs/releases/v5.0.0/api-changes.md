@@ -51,7 +51,7 @@ export interface ContractEventAddress {
 export interface ContractEventBase {
   readonly id: number;              // monotonic indexer cursor; inclusive resumption point
   readonly maxId: number;           // highest event id known (events tip)
-  readonly version: number;         // payload schema version
+  readonly payloadVersion: number;  // payload schema version, not a ledger era (renamed from `version` in #1508)
   readonly contractAddress: ContractAddress;
   readonly transactionId: number;   // indexer row id — NOT the chain tx hash
   readonly raw: string;             // opaque hex VersionedLogItem, verbatim
@@ -174,7 +174,7 @@ export type PositionedRecord<T> = {
 };
 
 interface PublicDataProvider {
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<ContractState>>;
+  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<VersionedContractState>>; // VersionedContractState since #1508
   rawContractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<RawContractState>>;
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<UnshieldedBalances>>;
 }
@@ -244,10 +244,11 @@ export class EraInvariantViolationError extends Error {
   readonly circuitId?: string | readonly string[];
   readonly expected: LedgerVersion;
   readonly received?: LedgerVersion;
+  readonly contractAddress?: string;
 }
 ```
 
-`submitTx` narrows internally, so its return type is unchanged.
+`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 

@@ -27,6 +27,7 @@
 import { Buffer } from 'node:buffer';
 import { createInterface } from 'node:readline';
 import process from 'node:process';
+import { clearTimeout, setTimeout } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
 
 // WHERE EACH NAME COMES FROM IS PART OF WHAT THIS FILE TESTS. A consumer holds
@@ -114,7 +115,7 @@ for (const event of ['uncaughtException', 'unhandledRejection']) {
 /**
  * An error, its stack, and every `cause` beneath it.
  *
- * The chain is the point. `Ledger8ProviderFailedError` says only that a provider
+ * The chain is the point. `ProviderFailedError` says only that a provider
  * rejected and puts the provider's own failure -- class name intact, message
  * redacted -- on `cause`, so a report that prints `error.message` alone says a
  * transaction was refused and never says by what. That is what happened on the
@@ -299,6 +300,51 @@ const sampleEnvelope = async (publicDataProvider, contractAddress, samples, ever
  * rather than that the window closed early.
  */
 const STREAM_WATCH_MS = 60_000;
+
+/**
+ * Reports a version-tagged contract state: its era, and for a v9 state the number of
+ * operations the decoded state carries.
+ */
+const describeVersionedState = (state) =>
+  state.version === 'v9'
+    ? { version: 'v9', decoded: true, operations: state.state.operations().length }
+    : { version: state.version, decoded: false, stateBytes: state.stateBytes.length };
+
+/**
+ * Collects a contract-state stream's records up to and including its first v9 one.
+ *
+ * Rejects if the stream errors, completes, or emits no v9 record within `ms` -- each of those is
+ * the stream failing to carry a contract across the fork.
+ */
+const recordsUntilFirstLedger9 = (publicDataProvider, contractAddress, streamConfig, ms) =>
+  new Promise((resolve, reject) => {
+    const seen = [];
+    let subscription;
+    let done = false;
+    const finish = (settle) => {
+      if (done) {
+        return;
+      }
+      done = true;
+      clearTimeout(timer);
+      process.nextTick(() => subscription?.unsubscribe());
+      settle();
+    };
+    const timer = setTimeout(
+      () => finish(() => reject(new Error(`no v9 record within ${ms} ms; saw ${JSON.stringify(seen)}`))),
+      ms
+    );
+    subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
+      next: ({ value, blockHeight }) => {
+        seen.push({ version: value.version, blockHeight });
+        if (value.version === 'v9') {
+          finish(() => resolve(seen));
+        }
+      },
+      error: (error) => finish(() => reject(error)),
+      complete: () => finish(() => reject(new Error(`the stream completed; saw ${JSON.stringify(seen)}`)))
+    });
+  });
 
 /**
  * Subscribes to a contract-state stream and records what it does, without judging it.
@@ -996,11 +1042,8 @@ const deployRetained = async (key, providers) => {
         });
   const state = await waitForContract(providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
 
-  // `deployTxData` is a `VersionedFinalizedTxData`, which carries `txId` at the
-  // top level on BOTH variants -- not under `.public`, which is where the CURRENT
-  // era's `DeployedContract` puts it. The two results differ exactly here.
   return {
-    txId: deployed.deployTxData.txId,
+    txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw),
@@ -1154,13 +1197,10 @@ const readRetainedLedger = async (key, providers, contractAddress, read) => {
     import(`@midnight-ntwrk/fork-retained-${key}/runtime`)
   ]);
 
-  // NOT `queryContractState`: that path decodes with the current era only and
-  // refuses a retained envelope by design. This one reads the era off the
-  // envelope's OWN tag and dispatches on it, which is what lets ONE call site
-  // serve both sides of the boundary -- a retained contract keeps its pre-fork
-  // envelope on a v9 chain until something writes to it, and the post-fork leg
-  // CALLS the contract before this read, which is that write. So one read
-  // answers `v8` below the boundary and `v9` above it.
+  // `getAnyEraContractState`, not `queryContractState`: this one hands back the
+  // raw bytes with the era read off the envelope's OWN tag, which is what the
+  // retained runtime below decodes. That lets ONE call site serve both sides of
+  // the boundary: one read answers `v8` below the boundary and `v9` above it.
   const state = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
@@ -1470,14 +1510,14 @@ await leg('pre-fork retained deploy', async () => {
   // why each of the three is written the way it is.
   const deployed = await deployContract(session.providers, { compiledContract: new Contract({}), args: [] });
 
-  deployment = { contractAddress: deployed.contractAddress };
+  deployment = { contractAddress: deployed.contractAddress, deployBlockHash: deployed.deployTxData.public.blockHash };
   // Announced so the driver can ask the NODE about the same contract. The
   // indexer's answer alone cannot separate "the ledger did not migrate" from
   // "the indexer serves the bytes of the last pre-fork action".
   process.stdout.write(`FORK_CONTRACT ${deployed.contractAddress}\n`);
   const state = await waitForContract(session.providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
   return {
-    txId: deployed.deployTxData.txId,
+    txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw)
@@ -1550,12 +1590,12 @@ if (MEASURES_READ_SURFACE) {
   await probe('pre-fork decoded read of the retained contract', () =>
     decodeAnswer(async () => {
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      // `admitted` is claimed ONLY on the non-null branch. `queryContractState`
-      // answers `null` before it reaches the decoder, so saying a decode was
-      // admitted there would assert something about a decoder that never ran.
+      // `queryContractState` answers `null` before it reaches the decoder, and a
+      // v8 state is handed back as its stored bytes, so `decoded` is claimed only
+      // for a v9 state.
       return state === null
-        ? { admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { admitted: true, operations: state.operations().length };
+        ? { decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : describeVersionedState(state);
     })
   );
 
@@ -1893,7 +1933,7 @@ const withHeadReadAnswer = (real, answer) =>
  * balancing.
  *
  * The injected rejection is uncoded, which is deliberate -- `atProviderMethod` wraps it
- * into the same `Ledger8ProviderFailedError` a provider's own failure would arrive
+ * into the same `ProviderFailedError` a provider's own failure would arrive
  * as, so the diagnosis sees exactly the shape it gates on.
  *
  * @param headAnswer What the head re-read should do once the submission has been
@@ -2072,7 +2112,7 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
       'a retained call parked across the fork is refused as STALE',
       parkedStaleHead
     );
-    // The whole chain, and the refusal on `cause`: a `Ledger8ProviderFailedError`
+    // The whole chain, and the refusal on `cause`: a `ProviderFailedError`
     // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
@@ -2143,33 +2183,44 @@ await leg('envelope tag across the boundary', () =>
 // and the question each answers is "what did this member do with THAT envelope"
 // -- which is the honest question either way.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-fork decoded read, through the current-era-only member', () =>
+  await probe('post-fork read through queryContractState', () =>
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
       return state === null
-        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, admitted: true, operations: state.operations().length };
+        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, ...describeVersionedState(state) };
     })
   );
 
-  // The era-agnostic read, on the same contract at the same moment. Without it
-  // the row above says a read failed; with it, the pair says which read fails and
-  // which succeeds -- which is what the package documentation has to tell a
-  // consumer. The two are SEPARATE REQUESTS, so each carries the envelope it
-  // actually saw; a reader compares them only when both report the same tag.
+  // The era-agnostic read, on the same contract at the same moment. The row above
+  // decodes only a v9 state and hands a v8 one back as bytes; this one decodes
+  // both, so the pair says what each read gives a consumer for the same envelope.
+  // The two are SEPARATE REQUESTS, so each carries the envelope it actually saw;
+  // a reader compares them only when both report the same tag.
   await probe('post-fork era-agnostic read of the same contract', () =>
     decodeAnswer(async () => {
       const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
       return state === null
         ? 'the indexer served no state'
         : {
-            envelopeVersion: state.envelopeVersion,
+            version: state.version,
             protocolVersion: state.protocolVersion,
             entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
           };
     })
   );
+
+  await leg('post-fork pinned read of the pre-fork state', async () => {
+    const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress, {
+      type: 'blockHash',
+      blockHash: deployment.deployBlockHash
+    });
+    if (state?.version !== 'v8') {
+      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.version ?? 'null'}'`);
+    }
+    return describeVersionedState(state);
+  });
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
     if (streamHeldAcrossTheBoundary === undefined) {
@@ -2323,13 +2374,13 @@ await leg('post-fork keep-state call through the same call site', async () => {
 // the contract is written to" -- and, for the `all` branch, whether the write
 // helps at all.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-write decoded read, through the current-era-only member', () =>
+  await probe('post-write read through queryContractState', () =>
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
       return state === null
-        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, admitted: true, operations: state.operations().length };
+        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, ...describeVersionedState(state) };
     })
   );
 
@@ -2343,6 +2394,21 @@ if (MEASURES_READ_SURFACE) {
     } finally {
       watch.stop();
     }
+  });
+
+  // After the keep-state call, not in the window: the replay waits for a v9 contract action, and
+  // the fork translation is not one. Before the first post-fork write a dormant contract has none.
+  await leg('post-fork contract-state stream replayed from before the fork', async () => {
+    const seen = await recordsUntilFirstLedger9(
+      session.providers.publicDataProvider,
+      deployment.contractAddress,
+      { type: 'blockHash', blockHash: deployment.deployBlockHash },
+      STREAM_WATCH_MS
+    );
+    if (seen[0]?.version !== 'v8') {
+      throw new Error(`expected the replay to start with a 'v8' record, got ${JSON.stringify(seen)}`);
+    }
+    return { records: seen };
   });
 
   await probe('post-write contract-state stream, from the deploy', async () => {
@@ -2475,7 +2541,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // `balanceTx` and `submitTx` both count, and `proveTx` does not: a
       // balance the contract cannot serve is refused either when the
       // transaction is balanced or when the node re-runs it, but never by the
-      // prover. `Ledger8ProviderFailedError` renders `<method> rejected`, and
+      // prover. `ProviderFailedError` renders `<method> rejected`, and
       // `describeError` walks the cause chain, so the shape is readable here.
       //
       // The framework's OWN guards -- `executeCircuit` refusing a balance, the

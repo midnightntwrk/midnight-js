@@ -54,7 +54,7 @@ export const findEvent = (events: ContractEvent[], eventType: ContractEventType)
 export const assertBaseEvent = (event: ContractEvent, contractAddress: ContractEvent['contractAddress']): void => {
   expect(typeof event.id).toBe('number');
   expect(typeof event.maxId).toBe('number');
-  expect(event.version).toBe(1);
+  expect(event.payloadVersion).toBe(1);
   expect(event.contractAddress).toBe(contractAddress);
   expect(typeof event.transactionId).toBe('number');
   expect(typeof event.raw).toBe('string');

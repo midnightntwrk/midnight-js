@@ -47,12 +47,13 @@ const cases: readonly Case[] = [
   ['EraInvariantViolationError', new errors.EraInvariantViolationError('submitTx'), CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION, 'INTERNAL'],
   ['EraArtifactMismatchError', new errors.EraArtifactMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH, 'USAGE'],
   ['RetainedArtifactOnCurrentEraStateError', new errors.RetainedArtifactOnCurrentEraStateError(ADDRESS), CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE, 'USAGE'],
+  ['Ledger8ContractStateUnsupportedError', new errors.Ledger8ContractStateUnsupportedError(ADDRESS, 'findDeployedContract'), CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED, 'USAGE'],
   ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
   ['HeadStateEraMismatchError', new errors.HeadStateEraMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
   ['LedgerParametersUnservedError', new errors.LedgerParametersUnservedError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED, 'ENVIRONMENT'],
   ['Ledger8ShieldedSpendUnsupportedError', new errors.Ledger8ShieldedSpendUnsupportedError('spend'), CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED, 'USAGE'],
-  ['Ledger8ProviderFailedError', new errors.Ledger8ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED, 'ENVIRONMENT'],
+  ['ProviderFailedError', new errors.ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.PROVIDER_FAILED, 'ENVIRONMENT'],
   ['StaleHeadError', new errors.StaleHeadError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.STALE_HEAD, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ head: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'head-read-failed', headReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
   ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
@@ -113,15 +114,15 @@ describe('contracts error classes', () => {
 
   it.each([
     ['EraInvariantViolationError', new errors.EraInvariantViolationError('watchForTxData'), 'watchForTxData'],
-    ['Ledger8ProviderFailedError', new errors.Ledger8ProviderFailedError('balanceTx', 'increment', CAUSE), 'balanceTx']
+    ['ProviderFailedError', new errors.ProviderFailedError('balanceTx', 'increment', CAUSE), 'balanceTx']
   ] as const)('%s reports the provider method it was raised for as `method`', (_name, error, method) => {
     expect([error.method, 'seam' in error]).toEqual([method, false]);
   });
 
-  it('Ledger8ProviderFailedError carries the provider-failed code', () => {
-    const error = new errors.Ledger8ProviderFailedError('proveTx', 'increment', CAUSE);
+  it('ProviderFailedError carries the provider-failed code', () => {
+    const error = new errors.ProviderFailedError('proveTx', 'increment', CAUSE);
 
-    expect([error.name, error.code]).toEqual(['Ledger8ProviderFailedError', 'MIDNIGHT_JS_C_LEDGER8_PROVIDER_FAILED']);
+    expect([error.name, error.code]).toEqual(['ProviderFailedError', 'MIDNIGHT_JS_C_PROVIDER_FAILED']);
   });
 
   it('the retained-deploy refusal carries the Ledger9 name and code', () => {

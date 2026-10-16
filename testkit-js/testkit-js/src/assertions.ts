@@ -31,7 +31,7 @@ import {
   type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 
 export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);
@@ -96,8 +96,9 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
-  expect(deployedLedgerState).toBeDefined();
-  expect(stateValueEqual(deployedLedgerState!.data.state, found.initialContractState.data.state)).toBeTruthy();
+  assertDefined(deployedLedgerState);
+  const { state } = requireLedger9(deployedLedgerState, 'expectFoundAndDeployedStatesEqual');
+  expect(stateValueEqual(state.data.state, found.initialContractState.data.state)).toBeTruthy();
   if (privateStateId) {
     const privateState = await providers.privateStateProvider.get(privateStateId);
     expect(privateState).toEqual(foundDeployTxData.private.initialPrivateState);
@@ -126,7 +127,9 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
-  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state)).toBeTruthy();
+  assertDefined(deployedLedgerState);
+  const { state } = requireLedger9(deployedLedgerState, 'expectSuccessfulDeployTx');
+  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, state.data.state)).toBeTruthy();
   expect(deployTxData.public.initialContractState).toBeTruthy();
 
   // Checks that the signing key and private state passed in the deploy configuration

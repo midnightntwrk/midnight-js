@@ -20,7 +20,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitRemoveVerifierKeyTx } from '../../governance/submit-remove-vk-tx';
 import { createUnprovenRemoveVerifierKeyTx } from '../../governance/unproven-tx';
-import { submitTx } from '../../submit-tx';
+import { submitLedger9Payload } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -71,13 +71,13 @@ describe('submitRemoveVerifierKeyTx', () => {
       const mockFinalizedTxData = createMockFinalizedTxData();
       const mockOperation = { verifierKey: new Uint8Array(32) };
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
 
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitRemoveVerifierKeyTx(
         mockProviders,
@@ -99,7 +99,7 @@ describe('submitRemoveVerifierKeyTx', () => {
         mockCoinPublicKey,
         mockProviders.config
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
   });
@@ -115,11 +115,11 @@ describe('submitRemoveVerifierKeyTx', () => {
         code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
         message: `No contract state found on chain for contract address '${mockContractAddress}'`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockContractState.operation = vi.fn().mockReturnValue({ verifierKey: new Uint8Array(32) });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
 
@@ -130,13 +130,13 @@ describe('submitRemoveVerifierKeyTx', () => {
         code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
         message: `Signing key for contract address '${mockContractAddress}' not found`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should reject before proving when the circuit is not registered on the contract', async () => {
       const circuitId = 'testCircuit';
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       await expect(
@@ -148,13 +148,13 @@ describe('submitRemoveVerifierKeyTx', () => {
       });
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should reject before proving when the operation carries no verifier key', async () => {
       const circuitId = 'testCircuit';
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockContractState.operation = vi.fn().mockReturnValue(new ContractOperation());
 
       await expect(
@@ -162,7 +162,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       ).rejects.toThrow(expect.objectContaining({ name: 'BlankVerifierKeySlotError', category: 'INTEGRITY', circuitId }));
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenRemoveVerifierKeyTx).not.toHaveBeenCalled();
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
@@ -173,12 +173,12 @@ describe('submitRemoveVerifierKeyTx', () => {
       const failedTxData = createMockFinalizedTxData(FailEntirely);
       const mockOperation = { verifierKey: new Uint8Array(32) };
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
+      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
 
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(failedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
       await expect(
         submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)

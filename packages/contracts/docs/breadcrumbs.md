@@ -114,9 +114,8 @@ it out rather than present-and-undefined.
 
 ### Encoding
 
-This is the byte-level answer, and it is not the same claim as
-`RawContractState.version`, which is derived from the record's own
-`protocolVersion` and is explicitly not a verified statement about the envelope.
+This is the byte-level answer, read from the bytes themselves rather than from
+`RawContractState.version`, which a provider outside this framework may set wrongly.
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the

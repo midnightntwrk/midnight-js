@@ -15,6 +15,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ContractStateUnsupportedError } from '../errors';
 import {
   getExistingSigningKey,
   queryExistingContractState,
@@ -48,12 +49,21 @@ describe('queryExistingContractState', () => {
 
   it('returns the on-chain state of the queried address', async () => {
     const state = createMockContractState();
-    const queryContractState = vi.fn().mockResolvedValue(state);
+    const queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state });
 
     const result = await queryExistingContractState({ queryContractState }, contractAddress);
 
     expect(result).toBe(state);
     expect(queryContractState).toHaveBeenCalledWith(contractAddress);
+  });
+
+  it('refuses a state written by the v8 ledger, naming the read', async () => {
+    const queryContractState = vi.fn().mockResolvedValue({ version: 'v8', stateBytes: new Uint8Array([1]) });
+
+    const rejection = queryExistingContractState({ queryContractState }, contractAddress);
+
+    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+    await expect(rejection).rejects.toMatchObject({ contractAddress, operation: 'queryExistingContractState' });
   });
 
   it('refuses an address with no state as ContractNotFoundError', async () => {

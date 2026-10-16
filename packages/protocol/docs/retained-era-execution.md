@@ -49,8 +49,8 @@ collapse to `null`. It costs one extra encode plus a deep comparison per call,
 and that is deliberate: the alternative is an execution path that can hand a circuit
 silently wrong data.
 
-It is CROSS-CODEC in production, which is the point. A contract an earlier
-post-fork call migrated carries a current-era envelope while still executing on
+It is CROSS-CODEC in production, which is the point. A contract the fork
+translated carries a current-era envelope while still executing on
 the retained toolchain, so `readLedger8Snapshot`
 (`packages/contracts/src/internal/ledger8-pipeline.ts`) reads it with the HEAD
 era's reader — the state is then encoded by ledger-v9 and decoded here by the

@@ -91,6 +91,7 @@ export {
   LedgerParametersUnservedError,
   MixedEraScopeError,
   PrivateStateNotFoundError,
+  ProviderFailedError,
   RetainedArtifactOnCurrentEraStateError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
@@ -118,8 +119,7 @@ export {
   ContractStates,
   getAnyEraContractState,
   getPublicStates,
-  getStates,
-  PublicContractStates} from './get-states';
+  getStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,
@@ -138,7 +138,13 @@ export {
 // The receiving half of the era surface: the overloads hand a caller one era's
 // result by inference, and these let a caller who RECEIVES either one declare a
 // parameter for both and narrow it by name.
-export { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from './era-results';
+export {
+  type AnyEraDeployedContract,
+  type AnyEraFinalizedCallTxData,
+  type AnyEraFoundContract,
+  type AnyEraSubmittedCallTx,
+  isLedger8Result
+} from './era-results';
 // The RETAINED era, whole, under one name. The entry-point overloads select these types by
 // inference, and inference alone does not let a consumer NAME one -- `Ledger8.FinalizedCallTxData`
 // is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a

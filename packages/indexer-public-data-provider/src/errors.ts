@@ -114,7 +114,8 @@ export type IndexerDataErrorContext =
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
-  | { kind: 'unknown-record-era'; protocolVersion: number };
+  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
+  | { kind: 'malformed-protocol-version'; protocolVersion: number };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -211,12 +212,12 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
   }
 
-  /**
-   * @param cause The protocol-layer failure, preserved so the resolution path
-   *              that refused the integer is still readable.
-   */
-  static unresolvableEra(protocolVersion: number, cause: unknown): IndexerDataError {
-    return new IndexerDataError({ kind: 'unknown-record-era', protocolVersion }, { cause });
+  static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
+  }
+
+  static malformedProtocolVersion(protocolVersion: number, cause: unknown): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion }, { cause });
   }
 
   private static formatMessage(context: IndexerDataErrorContext): string {
@@ -257,13 +258,6 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
       case 'unknown-address-kind':
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
-      case 'unknown-record-era':
-        return (
-          `The indexer reported protocolVersion ${context.protocolVersion} for a contract state, and this build ` +
-          'cannot place that value on the ledger-era timeline. The raw contract-state reads tag every record with ' +
-          'an era, so a value they cannot resolve is refused rather than guessed. Upgrade to a release that knows ' +
-          'this network, or read the state through a method that decodes on the envelope alone.'
-        );
       case 'era-disagreement':
         return (
           `The indexer served a contract state whose envelope was written by ledger ${context.envelopeVersion}, ` +
@@ -282,6 +276,22 @@ export class IndexerDataError extends IndexerError {
         return (
           'The indexer returned ledger parameters that are not a hex-encoded byte string. ' +
           'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'mixed-era-public-states':
+        return (
+          `The indexer served a contract state written by ledger ${context.stateVersion} beside the ledger ` +
+          `parameters of a block from ledger ${context.parametersVersion}. One value cannot carry two eras. ` +
+          'Indexer 4.4.0-rc.6 and later serve every contract state translated to the era of the block, so on a ' +
+          'pinned read this means an older indexer, which serves a contract untouched since the fork with its ' +
+          'pre-fork envelope (midnight-indexer #1605): upgrade the indexer. On an unpinned read the fork block can ' +
+          'also be indexed between the two fields; pinning the read to a block hash or height rules that out.'
+        );
+      case 'malformed-protocol-version':
+        return (
+          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state, which is ` +
+          'not a non-negative integer. The raw contract-state reads copy protocolVersion onto every record, so a ' +
+          'malformed value is refused rather than passed on. Check that the indexer and this client agree on the ' +
+          'GraphQL schema.'
         );
       case 'unsupported-parameters-era':
         return (

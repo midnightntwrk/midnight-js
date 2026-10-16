@@ -32,7 +32,7 @@ const event = (id: number, maxId: number): ContractEvent => ({
   eventType: 'Paused',
   id,
   maxId,
-  version: 1,
+  payloadVersion: 1,
   protocolVersion: 2_000_000,
   contractAddress: ADDRESS,
   transactionId: id,

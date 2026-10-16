@@ -85,14 +85,12 @@ export const POST_FORK_PROTOCOL_VERSION = 2_000_000;
 export const BBOARD_ENTRY_POINTS = ['takeDown', 'post'];
 
 /**
- * A read surface answering one fixed record, with `version` derived from `protocolVersion` through
- * the very resolver a provider uses.
+ * A read surface answering one fixed record, with `version` set from the era of `protocolVersion`
+ * rather than from the envelope.
  *
- * Derived rather than passed in, because a stub that let the two be set independently could express
- * a record no provider can produce -- and the disagreement these tests are about is between
- * `protocolVersion` and the ENVELOPE, never between `protocolVersion` and `version`. Through the
- * real resolver rather than a local comparison, so the stub cannot drift from the mapping table and
- * refuses an unplaceable integer the same way a provider would.
+ * On purpose: a provider in this framework tags the record by its envelope, but one outside it may
+ * tag it by the block. Tagging by the block here is what lets these tests show that the function
+ * under test reads the envelope from the bytes and not the tag.
  */
 export const surfaceServing = (raw: Uint8Array, protocolVersion: number): AnyEraContractStateReadSurface => ({
   queryRawContractState: vi.fn<(address: string) => Promise<RawContractState | null>>().mockResolvedValue({
