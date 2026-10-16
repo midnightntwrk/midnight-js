@@ -124,7 +124,10 @@ variant the contract state and the ledger parameters are bytes
 (`stateBytes`, `ledgerParametersBytes`); the zswap chain state is decoded in both,
 because both runtimes write the same encoding. If the contract state and the
 ledger parameters come from different eras, the call fails with an
-`IndexerDataError` of kind `mixed-era-public-states`.
+`IndexerDataError` of kind `mixed-era-public-states`. On indexer 4.4.0-rc.6 and
+later that happens only on an unpinned read that straddles the fork block; an
+older indexer also serves a contract untouched since the fork with its pre-fork
+envelope (midnight-indexer #1605).
 
 Narrow on `version` before touching the value. Code that handles only v9 can use
 `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`:

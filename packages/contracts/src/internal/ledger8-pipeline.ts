@@ -578,7 +578,7 @@ export const runLedger8CallPipeline = async <TState>(
   assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
   // The DECODED state, read by whichever era's reader the envelope named. A
-  // contract an earlier post-fork call migrated carries a current-era envelope
+  // contract the fork translated carries a current-era envelope
   // while still executing on the retained runtime, so the chain's own bytes
   // cannot be handed to one era's decoder. The balance rides on this same
   // value, so the state and its balances cannot come off different reads.

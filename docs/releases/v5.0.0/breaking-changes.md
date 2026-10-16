@@ -686,7 +686,8 @@ its first record.
 
 `queryZSwapAndContractState` returns `{ version: 'v8', zswapChainState, stateBytes,
 ledgerParametersBytes }` for a v8 block. A contract state and ledger parameters from different
-eras are refused as `IndexerDataError` kind `mixed-era-public-states`.
+eras are refused as `IndexerDataError` kind `mixed-era-public-states`. On the supported indexer
+(4.4.0-rc.6 or later, see migration step 17) a pinned read never meets this.
 
 ### 14c. `submitTx` routes on the network head
 

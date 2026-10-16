@@ -74,8 +74,8 @@ The same refusal to accept quietly governs the structural round trip further
 down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
 decodes the primary state a circuit runs against, re-encodes it, and refuses a
 value that did not come back — `DownConvertFailedError` at stage `'state
-down-convert'`. The comparison is cross-codec by construction: a contract an
-earlier post-fork call migrated carries a current-era envelope, so its state is
+down-convert'`. The comparison is cross-codec by construction: a contract the
+fork translated carries a current-era envelope, so its state is
 encoded by ledger-v9 and decoded by the retained runtime, and a retained
 envelope crosses between two physical copies of that runtime either way. A
 shape one side writes and the other merely tolerates would decode without

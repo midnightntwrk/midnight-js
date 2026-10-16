@@ -489,7 +489,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * does not re-encode to the bytes it came from.
  *
  * The comparison is CROSS-CODEC in production, which is what it is for. A
- * contract an earlier post-fork call migrated carries a current-era envelope,
+ * contract the fork translated carries a current-era envelope,
  * so the pipeline reads it with the HEAD era's reader
  * (`readLedger8Snapshot`) -- the state is then encoded by ledger-v9 and
  * decoded here by the retained runtime. A retained-era envelope is encoded by

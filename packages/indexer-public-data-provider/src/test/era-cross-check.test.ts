@@ -102,11 +102,12 @@ describe('era cross-check on the contract-state decode path', () => {
   });
 
   test('treats older bytes under a newer block as an undecodable era, not an indexer fault', async () => {
-    // The everyday case once the network has forked: a contract whose last
-    // action predates the fork still serves the older envelope, while the
-    // block that dates the read has moved on. Nothing is wrong with the
-    // indexer, so the caller is told the thing it can act on - this era is not
-    // decodable here - instead of being sent to hunt a phantom inconsistency.
+    // Older bytes under a newer block: a record of a pre-fork action read under
+    // a post-fork block, or an indexer older than 4.4.0-rc.6 serving a contract
+    // untouched since the fork (midnight-indexer #1605). The parser alone
+    // cannot tell those apart from an ordinary pre-fork read, so the caller is
+    // told the thing it can act on - this era is not decodable here - instead
+    // of being sent to hunt a phantom inconsistency.
     const rejection = await rejectionOf(
       mintLedger8ContractStateHex().then((hex) => parseHexContractState(hex, LEDGER9_ERA_PROTOCOL_VERSION))
     );

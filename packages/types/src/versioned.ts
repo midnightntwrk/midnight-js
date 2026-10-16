@@ -134,7 +134,8 @@ export interface Ledger9PublicStates {
 /**
  * The public states read from one block for one contract, discriminated by the ledger runtime
  * that wrote them. The contract state and the ledger parameters always come from the same era;
- * a provider refuses a block where they do not. Narrow on `version` before touching it.
+ * a provider refuses a block where they do not. They agree on a supported indexer, because the
+ * node translates every contract state at the fork. Narrow on `version` before touching it.
  */
 export type VersionedPublicStates = Ledger8PublicStates | Ledger9PublicStates;
 

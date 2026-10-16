@@ -281,8 +281,10 @@ export class IndexerDataError extends IndexerError {
         return (
           `The indexer served a contract state written by ledger ${context.stateVersion} beside the ledger ` +
           `parameters of a block from ledger ${context.parametersVersion}. One value cannot carry two eras. ` +
-          'On an unpinned read this happens when the fork block is indexed between the two fields; pin the read ' +
-          'to a block hash or height, or retry.'
+          'Indexer 4.4.0-rc.6 and later serve every contract state translated to the era of the block, so on a ' +
+          'pinned read this means an older indexer, which serves a contract untouched since the fork with its ' +
+          'pre-fork envelope (midnight-indexer #1605): upgrade the indexer. On an unpinned read the fork block can ' +
+          'also be indexed between the two fields; pinning the read to a block hash or height rules that out.'
         );
       case 'malformed-protocol-version':
         return (
