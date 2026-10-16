@@ -191,12 +191,12 @@ export interface ContractEventBase {
   readonly maxId: number;
   /**
    * Payload schema version — selects the (future) per-event payload decoder.
-   * Iteration-1 events are `version: 1`.
+   * Iteration-1 events are `payloadVersion: 1`. Not a ledger era.
    */
-  readonly version: number;
+  readonly payloadVersion: number;
   /**
    * Protocol version of the block this event was emitted in, as the network
-   * reported it. Distinct from {@link version}: this one says which ledger era
+   * reported it. Distinct from {@link payloadVersion}: this one says which ledger era
    * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
    * to decode them with. Resolve it with `versionOfRecord` from
    * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by

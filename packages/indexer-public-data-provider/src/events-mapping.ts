@@ -36,7 +36,7 @@ type AddressOrContractNode = Extract<ContractEventNode, { sender: object }>['sen
 const baseFields = (node: ContractEventNode): ContractEventBase => ({
   id: node.id,
   maxId: node.maxId,
-  version: node.version,
+  payloadVersion: node.version,
   protocolVersion: node.protocolVersion,
   contractAddress: node.contractAddress as ContractAddress,
   transactionId: node.transactionId,

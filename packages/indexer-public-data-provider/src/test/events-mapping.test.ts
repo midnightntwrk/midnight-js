@@ -35,7 +35,7 @@ const base = {
 const expectedBase = {
   id: 7,
   maxId: 42,
-  version: 1,
+  payloadVersion: 1,
   protocolVersion: 2_000_000,
   contractAddress: ADDRESS,
   transactionId: 99,
