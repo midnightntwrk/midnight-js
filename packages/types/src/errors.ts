@@ -18,6 +18,7 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
@@ -53,6 +54,24 @@ export type StateReadMethod = 'queryDeployContractState';
  * error can come from either surface.
  */
 export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
+
+/**
+ * The {@link PublicDataProvider} methods that wait for data to appear and accept
+ * a bound on that wait.
+ */
+export type WatchOperation =
+  | 'watchForContractState'
+  | 'watchForUnshieldedBalances'
+  | 'watchForDeployTxData'
+  | 'watchForTxData';
+
+/**
+ * What a `watchFor*` call waited for: the method, and the transaction id or
+ * contract address it was given.
+ */
+export type WatchTarget =
+  | { readonly operation: 'watchForTxData'; readonly txId: TransactionId }
+  | { readonly operation: Exclude<WatchOperation, 'watchForTxData'>; readonly contractAddress: ContractAddress };
 
 /**
  * Stable error-code strings for the providers.
@@ -103,12 +122,13 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
   INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
-  UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY'
+  UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY',
+  WATCH_TIMED_OUT: 'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, UNCERTAIN, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
@@ -141,7 +161,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
   [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
-  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE
+  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE,
+  [PROVIDER_ERROR_CODES.WATCH_TIMED_OUT]: UNCERTAIN
 });
 
 const {
@@ -164,7 +185,8 @@ const {
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
   PROOF_SERVER_REFUSED,
-  UNUSABLE_ERA_ENTRY
+  UNUSABLE_ERA_ENTRY,
+  WATCH_TIMED_OUT
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -748,5 +770,32 @@ export class PrivateStateLimitExceededError extends MidnightJsError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateLimitExceededError';
+  }
+}
+
+/**
+ * Raised when a `watchFor*` call given `maxWaitMs` finds nothing within that
+ * bound. The wait is abandoned and polling stops. The data may still appear:
+ * if it depends on a transaction you submitted, check the chain before
+ * submitting again.
+ */
+export class WatchTimeoutError extends MidnightJsError {
+  readonly code = WATCH_TIMED_OUT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
+
+  /**
+   * @param target The method that gave up waiting, and what it waited for.
+   * @param maxWaitMs The bound that elapsed.
+   */
+  constructor(
+    readonly target: WatchTarget,
+    readonly maxWaitMs: number
+  ) {
+    const key = target.operation === 'watchForTxData' ? `txId ${target.txId}` : `contractAddress ${target.contractAddress}`;
+    super(
+      `${target.operation} found nothing for ${key} within ${maxWaitMs} ms. It may still appear: ` +
+        `if it depends on a transaction you submitted, check the chain before submitting again.`
+    );
+    this.name = 'WatchTimeoutError';
   }
 }

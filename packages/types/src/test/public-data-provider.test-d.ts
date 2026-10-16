@@ -18,13 +18,15 @@ import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnig
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
+import type { WatchOperation, WatchTarget } from '../errors';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
   ContractStateObservableConfig,
   PositionedRecord,
-  PublicDataProvider
+  PublicDataProvider,
+  WatchOptions
 } from '../public-data-provider';
 import type { RawContractState } from '../raw-contract-state';
 
@@ -259,7 +261,7 @@ describe('contract state reads', () => {
 
   it('pins watchForContractState to a state tagged by the era that wrote it', () => {
     expectTypeOf<PublicDataProvider['watchForContractState']>().toEqualTypeOf<
-      (contractAddress: ContractAddress) => Promise<VersionedContractStateFixture>
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<VersionedContractStateFixture>
     >();
   });
 
@@ -269,6 +271,22 @@ describe('contract state reads', () => {
         contractAddress: ContractAddress,
         config?: BlockHeightConfig | BlockHashConfig
       ) => Promise<VersionedPublicStatesFixture | null>
+    >();
+  });
+});
+
+describe('the watchFor* surface', () => {
+  it('WatchOperation names exactly the watchFor* methods of PublicDataProvider', () => {
+    expectTypeOf<WatchOperation>().toEqualTypeOf<Extract<keyof PublicDataProvider, `watchFor${string}`>>();
+  });
+
+  it('WatchTarget covers every WatchOperation', () => {
+    expectTypeOf<WatchTarget['operation']>().toEqualTypeOf<WatchOperation>();
+  });
+
+  it('watchForUnshieldedBalances takes an optional bound', () => {
+    expectTypeOf<PublicDataProvider['watchForUnshieldedBalances']>().toEqualTypeOf<
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<UnshieldedBalances>
     >();
   });
 });

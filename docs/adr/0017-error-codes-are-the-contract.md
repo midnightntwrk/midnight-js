@@ -104,6 +104,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `INDEXER_INVARIANT_VIOLATED` | INTERNAL | `IndexerInvariantError` |
 | PR | `INDEXER_PAYLOAD_TOO_LARGE` | INTEGRITY | `IndexerPayloadTooLargeError`* |
 | PR | `UNUSABLE_ERA_ENTRY` | USAGE | `UnusableEraEntryError`* |
+| PR | `WATCH_TIMED_OUT` | UNCERTAIN | `WatchTimeoutError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |

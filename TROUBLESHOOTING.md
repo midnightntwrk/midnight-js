@@ -343,7 +343,7 @@ try {
 }
 ```
 
-`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`, `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`.
@@ -458,6 +458,7 @@ new coded error cannot ship without an entry here and an entry cannot outlive it
 | `MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID` | The indexer provider was given a configuration it cannot serve. | Change the configuration as the message describes. |
 | `MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED` | An internal guarantee of the indexer provider did not hold. | Report it as a midnight-js bug. |
 | `MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE` | A compressed subscription message inflated beyond the size limit (possible compression bomb). | Check the indexer endpoint is trusted; report if it is. |
+| `MIDNIGHT_JS_PR_WATCH_TIMED_OUT` | A `watchFor*` call given `maxWaitMs` found nothing within that bound; `target` names the method and the txId or contract address it waited for. A bound shorter than the indexer's retry window also lands here when the indexer is unreachable. | The data may still appear. If it depends on a transaction you submitted, do not resubmit blindly: check the chain first. Then wait again, raise `maxWaitMs`, or check the indexer is reachable. |
 | `MIDNIGHT_JS_U_TAG_PARSE_FAILED` | A serialized payload's `namespace:version:` tag prefix could not be parsed. | Verify the payload came from a sanctioned source — a wallet balance response, a proof request, or a raw contract-state query. |
 | `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER` | A `switch` closed with `assertNever` was reached, so a value the compiler ruled out arrived anyway. `context` names the switch. | The union grew and this switch was not updated, or a payload was decoded from outside the build. Add the missing case at the call site `context` names. |
 | `MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED` | `requireLedger9` received a value written by the v8 ledger. `context` names the call site. | The value predates the hard fork, or the network has not forked yet. Handle both eras with `switch (value.version)` closed by `assertNever`, or read a state written after the fork. |

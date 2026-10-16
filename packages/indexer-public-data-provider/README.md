@@ -262,24 +262,58 @@ Wait for data to appear on-chain (polling with automatic retry):
 ```typescript
 // Wait for contract to be deployed
 watchForContractState(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<VersionedContractState>
 
 // Wait for unshielded balances
 watchForUnshieldedBalances(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<UnshieldedBalances>
 
 // Wait for deploy transaction data
 watchForDeployTxData(
-  contractAddress: ContractAddress
-): Promise<FinalizedTxData>
+  contractAddress: ContractAddress,
+  options?: WatchOptions
+): Promise<VersionedFinalizedTxData>
 
 // Wait for any transaction data
 watchForTxData(
-  txId: TransactionId
-): Promise<FinalizedTxData>
+  txId: TransactionId,
+  options?: WatchOptions
+): Promise<VersionedFinalizedTxData>
 ```
+
+Each method waits indefinitely unless you pass `maxWaitMs`. With it, the call
+rejects with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`,
+category `UNCERTAIN`) once that many milliseconds pass without the indexer
+reporting the data, and polling stops:
+
+```typescript
+import { WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types';
+
+try {
+  const record = await provider.watchForTxData(txId, { maxWaitMs: 120_000 });
+} catch (e) {
+  if (e instanceof WatchTimeoutError) {
+    // e.target names the method and the txId or contractAddress it waited for
+  }
+  throw e;
+}
+```
+
+- A timeout does not mean the transaction failed: it may still land. Check the
+  chain before submitting it again.
+- The bound covers the indexer poll only. Building the record afterwards is not
+  bounded.
+- Indexer requests are retried on network failure (5 attempts, backoff up to
+  10 s). A `maxWaitMs` shorter than that window reports an unreachable or
+  misconfigured indexer as a timeout.
+- An invalid `maxWaitMs`, or an unknown option key, throws
+  `InvalidArgumentError` synchronously: it is not a rejected promise.
+- `submitTx`, `deployContract` and `findDeployedContract` do not pass
+  `maxWaitMs` through yet; they still wait indefinitely.
 
 ### Observable Methods
 
