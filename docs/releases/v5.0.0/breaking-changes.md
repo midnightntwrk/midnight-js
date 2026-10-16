@@ -767,7 +767,7 @@ ledger 9 and "retained" is ledger 8. A name whose code is bound to one ledger
 now says which ledger (ADR 0018). Names that follow the era on purpose keep
 "current" / "retained": `CurrentLedgerVersion`, `RetainedLedgerVersion`,
 `RetainedEraEntries`, the `currentEra` / `retainedEras` keys, `RetainedEraProver`,
-`RetainedEraBalancer`, `RetainedEraSubmitter` and `RetainedEraProvingProvider`.
+`RetainedEraBalancer` and `RetainedEraSubmitter`.
 The README glossary defines both terms.
 
 | Package | Before | After |

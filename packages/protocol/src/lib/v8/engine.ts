@@ -94,11 +94,11 @@ export interface Ledger8Engine {
   ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   /**
-   * Re-expresses a retained-era contract's entry points as a current-era contract state, so a
-   * keep-state call has an operation registry the current composer can read.
+   * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state, so a
+   * keep-state call has an operation registry the ledger 9 composer can read.
    *
    * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
-   * what the retained decoder read off the chain, and the output is for the current ledger.
+   * what the ledger 8 decoder read off the chain, and the output is for ledger 9.
    */
   reexpressOperationsForLedger9(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }

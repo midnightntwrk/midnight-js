@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the current Compact toolchain, the fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -74,7 +74,7 @@ The framework asks for `@midnightntwrk/onchain-runtime-v4` and `@midnight-ntwrk/
 }
 ```
 
-There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the current toolchain is `0.20.0`, the framework's own.
+There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the ledger 9 toolchain is `0.20.0`, the framework's own.
 
 Register the new scope if you import the protocol packages anywhere (the framework already does this in `packages/protocol`):
 
@@ -352,7 +352,7 @@ This release is the one that carries a dApp across the ledger v8 → v9 hard
 fork. Steps 1 and 13 are the whole code migration — bump, then narrow where the
 compiler tells you to.
 
-**If you recompile your contracts with the current Compact toolchain, there is
+**If you recompile your contracts with the ledger 9 Compact toolchain, there is
 no further code change**, and most of this step is about timing and operations
 rather than code. This includes re-attaching to a contract deployed before the
 fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
@@ -421,9 +421,9 @@ For a **deploy** the remediation is different, and it is also two steps:
    composed*, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
    fresh nonce, so a second attempt lands at a *different* address and a skipped check
    leaves two copies of the contract on chain.
-2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
+2. **Recompile with the ledger 9 Compact toolchain and deploy that artifact.** Unlike the
    call case, a plain re-run does not work: after the fork a contract produced by the
-   retained toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+   ledger 8 (pre-fork) toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
@@ -440,7 +440,7 @@ If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. New deployments of a retained-toolchain artifact work **only on a
+the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only on a
 pre-fork head**. On a post-fork head `deployContract` refuses one with
 `Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
 key is fetched.
@@ -453,7 +453,7 @@ and no verifier key on that contract can ever be inserted, removed or replaced.
 
 In practice:
 
-- **Obtain current-toolchain artifacts for every contract you deploy at
+- **Obtain ledger 9 toolchain artifacts for every contract you deploy at
   runtime**, and ship them before the fork. From the fork on, a retained
   artifact cannot be deployed.
 - Contracts you deployed *before* the fork are unaffected — they keep working
@@ -593,7 +593,7 @@ try {
 }
 ```
 
-### The retained toolchain stays where it is
+### The ledger 8 (pre-fork) toolchain stays where it is
 
 You do not install a second Compact toolchain, and you do not add the retained
 ledger or runtime packages to your own dependencies. The framework carries what
@@ -632,7 +632,7 @@ See also [Vite WASM resolution](../../guides/vite-wasm-resolution.md).
 
 ### ZKIR-v2 support is not sunsetting
 
-Contracts compiled with the retained toolchain remain transactable on the
+Contracts compiled with the ledger 8 (pre-fork) toolchain remain transactable on the
 network indefinitely; upstream has not announced a sunset. The retained-era
 support in *this framework* is a separate question and is scheduled for removal
 in the next major after the window closes — announced from day one so it is
@@ -824,7 +824,7 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
 - [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
-- [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
+- [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.

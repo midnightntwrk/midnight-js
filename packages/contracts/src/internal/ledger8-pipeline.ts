@@ -321,9 +321,9 @@ export const readLedger8Snapshot = async (
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
  * @throws Ledger8ArtifactOnLedger9StateError if the keys differ byte for byte AND the state
- * carries a current-era envelope, which together mean the contract was built with current-toolchain
+ * carries a ledger 9 envelope, which together mean the contract was built with ledger 9 toolchain
  * artifacts — carrying the byte-level mismatch on `cause`.
- * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a retained-era state.
+ * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a ledger 8 state.
  * @see {@link VerificationPath} for what this check buys.
  */
 export const assertSnapshotVerifierKey = (
@@ -339,9 +339,9 @@ export const assertSnapshotVerifierKey = (
   try {
     assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
   } catch (cause) {
-    // A key mismatch on a CURRENT-era state has one likely cause worth naming: the contract was
-    // deployed with current-toolchain artifacts, so no retained artifact can ever match it and a
-    // retry is pointless. On a retained-era state the same mismatch means something else entirely
+    // A key mismatch on a ledger 9 state has one likely cause worth naming: the contract was
+    // deployed with ledger 9 toolchain artifacts, so no ledger 8 artifact can ever match it and a
+    // retry is pointless. On a ledger 8 state the same mismatch means something else entirely
     // -- the wrong build of the right contract -- so the generic refusal is the accurate one there.
     //
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no

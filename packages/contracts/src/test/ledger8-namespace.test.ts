@@ -113,7 +113,7 @@ describe('the retained era is published as one namespace', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 40 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 43 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.

@@ -117,13 +117,13 @@ import {
 import { createEncryptionPublicKeyResolver } from './utils';
 
 /**
- * Reads the current era's own freshly composed bytes back into the live
+ * Reads freshly composed ledger 9 bytes back into the live
  * transaction its provider methods take.
  *
  * The three markers name the transaction's stage — signature-enabled,
  * unproven, unbound — which is what `composeCallTx` documents its output as.
  *
- * @param txBytes The serialized unproven current-era transaction.
+ * @param txBytes The serialized unproven ledger 9 transaction.
  * @returns The live transaction.
  */
 const readLedger9Transaction = (txBytes: Uint8Array): UnprovenTransaction =>

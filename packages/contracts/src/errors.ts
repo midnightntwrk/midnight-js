@@ -123,11 +123,11 @@ export class EraInvariantViolationError extends MidnightJsError {
  * that is one condition: something it passed does not belong to the era it is being run against.
  */
 export type EraArtifactMismatchReason =
-  /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
+  /** A raw ledger 9 contract instance, passed where its `CompiledContract` container belongs. */
   | 'unwrapped-ledger9-contract'
   /** An object matching no era's shape at all. */
   | 'unrecognised-contract-shape'
-  /** A current-era artifact, on a network head that is still pre-fork. */
+  /** A ledger 9 artifact, on a network head that is still on ledger 8. */
   | 'ledger9-artifact-on-ledger8-head'
   /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
   | 'ledger9-transaction-on-ledger8-head'
@@ -228,17 +228,17 @@ export class EraArtifactMismatchError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the contract at this address is held on chain in a CURRENT-era state,
- * while the artifacts handed to this operation came from the retained Compact toolchain.
+ * An error indicating that the contract at this address is held on chain in a ledger 9 state,
+ * while the artifacts handed to this operation came from the ledger 8 (pre-fork) Compact toolchain.
  *
- * The retained era stays supported for a contract whose state the retained ledger wrote, and it
- * stays supported after that state has been MIGRATED: the fork rewrites its envelope to the current
- * era, and the ledger carries the retained verifier keys across unchanged. So a current-era envelope on its
- * own says nothing about which toolchain built the contract, and this error is not raised for one.
+ * Ledger 8 artifacts stay supported for a contract whose state ledger 8 wrote, and they stay
+ * supported after that state has been MIGRATED: the fork rewrites its envelope to ledger 9, and the
+ * ledger carries the ledger 8 verifier keys across unchanged. So a ledger 9 envelope on its own says
+ * nothing about which toolchain built the contract, and this error is not raised for one.
  *
- * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
- * migrated pre-fork contract still declares the keys the retained toolchain produced, so it does not
- * reach here; a contract deployed with current-toolchain artifacts declares keys no retained
+ * What raises it is the pair: a ledger 9 envelope AND a key these artifacts cannot match. A
+ * migrated pre-fork contract still declares the keys the ledger 8 toolchain produced, so it does not
+ * reach here; a contract deployed with ledger 9 toolchain artifacts declares keys no ledger 8
  * artifact can match, and that is the case named here.
  *
  * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
@@ -261,7 +261,7 @@ export class Ledger8ArtifactOnLedger9StateError extends MidnightJsError {
       `The contract at '${contractAddress}' is held on chain in a ledger 9 state whose verifier key ` +
         `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
         `this contract. A contract deployed before the fork keeps its ledger 8 keys even after the fork ` +
-        `translates its state, so this is not that case: it is a contract built with ledger 9 toolchain ` +
+        `translates its state, so this is not that case: it is a contract built with ledger 9 Compact toolchain ` +
         `artifacts. Re-run the operation with the artifacts the ledger 9 Compact toolchain produced for it. Retrying ` +
         `with the same artifacts cannot succeed.`,
       options

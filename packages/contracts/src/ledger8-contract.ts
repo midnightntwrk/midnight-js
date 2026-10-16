@@ -915,7 +915,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
  *      an overload.
  */
-// WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
+// WHY LEDGER NUMBERS, NOT TOOLCHAIN VERSIONS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
 // a consumer on `0.19.0-rc.0`, which that release pinned, was told their object matched neither of
 // two versions, neither of which was theirs. The message is about which LEDGER an object belongs to,

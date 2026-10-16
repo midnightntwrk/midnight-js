@@ -24,7 +24,7 @@ import {
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { ProvingProvider as RetainedEraProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CURRENT_LEDGER_VERSION,
   type LedgerVersion,
@@ -217,7 +217,7 @@ export interface ProvingProvidersByEra {
    *
    * @see {@link https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md | Provider era declarations}
    */
-  readonly retainedEras?: RetainedEraEntries<RetainedEraProvingProvider>;
+  readonly retainedEras?: RetainedEraEntries<Ledger8ProvingProvider>;
   /**
    * Cost model for the CURRENT era, defaulting to the initial cost model. A
    * retained era always proves with its own era's initial cost model, which
@@ -238,7 +238,7 @@ export interface ProvingProvidersByEra {
 const PROVE_BY_RETAINED_ERA: Readonly<
   Record<
     RetainedLedgerVersion,
-    (txBytes: Uint8Array, provingProvider: RetainedEraProvingProvider) => Promise<Uint8Array>
+    (txBytes: Uint8Array, provingProvider: Ledger8ProvingProvider) => Promise<Uint8Array>
   >
 > = {
   v8: proveLedger8Transaction
@@ -255,7 +255,7 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
 };
 
 const toRetainedEraHandlers = (
-  provingProviders: RetainedEraEntries<RetainedEraProvingProvider>
+  provingProviders: RetainedEraEntries<Ledger8ProvingProvider>
 ): RetainedEraEntries<RetainedEraProver> => {
   const handlers: Partial<Record<RetainedLedgerVersion, RetainedEraProver>> = {};
   for (const era of RETAINED_LEDGER_VERSIONS) {
