@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { FailFallible } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -35,7 +35,7 @@ const errorClasses = exported.filter(
 );
 
 const ADDRESS = '0200'.repeat(8);
-const SIGNING_KEY = 'a1'.repeat(32);
+const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
 const ledger8Record = createMockLedger8FinalizedTxData(FailFallible);
@@ -79,6 +79,13 @@ const cases: readonly Case[] = [
   ['Ledger8RecipientUnmappableError', new errors.Ledger8RecipientUnmappableError('increment', 'ab'.repeat(32)), CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE, 'USAGE'],
   ['Ledger8DeployNotStoredError', new errors.Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED, 'ENVIRONMENT'],
   ['Ledger8SigningKeyUnusableError', new errors.Ledger8SigningKeyUnusableError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE, 'USAGE'],
+  ['Ledger8MaintenanceOnLedger9Error', new errors.Ledger8MaintenanceOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9, 'USAGE'],
+  ['Ledger8SigningKeyUnavailableError', new errors.Ledger8SigningKeyUnavailableError(ADDRESS, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE, 'USAGE'],
+  ['Ledger8SigningKeyNotStoredError', new errors.Ledger8SigningKeyNotStoredError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED, 'ENVIRONMENT'],
+  ['Ledger8ReplaceAuthorityUnconfirmedError', new errors.Ledger8ReplaceAuthorityUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED, 'UNCERTAIN'],
+  ['Ledger8InsertVerifierKeyTxFailedError', new governance.Ledger8InsertVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8RemoveVerifierKeyTxFailedError', new governance.Ledger8RemoveVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger8ReplaceMaintenanceAuthorityTxFailedError', new governance.Ledger8ReplaceMaintenanceAuthorityTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['HeadReadFailedError', new errors.HeadReadFailedError('head read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.HEAD_READ_FAILED, 'TRANSIENT'],
   ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
   ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],

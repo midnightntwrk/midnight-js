@@ -39,7 +39,7 @@ import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerVersion, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   Ledger8PayloadUnsupportedError,
@@ -181,6 +181,13 @@ const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
+const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerVersion = 'v8'): SubmittedOperation => ({
+  head,
+  kind: 'maintenance',
+  circuitId,
+  contractAddress: OPERATION_CONTRACT_ADDRESS
+});
+
 describe('handleSubmitRejection (the fork-crossing decision, exercised directly)', () => {
   // A rejection in the shape `submitTx` actually produces: the sanitizing
   // wrapper has already rebuilt the provider's failure onto `cause`, which is
@@ -313,6 +320,61 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(deployMessage).toContain('runtime-deploy chapter');
     expect(deployMessage).not.toMatch(/re-run/);
     expect(deployMessage).not.toBe((caughtCall as Error).message);
+  });
+
+  it('gives a MAINTENANCE update its own message: verify first, then recompile, never re-run', async () => {
+    // Arrange
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    // Act
+    const caught = await handleSubmitRejection(pdp, maintenanceOperation(), wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(StaleHeadError);
+    if (!(caught instanceof StaleHeadError)) throw caught;
+    expect(caught.kind).toBe('maintenance');
+    expect(caught.message).toContain(OPERATION_CONTRACT_ADDRESS);
+    expect(caught.message).toContain(`'${CIRCUIT_ID}'`);
+    expect(caught.message.indexOf('did not finalize')).toBeGreaterThan(-1);
+    expect(caught.message.indexOf('did not finalize')).toBeLessThan(caught.message.indexOf('recompile'));
+    expect(caught.message).not.toMatch(/re-run/);
+  });
+
+  it('names no circuit in the MAINTENANCE message for an authority replacement', async () => {
+    // Arrange
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    // Act
+    const caught = await handleSubmitRejection(pdp, maintenanceOperation(NO_CIRCUIT), wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(StaleHeadError);
+    expect((caught as Error).message).not.toContain(NO_CIRCUIT);
+    expect((caught as Error).message).toContain('maintenance authority');
+  });
+
+  it.each([
+    [
+      'head-read-failed',
+      { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) },
+      maintenanceOperation(NO_CIRCUIT)
+    ],
+    ['head-moved-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
+  ])('calls a MAINTENANCE update by its name when the rejection cannot be diagnosed (%s)', async (_reason, pdp, operation) => {
+    // Act
+    const caught = await handleSubmitRejection(pdp, operation, wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+    expect((caught as Error).message).toMatch(/^This maintenance update was built/);
+    expect((caught as Error).message).not.toContain(NO_CIRCUIT);
+    expect((caught as Error).message).not.toMatch(/\bcall\b/);
   });
 
   it('RE-THROWS the rejection unchanged when a fresh read reports the same era', async () => {

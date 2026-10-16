@@ -30,6 +30,11 @@ import {
   type TranscriptPojo,
   type VerifierKeyReader
 } from './executable';
+import {
+  composeLedger8MaintenanceTx,
+  type Ledger8MaintenanceRequest,
+  type Ledger8MaintenanceUpdateRequest
+} from './maintenance';
 
 export type {
   ConstructorResultPojo,
@@ -40,6 +45,8 @@ export type {
   Ledger8CircuitOptions,
   Ledger8ConstructorOptions,
   Ledger8EngineContract,
+  Ledger8MaintenanceRequest,
+  Ledger8MaintenanceUpdateRequest,
   Ledger8SigningKey,
   TranscriptPojo,
   VerifierKeyReader,
@@ -94,6 +101,23 @@ export interface Ledger8Engine {
   ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   /**
+   * Composes an UNPROVEN v8 transaction carrying one maintenance update --
+   * insert a verifier key, remove one, or replace the maintenance authority --
+   * built and signed by compact-js's ledger 8 `ContractExecutable`.
+   *
+   * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
+   * Reads the FULL state off the bytes the chain holds, and refuses a signing
+   * key other than the committee's first member before anything is signed.
+   *
+   * @throws ComposeOptionError Naming `'networkId'`, `'ttl'`, `'signingKey'`,
+   *   `'newSigningKey'` or `'contractStateBytes'` when that option is unusable.
+   * @throws MaintenanceAuthorityMismatchError When the signing key is not the
+   *   committee's first member.
+   * @throws ComposeFailedError At stage `'maintenance-update'` when compact-js
+   *   refuses to build or sign the update.
+   */
+  composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>;
+  /**
    * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state, so a
    * keep-state call has an operation registry the ledger 9 composer can read.
    *
@@ -129,6 +153,7 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> =>
   Promise.resolve({
     executeCircuit: runLedger8Circuit,
     executeConstructor: runLedger8Constructor,
+    composeMaintenanceTx: composeLedger8MaintenanceTx,
     wrapKeepStateCall,
     reexpressOperationsForLedger9
   });

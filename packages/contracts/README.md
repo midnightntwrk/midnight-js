@@ -103,15 +103,20 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Insert a verifier key for a circuit
-await submitInsertVerifierKeyTx(providers, options);
+// Remove the verifier key a circuit holds, then insert one
+await submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, 'increment');
+const inserted = await submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, 'increment', newVk);
+inserted.public.status; // every result is { era, public }
 
-// Remove a verifier key
-await submitRemoveVerifierKeyTx(providers, options);
-
-// Replace contract maintenance authority
-await submitReplaceAuthorityTx(providers, options);
+// Replace contract maintenance authority; the new key is stored once the chain records it
+await submitReplaceAuthorityTx(providers, compiledContract, contractAddress)(newSigningKey);
 ```
+
+All three take either era's artifact. A ledger 8 artifact maintains a contract
+only on a pre-fork head and answers `{ era: 'v8', public: Ledger8FinalizedTxData }`;
+after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error`, and the
+same function with the recompiled ledger 9 artifact maintains the migrated
+contract with the same stored key.
 
 ### State Queries
 

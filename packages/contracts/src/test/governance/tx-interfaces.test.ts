@@ -21,6 +21,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from '../../governance/tx-interfaces';
+import type { FinalizedMaintenanceTxData } from '../../tx-model';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -36,14 +37,14 @@ describe('governance/tx-interfaces', () => {
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
-  let mockFinalizedTxData: ReturnType<typeof createMockFinalizedTxData>;
+  let mockMaintenanceTxData: FinalizedMaintenanceTxData;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockCompiledContract = createMockCompiledContract();
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
-    mockFinalizedTxData = createMockFinalizedTxData();
+    mockMaintenanceTxData = { era: 'v9', public: createMockFinalizedTxData() };
   });
 
   describe('createCircuitMaintenanceTxInterface', () => {
@@ -72,7 +73,7 @@ describe('governance/tx-interfaces', () => {
       );
 
       const { submitRemoveVerifierKeyTx } = await import('../../governance/submit-remove-vk-tx');
-      vi.mocked(submitRemoveVerifierKeyTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitRemoveVerifierKeyTx).mockResolvedValue(mockMaintenanceTxData);
 
       const result = await maintenanceInterface.removeVerifierKey();
 
@@ -82,7 +83,7 @@ describe('governance/tx-interfaces', () => {
         mockContractAddress,
         circuitId
       );
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toBe(mockMaintenanceTxData);
     });
 
     it('should call insertVerifierKey function', async () => {
@@ -96,7 +97,7 @@ describe('governance/tx-interfaces', () => {
       );
 
       const { submitInsertVerifierKeyTx } = await import('../../governance/submit-insert-vk-tx');
-      vi.mocked(submitInsertVerifierKeyTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitInsertVerifierKeyTx).mockResolvedValue(mockMaintenanceTxData);
 
       const result = await maintenanceInterface.insertVerifierKey(mockVerifierKey);
 
@@ -107,7 +108,7 @@ describe('governance/tx-interfaces', () => {
         circuitId,
         mockVerifierKey
       );
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toBe(mockMaintenanceTxData);
     });
   });
 

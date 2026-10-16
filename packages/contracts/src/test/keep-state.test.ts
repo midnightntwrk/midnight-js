@@ -40,6 +40,7 @@ import {
   type ComposeCallOptions,
   type ContractBalance,
   type Ledger8CircuitOptions,
+  type Ledger8Engine,
   type Ledger8EngineContract,
   type LedgerEra,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
@@ -59,7 +60,11 @@ import {
   IndexerInconsistencyError,
   Ledger8ArtifactOnLedger9StateError,
   LedgerParametersUnservedError} from '../errors';
-import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+import {
+  type Ledger8ExecuteRequest,
+  type Ledger8MaintenanceRequest,
+  runLedger8CallPipeline
+} from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
@@ -704,4 +709,9 @@ type _RequestAgreesOnTheState = Assert<
 // neither the contract nor the real cause.
 type _RequestContractSatisfiesTheEngine = Assert<
   Ledger8ExecuteRequest['contract'] extends Ledger8EngineContract ? true : false
+>;
+// The same pin for the maintenance request, whole: every member it threads has to be one the
+// engine's own request accepts, the contract above all.
+type _MaintenanceRequestSatisfiesTheEngine = Assert<
+  Ledger8MaintenanceRequest extends Parameters<Ledger8Engine['composeMaintenanceTx']>[0] ? true : false
 >;

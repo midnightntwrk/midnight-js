@@ -202,8 +202,8 @@ const createDeployTxOptions = <C extends Contract.Any>(
  *
  * A maintenance authority of one key at threshold 1 is registered, that key being
  * `options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
- * is stored against the minted address through `providers.privateStateProvider` and reported on
- * `Ledger8DeployedContract.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
+ * is stored against the minted address through `providers.privateStateProvider` and reported at
+ * `deployTxData.private.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
  * the key is not on chain and not derivable from anything that is, so a store that is lost or
  * cleared leaves a contract on which no verifier key can ever be inserted, removed or replaced by
  * anyone.
@@ -251,6 +251,9 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
+ * @throws Ledger8SigningKeyUnusableError If a retained-era deploy is given a `signingKey` that is not a
+ *                                        `schnorr` key of 64 hex characters. Raised before anything
+ *                                        is composed.
  * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed against a post-fork head.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
@@ -295,12 +298,20 @@ export async function deployContract<C extends Contract.Any>(
       era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: deployed.contractAddress,
-      deployTxData: { public: deployed.deployTxData },
-      signingKey: deployed.signingKey,
-      initialContractStateBytes: deployed.initialContractStateBytes,
-      initialContractState: deployed.initialContractState,
-      initialPrivateState: deployed.initialPrivateState,
-      initialZswapState: deployed.initialZswapState,
+      deployTxData: {
+        era: 'v8',
+        public: {
+          ...deployed.deployTxData,
+          contractAddress: deployed.contractAddress,
+          initialContractState: deployed.initialContractState,
+          initialContractStateBytes: deployed.initialContractStateBytes
+        },
+        private: {
+          signingKey: deployed.signingKey,
+          initialPrivateState: deployed.initialPrivateState,
+          initialZswapState: deployed.initialZswapState
+        }
+      },
       // Built AFTER the chain has recorded the deployment, so a handle a caller receives names an
       // address the chain actually holds a contract at.
       callTx: createLedger8CircuitCallTxInterface(
@@ -308,7 +319,9 @@ export async function deployContract<C extends Contract.Any>(
         options.compiledContract,
         deployed.contractAddress,
         'privateStateId' in options ? options.privateStateId : undefined
-      )
+      ),
+      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, deployed.contractAddress),
+      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, deployed.contractAddress)
     };
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));

@@ -39,8 +39,10 @@ import {
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
+  NO_CIRCUIT,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
@@ -50,6 +52,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertProvidersSupportEra,
+  type Ledger8FinalizedTxData,
   type MidnightConfig,
   type MidnightProvider,
   type PrivateStateId,
@@ -65,6 +68,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertIsContractAddress,
+  assertNever,
   assertValidMidnightConfig,
   intentTtl,
   parseCoinPublicKeyToHex
@@ -77,9 +81,20 @@ import {
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8ReplaceAuthorityUnconfirmedError,
+  Ledger8SigningKeyNotStoredError,
+  Ledger8SigningKeyUnavailableError,
   PrivateStateNotFoundError,
+  StaleHeadError,
+  type StaleHeadOperationKind,
+  SubmitRejectionUndiagnosedError,
   type SubmittedOperation
 } from '../errors';
+import {
+  Ledger8InsertVerifierKeyTxFailedError,
+  Ledger8RemoveVerifierKeyTxFailedError,
+  Ledger8ReplaceMaintenanceAuthorityTxFailedError
+} from '../governance/errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import type {
   AnyLedger8CallTxOptions,
@@ -101,12 +116,18 @@ import {
   type Ledger8ConstructedState,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
+  type Ledger8MaintenanceUpdate,
   type Ledger8StateValue,
   readLedger8Snapshot,
   runLedger8CallPipeline,
-  runLedger8DeployPipeline
+  runLedger8DeployPipeline,
+  runLedger8MaintenancePipeline
 } from './ledger8-pipeline';
-import { toStoredLedger8SigningKey } from './ledger8-signing-key';
+import {
+  fromStoredLedger8SigningKey,
+  requireLedger8SigningKey,
+  toStoredLedger8SigningKey
+} from './ledger8-signing-key';
 import { handleSubmitRejection } from './stale-head';
 import {
   atProviderMethod,
@@ -197,13 +218,14 @@ export interface Ledger8Runtime {
  *
  * @param providers The provider set, for the one head read and for the three
  * transaction providers' era declarations.
- * @param kind Whether this operation deploys a contract or calls one already
- * deployed — the one cell where the era table differs.
+ * @param kind Whether this operation deploys a contract, calls one already
+ * deployed, or maintains one — the cell where the era table differs.
  * @param breadcrumbs The optional logger the head-resolution and
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
+ * @throws Ledger8MaintenanceOnLedger9Error for a retained-era maintenance update on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  * @throws ProviderEraUnsupportedError if a transaction provider does not serve the era this
@@ -214,7 +236,7 @@ export interface Ledger8Runtime {
  */
 export const acquireLedger8Runtime = async (
   providers: Ledger8RuntimeProviders,
-  kind: 'call' | 'deploy',
+  kind: StaleHeadOperationKind,
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
   const [resolved, engine, retainedEra] = await Promise.all([
@@ -680,7 +702,7 @@ const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: s
 const assertLedger8DeploySucceeded = (
   record: VersionedFinalizedTxData,
   contractAddress: string,
-  signingKey: Ledger8SigningKey
+  signingKey: SigningKey
 ): void => {
   if (record.status === SucceedEntirely) {
     return;
@@ -727,6 +749,26 @@ const assertLedger8RecordEra = (
     return;
   }
   throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
+};
+
+/**
+ * Reads back a record that only the ledger 8 era can have made, narrowing it to that era: the
+ * record of an operation the era gate admits only on a pre-fork head.
+ *
+ * @throws UntaggedPayloadError if the record carries no era tag.
+ * @throws EraInvariantViolationError if the record is not a ledger 8 one.
+ */
+const requireLedger8Record = (
+  record: VersionedFinalizedTxData,
+  head: LedgerVersion,
+  circuitId: string,
+  method: ReadMethod
+): Ledger8FinalizedTxData => {
+  const tagged = requireTaggedRecord(record, method);
+  if (tagged.version !== 'v8') {
+    throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
+  }
+  return tagged;
 };
 
 /** The private-state members a retained-era call reads and writes. */
@@ -1010,7 +1052,7 @@ export interface Ledger8DeployEntryOptions {
   readonly args?: readonly unknown[];
   readonly privateStateId?: PrivateStateId;
   readonly initialPrivateState?: unknown;
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -1029,8 +1071,8 @@ export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
 export interface Ledger8DeployedState {
   /** The address the composition minted, which no other deployment shares. */
   readonly contractAddress: string;
-  readonly deployTxData: VersionedFinalizedTxData;
-  readonly signingKey: Ledger8SigningKey;
+  readonly deployTxData: Ledger8FinalizedTxData;
+  readonly signingKey: SigningKey;
   readonly initialContractStateBytes: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
   /** The private state the CONSTRUCTOR produced. */
@@ -1065,6 +1107,8 @@ export interface Ledger8DeployedState {
  * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
+ * @throws Ledger8SigningKeyUnusableError if a supplied key is not one the
+ * retained era can sign with. Raised before the head is read.
  * @throws Every error {@link runLedger8Deploy} raises.
  * @see {@link KeepStatePipeline} for why every slot has to be registered, and
  * for the order after submission.
@@ -1074,6 +1118,8 @@ export const submitLedger8DeployTx = async (
   options: Ledger8DeployEntryOptions
 ): Promise<Ledger8DeployedState> => {
   const { privateStateId } = options;
+  const suppliedSigningKey =
+    options.signingKey === undefined ? undefined : requireLedger8SigningKey(options.signingKey, undefined);
 
   const { deploy, head } = await runLedger8Deploy(providers, {
     contract: options.compiledContract,
@@ -1083,30 +1129,35 @@ export const submitLedger8DeployTx = async (
     // than ahead of them.
     resolveVerifierKeys: async () =>
       new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
-    signingKey: options.signingKey
+    signingKey: suppliedSigningKey
   });
+  const signingKey = toStoredLedger8SigningKey(deploy.signingKey);
 
   // PAST THIS POINT the transaction is on the network and may finalize whatever
   // happens here, so every refusal below carries the signing key. A sampled key
   // discarded here leaves a contract on chain that nobody can ever maintain,
   // which is the harm this path exists to remove.
-  let deployTxData: VersionedFinalizedTxData;
+  let deployTxData: Ledger8FinalizedTxData;
   try {
     // The ADDRESS, not the transaction id: a deployment is recorded against the
     // contract it created, and `watchForDeployTxData` is the read surface's own
-    // method for that.
-    deployTxData = await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress);
-    // Attribute the record BEFORE reading anything off it -- see the helper.
-    assertLedger8RecordEra(deployTxData, head, 'initialState', 'watchForDeployTxData');
+    // method for that. Attributed BEFORE anything is read off it: a deploy runs
+    // only on a pre-fork head, so its record can only be a ledger 8 one.
+    deployTxData = requireLedger8Record(
+      await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress),
+      head,
+      'initialState',
+      'watchForDeployTxData'
+    );
   } catch (error) {
     // EVERY way this step can fail -- the read surface rejecting, a record from
     // the wrong era, a record with no readable tag at all -- leaves the same
     // caller holding the same problem, so one class carries the key over all of
     // them. The failure itself rides on `cause`, so an era violation keeps its
     // method and its registered code where a caller branches on them.
-    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, deploy.signingKey, error);
+    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, signingKey, error);
   }
-  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, deploy.signingKey);
+  assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, signingKey);
 
   // FIRST the address, for the PRIVATE-STATE write below and for that one
   // only. A provider namespaces every private-state entry by the address last
@@ -1141,28 +1192,240 @@ export const submitLedger8DeployTx = async (
   // retry mints a fresh nonce and a SECOND contract at a different address while
   // the first sits on chain unmaintainable.
   try {
-    await providers.privateStateProvider.setSigningKey(
-      deploy.contractAddress,
-      toStoredLedger8SigningKey(deploy.signingKey)
-    );
+    await providers.privateStateProvider.setSigningKey(deploy.contractAddress, signingKey);
   } catch (error) {
-    throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'signing-key', error);
+    throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'signing-key', error);
   }
   if (privateStateId !== undefined) {
     try {
       await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
     } catch (error) {
-      throw new Ledger8DeployNotStoredError(deploy.contractAddress, deploy.signingKey, 'private-state', error);
+      throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'private-state', error);
     }
   }
 
   return {
     contractAddress: deploy.contractAddress,
     deployTxData,
-    signingKey: deploy.signingKey,
+    signingKey,
     initialContractStateBytes: deploy.initialContractStateBytes,
     initialContractState: deploy.initialContractState,
     initialPrivateState: deploy.nextPrivateState,
     initialZswapState: deploy.initialZswapState
   };
+};
+
+/**
+ * One maintenance update as a retained-era entry point receives it: the replacement key in the
+ * public `SigningKey` shape both eras share, rather than the bare string the retained runtime takes.
+ */
+export type Ledger8MaintenanceEntryUpdate =
+  | Exclude<Ledger8MaintenanceUpdate, { readonly kind: 'replace-authority' }>
+  | { readonly kind: 'replace-authority'; readonly newSigningKey: SigningKey };
+
+/** What a retained-era maintenance entry point received. */
+export interface Ledger8MaintenanceEntryRequest {
+  readonly contract: Ledger8Contract;
+  readonly contractAddress: string;
+  readonly update: Ledger8MaintenanceEntryUpdate;
+}
+
+/**
+ * The providers a retained-era maintenance update needs: the transaction providers, plus the
+ * signing-key half of the private-state provider, which it reads and, for a replacement, writes.
+ */
+export interface Ledger8MaintenanceEntryProviders extends Ledger8EntryProviders {
+  readonly privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey' | 'setSigningKey'>;
+}
+
+/**
+ * Reads the key a retained-era maintenance update is signed with.
+ *
+ * Every way of not having one is a refusal here, where the attach path reports the same entries
+ * as absent: an attach can call circuits without the key, and a maintenance update cannot do
+ * anything without it.
+ *
+ * @param privateStateProvider The signing-key half of the private-state provider.
+ * @param contractAddress The contract being maintained.
+ * @param sink The configured logger, or `undefined`.
+ * @returns The retained-era key held for the address.
+ * @throws Ledger8SigningKeyUnavailableError if nothing usable is stored, or the store cannot be read.
+ */
+const readLedger8MaintenanceSigningKey = async (
+  privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey'>,
+  contractAddress: string,
+  sink: BreadcrumbSink | undefined
+): Promise<Ledger8SigningKey> => {
+  let stored: SigningKey | null | undefined;
+  try {
+    stored = await privateStateProvider.getSigningKey(contractAddress);
+  } catch (error) {
+    throw new Ledger8SigningKeyUnavailableError(contractAddress, error);
+  }
+  const signingKey =
+    stored === undefined || stored === null ? undefined : fromStoredLedger8SigningKey(stored, contractAddress, sink);
+  if (signingKey === undefined) {
+    throw new Ledger8SigningKeyUnavailableError(contractAddress);
+  }
+  return signingKey;
+};
+
+/**
+ * The update in the shape the engine takes, with the replacement key checked and unwrapped.
+ *
+ * @throws InvalidArgumentError if the artifact declares no circuit of that name.
+ * @throws Ledger8SigningKeyUnusableError if the replacement key is not one the retained era can sign with.
+ */
+const toLedger8MaintenanceUpdate = (
+  contract: Ledger8Contract,
+  contractAddress: string,
+  update: Ledger8MaintenanceEntryUpdate
+): Ledger8MaintenanceUpdate => {
+  if (update.kind === 'replace-authority') {
+    return { kind: update.kind, newSigningKey: requireLedger8SigningKey(update.newSigningKey, contractAddress) };
+  }
+  if (!Object.hasOwn(contract.provableCircuits, update.circuitId)) {
+    throw new InvalidArgumentError(`Circuit '${update.circuitId}' is undefined`);
+  }
+  return update;
+};
+
+/**
+ * Refuses a retained-era maintenance update the node recorded with a non-success status, with the
+ * class that names the update.
+ *
+ * @throws Ledger8InsertVerifierKeyTxFailedError, Ledger8RemoveVerifierKeyTxFailedError,
+ * Ledger8ReplaceMaintenanceAuthorityTxFailedError if the recorded status is not `SucceedEntirely`.
+ */
+const assertLedger8MaintenanceSucceeded = (
+  record: Ledger8FinalizedTxData,
+  contractAddress: string,
+  update: Ledger8MaintenanceEntryUpdate
+): void => {
+  if (record.status === SucceedEntirely) {
+    return;
+  }
+  switch (update.kind) {
+    case 'insert-verifier-key':
+      throw new Ledger8InsertVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
+    case 'remove-verifier-key':
+      throw new Ledger8RemoveVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
+    case 'replace-authority':
+      throw new Ledger8ReplaceMaintenanceAuthorityTxFailedError(record, contractAddress, update.newSigningKey);
+    default:
+      return assertNever(update, 'assertLedger8MaintenanceSucceeded');
+  }
+};
+
+/**
+ * Whether a failure from {@link submitLedger8Tx} leaves open that the transaction landed: only a
+ * submission rejected while the head was moving, or one whose rejection could not be diagnosed.
+ */
+const mayHaveLanded = (error: unknown): boolean =>
+  error instanceof StaleHeadError || error instanceof SubmitRejectionUndiagnosedError;
+
+/**
+ * Runs one retained-era maintenance update end to end and waits for the chain to record it: check
+ * the request, acquire the era, read the signing key, compose through the pipeline, prove, balance,
+ * submit, and attribute the record. A successful replacement then stores the new key.
+ *
+ * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the post-fork case
+ * before the key is read. The record is therefore always a ledger 8 one, and anything else is an
+ * era violation rather than a variant to report.
+ *
+ * @param providers The provider set.
+ * @param request The contract, its address and the update.
+ * @returns The finalized ledger 8 record.
+ * @throws InvalidArgumentError if the address is malformed, or the artifact declares no such circuit.
+ * @throws Ledger8SigningKeyUnusableError if a replacement key is not one the retained era can sign with.
+ * Raised before the head is read.
+ * @throws Ledger8MaintenanceOnLedger9Error on a post-fork head.
+ * @throws Ledger8SigningKeyUnavailableError if no usable key is held for the address.
+ * @throws MaintenanceAuthorityMismatchError if the held key is not the contract's authority. Raised
+ * before anything is proven.
+ * @throws EraInvariantViolationError if the record comes back from an era other than ledger 8.
+ * @throws Ledger8InsertVerifierKeyTxFailedError, Ledger8RemoveVerifierKeyTxFailedError,
+ * Ledger8ReplaceMaintenanceAuthorityTxFailedError if the node recorded a non-success status.
+ * @throws Ledger8SigningKeyNotStoredError if a replacement was CONFIRMED and the store then refused
+ * the new key. It carries the key.
+ * @throws Every error {@link runLedger8MaintenancePipeline} and {@link submitLedger8Tx} raise.
+ */
+export const submitLedger8MaintenanceTx = async (
+  providers: Ledger8MaintenanceEntryProviders,
+  request: Ledger8MaintenanceEntryRequest
+): Promise<Ledger8FinalizedTxData> => {
+  assertValidMidnightConfig(providers.config);
+  const { contract, contractAddress } = request;
+  assertIsContractAddress(contractAddress);
+  const update = toLedger8MaintenanceUpdate(contract, contractAddress, request.update);
+  const { networkId } = providers.config;
+  const ttl = intentTtl(providers.config);
+
+  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'maintenance', {
+    logger: providers.loggerProvider,
+    contractAddress
+  });
+  const signingKey = await readLedger8MaintenanceSigningKey(
+    providers.privateStateProvider,
+    contractAddress,
+    providers.loggerProvider
+  );
+
+  const txBytes = await runLedger8MaintenancePipeline({
+    retainedEra,
+    era: resolved.era,
+    head: resolved.head,
+    engine,
+    publicDataProvider: providers.publicDataProvider,
+    logger: providers.loggerProvider,
+    contract,
+    contractAddress,
+    // Normalized as on the call path: the retained runtime reads hex only.
+    coinPublicKey: parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId),
+    signingKey,
+    networkId,
+    ttl,
+    update
+  });
+
+  const circuitId = update.kind === 'replace-authority' ? NO_CIRCUIT : update.circuitId;
+  const unconfirmed = (error: unknown): unknown =>
+    request.update.kind === 'replace-authority'
+      ? new Ledger8ReplaceAuthorityUnconfirmedError(contractAddress, request.update.newSigningKey, error)
+      : error;
+
+  let txId: string;
+  try {
+    txId = await submitLedger8Tx(providers, txBytes, {
+      head: resolved.head,
+      kind: 'maintenance',
+      circuitId,
+      contractAddress
+    });
+  } catch (error) {
+    throw mayHaveLanded(error) ? unconfirmed(error) : error;
+  }
+
+  let record: Ledger8FinalizedTxData;
+  try {
+    record = requireLedger8Record(
+      await providers.publicDataProvider.watchForTxData(txId),
+      resolved.head,
+      circuitId,
+      'watchForTxData'
+    );
+  } catch (error) {
+    throw unconfirmed(error);
+  }
+  assertLedger8MaintenanceSucceeded(record, contractAddress, request.update);
+
+  if (request.update.kind === 'replace-authority') {
+    const newSigningKey = request.update.newSigningKey;
+    try {
+      await providers.privateStateProvider.setSigningKey(contractAddress, newSigningKey);
+    } catch (error) {
+      throw new Ledger8SigningKeyNotStoredError(contractAddress, newSigningKey, error);
+    }
+  }
+  return record;
 };

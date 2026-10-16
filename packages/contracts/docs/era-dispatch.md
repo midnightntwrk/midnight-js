@@ -226,16 +226,29 @@ provider offers.
 rather than left to fall through — in the FUNCTION. Read the note below the
 table before relying on that for the system as a whole:
 
-| artifact | head | `'call'` | `'deploy'` |
-| -------- | ---- | -------- | ---------- |
-| current-era | `v9` | `v9` pipeline | `v9` pipeline |
-| retained-era | `v9` | keep-state | refused |
-| retained-era | `v8` | `v8` pipeline | `v8` pipeline |
-| current-era | `v8` | refused | refused |
+| artifact | head | `'call'` | `'deploy'` | `'maintenance'` |
+| -------- | ---- | -------- | ---------- | --------------- |
+| current-era | `v9` | `v9` pipeline | `v9` pipeline | `v9` pipeline |
+| retained-era | `v9` | keep-state | refused | refused |
+| retained-era | `v8` | `v8` pipeline | `v8` pipeline | `v8` pipeline |
+| current-era | `v8` | refused | refused | refused |
 
-A retained-era DEPLOY on a post-fork head is the one cell where the two kinds
-differ: calls against contracts already on chain are what the retained era
-exists to keep working, and a new deployment has no such history to preserve.
+A retained-era DEPLOY or MAINTENANCE update on a post-fork head is the one cell
+where the kinds differ: calls against contracts already on chain are what the
+retained era exists to keep working, and a new deployment has no such history to
+preserve. A maintenance update has a working path after the fork already: the
+same function with the artifact recompiled by the current toolchain maintains the
+migrated contract with the signing key stored for its address. So the retained
+artifact is refused there with `Ledger8MaintenanceOnLedger9Error`, which names
+that path, rather than routed anywhere.
+
+That path depends on one fact this package does not control: the fork
+translation keeps the contract's maintenance authority, its committee and its
+counter. The Hard fork lane asserts it on the `simple` shard. It replaces the
+authority before the fork with the retained artifact, checks that the retained
+artifact is refused after it with nothing proven or submitted, and replaces the
+authority again with the recompiled artifact and the key the first replacement
+stored. See `consumer-e2e/README.md`.
 
 Only the two RETAINED rows are enforced in production. Every call site passes
 the literal `'v8'`, so the current-era rows are reachable from tests alone,
@@ -271,8 +284,8 @@ The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
 switches: one row per artifact era, one column per head era, both `LedgerVersion`. Each cell
 holds one `EraPairing` verdict, `'run'`, `'call-only'` or
 `'artifact-newer-than-head'`, and `assertEraCompatible` turns that verdict and
-the operation kind into the refusal. `'call-only'` is where the deploy asymmetry
-above lives, and it refuses anything that is not positively a call — the one
+the operation kind into the refusal. `'call-only'` is where the deploy and
+maintenance asymmetry above lives, and it refuses anything that is not positively a call — the one
 asymmetric cell in the fork window must not admit a `kind` nobody anticipated.
 
 ### Where the build-time gate actually is

@@ -113,6 +113,28 @@ with **no era in it**. It used to carry one, which gave every twin two stores
 and made the signing key and any private state unmeasurable across the fork. A
 real dApp has one store and does not re-key it when the chain forks.
 
+### Maintenance across the fork (`simple` shard)
+
+The shard that installs both `simple` artifacts also maintains the retained
+`simple` contract on both sides of the boundary. All three legs replace the
+maintenance authority, because that leaves every circuit the other legs call
+untouched:
+
+- **before the fork**, with the retained artifact, through the v8 overload of
+  `submitReplaceAuthorityTx`. The leg asserts a `v8` result on a `v8` record and
+  that the store now holds the new key. (c3) then asserts that this key, not the
+  deploy's, survived the fork;
+- **after the fork, retained artifact**: refused with
+  `Ledger8.MaintenanceOnLedger9Error`. The proof and submission providers in this
+  leg refuse to be reached, and the stored key must be unchanged;
+- **after the fork, recompiled artifact**: through the v9 path, from the same
+  store, with the key the first leg stored. This is the only place the run
+  observes that the fork translation kept the maintenance authority. If the
+  committee or the counter were lost, the ledger would refuse the signature or
+  the counter, and this row would be red.
+
+Other shards record a `skipped:` row for these legs rather than none.
+
 ### `private-counter`: the only twin with private state
 
 No other contract in either matrix declares a witness — the retained twins are

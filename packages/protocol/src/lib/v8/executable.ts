@@ -69,7 +69,7 @@ import { type ContractStatePojo, describeValue, isContractBalance } from '../sha
  * a valid Schnorr scalar is a cryptographic property this cannot check, and the
  * runtime's own `Malformed Schnorr signing key` already names it.
  */
-const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
+export const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
 /**
  * The signature kind this era's maintenance authority accepts.
@@ -84,6 +84,10 @@ const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 
 /** A retained-era signing key: 32 bytes of hex. @see {@link LEDGER8_SIGNING_KEY_PATTERN} */
 export type Ledger8SigningKey = string;
+
+/** A retained-era key as the tagged `SigningKey` compact-js reads. */
+export const toPlatformSigningKey = (signingKey: Ledger8SigningKey): SigningKey.SigningKey =>
+  SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND);
 
 /**
  * A retained-era contract, as the caller holds it: the CONSTRUCTED artifact the
@@ -128,7 +132,7 @@ const LEDGER8_CONTRACT_TAG = 'ledger8-contract';
  * own `ZKConfiguration` reader, and {@link zkConfigurationLayer} replaces that
  * service outright, so nothing ever resolves it.
  */
-const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
+export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
   Contract.Contract<PS>,
   PS,
   never
@@ -303,7 +307,7 @@ export interface Ledger8ConstructorOptions<C extends Ledger8EngineContract, PS> 
  * there is nothing a config round trip would add except a second place for the
  * values to disagree.
  */
-const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
+export const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
   Layer.succeed(
     Configuration.Keys,
     Configuration.Keys.of({
@@ -311,7 +315,7 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
       getSigningKey: () =>
         signingKey === undefined
           ? Option.none()
-          : Option.some(SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND))
+          : Option.some(toPlatformSigningKey(signingKey))
     })
   );
 
@@ -377,7 +381,7 @@ const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect
  * deploy composition was the only thing that checked coverage. It now fails
  * before a state is built at all.
  */
-const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
+export const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
   Layer.succeed(
     ZKConfiguration.ZKConfiguration,
     ZKConfiguration.ZKConfiguration.of({
@@ -411,20 +415,20 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
   );
 
 /**
- * The verifier-key reader a CIRCUIT call is given.
+ * The verifier-key reader a CIRCUIT call or a MAINTENANCE update is given.
  *
  * `ContractExecutable` declares `ZKConfiguration` in its context for every
- * method, but only `initialize` and the maintenance operations read a key — a
- * circuit call needs none, which is measured, not assumed. Providing a reader
- * that refuses keeps that fact enforced: were a future version to read a key
- * during a circuit call, this fails by name instead of silently serving
- * `Option.none()` and composing a call with a blank key slot.
+ * method, but only `initialize` reads a key — a circuit call needs none, and a
+ * maintenance update is handed the key it inserts, which is measured, not
+ * assumed. Providing a reader that refuses keeps that fact enforced: were a
+ * future version to read a key there, this fails by name instead of silently
+ * serving `Option.none()` and composing a transaction with a blank key slot.
  */
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
     new InvariantViolationError(
-      `a ledger 8 circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
-        'not supposed to read ZK configuration; only deployment and maintenance are.'
+      `a ledger 8 circuit call or maintenance update read the verifier key for '${provableCircuitId}'. ` +
+        'Only deployment is supposed to read ZK configuration.'
     )
   );
 

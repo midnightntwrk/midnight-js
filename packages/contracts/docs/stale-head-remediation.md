@@ -104,6 +104,13 @@ The second step differs by operation kind:
   contract on chain; and a contract produced by the retained toolchain cannot be
   deployed to a post-fork head at all. The remediation is to recompile with the
   current Compact toolchain and deploy that artifact.
+- **A maintenance update** cannot be re-run either: the retained toolchain has
+  no maintenance after the fork. First check whether the contract's verifier
+  key for the circuit, or its maintenance authority, already reflects the
+  update. Then recompile with the current Compact toolchain and run the same
+  maintenance function with that artifact. An authority replacement arrives
+  wrapped in `Ledger8ReplaceAuthorityUnconfirmedError`, which carries the new
+  key, because the replacement may have landed.
 
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
 

@@ -794,6 +794,89 @@ Match errors on their `code`, not their message (ADR 0017).
 
 ---
 
+## 16. Retained-era handles: one `deployTxData` shape and one signing-key type (#1514)
+
+`Ledger8.FoundContract` and `Ledger8.DeployedContract` now carry `deployTxData` as
+`{ era, public, private }`, the shape the current era's handles have. The deployer's data moved
+off the top level, and the retained era's signing key is now the current era's `SigningKey`,
+`{ tag, value }`.
+
+| Where | Before | After |
+|---|---|---|
+| `Ledger8.FoundContract.deployTxData` | `{ public: VersionedFinalizedTxData }` | `Ledger8.FoundDeployTxData<C>`: `{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey, initialPrivateState } }` |
+| `Ledger8.DeployedContract.deployTxData` | `{ public: VersionedFinalizedTxData }` | `Ledger8.DeployTxData<C>`: `public` adds `initialContractState`, `initialContractStateBytes`; `private` adds `initialZswapState` |
+| `Ledger8.FoundContract.signingKey` | `Ledger8SigningKey \| undefined` (bare hex) | removed; `deployTxData.private.signingKey: SigningKey \| undefined` |
+| `Ledger8.DeployedContract.signingKey` | `Ledger8SigningKey` | removed; `deployTxData.private.signingKey: SigningKey` |
+| `Ledger8.DeployedContract.initialContractState`, `initialContractStateBytes` | top level | `deployTxData.public.*` |
+| `Ledger8.DeployedContract.initialPrivateState`, `initialZswapState` | top level | `deployTxData.private.*` |
+| `Ledger8.DeployContractOptions.signingKey`, `Ledger8.FindDeployedContractOptions.signingKey` | `Ledger8SigningKey` (bare hex) | `SigningKey` |
+| `Ledger8.DeployTxFailedError.signingKey`, `Ledger8.DeployUnconfirmedError.signingKey`, `Ledger8.DeployNotStoredError.signingKey` | `Ledger8SigningKey` | `SigningKey` |
+| `Ledger8.SigningKeyUnusableError` | raised by `findDeployedContract` only; `contractAddress: string` | also raised by `deployContract` and by the retained-era `submitReplaceAuthorityTx` / `replaceAuthority`, before anything is composed; `contractAddress?: string` (absent on a deploy) |
+
+The retained era signs with `schnorr` only. An `ecdsa` key, or a `schnorr` key whose value is not
+exactly 64 hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError`
+(`LEDGER8_SIGNING_KEY_UNUSABLE`).
+
+```diff
+  const deployed = await deployContract(providers, {
+    compiledContract: retained,
+-   signingKey: keyHex
++   signingKey: { tag: 'schnorr', value: keyHex }
+  });
+- deployed.signingKey;
+- deployed.initialPrivateState;
++ deployed.deployTxData.private.signingKey;
++ deployed.deployTxData.private.initialPrivateState;
+```
+
+## 17. Contract maintenance in both eras, with results tagged by era (#1514)
+
+The maintenance functions take a retained-era artifact as well, on a pre-fork head, and every
+maintenance result is now nested like every other `contracts` result.
+
+| Where | Before | After |
+|---|---|---|
+| `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>`, `{ era: 'v9', public: FinalizedTxData }`; a retained-era artifact resolves `Promise<Ledger8.FinalizedMaintenanceTxData>`, `{ era: 'v8', public: Ledger8FinalizedTxData }` |
+| `submitReplaceAuthorityTx(...)` | `(newAuthority) => Promise<FinalizedTxData>` | `(newAuthority) => Promise<FinalizedMaintenanceTxData>`, or the retained-era result for a retained-era artifact |
+| `CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` methods | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>` |
+| `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8.CircuitMaintenanceTxInterface(s)` / `Ledger8.ContractMaintenanceTxInterface` |
+| `Ledger8.FoundContract`, `Ledger8.DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
+| `StaleHeadOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
+| `ComposeStage` (protocol) | no maintenance stage | gains `'maintenance-update'` |
+| `ComposeOption` (protocol) | no replacement-key option | gains `'newSigningKey'` |
+
+```diff
+  const result = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
+- result.status;
++ result.public.status;
+```
+
+`AnyEraMaintenanceTxData` is the union of both results; narrowing on `era` narrows `public`. The
+`*TxFailedError` records are unchanged.
+
+`StaleHeadOperationKind`, `ComposeStage` and `ComposeOption` are closed unions: an exhaustive
+`switch` over one of them in consumer code stops compiling until it handles the new member.
+
+A retained-era maintenance update on a post-fork head is refused with
+`Ledger8.MaintenanceOnLedger9Error` (`LEDGER8_MAINTENANCE_ON_LEDGER9`). After the fork, recompile
+the contract with the ledger 9 Compact toolchain and call the same function with that artifact.
+
+New refusals on the retained path:
+
+| Class | Code | When |
+|---|---|---|
+| `Ledger8.MaintenanceOnLedger9Error` | `LEDGER8_MAINTENANCE_ON_LEDGER9` (USAGE) | retained-era artifact on a post-fork head |
+| `Ledger8.SigningKeyUnavailableError` | `LEDGER8_SIGNING_KEY_UNAVAILABLE` (USAGE) | no usable key stored, or the store cannot be read (on `cause`) |
+| `Ledger8.SigningKeyNotStoredError` | `LEDGER8_SIGNING_KEY_NOT_STORED` (ENVIRONMENT) | a confirmed replacement whose new key the store refused; carries the key |
+| `Ledger8.ReplaceAuthorityUnconfirmedError` | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` (UNCERTAIN) | a submitted replacement whose outcome could not be confirmed; carries the new key, which was not stored |
+| `MaintenanceAuthorityMismatchError` (protocol) | `MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH` (USAGE) | the stored key cannot sign for the contract's authority (`reason`: `'not-first-member'`, `'empty-committee'`, `'threshold-above-one'`); raised before proving |
+| `Ledger8.InsertVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TX_FAILED` (inherited from `AnyEraTxFailedError`) | the chain recorded a non-success status; each names the contract, the first two the circuit, and the third carries the new key |
+
+A retained-era replacement key must be a `schnorr` key; any other is refused with
+`Ledger8.SigningKeyUnusableError` before anything is composed.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

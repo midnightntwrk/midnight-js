@@ -269,6 +269,98 @@ export interface FoundDeployTxData<C extends Contract.Any> {
 reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` or
 `initialContractState`.
 
+### Retained-era deploy data and signing key (#1514)
+
+```ts
+export namespace Ledger8 {
+  export interface FoundDeployTxData<C extends Contract> {
+    readonly era: 'v8';
+    readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+    readonly private: {
+      readonly signingKey: SigningKey | undefined;
+      readonly initialPrivateState: PrivateState<C>;
+    };
+  }
+  export interface DeployTxData<C extends Contract> extends FoundDeployTxData<C> {
+    readonly public: FoundDeployTxData<C>['public'] & {
+      readonly initialContractState: { serialize(): Uint8Array };
+      readonly initialContractStateBytes: Uint8Array;
+    };
+    readonly private: {
+      readonly signingKey: SigningKey;
+      readonly initialPrivateState: PrivateState<C>;
+      readonly initialZswapState: ZswapLocalState;
+    };
+  }
+}
+// Ledger8.FoundContract<C>['deployTxData'] is FoundDeployTxData<C>;
+// Ledger8.DeployedContract<C>['deployTxData'] is DeployTxData<C>.
+// The top-level signingKey / initial* members are removed.
+```
+
+Every retained-era signing key on the public surface is the structured `SigningKey`:
+the `signingKey` deploy and find options, `deployTxData.private.signingKey`, and the
+`signingKey` member of `Ledger8.DeployTxFailedError`, `Ledger8.DeployUnconfirmedError`
+and `Ledger8.DeployNotStoredError`. `Ledger8.SigningKeyUnusableError.contractAddress`
+is optional: a refused deploy key has no address yet.
+
+### Contract maintenance in both eras (#1514)
+
+```ts
+export interface FinalizedMaintenanceTxData {
+  readonly era: 'v9';
+  readonly public: FinalizedTxData;
+}
+export type AnyEraMaintenanceTxData = FinalizedMaintenanceTxData | Ledger8.FinalizedMaintenanceTxData;
+
+export function submitInsertVerifierKeyTx<C extends Ledger8.Contract>(
+  providers: Ledger8.ContractProviders<C, Ledger8.CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  circuitId: Ledger8.CircuitId<C>,
+  newVk: VerifierKey
+): Promise<Ledger8.FinalizedMaintenanceTxData>;
+export function submitInsertVerifierKeyTx<C extends Contract.Any>(
+  providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>,
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C>,
+  newVk: VerifierKey
+): Promise<FinalizedMaintenanceTxData>;
+// submitRemoveVerifierKeyTx and submitReplaceAuthorityTx take the same two overloads;
+// so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
+
+export namespace Ledger8 {
+  export interface FinalizedMaintenanceTxData {
+    readonly era: 'v8';
+    readonly public: Ledger8FinalizedTxData;
+  }
+  export interface CircuitMaintenanceTxInterface {
+    removeVerifierKey(): Promise<FinalizedMaintenanceTxData>;
+    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedMaintenanceTxData>;
+  }
+  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, CircuitMaintenanceTxInterface>;
+  export interface ContractMaintenanceTxInterface {
+    replaceAuthority(newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData>;
+  }
+  // FoundContract<C> and DeployedContract<C> gain
+  //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
+  //   contractMaintenanceTx: ContractMaintenanceTxInterface
+  // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
+  //   ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
+  //   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.
+}
+```
+
+`StaleHeadOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
+
+- `Ledger8Engine.composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>`, with
+  the `Ledger8MaintenanceRequest` and `Ledger8MaintenanceUpdateRequest` types;
+- `MaintenanceAuthorityMismatchError` with its `MaintenanceAuthorityMismatchReason`, and the code
+  `PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH`;
+- `'maintenance-update'` on `ComposeStage` and `'newSigningKey'` on `ComposeOption`. Both unions are
+  closed, so an exhaustive `switch` over either must handle the new member (see breaking-changes.md).
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`

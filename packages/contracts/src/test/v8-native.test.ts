@@ -40,7 +40,7 @@ import {
   loadLedger8Protocol,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type Recipient, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
@@ -424,6 +424,7 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
  * `runLedger8Constructor` does.
  */
 const CALLER_OWN_SIGNING_KEY = 'ab'.repeat(32);
+const SAMPLED_KEY: SigningKey = { tag: 'schnorr', value: SAMPLED_SIGNING_KEY };
 
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
@@ -2504,19 +2505,33 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(typeof deployed.contractAddress).toBe('string');
     expect(deployed.contractAddress.length).toBeGreaterThan(0);
     // The key the authority was built from, which only the deployer ever holds.
-    expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect(deployed.deployTxData.private.signingKey).toEqual(SAMPLED_KEY);
     // The LIVE handle beside the bytes, as the retained constructor built it.
-    expect(deployed.initialContractState.serialize()).toEqual(v6Envelope);
+    expect(deployed.deployTxData.public.initialContractState.serialize()).toEqual(v6Envelope);
     // The bytes the address was derived from are the same state as the handle.
-    expect(deployed.initialContractStateBytes).toEqual(deployed.initialContractState.serialize());
+    expect(deployed.deployTxData.public.initialContractStateBytes).toEqual(
+      deployed.deployTxData.public.initialContractState.serialize()
+    );
     // This deploy named no private state, so the constructor was handed
     // `undefined` and threaded it back. Presence is asserted separately: a
     // handle that dropped the member entirely would otherwise read the same.
-    expect('initialPrivateState' in deployed).toBe(true);
-    expect(deployed.initialPrivateState).toBeUndefined();
-    expect(deployed.initialZswapState.outputs).toEqual([]);
+    expect('initialPrivateState' in deployed.deployTxData.private).toBe(true);
+    expect(deployed.deployTxData.private.initialPrivateState).toBeUndefined();
+    expect(deployed.deployTxData.private.initialZswapState.outputs).toEqual([]);
+    expect(deployed.deployTxData.era).toBe('v8');
     expect(deployed.deployTxData.public.version).toBe('v8');
     expect(deployed.deployTxData.public.txId).toBe(retainedEraRecord().txId);
+    expect(deployed.deployTxData.public.contractAddress).toBe(deployed.contractAddress);
+    expect(Object.keys(deployed).sort()).toEqual([
+      'callTx',
+      'circuitMaintenanceTx',
+      'compiledContract',
+      'contractAddress',
+      'contractMaintenanceTx',
+      'deployTxData',
+      'era'
+    ]);
+    expect(Object.keys(deployed.circuitMaintenanceTx)).toEqual([CIRCUIT_ID]);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
     // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
@@ -2528,10 +2543,35 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     const deployed = await deployContract(providers, {
       compiledContract: contract,
-      signingKey: CALLER_OWN_SIGNING_KEY
+      signingKey: { tag: 'schnorr', value: CALLER_OWN_SIGNING_KEY }
     });
 
-    expect(deployed.signingKey).toBe(CALLER_OWN_SIGNING_KEY);
+    expect(deployed.deployTxData.private.signingKey).toEqual({ tag: 'schnorr', value: CALLER_OWN_SIGNING_KEY });
+  });
+
+  it('refuses a signing key of the other signature kind before anything is proven or stored', async () => {
+    const providers = deployProviders();
+
+    const caught: unknown = await deployContract(providers, {
+      compiledContract: contract,
+      signingKey: { tag: 'ecdsa', value: CALLER_OWN_SIGNING_KEY }
+    }).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
+    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBeUndefined();
+    expect((caught as Error).message).not.toContain(CALLER_OWN_SIGNING_KEY);
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('refuses a malformed signing key before anything is proven or stored', async () => {
+    const providers = deployProviders();
+
+    await expect(
+      deployContract(providers, { compiledContract: contract, signingKey: { tag: 'schnorr', value: 'ab'.repeat(16) } })
+    ).rejects.toThrow(Ledger8SigningKeyUnusableError);
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
   it('asks for a verifier key for EVERY entry point the artifact declares', async () => {
@@ -2712,7 +2752,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // this pins the returned handle to the constructor's output specifically --
     // a check the `toBeUndefined()` tests below can't make, since both sides
     // are `undefined` there and so indistinguishable.
-    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
+    expect(deployed.deployTxData.private.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
   });
 
   it('leaves the private state untouched when the caller named no id', async () => {
@@ -2805,7 +2845,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // this pins the returned handle to the constructor's output specifically --
     // a check the `toBeUndefined()` tests below can't make, since both sides
     // are `undefined` there and so indistinguishable.
-    expect(deployed.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
+    expect(deployed.deployTxData.private.initialPrivateState).toBe(ADVANCED_PRIVATE_STATE);
   });
 
   it('hands the constructor UNDEFINED when the caller supplied no initial private state', async () => {
@@ -2822,8 +2862,8 @@ describe('deploying a retained-era contract through deployContract', () => {
     // of it. The 0.16 runtime threads its input straight back, so an
     // `undefined` in is an `undefined` out -- and the member being absent from
     // the handle altogether is ruled out separately.
-    expect('initialPrivateState' in deployed).toBe(true);
-    expect(deployed.initialPrivateState).toBeUndefined();
+    expect('initialPrivateState' in deployed.deployTxData.private).toBe(true);
+    expect(deployed.deployTxData.private.initialPrivateState).toBeUndefined();
   });
 
   it('refuses a retained-era deploy against a POST-FORK head, before the constructor runs', async () => {
@@ -3025,7 +3065,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
-    expect((caught as Ledger8DeployTxFailedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployTxFailedError).signingKey).toEqual(SAMPLED_KEY);
     // And the message has to say the contract landed. A caller told "nothing local refers to this
     // address" concludes nothing happened and never looks for the deployment.
     expect((caught as Ledger8DeployTxFailedError).message).toContain('LANDED');
@@ -3052,7 +3092,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect((cause as EraInvariantViolationError).method).toBe('watchForDeployTxData');
     // The transaction is already on the network by the time this is raised, so discarding the key
     // here leaves whatever does finalize permanently unmaintainable.
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
     expect((caught as Ledger8DeployUnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
   });
 
@@ -3069,7 +3109,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
     // The reason the record is unreadable is what the caller acts on, so it is kept rather than
     // replaced -- this class adds the one fact a provider rejection cannot carry.
     expect((caught as Ledger8DeployUnconfirmedError).cause).toBe(unreachable);
@@ -3092,7 +3132,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
     expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
   });
 
@@ -3108,13 +3148,13 @@ describe('deploying a retained-era contract through deployContract', () => {
     //
     // No private state is named by this deploy, so the write is pinned on the variant that has no
     // private-state write to ride along with.
-    // Against the FIXTURE rather than against `deployed.signingKey`: read off the handle, this
+    // Against the FIXTURE rather than against `deployTxData.private.signingKey`: read off the handle, this
     // cannot tell "stored the sampled key" from "stored and reported the same wrong value".
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(deployed.contractAddress, {
       tag: 'schnorr',
       value: SAMPLED_SIGNING_KEY
     });
-    expect(deployed.signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect(deployed.deployTxData.private.signingKey).toEqual(SAMPLED_KEY);
   });
 
   it('writes the key only after the chain record has been checked', async () => {
@@ -3174,7 +3214,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // authority the chain already holds, and reads to the caller as "deploy failed, retry" -- which
     // mints a second contract at a different address.
     expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
-    expect((caught as Ledger8DeployNotStoredError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployNotStoredError).signingKey).toEqual(SAMPLED_KEY);
     expect((caught as Ledger8DeployNotStoredError).stage).toBe('signing-key');
     expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
     expect((caught as Ledger8DeployNotStoredError).contractAddress).toMatch(/^[0-9a-f]+$/);
@@ -3195,7 +3235,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // says so rather than claiming the key is stranded. It still carries the key: one class over
     // the whole after-success region is what makes "every refusal here carries the key" checkable.
     expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
-    expect((caught as Ledger8DeployNotStoredError).signingKey).toBe(SAMPLED_SIGNING_KEY);
+    expect((caught as Ledger8DeployNotStoredError).signingKey).toEqual(SAMPLED_KEY);
     expect((caught as Ledger8DeployNotStoredError).stage).toBe('private-state');
     expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
@@ -3259,8 +3299,20 @@ describe('attaching to a retained-era contract already on chain', () => {
     // a retained-era contract was deployed in whichever era was current then,
     // and refusing the pre-fork variant would refuse the contracts this path exists
     // to keep callable.
+    expect(found.deployTxData.era).toBe('v8');
     expect(found.deployTxData.public.version).toBe('v9');
     expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
+    expect(found.deployTxData.public.contractAddress).toBe(recording.contractAddress);
+    expect(Object.keys(found).sort()).toEqual([
+      'callTx',
+      'circuitMaintenanceTx',
+      'compiledContract',
+      'contractAddress',
+      'contractMaintenanceTx',
+      'deployTxData',
+      'era'
+    ]);
+    expect(Object.keys(found.circuitMaintenanceTx)).toEqual([CIRCUIT_ID]);
 
     // Every declared circuit is checked, and this artifact declares exactly one.
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);
@@ -3369,7 +3421,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     const providers = attachProviders(v6Envelope);
     const initialPrivateState = {};
 
-    await findDeployedContract(providers, {
+    const found = await findDeployedContract(providers, {
       ...attachOptions(),
       privateStateId: 'ledger8-private-state',
       initialPrivateState
@@ -3378,6 +3430,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith('ledger8-private-state', initialPrivateState);
     // Stored, not merged with whatever was there: the caller said what the state is.
     expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(found.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
   });
 
   it('reads the state already stored at the named id when the caller supplies none', async () => {
@@ -3599,6 +3652,8 @@ describe('attaching to a retained-era contract already on chain', () => {
   const STORED_KEY_SHAPE = '11'.repeat(32);
   const SUPPLIED_KEY_SHAPE = '22'.repeat(32);
   const LEDGER9_KEY_SHAPE = '33'.repeat(32);
+  const STORED_KEY: SigningKey = { tag: 'schnorr', value: STORED_KEY_SHAPE };
+  const SUPPLIED_KEY: SigningKey = { tag: 'schnorr', value: SUPPLIED_KEY_SHAPE };
 
   /**
    * The attach provider set with a breadcrumb sink on it.
@@ -3621,13 +3676,13 @@ describe('attaching to a retained-era contract already on chain', () => {
   it('stores a signing key the caller supplies, and reports it back', async () => {
     const providers = attachProviders(v6Envelope);
 
-    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY_SHAPE });
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY });
 
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
       tag: 'schnorr',
       value: SUPPLIED_KEY_SHAPE
     });
-    expect(found.signingKey).toBe(SUPPLIED_KEY_SHAPE);
+    expect(found.deployTxData.private.signingKey).toEqual(SUPPLIED_KEY);
   });
 
   it('reports the key a deploy persisted when the caller supplies none', async () => {
@@ -3636,8 +3691,8 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const found = await findDeployedContract(providers, attachOptions());
 
-    // Unwrapped back to the bare string the retained runtime takes.
-    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
+    // Published in the same `{ tag, value }` shape the current era uses.
+    expect(found.deployTxData.private.signingKey).toEqual(STORED_KEY);
     // KEPT, not written over: a caller that attaches without naming a key is asking what is held,
     // not replacing it.
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
@@ -3651,20 +3706,20 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     // The member is PRESENT and undefined, not dropped: a handle missing it entirely reads the
     // same at a call site that only checks the value.
-    expect('signingKey' in found).toBe(true);
-    expect(found.signingKey).toBeUndefined();
+    expect('signingKey' in found.deployTxData.private).toBe(true);
+    expect(found.deployTxData.private.signingKey).toBeUndefined();
     // The current era samples a fresh key in this case. The retained era must not: a sampled key
     // bears no relation to the authority the chain holds for a contract deployed by someone else,
-    // and this path carries no maintenance interface for one to be used through, so storing it
-    // would report a key that can maintain nothing.
+    // so the handle's maintenance interfaces would refuse it with MaintenanceAuthorityMismatchError,
+    // and storing it would report a key that can maintain nothing.
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
   // The store is shared with the current era, whose keys may legitimately be `ecdsa`, and a stored
-  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the key is
-  // reported on the handle and consumed by nothing on this path, so a circuit call that never looks
-  // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
-  // and the breadcrumb is what keeps absent from meaning silent.
+  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the attach
+  // and its circuit calls never read the key, so they would otherwise stop working because of an
+  // entry they do not read. Both read as ABSENT, and the breadcrumb is what keeps absent from meaning
+  // silent; the handle's maintenance interfaces, which do read the key, refuse such an entry.
   it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {
     const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: LEDGER9_KEY_SHAPE });
 
@@ -3672,8 +3727,8 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     // `toBeUndefined` alone cannot tell "the guard rejected the entry" from "the read never
     // happened", so the breadcrumb below is what says which of the two this was.
-    expect('signingKey' in found).toBe(true);
-    expect(found.signingKey).toBeUndefined();
+    expect('signingKey' in found.deployTxData.private).toBe(true);
+    expect(found.deployTxData.private.signingKey).toBeUndefined();
     expect(debug).toHaveBeenCalledWith(
       {
         decision: 'ledger8-signing-key-entry',
@@ -3699,8 +3754,8 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const found = await findDeployedContract(providers, attachOptions());
 
-    expect('signingKey' in found).toBe(true);
-    expect(found.signingKey).toBeUndefined();
+    expect('signingKey' in found.deployTxData.private).toBe(true);
+    expect(found.deployTxData.private.signingKey).toBeUndefined();
     expect(debug).toHaveBeenCalledWith(
       {
         decision: 'ledger8-signing-key-entry',
@@ -3732,12 +3787,12 @@ describe('attaching to a retained-era contract already on chain', () => {
       .fn()
       .mockResolvedValue({ tag: 'schnorr', value: STORED_KEY_SHAPE });
 
-    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY_SHAPE });
+    const found = await findDeployedContract(providers, { ...attachOptions(), signingKey: SUPPLIED_KEY });
 
     // The ONLY test that arranges both halves at once. Inverted, the stored entry would win, the
     // supplied key would become a fallback, and "pass the retained-era key, which replaces the
     // entry" -- the documented remedy for a bad entry -- would silently stop working.
-    expect(found.signingKey).toBe(SUPPLIED_KEY_SHAPE);
+    expect(found.deployTxData.private.signingKey).toEqual(SUPPLIED_KEY);
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(recording.contractAddress, {
       tag: 'schnorr',
       value: SUPPLIED_KEY_SHAPE
@@ -3754,7 +3809,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const caught: unknown = await findDeployedContract(providers, {
       ...attachOptions(),
-      signingKey: supplied
+      signingKey: { tag: 'schnorr', value: supplied }
     }).catch((error: unknown) => error);
 
     // Stored unchecked, such a key is reported on THIS attach and read as absent on the next one,
@@ -3763,6 +3818,20 @@ describe('attaching to a retained-era contract already on chain', () => {
     // way it is not on the read path.
     expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
     expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(recording.contractAddress);
+    expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+  });
+
+  it('refuses a supplied signing key of the other signature kind, storing nothing', async () => {
+    const providers = attachProviders(v6Envelope);
+
+    const caught: unknown = await findDeployedContract(providers, {
+      ...attachOptions(),
+      signingKey: { tag: 'ecdsa', value: SUPPLIED_KEY_SHAPE }
+    }).catch((error: unknown) => error);
+
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
+    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(recording.contractAddress);
+    expect((caught as Error).message).not.toContain(SUPPLIED_KEY_SHAPE);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
@@ -3779,8 +3848,8 @@ describe('attaching to a retained-era contract already on chain', () => {
     // store I/O -- so propagated, a store written under a different password would fail EVERY
     // retained attach to this address and make its circuit calls unreachable over a value none of
     // them reads. That is the blast radius the entry's own unusable cases already refuse to take.
-    expect('signingKey' in found).toBe(true);
-    expect(found.signingKey).toBeUndefined();
+    expect('signingKey' in found.deployTxData.private).toBe(true);
+    expect(found.deployTxData.private.signingKey).toBeUndefined();
     expect(Object.keys(found.callTx)).toEqual([CIRCUIT_ID]);
     expect(debug).toHaveBeenCalledWith(
       {
@@ -3801,7 +3870,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const found = await findDeployedContract(providers, attachOptions());
 
-    expect(found.signingKey).toBe(STORED_KEY_SHAPE);
+    expect(found.deployTxData.private.signingKey).toEqual(STORED_KEY);
     // The other direction of the same claim: a breadcrumb on every read would drown the one case
     // an operator has to see.
     expect(debug).not.toHaveBeenCalledWith(

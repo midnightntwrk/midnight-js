@@ -469,6 +469,12 @@ export const createReplayEngine = (
     }
     return state.serialize();
   },
+  // Nothing in the recording is a maintenance update, so the double refuses one rather than
+  // inventing bytes; the maintenance suites install their own engine.
+  composeMaintenanceTx: (): Promise<Uint8Array> => {
+    log.push('engine.composeMaintenanceTx');
+    return Promise.reject(new Error('the replay engine has no recorded maintenance update'));
+  },
   executeConstructor: async (options): Promise<Ledger8ConstructedState> => {
     log.push('engine.executeConstructor');
     // Read rather than ignored: the real engine reads it for every entry point

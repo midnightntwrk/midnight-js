@@ -39,10 +39,19 @@ export {
   Ledger8DeployOnLedger9Error as DeployOnLedger9Error,
   Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
+  Ledger8MaintenanceOnLedger9Error as MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
+  Ledger8ReplaceAuthorityUnconfirmedError as ReplaceAuthorityUnconfirmedError,
   Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
+  Ledger8SigningKeyNotStoredError as SigningKeyNotStoredError,
+  Ledger8SigningKeyUnavailableError as SigningKeyUnavailableError,
   Ledger8SigningKeyUnusableError as SigningKeyUnusableError
 } from './errors';
+export {
+  Ledger8InsertVerifierKeyTxFailedError as InsertVerifierKeyTxFailedError,
+  Ledger8RemoveVerifierKeyTxFailedError as RemoveVerifierKeyTxFailedError,
+  Ledger8ReplaceMaintenanceAuthorityTxFailedError as ReplaceMaintenanceAuthorityTxFailedError
+} from './governance/errors';
 export type {
   Ledger8CallResultPrivate as CallResultPrivate,
   Ledger8CallResultPublic as CallResultPublic,
@@ -54,6 +63,8 @@ export type {
   Ledger8CircuitCallTxInterface as CircuitCallTxInterface,
   Ledger8CircuitContext as CircuitContext,
   Ledger8CircuitId as CircuitId,
+  Ledger8CircuitMaintenanceTxInterface as CircuitMaintenanceTxInterface,
+  Ledger8CircuitMaintenanceTxInterfaces as CircuitMaintenanceTxInterfaces,
   Ledger8CircuitParameters as CircuitParameters,
   Ledger8CircuitResult as CircuitResult,
   Ledger8CircuitReturnType as CircuitReturnType,
@@ -61,15 +72,19 @@ export type {
   Ledger8Contract as Contract,
   Ledger8ContractCall as ContractCall,
   Ledger8ContractCallPublic as ContractCallPublic,
+  Ledger8ContractMaintenanceTxInterface as ContractMaintenanceTxInterface,
   Ledger8ContractProviders as ContractProviders,
   Ledger8DeployContractOptions as DeployContractOptions,
   Ledger8DeployContractOptionsBase as DeployContractOptionsBase,
   Ledger8DeployContractOptionsWithPrivateState as DeployContractOptionsWithPrivateState,
   Ledger8DeployedContract as DeployedContract,
+  Ledger8DeployTxData as DeployTxData,
   Ledger8FinalizedCallTxData as FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData as FinalizedCallTxPublicData,
+  Ledger8FinalizedMaintenanceTxData as FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions as FindDeployedContractOptions,
   Ledger8FoundContract as FoundContract,
+  Ledger8FoundDeployTxData as FoundDeployTxData,
   Ledger8InitialStateResult as InitialStateResult,
   Ledger8PrivateState as PrivateState,
   Ledger8SubmittedCallTx as SubmittedCallTx,

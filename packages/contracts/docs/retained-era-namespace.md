@@ -8,10 +8,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 31 types, 11 error classes and one interface factory, 43 names --
+era's family -- 37 types, 18 error classes and one interface factory, 56 names --
 goes when the window closes.
 
-Published flat, side by side, those 43 would be 43 published API names, and
+Published flat, side by side, those 56 would be 56 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -89,7 +89,7 @@ A name that serves BOTH eras stays on the flat surface, so a consumer that only
 RECEIVES results never imports the transitional half:
 
 - `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
-  `AnyEraDeployedContract` and `isLedger8Result` -- the unions a shared handler
+  `AnyEraDeployedContract`, `AnyEraMaintenanceTxData` and `isLedger8Result` -- the unions a shared handler
   declares, and the guard that narrows them.
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
@@ -130,7 +130,9 @@ era's own family and a SECOND step for the fork-window group.
 
 `Ledger8DeployedContract` is published, under the rule that a caller who can
 obtain a value must be able to name its type: `deployContract`, called with a
-retained-era contract, composes, submits and hands one back.
+retained-era contract, composes, submits and hands one back. Its
+`deployTxData` and the found handle's are published for the same reason, as
+`Ledger8.DeployTxData` and `Ledger8.FoundDeployTxData`.
 
 `Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
 artifact against a post-fork head, and it is reachable: it is what a caller
@@ -145,14 +147,18 @@ IMPLEMENTATION signatures and are never a signature a caller sees.
 When the fork window closes, the retained era's own family goes by deleting
 `src/ledger8.ts` and its one re-export line in `src/index.ts`, then the modules
 that serve only it (`src/ledger8-contract.ts`, `src/internal/ledger8-*.ts`) and
-the retained members of the modules it SHARES with the current era -- `errors.ts`
-and `tx-interfaces.ts` hold both eras and are not deleted. The retained overloads
-on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
-`deployContract` go with them, which narrows those entry points' overload sets.
+the retained members of the modules it SHARES with the current era --
+`errors.ts`, `tx-interfaces.ts`, `governance/errors.ts` and
+`governance/tx-interfaces.ts` hold both eras and are not deleted. The retained
+overloads on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract`,
+`deployContract`, `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`,
+`submitReplaceAuthorityTx`, `createCircuitMaintenanceTxInterface(s)` and
+`createContractMaintenanceTxInterface` go with them, which narrows those entry
+points' overload sets.
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 40 published names instead of one.
+would have removed 56 published names instead of one.
 
 ## What guards it
 
@@ -169,5 +175,5 @@ would have removed 40 published names instead of one.
 - `src/test/typecheck/ledger8-namespace.test-d.ts` asserts that what the entry
   points resolve to is namable THROUGH the namespace -- the other compile-level
   suites import the source modules, which a consumer cannot -- and compares all
-  31 type members against the declarations they rename, which is what catches a
+  37 type members against the declarations they rename, which is what catches a
   transposed pair in the rename table.

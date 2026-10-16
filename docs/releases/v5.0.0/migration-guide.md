@@ -446,8 +446,8 @@ pre-fork head**. On a post-fork head `deployContract` refuses one with
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either
-`options.signingKey` or a freshly sampled one. The key is reported on the
-handle's `signingKey` and stored against the new address through
+`options.signingKey` or a freshly sampled one. The key is reported at
+`deployTxData.private.signingKey` and stored against the new address through
 `privateStateProvider`. That store is the only copy besides the handle: lose it
 and no verifier key on that contract can ever be inserted, removed or replaced.
 
@@ -519,31 +519,44 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance API), its `deployTxData` is
-`{ public }` where the current era's is `{ era, public, private }`, its
+HANDLES differ in one place: the retained handle's
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
-recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates`
+recipient key mappings (see below). Both handles carry the maintenance
+interfaces; the retained one works only before the fork, and after it the same
+contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
 return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
 ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
 on `version` before reading the state.
 
-Where a deployed handle keeps the deployer's data. The paths stay different
-until the retained era is removed, so branch on `deployed.era` before reading
-them:
+`deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
+a found handle and on a deployed one. The retained-era handle used to keep the
+deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 
-| Fact | Current era (`DeployedContract`) | Retained era (`Ledger8.DeployedContract`) |
+| Fact | Before (retained era, up to rc.4) | Now (both eras) |
 |---|---|---|
-| Signing key | `deployTxData.private.signingKey` | `signingKey` |
-| Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
-| Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
-| Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
-| Initial contract state (bytes) | — | `initialContractStateBytes` |
+| Deploy record | `deployTxData` (the flat record) | `deployTxData.public` (a ledger 8 record on a deployed handle) |
+| Contract address | `contractAddress` | `deployTxData.public.contractAddress` (and `contractAddress`) |
+| Signing key | `signingKey` | `deployTxData.private.signingKey` |
+| Private state from the constructor | `initialPrivateState` | `deployTxData.private.initialPrivateState` |
+| Zswap state from the constructor | `initialZswapState` | `deployTxData.private.initialZswapState` |
+| Initial contract state (live handle) | `initialContractState` | `deployTxData.public.initialContractState` |
+| Initial contract state (bytes, retained era only) | `initialContractStateBytes` | `deployTxData.public.initialContractStateBytes` |
 
-The signing key differs on a found handle too: `findDeployedContract` reports it
-at `deployTxData.private.signingKey` in the current era and at the top-level
-`signingKey` in the retained era.
+The retained era's signing key is now the same `SigningKey` the current era
+uses, `{ tag, value }`, on `deployTxData.private.signingKey`, on the
+`signingKey` option of `deployContract` and `findDeployedContract`, and on the
+`signingKey` member of `Ledger8.DeployTxFailedError`,
+`Ledger8.DeployUnconfirmedError` and `Ledger8.DeployNotStoredError`. The retained
+era signs with `schnorr` only: an `ecdsa` key, or a value that is not exactly 64
+hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError` before
+anything is composed or stored.
+
+```diff
+- await deployContract(providers, { compiledContract: retained, signingKey: keyHex });
+- const key = deployed.signingKey;
++ await deployContract(providers, { compiledContract: retained, signingKey: { tag: 'schnorr', value: keyHex } });
++ const key = deployed.deployTxData.private.signingKey;
+```
 
 `initialContractStateBytes` was called `initialState` in the earlier 5.0.0
 release candidates. It holds the same bytes under the new name.
@@ -592,6 +605,37 @@ try {
   throw error;
 }
 ```
+
+### Maintaining a contract in either era
+
+`submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx`
+and the maintenance interfaces on both handles take either era's artifact. Their
+result is now nested like every other result, so read the record under `public`:
+
+```diff
+- const { status } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
++ const { public: { status } } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
+```
+
+Before the fork, a contract deployed with ledger 8 artifacts is maintained with
+those artifacts and the key the deploy stored. After the fork, the retained
+artifact is refused with `Ledger8.MaintenanceOnLedger9Error`: recompile the
+contract with the ledger 9 Compact toolchain and call the same function with
+that artifact. The stored key is unchanged, and the fork keeps the contract's
+maintenance authority, so that key still signs for the migrated contract. Keep
+the same private-state store when you switch artifacts: the key is in that store
+and nowhere else.
+
+A retained-era update reads the stored key before it composes anything, and
+refuses a missing, foreign-kind or unreadable entry with
+`Ledger8.SigningKeyUnavailableError`, and a key that is not the contract's
+authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
+
+An authority replacement whose outcome cannot be confirmed - the submission was
+rejected while the head moved, or the record could not be read back - is raised
+as `Ledger8.ReplaceAuthorityUnconfirmedError`. It carries the new key, which was
+NOT stored: keep it, and store it once a maintenance update with the old key is
+refused with `MaintenanceAuthorityMismatchError`.
 
 ### The ledger 8 (pre-fork) toolchain stays where it is
 
@@ -823,7 +867,10 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
+- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
+- [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
+- [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8ReplaceAuthorityUnconfirmedError` or `Ledger8SigningKeyNotStoredError` keeps the `signingKey` it carries.
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.

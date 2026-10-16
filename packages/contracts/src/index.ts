@@ -141,6 +141,7 @@ export {
   type AnyEraDeployedContract,
   type AnyEraFinalizedCallTxData,
   type AnyEraFoundContract,
+  type AnyEraMaintenanceTxData,
   type AnyEraSubmittedCallTx,
   isLedger8Result
 } from './era-results';
@@ -169,6 +170,7 @@ export {
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
   FinalizedDeployTxPublicData,
+  FinalizedMaintenanceTxData,
   FoundDeployTxData,
   FoundDeployTxPublicData,
   type Ledger8FoundDeployTxPublicData,

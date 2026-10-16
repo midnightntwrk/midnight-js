@@ -29,6 +29,7 @@ import {
   Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
+  MaintenanceAuthorityMismatchError,
   MerkleNotRehashedError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError,
@@ -116,7 +117,8 @@ describe('protocol error classes', () => {
     ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
     ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
     ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
-    ['ContractExecutionError', new ContractExecutionError('x')]
+    ['ContractExecutionError', new ContractExecutionError('x')],
+    ['MaintenanceAuthorityMismatchError', new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member')]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
@@ -176,7 +178,8 @@ describe('protocol error classes', () => {
 
   it.each([
     [new ContractExecutionError('circuit failed', { cause: new Error('assert') }), 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED', 'REJECTED'],
-    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY']
+    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY'],
+    [new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member'), 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH', 'USAGE']
   ] as const)('new protocol class %# carries code and category', (error, code, category) => {
     expect([error.code, error.category, error.message.length > 0]).toEqual([code, category, true]);
   });

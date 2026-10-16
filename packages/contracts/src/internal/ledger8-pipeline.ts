@@ -38,12 +38,14 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
+  BlankVerifierKeySlotError,
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
   Ledger8ArtifactOnLedger9StateError,
@@ -210,6 +212,35 @@ export interface Ledger8ExecutionEngine<TState> {
    * own bytes cannot be passed through in that case.
    */
   reexpressOperationsForLedger9(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
+  /**
+   * Builds and signs one maintenance update against the full serialized contract state, and
+   * composes the UNPROVEN transaction carrying it.
+   */
+  composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>;
+}
+
+/** One maintenance update a retained-era maintenance transaction carries. */
+export type Ledger8MaintenanceUpdate =
+  | { readonly kind: 'insert-verifier-key'; readonly circuitId: string; readonly verifierKey: Uint8Array }
+  | { readonly kind: 'remove-verifier-key'; readonly circuitId: string }
+  | { readonly kind: 'replace-authority'; readonly newSigningKey: Ledger8SigningKey };
+
+/**
+ * What {@link Ledger8ExecutionEngine.composeMaintenanceTx} is asked to compose.
+ *
+ * `contractStateBytes` is the chain's serialized state, never the decoded {@link ContractStatePojo}:
+ * the decoded form carries no maintenance authority, and the update is signed against that
+ * authority's counter and committee.
+ */
+export interface Ledger8MaintenanceRequest {
+  readonly contract: Ledger8Contract;
+  readonly contractAddress: string;
+  readonly contractStateBytes: Uint8Array;
+  readonly coinPublicKey: string;
+  readonly signingKey: Ledger8SigningKey;
+  readonly networkId: string;
+  readonly ttl: Date;
+  readonly update: Ledger8MaintenanceUpdate;
 }
 
 /**
@@ -303,6 +334,26 @@ export const readLedger8Snapshot = async (
 };
 
 /**
+ * The one entry point a snapshot declares under `circuitId`, or `undefined` when it declares none.
+ *
+ * `entryPoints` is an ARRAY and two byte entry points can decode to the same name. AMBIGUITY IS
+ * REFUSED rather than resolved by taking the first match: the chain dispatches on the raw bytes, not
+ * on the decoded name.
+ *
+ * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
+ */
+const snapshotEntryPoint = (
+  snapshot: Ledger8Snapshot,
+  circuitId: string
+): ContractStatePojo['entryPoints'][number] | undefined => {
+  const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
+  if (matches.length > 1) {
+    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
+  }
+  return matches[0];
+};
+
+/**
  * Checks one entry point's local verifier key against the slot the fetched
  * snapshot says the chain holds.
  *
@@ -332,12 +383,9 @@ export const assertSnapshotVerifierKey = (
   localVerifierKey: Uint8Array,
   contractAddress: string
 ): void => {
-  const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
-  if (matches.length > 1) {
-    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
-  }
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
   try {
-    assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
+    assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
   } catch (cause) {
     // A key mismatch on a ledger 9 state has one likely cause worth naming: the contract was
     // deployed with ledger 9 toolchain artifacts, so no ledger 8 artifact can ever match it and a
@@ -903,4 +951,99 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
     // where losing the key loses the contract.
     signingKey: constructed.signingKey
   };
+};
+
+/** What one retained-era maintenance update is composed from. */
+export interface Ledger8MaintenancePipelineRequest {
+  /** The RETAINED era facade, which reads a retained-era envelope. See {@link readLedger8Snapshot}. */
+  readonly retainedEra: LedgerEra;
+  /** The facade bound to the network head. */
+  readonly era: LedgerEra;
+  readonly head: LedgerVersion;
+  readonly engine: Pick<Ledger8ExecutionEngine<unknown>, 'composeMaintenanceTx'>;
+  readonly publicDataProvider: Ledger8PipelineReadSurface;
+  readonly logger?: BreadcrumbSink;
+  readonly contract: Ledger8Contract;
+  readonly contractAddress: string;
+  readonly coinPublicKey: string;
+  readonly signingKey: Ledger8SigningKey;
+  readonly networkId: string;
+  readonly ttl: Date;
+  readonly update: Ledger8MaintenanceUpdate;
+}
+
+/**
+ * Refuses an update the contract's current verifier-key slot cannot take, with the same refusals
+ * the current era's maintenance functions raise: an insert needs the slot empty, a remove needs a
+ * key in it.
+ *
+ * @param snapshot The one snapshot this operation read.
+ * @param update The update to check. A replacement touches no slot.
+ * @param contractAddress The contract being maintained, named in the refusal.
+ * @throws Ledger8AmbiguousEntryPointError if the state declares the circuit twice.
+ * @throws InvalidArgumentError if an insert targets a slot that holds a key, or a remove targets a
+ * circuit the state does not declare.
+ * @throws BlankVerifierKeySlotError if a remove targets a slot that holds no key.
+ */
+const assertMaintenanceSlot = (
+  snapshot: Ledger8Snapshot,
+  update: Ledger8MaintenanceUpdate,
+  contractAddress: string
+): void => {
+  if (update.kind === 'replace-authority') {
+    return;
+  }
+  const { circuitId } = update;
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
+  if (update.kind === 'insert-verifier-key') {
+    if (entryPoint?.verifierKey !== undefined) {
+      throw new InvalidArgumentError(
+        `Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`
+      );
+    }
+    return;
+  }
+  if (entryPoint === undefined) {
+    throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
+  }
+  if (entryPoint.verifierKey === undefined) {
+    throw new BlankVerifierKeySlotError(circuitId);
+  }
+};
+
+/**
+ * Composes one retained-era maintenance update: read ONE snapshot, check the slot the update
+ * targets, then have the engine build, sign and compose it against the snapshot's own bytes.
+ *
+ * The bytes the engine signs against are the snapshot's, so the slot check and the signature
+ * describe the same state.
+ *
+ * @param request The era facades, the engine, the read surface, the contract, the key and the update.
+ * @returns The serialized UNPROVEN transaction.
+ * @throws Every error {@link readLedger8Snapshot} and {@link assertMaintenanceSlot} raise.
+ * @throws MaintenanceAuthorityMismatchError if the key is not the one the contract's authority
+ * was built from. Raised before anything is proven.
+ * @throws ComposeOptionError, ComposeFailedError if the engine refuses the update.
+ */
+export const runLedger8MaintenancePipeline = async (request: Ledger8MaintenancePipelineRequest): Promise<Uint8Array> => {
+  const snapshot = await readLedger8Snapshot(
+    request.retainedEra,
+    request.era,
+    request.head,
+    request.publicDataProvider,
+    request.contractAddress,
+    request.logger
+  );
+  assertMaintenanceSlot(snapshot, request.update, request.contractAddress);
+
+  return request.engine.composeMaintenanceTx({
+    contract: request.contract,
+    contractAddress: request.contractAddress,
+    contractStateBytes: snapshot.state.raw,
+    coinPublicKey: request.coinPublicKey,
+    signingKey: request.signingKey,
+    networkId: request.networkId,
+    ttl: request.ttl,
+    update: request.update
+  });
 };

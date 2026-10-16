@@ -43,10 +43,11 @@ import type {
   Ledger8Contract,
   Ledger8DeployedContract,
   Ledger8FinalizedCallTxData,
+  Ledger8FinalizedMaintenanceTxData,
   Ledger8FoundContract,
   Ledger8SubmittedCallTx
 } from './ledger8-contract';
-import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
+import type { FinalizedCallTxData, FinalizedMaintenanceTxData, SubmittedCallTx } from './tx-model';
 
 /**
  * Restates the two members that would otherwise arrive as `any` on a widest
@@ -112,6 +113,14 @@ export type AnyEraFoundContract<C extends Contract.Any, L8 extends Ledger8Contra
 export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Contract> =
   | DeployedContract<C>
   | Ledger8DeployedContract<L8>;
+
+/**
+ * A contract maintenance update recorded on chain, in either era. Narrowing on `era` narrows
+ * `public` to that era's record; era-agnostic code reads `public` as a `VersionedFinalizedTxData`.
+ *
+ * @see {@link isLedger8Result} to narrow it.
+ */
+export type AnyEraMaintenanceTxData = FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
 /**
  * What the guard narrows a result to.
