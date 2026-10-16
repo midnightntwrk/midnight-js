@@ -40,7 +40,8 @@ import type {
   RawContractState,
   ReadMethod,
   VersionedContractState,
-  VersionedFinalizedTxData
+  VersionedFinalizedTxData,
+  VersionedPublicStates
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
@@ -121,6 +122,20 @@ export const parseHexTransaction = (
 ): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
   deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
+const parametersBytesAndEnvelopeVersion = (
+  hexParameters: string
+): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
+  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
+  // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
+  // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
+  // string — and a truncated tag prefix would then be dated rather than refused.
+  if (!isHex(hexParameters)) {
+    throw IndexerDataError.malformedParametersEncoding();
+  }
+  const raw = new Uint8Array(toByteArray(hexParameters));
+  return { raw, envelopeVersion: ledgerParametersEnvelopeVersion(raw) };
+};
+
 /**
  * Decodes the ledger parameters of one block, after establishing which ledger runtime wrote them —
  * and only if that runtime is one this path can decode.
@@ -141,15 +156,7 @@ export const parseHexTransaction = (
  * @throws {DeserializationError} When the envelope is decodable but the body behind it is not.
  */
 export const parseHexLedgerParameters = (s: string): LedgerParameters => {
-  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
-  // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
-  // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
-  // string — and a truncated tag prefix would then be dated rather than refused.
-  if (!isHex(s)) {
-    throw IndexerDataError.malformedParametersEncoding();
-  }
-  const raw = new Uint8Array(toByteArray(s));
-  const envelopeVersion = ledgerParametersEnvelopeVersion(raw);
+  const { raw, envelopeVersion } = parametersBytesAndEnvelopeVersion(s);
   if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
     throw IndexerDataError.unsupportedParametersEra(envelopeVersion);
   }
@@ -423,16 +430,69 @@ export const parseHexContractState = (
  *                 serves it.
  * @param protocolVersion The protocol-version integer of the block that dates
  *                        the state.
+ * @param options `upperBound`, as in {@link parseHexContractState}.
  */
-export const toVersionedContractState = (hexState: string, protocolVersion: number): VersionedContractState => {
+export const toVersionedContractState = (
+  hexState: string,
+  protocolVersion: number,
+  options?: { readonly upperBound?: EnvelopeUpperBound }
+): VersionedContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
   switch (envelopeVersion) {
     case 'v8':
       return { version: 'v8', stateBytes: raw };
     case 'v9':
-      return { version: 'v9', state: parseHexContractState(hexState, protocolVersion) };
+      return { version: 'v9', state: parseHexContractState(hexState, protocolVersion, options) };
     default:
       return assertNever(envelopeVersion, 'toVersionedContractState');
+  }
+};
+
+/**
+ * Builds the era-tagged public states served by `PublicDataProvider.queryZSwapAndContractState`.
+ *
+ * The contract state is dated as in {@link toVersionedContractState}. The ledger parameters must
+ * come from the same era as the state; a pair from two eras is refused rather than mixed. The zswap
+ * chain state is decoded in both variants, because both runtimes write `zswap-ledger-state[v5]`.
+ *
+ * @param hexZswapState The hex-encoded zswap chain state.
+ * @param hexState The hex-encoded serialized contract state.
+ * @param hexParameters The hex-encoded ledger parameters of the block that dates the state.
+ * @param protocolVersion The protocol-version integer of that block.
+ * @param options `upperBound`, as in {@link parseHexContractState}.
+ * @throws {IndexerDataError} `mixed-era-public-states` when the state and the parameters were
+ *   written by different eras.
+ */
+export const toVersionedPublicStates = (
+  hexZswapState: string,
+  hexState: string,
+  hexParameters: string,
+  protocolVersion: number,
+  options?: { readonly upperBound?: EnvelopeUpperBound }
+): VersionedPublicStates => {
+  const contractState = toVersionedContractState(hexState, protocolVersion, options);
+  const parameters = parametersBytesAndEnvelopeVersion(hexParameters);
+  if (parameters.envelopeVersion !== contractState.version) {
+    throw IndexerDataError.mixedEraPublicStates(contractState.version, parameters.envelopeVersion);
+  }
+  const zswapChainState = parseHexZswapState(hexZswapState);
+  switch (contractState.version) {
+    case 'v8':
+      return {
+        version: 'v8',
+        zswapChainState,
+        stateBytes: contractState.stateBytes,
+        ledgerParametersBytes: parameters.raw
+      };
+    case 'v9':
+      return {
+        version: 'v9',
+        zswapChainState,
+        contractState: contractState.state,
+        ledgerParameters: deserializeLedgerParameters(parameters.raw, { caller: `${PKG}:toVersionedPublicStates` })
+      };
+    default:
+      return assertNever(contractState, 'toVersionedPublicStates');
   }
 };
 

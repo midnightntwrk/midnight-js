@@ -17,6 +17,7 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ContractNotFoundError } from '../errors';
 
@@ -51,7 +52,7 @@ export const queryExistingContractState = async (
   if (state === undefined || state === null) {
     throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
   }
-  return state;
+  return requireLedger9(state, 'queryExistingContractState').state;
 };
 
 /**

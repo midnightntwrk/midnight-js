@@ -24,8 +24,10 @@ const provider = indexerPublicDataProvider(
   'wss://indexer.example.com/graphql'        // Subscription URL (WS/WSS)
 );
 
-// Query contract state
+// Query contract state, tagged with the ledger era that wrote it
 const state = await provider.queryContractState(contractAddress);
+// state?.version === 'v9' → state.state is the decoded ContractState
+// state?.version === 'v8' → state.stateBytes are the stored bytes
 
 // Watch for transaction data
 const txData = await provider.watchForTxData(transactionId);
@@ -49,22 +51,22 @@ provider.contractStateObservable(contractAddress).subscribe(({ value, blockHeigh
 ### Query Methods
 
 ```typescript
-// Query current contract state
+// Query current contract state, tagged with the era that wrote it
 queryContractState(
   contractAddress: ContractAddress,
   config?: BlockHeightConfig | BlockHashConfig
-): Promise<ContractState | null>
+): Promise<VersionedContractState | null>
 
 // Query contract state at deployment, tagged with the era that wrote it
 queryDeployContractState(
   contractAddress: ContractAddress
 ): Promise<VersionedContractState | null>
 
-// Query contract and ZSwap state together (returns LedgerParameters as third element)
+// Query contract state, ZSwap state and ledger parameters from one block, tagged with the era that wrote them
 queryZSwapAndContractState(
   contractAddress: ContractAddress,
   config?: BlockHeightConfig | BlockHashConfig
-): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>
+): Promise<VersionedPublicStates | null>
 
 // Query unshielded token balances
 queryUnshieldedBalances(
@@ -106,19 +108,45 @@ if (state !== null) {
 `state.version` is derived from `state.protocolVersion`; this provider does not
 check it against the envelope inside `state.raw`.
 
-The methods that *do* deserialize for you — `queryContractState`,
-`queryZSwapAndContractState`, `watchForContractState` and
-`contractStateObservable` — decode with the v9 runtime only. Each reads the
-ledger era off the state's own envelope and decodes only if that era is v9.
-Otherwise the call fails with an `IndexerDataError` that names the era it got
-and points at `queryRawContractState`, instead of a header-tag error from deep
-inside a decoder.
+The methods that deserialize for you — `queryContractState`,
+`queryDeployContractState`, `queryZSwapAndContractState`, `watchForContractState`
+and `contractStateObservable` — tag what they return with the ledger era that
+wrote it, read off the state's own envelope:
 
-`queryDeployContractState` does not refuse a v8 envelope. It reads the deploy's
-record, or the latest update's record when the contract has been updated, and
-returns a `VersionedContractState`: the decoded state for a v9-era record, the
-stored bytes (`stateBytes`) for a v8-era record. Narrow on `version` before
-touching it.
+- a v9 state is decoded (`{ version: 'v9', state }`);
+- a v8 state is handed back as the stored bytes (`{ version: 'v8', stateBytes }`),
+  not decoded and not translated.
+
+`queryZSwapAndContractState` returns a `VersionedPublicStates` object. In the v8
+variant the contract state and the ledger parameters are bytes
+(`stateBytes`, `ledgerParametersBytes`); the zswap chain state is decoded in both,
+because both runtimes write the same encoding. If the contract state and the
+ledger parameters come from different eras, the call fails with an
+`IndexerDataError` of kind `mixed-era-public-states`.
+
+Narrow on `version` before touching the value. Code that handles only v9 can use
+`requireLedger9` from `@midnight-ntwrk/midnight-js-utils`:
+
+```typescript
+import { assertNever, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+const state = await provider.watchForContractState(contractAddress);
+
+// Both eras:
+switch (state.version) {
+  case 'v9':
+    // state.state is a ContractState
+    break;
+  case 'v8':
+    // state.stateBytes, for the v8 deserializer
+    break;
+  default:
+    assertNever(state, 'watchForContractState');
+}
+
+// v9 only — throws Ledger8ValueUnsupportedError on a v8 state:
+const { state: contractState } = requireLedger9(state, 'readCounter');
+```
 
 #### Which reads still meet a v8 envelope
 
@@ -131,20 +159,7 @@ served in two cases:
 - a record of one contract action's own state, such as the deploy's — a
   record keeps the encoding it was written in, forever.
 
-The four methods above refuse it in those cases.
-
-For `contractStateObservable` the refusal is not a returned error but a
-**terminated stream**: the decode runs inside an `Rx.map`, so a refusal reaches
-the subscriber's `error` callback and the subscription ends. No RxJS `retry` or
-`catchError` operator is installed on any branch, so nothing reconciles it —
-recovery means subscribing again. (The Apollo `RetryLink` in `transport.ts`
-retries *transport* failures on HTTP queries; subscriptions are routed past it,
-and it sits below the decode in any case, so it cannot see a refusal.)
-
-`rawContractStateObservable` is the way out of this for a stream, as
-`queryRawContractState` is for a query: it never deserializes, so no era of
-contract state terminates it. See
-[Which state stream to use](#which-state-stream-to-use).
+In those cases the methods above return the v8 variant.
 
 On the `latest` branch the stream starts at the block the contract's current
 state is dated by (`stateAt`). For a contract not called since the fork, that is
@@ -153,9 +168,9 @@ the fork block, and the first item is the translated state, which decodes.
 The `all` branch is the harsher case: it replays every contract action from the
 deploy onward, so for a contract deployed before the fork the replay always
 reaches its pre-fork deploy state. A `blockHeight` or `blockHash` start before
-the fork does the same. Those pre-fork records keep their v8 envelope, so these
-starts do not recover — on the decoded stream they end at the first pre-fork
-record, and `rawContractStateObservable` is the only way to read them.
+the fork does the same. Those pre-fork records keep their v8 envelope, so
+`contractStateObservable` emits them as v8 values and keeps going; the records
+after the fork arrive as v9 values in the same stream.
 
 #### Reading a contract that may predate the fork
 
@@ -245,7 +260,7 @@ Wait for data to appear on-chain (polling with automatic retry):
 // Wait for contract to be deployed
 watchForContractState(
   contractAddress: ContractAddress
-): Promise<ContractState>
+): Promise<VersionedContractState>
 
 // Wait for unshielded balances
 watchForUnshieldedBalances(
@@ -272,7 +287,7 @@ Real-time subscriptions via RxJS:
 contractStateObservable(
   contractAddress: ContractAddress,
   config?: ContractStateObservableConfig
-): Observable<PositionedRecord<ContractState>>
+): Observable<PositionedRecord<VersionedContractState>>
 
 // Subscribe to contract state changes as raw bytes, not deserialized
 rawContractStateObservable(
@@ -303,9 +318,12 @@ after an error:
 
 ```typescript
 import { IndexerError, IndexerQueryError } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import type {
+  ContractStateObservableConfig,
+  PositionedRecord,
+  VersionedContractState
+} from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, isDeserializationError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 const recursOnResume = (error: unknown): boolean =>
@@ -315,7 +333,7 @@ const recursOnResume = (error: unknown): boolean =>
   hasErrorCode(error, PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
 
 const MAX_RESUMES = 5;
-let last: PositionedRecord<ContractState> | undefined;
+let last: PositionedRecord<VersionedContractState> | undefined;
 let resumes = 0;
 
 const follow = (config: ContractStateObservableConfig) =>
@@ -361,10 +379,10 @@ contract action becomes.
 
 | | `contractStateObservable` | `rawContractStateObservable` |
 |---|---|---|
-| `value` | `ContractState`, deserialized | `RawContractState`: the bytes, plus the era the record is dated to |
-| A state from a retained era | **ends the stream** (see [Reading State Across the Ledger Fork](#reading-state-across-the-ledger-fork)) | flows through; the caller narrows on `version` |
+| `value` | `VersionedContractState`: decoded for v9, the stored bytes for v8 | `RawContractState`: the bytes, plus the era the record is dated to |
+| A state from a retained era | flows through as a v8 value; the caller narrows on `version` | flows through; the caller narrows on `version` |
 | `ledgerParameters` | n/a | absent on the stream; read `queryRawContractState` with the record's `blockHash` — see below |
-| Reach for it when | the contract is known to be current-era | the contract may predate the fork, or you cannot rule it out |
+| Reach for it when | you want v9 states decoded for you | you want the bytes of every era, plus the block's ledger parameters on a query |
 
 `rawContractStateObservable` is the streaming twin of `queryRawContractState`
 and narrows the same way, so one `switch (record.version)` serves both:

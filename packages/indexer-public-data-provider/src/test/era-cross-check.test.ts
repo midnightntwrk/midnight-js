@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { VersionedContractState, VersionedPublicStates } from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
@@ -29,6 +30,7 @@ import {
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateBytes,
   mintLedger8ContractStateHex,
+  mintLedger8LedgerParametersBytes,
   mintLedger8LedgerParametersHex,
   mintLedger9ContractStateHex,
   mintLedger9LedgerParametersHex,
@@ -53,6 +55,16 @@ const buildProvider = (query: QueryMock): IndexerPublicDataProvider =>
 
 const headRequestCount = (query: QueryMock): number =>
   query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY).length;
+
+const stateHex = (state: VersionedContractState | null): { version: string; hex: string } | null => {
+  if (state === null) return null;
+  switch (state.version) {
+    case 'v8':
+      return { version: 'v8', hex: Buffer.from(state.stateBytes).toString('hex') };
+    case 'v9':
+      return { version: 'v9', hex: Buffer.from(state.state.serialize()).toString('hex') };
+  }
+};
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   work.then(
@@ -204,7 +216,7 @@ describe('queryContractState dates the state it decodes', () => {
     }
   });
 
-  test('returns the decoded state when the era checks out', async () => {
+  test('returns a v9 state decoded, tagged v9', async () => {
     const hexState = mintLedger9ContractStateHex();
     const query = dispatchingQuery(
       new Map([[CONTRACT_STATE_QUERY, stateResponse(hexState, LEDGER9_ERA_PROTOCOL_VERSION)]])
@@ -212,7 +224,7 @@ describe('queryContractState dates the state it decodes', () => {
 
     const state = await buildProvider(query).queryContractState(ADDRESS);
 
-    expect(Buffer.from(state?.serialize() ?? new Uint8Array()).toString('hex')).toBe(hexState);
+    expect(stateHex(state)).toEqual({ version: 'v9', hex: hexState });
   });
 
   test('reports no state at an address the indexer has nothing for', async () => {
@@ -234,15 +246,13 @@ describe('queryContractState dates the state it decodes', () => {
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'undated-state' });
   });
 
-  test('refuses an older-era state instead of returning a mis-decoded one', async () => {
-    const query = dispatchingQuery(
-      new Map([[CONTRACT_STATE_QUERY, stateResponse(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION)]])
-    );
+  test('returns a v8 state as the stored bytes, tagged v8, instead of refusing it', async () => {
+    const hexState = await mintLedger8ContractStateHex();
+    const query = dispatchingQuery(new Map([[CONTRACT_STATE_QUERY, stateResponse(hexState, LEDGER8_ERA_PROTOCOL_VERSION)]]));
 
-    const rejection = await rejectionOf(buildProvider(query).queryContractState(ADDRESS));
+    const state = await buildProvider(query).queryContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 });
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
+    expect(stateHex(state)).toEqual({ version: 'v8', hex: hexState });
   });
 
   test('an unpinned state read leaves a head read costing a request of its own', async () => {
@@ -289,7 +299,7 @@ describe('queryContractState dates the state it decodes', () => {
 
     const state = await buildProvider(query).queryContractState(ADDRESS);
 
-    expect(Buffer.from(state?.serialize() ?? new Uint8Array()).toString('hex')).toBe(hexState);
+    expect(stateHex(state)).toEqual({ version: 'v9', hex: hexState });
   });
 
   test('refuses a pinned read whose state is newer than the block dating it', async () => {
@@ -334,42 +344,60 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
     }
   });
 
-  test('returns the triple when the era checks out', async () => {
+  const publicStatesSummary = (
+    states: VersionedPublicStates | null
+  ): { version: string; state: string; parameters: string } | null => {
+    if (states === null) return null;
+    switch (states.version) {
+      case 'v8':
+        return {
+          version: 'v8',
+          state: Buffer.from(states.stateBytes).toString('hex'),
+          parameters: Buffer.from(states.ledgerParametersBytes).toString('hex')
+        };
+      case 'v9':
+        return {
+          version: 'v9',
+          state: Buffer.from(states.contractState.serialize()).toString('hex'),
+          parameters: Buffer.from(states.ledgerParameters.serialize()).toString('hex')
+        };
+    }
+  };
+
+  test('returns every state decoded, tagged v9, when the block is a v9 block', async () => {
+    const hexState = mintLedger9ContractStateHex();
     const query = dispatchingQuery(
-      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION)]])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(hexState, LEDGER9_ERA_PROTOCOL_VERSION)]])
     );
 
-    const triple = await buildProvider(query).queryZSwapAndContractState(ADDRESS);
+    const states = await buildProvider(query).queryZSwapAndContractState(ADDRESS);
 
-    expect(triple).not.toBeNull();
-    expect(triple).toHaveLength(3);
+    expect(publicStatesSummary(states)).toEqual({
+      version: 'v9',
+      state: hexState,
+      parameters: mintLedger9LedgerParametersHex()
+    });
   });
 
-  test('refuses the triple when the block dates it to an unsupported era', async () => {
+  test('returns the contract state and the parameters as stored bytes, tagged v8, when the block is a v8 block', async () => {
+    const hexState = await mintLedger8ContractStateHex();
     const query = dispatchingQuery(
-      new Map([
-        [CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION)]
-      ])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(hexState, LEDGER8_ERA_PROTOCOL_VERSION)]])
     );
 
-    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+    const states = await buildProvider(query).queryZSwapAndContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 });
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
-    expect(rejection).not.toBeInstanceOf(DeserializationError);
+    expect(publicStatesSummary(states)).toEqual({
+      version: 'v8',
+      state: hexState,
+      parameters: Buffer.from(await mintLedger8LedgerParametersBytes()).toString('hex')
+    });
   });
 
-  test('refuses an unpinned triple dated to a block whose parameters this era cannot read', async () => {
-    // Same sibling shape as `CONTRACT_STATE_QUERY`: the triple's three fields share one `block`
-    // resolution, but `contract` is still its own root field, so an unpinned read can resolve a
-    // state NEWER than the block. `getPublicStates` reaches here with no offset whenever its caller
-    // passes no block hash.
-    //
-    // The state's own upper-bound check is withheld for exactly that reason and the state decodes.
-    // The triple still cannot be completed: its third field is that block's parameters, and a
-    // pre-fork block's parameters are readable only by the retained runtime. Refusing by era names
-    // the field and the era; before the parameters were dated, these bytes reached the deserializer
-    // and came back as an unclassified failure naming neither.
+  test('refuses an unpinned read whose v9 state was served beside a v8 block\'s parameters', async () => {
+    // `contract` is its own root field, so an unpinned read can resolve a state written after the
+    // fork beside a block from before it. The state's upper-bound check is withheld for that race,
+    // but the two halves are still from different eras and no one value can carry both.
     const query = dispatchingQuery(
       new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION)]])
     );
@@ -377,8 +405,26 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
     const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-parameters-era', version: 'v8' });
-    expect(rejection).not.toBeInstanceOf(DeserializationError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'mixed-era-public-states',
+      stateVersion: 'v9',
+      parametersVersion: 'v8'
+    });
+  });
+
+  test('refuses a v8 state served beside a v9 block\'s parameters', async () => {
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(await mintLedger8ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION)]])
+    );
+
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'mixed-era-public-states',
+      stateVersion: 'v8',
+      parametersVersion: 'v9'
+    });
   });
 
   test('refuses a pinned triple whose state is newer than the block dating it', async () => {
@@ -443,6 +489,27 @@ describe('watchForContractState dates the state it decodes', () => {
 
     const state = await provider.watchForContractState(ADDRESS);
 
-    expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
+    expect(stateHex(state)).toEqual({ version: 'v9', hex: hexState });
+  });
+
+  test('returns a v8 state as the stored bytes, tagged v8', async () => {
+    const hexState = await mintLedger8ContractStateHex();
+    const watchQuery = vi.fn().mockReturnValue(
+      Rx.of({
+        data: {
+          block: { protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION },
+          contract: { state: hexState }
+        },
+        dataState: 'complete',
+        loading: false,
+        networkStatus: 7,
+        partial: false
+      })
+    );
+    const provider = new IndexerPublicDataProvider(stubApolloHandle({ watchQuery }), 1000);
+
+    const state = await provider.watchForContractState(ADDRESS);
+
+    expect(stateHex(state)).toEqual({ version: 'v8', hex: hexState });
   });
 });

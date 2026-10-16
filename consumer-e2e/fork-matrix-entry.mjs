@@ -311,6 +311,15 @@ const STREAM_WATCH_MS = 60_000;
  * The subscription is left OPEN. A caller reads `record` whenever it likes -- which is
  * what lets one stream be opened before the boundary and read after it.
  */
+/**
+ * Reports a version-tagged contract state: its era, and for a v9 state the number of
+ * operations the decoded state carries.
+ */
+const describeVersionedState = (state) =>
+  state.version === 'v9'
+    ? { version: 'v9', decoded: true, operations: state.state.operations().length }
+    : { version: state.version, decoded: false, stateBytes: state.stateBytes.length };
+
 const watchContractStates = (publicDataProvider, contractAddress, streamConfig) => {
   // `errored` is ALWAYS a string once set -- `describeError` stringifies even a non-Error -- so
   // `null` is unambiguously the not-yet sentinel that `settled` tests against.
@@ -1550,12 +1559,12 @@ if (MEASURES_READ_SURFACE) {
   await probe('pre-fork decoded read of the retained contract', () =>
     decodeAnswer(async () => {
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      // `admitted` is claimed ONLY on the non-null branch. `queryContractState`
-      // answers `null` before it reaches the decoder, so saying a decode was
-      // admitted there would assert something about a decoder that never ran.
+      // `queryContractState` answers `null` before it reaches the decoder, and a
+      // v8 state is handed back as its stored bytes, so `decoded` is claimed only
+      // for a v9 state.
       return state === null
-        ? { admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { admitted: true, operations: state.operations().length };
+        ? { decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : describeVersionedState(state);
     })
   );
 
@@ -2143,21 +2152,21 @@ await leg('envelope tag across the boundary', () =>
 // and the question each answers is "what did this member do with THAT envelope"
 // -- which is the honest question either way.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-fork decoded read, through the current-era-only member', () =>
+  await probe('post-fork read through queryContractState', () =>
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
       return state === null
-        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, admitted: true, operations: state.operations().length };
+        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, ...describeVersionedState(state) };
     })
   );
 
-  // The era-agnostic read, on the same contract at the same moment. Without it
-  // the row above says a read failed; with it, the pair says which read fails and
-  // which succeeds -- which is what the package documentation has to tell a
-  // consumer. The two are SEPARATE REQUESTS, so each carries the envelope it
-  // actually saw; a reader compares them only when both report the same tag.
+  // The era-agnostic read, on the same contract at the same moment. The row above
+  // decodes only a v9 state and hands a v8 one back as bytes; this one decodes
+  // both, so the pair says what each read gives a consumer for the same envelope.
+  // The two are SEPARATE REQUESTS, so each carries the envelope it actually saw;
+  // a reader compares them only when both report the same tag.
   await probe('post-fork era-agnostic read of the same contract', () =>
     decodeAnswer(async () => {
       const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
@@ -2323,13 +2332,13 @@ await leg('post-fork keep-state call through the same call site', async () => {
 // the contract is written to" -- and, for the `all` branch, whether the write
 // helps at all.
 if (MEASURES_READ_SURFACE) {
-  await probe('post-write decoded read, through the current-era-only member', () =>
+  await probe('post-write read through queryContractState', () =>
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
       return state === null
-        ? { envelope, admitted: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, admitted: true, operations: state.operations().length };
+        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
+        : { envelope, ...describeVersionedState(state) };
     })
   );
 

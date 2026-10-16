@@ -18,7 +18,7 @@ import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, Ledger8ValueUnsupportedError, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -72,7 +72,7 @@ describe('findDeployedContract', () => {
       version: 'v9',
       state: contractState
     });
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({ version: 'v9', state: contractState });
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
@@ -255,6 +255,22 @@ describe('findDeployedContract', () => {
       expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({
+        version: 'v8',
+        stateBytes: new Uint8Array([1])
+      });
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(Ledger8ValueUnsupportedError);
+      expect(rejection).toMatchObject({ context: 'findDeployedContract' });
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 
     it('still refuses an address with no current contract state', async () => {

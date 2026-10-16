@@ -90,7 +90,7 @@ it would drift apart under maintenance.
 
 So the topology is written once, as the private `contractStates$<T>` with the
 branch routing in `contractStatesFeed$` and `fromBlock$`, and the mapper is
-threaded through it: `parseHexContractState` for the decoded stream,
+threaded through it: `toVersionedContractState` for the decoded stream,
 `toRawContractState` for the raw one. Both public members are one-line binds.
 Because the type parameter is fixed once per stream, "the two streams cannot
 diverge branch by branch" is a fact the compiler holds, not a review habit.

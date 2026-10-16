@@ -114,6 +114,7 @@ export type IndexerDataErrorContext =
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
+  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
   | { kind: 'unknown-record-era'; protocolVersion: number };
 
 /**
@@ -211,6 +212,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
   }
 
+  static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
+  }
+
   /**
    * @param cause The protocol-layer failure, preserved so the resolution path
    *              that refused the integer is still readable.
@@ -282,6 +287,13 @@ export class IndexerDataError extends IndexerError {
         return (
           'The indexer returned ledger parameters that are not a hex-encoded byte string. ' +
           'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'mixed-era-public-states':
+        return (
+          `The indexer served a contract state written by ledger ${context.stateVersion} beside the ledger ` +
+          `parameters of a block from ledger ${context.parametersVersion}. One value cannot carry two eras. ` +
+          'On an unpinned read this happens when the fork block is indexed between the two fields; pin the read ' +
+          'to a block hash or height, or retry.'
         );
       case 'unsupported-parameters-era':
         return (

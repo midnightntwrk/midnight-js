@@ -31,7 +31,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { parseCoinPublicKeyToHex, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -632,12 +632,12 @@ describe('Contracts API', () => {
     const state = await providers.publicDataProvider.watchForContractState(
       deployedContract.deployTxData.public.contractAddress
     );
-    expect(state).toBeDefined();
+    const { state: contractState } = requireLedger9(state, 'watchForContractState');
 
     // increment modifies state on the ledger, but not the state previously returned
     await api.increment(deployedContract);
 
-    expect(ledger(state.data).round).toEqual(counterValue1);
+    expect(ledger(contractState.data).round).toEqual(counterValue1);
   });
 
   /**
@@ -657,7 +657,7 @@ describe('Contracts API', () => {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(resolve, WAITING_PROMISE_TIMEOUT);
     });
-    const result = await Promise.race([contractPromise, timeoutPromise]);
+    const result = await Promise.race([contractPromise.then((state) => requireLedger9(state, 'watchForContractState').state), timeoutPromise]);
 
     expect(result).toBeInstanceOf(ContractState);
     expect(ledger((result as ContractState).data).round).toEqual(counterValue1);

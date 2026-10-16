@@ -15,7 +15,7 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PositionedRecord, RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion, fromHex, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { contractStateEnvelopeVersion, fromHex, requireLedger9, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
@@ -116,9 +116,8 @@ const latestAt = (height: number, stateAtHeight = height): unknown => ({
   contractAction: { stateAt: { height: stateAtHeight }, transaction: { block: { height } } }
 });
 
-const collect = (
-  source: Rx.Observable<PositionedRecord<RawContractState>>
-): Promise<PositionedRecord<RawContractState>[]> => Rx.lastValueFrom(source.pipe(Rx.toArray()));
+const collect = <T>(source: Rx.Observable<PositionedRecord<T>>): Promise<PositionedRecord<T>[]> =>
+  Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   work.then(
@@ -167,25 +166,29 @@ describe('rawContractStateObservable — latest', () => {
     expect(envelopesOf(seen)).toEqual(['v8']);
   });
 
-  test('the same payload terminates the decoded stream instead', async () => {
-    // The gap this whole member exists to close: on the decoded stream a
-    // pre-fork state is not a skipped emission, it is the end of the
-    // subscription. The two assertions live in one test on purpose — the raw
-    // stream's value is only visible against what the decoded one does with
-    // the identical bytes.
-    const hexState = await mintLedger8ContractStateHex();
-    const frames = [actionFrame(hexState, LEDGER8_ERA_PROTOCOL_VERSION, 10)];
+  test('the decoded stream carries the same pre-fork state as v8 and keeps going across the fork', async () => {
+    const ledger8State = await mintLedger8ContractStateHex();
+    const ledger9State = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, frames)
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(ledger8State, LEDGER8_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(ledger9State, LEDGER9_ERA_PROTOCOL_VERSION, 11)
+      ])
     });
 
-    const rejection = await rejectionOf(
-      Rx.lastValueFrom(provider.contractStateObservable(ADDRESS, { type: 'latest' }).pipe(Rx.toArray()))
-    );
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
+    expect(
+      seen.map(({ value, blockHeight }) =>
+        value.version === 'v8'
+          ? { blockHeight, version: 'v8', hex: Buffer.from(value.stateBytes).toString('hex') }
+          : { blockHeight, version: 'v9', hex: Buffer.from(value.state.serialize()).toString('hex') }
+      )
+    ).toEqual([
+      { blockHeight: 10, version: 'v8', hex: ledger8State },
+      { blockHeight: 11, version: 'v9', hex: ledger9State }
+    ]);
   });
 
   test('carries one contract across the fork boundary in a single stream', async () => {
@@ -629,7 +632,9 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
     );
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
-    expect(Array.from(seen[0]!.value.serialize())).toEqual(Array.from(mintLedger9ContractStateBytes()));
+    expect(Array.from(requireLedger9(seen[0]!.value, 'test').state.serialize())).toEqual(
+      Array.from(mintLedger9ContractStateBytes())
+    );
   });
 
   test('carries the pre-fork action and its re-emission as two records in two blocks', async () => {

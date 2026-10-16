@@ -14,6 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
@@ -105,6 +106,37 @@ export interface Ledger9ContractState {
  * for v9 ({@link Ledger9ContractState}). Narrow on `version` before touching it.
  */
 export type VersionedContractState = Ledger8ContractStateBytes | Ledger9ContractState;
+
+/**
+ * The v8 variant of {@link VersionedPublicStates}: the contract state and the ledger parameters
+ * as the stored bytes the v8 ledger runtime wrote, not decoded and not translated. The zswap
+ * chain state is decoded, because both runtimes write the same `zswap-ledger-state[v5]` encoding.
+ */
+export interface Ledger8PublicStates {
+  readonly version: 'v8';
+  readonly zswapChainState: ZswapChainState;
+  /** Serialized, tag-prefixed byte form (`contract-state[v6]`). */
+  readonly stateBytes: Uint8Array;
+  /** Serialized, tag-prefixed byte form of the ledger parameters. */
+  readonly ledgerParametersBytes: Uint8Array;
+}
+
+/**
+ * The v9 variant of {@link VersionedPublicStates}: every state decoded.
+ */
+export interface Ledger9PublicStates {
+  readonly version: 'v9';
+  readonly zswapChainState: ZswapChainState;
+  readonly contractState: ContractState;
+  readonly ledgerParameters: LedgerParameters;
+}
+
+/**
+ * The public states read from one block for one contract, discriminated by the ledger runtime
+ * that wrote them. The contract state and the ledger parameters always come from the same era;
+ * a provider refuses a block where they do not. Narrow on `version` before touching it.
+ */
+export type VersionedPublicStates = Ledger8PublicStates | Ledger9PublicStates;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same

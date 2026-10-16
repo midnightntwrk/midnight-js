@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type FinalizedTxData,
   type FinalizedTxRecord,
   type PositionedRecord,
-  type PublicDataProvider
+  type PublicDataProvider,
+  type VersionedContractState
 } from '@midnight-ntwrk/midnight-js-types';
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 import {
   createLogger,
   getTestEnvironment,
@@ -52,17 +53,22 @@ describe('Indexer API', () => {
   let incrementFinalizedTxData: FinalizedTxData;
 
   const expectObservedContractStatesToEqual = async (
-    observable$: Observable<PositionedRecord<ContractState>>,
+    observable$: Observable<PositionedRecord<VersionedContractState>>,
     expected: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
   ): Promise<void> => {
     const records = await firstValueFrom(
       observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expected.length), toArray())
     );
-    for (const { value } of records) {
-      expect([...value.operations()].sort()).toEqual([...CONTRACT_CIRCUITS].sort());
+    const states = records.map(({ value, blockHeight, blockHash }) => ({
+      state: requireLedger9(value, 'contractStateObservable').state,
+      blockHeight,
+      blockHash
+    }));
+    for (const { state } of states) {
+      expect([...state.operations()].sort()).toEqual([...CONTRACT_CIRCUITS].sort());
     }
     expect(
-      records.map(({ value, blockHeight, blockHash }) => ({ round: ledger(value.data).round, blockHeight, blockHash }))
+      states.map(({ state, blockHeight, blockHash }) => ({ round: ledger(state.data).round, blockHeight, blockHash }))
     ).toEqual(
       expected.map(([round, { blockHeight, blockHash }]) => ({ round, blockHeight, blockHash }))
     );

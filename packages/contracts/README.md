@@ -120,10 +120,20 @@ const publicStates = await getPublicStates(providers.publicDataProvider, contrac
 const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 ```
 
-`getStates` and `getPublicStates` decode with the current ledger era, so they
-refuse a contract deployed before the fork that has not been written to since.
-For those, and wherever a contract's era is not known in advance, use
-`getAnyEraContractState`:
+`getStates` and `getPublicStates` return the states tagged with the ledger era
+that wrote them (`version: 'v8' | 'v9'`). A v9 block's states are decoded; a v8
+block's contract state and ledger parameters come back as the stored bytes
+(`stateBytes`, `ledgerParametersBytes`). Narrow on `version`, or use
+`requireLedger9` from `@midnight-ntwrk/midnight-js-utils` when your code handles
+only v9:
+
+```typescript
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+const { contractState, ledgerParameters } = requireLedger9(publicStates, 'readCounter');
+```
+
+To decode a contract state of either era, use `getAnyEraContractState`:
 
 ```typescript
 import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';

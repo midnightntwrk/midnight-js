@@ -151,20 +151,23 @@ const states = await getStates(
 const publicStates = await getPublicStates(providers.publicDataProvider, contractAddress);
 const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 
-// `getStates` and `getPublicStates` decode with the CURRENT ledger era, so they
-// refuse a state still in the pre-fork encoding, as an indexer older than
-// 4.4.0-rc.6 serves a contract untouched since the fork. For those, read the era
-// off the envelope and decode with it:
+// `getStates` and `getPublicStates` return the states tagged with the era that
+// wrote them: { version: 'v9', zswapChainState, contractState, ledgerParameters }
+// or { version: 'v8', zswapChainState, stateBytes, ledgerParametersBytes }.
+// Narrow on `version`, or call requireLedger9(publicStates, '<call site>') from
+// `@midnight-ntwrk/midnight-js-utils` when only v9 is handled.
+// To decode a contract state of either era, read the era off the envelope:
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 // read.envelopeVersion — the era that wrote the bytes
 // read.state           — EncodedStateValue, for your own contract's runtime
 
-// Watch for changes (polling)
+// Watch for changes (polling); resolves to a VersionedContractState
 providers.publicDataProvider.watchForContractState(address);
 
 // Subscribe (real-time)
 providers.publicDataProvider.contractStateObservable(address, config);
-// emits { value, blockHeight, blockHash }
+// emits { value: VersionedContractState, blockHeight, blockHash }; a pre-fork
+// record arrives as a v8 value and the stream keeps going
 ```
 
 ### Contract Events `@beta`

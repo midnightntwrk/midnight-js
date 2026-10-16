@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, Ledger8ValueUnsupportedError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { HeadReadFailedError } from '../errors';
@@ -278,6 +278,7 @@ describe('unproven-call-tx', () => {
     it('decodes a Bech32m wallet key with providers.config.networkId', async () => {
       const { getPublicStates } = await import('../get-states');
       vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        version: 'v9',
         zswapChainState: new ZswapChainState(),
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
@@ -405,6 +406,7 @@ describe('unproven-call-tx', () => {
       const mockGetPublicStates = vi.mocked(getPublicStates, { partial: true });
 
       mockGetPublicStates.mockResolvedValue({
+        version: 'v9',
         zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
@@ -435,11 +437,71 @@ describe('unproven-call-tx', () => {
       );
     });
 
+    it('refuses a contract whose public state was written by the v8 ledger', async () => {
+      const { getPublicStates } = await import('../get-states');
+      vi.mocked(getPublicStates).mockResolvedValue({
+        version: 'v8',
+        zswapChainState: new ZswapChainState(),
+        stateBytes: new Uint8Array([1]),
+        ledgerParametersBytes: new Uint8Array([2])
+      });
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider: createMockProviders().publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        config: MOCK_CONFIG
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      const rejection = createUnprovenCallTx(providers, options);
+
+      await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
+      await expect(rejection).rejects.toMatchObject({ context: 'createUnprovenCallTx' });
+    });
+
+    it('refuses a contract whose public state was written by the v8 ledger, with a private state', async () => {
+      const { getStates } = await import('../get-states');
+      vi.mocked(getStates).mockResolvedValue({
+        version: 'v8',
+        zswapChainState: new ZswapChainState(),
+        stateBytes: new Uint8Array([1]),
+        ledgerParametersBytes: new Uint8Array([2]),
+        privateState: { test: 'private-state' }
+      });
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider: createMockProviders().publicDataProvider,
+        walletProvider: createMockProviders().walletProvider,
+        privateStateProvider: createMockProviders().privateStateProvider,
+        config: MOCK_CONFIG
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        privateStateId: createMockPrivateStateId(),
+        args: ['test-arg']
+      };
+
+      const rejection = createUnprovenCallTx(providers, options);
+
+      await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
+      await expect(rejection).rejects.toMatchObject({ context: 'createUnprovenCallTx' });
+    });
+
     it('should create unproven call tx with private state provider', async () => {
       const { getStates } = await import('../get-states');
       const mockGetStates = vi.mocked(getStates, { partial: true });
 
       mockGetStates.mockResolvedValue({
+        version: 'v9',
         zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         privateState: { test: 'private-state' },
@@ -478,6 +540,7 @@ describe('unproven-call-tx', () => {
     it('forwards providers.config to the ledger builder', async () => {
       const { getPublicStates } = await import('../get-states');
       vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        version: 'v9',
         zswapChainState: new ZswapChainState(),
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()

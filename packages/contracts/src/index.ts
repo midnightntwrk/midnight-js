@@ -118,8 +118,7 @@ export {
   ContractStates,
   getAnyEraContractState,
   getPublicStates,
-  getStates,
-  PublicContractStates} from './get-states';
+  getStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,

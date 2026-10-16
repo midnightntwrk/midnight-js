@@ -30,7 +30,7 @@ import {
   UntaggedPayloadError,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, requireLedger9, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import {
@@ -609,10 +609,10 @@ export async function findDeployedContract<C extends Contract.Any>(
     contractAddress
   );
 
-  const currentContractState = requireDeployedContract(
-    await providers.publicDataProvider.queryContractState(contractAddress),
-    contractAddress
-  );
+  const currentContractState = requireLedger9(
+    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
+    'findDeployedContract'
+  ).state;
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

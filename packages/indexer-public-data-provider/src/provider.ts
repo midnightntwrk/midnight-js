@@ -13,12 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type {
   ContractAddress,
-  LedgerParameters,
-  TransactionId,
-  ZswapChainState
+  TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
@@ -35,19 +32,13 @@ import type {
   RawContractState,
   UnshieldedBalances,
   VersionedContractState,
-  VersionedFinalizedTxData
+  VersionedFinalizedTxData,
+  VersionedPublicStates
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
-import {
-  parseHexContractState,
-  parseHexLedgerParameters,
-  parseHexZswapState,
-  toRawContractState,
-  toUnshieldedBalances,
-  toVersionedContractState
-} from './codec';
+import { toRawContractState, toUnshieldedBalances, toVersionedContractState, toVersionedPublicStates } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
@@ -246,7 +237,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractState | null> {
+  ): Promise<VersionedContractState | null> {
     assertIsContractAddress(address);
     // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
     // contract action at or before it), which is what cross-contract reads require.
@@ -278,17 +269,16 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // followed the chain tip, so a block indexed between the two reads
         // leaves them on either side of a fork. Pinned: both resolved against
         // the offset the caller named, so the bound is real.
-        const contractState = parseHexContractState(state, block.protocolVersion, {
+        return toVersionedContractState(state, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        return contractState;
       });
   }
 
   queryZSwapAndContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
+  ): Promise<VersionedPublicStates | null> {
     assertIsContractAddress(address);
     // One request pinned to a single block yields a coherent triple: `block` supplies the ledger
     // parameters and the contract's zswap commitment tree resolved from that block's ledger state,
@@ -319,23 +309,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!block || contractState == null || contractZswapState == null) {
           return null;
         }
-        // TWO of the three carry an era envelope, not one: the contract state and the block's
-        // ledger parameters. Each is dated inside its own reader, immediately before that reader
-        // decodes it, so correctness does not depend on the order of the two calls — only which
-        // error surfaces first when both fields are un-decodable does, and the state's wins.
-        //
         // The zswap chain state carries no era to date: both runtimes write
         // `zswap-ledger-state[v5]` and each reads the other's bytes back unchanged. That is
         // measured, not assumed — see `test/ledger-parameters.test.ts` and
         // `docs/architecture/era-tagged-payload-decoders.md`.
-        const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
+        return toVersionedPublicStates(contractZswapState, contractState, block.ledgerParameters, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        return [
-          parseHexZswapState(contractZswapState),
-          parsedContractState,
-          parseHexLedgerParameters(block.ledgerParameters)
-        ] as [ZswapChainState, ContractState, LedgerParameters];
       });
   }
 
@@ -401,7 +381,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       });
   }
 
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress): Promise<VersionedContractState> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
@@ -409,7 +389,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
         Rx.map(({ state, protocolVersion }) =>
-          parseHexContractState(state, protocolVersion, { upperBound: 'withheld' })
+          toVersionedContractState(state, protocolVersion, { upperBound: 'withheld' })
         )
       )
     );
@@ -565,8 +545,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   contractStateObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
-  ): Rx.Observable<PositionedRecord<ContractState>> {
-    return this.contractStates$(contractAddress, config, parseHexContractState);
+  ): Rx.Observable<PositionedRecord<VersionedContractState>> {
+    return this.contractStates$(contractAddress, config, toVersionedContractState);
   }
 
   /**

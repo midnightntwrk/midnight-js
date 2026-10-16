@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
-import type { VersionedContractState, VersionedFinalizedTxData } from './versioned';
+import type { VersionedContractState, VersionedFinalizedTxData, VersionedPublicStates } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -354,8 +353,9 @@ export interface PublicDataProvider {
   queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
 
   /**
-   * Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
-   * contract state at the address in the latest block is returned.
+   * Retrieves the on-chain state of a contract, tagged with the ledger era that wrote it. If no
+   * block hash or block height are provided, the contract state at the address in the latest block
+   * is returned. A v8-era state is returned as the stored bytes, never translated to the v9 encoding.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
@@ -364,13 +364,14 @@ export interface PublicDataProvider {
   queryContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractState | null>;
+  ): Promise<VersionedContractState | null>;
 
   /**
    * Retrieves the zswap chain state (token balances), the contract state of the contract at the
-   * given address, and the ledger parameters in effect on the associated block. Both states are
-   * retrieved in a single query to ensure consistency between the two.
+   * given address, and the ledger parameters in effect on the associated block, tagged with the
+   * ledger era that wrote them. All three are retrieved in a single query to ensure consistency.
    * Immediately returns null if no matching data is found.
+   * @throws When the contract state and the ledger parameters were written by different eras.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -378,7 +379,7 @@ export interface PublicDataProvider {
   queryZSwapAndContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>;
+  ): Promise<VersionedPublicStates | null>;
 
   /**
    * Retrieves the contract state in the deploy's record for the contract at the given contract address,
@@ -401,11 +402,11 @@ export interface PublicDataProvider {
   ): Promise<UnshieldedBalances | null>;
 
   /**
-   * Retrieves the contract state of the contract with the given address.
-   * Waits indefinitely for matching data to appear.
+   * Retrieves the contract state of the contract with the given address, tagged with the ledger era
+   * that wrote it. Waits indefinitely for matching data to appear.
    * @param contractAddress The address of the contract of interest.
    */
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState>;
+  watchForContractState(contractAddress: ContractAddress): Promise<VersionedContractState>;
 
   /**
    * Monitors for any unshielded balances associated with a specific contract address.
@@ -453,8 +454,9 @@ export interface PublicDataProvider {
   watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
 
   /**
-   * Creates a stream of contract states. The observable emits a value every time a state is either
-   * created or updated at the given address.
+   * Creates a stream of contract states, each tagged with the ledger era that wrote it. The
+   * observable emits a value every time a state is either created or updated at the given address.
+   * A replay that starts before the hard fork emits the pre-fork states as v8 values and carries on.
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
@@ -466,7 +468,7 @@ export interface PublicDataProvider {
   contractStateObservable(
     address: ContractAddress,
     config: ContractStateObservableConfig
-  ): Observable<PositionedRecord<ContractState>>;
+  ): Observable<PositionedRecord<VersionedContractState>>;
 
   /**
    * Creates a stream of contract states as the raw serialized bytes the network
