@@ -22,10 +22,10 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CONTRACTS_ERROR_CODES, Ledger8ValueUnsupportedError } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError } from '../errors';
+import { HeadReadFailedError, Ledger8ContractStateUnsupportedError } from '../errors';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -461,8 +461,11 @@ describe('unproven-call-tx', () => {
 
       const rejection = createUnprovenCallTx(providers, options);
 
-      await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
-      await expect(rejection).rejects.toMatchObject({ context: 'createUnprovenCallTx' });
+      await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      await expect(rejection).rejects.toMatchObject({
+        contractAddress: options.contractAddress,
+        operation: 'createUnprovenCallTx'
+      });
     });
 
     it('refuses a contract whose public state was written by the v8 ledger, with a private state', async () => {
@@ -492,8 +495,11 @@ describe('unproven-call-tx', () => {
 
       const rejection = createUnprovenCallTx(providers, options);
 
-      await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
-      await expect(rejection).rejects.toMatchObject({ context: 'createUnprovenCallTx' });
+      await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      await expect(rejection).rejects.toMatchObject({
+        contractAddress: options.contractAddress,
+        operation: 'createUnprovenCallTx'
+      });
     });
 
     it('should create unproven call tx with private state provider', async () => {

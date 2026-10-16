@@ -20,7 +20,7 @@ import { UnhandledUnionMemberError } from '../assertion-utils';
 import { type DeserializationContext, DeserializationError } from '../deserialization';
 import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from '../error-codes';
 import { PasswordValidationError } from '../password-validation';
-import { Ledger8ValueUnsupportedError } from '../require-ledger9';
+import { Ledger8ValueUnsupportedError, UnrecognisedEraTagError } from '../require-ledger9';
 import { TagParseError } from '../serialized-tag';
 import { ZkArtifactContractInfoError } from '../zk-artifact-contract-info';
 import { ZkArtifactIntegrityError } from '../zk-artifact-manifest';
@@ -70,6 +70,12 @@ describe('utils error classes', () => {
       'Ledger8ValueUnsupportedError',
       new Ledger8ValueUnsupportedError('ctx'),
       UTILS_ERROR_CODES.LEDGER8_VALUE_UNSUPPORTED,
+      'USAGE'
+    ],
+    [
+      'UnrecognisedEraTagError',
+      new UnrecognisedEraTagError('ctx', undefined),
+      UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG,
       'USAGE'
     ]
   ])('%s extends MidnightJsError with its exact code and category', (_name, error, code, category) => {

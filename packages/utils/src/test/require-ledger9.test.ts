@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, test } from 'vitest';
 
-import { UnhandledUnionMemberError } from '../assertion-utils';
 import { hasErrorCode, UTILS_ERROR_CODES } from '../error-codes';
-import { Ledger8ValueUnsupportedError, requireLedger9 } from '../require-ledger9';
+import { Ledger8ValueUnsupportedError, requireLedger9, UnrecognisedEraTagError } from '../require-ledger9';
 
 interface Ledger8Sample {
   readonly version: 'v8';
@@ -30,6 +30,8 @@ interface Ledger9Sample {
 }
 
 type VersionedSample = Ledger8Sample | Ledger9Sample;
+
+const served = (value: VersionedSample): VersionedSample => value;
 
 const catchError = (act: () => unknown): unknown => {
   try {
@@ -56,7 +58,7 @@ describe('requireLedger9', () => {
 
   test('refuses a v8 value with a coded error that names the call site', () => {
     // Arrange.
-    const value: VersionedSample = { version: 'v8', stateBytes: new Uint8Array([1, 2, 3]) };
+    const value = served({ version: 'v8', stateBytes: new Uint8Array([1, 2, 3]) });
 
     // Act.
     const thrown = catchError(() => requireLedger9(value, 'getPublicStates'));
@@ -68,7 +70,7 @@ describe('requireLedger9', () => {
     expect(thrown).toHaveProperty('category', 'USAGE');
   });
 
-  test('refuses an era the build does not know as an unhandled union member', () => {
+  test('refuses an era the build does not know with a coded error that names what it received', () => {
     // Arrange.
     const grown = { version: 'v10', state: 1 };
 
@@ -76,7 +78,46 @@ describe('requireLedger9', () => {
     const thrown = catchError(() => requireLedger9(grown as never, 'getPublicStates'));
 
     // Assert.
-    expect(thrown).toBeInstanceOf(UnhandledUnionMemberError);
+    expect(thrown).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(hasErrorCode(thrown, UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG)).toBe(true);
     expect(thrown).toHaveProperty('context', 'getPublicStates');
+    expect(thrown).toHaveProperty('received', 'v10');
+    expect(thrown).toHaveProperty('category', 'USAGE');
+  });
+
+  test('refuses a value with no era tag, the pre-5.0.0 shape, as an unrecognised tag', () => {
+    // Arrange.
+    const untagged = { state: 1 };
+
+    // Act.
+    const thrown = catchError(() => requireLedger9(untagged as never, 'getPublicStates'));
+
+    // Assert.
+    expect(thrown).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(thrown).toHaveProperty('received', 'undefined');
+  });
+
+  test('refuses null as an unrecognised tag rather than a TypeError', () => {
+    // Act.
+    const thrown = catchError(() => requireLedger9(null as never, 'getPublicStates'));
+
+    // Assert.
+    expect(thrown).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(thrown).toHaveProperty('received', 'null');
+  });
+
+  test('does not compile for a type that has no v9 variant to narrow to', () => {
+    // Arrange.
+    const wideTag: { readonly version: LedgerVersion; readonly raw: Uint8Array } = {
+      version: 'v9',
+      raw: new Uint8Array()
+    };
+    const ledger8Only: Ledger8Sample = { version: 'v8', stateBytes: new Uint8Array() };
+
+    // Assert.
+    // @ts-expect-error `version` is the whole era set, not a discriminant, so there is no v9 variant
+    expect(() => requireLedger9(wideTag, 'readRaw')).not.toThrow();
+    // @ts-expect-error a v8-only type has no v9 variant
+    expect(() => requireLedger9(ledger8Only, 'readLedger8')).toThrow(Ledger8ValueUnsupportedError);
   });
 });

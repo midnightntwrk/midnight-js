@@ -266,6 +266,37 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
 }
 
 /**
+ * An error indicating that the contract at this address is held on chain in a state the v8 ledger
+ * wrote, while the operation runs only against states the v9 ledger wrote.
+ *
+ * The contracts-level counterpart of `Ledger8ValueUnsupportedError` from `midnight-js-utils`, for
+ * the reads this package makes on the caller's behalf: it names the contract and the operation,
+ * because the caller has no `switch` of its own to put the v8 branch in.
+ */
+export class Ledger8ContractStateUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED];
+
+  /**
+   * @param contractAddress The contract whose on-chain state was read.
+   * @param operation The operation that handles only v9 states.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly operation: string
+  ) {
+    super(
+      `The contract at '${contractAddress}' is held on chain in a state written by the v8 ledger, and ` +
+        `${operation} runs only against states written by the v9 ledger. Before the hard fork, run the ` +
+        `operation through the contract the retained Compact toolchain produced. After the fork, the ` +
+        `indexer serves every contract's state translated to v9 from version 4.4.0-rc.6 on: upgrade an ` +
+        `older indexer.`
+    );
+    this.name = 'Ledger8ContractStateUnsupportedError';
+  }
+}
+
+/**
  * An error indicating that a contract produced by the retained Compact toolchain was submitted for
  * DEPLOYMENT to a network head that has already crossed the fork.
  *

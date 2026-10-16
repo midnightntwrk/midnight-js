@@ -18,15 +18,10 @@ import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, Ledger8ValueUnsupportedError, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  ContractNotFoundError,
-  ContractTypeError,
-  EraInvariantViolationError,
-  PrivateStateNotFoundError
-} from '../errors';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -268,8 +263,8 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(Ledger8ValueUnsupportedError);
-      expect(rejection).toMatchObject({ context: 'findDeployedContract' });
+      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 

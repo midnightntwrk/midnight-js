@@ -33,6 +33,7 @@
 export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8CallTxFailedError as CallTxFailedError,
+  Ledger8ContractStateUnsupportedError as ContractStateUnsupportedError,
   Ledger8DeployNotStoredError as DeployNotStoredError,
   Ledger8DeployOnLedger9Error as DeployOnLedger9Error,
   Ledger8DeployTxFailedError as DeployTxFailedError,

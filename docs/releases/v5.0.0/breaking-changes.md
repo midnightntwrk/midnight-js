@@ -699,7 +699,12 @@ await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
 ### 14d. New exports
 
 - `requireLedger9`, `Ledger9Variant`, `Ledger8ValueUnsupportedError`
-  (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`) — utils.
+  (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`), `UnrecognisedEraTagError`
+  (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`) — utils. `requireLedger9` does not compile for a type
+  with no v9 variant, such as `RawContractState`, whose `version` is the whole era set.
+- `Ledger8.ContractStateUnsupportedError` (`MIDNIGHT_JS_C_LEDGER8_CONTRACT_STATE_UNSUPPORTED`) —
+  contracts. `findDeployedContract`, `createUnprovenCallTx`, a cross-contract callee read and the
+  maintenance reads raise it, with the contract address, for a state the v8 ledger wrote.
 - `VersionedPublicStates`, `Ledger8PublicStates`, `Ledger9PublicStates` — types.
 - `AnyEraFoundContract<C, L8>`, `AnyEraDeployedContract<C, L8>` — contracts.
 

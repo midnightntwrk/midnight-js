@@ -17,9 +17,9 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ContractNotFoundError } from '../errors';
+import { requireLedger9ContractState } from './era';
 
 /**
  * Narrows a contract-state read to a deployed contract.
@@ -43,6 +43,7 @@ export const requireDeployedContract = <T>(state: T | null | undefined, contract
  * @param contractAddress The contract being maintained.
  * @returns The contract's latest state.
  * @throws ContractNotFoundError if no state is found on chain for `contractAddress`.
+ * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the state.
  */
 export const queryExistingContractState = async (
   publicDataProvider: Pick<PublicDataProvider, 'queryContractState'>,
@@ -52,7 +53,7 @@ export const queryExistingContractState = async (
   if (state === undefined || state === null) {
     throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
   }
-  return requireLedger9(state, 'queryExistingContractState').state;
+  return requireLedger9ContractState(state, contractAddress, 'queryExistingContractState').state;
 };
 
 /**

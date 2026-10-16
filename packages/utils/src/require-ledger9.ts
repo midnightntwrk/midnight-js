@@ -16,7 +16,6 @@
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { UnhandledUnionMemberError } from './assertion-utils';
 import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 
 /**
@@ -39,8 +38,52 @@ export class Ledger8ValueUnsupportedError extends MidnightJsError {
   }
 }
 
+const describeEraTag = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
+  }
+  if (typeof value !== 'object' || !('version' in value)) {
+    return 'undefined';
+  }
+  return String(value.version);
+};
+
+/**
+ * Raised by {@link requireLedger9} when the value carries no era tag this build recognises: `null`,
+ * a value with no `version`, or an era newer than this build.
+ */
+export class UnrecognisedEraTagError extends MidnightJsError {
+  readonly code = UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG;
+  readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG];
+
+  /** What the value's `version` held, or `'null'` / `'undefined'` when there was none. */
+  readonly received: string;
+
+  /**
+   * @param context Names the call site that handles only v9 values.
+   * @param value The offending value. Only its `version` is read.
+   */
+  constructor(
+    readonly context: string,
+    value: unknown
+  ) {
+    const received = describeEraTag(value);
+    super(
+      `${context} expects a value tagged with a ledger era (version: 'v8' | 'v9'), but received version: ${received}. ` +
+        `A value with no era tag has the shape of a pre-5.0.0 provider; an unknown era means this midnight-js ` +
+        `is older than the network or the provider that produced the value.`
+    );
+    this.name = 'UnrecognisedEraTagError';
+    this.received = received;
+  }
+}
+
+
 /** The v9 variant of a version-tagged union. */
 export type Ledger9Variant<T> = Extract<T, { readonly version: 'v9' }>;
+
+/** `T` itself when it has a v9 variant to narrow to, `never` when it does not. */
+type WithLedger9Variant<T> = [Ledger9Variant<T>] extends [never] ? never : T;
 
 const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
   value.version === 'v9';
@@ -56,7 +99,8 @@ const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): val
  * @param context Names the call site, so the error says where it came from.
  * @returns The whole v9 variant.
  * @throws Ledger8ValueUnsupportedError if the value was written by the v8 ledger.
- * @throws UnhandledUnionMemberError if the value carries an era this build does not know.
+ * @throws UnrecognisedEraTagError if the value is `null`, has no `version`, or carries an era this
+ *   build does not know.
  *
  * @example
  * ```ts
@@ -64,14 +108,17 @@ const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): val
  * ```
  */
 export const requireLedger9 = <T extends { readonly version: LedgerVersion }>(
-  value: T,
+  value: WithLedger9Variant<T>,
   context: string
 ): Ledger9Variant<T> => {
-  if (isLedger9(value)) {
+  if (typeof value !== 'object' || value === null) {
+    throw new UnrecognisedEraTagError(context, value);
+  }
+  if (isLedger9<T>(value)) {
     return value;
   }
   if (value.version === 'v8') {
     throw new Ledger8ValueUnsupportedError(context);
   }
-  throw new UnhandledUnionMemberError(context);
+  throw new UnrecognisedEraTagError(context, value);
 };

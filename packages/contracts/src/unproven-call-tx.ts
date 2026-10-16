@@ -21,7 +21,7 @@ import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { exitResultOrError, type Ledger9PublicStates, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, type Ledger9Variant, parseCoinPublicKeyToHex, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, type Ledger9Variant, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
   CallOptions,
@@ -32,6 +32,7 @@ import type {
 import { type ContractProviders } from './contract-providers';
 import { HeadReadFailedError, IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates } from './get-states';
+import { requireLedger9ContractState } from './internal/era';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -324,7 +325,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     return { states: cached.states as Ledger9Variant<ContractStates<Contract.PrivateState<C>>>, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
-  const states = requireLedger9(
+  const states = requireLedger9ContractState(
     await getStates(
       providers.publicDataProvider,
       providers.privateStateProvider,
@@ -332,6 +333,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
       options.privateStateId,
       blockHash
     ),
+    options.contractAddress,
     'createUnprovenCallTx'
   );
   if (transactionContext) {
@@ -351,8 +353,9 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
     return { states: cached.states, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
-  const states = requireLedger9(
+  const states = requireLedger9ContractState(
     await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash),
+    options.contractAddress,
     'createUnprovenCallTx'
   );
   if (transactionContext) {

@@ -47,6 +47,7 @@ const cases: readonly Case[] = [
   ['EraInvariantViolationError', new errors.EraInvariantViolationError('submitTx'), CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION, 'INTERNAL'],
   ['EraArtifactMismatchError', new errors.EraArtifactMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH, 'USAGE'],
   ['RetainedArtifactOnCurrentEraStateError', new errors.RetainedArtifactOnCurrentEraStateError(ADDRESS), CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE, 'USAGE'],
+  ['Ledger8ContractStateUnsupportedError', new errors.Ledger8ContractStateUnsupportedError(ADDRESS, 'findDeployedContract'), CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED, 'USAGE'],
   ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
   ['HeadStateEraMismatchError', new errors.HeadStateEraMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],

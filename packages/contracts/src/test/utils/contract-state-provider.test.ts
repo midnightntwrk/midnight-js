@@ -16,9 +16,9 @@
 import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import { Ledger8ValueUnsupportedError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ContractStateUnsupportedError } from '../../errors';
 import { makeCalleeStateResolver } from '../../internal/utils';
 
 const BLOCK_HASH = 'ab'.repeat(32);
@@ -123,8 +123,8 @@ describe('makeCalleeStateResolver', () => {
 
     const rejection = resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ context: 'makeCalleeStateResolver' });
+    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+    await expect(rejection).rejects.toMatchObject({ contractAddress: ADDRESS, operation: 'makeCalleeStateResolver' });
     expect(resolver.resolvedStates.has(String(ADDRESS))).toBe(false);
   });
 

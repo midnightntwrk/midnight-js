@@ -28,6 +28,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8CallTxFailedError,
+  Ledger8ContractStateUnsupportedError,
   Ledger8DeployNotStoredError,
   Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
@@ -52,6 +53,7 @@ import { createLedger8CircuitCallTxInterface } from '../tx-interfaces';
 const RETAINED_ERA_MEMBERS = [
   'AmbiguousEntryPointError',
   'CallTxFailedError',
+  'ContractStateUnsupportedError',
   'DeployNotStoredError',
   'DeployOnLedger9Error',
   'DeployTxFailedError',
@@ -126,6 +128,7 @@ describe('the retained era is published as one namespace', () => {
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
+    expect(Ledger8.ContractStateUnsupportedError).toBe(Ledger8ContractStateUnsupportedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
     expect(Ledger8.DeployOnLedger9Error).toBe(Ledger8DeployOnLedger9Error);
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);

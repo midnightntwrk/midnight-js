@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { Ledger8ValueUnsupportedError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ContractStateUnsupportedError } from '../errors';
 import {
   getExistingSigningKey,
   queryExistingContractState,
@@ -62,8 +62,8 @@ describe('queryExistingContractState', () => {
 
     const rejection = queryExistingContractState({ queryContractState }, contractAddress);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ValueUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ context: 'queryExistingContractState' });
+    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+    await expect(rejection).rejects.toMatchObject({ contractAddress, operation: 'queryExistingContractState' });
   });
 
   it('refuses an address with no state as ContractNotFoundError', async () => {
