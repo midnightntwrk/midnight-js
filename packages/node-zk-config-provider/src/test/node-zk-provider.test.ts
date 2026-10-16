@@ -293,6 +293,24 @@ describe('Node ZK config Provider', () => {
       ).rejects.toThrow(ZkArtifactIntegrityError);
     });
 
+    it('rejects a pinned manifest whose raw text repeats a key, even though the pin matches its bytes', async () => {
+      const dir = await buildBaseDir();
+      const entry = (hash: string): string =>
+        `{"type":"file","size":${SET_TOPIC_VERIFIER.length},"hash":"${hash}"}`;
+      // The honest entry first, a forged entry second: JSON.parse keeps the last one, so without a
+      // raw-text duplicate check the pin (which covers exactly these bytes) would certify the
+      // forged entry instead of the one a reviewer read.
+      const rawManifest =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"set_topic.verifier":${entry(computeSha256Hex(SET_TOPIC_VERIFIER))},` +
+        `"set_topic.verifier":${entry('a'.repeat(64))}}}`;
+      await fs.writeFile(path.join(dir, 'compiler', 'contract-manifest.json'), rawManifest);
+      const pin = computeSha256Hex(new TextEncoder().encode(rawManifest));
+      await expect(
+        new NodeZkConfigProvider(dir, { expectedManifestHash: pin }).getVerifierKey('set_topic')
+      ).rejects.toThrow(/duplicate key "set_topic\.verifier"/);
+    });
+
     it('rejects in warn mode when expectedManifestHash is set but the manifest is absent', async () => {
       await expect(
         new NodeZkConfigProvider(resourceDir, { verify: 'warn', expectedManifestHash: 'e'.repeat(64) }).getProverKey('set_topic')
