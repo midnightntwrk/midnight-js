@@ -2201,7 +2201,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.3"
     "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
-    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.1.2"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
@@ -2267,10 +2267,10 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1":
-  version: 3.1.1
-  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.1%2Fc246131be13bd689bd8568d1aaf22f579465a457"
-  checksum: 10/03b5752fcf108e95e3ed8ffd80aedd42fe69a5458f24262dc9928df2e48daf121f8d2b57bfa1a61cea57bf42e166883818050d2469efd9de121d2a249c7b6039
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.2":
+  version: 3.1.2
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.2%2F5b2a16606bc912521b2ab67297124cbfba444713"
+  checksum: 10/daeee876fb066133bba2abc2e7fffb2e9f87aaee4ceec20e7c67cd75b7c944e9dfc43b89e2b82c42e7e176523c162960df76ae2388eb9ce68633228eb96833aa
   languageName: node
   linkType: hard
 
