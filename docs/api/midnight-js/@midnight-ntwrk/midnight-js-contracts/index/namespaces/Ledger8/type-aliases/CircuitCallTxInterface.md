@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ builds and submits a call transaction against one address.
 ONE signature per circuit, where the current era's `CircuitCallTxInterface`
 has two: the retained era cannot join a scoped transaction — a scope refuses
 a retained-era call with `MixedEraScopeError` — so there is no context-taking
-arm to declare.
+overload to declare.
 
 ## Type Parameters
 

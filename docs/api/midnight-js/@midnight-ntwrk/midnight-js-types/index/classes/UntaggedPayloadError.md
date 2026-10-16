@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,11 +6,12 @@
 
 # Class: UntaggedPayloadError
 
-Thrown when a payload crossing a version-tagged seam carries no recognised
-`version` discriminant — most often a transaction passed untagged, the shape
-these seams took before 5.0.0.
+Thrown when a payload passed to, or returned from, a provider method carries
+no recognised `version` discriminant — most often a transaction passed
+untagged, the shape these methods took before 5.0.0. A read method's record
+is reported as a record, because its v8 variant carries `tx`, not `txBytes`.
 
-The seam types make this unrepresentable in TypeScript, so it is reachable
+The method signatures make this unrepresentable in TypeScript, so it is reachable
 only from JavaScript, from a consumer compiled against a pre-5.0.0
 `midnight-js-types`, or from a payload that crossed an untyped boundary.
 It carries a `code` so a caller can tell this apart from an arbitrary crash.
@@ -23,17 +24,17 @@ It carries a `code` so a caller can tell this apart from an arbitrary crash.
 
 ### Constructor
 
-> **new UntaggedPayloadError**(`seam`, `payload`): `UntaggedPayloadError`
+> **new UntaggedPayloadError**(`method`, `payload`): `UntaggedPayloadError`
 
 #### Parameters
 
-##### seam
+##### method
 
-[`Seam`](../type-aliases/Seam.md)
+[`ProviderMethod`](../type-aliases/ProviderMethod.md)
 
-The method that received the payload. Typed as the full
-            [Seam](../type-aliases/Seam.md) vocabulary because this error is thrown from both
-            the transaction seams and the read surface.
+The method the payload was passed to or returned from. Typed as the full
+              [ProviderMethod](../type-aliases/ProviderMethod.md) vocabulary because this error is thrown
+              from both the transaction methods and the read methods.
 
 ##### payload
 
@@ -72,18 +73,18 @@ The offending payload. Only its `version` field is read;
 
 ***
 
+### method
+
+> `readonly` **method**: [`ProviderMethod`](../type-aliases/ProviderMethod.md)
+
+The method the payload was passed to or returned from. Typed as the full
+              [ProviderMethod](../type-aliases/ProviderMethod.md) vocabulary because this error is thrown
+              from both the transaction methods and the read methods.
+
+***
+
 ### received
 
 > `readonly` **received**: `string`
 
 What the payload's `version` field actually held.
-
-***
-
-### seam
-
-> `readonly` **seam**: [`Seam`](../type-aliases/Seam.md)
-
-The method that received the payload. Typed as the full
-            [Seam](../type-aliases/Seam.md) vocabulary because this error is thrown from both
-            the transaction seams and the read surface.

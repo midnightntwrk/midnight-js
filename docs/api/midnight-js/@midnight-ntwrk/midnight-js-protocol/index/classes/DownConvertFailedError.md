@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 Thrown when a raw contract-state envelope, or an already-extracted
 `EncodedStateValue`, cannot be turned into an executable pre-fork state.
-Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`) and by
 `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
 that decodes but does not re-encode to the bytes it came from.
 

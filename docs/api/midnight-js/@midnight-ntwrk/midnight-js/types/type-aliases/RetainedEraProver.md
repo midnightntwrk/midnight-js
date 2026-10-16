@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,8 @@
 
 > **RetainedEraProver** = (`txBytes`, `config?`) => `Promise`\<`Uint8Array`\>
 
-Proves a RETAINED-era transaction, which crosses this seam as serialized
+Proves a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
+ledger 8), which is passed to `proveTx` as serialized
 bytes in both directions: the runtime that owns such a transaction is loaded
 lazily and its instances are not interchangeable with the current era's.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -10,10 +10,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 31 types, 8 error classes and one interface factory, 40 names --
+era's family -- 37 types, 18 error classes and one interface factory, 56 names --
 goes when the window closes.
 
-Published flat, side by side, those 40 would be 40 published API names, and
+Published flat, side by side, those 56 would be 56 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -54,7 +54,7 @@ Two things that look like substitutes and are not:
   package publishes only a `"."` entry (`package.json` `exports`), so without a
   published name there is no subpath to reach them through either.
 - **`Awaited<ReturnType<typeof submitCallTx>>` resolves from the LAST overload
-  by design**, which is a current-era arm. It hands back the current-era shape:
+  by design**, which is a current-era overload. It hands back the current-era shape:
   the wrong type for a retained-era call.
 
 The whole family travels together rather than just the four result types: a
@@ -84,28 +84,40 @@ A name belongs in the namespace when BOTH hold:
 
 The second clause is what the namespace's name commits to: it is `Ledger8`, the
 ERA, not the fork window. The error classes pass both clauses and are inside: a
-consumer catching `Ledger8.SeamFailedError` has written code that only means
+consumer catching `Ledger8.CallTxFailedError` has written code that only means
 anything while that pipeline runs.
 
 A name that serves BOTH eras stays on the flat surface, so a consumer that only
 RECEIVES results never imports the transitional half:
 
-- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx` and `isLedger8Result` --
-  the union a shared handler declares, and the guard that narrows it.
+- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
+  `AnyEraDeployedContract`, `AnyEraMaintenanceTxData` and `isLedger8Result` -- the unions a shared handler
+  declares, and the guard that narrows them.
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
-- `CURRENT_PIPELINE_ERA`, `RETAINED_PIPELINE_ERA`, `PipelineEra` and its two
-  literal aliases -- the vocabulary both pipelines are named by.
-- `UnrecognisedResultEraError` -- raised for a result tagged with neither era,
+- `UnknownResultEraError` -- raised for a result tagged with neither era,
   which is not a retained-era condition.
+- `ProviderFailedError` -- a provider's rejection at `proveTx`, `balanceTx` or
+  `submitTx`, sanitized the same way on every submit path, whatever the era.
+
+## A `Ledger8` name that is NOT in here
+
+`Ledger8FoundDeployTxPublicData` carries the era prefix and still stays flat,
+because it fails both clauses. It is the v8 half of the CURRENT era's
+`FoundDeployTxData.public`: the current pipeline returns it for a contract that
+was deployed before the fork. Chain history does not go away, so the type
+outlives the retained pipeline, and moving it into the namespace would break the
+current era's `FoundDeployTxPublicData` the day the namespace is withdrawn. Its
+prefix names the era that RECORDED the deployment, like `Ledger8FinalizedTxData`
+in `@midnight-ntwrk/midnight-js-types`.
 
 ## The fork-window group, which is NOT in here
 
 A second group passes clause 1 and fails clause 2, and it is published flat:
 `StaleHeadError`, `SubmitRejectionUndiagnosedError` and their two payload types,
 `HeadStateEraMismatchError`, `EraArtifactMismatchError`,
-`ScopedTxEraUnsupportedError`, `MixedEraScopeError`. These describe the FORK
+`ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`. These describe the FORK
 WINDOW -- a head that moved under an operation, an artifact whose era does not
 pair with the head, a scope the head era cannot compose -- and they will need
 removing too, in their own change.
@@ -116,13 +128,15 @@ is a decision nobody has asked for yet. What this document must not do is claim
 the property it does not have: withdrawing the retained era is ONE step for the
 era's own family and a SECOND step for the fork-window group.
 
-## The deploy arm's own members
+## The deploy overload's own members
 
 `Ledger8DeployedContract` is published, under the rule that a caller who can
-obtain a value must be able to name its type: `deployContract`'s retained arm
-composes, submits and hands one back.
+obtain a value must be able to name its type: `deployContract`, called with a
+retained-era contract, composes, submits and hands one back. Its
+`deployTxData` and the found handle's are published for the same reason, as
+`Ledger8.DeployTxData` and `Ledger8.FoundDeployTxData`.
 
-`Ledger8.DeployOnV9Error` is the era pairing table's refusal for a retained
+`Ledger8.DeployOnLedger9Error` is the era pairing table's refusal for a retained
 artifact against a post-fork head, and it is reachable: it is what a caller
 receives once the network has crossed the fork. `Ledger8.DeployTxFailedError` is
 the refusal for a deployment the node recorded with a non-success status.
@@ -135,14 +149,18 @@ IMPLEMENTATION signatures and are never a signature a caller sees.
 When the fork window closes, the retained era's own family goes by deleting
 `src/ledger8.ts` and its one re-export line in `src/index.ts`, then the modules
 that serve only it (`src/ledger8-contract.ts`, `src/internal/ledger8-*.ts`) and
-the retained members of the modules it SHARES with the current era -- `errors.ts`
-and `tx-interfaces.ts` hold both eras and are not deleted. The retained overload
-arms on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
-`deployContract` go with them, which narrows those entry points' overload sets.
+the retained members of the modules it SHARES with the current era --
+`errors.ts`, `tx-interfaces.ts`, `governance/errors.ts` and
+`governance/tx-interfaces.ts` hold both eras and are not deleted. The retained
+overloads on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract`,
+`deployContract`, `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`,
+`submitReplaceAuthorityTx`, `createCircuitMaintenanceTxInterface(s)` and
+`createContractMaintenanceTxInterface` go with them, which narrows those entry
+points' overload sets.
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 40 published names instead of one.
+would have removed 56 published names instead of one.
 
 ## What guards it
 
@@ -159,5 +177,5 @@ would have removed 40 published names instead of one.
 - `src/test/typecheck/ledger8-namespace.test-d.ts` asserts that what the entry
   points resolve to is namable THROUGH the namespace -- the other compile-level
   suites import the source modules, which a consumer cannot -- and compares all
-  31 type members against the declarations they rename, which is what catches a
+  37 type members against the declarations they rename, which is what catches a
   transposed pair in the rename table.

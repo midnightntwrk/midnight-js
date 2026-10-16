@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -19,7 +19,7 @@ circuit actually ran on, and why `CallContext` and `Effects` are declared
 once against ledger-v9.
  - [RetainedEraExecution](../../documents/RetainedEraExecution.md) for why each member is read off the
 context it is.
- - [EraSeam](../../documents/EraSeam.md)
+ - [EraBoundary](../../documents/EraBoundary.md)
 
 ## Properties
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -9,12 +9,12 @@
 A contract's on-chain state exactly as the network returned it: the
 serialized bytes, still in their envelope, with nothing deserialized yet.
 
-`version` is derived from `protocolVersion`. It is the network's DATING of the
-record, not a guarantee about the bytes: nothing here compares it against the
-envelope inside `raw`.
+`version` is the ledger era that WROTE the bytes, read from the envelope
+inside `raw`. `protocolVersion` dates the block the record was read under,
+which can be newer: a record keeps the encoding it was written in.
 
-Implementing this? Set `version` at exactly ONE construction point, from
-`protocolVersion`, never independently.
+Implementing this? Read `version` off the envelope of `raw`, never from
+`protocolVersion`, and refuse an envelope newer than the block that dates it.
 
 ## See
 
@@ -49,7 +49,8 @@ needs them has to say what it does without them.
 
 > `readonly` **protocolVersion**: `number`
 
-The raw protocol-version integer the network reported for the state.
+The raw protocol-version integer the network reported for the block that
+dates the state. Its era can be newer than [version](#version).
 
 ***
 
@@ -68,10 +69,4 @@ these bytes to that era's deserializer.
 
 > `readonly` **version**: `"v8"` \| `"v9"`
 
-The ledger era this record is dated to, derived from
-[protocolVersion](#protocolversion) alone.
-
-This layer does not check that the era agrees with the envelope [raw](#raw)
-actually carries, so this is a statement about the record's
-`protocolVersion`, not a verified statement about the bytes. A caller that
-cannot tolerate the two disagreeing must inspect the envelope itself.
+The ledger era that wrote [raw](#raw), read from its envelope.

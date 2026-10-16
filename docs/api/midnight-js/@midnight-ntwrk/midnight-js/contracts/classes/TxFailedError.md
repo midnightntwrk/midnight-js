@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 An error indicating that a transaction submitted to a consensus node failed.
 
-The current era's arm of [AnyEraTxFailedError](AnyEraTxFailedError.md): its record is always
+The current era's subclass of [AnyEraTxFailedError](AnyEraTxFailedError.md): its record is always
 the v9 one. Catch the base to catch both eras.
 
 ## Extends
@@ -103,7 +103,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 arm on this class.
+See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 variant on this class.
 
 ##### Returns
 

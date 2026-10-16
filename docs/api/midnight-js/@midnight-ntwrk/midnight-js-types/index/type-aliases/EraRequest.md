@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,10 +18,10 @@ registered for that era.
 
 `T`
 
-The current era's ledger transaction type at this seam.
+The current era's ledger transaction type.
 
 ### H
 
 `H`
 
-The retained-era handler signature at this seam.
+The retained-era handler signature.

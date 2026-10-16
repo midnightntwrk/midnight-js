@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -28,6 +28,7 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`MerkleNotRehashedError`](MerkleNotRehashedError.md)
 - [`ComposeFailedError`](ComposeFailedError.md)
 - [`ComposeOptionError`](ComposeOptionError.md)
+- [`MaintenanceAuthorityMismatchError`](MaintenanceAuthorityMismatchError.md)
 - [`StateDecodeFailedError`](StateDecodeFailedError.md)
 - [`StateInconsistentError`](StateInconsistentError.md)
 - [`Ledger8RuntimeInvalidError`](Ledger8RuntimeInvalidError.md)
@@ -37,6 +38,7 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`ContractExecutionError`](ContractExecutionError.md)
 - [`ArtifactRuntimeVersionUnavailableError`](../../../midnight-js-types/index/classes/ArtifactRuntimeVersionUnavailableError.md)
 - [`InvalidProtocolSchemeError`](../../../midnight-js-types/index/classes/InvalidProtocolSchemeError.md)
+- [`Ledger8PayloadUnsupportedError`](../../../midnight-js-types/index/classes/Ledger8PayloadUnsupportedError.md)
 - [`PrivateStateDecryptionError`](../../../midnight-js-types/index/classes/PrivateStateDecryptionError.md)
 - [`PrivateStateExportError`](../../../midnight-js-types/index/classes/PrivateStateExportError.md)
 - [`PrivateStateImportError`](../../../midnight-js-types/index/classes/PrivateStateImportError.md)
@@ -44,17 +46,18 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`PrivateStateSerializationError`](../../../midnight-js-types/index/classes/PrivateStateSerializationError.md)
 - [`PrivateStateStorageError`](../../../midnight-js-types/index/classes/PrivateStateStorageError.md)
 - [`ProofServerError`](../../../midnight-js-types/index/classes/ProofServerError.md)
-- [`SeamEraUnsupportedError`](../../../midnight-js-types/index/classes/SeamEraUnsupportedError.md)
+- [`ProviderEraUnsupportedError`](../../../midnight-js-types/index/classes/ProviderEraUnsupportedError.md)
 - [`SigningKeyExportError`](../../../midnight-js-types/index/classes/SigningKeyExportError.md)
 - [`UntaggedPayloadError`](../../../midnight-js-types/index/classes/UntaggedPayloadError.md)
 - [`UnusableEraEntryError`](../../../midnight-js-types/index/classes/UnusableEraEntryError.md)
-- [`V8PayloadUnsupportedError`](../../../midnight-js-types/index/classes/V8PayloadUnsupportedError.md)
 - [`ZkArtifactFetchError`](../../../midnight-js-types/index/classes/ZkArtifactFetchError.md)
 - [`ZKArtifactNotFoundError`](../../../midnight-js-types/index/classes/ZKArtifactNotFoundError.md)
 - [`DeserializationError`](../../../midnight-js-utils/index/classes/DeserializationError.md)
+- [`Ledger8ValueUnsupportedError`](../../../midnight-js-utils/index/classes/Ledger8ValueUnsupportedError.md)
 - [`PasswordValidationError`](../../../midnight-js-utils/index/classes/PasswordValidationError.md)
 - [`TagParseError`](../../../midnight-js-utils/index/classes/TagParseError.md)
 - [`UnhandledUnionMemberError`](../../../midnight-js-utils/index/classes/UnhandledUnionMemberError.md)
+- [`UnrecognisedEraTagError`](../../../midnight-js-utils/index/classes/UnrecognisedEraTagError.md)
 - [`ZkArtifactContractInfoError`](../../../midnight-js-utils/index/classes/ZkArtifactContractInfoError.md)
 - [`ZkArtifactIntegrityError`](../../../midnight-js-utils/index/classes/ZkArtifactIntegrityError.md)
 

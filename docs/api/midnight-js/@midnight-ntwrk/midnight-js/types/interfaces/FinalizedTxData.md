@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -9,7 +9,7 @@
 Data for any finalized transaction produced by the v9 ledger runtime.
 
 This is the v9 variant of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md) — see
-[FinalizedTxDataV8](FinalizedTxDataV8.md) for the v8 variant.
+[Ledger8FinalizedTxData](Ledger8FinalizedTxData.md) for the v8 variant.
 
 NARROWING IS REQUIRED. A provider that decodes per era returns the v8 variant as
 an ordinary value for any record whose `protocolVersion` places it in that

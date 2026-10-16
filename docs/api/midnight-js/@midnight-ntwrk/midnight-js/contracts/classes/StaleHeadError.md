@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ was moving can still have been recorded.
 
 The provider's own rejection travels on `cause`, already sanitized of
 anything that could carry transaction or witness material — see
-[Ledger8SeamFailedError](../namespaces/Ledger8/classes/SeamFailedError.md), which is the form it arrives in.
+[ProviderFailedError](ProviderFailedError.md), which is the form it arrives in.
 
 ## See
 
@@ -112,8 +112,8 @@ The contract to reconcile, which is the first remediation step's subject.
 
 > `readonly` **kind**: [`StaleHeadOperationKind`](../type-aliases/StaleHeadOperationKind.md)
 
-Whether the refused operation was a call or a deploy — the discriminant a
-caller branches on, and which remediation the message carries.
+Whether the refused operation was a call, a deploy or a maintenance update —
+the discriminant a caller branches on, and which remediation the message carries.
 
 ***
 

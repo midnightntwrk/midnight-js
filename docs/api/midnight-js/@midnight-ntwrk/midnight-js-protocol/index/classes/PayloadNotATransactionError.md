@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: PayloadNotATransactionError
 
-Thrown when a payload handed to a proving seam is not a serialized
+Thrown when a payload handed to a proving function is not a serialized
 transaction at all.
 
 Distinct from a decode failure inside the ledger runtime: this is raised
@@ -17,7 +17,7 @@ shorter than the tag prefix, and one that does not open with the prefix.
 
 ## Remarks
 
-Raised by `proveV8Transaction`, so it reaches application code as a
+Raised by `proveLedger8Transaction`, so it reaches application code as a
 `proveTx` rejection. Match it with `hasErrorCode` against
 `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
 

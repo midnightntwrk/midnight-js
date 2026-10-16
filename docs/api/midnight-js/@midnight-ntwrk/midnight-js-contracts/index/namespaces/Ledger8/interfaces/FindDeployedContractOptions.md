@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -64,21 +64,22 @@ undefined value, which is a caller that believes it named an id.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: `string`
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key to record as this contract's maintenance authority key, for a
 caller that holds one and deployed the contract somewhere else.
 
-VALIDATED BEFORE IT IS STORED. A retained-era key is exactly 64 hexadecimal
-characters, which is what that era's `sampleSigningKey` produces; this type
-is `string`, so a shorter one type-checks and is refused with
-`Ledger8SigningKeyUnusableError`. Nothing is written when it is refused.
+VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
+value is exactly 64 hexadecimal characters, which is what that era's
+`sampleSigningKey` produces; this type also admits `ecdsa` and values of any
+length, and those are refused with `Ledger8SigningKeyUnusableError`.
+Nothing is written when it is refused.
 
 Stored against [Ledger8FindDeployedContractOptions.contractAddress](#contractaddress)
-in the private-state provider, which is the same storage
-[Ledger8DeployedContract.signingKey](DeployedContract.md#signingkey) is written to -- so a key
-supplied here REPLACES whatever is held for that address, and is what
-[Ledger8FoundContract.signingKey](FoundContract.md#signingkey) then reports.
+in the private-state provider, which is the same storage a deploy writes its
+key to -- so a key supplied here REPLACES whatever is held for that
+address, and is what `deployTxData.private.signingKey` on the found
+handle then reports.
 
 OMITTING it reports the key already stored, and stores nothing. It does NOT
 sample a fresh key when none is stored, where the current era's
@@ -90,5 +91,5 @@ sample a fresh key when none is stored, where the current era's
 
 #### See
 
-[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why this arm samples nothing, and why a
+[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why this path samples nothing, and why a
 supplied key replaces a stored one rather than falling back to it.

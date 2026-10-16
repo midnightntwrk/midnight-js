@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ a third-party service, or a node itself.
 
 The ledger eras THIS INSTANCE serves. See
 [ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
-transaction seams, and all three are read together before an operation
+transaction providers, and all three are read together before an operation
 starts.
 
 ## Methods
@@ -46,7 +46,7 @@ The transaction identifier of the submitted transaction. Not version-tagged — 
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 

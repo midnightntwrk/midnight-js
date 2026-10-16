@@ -1,0 +1,76 @@
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / ScopedTransactionEraUnsupportedError
+
+# Class: ScopedTransactionEraUnsupportedError
+
+An error indicating that a contract-scoped transaction was created while the
+network head is on a ledger era that has no way to express one.
+
+The pre-fork era composes exactly one call per transaction, which leaves a
+pre-fork scope nothing to batch into. The message names both ways forward,
+because the caller's batching intent cannot be honoured either way.
+
+Raised when the scope is CREATED, and from the head READING alone — before
+that era's runtime is acquired. Both are load-bearing; do not move it later.
+
+## See
+
+ - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for the refuse-before-you-pay placement rule.
+ - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for what each placement property prevents.
+
+## Extends
+
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
+
+## Constructors
+
+### Constructor
+
+> **new ScopedTransactionEraUnsupportedError**(`head`): `ScopedTransactionEraUnsupportedError`
+
+#### Parameters
+
+##### head
+
+`"v9"` \| `"v8"`
+
+The era the network head is on, as the scope resolved it.
+
+#### Returns
+
+`ScopedTransactionEraUnsupportedError`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED"` = `CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+
+***
+
+### head
+
+> `readonly` **head**: `"v9"` \| `"v8"`
+
+The era the network head is on, as the scope resolved it.

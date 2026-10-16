@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
 ## See
 
  - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the two codes name different things.
- - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for the two arms.
+ - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for the two reasons.
 
 ## Extends
 
@@ -117,6 +117,6 @@ Which of the two undiagnosable conditions this is.
 
 ### startEra
 
-> `readonly` **startEra**: `"v8"` \| `"v9"`
+> `readonly` **startEra**: `"v9"` \| `"v8"`
 
 The era the operation resolved when it started.

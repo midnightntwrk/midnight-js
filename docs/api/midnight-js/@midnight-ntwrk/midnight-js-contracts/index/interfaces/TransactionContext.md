@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -28,7 +28,13 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ##### states
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\>
+[`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) \| [`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) & `object`
+
+[`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md)
+
+***
+
+[`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) & `object`
 
 ##### identity
 
@@ -117,15 +123,23 @@ mappings were specified for the current transaction context.
 
 ### getCurrentStates()
 
-> **getCurrentStates**(): [`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
+> **getCurrentStates**(): [`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) \| [`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) & `object` \| `undefined`
 
 Gets the current cached contract states within the transaction context.
 
 #### Returns
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> \| `undefined`
+A cached [ContractStates](../type-aliases/ContractStates.md) instance, or `undefined` if circuit calls are yet to be made.
 
-A cached [ContractStates](ContractStates.md) instance, or `undefined` if circuit calls are yet to be made.
+[`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md)
+
+***
+
+[`Ledger9PublicStates`](../../../midnight-js/types/interfaces/Ledger9PublicStates.md) & `object`
+
+***
+
+`undefined`
 
 #### Remarks
 

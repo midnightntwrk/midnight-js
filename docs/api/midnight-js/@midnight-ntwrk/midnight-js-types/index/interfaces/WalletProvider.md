@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 The ledger eras THIS INSTANCE serves. See
 [ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
-transaction seams, and all three are read together before an operation
+transaction providers, and all three are read together before an operation
 starts.
 
 ## Methods
@@ -51,11 +51,11 @@ Expiry for the intent the wallet adds while balancing. The framework always pass
 `Promise`\<[`VersionedFinalizedTransaction`](../type-aliases/VersionedFinalizedTransaction.md)\>
 
 The balanced, signed transaction, version-tagged. Narrow on `version` — or call
-         `unwrapV9` — before reading the payload.
+         `unwrapLedger9` — before reading the payload.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 
