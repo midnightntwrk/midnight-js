@@ -114,7 +114,8 @@ export type IndexerDataErrorContext =
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
-  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion };
+  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
+  | { kind: 'malformed-protocol-version'; protocolVersion: number };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -215,6 +216,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
   }
 
+  static malformedProtocolVersion(protocolVersion: number, cause: unknown): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion }, { cause });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -278,6 +283,13 @@ export class IndexerDataError extends IndexerError {
           `parameters of a block from ledger ${context.parametersVersion}. One value cannot carry two eras. ` +
           'On an unpinned read this happens when the fork block is indexed between the two fields; pin the read ' +
           'to a block hash or height, or retry.'
+        );
+      case 'malformed-protocol-version':
+        return (
+          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state, which is ` +
+          'not a non-negative integer. The raw contract-state reads copy protocolVersion onto every record, so a ' +
+          'malformed value is refused rather than passed on. Check that the indexer and this client agree on the ' +
+          'GraphQL schema.'
         );
       case 'unsupported-parameters-era':
         return (

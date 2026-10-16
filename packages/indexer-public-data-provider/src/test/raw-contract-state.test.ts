@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8Protocol, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   contractStateEnvelopeVersion,
@@ -252,6 +252,19 @@ describe('queryRawContractState', () => {
       );
 
       expect(record?.version).toBe('v9');
+    });
+
+    test('refuses a malformed protocol version rather than copying it onto the record', async () => {
+      const rejection = await providerServing(mintLedger9ContractStateHex(), -1)
+        .queryRawContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-protocol-version', protocolVersion: -1 });
+      expect((rejection as IndexerDataError).cause).toBeInstanceOf(UnknownProtocolVersionError);
     });
   });
 

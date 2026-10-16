@@ -506,13 +506,28 @@ export const toVersionedPublicStates = (
   }
 };
 
+const assertWellFormedProtocolVersion = (protocolVersion: number): void => {
+  try {
+    protocolVersionToLedger(protocolVersion, 'read');
+  } catch (error) {
+    if (error instanceof UnknownProtocolVersionError && error.reason === 'malformed') {
+      throw IndexerDataError.malformedProtocolVersion(protocolVersion, error);
+    }
+    if (!(error instanceof UnknownProtocolVersionError)) {
+      throw error;
+    }
+  }
+};
+
 /**
  * Builds the raw (undeserialized) contract-state record served by
  * `PublicDataProvider.queryRawContractState` and `rawContractStateObservable`.
  *
  * `version` is the era that wrote the bytes, read off their envelope. `protocolVersion` dates the
  * block and bounds the envelope as in {@link parseHexContractState}: an envelope newer than an
- * enforced dating block is {@link IndexerDataError.eraDisagreement}.
+ * enforced dating block is {@link IndexerDataError.eraDisagreement}. A `protocolVersion` that is not
+ * a non-negative integer is {@link IndexerDataError.malformedProtocolVersion}, because it is copied
+ * onto the record; one this build cannot place on the era timeline is kept.
  *
  * @param hexState The hex-encoded serialized contract state, as the indexer serves it.
  * @param protocolVersion The protocol-version integer of the block that dates the state.
@@ -525,6 +540,7 @@ export const toRawContractState = (
   hexLedgerParameters?: string,
   options?: { readonly upperBound?: EnvelopeUpperBound }
 ): RawContractState => {
+  assertWellFormedProtocolVersion(protocolVersion);
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
   assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
   return {

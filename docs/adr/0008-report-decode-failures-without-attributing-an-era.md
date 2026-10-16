@@ -108,5 +108,6 @@ Issue #1508. `RawContractState.version` is read from the envelope of `raw`, so t
 longer need to place `protocolVersion` on the era timeline. A `protocolVersion` this build cannot
 place withholds only the upper-bound check, as on the decoding reads, and the `IndexerDataError`
 kind `'unknown-record-era'` is removed. `UnknownRecordEraError` and its code stay, for the reads
-that still date a record by its block.
+that still date a record by its block. A `protocolVersion` that is not a non-negative integer is still
+refused, as kind `'malformed-protocol-version'`, because the raw record carries it.
 
