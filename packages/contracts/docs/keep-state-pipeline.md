@@ -247,10 +247,10 @@ the bytes — NOT the toolchain that produced the contract. A retained-era
 contract's call is composed against whichever era the network head is on, so the
 two heads hand the providers genuinely different things:
 
-| head | composed by | crosses as | narrowed with |
+| head | composed by | crosses as | unwrapped with |
 | ---- | ----------- | ---------- | ------------- |
-| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `requireLedger8Answer` |
-| `v9` | the current ledger | `{ version: 'v9', tx }` | `requireLedger9Answer` |
+| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `unwrapLedger8ProviderResult` |
+| `v9` | the current ledger | `{ version: 'v9', tx }` | `unwrapLedger9ProviderResult` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
 happens to carry a retained-era call, so it is passed to the providers exactly as every

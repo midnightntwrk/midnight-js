@@ -31,7 +31,7 @@ import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-j
 
 import { type ContractProviders } from './contract-providers';
 import { EraArtifactMismatchError, EraInvariantViolationError } from './errors';
-import { readHeadEra, requireLedger9Answer, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { readHeadEra, requireLedger9Record, requireTaggedRecord,unwrapLedger9ProviderResult } from './internal/era';
 import { submitLedger8TxBytes } from './internal/ledger8-entry';
 
 declare const __DEBUG__: boolean;
@@ -110,12 +110,12 @@ export async function submitCurrentEraTxAsync<C extends Contract.Any, PCK extend
   // paying for a proof first.
   assertProvidersSupportEra(CURRENT_LEDGER_VERSION, providers);
   assertValidMidnightConfig(providers.config);
-  const provenTx = requireLedger9Answer(
+  const provenTx = unwrapLedger9ProviderResult(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
     'proveTx',
     circuitId
   );
-  const toSubmit = requireLedger9Answer(
+  const toSubmit = unwrapLedger9ProviderResult(
     await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }, intentTtl(providers.config)),
     'balanceTx',
     circuitId

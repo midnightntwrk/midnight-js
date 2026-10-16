@@ -60,7 +60,7 @@ import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcr
  * @throws EraInvariantViolationError if the payload carries the v8 variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireLedger9Answer<T>(
+export function unwrapLedger9ProviderResult<T>(
   payload: VersionedTransaction<T>,
   method: TransactionMethod,
   circuitId?: string | readonly string[]
@@ -84,7 +84,7 @@ export function requireLedger9Answer<T>(
  * Unwraps the RETAINED variant of a versioned payload a provider returned, on a
  * flow that submitted the retained variant.
  *
- * The mirror of {@link requireLedger9Answer}, and it exists for the same reason: the provider
+ * The mirror of {@link unwrapLedger9ProviderResult}, and it exists for the same reason: the provider
  * method types do not tie a provider's output era to its input era, so a flow that
  * submitted retained-era bytes has to check that retained-era bytes came back.
  *
@@ -106,7 +106,7 @@ export function requireLedger9Answer<T>(
  * @throws EraInvariantViolationError if the payload carries the current-era variant.
  * @throws UntaggedPayloadError if `version` is missing or unrecognised.
  */
-export function requireLedger8Answer<T>(
+export function unwrapLedger8ProviderResult<T>(
   payload: VersionedTransaction<T>,
   method: TransactionMethod,
   circuitId?: string | readonly string[]
