@@ -27,7 +27,7 @@ import {
 import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { requireLedger9, requireLedger9Record } from './internal/era';
+import { requireLedger9Answer, requireLedger9Record } from './internal/era';
 
 declare const __DEBUG__: boolean;
 
@@ -93,12 +93,12 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   // paying for a proof first.
   assertProvidersSupportEra(CURRENT_LEDGER_VERSION, providers);
   assertValidMidnightConfig(providers.config);
-  const provenTx = requireLedger9(
+  const provenTx = requireLedger9Answer(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
     'proveTx',
     circuitId
   );
-  const toSubmit = requireLedger9(
+  const toSubmit = requireLedger9Answer(
     await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }, intentTtl(providers.config)),
     'balanceTx',
     circuitId

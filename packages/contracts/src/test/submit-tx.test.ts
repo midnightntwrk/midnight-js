@@ -337,7 +337,7 @@ describe('submit-tx', () => {
     });
 
     // The pre-5.0.0 shapes a JavaScript caller, or a consumer built against an
-    // older `midnight-js-types`, actually produces. `requireLedger9` is a second,
+    // older `midnight-js-types`, actually produces. `requireLedger9Answer` is a second,
     // independent copy of the narrowing in `unwrapLedger9`, deliberately throwing a
     // different error for the v8 variant — so the types-package tests cover none of
     // this, and a copy-paste slip here would be invisible.

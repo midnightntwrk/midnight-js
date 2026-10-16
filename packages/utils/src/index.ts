@@ -23,6 +23,7 @@ export * from './ledger-parameters-envelope';
 export * from './midnight-config';
 export * from './midnight-providers';
 export * from './password-validation';
+export * from './require-ledger9';
 export * from './security-utils';
 export * from './serialized-tag';
 export * from './signing-key-utils';

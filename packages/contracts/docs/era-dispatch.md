@@ -366,7 +366,7 @@ window. So it is rethrown wrapped, naming both eras that disagreed.
 
 ## Refusing a v8 answer on a v9-only flow
 
-`requireLedger9` and `requireLedger9Record` narrow a provider's versioned payload to its
+`requireLedger9Answer` and `requireLedger9Record` narrow a provider's versioned payload to its
 v9 variant. The flows in this package only ever send v9 payloads, so a v8 response
 cannot be handled.
 

@@ -249,8 +249,8 @@ two heads hand the providers genuinely different things:
 
 | head | composed by | crosses as | narrowed with |
 | ---- | ----------- | ---------- | ------------- |
-| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `requireLedger8` |
-| `v9` | the current ledger | `{ version: 'v9', tx }` | `requireLedger9` |
+| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `requireLedger8Answer` |
+| `v9` | the current ledger | `{ version: 'v9', tx }` | `requireLedger9Answer` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
 happens to carry a retained-era call, so it is passed to the providers exactly as every

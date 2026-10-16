@@ -94,8 +94,8 @@ import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
   type HeadVersionSource,
-  requireLedger8,
-  requireLedger9,
+  requireLedger8Answer,
+  requireLedger9Answer,
   requireTaggedRecord,
   type ResolvedOperationEra,
   resolveOperationEra
@@ -430,13 +430,13 @@ const submitLedger8TxOnCurrentEra = async (
   submit: SubmitRunner
 ): Promise<string> => {
   const unproven = readCurrentEraTransaction(txBytes);
-  const proven = requireLedger9(
+  const proven = requireLedger9Answer(
     await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unproven })),
     'proveTx',
     circuitId
   );
   const balanceTtl = intentTtl(providers.config);
-  const balanced = requireLedger9(
+  const balanced = requireLedger9Answer(
     await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, balanceTtl)),
     'balanceTx',
     circuitId
@@ -459,13 +459,13 @@ const submitLedger8TxOnRetainedEra = async (
   circuitId: string,
   submit: SubmitRunner
 ): Promise<string> => {
-  const proven = requireLedger8(
+  const proven = requireLedger8Answer(
     await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
     'proveTx',
     circuitId
   );
   const balanceTtl = intentTtl(providers.config);
-  const balanced = requireLedger8(
+  const balanced = requireLedger8Answer(
     await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, balanceTtl)),
     'balanceTx',
     circuitId

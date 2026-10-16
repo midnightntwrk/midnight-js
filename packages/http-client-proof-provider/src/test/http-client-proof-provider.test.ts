@@ -201,7 +201,7 @@ describe('httpClientProofProvider', () => {
 
       const result = await provider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
 
-      // `requireLedger8` in `midnight-js-contracts` reads `txBytes` off this record
+      // `requireLedger8Answer` in `midnight-js-contracts` reads `txBytes` off this record
       // and rejects the v9 variant, so answering in the wrong variant fails a submit
       // half way through. Assert the variant before the payload.
       expect(result.version).toBe('v8');
