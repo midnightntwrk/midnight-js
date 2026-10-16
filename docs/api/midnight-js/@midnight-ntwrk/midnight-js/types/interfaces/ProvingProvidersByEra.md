@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,7 @@
 # Interface: ProvingProvidersByEra
 
 One [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger) per ledger era, for
-[createProofProviderForEras](../variables/createProofProviderForEras.md).
+[createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md).
 
 ## Properties
 
@@ -21,7 +21,7 @@ this cannot override.
 
 #### See
 
-[Seam era declarations](https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md)
+[Provider era declarations](https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md)
 
 ***
 
@@ -38,7 +38,7 @@ this cannot override.
 One entry per retained era served, in that era's own `ProvingProvider`
 shape. An entry present but `undefined` leaves the era unserved, exactly as
 omitting it does: `supportedEras` excludes it, and a payload arriving on
-that era is refused with `V8PayloadUnsupportedError`.
+that era is refused with `Ledger8PayloadUnsupportedError`.
 
 Register the provider built for the era the entry names. Nothing verifies
 that — the current era's shape is a structural superset of the retained
@@ -46,4 +46,4 @@ era's, so the wrong one type-checks.
 
 #### See
 
-[Seam era declarations](https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/seam-era-declarations.md)
+[Provider era declarations](https://github.com/midnightntwrk/midnight-js/blob/main/packages/types/docs/provider-era-declarations.md)

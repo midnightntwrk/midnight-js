@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -13,7 +13,7 @@ The per-era handlers [createMidnightProviderFromHandlers](../variables/createMid
 
 ### currentEra
 
-> `readonly` **currentEra**: [`CurrentEraSubmitter`](../type-aliases/CurrentEraSubmitter.md)
+> `readonly` **currentEra**: [`Ledger9Submitter`](../type-aliases/Ledger9Submitter.md)
 
 Required: every submitter serves the current era.
 

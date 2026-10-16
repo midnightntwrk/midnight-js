@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -20,7 +20,7 @@ checked first.
 
 Branch on `cause` for the underlying failure — an unreachable indexer, a
 timeout, an untagged payload, an era violation. It is wrapped rather than
-replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+replaced, so `cause instanceof EraInvariantViolationError`, its method and its
 registered code all stay reachable.
 
 Reachable only AFTER submission. Every refusal ahead of it is raised with no
@@ -50,7 +50,7 @@ The address the submitted deployment composed.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key that deployment's maintenance authority was built
 from - sampled when the caller named none, and then this is its only copy.
@@ -101,4 +101,4 @@ refused by.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)

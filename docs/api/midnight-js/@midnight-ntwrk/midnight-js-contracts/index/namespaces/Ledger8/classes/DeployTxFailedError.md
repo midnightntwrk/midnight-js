@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -51,7 +51,7 @@ The address this deployment composed.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key the deployment's maintenance authority was built
 from — sampled when the caller named none, and then this is its only copy.
@@ -106,7 +106,7 @@ The address this deployment composed.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key the deployment's maintenance authority was built
 from — sampled when the caller named none, and then this is its only copy.
@@ -127,7 +127,7 @@ The record the read surface reported.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either arm on this class.
+See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 

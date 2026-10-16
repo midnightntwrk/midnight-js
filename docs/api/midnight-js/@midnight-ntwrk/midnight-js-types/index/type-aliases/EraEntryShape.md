@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,4 +11,4 @@
 The shape a provider factory needs for each era entry — the value passed as
 `currentEra` or under `retainedEras`: a `handler` function
 for the `…FromHandlers` factories, a `proving-provider` with callable
-`check` and `prove` for `createProofProviderForEras`.
+`check` and `prove` for `createProofProviderFromProvingProviders`.

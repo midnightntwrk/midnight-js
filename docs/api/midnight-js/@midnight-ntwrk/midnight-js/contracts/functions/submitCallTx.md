@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@
 
 > **submitCallTx**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../namespaces/Ledger8/interfaces/FinalizedCallTxData.md)\<`C`, `K`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
@@ -42,8 +42,8 @@ the retained-era-native pipeline, a post-fork head the keep-state one.
 
 ### See
 
- - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the seam table, and for why a provider needs to handle the
-     `'v8'` seam arm only while the network head is still pre-fork.
+ - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the payload table, and for why a provider needs to handle the
+     `'v8'` payload variant only while the network head is still pre-fork.
  - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
 
 ## Call Signature

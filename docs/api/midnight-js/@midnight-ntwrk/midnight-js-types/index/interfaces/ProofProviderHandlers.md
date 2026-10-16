@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ the answer to match. What is left in each handler is the proving itself.
 
 ### currentEra
 
-> `readonly` **currentEra**: [`CurrentEraProver`](../type-aliases/CurrentEraProver.md)
+> `readonly` **currentEra**: [`Ledger9Prover`](../type-aliases/Ledger9Prover.md)
 
 Required: every provider serves the current era.
 

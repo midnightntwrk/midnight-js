@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ The type of the circuit ID used by the provider.
 
 The ledger eras THIS INSTANCE serves.
 
-Read before an operation starts, by `assertSeamsSupportEra`, so a set of
+Read before an operation starts, by `assertProvidersSupportEra`, so a set of
 providers that cannot carry a transaction end to end is refused before its
 proof is paid for. A provider built by one of the `create*` factories has
 this computed from the handlers it was given; a provider implementing this
@@ -63,11 +63,11 @@ The configuration for the proof request to the proof provider. Empty in case
 `Promise`\<[`VersionedUnboundTransaction`](../type-aliases/VersionedUnboundTransaction.md)\>
 
 The proven transaction, version-tagged, and always in the SAME era the request
-         carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
+         carried. Narrow on `version` — or call `unwrapLedger9` — before reading the payload.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
+Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
         implementations do is worth knowing before you send one: `httpClientProofProvider`
         and `dappConnectorProofProvider` both serve it, taking and returning serialized
         bytes. [createProofProvider](../variables/createProofProvider.md) does NOT — it adapts a v9-only `ProvingProvider`,
@@ -88,6 +88,6 @@ UntaggedPayloadError if `version` is missing or unrecognised.
 #### Throws
 
 InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderForEras](../variables/createProofProviderForEras.md) and
+        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md) and
         `dappConnectorProofProvider` refuse it before any proving starts;
         `httpClientProofProvider` honours it.
