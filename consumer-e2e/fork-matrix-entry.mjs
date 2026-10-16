@@ -115,7 +115,7 @@ for (const event of ['uncaughtException', 'unhandledRejection']) {
 /**
  * An error, its stack, and every `cause` beneath it.
  *
- * The chain is the point. `Ledger8ProviderFailedError` says only that a provider
+ * The chain is the point. `ProviderFailedError` says only that a provider
  * rejected and puts the provider's own failure -- class name intact, message
  * redacted -- on `cause`, so a report that prints `error.message` alone says a
  * transaction was refused and never says by what. That is what happened on the
@@ -302,17 +302,6 @@ const sampleEnvelope = async (publicDataProvider, contractAddress, samples, ever
 const STREAM_WATCH_MS = 60_000;
 
 /**
- * Subscribes to a contract-state stream and records what it does, without judging it.
- *
- * `subscribe` with an explicit `error` callback, never a bare one: an Rx stream that
- * errors with no error handler raises an unhandled rejection, and this process turns
- * one of those into a fatal report. The question here is precisely whether these
- * streams error, so the handler is the measurement rather than a precaution.
- *
- * The subscription is left OPEN. A caller reads `record` whenever it likes -- which is
- * what lets one stream be opened before the boundary and read after it.
- */
-/**
  * Reports a version-tagged contract state: its era, and for a v9 state the number of
  * operations the decoded state carries.
  */
@@ -357,6 +346,17 @@ const recordsUntilFirstLedger9 = (publicDataProvider, contractAddress, streamCon
     });
   });
 
+/**
+ * Subscribes to a contract-state stream and records what it does, without judging it.
+ *
+ * `subscribe` with an explicit `error` callback, never a bare one: an Rx stream that
+ * errors with no error handler raises an unhandled rejection, and this process turns
+ * one of those into a fatal report. The question here is precisely whether these
+ * streams error, so the handler is the measurement rather than a precaution.
+ *
+ * The subscription is left OPEN. A caller reads `record` whenever it likes -- which is
+ * what lets one stream be opened before the boundary and read after it.
+ */
 const watchContractStates = (publicDataProvider, contractAddress, streamConfig) => {
   // `errored` is ALWAYS a string once set -- `describeError` stringifies even a non-Error -- so
   // `null` is unambiguously the not-yet sentinel that `settled` tests against.
@@ -1933,7 +1933,7 @@ const withHeadReadAnswer = (real, answer) =>
  * balancing.
  *
  * The injected rejection is uncoded, which is deliberate -- `atProviderMethod` wraps it
- * into the same `Ledger8ProviderFailedError` a provider's own failure would arrive
+ * into the same `ProviderFailedError` a provider's own failure would arrive
  * as, so the diagnosis sees exactly the shape it gates on.
  *
  * @param headAnswer What the head re-read should do once the submission has been
@@ -2112,7 +2112,7 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
       'a retained call parked across the fork is refused as STALE',
       parkedStaleHead
     );
-    // The whole chain, and the refusal on `cause`: a `Ledger8ProviderFailedError`
+    // The whole chain, and the refusal on `cause`: a `ProviderFailedError`
     // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
@@ -2220,19 +2220,6 @@ if (MEASURES_READ_SURFACE) {
       throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.version ?? 'null'}'`);
     }
     return describeVersionedState(state);
-  });
-
-  await leg('post-fork contract-state stream replayed from before the fork', async () => {
-    const seen = await recordsUntilFirstLedger9(
-      session.providers.publicDataProvider,
-      deployment.contractAddress,
-      { type: 'blockHash', blockHash: deployment.deployBlockHash },
-      STREAM_WATCH_MS
-    );
-    if (seen[0]?.version !== 'v8') {
-      throw new Error(`expected the replay to start with a 'v8' record, got ${JSON.stringify(seen)}`);
-    }
-    return { records: seen };
   });
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
@@ -2409,6 +2396,21 @@ if (MEASURES_READ_SURFACE) {
     }
   });
 
+  // After the keep-state call, not in the window: the replay waits for a v9 contract action, and
+  // the fork translation is not one. Before the first post-fork write a dormant contract has none.
+  await leg('post-fork contract-state stream replayed from before the fork', async () => {
+    const seen = await recordsUntilFirstLedger9(
+      session.providers.publicDataProvider,
+      deployment.contractAddress,
+      { type: 'blockHash', blockHash: deployment.deployBlockHash },
+      STREAM_WATCH_MS
+    );
+    if (seen[0]?.version !== 'v8') {
+      throw new Error(`expected the replay to start with a 'v8' record, got ${JSON.stringify(seen)}`);
+    }
+    return { records: seen };
+  });
+
   await probe('post-write contract-state stream, from the deploy', async () => {
     // `all` replays every contract action from the deploy onward, and the deploy
     // is on the far side of the boundary. Asked separately from `latest` because
@@ -2539,7 +2541,7 @@ if (covers(SELECTED.retained, 'unshielded')) {
       // `balanceTx` and `submitTx` both count, and `proveTx` does not: a
       // balance the contract cannot serve is refused either when the
       // transaction is balanced or when the node re-runs it, but never by the
-      // prover. `Ledger8ProviderFailedError` renders `<method> rejected`, and
+      // prover. `ProviderFailedError` renders `<method> rejected`, and
       // `describeError` walks the cause chain, so the shape is readable here.
       //
       // The framework's OWN guards -- `executeCircuit` refusing a balance, the
