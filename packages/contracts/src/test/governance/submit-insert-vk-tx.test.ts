@@ -23,7 +23,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
 import { createUnprovenInsertVerifierKeyTx } from '../../governance/unproven-tx';
-import { submitCurrentEraTx } from '../../submit-tx';
+import { submitLedger9Payload } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -89,7 +89,7 @@ describe('submitInsertVerifierKeyTx', () => {
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitInsertVerifierKeyTx(
         mockProviders,
@@ -113,7 +113,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockCoinPublicKey,
         mockProviders.config
       );
-      expect(submitCurrentEraTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
 
@@ -126,7 +126,7 @@ describe('submitInsertVerifierKeyTx', () => {
       mockContractState.operation = vi.fn().mockReturnValue(new ContractOperation());
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitInsertVerifierKeyTx(
         mockProviders,
@@ -136,7 +136,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockVerifierKey
       );
 
-      expect(submitCurrentEraTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
   });
@@ -152,7 +152,7 @@ describe('submitInsertVerifierKeyTx', () => {
         code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
         message: `No contract state found on chain for contract address '${mockContractAddress}'`
       });
-      expect(submitCurrentEraTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
@@ -167,7 +167,7 @@ describe('submitInsertVerifierKeyTx', () => {
         code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
         message: `Signing key for contract address '${mockContractAddress}' not found`
       });
-      expect(submitCurrentEraTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should reject before submitting when the operation already carries a verifier key', async () => {
@@ -185,7 +185,7 @@ describe('submitInsertVerifierKeyTx', () => {
       });
       expect(mockProviders.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(createUnprovenInsertVerifierKeyTx).not.toHaveBeenCalled();
-      expect(submitCurrentEraTx).not.toHaveBeenCalled();
+      expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
@@ -200,7 +200,7 @@ describe('submitInsertVerifierKeyTx', () => {
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitCurrentEraTx).mockResolvedValue(failedTxData);
+      vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
       await expect(
         submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)

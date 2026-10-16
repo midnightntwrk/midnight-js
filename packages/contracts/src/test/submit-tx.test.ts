@@ -25,8 +25,8 @@ import {
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EraArtifactMismatchError, EraInvariantViolationError } from '../errors';
-import { submitCurrentEraTx, submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
+import { EraArtifactMismatchError, EraInvariantViolationError, ProviderFailedError } from '../errors';
+import { submitLedger9Payload, submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
 import { createMockFinalizedTxData, createMockProvenTx, createMockProviders, createMockUnprovenTx } from './test-mocks';
 
 describe('submit-tx', () => {
@@ -219,50 +219,6 @@ describe('submit-tx', () => {
 
         await expect(submitTxAsync(providers, { unprovenTx: { version: 'v9', tx: mockUnprovenTx } })).rejects.toThrow(InvalidArgumentError);
         expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('error handling', () => {
-      it('should propagate balanceTx errors', async () => {
-        const balanceError = new Error('Balance transaction failed');
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
-        mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(balanceError);
-
-        const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: { version: 'v9', tx: mockUnprovenTx }
-        };
-
-        await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Balance transaction failed');
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
-        expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
-      });
-
-      it('should propagate proveTx errors', async () => {
-        const proveError = new Error('Proof generation failed');
-
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
-        mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(proveError);
-
-        const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: { version: 'v9', tx: mockUnprovenTx }
-        };
-
-        await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Proof generation failed');
-        expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
-      });
-
-      it('should propagate submitTx errors', async () => {
-        const submitError = new Error('Network submission failed');
-
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
-        mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(submitError);
-
-        const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: { version: 'v9', tx: mockUnprovenTx }
-        };
-
-        await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Network submission failed');
       });
     });
 
@@ -507,6 +463,78 @@ describe('submit-tx', () => {
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ['submitTx', submitTx],
+      ['submitTxAsync', submitTxAsync]
+    ] as const)('%s refuses a null or unknown-era transaction before reading the head', async (_name, submit) => {
+      onHead(LEDGER9_HEAD);
+
+      for (const unprovenTx of [null, { version: 'v10', tx: createMockUnprovenTx() }]) {
+        // @ts-expect-error neither value is a VersionedUnprovenTransaction
+        const rejection = submit(mockProviders, { unprovenTx });
+
+        await expect(rejection).rejects.toBeInstanceOf(UntaggedPayloadError);
+        await expect(rejection).rejects.toMatchObject({ method: 'submitTx' });
+      }
+      expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    describe.each([
+      { era: 'v9', head: LEDGER9_HEAD },
+      { era: 'v8', head: LEDGER8_HEAD }
+    ] as const)('a provider rejection on a $era transaction', ({ era, head }) => {
+      const transactionOf = (): SubmitTxOptions<AnyProvableCircuitId>['unprovenTx'] =>
+        era === 'v9' ? { version: 'v9', tx: createMockUnprovenTx() } : { version: 'v8', txBytes: ledger8Bytes() };
+      const payloadOf = () =>
+        era === 'v9' ? { version: 'v9', tx: createMockProvenTx() } : { version: 'v8', txBytes: new Uint8Array([1]) };
+
+      it.each(['proveTx', 'balanceTx', 'submitTx'] as const)(
+        'is reported from %s as ProviderFailedError with the failure sanitized onto cause',
+        async (method) => {
+          onHead(head);
+          const failure = new Error(`${method} failed for 0x${'ab'.repeat(32)}`);
+          mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(payloadOf());
+          mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(payloadOf());
+          mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+          const rejectAt = {
+            proveTx: () => {
+              mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(failure);
+            },
+            balanceTx: () => {
+              mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(failure);
+            },
+            submitTx: () => {
+              mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(failure);
+            }
+          };
+          rejectAt[method]();
+
+          const rejection = await submitTxAsync(mockProviders, { unprovenTx: transactionOf(), circuitId: 'testCircuit' }).then(
+            () => undefined,
+            (error: unknown) => error
+          );
+
+          expect(rejection).toBeInstanceOf(ProviderFailedError);
+          expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(true);
+          expect(rejection).toMatchObject({
+            method,
+            circuitId: 'testCircuit',
+            cause: { message: `Error: ${method} failed for 0x[redacted]` }
+          });
+        }
+      );
+    });
+
+    it('wraps a provider rejection on the pipelines\' v9 path the same way', async () => {
+      mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server down'));
+
+      const rejection = submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() });
+
+      await expect(rejection).rejects.toBeInstanceOf(ProviderFailedError);
+      await expect(rejection).rejects.toMatchObject({ method: 'proveTx', cause: { message: 'Error: proof server down' } });
+    });
+
     it('refuses an untagged transaction, the pre-5.0.0 shape, before reading the head', async () => {
       onHead(LEDGER9_HEAD);
       const unprovenTx = createMockUnprovenTx();
@@ -537,7 +565,12 @@ describe('submit-tx', () => {
       const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v8', txBytes: ledger8Bytes() } });
 
       await expect(rejection).rejects.toBeInstanceOf(EraInvariantViolationError);
-      await expect(rejection).rejects.toMatchObject({ method: 'watchForTxData', expected: 'v8', received: 'v9' });
+      await expect(rejection).rejects.toMatchObject({
+        method: 'watchForTxData',
+        expected: 'v8',
+        received: 'v9',
+        txId: 'test-tx-id'
+      });
     });
 
     it('treats a v8 record on a v9 head as an invariant violation', async () => {
@@ -552,7 +585,13 @@ describe('submit-tx', () => {
 
       const rejection = submitTx(mockProviders, { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } });
 
-      await expect(rejection).rejects.toMatchObject({ method: 'watchForTxData', expected: 'v9', received: 'v8' });
+      await expect(rejection).rejects.toBeInstanceOf(EraInvariantViolationError);
+      await expect(rejection).rejects.toMatchObject({
+        method: 'watchForTxData',
+        expected: 'v9',
+        received: 'v8',
+        txId: 'test-tx-id'
+      });
     });
 
     it('propagates a failed head read before proving', async () => {
@@ -588,7 +627,7 @@ describe('submit-tx', () => {
     });
   });
 
-  describe('submitCurrentEraTx, the pipelines\' v9 path', () => {
+  describe('submitLedger9Payload, the pipelines\' v9 path', () => {
     let mockProviders: ReturnType<typeof createMockProviders>;
     const provenTx = createMockProvenTx();
 
@@ -604,7 +643,7 @@ describe('submit-tx', () => {
       const record = createMockFinalizedTxData();
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(record);
 
-      const result = await submitCurrentEraTx(mockProviders, { unprovenTx: createMockUnprovenTx() });
+      const result = await submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() });
 
       expect(result).toBe(record);
       expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -615,7 +654,7 @@ describe('submit-tx', () => {
         .fn()
         .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8' });
 
-      const rejection = submitCurrentEraTx(mockProviders, { unprovenTx: createMockUnprovenTx(), circuitId: 'testCircuit' });
+      const rejection = submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx(), circuitId: 'testCircuit' });
 
       await expect(rejection).rejects.toBeInstanceOf(EraInvariantViolationError);
     });
@@ -624,7 +663,7 @@ describe('submit-tx', () => {
       const { version: _dropped, ...untagged } = createMockFinalizedTxData();
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
-      await expect(submitCurrentEraTx(mockProviders, { unprovenTx: createMockUnprovenTx() })).rejects.toBeInstanceOf(
+      await expect(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() })).rejects.toBeInstanceOf(
         UntaggedPayloadError
       );
     });

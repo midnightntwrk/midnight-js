@@ -166,7 +166,7 @@ them as `ComposeOptionError('v8', 'ledgerParameters')`. The opposite skew — a 
 pre-fork parameters — is excluded by that same ordering.
 
 The refusal is loud and fails fast, but it is not *diagnosed*: `handleSubmitRejection` recognises
-only submission rejections (`LEDGER8_PROVIDER_FAILED`), so a caller sees an error naming the parameter
+only submission rejections (`PROVIDER_FAILED`), so a caller sees an error naming the parameter
 bytes rather than one naming the fork window they just crossed. It belongs with the in-flight
 fork-crossing work, because a unit test cannot show that the diagnosis is the right one — only a run
 across a real enactment can.

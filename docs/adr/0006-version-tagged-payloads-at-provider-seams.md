@@ -540,8 +540,9 @@ only the transaction payloads:
    `VersionedPublicStates`, `VersionedFinalizedTxData`.
 4. Era-neutral values stay plain (`UnshieldedBalances`, `BlockInfo`).
 5. Code that handles only v9 narrows with `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`.
-   It sits next to `assertNever` rather than in `types` because its error for a missing tag is
-   `assertNever`'s, while `UntaggedPayloadError` takes only the closed provider-method list.
+   It lives in `utils` rather than `types` because both of its errors, `Ledger8ValueUnsupportedError`
+   and `UnrecognisedEraTagError`, carry codes from the `utils` error-code table, while
+   `UntaggedPayloadError` takes only the closed provider-method list.
 
 `submitTx` reads the network head once and routes on it; the input's `version` only says how to
 read the input. The full list of changed signatures is in

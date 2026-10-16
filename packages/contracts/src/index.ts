@@ -91,6 +91,7 @@ export {
   LedgerParametersUnservedError,
   MixedEraScopeError,
   PrivateStateNotFoundError,
+  ProviderFailedError,
   RetainedArtifactOnCurrentEraStateError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,

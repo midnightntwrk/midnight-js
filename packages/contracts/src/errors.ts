@@ -89,18 +89,23 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                 got.
    * @param contractAddress The contract the payload was read for, when the
    *                        flow reads one contract's records.
+   * @param txId The transaction the payload belongs to, when it is already on
+   *             chain. A caller needs it to reconcile a transaction it cannot
+   *             take back.
    */
   constructor(
     readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
     readonly received?: LedgerVersion,
-    readonly contractAddress?: string
+    readonly contractAddress?: string,
+    readonly txId?: string
   ) {
     super(
       `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
-        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}. ` +
+        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}` +
+        `${txId === undefined ? '' : ` (transaction '${txId}', already submitted)`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -452,9 +457,9 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
 }
 
 /**
- * An error indicating that a provider rejected a retained-era transaction at
- * one of the three transaction methods, with the provider's own failure
- * SANITIZED onto `cause`.
+ * An error indicating that a provider rejected a transaction at one of the
+ * three transaction methods, with the provider's own failure SANITIZED onto
+ * `cause`. Raised on every submit path, whatever era the transaction belongs to.
  *
  * ## Why the external failure does not travel as-is
  *
@@ -472,27 +477,27 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8ProviderFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED];
+export class ProviderFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PROVIDER_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PROVIDER_FAILED];
 
   /**
    * @param method The provider method that rejected.
-   * @param circuitId The circuit this flow was running.
+   * @param circuitId The circuit, or circuits, the transaction runs, when known.
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
     readonly method: ProviderMethod,
-    readonly circuitId: string,
+    readonly circuitId: string | readonly string[] | undefined,
     cause: Error
   ) {
     super(
-      `${method} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+      `${method} rejected the transaction${formatCircuitClause(circuitId) ?? ''}. The provider's own failure ` +
         'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
         'material; read the provider\'s own logs for the unredacted detail.',
       { cause }
     );
-    this.name = 'Ledger8ProviderFailedError';
+    this.name = 'ProviderFailedError';
   }
 }
 
@@ -592,7 +597,7 @@ const STALE_HEAD_MESSAGES: Readonly<
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
- * {@link Ledger8ProviderFailedError}, which is the form it arrives in.
+ * {@link ProviderFailedError}, which is the form it arrives in.
  *
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.

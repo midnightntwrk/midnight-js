@@ -12,12 +12,13 @@ one operation is ordered, which parts touch the outside world, and the handful
 of places where getting it wrong loses money silently rather than raising an
 error.
 
-Two modules implement it, and the split is deliberate:
+Three modules implement it, and the split is deliberate:
 
 | module | what it owns |
 | --- | --- |
 | `packages/contracts/src/internal/ledger8-pipeline.ts` | the orchestration ORDER, and nothing else — pure, handed an era and an engine as values |
-| `packages/contracts/src/internal/ledger8-entry.ts` | everything that touches the outside world: the two acquisitions, and the provider round trip |
+| `packages/contracts/src/internal/ledger8-entry.ts` | everything that touches the outside world: the two acquisitions, and the fork-crossing diagnosis around the submit |
+| `packages/contracts/src/internal/submit-payload.ts` | the provider round trip, one function per payload era, shared with every other submit path in the package |
 
 Which pipeline an operation is allowed to take at all is a separate thread — see
 [EraDispatch](./era-dispatch.md). The verifier-key check it performs is
@@ -272,7 +273,8 @@ is the point of leaving that guard in `types` rather than lifting it here.
 ### Sanitizing a provider's own failure
 
 `atProviderMethod` runs one provider method call and converts a rejection into
-`Ledger8ProviderFailedError` with the failure sanitized onto `cause`.
+`ProviderFailedError` with the failure sanitized onto `cause`. It wraps every
+provider call of every submit path in the package, not only this pipeline's.
 
 This framework's OWN coded errors pass through UNCHANGED when they carry no
 `cause`. They then hold no external payload, and a caller narrowing on
@@ -318,7 +320,7 @@ format to enumerate. Three alternatives, each deliberately narrow:
 | base64 / base64url | 40 chars, and must mix lower case, upper case and a digit | The mixture is what separates an encoded payload from a URL PATH (no upper case) or a long CLASS NAME (no digit). Both are high-value diagnostics: without the mixture requirement the endpoint a misconfiguration names is exactly what disappears. |
 | decimal byte list | 13 values | `JSON.stringify(new Uint8Array(...))` and Node's own inspection of a typed array. Commas break the other two alternatives, so without this a payload rendered as numbers passes through untouched. |
 
-This is BEST EFFORT, not a guarantee, and `Ledger8ProviderFailedError`'s own message
+This is BEST EFFORT, not a guarantee, and `ProviderFailedError`'s own message
 says so rather than promising more than it delivers. A secret shorter than 12
 bytes is under the hex floor. A payload rendered in some shape none of the three
 matches is not redacted. The message is also length-capped, so a provider that

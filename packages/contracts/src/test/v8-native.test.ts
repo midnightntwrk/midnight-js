@@ -83,10 +83,10 @@ import {
   Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
-  Ledger8ProviderFailedError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
+  ProviderFailedError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
@@ -1713,13 +1713,13 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     // The CODE, not only the class: a consumer that cannot import this package's
     // classes -- a JavaScript caller, or one narrowing across a bundle boundary
     // -- branches on `code`, so that is the surface the negative has to pin.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
-    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(true);
+    expect((caught as ProviderFailedError).method).toBe('proveTx');
+    expect((caught as ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
 
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
@@ -1799,7 +1799,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const caught = await submitCallTx(providers, callOptions()).catch((error: unknown) => error);
 
     // Assert
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     expect(inspect(caught, { depth: null, showHidden: true })).not.toContain(leakedStateHex);
     expect(inspect(caught, { depth: null, showHidden: true })).toContain('Proof Server request failed');
   });
@@ -1814,9 +1814,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     } catch (error) {
       caught = error;
     }
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)).toBe(true);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('submitTx');
+    expect(caught).toBeInstanceOf(ProviderFailedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)).toBe(true);
+    expect((caught as ProviderFailedError).method).toBe('submitTx');
 
     // TWO head reads: one for the routing, and one on the rejection to ask
     // whether the network moved under this call. This head has not moved, so
@@ -1833,7 +1833,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // trip that could not change the answer.
     providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server refused the request'));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8ProviderFailedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(ProviderFailedError);
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -2260,7 +2260,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).not.toContain(payloadHex);
     // Non-vacuity: the payload IS in the raw rejection, so its absence above is
@@ -2287,7 +2287,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null });
     expect(rendered).toContain('fetch failed');
     expect(rendered).toContain('ECONNREFUSED');
@@ -2314,7 +2314,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
     const rendered = inspect(caught, { depth: null, showHidden: true });
     expect(rendered).toContain('::1:6300');
     expect(rendered).toContain('127.0.0.1:6300');
@@ -2392,9 +2392,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ProviderFailedError);
-    expect((caught as Ledger8ProviderFailedError).method).toBe('proveTx');
-    expect((caught as Ledger8ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
+    expect(caught).toBeInstanceOf(ProviderFailedError);
+    expect((caught as ProviderFailedError).method).toBe('proveTx');
+    expect((caught as ProviderFailedError).circuitId).toBe(CIRCUIT_ID);
   });
 
 });

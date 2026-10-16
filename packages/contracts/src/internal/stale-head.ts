@@ -22,7 +22,7 @@
  * node minor release apart are the same era.
  *
  * This module does NOT sanitize. The rejection arrives already rebuilt as
- * {@link Ledger8ProviderFailedError} by the provider-call wrapper in `./ledger8-entry.ts`;
+ * {@link ProviderFailedError} by the provider-call wrapper in `./submit-payload.ts`;
  * do not add a second sanitizer here that could redact differently.
  *
  * @see {@link StaleHeadRemediation} for why a rejection is diagnosed at all,
@@ -100,7 +100,7 @@ export const handleSubmitRejection = async (
   // an uncoded rejection would then be diagnosed, and during a fork window,
   // the only time the head moves, it would come back as a confident fork
   // claim about a failure that never reached the network.
-  if (!hasErrorCode(rejection, CONTRACTS_ERROR_CODES.LEDGER8_PROVIDER_FAILED)) {
+  if (!hasErrorCode(rejection, CONTRACTS_ERROR_CODES.PROVIDER_FAILED)) {
     throw rejection;
   }
 

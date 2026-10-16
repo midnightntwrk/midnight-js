@@ -38,7 +38,6 @@ export {
   Ledger8DeployOnLedger9Error as DeployOnLedger9Error,
   Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
-  Ledger8ProviderFailedError as ProviderFailedError,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError as SigningKeyUnusableError

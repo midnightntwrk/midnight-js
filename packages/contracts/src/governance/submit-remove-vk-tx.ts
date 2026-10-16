@@ -23,7 +23,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 import { type ContractProviders } from '../contract-providers';
 import { BlankVerifierKeySlotError } from '../errors';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
-import { submitCurrentEraTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
 
@@ -97,7 +97,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
     providers.walletProvider.getCoinPublicKey(),
     providers.config
   );
-  const submitTxResult = await submitCurrentEraTx(providers, { unprovenTx });
+  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
     throw new RemoveVerifierKeyTxFailedError(submitTxResult);
   }

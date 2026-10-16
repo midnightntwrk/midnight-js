@@ -55,7 +55,7 @@ import {
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnLedger9Error,
-  Ledger8ProviderFailedError,
+  ProviderFailedError,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
@@ -754,8 +754,8 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
 describe('the post-rejection head read leaves a breadcrumb too', () => {
   // The rejection in the shape `submitTx` actually produces: already
   // sanitized, with the provider's failure on `cause`.
-  const wrappedRejection = (): Ledger8ProviderFailedError =>
-    new Ledger8ProviderFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
+  const wrappedRejection = (): ProviderFailedError =>
+    new ProviderFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
 
   const callOperation = (head: LedgerVersion): SubmittedOperation => ({
     head,

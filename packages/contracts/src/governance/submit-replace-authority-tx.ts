@@ -21,7 +21,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 
 import { type ContractProviders } from '../contract-providers';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
-import { submitCurrentEraTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
 
@@ -93,7 +93,7 @@ export const submitReplaceAuthorityTx =
       providers.walletProvider.getCoinPublicKey(),
       providers.config
     );
-    const submitTxResult = await submitCurrentEraTx(providers, { unprovenTx });
+    const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
     if (submitTxResult.status !== SucceedEntirely) {
       throw new ReplaceMaintenanceAuthorityTxFailedError(submitTxResult);
     }
