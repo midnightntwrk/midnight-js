@@ -27,6 +27,7 @@ import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
+  UntaggedPayloadError,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -34,6 +35,7 @@ import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/mid
 import { type ContractProviders } from './contract-providers';
 import {
   ContractTypeError,
+  EraInvariantViolationError,
   IncompleteFindContractPrivateStateConfig,
   Ledger8SigningKeyUnusableError,
   PrivateStateNotFoundError
@@ -92,11 +94,20 @@ const queryFoundDeployTxPublicData = async (
     case 'v8':
       return { ...deployRecord, contractAddress };
     case 'v9': {
-      const initialContractState = requireDeployedContract(
+      const deployState = requireDeployedContract(
         await publicDataProvider.queryDeployContractState(contractAddress),
         contractAddress
       );
-      return { ...deployRecord, contractAddress, initialContractState };
+      switch (deployState.version) {
+        case 'v8':
+          throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
+        case 'v9':
+          return { ...deployRecord, contractAddress, initialContractState: deployState.state };
+        default: {
+          const unhandled: never = deployState;
+          throw new UntaggedPayloadError('queryDeployContractState', unhandled);
+        }
+      }
     }
     default:
       return assertNever(deployRecord, 'findDeployedContract');
@@ -497,10 +508,10 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
  *                                   nothing is stored under it.
  * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
- * @throws IndexerDataError The public data provider cannot decode the current contract state. The
- *               indexer provider throws it for a contract deployed before the ledger fork that has
- *               had no state-changing call since; that call can only be made with the pre-fork
- *               artifacts.
+ * @throws IndexerDataError The public data provider cannot decode the current contract state.
+ * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
+ *                                    error names `contractAddress`.
+ * @throws UntaggedPayloadError The deploy record or the deploy state carries no readable era tag.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or

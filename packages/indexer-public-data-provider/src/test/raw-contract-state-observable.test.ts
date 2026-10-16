@@ -34,6 +34,7 @@ import {
   LEDGER8_ERA_PROTOCOL_VERSION,
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateHex,
+  mintLedger9ContractStateBytes,
   mintLedger9ContractStateHex,
   mintLedger9TransactionHex,
   UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
@@ -84,8 +85,35 @@ const actionFrame = (
   identifiers: readonly string[] = [TX_ID]
 ): unknown => ({
   data: {
-    contractActions: { state, transaction: { protocolVersion, identifiers, block: { height, hash: `0x${height}` } } }
+    contractActions: {
+      state,
+      stateAt: { height, hash: `0x${height}`, protocolVersion },
+      transaction: { identifiers }
+    }
   }
+});
+
+const ACTION_HEIGHT = 10;
+const FORK_HEIGHT = 12;
+
+/**
+ * The action of block {@link ACTION_HEIGHT}, re-emitted by the indexer at the fork block
+ * {@link FORK_HEIGHT} with its state translated: `stateAt` names the fork block and its era,
+ * while the transaction, and so its identifiers, are still the pre-fork action's.
+ */
+const reEmittedFrame = (translatedState: string): unknown => ({
+  data: {
+    contractActions: {
+      state: translatedState,
+      stateAt: { height: FORK_HEIGHT, hash: `0x${FORK_HEIGHT}`, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION },
+      transaction: { identifiers: [TX_ID] }
+    }
+  }
+});
+
+/** The `LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY` answer for a contract whose latest action sits in `height`. */
+const latestAt = (height: number, stateAtHeight = height): unknown => ({
+  contractAction: { stateAt: { height: stateAtHeight }, transaction: { block: { height } } }
 });
 
 const collect = (
@@ -106,7 +134,7 @@ const positionsOf = (records: readonly PositionedRecord<unknown>[]) =>
 
 describe('rawContractStateObservable — latest', () => {
   const latestPoll = new Map<DocumentNode, unknown>([
-    [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }]
+    [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, latestAt(10)]
   ]);
 
   test('carries a pre-fork state through undecoded', async () => {
@@ -241,9 +269,9 @@ describe('rawContractStateObservable — latest', () => {
   });
 
   test('reports the version the action was served under, not that of the envelope the bytes carry', async () => {
-    // The documented divergence. A contract dormant across the fork keeps its
-    // v8 envelope under a v9 transaction indefinitely, so `version` and the envelope
-    // disagree for exactly the records this member was added to serve. A
+    // The documented divergence. An indexer older than 4.4.0-rc.6 serves an
+    // untouched pre-fork contract with its v8 envelope under a v9 block
+    // (midnight-indexer #1605), so `version` and the envelope can disagree. A
     // caller that needs the writing era reads it off `raw`.
     const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
@@ -416,7 +444,7 @@ describe('rawContractStateObservable — every record carries the block that ser
       'latest',
       { type: 'latest' },
       LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
-      { contractAction: { transaction: { block: { height: 10 } } } }
+      latestAt(10)
     ],
     ['blockHeight', { type: 'blockHeight', blockHeight: 10 }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
     ['blockHash', { type: 'blockHash', blockHash: '0x10' }, BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
@@ -509,7 +537,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
         new Map<DocumentNode, unknown>([
-          [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }],
+          [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, latestAt(10)],
           [BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]
         ])
       ),
@@ -552,7 +580,7 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
         new Map([
-          [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }]
+          [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, latestAt(10)]
         ])
       ),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
@@ -563,5 +591,117 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
     const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
 
     expect(Array.from(seen[0]!.value.raw)).toEqual(Array.from(new Uint8Array(fromHex(hexState))));
+  });
+});
+
+describe('contract-state streams — an action re-emitted at the fork block', () => {
+  test('the raw stream tags the re-emitted state with the fork block’s era', async () => {
+    const translated = mintLedger9ContractStateHex();
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 11, hash: '0x11' } }]])),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(translated)])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11 }));
+
+    expect(seen).toEqual([
+      {
+        value: {
+          version: 'v9',
+          protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
+          raw: new Uint8Array(fromHex(translated)),
+          ledgerParameters: undefined
+        },
+        blockHeight: FORK_HEIGHT,
+        blockHash: `0x${FORK_HEIGHT}`
+      }
+    ]);
+  });
+
+  test('the decoded stream decodes the re-emitted state and stays open', async () => {
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 11, hash: '0x11' } }]])),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(mintLedger9ContractStateHex())])
+    });
+
+    const seen = await Rx.lastValueFrom(
+      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11 }).pipe(Rx.toArray())
+    );
+
+    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
+    expect(Array.from(seen[0]!.value.serialize())).toEqual(Array.from(mintLedger9ContractStateBytes()));
+  });
+
+  test('carries the pre-fork action and its re-emission as two records in two blocks', async () => {
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }]])),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, ACTION_HEIGHT),
+        reEmittedFrame(mintLedger9ContractStateHex())
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 }));
+
+    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
+    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+    expect(positionsOf(seen)).toEqual([
+      { blockHeight: ACTION_HEIGHT, blockHash: `0x${ACTION_HEIGHT}` },
+      { blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }
+    ]);
+  });
+
+  test('an exclusive start at the action’s block drops the action and still delivers the re-emission', async () => {
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map([[BLOCK_QUERY, { block: { height: ACTION_HEIGHT, hash: `0x${ACTION_HEIGHT}` } }]])
+      ),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, ACTION_HEIGHT),
+        reEmittedFrame(mintLedger9ContractStateHex())
+      ])
+    });
+
+    const seen = await collect(
+      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: ACTION_HEIGHT, inclusive: false })
+    );
+
+    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
+  });
+
+  test('an exclusive txId start at the action delivers the re-emission exactly once', async () => {
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map([[TX_ID_QUERY, { transactions: [{ block: { height: ACTION_HEIGHT }, contractActions: [{ address: ADDRESS }] }] }]])
+      ),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, ACTION_HEIGHT),
+        reEmittedFrame(mintLedger9ContractStateHex())
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false }));
+
+    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
+  });
+
+  type OpenStream = (provider: IndexerPublicDataProvider) => Rx.Observable<PositionedRecord<unknown>>;
+
+  test.each<[string, OpenStream]>([
+    ['contractStateObservable', (p) => p.contractStateObservable(ADDRESS, { type: 'latest' })],
+    ['rawContractStateObservable', (p) => p.rawContractStateObservable(ADDRESS, { type: 'latest' })]
+  ])('%s latest: starts at the block the state is dated by, not the action’s', async (_name, open) => {
+    const subscribe = dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(mintLedger9ContractStateHex())]);
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map([[LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, latestAt(ACTION_HEIGHT, FORK_HEIGHT)]])
+      ),
+      subscribe
+    });
+
+    const seen: PositionedRecord<unknown>[] = await Rx.lastValueFrom(open(provider).pipe(Rx.toArray()));
+
+    expect(subscribedOffsets(subscribe)).toEqual([{ height: FORK_HEIGHT }]);
+    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
   });
 });

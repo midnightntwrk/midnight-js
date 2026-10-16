@@ -275,8 +275,9 @@ const envelopeTag = (raw) => {
 /**
  * Samples the envelope tag over a window of blocks.
  *
- * The point is the "is migration lazy?" question: if the tag is still the
- * pre-fork one many blocks after the boundary, lateness is not the explanation.
+ * The node translates every contract at the fork block, and an indexer from
+ * 4.4.0-rc.6 on serves the translated tag from then on. A pre-fork tag many
+ * blocks after the boundary means the indexer is serving stale state.
  */
 const sampleEnvelope = async (publicDataProvider, contractAddress, samples, everyMs) => {
   const seen = [];
@@ -618,9 +619,9 @@ const RETAINED_MATRIX = [
         args: (context) => [context.preForkColor, MINT_AMOUNT / 2n, { bytes: context.unshieldedAddress }]
       },
       // A mint as well, and not for the assertion: the send moves a colour to
-      // the contract itself, so it may net to nothing in the stored state, and
-      // this leg is also what migrates the envelope for the second-call leg
-      // below. A write that definitely writes keeps that guarantee explicit.
+      // the contract itself, so it may net to nothing in the stored state. A
+      // write that definitely writes keeps the second-call leg below reading
+      // state this leg changed.
       { circuitId: 'mintUnshieldedToSelfTest', args: () => [new Uint8Array(32).fill(8), MINT_AMOUNT] }
     ],
     // Named rather than defaulted to `postFork`, which is a LIST here: the
@@ -877,11 +878,11 @@ const retainedCaptures = new Map();
  *
  * `callRetained` THROWS on a failed `expect`, which stops the remaining calls in
  * the list -- deliberately, so the next one does not run against state the
- * assertion just denied. For `unshielded` that list ends with the mint that
- * migrates the envelope, so a wrong balance figure also leaves the second-call
- * leg below reading `envelopeBefore: 'retained'` and presenting it as evidence
- * that the first call did not migrate. One real failure, two findings, and the
- * second one points somewhere else entirely.
+ * assertion just denied. For `unshielded` that list ends with a mint, so a wrong
+ * balance figure also leaves the second-call leg below running against state the
+ * first list never finished writing, and reporting that as a finding of its own.
+ * One real failure, two findings, and the second one points somewhere else
+ * entirely.
  *
  * So the second-call leg asks this before it interprets anything.
  */
@@ -2124,21 +2125,21 @@ if (!crossed) {
   report(1);
 }
 
-// Diagnostic, not an acceptance criterion: does the migration re-version the
-// contract-state envelope, and if not, does it do so later? The framework refuses
-// a pre-fork envelope under a post-fork head, so keep-state depends on this.
+// Diagnostic, not an acceptance criterion: the contract-state envelope across the
+// boundary. The node translates every contract at the fork block, so from it on
+// the tag should read `contract-state[v8]`.
 await leg('envelope tag across the boundary', () =>
   sampleEnvelope(session.providers.publicDataProvider, deployment.contractAddress, 6, 10_000)
 );
 
-// (b) continued: THE WINDOW, between the boundary and the keep-state call that
-// re-versions the envelope. This is where a dApp reading through the DECODING
-// members meets a contract the ledger did not rewrite at the fork.
+// (b) continued: THE WINDOW, between the boundary and the keep-state call. This
+// is where a dApp reading through the DECODING members meets a contract nobody
+// has called since the fork.
 //
-// The rows do NOT assume they found a retained envelope, and the probe names do
-// not claim it. `driveCallsAcrossTheBoundary` above drives calls at this very
-// address as the fork lands, so a call of its own may already have migrated the
-// contract before this runs. Every row therefore carries the tag actually read,
+// The rows do NOT assume which envelope they find, and the probe names do not
+// claim it. The fork translates the contract, and `driveCallsAcrossTheBoundary`
+// above also drives calls at this very address as the fork lands. Every row
+// therefore carries the tag actually read,
 // and the question each answers is "what did this member do with THAT envelope"
 // -- which is the honest question either way.
 if (MEASURES_READ_SURFACE) {
@@ -2201,6 +2202,99 @@ if (MEASURES_READ_SURFACE) {
     } finally {
       watch.stop();
     }
+  });
+}
+
+// ── (c0) a DORMANT pre-fork contract, found again after the fork ──────────────
+//
+// Right after the fork nearly every contract is dormant: no action in the fork
+// block and none since. A dApp that restarts here re-attaches before anyone calls
+// its contract. The retained twins are exactly that until the keep-state legs
+// below call them -- the boundary probe above calls only the baseline.
+//
+// The node translates every contract at the fork block, and the indexer serves
+// that translated state (`contract-state[v8]`) from then on. These legs ATTACH
+// ONLY: a call here would wake the contract and shift what the legs below read.
+// (c3) and (c4) cover calling through a re-attached handle.
+// The deploy's own record keeps the encoding its block wrote, so the fork's
+// translation of the current state must not reach it.
+const expectLedger8DeployState = async (name, publicDataProvider, contractAddress) => {
+  const deployState = await publicDataProvider.queryDeployContractState(contractAddress);
+  const version = deployState === null ? 'absent' : deployState.version;
+  if (version !== 'v8') {
+    failures.push(`${name}: expected queryDeployContractState to report the deploy state tagged 'v8', got '${version}'`);
+  }
+  return version;
+};
+
+for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
+  const name = `a dormant ${entry.key}, found after the fork with its pre-fork artifacts`;
+  await leg(name, async () => {
+    const deployed = retainedDeployments.get(entry.key);
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const providers = retainedProvidersFor('v9', session.wallet, entry.key);
+    const envelope = await contractPresent(providers.publicDataProvider, deployed.contractAddress);
+    if (envelope !== 'midnight:contract-state[v8]:') {
+      failures.push(`${name}: expected the fork-translated envelope 'midnight:contract-state[v8]:', got ${envelope}`);
+    }
+    const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
+    const { Contract } = await import(`@midnight-ntwrk/fork-retained-${entry.key}`);
+    const compiledContract = new Contract(retainedWitnesses(entry.key));
+    const privateState = entry.privateState;
+    const found =
+      privateState === undefined
+        ? await findDeployedContract(providers, { compiledContract, contractAddress: deployed.contractAddress })
+        : await findDeployedContract(providers, {
+            compiledContract,
+            contractAddress: deployed.contractAddress,
+            privateStateId: privateState.id
+          });
+    const callable = Object.keys(found.callTx ?? {});
+    const missing = Object.keys(compiledContract.impureCircuits).filter((circuitId) => !callable.includes(circuitId));
+    if (missing.length > 0) {
+      failures.push(`${name}: the re-attached handle exposes no call site for ${missing.join(', ')}`);
+    }
+    return { envelope, deployStateVersion, callable };
+  });
+}
+
+if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
+  const name = 'a dormant pre-fork simple, found after the fork with recompiled artifacts';
+  await leg(name, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const zkConfigPath = config.matrixZkConfigPaths?.simple;
+    if (zkConfigPath === undefined) {
+      throw new Error("the driver passed no current-era ZK artifact path for 'simple'");
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
+    const compiledContract = CompiledContract.withCompiledFileAssets(
+      CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
+      zkConfigPath
+    );
+    const providers = providersFor(testkit, 'v9', session.wallet, {
+      zkConfigPath,
+      privateStateStoreName: 'fork-recompiled-dormant-simple'
+    });
+    const envelope = await contractPresent(providers.publicDataProvider, deployed.contractAddress);
+    if (envelope !== 'midnight:contract-state[v8]:') {
+      failures.push(`${name}: expected the fork-translated envelope 'midnight:contract-state[v8]:', got ${envelope}`);
+    }
+    const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
+
+    const found = await findDeployedContract(providers, {
+      compiledContract,
+      contractAddress: deployed.contractAddress
+    });
+
+    if (found.deployTxData.public.version !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    }
+    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.version };
   });
 }
 
@@ -2454,12 +2548,12 @@ if (covers(SELECTED.retained, 'unshielded')) {
 //
 // A LEG, not a probe, and it was a probe until the framework committed to an
 // answer. The keep-state leg above establishes that the FIRST post-fork call
-// succeeds and migrates the state envelope from the retained schema to the
+// succeeds on the state the fork translated from the retained schema to the
 // current one; this establishes that the contract is still callable after that,
 // which is what makes keep-state a supported path rather than a single shot.
 //
 // WHY THE SECOND CALL WORKS AT ALL, since the two facts look contradictory.
-// Migration rewrites the ENVELOPE but keeps the RETAINED verifier keys:
+// The fork's translation rewrites the ENVELOPE but keeps the RETAINED verifier keys:
 // `reexpressOperationsForCurrentEra` copies `entryPoint.verifierKey` unchanged
 // into a ledger-v9 `ContractState`. Measured on the committed goldens rather
 // than assumed -- a real migrated 8-to-9 state carries byte-identical
@@ -2478,19 +2572,18 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     if (deployed === undefined) {
       return 'skipped: its pre-fork deploy did not complete';
     }
-    // SKIPPED rather than run, because this leg reads the envelope the post-fork
-    // leg was supposed to migrate. Run after an aborted call list, it reports
-    // `envelopeBefore: 'retained'` as a finding of its own -- a second, unrelated
-    // -looking signal produced by the first failure. @see retainedPostForkCompleted
+    // SKIPPED rather than run, because this leg reads the state the post-fork
+    // leg was supposed to write. Run after an aborted call list, it reports a
+    // finding of its own -- a second, unrelated-looking signal produced by the
+    // first failure. @see retainedPostForkCompleted
     if (!retainedPostForkCompleted.has(entry.key)) {
-      return 'skipped: its post-fork call list did not run to the end, so the envelope it reads was never migrated';
+      return 'skipped: its post-fork call list did not run to the end, so the state it reads was never written';
     }
     const providers = retainedProvidersFor('v9', session.wallet, entry.key);
 
     // Recorded before the attempt, so the outcome can be read against what the
-    // chain actually held rather than against an assumption about it. This is
-    // the leg's own evidence that the first call migrated the envelope: it
-    // should already read current-era here.
+    // chain actually held rather than against an assumption about it. The fork
+    // translated the envelope, so it should already read current-era here.
     const before = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
     const envelopeBefore = before === null ? 'absent' : envelopeTag(before.raw);
 
@@ -2542,7 +2635,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // verifier key for every one of the artifact's IMPURE circuits -- the set
 // `callTx` is built from -- and refuses the attach if one does not match the
 // chain, so a successful find is the chain and the pre-fork artifact still
-// agreeing, after migration re-versioned the state
+// agreeing, after the fork re-versioned the state
 // envelope. And `signingKey` comes back from the private-state store rather than
 // from the chain: the path reports the key already stored and samples none, so
 // this is also the assertion that the maintenance key the deploy persisted
@@ -2632,8 +2725,8 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
 // The path the migration guide recommends: recompile, then re-attach to the
 // contract that already exists. Its deploy record stays ledger-8 forever.
 //
-// Runs after (c) and (c2): the find is refused until a state-changing call after
-// the fork has re-written the state in the ledger-9 format.
+// Runs after (c) and (c2), so it covers the contract after post-fork calls; the
+// dormant case, before any call, is (c0).
 //
 // The compiled contract is built inline, as the pre-fork probe does, because
 // `MATRIX` and `compiledContractFor` are declared further down this module.

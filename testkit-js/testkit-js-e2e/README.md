@@ -134,7 +134,7 @@ yarn e2e
 
 A file named `*.v8era.it.test.ts` is excluded from the default matrix and run by
 its own CI lane against `testkit-js/env/v8era.env` — node 1.0.0, indexer
-4.4.0-rc.5, proof server 8.1.2, which is a real ledger-v8 network.
+4.4.0-rc.6-68702121, proof server 8.1.2, which is a real ledger-v8 network.
 
 Contracts for those tests are **retained-era twins**: the same `.compact` sources,
 compiled with `compactc` 0.31.1 so the framework routes them to the retained

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
@@ -80,6 +81,32 @@ export interface Ledger9Transaction<T> {
 export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
 
 /**
+ * The v8 variant of {@link VersionedContractState}: a contract state written by
+ * the v8 ledger runtime, as the serialized, tag-prefixed bytes the network
+ * stored. Not decoded and not translated to the v9 encoding.
+ */
+export interface Ledger8ContractStateBytes {
+  readonly version: 'v8';
+  /** Serialized, tag-prefixed byte form (`contract-state[v6]`). */
+  readonly stateBytes: Uint8Array;
+}
+
+/**
+ * The v9 variant of {@link VersionedContractState}: the decoded contract state.
+ */
+export interface Ledger9ContractState {
+  readonly version: 'v9';
+  readonly state: ContractState;
+}
+
+/**
+ * A contract state discriminated by the ledger runtime that wrote it: the stored
+ * bytes for the v8 era ({@link Ledger8ContractStateBytes}), or the decoded state
+ * for v9 ({@link Ledger9ContractState}). Narrow on `version` before touching it.
+ */
+export type VersionedContractState = Ledger8ContractStateBytes | Ledger9ContractState;
+
+/**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
  * finalized-transaction metadata as {@link FinalizedTxData} — both variants extend
  * {@link FinalizedTxRecord} — with a v8 ledger transaction object in place of
@@ -115,7 +142,7 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
-// `protocolVersion` to an era. These four assertions keep the discriminant set
+// `protocolVersion` to an era. These six assertions keep the discriminant sets
 // here and `LedgerVersion` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its
 // `true` constraint. No runtime declarations, so `versioned.ts` stays
@@ -139,4 +166,10 @@ type _EveryEraHasAReadVariant = Assert<
 >;
 type _NoReadVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
+>;
+type _EveryEraHasAStateVariant = Assert<
+  [Exclude<LedgerVersion, VersionedContractState['version']>] extends [never] ? true : false
+>;
+type _NoStateVariantOutsideTheEraSet = Assert<
+  [Exclude<VersionedContractState['version'], LedgerVersion>] extends [never] ? true : false
 >;

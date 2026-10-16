@@ -155,6 +155,8 @@ asserting it.
     (`packages/indexer-public-data-provider/src/query-definitions.ts`), so the
     era arrives with the data, per record. ADR-0007 records why that
     per-record answer — and not a head reading — is what dates a read.
+    `queryDeployContractState` has since become version-tagged: it returns a
+    `VersionedContractState`, with a v8-era deploy as its stored bytes.
   - Branding `V8TxBytes.txBytes` as tag-prefixed bytes behind a smart
     constructor. Free while nothing produces the arm; breaking for every
     producer once v8 support ships.

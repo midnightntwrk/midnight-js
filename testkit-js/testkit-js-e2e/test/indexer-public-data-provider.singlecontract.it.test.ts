@@ -75,17 +75,11 @@ describe('Indexer API', () => {
   });
 
   test('queryDeployContractState - should return a contract state equivalent to the initial contract state produced during deployment construction', async () => {
-    const state = await publicDataProvider.queryDeployContractState(finalizedDeployTxData.public.contractAddress);
+    const deployState = await publicDataProvider.queryDeployContractState(finalizedDeployTxData.public.contractAddress);
 
-    expect(state).not.toBeNull();
-    expect(state?.serialize()).toEqual(
-      finalizedDeployTxData.public.initialContractState.serialize()
-    );
-    if (state) {
-      expect(ledger(state.data)).toEqual(
-        ledger(finalizedDeployTxData.public.initialContractState.data)
-      );
-    }
+    assert(deployState?.version === 'v9', `expected a v9 deploy state, got ${deployState?.version ?? 'null'}`);
+    expect(deployState.state.serialize()).toEqual(finalizedDeployTxData.public.initialContractState.serialize());
+    expect(ledger(deployState.state.data)).toEqual(ledger(finalizedDeployTxData.public.initialContractState.data));
   });
 
   test('queryContractState - should return the current contract state of a deployed contract', async () => {

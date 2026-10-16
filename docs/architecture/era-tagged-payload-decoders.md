@@ -124,8 +124,7 @@ obligation sits with the callers, which is what the rest of this table records.
 
 **`NodeClient.contractState()` and `NodeClient.ledgerState()`**
 (`testkit-js/testkit-js/src/client/node-client.ts`) decode JSON-RPC responses from the node with the
-current era's `ContractState` / `LedgerState`. A pre-fork block, or a contract dormant across the
-fork, is undecodable through them. Nothing in this repository calls either — only `.health()` is
+current era's `ContractState` / `LedgerState`. A pre-fork block is undecodable through them. Nothing in this repository calls either — only `.health()` is
 used — but both are exported testkit API and appear in `docs/api`, so "unused" is not "unreachable".
 Reported rather than changed: adding an era branch to a method with no consumer is work nobody asked
 for, and deleting them is a breaking change to the testkit's public surface.

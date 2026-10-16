@@ -3530,8 +3530,8 @@ describe('attaching to a retained-era contract already on chain', () => {
     // carry a retained envelope. The label is derived from `protocolVersion` alone and is not a
     // verified statement about the bytes -- and the bytes are what a decoder has to read.
     //
-    // This is a contract deployed before the fork and attached to after it, which is ordinary:
-    // the fork does not rewrite stored state. It must attach, not be refused.
+    // This is a contract deployed before the fork and attached to after it, as an indexer older
+    // than 4.4.0-rc.6 serves it (midnight-indexer #1605). It must attach, not be refused.
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
     providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue({
       version: 'v9',

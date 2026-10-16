@@ -603,6 +603,44 @@ and after the fork a retained-era call has `era: 'v8'` with `version: 'v9'`.
 
 ---
 
+## 13. `queryDeployContractState` is version-tagged, and the indexer floor is `4.4.0-rc.6` (#1452)
+
+`PublicDataProvider.queryDeployContractState` now resolves to
+`VersionedContractState | null` instead of `ContractState | null`. It reads the
+deploy's record, or the latest update's record when the contract has been
+updated, and tags it with the ledger era that wrote it:
+
+- `{ version: 'v9', state }` — the decoded `ContractState`;
+- `{ version: 'v8', stateBytes }` — the stored bytes, never translated to the v9
+  encoding.
+
+Narrow on `version` before you read the state:
+
+```ts
+const deployState = await publicDataProvider.queryDeployContractState(address);
+if (deployState !== null) {
+  switch (deployState.version) {
+    case 'v9':
+      use(deployState.state);
+      break;
+    case 'v8':
+      useBytes(deployState.stateBytes);
+      break;
+    default:
+      assertNever(deployState, 'queryDeployContractState');
+  }
+}
+```
+
+If you implement `PublicDataProvider` yourself, return the tagged shape.
+
+`indexerPublicDataProvider` now requires **indexer `4.4.0-rc.6` or later**. It
+selects `stateAt` on every contract-state read, and older indexers do not serve
+that field. The framework's test environments pin the build tag
+`4.4.0-rc.6-68702121`.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

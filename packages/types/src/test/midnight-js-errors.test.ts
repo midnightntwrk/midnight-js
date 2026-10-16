@@ -159,6 +159,16 @@ describe('types error classes', () => {
     }
   );
 
+  it('reports an untagged value from queryDeployContractState as a contract state, whose v8 variant carries stateBytes', () => {
+    const { message } = new UntaggedPayloadError('queryDeployContractState', {});
+
+    expect([
+      message.startsWith('queryDeployContractState: a contract state'),
+      message.includes('stateBytes'),
+      message.includes('txBytes')
+    ]).toEqual([true, true, false]);
+  });
+
   it.each([
     ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
     ['UntaggedPayloadError', new UntaggedPayloadError('watchForTxData', undefined), 'watchForTxData'],

@@ -19,7 +19,7 @@ import type { Observable } from 'rxjs';
 
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
-import type { VersionedFinalizedTxData } from './versioned';
+import type { VersionedContractState, VersionedFinalizedTxData } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -381,11 +381,13 @@ export interface PublicDataProvider {
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>;
 
   /**
-   * Retrieves the contract state included in the deployment of the contract at the given contract address.
+   * Retrieves the contract state in the deploy's record for the contract at the given contract address,
+   * or in the latest update's record when the contract has been updated, tagged with the ledger era
+   * that wrote it. A v8-era record is returned as the stored bytes, never translated to the v9 encoding.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    */
-  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null>;
+  queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null>;
 
   /**
    * Retrieves the unshielded balances associated with a specific contract address.
@@ -478,9 +480,9 @@ export interface PublicDataProvider {
    * contract-state stream that works across the ledger fork. An implementation
    * that deserializes inside the stream can only do so with the eras its own
    * runtime has, and a state from any other era then ENDS the subscription
-   * rather than skipping one emission — a contract deployed before a fork and
-   * not written to since serves exactly such a state for as long as it stays
-   * dormant. Here the era travels on the record instead.
+   * rather than skipping one emission — a stream started before a fork meets
+   * such states first, as their records keep the encoding they were written
+   * in. Here the era travels on the record instead.
    *
    * {@link RawContractState.version} DATES THE RECORD, it does not read the
    * bytes — see that field's own documentation. A caller that must know which

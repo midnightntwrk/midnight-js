@@ -34,6 +34,7 @@ import type {
   PublicDataProvider,
   RawContractState,
   UnshieldedBalances,
+  VersionedContractState,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -44,7 +45,8 @@ import {
   parseHexLedgerParameters,
   parseHexZswapState,
   toRawContractState,
-  toUnshieldedBalances
+  toUnshieldedBalances,
+  toVersionedContractState
 } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
@@ -69,6 +71,7 @@ import {
   dropReplayed,
   fromTransaction,
   type Identified,
+  type LatestAnchor,
   maybeThrowQueryError,
   ordinalWithinBlock,
   pollUntilPresent,
@@ -367,13 +370,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       );
   }
 
-  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
+  /**
+   * Reads the deploy's record, or the latest update's record when the contract
+   * has been updated. The record keeps the encoding its block wrote: a v8-era
+   * record comes back as its stored bytes, never translated to the v9 encoding.
+   */
+  queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null> {
     assertIsContractAddress(contractAddress);
-    // Shape discrimination kept inline: this branch additionally does an
-    // address-correlated `find` over `contractActions` and throws
-    // `IndexerDataError.missingContractAction` (not `IndexerInvariantError`)
-    // on missing match — different error semantics from the helpers in
-    // `mapping.ts`, so extraction would obscure rather than simplify.
     return this.client
       .query({
         query: DEPLOY_CONTRACT_STATE_TX_QUERY,
@@ -383,27 +386,19 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then((queryResult) => {
-        if (queryResult.data?.contractAction) {
-          const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
-            DeployContractStateTxQueryQuery['contractAction']
-          >;
-          if (!('deploy' in contract)) {
-            return { state: contract.state, protocolVersion: contract.transaction.protocolVersion };
-          }
-          const deployAction = contract.deploy.transaction.contractActions.find(
-            ({ address }) => address === contractAddress
-          );
-          if (!deployAction) {
-            throw IndexerDataError.missingContractAction(contractAddress);
-          }
-          return {
-            state: deployAction.state,
-            protocolVersion: contract.deploy.transaction.protocolVersion
-          };
+        if (!queryResult.data?.contractAction) {
+          return null;
         }
-        return null;
-      })
-      .then((dated) => (dated === null ? null : parseHexContractState(dated.state, dated.protocolVersion)));
+        const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
+          DeployContractStateTxQueryQuery['contractAction']
+        >;
+        const { contractActions } = 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
+        const record = contractActions.find(({ address }) => address === contractAddress);
+        if (!record) {
+          throw IndexerDataError.missingContractAction(contractAddress);
+        }
+        return toVersionedContractState(record.state, record.stateAt.protocolVersion);
+      });
   }
 
   watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
@@ -519,22 +514,23 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => feed(GENESIS))
       );
     }
-    return this.fromBlock$(contractAddress, config, feed);
+    return this.fromBlock$(contractAddress, config, feed, 'stateAt');
   }
 
   /**
    * Starts a per-contract feed at the block a `blockHeight` or `blockHash`
-   * config names, or at the block of the latest action for `latest`.
+   * config names, or, for `latest`, at the block `latestAnchor` names.
    * `inclusive: false` is a filter on the block height rather than a count of
    * skipped records, so a reconnect cannot spend it.
    */
   private fromBlock$<R extends ChainPosition>(
     contractAddress: ContractAddress,
     config: Exclude<ContractStateObservableConfig, { readonly type: 'txId' | 'all' }>,
-    feed: (offset: BlockOffset) => Rx.Observable<R>
+    feed: (offset: BlockOffset) => Rx.Observable<R>,
+    latestAnchor: LatestAnchor
   ): Rx.Observable<R> {
     if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
+      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress, latestAnchor).pipe(
         Rx.concatMap(feed)
       );
     }
@@ -553,9 +549,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
    * stream — so a state written by the retained runtime does not arrive as a
    * skipped emission, it ends the subscription through the subscriber's `error`
-   * callback. A contract deployed before the ledger fork and not written to
-   * since serves exactly such a state, indefinitely. Use
-   * {@link rawContractStateObservable} where that is possible.
+   * callback. A stream started before the ledger fork meets such states first.
+   * Use {@link rawContractStateObservable} where that is possible.
    *
    * Every branch reads the indexer's feed of this contract's actions, filtered
    * by address on the server. A transport reconnect makes the indexer replay
@@ -652,7 +647,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         ? waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
             Rx.concatMap(() => feed(GENESIS))
           )
-        : this.fromBlock$(contractAddress, config, feed);
+        : this.fromBlock$(contractAddress, config, feed, 'action');
     return balances.pipe(dropReplayed(), Rx.map(toPositionedRecord));
   }
 

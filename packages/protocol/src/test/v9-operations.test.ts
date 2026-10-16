@@ -16,9 +16,9 @@
 /**
  * Re-expressing a retained-era contract's operations for the CURRENT ledger.
  *
- * This is the step that makes keep-state composable at all. The fork does not rewrite a contract's
- * stored state, so a contract deployed before it is served carrying a retained envelope for as long
- * as it stays untouched — and the current composer cannot deserialize those bytes. What has to
+ * This is the step that makes keep-state composable at all. A contract deployed before the fork can
+ * still be served after it carrying a retained envelope — by a pinned read, a record, or an indexer
+ * older than 4.4.0-rc.6 — and the current composer cannot deserialize those bytes. What has to
  * cross the boundary is not the state but the OPERATION REGISTRY the composer looks the circuit's
  * verifier key up in.
  */

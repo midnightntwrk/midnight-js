@@ -514,9 +514,9 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   const ledger9EnvelopeCorruptBody = readHexFixture('state-tampered-bytes.hex');
 
   // THE RULE: the envelope decides, the block bounds. A retained envelope is answered for under
-  // EITHER head, because the fork does not rewrite a contract's stored state -- so a contract
-  // deployed before it is served with retained bytes under a post-fork head, indefinitely. Only an
-  // envelope NEWER than the block dating it is impossible, and only that is investigated.
+  // EITHER head, because a read pinned to a pre-fork block, a record, or an indexer older than
+  // 4.4.0-rc.6 can still serve retained bytes under a post-fork head. Only an envelope NEWER than
+  // the block dating it is impossible, and only that is investigated.
   //
   // What this function does NOT decide is whether the caller's artifacts fit the contract. It names
   // a decoder; `assertSnapshotVerifierKey` judges the artifacts.

@@ -211,3 +211,21 @@ describe('positioned stream members', () => {
     >();
   });
 });
+
+// Spelled out independently of `VersionedContractState`, so the equality check
+// pins the shape rather than restating it.
+type VersionedContractStateFixture =
+  | { readonly version: 'v8'; readonly stateBytes: Uint8Array }
+  | { readonly version: 'v9'; readonly state: ContractState };
+
+describe('queryDeployContractState', () => {
+  it('returns the deploy state tagged by era, bytes for v8 and a decoded state for v9', () => {
+    expectTypeOf<PublicDataProvider['queryDeployContractState']>().toEqualTypeOf<
+      (contractAddress: ContractAddress) => Promise<VersionedContractStateFixture | null>
+    >();
+  });
+
+  it('has no untagged form, so a bare decoded state is not a valid result', () => {
+    expectTypeOf<ContractState>().not.toExtend<VersionedContractStateFixture>();
+  });
+});
