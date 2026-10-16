@@ -18,10 +18,10 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { UnknownLedgerVersionError } from '../../errors';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
-import { composeEraV8CallTx, composeEraV8DeployTx } from '../v8/adapt';
-import { loadLedger8 } from '../v8/load';
-import { composeV9CallTx, composeV9DeployTx } from '../v9/compose';
-import { extractEncodedStateValue, extractV9EncodedStateValue } from './envelope';
+import { composeEraLedger8CallTx, composeEraLedger8DeployTx } from '../v8/adapt';
+import { loadLedger8Protocol } from '../v8/load';
+import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
+import { extractEncodedStateValue, extractLedger9EncodedStateValue } from './envelope';
 import type { LedgerEra } from './era';
 
 // The option, parameter and return vocabulary of the facade's compose methods
@@ -46,38 +46,38 @@ export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
-// One memo slot per era, never one shared slot, and both arms are frozen --
-// see SharedTableDiscipline and EraSeam.
-let v8EraPromise: Promise<LedgerEra> | undefined;
-let v9EraPromise: Promise<LedgerEra> | undefined;
+// One memo slot per era, never one shared slot, and both era objects are frozen --
+// see SharedTableDiscipline and EraBoundary.
+let ledger8EraPromise: Promise<LedgerEra> | undefined;
+let ledger9EraPromise: Promise<LedgerEra> | undefined;
 
-/** The v9 arm. Wholly synchronous -- see the EraSeam document. */
-const createV9Era = (): LedgerEra => {
+/** The v9 era. Wholly synchronous -- see the EraBoundary document. */
+const createLedger9Era = (): LedgerEra => {
   const era: LedgerEra = {
     version: 'v9',
-    extractState: (raw) => extractStateWith(raw, 'v9', extractV9EncodedStateValue),
+    extractState: (raw) => extractStateWith(raw, 'v9', extractLedger9EncodedStateValue),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
-    composeCallTx: composeV9CallTx,
-    composeDeployTx: composeV9DeployTx
+    composeCallTx: composeLedger9CallTx,
+    composeDeployTx: composeLedger9DeployTx
   };
 
   return Object.freeze(era);
 };
 
 /**
- * The v8 arm. Acquires the retained pre-fork ledger and binds it into closure,
- * so the era's own methods stay synchronous -- see the EraSeam document for why
+ * The v8 era. Acquires the retained pre-fork ledger and binds it into closure,
+ * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */
-const createV8Era = async (): Promise<LedgerEra> => {
-  const v8 = await loadLedger8();
+const createLedger8Era = async (): Promise<LedgerEra> => {
+  const v8 = await loadLedger8Protocol();
 
   const era: LedgerEra = {
     version: 'v8',
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
-    composeCallTx: (options) => composeEraV8CallTx(options, v8),
-    composeDeployTx: (options) => composeEraV8DeployTx(options, v8)
+    composeCallTx: (options) => composeEraLedger8CallTx(options, v8),
+    composeDeployTx: (options) => composeEraLedger8DeployTx(options, v8)
   };
 
   return Object.freeze(era);
@@ -102,16 +102,16 @@ const createV8Era = async (): Promise<LedgerEra> => {
  * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
  * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
  * underlying cause.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */
 export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
   switch (version) {
     case 'v9':
-      return (v9EraPromise ??= Promise.resolve(createV9Era()));
+      return (ledger9EraPromise ??= Promise.resolve(createLedger9Era()));
     case 'v8':
-      return (v8EraPromise ??= createV8Era().catch((error: unknown) => {
-        v8EraPromise = undefined;
+      return (ledger8EraPromise ??= createLedger8Era().catch((error: unknown) => {
+        ledger8EraPromise = undefined;
         throw error;
       }));
     default: {

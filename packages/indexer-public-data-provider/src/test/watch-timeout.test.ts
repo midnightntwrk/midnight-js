@@ -24,11 +24,10 @@ import { IndexerQueryError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
-  mintV9ContractStateHex,
-  mintV9TransactionHex,
-  regularTransactionRow,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger9ContractStateHex,
+  mintLedger9TransactionHex,
+  regularTransactionRow} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 const TX_ID = 'test-tx-id';
@@ -46,13 +45,13 @@ const reply = (data: unknown): unknown => ({
 });
 
 const transaction = regularTransactionRow({
-  protocolVersion: V9_ERA_PROTOCOL_VERSION,
-  raw: mintV9TransactionHex(),
+  protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
+  raw: mintLedger9TransactionHex(),
   identifiers: [TX_ID],
   contractAddresses: [ADDRESS]
 });
 
-const contractStateHex = mintV9ContractStateHex();
+const contractStateHex = mintLedger9ContractStateHex();
 
 /** Each method, what it waits for, an indexer reply that does not satisfy it yet, and one that does. */
 const watchCalls: readonly [WatchTarget['operation'], WatchTarget, WatchCall, unknown, unknown][] = [
@@ -61,7 +60,7 @@ const watchCalls: readonly [WatchTarget['operation'], WatchTarget, WatchCall, un
     { operation: 'watchForContractState', contractAddress: ADDRESS },
     (p, o) => p.watchForContractState(ADDRESS, o),
     reply({ block: null, contract: null }),
-    reply({ block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: contractStateHex } })
+    reply({ block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: contractStateHex } })
   ],
   [
     'watchForUnshieldedBalances',
@@ -156,7 +155,8 @@ describe('watchFor* with maxWaitMs', () => {
 
     const state = await buildProvider(watchQuery).watchForContractState(ADDRESS, { maxWaitMs: 1000 });
 
-    expect(Buffer.from(state.serialize()).toString('hex')).toBe(contractStateHex);
+    expect(state.version).toBe('v9');
+    expect(state.version === 'v9' && Buffer.from(state.state.serialize()).toString('hex')).toBe(contractStateHex);
   });
 
   test('watchForUnshieldedBalances resolves with the balances when they appear before the bound', async () => {

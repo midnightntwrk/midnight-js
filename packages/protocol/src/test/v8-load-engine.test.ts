@@ -23,7 +23,7 @@ import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createLedger8Engine } from '../lib/v8/engine';
-import type { RunRetainedCircuitOptions } from '../lib/v8/executable';
+import type { Ledger8CircuitOptions } from '../lib/v8/executable';
 import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -60,7 +60,7 @@ interface CompiledCounterContract extends CompactContract.Contract<Record<string
 // v8-load-failure.test.ts).
 //
 // Ungated: every specifier this suite reaches — the 0.16 glue, ocrt3, and
-// loadLedger8's own `../../v8.js` — resolves out of src/ or node_modules under
+// loadLedger8Protocol's own `../../v8.js` — resolves out of src/ or node_modules under
 // vitest, never through dist/.
 describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
@@ -73,7 +73,7 @@ describe('createLedger8Engine', () => {
     // chain's own serialized contract state now, so there is no separate
     // down-convert step to expose.
     expect(Object.keys(engine).sort()).toEqual(
-      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
+      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForLedger9', 'wrapKeepStateCall'].sort()
     );
     expect(Object.values(engine).every((method) => typeof method === 'function')).toBe(true);
   });
@@ -129,7 +129,7 @@ describe('createLedger8Engine', () => {
     const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
     const initial = contract.initialState(constructorContext);
 
-    const options: RunRetainedCircuitOptions<CompiledCounterContract, Record<string, never>> = {
+    const options: Ledger8CircuitOptions<CompiledCounterContract, Record<string, never>> = {
       // The SAME instance that built the state, which is what a caller holds:
       // `containerFor`'s constructor-returns-the-instance trick exists because
       // the witnesses are already bound to it. A second, empty-witness instance

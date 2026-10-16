@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -29,6 +29,14 @@ Parameter indicating the private state ID, sometimes a union of string literals.
 Parameter indicating the private state type stored, sometimes a union of private state types.
 
 ## Properties
+
+### config
+
+> `readonly` **config**: [`MidnightConfig`](MidnightConfig.md)
+
+Network and transaction settings applied to every transaction built with this provider set.
+
+***
 
 ### contractModuleProvider?
 

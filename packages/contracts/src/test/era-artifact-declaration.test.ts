@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+import { type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
-import { type PipelineEra } from '../era';
 import { EraArtifactMismatchError } from '../errors';
 import { type ArtifactRuntimeVersionSource, resolveArtifactEra } from '../internal/era';
 import { createMockCompiledContract } from './test-mocks';
@@ -56,7 +56,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     const era = await resolveArtifactEra(createMockCompiledContract(), source);
 
     // Assert
-    expect(era).toBe<PipelineEra>('ledger9');
+    expect(era).toBe<LedgerVersion>('v9');
     expect(source.getArtifactRuntimeVersion).not.toHaveBeenCalled();
   });
 
@@ -65,12 +65,12 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
     const era = await resolveArtifactEra(retainedShape(), source);
 
-    expect(era).toBe<PipelineEra>('ledger8');
+    expect(era).toBe<LedgerVersion>('v8');
     expect(source.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
   });
 
   it('reads the declared version patch-insensitively', async () => {
-    expect(await resolveArtifactEra(retainedShape(), declaring('0.16.7'))).toBe<PipelineEra>('ledger8');
+    expect(await resolveArtifactEra(retainedShape(), declaring('0.16.7'))).toBe<LedgerVersion>('v8');
   });
 
   it('REFUSES a current-era contract whose async initialState a build step erased', async () => {
@@ -84,7 +84,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       EraArtifactMismatchError
     );
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toMatchObject({
-      reason: 'unwrapped-current-era-contract'
+      reason: 'unwrapped-ledger9-contract'
     });
   });
 
@@ -165,7 +165,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     };
 
     await expect(resolveArtifactEra(rawCurrentEra, source)).rejects.toMatchObject({
-      reason: 'unwrapped-current-era-contract'
+      reason: 'unwrapped-ledger9-contract'
     });
     expect(source.getArtifactRuntimeVersion).not.toHaveBeenCalled();
   });

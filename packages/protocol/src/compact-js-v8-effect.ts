@@ -21,8 +21,8 @@
  * package that has to name a retained-era value reaches it through here.
  *
  * `executeCircuit` does NOT take one of these containers — it takes a
- * {@link RetainedContract}, the constructed artifact the previous toolchain
- * emits, and `containerFor` adapts it at that seam. Making `CompiledContract`
+ * {@link Ledger8EngineContract}, the constructed artifact the previous toolchain
+ * emits, and `containerFor` adapts it at that point. Making `CompiledContract`
  * the retained era's public surface was attempted and reverted; see ADR 0015.
  */
 

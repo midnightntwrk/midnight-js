@@ -1,4 +1,4 @@
-// Minimal SECOND-generation fixture for the era seam's partition path: the
+// Minimal SECOND-generation fixture for the era boundary's partition path: the
 // smallest contract that RECEIVES a shielded coin in-contract and then writes
 // it into its own ledger cell.
 //

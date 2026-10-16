@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ It carries a `code` so a caller can tell this apart from an arbitrary crash.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -48,13 +48,27 @@ The offending payload. Only its `version` field is read;
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
 
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD"` = `UNTAGGED_PAYLOAD`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)
 
 ***
 

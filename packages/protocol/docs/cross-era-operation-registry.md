@@ -4,13 +4,15 @@ title: CrossEraOperationRegistry
 
 # Carrying a retained contract's operations into the current era
 
-The fork does not rewrite a contract's stored state. A contract deployed before
-it and dormant across it is served, indefinitely, carrying its retained-era
-envelope. The current ledger's composer cannot deserialize those bytes — it
-accepts only its own envelope — so a keep-state call had nothing to hand it and
-could not be composed at all.
+A contract deployed before the fork can still be served after it carrying its
+retained-era envelope: by a read pinned to a pre-fork block, by a record of one
+action's own state, and by an indexer older than `4.4.0-rc.6`, which serves a
+contract untouched since the fork that way for good (midnight-indexer #1605).
+The current ledger's composer cannot deserialize those bytes — it accepts only
+its own envelope — so a keep-state call had nothing to hand it and could not be
+composed at all.
 
-`reexpressOperationsForCurrentEra` (`packages/protocol/src/lib/v9/operations.ts`)
+`reexpressOperationsForLedger9` (`packages/protocol/src/lib/v9/operations.ts`)
 is what closes that gap. This document records what actually crosses the era
 boundary there, why it is a faithful re-expression rather than a substitution,
 and what it deliberately leaves behind.
@@ -40,7 +42,7 @@ holds:
 - The caller has already checked its local artifact against them — see
   [VerifierKeys](./verifier-keys.md).
 - The current ledger models retained-era operations NATIVELY.
-  `ContractOperationVersion` carries a `'v3'` arm precisely for them, so a key
+  `ContractOperationVersion` carries a `'v3'` variant precisely for them, so a key
   preserved across the fork is a value this ledger is built to hold.
 
 That last point is the load-bearing one. This is not a shim that dresses an old

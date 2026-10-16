@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -11,10 +11,10 @@ naming where the state the constructor produces is stored.
 
 Both members together or neither: a state with no id has nowhere to go, and
 an id with no state stores `undefined` under a name a later call will read
-back. `IncompleteDeployContractPrivateStateConfig` reports the first pairing
-at run time for a caller that reached it through an untyped route; the type
-refuses both. The current era's `DeployContractOptionsWithPrivateState` is
-the same shape for the same reason.
+back. The type refuses either half alone, and
+`IncompleteDeployContractPrivateStateConfig` refuses it at run time for a
+caller that reached it through an untyped route. The current era's
+`DeployContractOptionsWithPrivateState` is the same shape for the same reason.
 
 ## Extends
 

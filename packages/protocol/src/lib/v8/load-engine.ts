@@ -21,11 +21,11 @@ import type * as Engine from './engine.js';
 export type {
   ConstructorResultPojo,
   EncodedStateValue,
+  Ledger8CircuitOptions,
+  Ledger8ConstructorOptions,
   Ledger8Engine,
+  Ledger8EngineContract,
   Ledger8SigningKey,
-  RetainedContract,
-  RunRetainedCircuitOptions,
-  RunRetainedConstructorOptions,
   TranscriptPojo,
   VerifierKeyReader,
   WrapKeepStateCallOptions
@@ -61,7 +61,7 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  *   unwrapped if a lower layer ever reports `onchain-runtime-v3` resolved to
  *   two physically distinct copies.
  * @see {@link ModuleGraphAndLazyLoading}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
   (enginePromise ??= import('../../engine.js')

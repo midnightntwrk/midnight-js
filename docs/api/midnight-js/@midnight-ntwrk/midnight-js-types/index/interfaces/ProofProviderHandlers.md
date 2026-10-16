@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -11,8 +11,8 @@ The per-era handlers [createProofProviderFromHandlers](../functions/createProofP
 
 Writing the handlers rather than the whole interface means an implementation
 never writes a `version` tag, never narrows a payload, and cannot answer in
-the wrong era — the factory routes each request to its own era's arm and tags
-the answer to match. What is left in each arm is the proving itself.
+the wrong era — the factory routes each request to its own era's handler and tags
+the answer to match. What is left in each handler is the proving itself.
 
 ## Properties
 

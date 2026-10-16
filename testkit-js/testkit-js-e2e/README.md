@@ -96,10 +96,10 @@ MN_TEST_WALLET_SEED="optional-seed-phrase"
 
 # Custom Environment (when env-var-remote)
 MN_TEST_NETWORK_ID="custom-network-id"
-MN_TEST_INDEXER="http://custom-indexer:3085/api/"
-MN_TEST_INDEXER_WS="ws://custom-indexer:3085/ws/"
-MN_TEST_NODE="http://custom-node:3086"
-MN_TEST_FAUCET="http://custom-faucet:3087"
+MN_TEST_INDEXER="https://custom-indexer:3085/api/"
+MN_TEST_INDEXER_WS="wss://custom-indexer:3085/ws/"
+MN_TEST_NODE="https://custom-node:3086"
+MN_TEST_FAUCET="https://custom-faucet:3087"
 ```
 
 ### Docker image versions
@@ -134,7 +134,7 @@ yarn e2e
 
 A file named `*.v8era.it.test.ts` is excluded from the default matrix and run by
 its own CI lane against `testkit-js/env/v8era.env` — node 1.0.0, indexer
-4.4.0-rc.5, proof server 8.1.2, which is a real ledger-v8 network.
+4.4.0-rc.6-68702121, proof server 8.1.2, which is a real ledger-v8 network.
 
 Contracts for those tests are **retained-era twins**: the same `.compact` sources,
 compiled with `compactc` 0.31.1 so the framework routes them to the retained
@@ -146,7 +146,7 @@ yarn compact-retained   # rebuild the twins (committed, so rarely needed)
 ```
 
 Which contracts earn a twin, why the directory is separate, why the emitted
-runtime import is rewritten, and which `ledger-v8` instance the wallet seam uses:
+runtime import is rewritten, and which `ledger-v8` instance the wallet provider uses:
 `docs/architecture/retained-era-coverage.md`.
 
 ---

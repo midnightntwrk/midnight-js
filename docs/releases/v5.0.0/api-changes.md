@@ -51,7 +51,7 @@ export interface ContractEventAddress {
 export interface ContractEventBase {
   readonly id: number;              // monotonic indexer cursor; inclusive resumption point
   readonly maxId: number;           // highest event id known (events tip)
-  readonly version: number;         // payload schema version
+  readonly payloadVersion: number;  // payload schema version, not a ledger era (renamed from `version` in #1508)
   readonly contractAddress: ContractAddress;
   readonly transactionId: number;   // indexer row id — NOT the chain tx hash
   readonly raw: string;             // opaque hex VersionedLogItem, verbatim
@@ -126,35 +126,35 @@ export const parseContractKeyLocation: (s: string) => ContractKeyLocation | unde
 export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 ```
 
-### Version-tagged provider seams (#1204)
+### Version-tagged provider methods (#1204)
 
 ```ts
-// Seam vocabulary — closed, so a caught error's `seam` can be switched on.
-export type ProviderSeam = 'proveTx' | 'balanceTx' | 'submitTx';
-export type ReadSeam = 'watchForTxData' | 'watchForDeployTxData';
-export type Seam = ProviderSeam | ReadSeam;
+// Method names — closed, so a caught error's `method` can be switched on.
+export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
+export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
+export type ProviderMethod = TransactionMethod | ReadMethod;
 
 // Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
-export interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-export interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
-export type VersionedUnprovenTransaction  = VersionedTx<UnprovenTransaction>;
-export type VersionedUnboundTransaction   = VersionedTx<UnboundTransaction>;
-export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
+export interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+export interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
+export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
+export type VersionedUnprovenTransaction  = VersionedTransaction<UnprovenTransaction>;
+export type VersionedUnboundTransaction   = VersionedTransaction<UnboundTransaction>;
+export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
 
-// Read surface. A *different* union — its v8 arm carries `tx`, not `txBytes`.
+// Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface FinalizedTxDataV8 extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: V8Transaction; }
-export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8FinalizedTransaction; }
+export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
-// Narrowing. Accepts the three transaction seams only — not the read surface.
-export const unwrapV9: <T>(payload: VersionedTx<T>, seam: ProviderSeam) => T;
-export class V8PayloadUnsupportedError extends Error { readonly code; readonly seam: ProviderSeam; readonly byteLength?: number; }
-export class UntaggedPayloadError extends Error { readonly code; readonly seam: Seam; readonly received: string; }
+// Narrowing. Accepts the three transaction methods only — not the read surface.
+export const unwrapLedger9: <T>(payload: VersionedTransaction<T>, method: TransactionMethod) => T;
+export class Ledger8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
+export class UntaggedPayloadError extends Error { readonly code; readonly method: ProviderMethod; readonly received: string; }
 
 // Adapters: lift a v9-only implementation into the tagged interfaces.
-export interface V9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
-export const createWalletProvider: (impl: V9WalletProvider) => WalletProvider;
+export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
+export const createWalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
 export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
 ```
 
@@ -174,7 +174,7 @@ export type PositionedRecord<T> = {
 };
 
 interface PublicDataProvider {
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<ContractState>>;
+  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<VersionedContractState>>; // VersionedContractState since #1508
   rawContractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<RawContractState>>;
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<UnshieldedBalances>>;
 }
@@ -234,31 +234,31 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 ```ts
 // Thrown when a provider or the read surface answers in a ledger era the flow
 // cannot accept. `expected` is the era it can accept -- for the current era's
-// flows that is 'v9'; the retained era's finalizing arm passes the network
+// flows that is 'v9'; the retained era's finalizing path passes the network
 // head, because a retained-era call is recorded by whichever ledger the head is
 // on. `received` is the era that actually came back. A payload whose tag is
 // missing or unrecognised raises UntaggedPayloadError instead.
-export type EraSeam = Seam; // re-exported vocabulary from midnight-js-types
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
-  readonly seam: EraSeam;
+  readonly method: ProviderMethod; // from midnight-js-types
   readonly circuitId?: string | readonly string[];
   readonly expected: LedgerVersion;
   readonly received?: LedgerVersion;
+  readonly contractAddress?: string;
 }
 ```
 
-`submitTx` narrows internally, so its return type is unchanged.
+`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 
 ```ts
-export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   readonly contractAddress: ContractAddress; // no initialContractState
 }
-export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;
   readonly private: UnsubmittedDeployTxPrivateData<C>;
 }
@@ -307,18 +307,18 @@ Era resolution (#1204) — the `version` on a finalized record is derived from t
 record's own `protocolVersion`, never asserted, and that answer also selects the
 ledger runtime the record is decoded with. `watchForTxData` and
 `watchForDeployTxData` therefore resolve `VersionedFinalizedTxData` and really
-do produce both arms; the pre-fork runtime is acquired lazily, so a session that
+do produce both variants; the pre-fork runtime is acquired lazily, so a session that
 meets no v8-era record never instantiates it.
 
 ```ts
-export class EraUnresolvableError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE';
+export class UnknownRecordEraError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA';
   // protocolVersion maps to no era at all. The originating
   // UnknownProtocolVersionError is preserved on `cause`.
 }
-export class EraUnsupportedError extends IndexerError {
-  readonly code: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED';
-  readonly seam: ReadSeam;
+export class DecoderEraUnsupportedError extends IndexerError {
+  readonly code: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED';
+  readonly method: ReadMethod;
   readonly era: LedgerVersion;      // an era the decoder table has no entry for
   readonly protocolVersion: number; // the raw integer the indexer reported
   readonly recordRef?: string;      // the txId or contractAddress being read
@@ -347,9 +347,9 @@ export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }
 // Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
 // `./errors` leaf subpath; re-exported here, so either import works.
 export const PROVIDER_ERROR_CODES: Readonly<{
-  V8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
-  ERA_UNSUPPORTED: string; ERA_UNRESOLVABLE: string;
-  SEAM_ERA_UNSUPPORTED: string;
+  LEDGER8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
+  DECODER_ERA_UNSUPPORTED: string; UNKNOWN_RECORD_ERA: string;
+  PROVIDER_ERA_UNSUPPORTED: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;
@@ -372,7 +372,7 @@ export function hasForeignErrorCode<C extends string>(
 ): error is Error & { code: C };
 
 // Exhaustiveness guard for the version-tagged unions (#1254). Closes the
-// `default` arm of a `switch` so a future era arm cannot fall through unhandled.
+// `default` case of a `switch` so a future era variant cannot fall through unhandled.
 // Never renders `value` into its message; `context` is required and locates the throw.
 export function assertNever(value: never, context: string): never;
 export class UnhandledUnionMemberError extends Error {

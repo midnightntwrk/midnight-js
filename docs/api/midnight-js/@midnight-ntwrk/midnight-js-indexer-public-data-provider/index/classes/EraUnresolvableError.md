@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -69,9 +69,23 @@ The record this happened on, when known.
 
 ## Properties
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`category`](IndexerError.md#category)
+
+***
+
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_PR_ERA_UNRESOLVABLE"` = `PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`code`](IndexerError.md#code)
 
 ***
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -44,6 +44,26 @@ The GraphQL errors reported by the server.
 [`IndexerError`](IndexerError.md).[`constructor`](IndexerError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`category`](IndexerError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_INDEXER_GRAPHQL_FAILED"` = `PROVIDER_ERROR_CODES.INDEXER_GRAPHQL_FAILED`
+
+#### Overrides
+
+[`IndexerError`](IndexerError.md).[`code`](IndexerError.md#code)
+
+***
 
 ### errors
 

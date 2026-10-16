@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
 
 ***
 
@@ -38,14 +38,14 @@ The logger instance for logging information.
 
 ### health()
 
-> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 Checks the health status of the indexer service.
 Makes a GET request to the status endpoint of the indexer service.
 
 #### Returns
 
-`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 A promise that resolves to the response of the health check or logs an error if the request fails.
 
@@ -53,7 +53,7 @@ A promise that resolves to the response of the health check or logs an error if 
 
 ### proveTx()
 
-> **proveTx**(`data?`, `config?`): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+> **proveTx**(`data?`, `config?`): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 Proves a transaction by sending a POST request to the proof server.
 
@@ -73,4 +73,4 @@ Axios request configuration
 
 #### Returns
 
-`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>

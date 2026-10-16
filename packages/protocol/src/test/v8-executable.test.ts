@@ -30,20 +30,20 @@ import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/C
 import type { ZswapLocalState as CurrentZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import type * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type {
-  AlignedValue as LedgerV8AlignedValue,
-  CallContext as LedgerV8CallContext,
-  Effects as LedgerV8Effects,
-  EncodedStateValue as LedgerV8EncodedStateValue,
-  Op as LedgerV8Op,
-  Transcript as LedgerV8Transcript
+  AlignedValue as Ledger8AlignedValue,
+  CallContext as Ledger8CallContext,
+  Effects as Ledger8Effects,
+  EncodedStateValue as Ledger8EncodedStateValue,
+  Op as Ledger8Op,
+  Transcript as Ledger8Transcript
 } from '@midnightntwrk/ledger-v8';
 import type {
-  AlignedValue as LedgerV9AlignedValue,
-  CallContext as LedgerV9CallContext,
-  Effects as LedgerV9Effects,
-  EncodedStateValue as LedgerV9EncodedStateValue,
-  Op as LedgerV9Op,
-  Transcript as LedgerV9Transcript
+  AlignedValue as Ledger9AlignedValue,
+  CallContext as Ledger9CallContext,
+  Effects as Ledger9Effects,
+  EncodedStateValue as Ledger9EncodedStateValue,
+  Op as Ledger9Op,
+  Transcript as Ledger9Transcript
 } from '@midnightntwrk/ledger-v9';
 import type { TokenType } from '@midnightntwrk/ledger-v9';
 import * as glue from 'compact-runtime-ledger8';
@@ -66,9 +66,9 @@ import {
   pinnedClock,
   recodeVerifierKeyBlobFailure,
   refuseVerifierKeyRead,
+  runLedger8Circuit,
+  runLedger8Constructor,
   runOrRethrow,
-  runRetainedCircuit,
-  runRetainedConstructor,
   soleCall,
   structurallyEqual
 } from '../lib/v8/executable';
@@ -120,10 +120,10 @@ interface CounterModule {
 
 /**
  * Builds the contract state the call runs against, as the SERIALIZED bytes the
- * chain serves — which is the only form {@link runRetainedCircuit} accepts.
+ * chain serves — which is the only form {@link runLedger8Circuit} accepts.
  *
  * Runs the artifact's own constructor through the retained glue rather than
- * through `runRetainedConstructor`, so a fault in the constructor path cannot
+ * through `runLedger8Constructor`, so a fault in the constructor path cannot
  * make the circuit assertions below pass or fail for the wrong reason.
  */
 
@@ -174,14 +174,14 @@ const encodedThreeEntryMap = (): EncodedMapStateValue => {
   return encoded;
 };
 
-describe('runRetainedCircuit against the counter-016 artifact (real compact-runtime@0.16)', () => {
+describe('runLedger8Circuit against the counter-016 artifact (real compact-runtime@0.16)', () => {
   it('reproduces the committed golden transcript', async () => {
     // Arrange.
     const { module: contractModule, contract } = await loadCounter();
     const contractState = await freshCounterState(contractModule);
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -211,7 +211,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const contractState = await freshCounterState(contractModule);
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -235,7 +235,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const contractState = await freshCounterState(contractModule);
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -259,7 +259,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const nowSeconds = 1_700_000_000;
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -288,7 +288,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const contractState = await freshCounterState(contractModule, new Map([[colour, held]]));
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -321,7 +321,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     );
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'receive_coin',
       args: [{ nonce: new Uint8Array(32).fill(7), color: new Uint8Array(32), value: 42n }],
@@ -355,7 +355,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     let constructorRan = false;
 
     // Act.
-    const rejection = await runRetainedConstructor({
+    const rejection = await runLedger8Constructor({
       contract,
       args: [],
       privateState: {},
@@ -384,7 +384,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const nearMiss = 'c5'.repeat(31);
 
     // Act.
-    const rejection = await runRetainedConstructor({
+    const rejection = await runLedger8Constructor({
       contract,
       args: [],
       privateState: {},
@@ -403,7 +403,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const { contract } = await loadCounter();
 
     // Act.
-    const rejection = await runRetainedConstructor({
+    const rejection = await runLedger8Constructor({
       contract,
       args: [],
       privateState: {},
@@ -428,7 +428,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const { contract } = await loadCounter();
 
     // Act.
-    const rejection = await runRetainedConstructor({
+    const rejection = await runLedger8Constructor({
       contract,
       args: [],
       privateState: {},
@@ -436,7 +436,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
       verifierKeys: () => Promise.resolve(new Uint8Array([0x00, 0x01, 0x02]))
     }).catch((error: unknown) => error);
 
-    // Assert. The same stage the v9 arm raises for the same fault, so a
+    // Assert. The same stage the v9 path raises for the same fault, so a
     // consumer switching on `stage` is not told a different story per era.
     expect(rejection).toBeInstanceOf(ComposeFailedError);
     expect((rejection as ComposeFailedError).stage).toBe('deploy-verifier-key-blob');
@@ -451,7 +451,7 @@ describe('runRetainedCircuit against the counter-016 artifact (real compact-runt
     const cause = new Error('the key store was unreachable');
 
     // Act.
-    const rejection = await runRetainedConstructor({
+    const rejection = await runLedger8Constructor({
       contract,
       args: [],
       privateState: {},
@@ -504,7 +504,7 @@ describe('the balance a circuit actually reads', () => {
     const observed = balanceSeenByTheCircuit(contract);
 
     // Act.
-    await runRetainedCircuit({
+    await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -527,7 +527,7 @@ describe('the balance a circuit actually reads', () => {
     const observed = balanceSeenByTheCircuit(contract);
 
     // Act.
-    await runRetainedCircuit({
+    await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -555,7 +555,7 @@ describe('refuseVerifierKeyRead', () => {
     expect(rejection).toMatchObject({
       code: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED',
       message:
-        "a retained-era circuit call read the verifier key for 'increment'. Circuit calls are " +
+        "a ledger 8 circuit call read the verifier key for 'increment'. Circuit calls are " +
         'not supposed to read ZK configuration; only deployment and maintenance are.'
     });
   });
@@ -584,7 +584,7 @@ describe('pinnedClock', () => {
 
   it('accepts a FRACTIONAL second, which is what the obvious consumer expression produces', () => {
     // Arrange. `nowSeconds` is a plain `number` on the published
-    // `RunRetainedCircuitOptions`, and `Date.now() / 1000` -- the expression a
+    // `Ledger8CircuitOptions`, and `Date.now() / 1000` -- the expression a
     // consumer reaches for -- is fractional. Unrounded, `BigInt(millis)` dies
     // with `RangeError: ... cannot be converted to a BigInt because it is not
     // an integer`, from inside the clock builder, naming neither the option nor
@@ -618,7 +618,7 @@ describe('pinnedClock refuses a second it cannot pin to', () => {
     // Assert.
     expect(refusal).toThrow(InvalidArgumentError);
     expect(refusal).toThrow(
-      `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
+      `the ledger 8 runtime cannot pin its execution clock to '${String(nowSeconds)}'. ` +
         '`nowSeconds` must be a finite number of seconds since the epoch.'
     );
   });
@@ -653,7 +653,7 @@ describe('a failing circuit', () => {
     const contractState = await freshCounterState(contractModule);
 
     // Act.
-    const rejection = await runRetainedCircuit({
+    const rejection = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: ['not-an-argument-this-circuit-takes'],
@@ -943,15 +943,15 @@ describe('runOrRethrow', () => {
   });
 });
 
-// The two state guards `runRetainedCircuit` runs BEFORE it executes anything.
+// The two state guards `runLedger8Circuit` runs BEFORE it executes anything.
 // Both used to live in the hand-maintained `lib/v8/down-convert.ts`; both are
-// reachable from the published seam, because `RunRetainedCircuitOptions` takes
+// reachable from the published entry point, because `Ledger8CircuitOptions` takes
 // a `ContractStatePojo` whose `state` is a bare `EncodedStateValue` a caller
 // can assemble by hand, and whose `balance` is an ordinary interface member.
-describe('runRetainedCircuit refuses a state it cannot execute against', () => {
+describe('runLedger8Circuit refuses a state it cannot execute against', () => {
   const runAgainst = async (contractState: ContractStatePojo): Promise<unknown> => {
     const { contract } = await loadCounter();
-    return runRetainedCircuit({
+    return runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -986,7 +986,7 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
     const rejection = await runAgainst({ ...fresh, balance: balance as ContractBalance });
 
     // Assert.
-    // CODED, like every other refusal on this seam: a consumer switching on
+    // CODED, like every other refusal from `runLedger8Circuit`: a consumer switching on
     // `stage` must not be handed a classless error for the one refusal that
     // exists to keep #1345 closed.
     expect(rejection).toBeInstanceOf(DownConvertFailedError);
@@ -1090,7 +1090,7 @@ describe('runRetainedCircuit refuses a state it cannot execute against', () => {
   });
 });
 
-describe('runRetainedCircuit refuses a circuit the contract does not declare', () => {
+describe('runLedger8Circuit refuses a circuit the contract does not declare', () => {
   // `provableCircuits` is a plain object literal in the 0.16 artifact, so its
   // PROTOTYPE is live. compact-js resolves a circuit with `contract
   // .provableCircuits[id]` guarded only by `if (!circuit)`, which a prototype
@@ -1107,7 +1107,7 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
       const contractState = await freshCounterState(contractModule);
 
       // Act.
-      const rejection = await runRetainedCircuit({
+      const rejection = await runLedger8Circuit({
         contract,
         circuitId,
         args: [],
@@ -1120,7 +1120,7 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
       // Assert.
       expect(rejection).toBeInstanceOf(InvalidArgumentError);
       expect((rejection as Error).message).toBe(
-        `No circuit named '${circuitId}' on this retained-era contract instance. Available circuits: increment.`
+        `No circuit named '${circuitId}' on this ledger 8 contract instance. Available circuits: increment.`
       );
     }
   );
@@ -1131,7 +1131,7 @@ describe('runRetainedCircuit refuses a circuit the contract does not declare', (
     const contractState = await freshCounterState(contractModule);
 
     // Act.
-    const transcript = await runRetainedCircuit({
+    const transcript = await runLedger8Circuit({
       contract,
       circuitId: 'increment',
       args: [],
@@ -1260,36 +1260,36 @@ describe('structurallyEqual', () => {
 type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
 type Expect<T extends true> = T;
 
-type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
-type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
-type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
+type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, Ledger9EncodedStateValue>>;
+type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, Ledger9Op<null>>>;
+type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, Ledger9AlignedValue>>;
 type _TranscriptUnchanged = Expect<
-  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, Ledger9Transcript<Ledger9AlignedValue>>
 >;
 
 // The ledger-v8 axis, pinned for the same reason: `assemble-call.ts` crosses the
 // envelope into whichever ledger module it is handed, and its safety argument --
 // a safe envelope crossing, not a lossy re-encode -- covers ledger-v8 as soon as
 // the retained leg binds to it.
-type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
-type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
-type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
-type _V8TranscriptUnchanged = Expect<
-  AssertEqual<LedgerV8Transcript<LedgerV8AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+type _Ledger8EncodedStateValueUnchanged = Expect<AssertEqual<Ledger8EncodedStateValue, Ledger9EncodedStateValue>>;
+type _Ledger8OpUnchanged = Expect<AssertEqual<Ledger8Op<null>, Ledger9Op<null>>>;
+type _Ledger8AlignedValueUnchanged = Expect<AssertEqual<Ledger8AlignedValue, Ledger9AlignedValue>>;
+type _Ledger8TranscriptUnchanged = Expect<
+  AssertEqual<Ledger8Transcript<Ledger8AlignedValue>, Ledger9Transcript<Ledger9AlignedValue>>
 >;
 
 // `CallContext` and `Effects` join them one step further out, and this is the row
-// closest to the new code: `runRetainedCircuit` reads `partitionInputs.block` and
+// closest to the new code: `runLedger8Circuit` reads `partitionInputs.block` and
 // `.effects` off compact-js's RETAINED types and publishes them as
 // `PartitionContext`, declared once against ledger-v9, which a composition leg
 // then writes onto whichever era's `QueryContext` it partitions against. Three
 // axes have to agree for that to be a move rather than a re-encode, and the WASM
 // setters reject a mismatched record at runtime, from inside wasm, with no
 // compile error to warn first.
-type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, LedgerV9CallContext>>;
-type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, LedgerV9Effects>>;
-type _V8CallContextUnchanged = Expect<AssertEqual<LedgerV8CallContext, LedgerV9CallContext>>;
-type _V8EffectsUnchanged = Expect<AssertEqual<LedgerV8Effects, LedgerV9Effects>>;
+type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, Ledger9CallContext>>;
+type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, Ledger9Effects>>;
+type _Ledger8CallContextUnchanged = Expect<AssertEqual<Ledger8CallContext, Ledger9CallContext>>;
+type _Ledger8EffectsUnchanged = Expect<AssertEqual<Ledger8Effects, Ledger9Effects>>;
 
 // ADR-0009 declares `nextZswapLocalState` once, as the CURRENT era's
 // `ZswapLocalState`, rather than behind a third type parameter -- and rests that

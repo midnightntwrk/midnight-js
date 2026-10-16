@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -242,15 +242,21 @@ Re-exports [CurrentEraSubmitter](../../types/type-aliases/CurrentEraSubmitter.md
 
 ***
 
-### EraArmRequest
-
-Re-exports [EraArmRequest](../../types/type-aliases/EraArmRequest.md)
-
-***
-
 ### EraDeclaringProvider
 
 Re-exports [EraDeclaringProvider](../../types/interfaces/EraDeclaringProvider.md)
+
+***
+
+### EraEntryShape
+
+Re-exports [EraEntryShape](../../types/type-aliases/EraEntryShape.md)
+
+***
+
+### EraRequest
+
+Re-exports [EraRequest](../../types/type-aliases/EraRequest.md)
 
 ***
 
@@ -404,6 +410,12 @@ Re-exports [MAX_EXPORT_STATES](../../types/variables/MAX_EXPORT_STATES.md)
 
 ***
 
+### MidnightConfig
+
+Re-exports [MidnightConfig](../../types/interfaces/MidnightConfig.md)
+
+***
+
 ### MidnightProvider
 
 Re-exports [MidnightProvider](../../types/interfaces/MidnightProvider.md)
@@ -422,9 +434,15 @@ Re-exports [MidnightProviders](../../types/interfaces/MidnightProviders.md)
 
 ***
 
-### narrowToEraArm
+### narrowToEra
 
-Re-exports [narrowToEraArm](../../types/variables/narrowToEraArm.md)
+Re-exports [narrowToEra](../../types/variables/narrowToEra.md)
+
+***
+
+### NetworkId
+
+Re-exports [NetworkId](../../types/type-aliases/NetworkId.md)
 
 ***
 
@@ -437,6 +455,18 @@ Re-exports [PositionedRecord](../../types/type-aliases/PositionedRecord.md)
 ### PRIVATE\_STATE\_ROOT\_PATH
 
 Re-exports [PRIVATE_STATE_ROOT_PATH](../../types/variables/PRIVATE_STATE_ROOT_PATH.md)
+
+***
+
+### PrivateStateDecryptionError
+
+Re-exports [PrivateStateDecryptionError](../../types/classes/PrivateStateDecryptionError.md)
+
+***
+
+### PrivateStateDecryptionReason
+
+Re-exports [PrivateStateDecryptionReason](../../types/type-aliases/PrivateStateDecryptionReason.md)
 
 ***
 
@@ -470,6 +500,12 @@ Re-exports [PrivateStateImportErrorCause](../../types/type-aliases/PrivateStateI
 
 ***
 
+### PrivateStateLimitExceededError
+
+Re-exports [PrivateStateLimitExceededError](../../types/classes/PrivateStateLimitExceededError.md)
+
+***
+
 ### PrivateStateProvider
 
 Re-exports [PrivateStateProvider](../../types/interfaces/PrivateStateProvider.md)
@@ -488,6 +524,12 @@ Re-exports [PrivateStateSerializationFailure](../../types/type-aliases/PrivateSt
 
 ***
 
+### PrivateStateStorageError
+
+Re-exports [PrivateStateStorageError](../../types/classes/PrivateStateStorageError.md)
+
+***
+
 ### ProofProvider
 
 Re-exports [ProofProvider](../../types/interfaces/ProofProvider.md)
@@ -500,6 +542,12 @@ Re-exports [ProofProviderHandlers](../../types/interfaces/ProofProviderHandlers.
 
 ***
 
+### ProofServerError
+
+Re-exports [ProofServerError](../../types/classes/ProofServerError.md)
+
+***
+
 ### ProverKey
 
 Re-exports [ProverKey](../../types/type-aliases/ProverKey.md)
@@ -509,6 +557,12 @@ Re-exports [ProverKey](../../types/type-aliases/ProverKey.md)
 ### ProveTxConfig
 
 Re-exports [ProveTxConfig](../../types/interfaces/ProveTxConfig.md)
+
+***
+
+### PROVIDER\_ERROR\_CATEGORIES
+
+Re-exports [PROVIDER_ERROR_CATEGORIES](../../types/variables/PROVIDER_ERROR_CATEGORIES.md)
 
 ***
 
@@ -692,6 +746,12 @@ Re-exports [UntaggedPayloadError](../../types/classes/UntaggedPayloadError.md)
 
 ***
 
+### UnusableEraEntryError
+
+Re-exports [UnusableEraEntryError](../../types/classes/UnusableEraEntryError.md)
+
+***
+
 ### unwrapV9
 
 Re-exports [unwrapV9](../../types/variables/unwrapV9.md)
@@ -767,6 +827,12 @@ Re-exports [WalletProvider](../../types/interfaces/WalletProvider.md)
 ### WalletProviderHandlers
 
 Re-exports [WalletProviderHandlers](../../types/interfaces/WalletProviderHandlers.md)
+
+***
+
+### ZkArtifactFetchError
+
+Re-exports [ZkArtifactFetchError](../../types/classes/ZkArtifactFetchError.md)
 
 ***
 

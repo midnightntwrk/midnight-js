@@ -79,7 +79,7 @@ Two things to know about what ships:
 
 | File | protocolVersion | Mint path | What it is |
 |---|---|---|---|
-| `state-v8.hex` | 1000000 | mint (npm, cheap) | `state-v8-v6-envelope.hex` bridged through `ledger-v8`'s `ContractState` (`LedgerContractStateV8.deserialize(bytes).serialize()`), the same bridge `assemble.ts:59-60` uses. **Finding:** byte-identical to its input — ledger-v8's codec accepts the v6-tagged envelope unchanged. |
+| `state-v8.hex` | 1000000 | mint (npm, cheap) | `state-v8-v6-envelope.hex` bridged through `ledger-v8`'s `ContractState` (`Ledger8ContractState.deserialize(bytes).serialize()`), the same bridge `assemble.ts:59-60` uses. **Finding:** byte-identical to its input — ledger-v8's codec accepts the v6-tagged envelope unchanged. |
 | `state-v8-v6-envelope.hex` | 1000000 | golden (ported) | Raw `compact-runtime-0.16` `ContractState.serialize()` output. Tag `contract-state[v6]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/downcast-v8.hex` (byte-identical across islands 1/2/3 and `ts-downcast/`). |
 | `state-migrated-v9.hex` | 2000000 | golden (ported) | A real ledger-8→9 migrated contract state. Tag `contract-state[v8]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/migrated-v9.hex`. Produced upstream by the prototype's Rust simulator's `migrate-8-to-9` state translation. |
 | `state-migrated-v9-merkle.hex` | 2000000 | mint (npm, cheap) | Synthetic (not a real migration): a hand-built, rehashed `StateBoundedMerkleTree` wrapped in a `ContractState`, built only from `@midnightntwrk/ledger-v9`'s public API. Deserializes cleanly with `ledger-v9`. |
@@ -602,7 +602,7 @@ rewrite as `counter-016/`'s, for the same reason.
 the test asserts `runtime-version: 0.16.0` and `compiler-version: 0.31.1` on
 it, so a recompile with the repo's own pinned `compactc` (0.35.x → runtime
 0.20, async codegen) fails loudly instead of silently producing an artifact
-that never reaches the seam under test.
+that never reaches the code under test.
 
 The artifact is committed byte-verbatim, including its trailing
 `//# sourceMappingURL=index.js.map` line with no `.js.map` beside it — same as
@@ -643,7 +643,7 @@ nine top-level state fixtures. Reach these by path, through `hfFixturePath`.
 > glue stamped the wall clock when a circuit context was built and the engine
 > took no clock — so a recording that kept them would have been a different file
 > on every run. `executeCircuit` now takes the execution clock as an input
-> (`RunRetainedCircuitOptions.nowSeconds`), so the recording is the runtime's own
+> (`Ledger8CircuitOptions.nowSeconds`), so the recording is the runtime's own
 > output end to end. The minting suite asserts that it matches a live execution,
 > and that it still composes on **both** eras.
 

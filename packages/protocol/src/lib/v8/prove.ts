@@ -15,7 +15,7 @@
 
 import { PayloadNotATransactionError, TRANSACTION_TAG_PREFIX } from '../../errors';
 import type { ProvingProvider } from '../../v8.js';
-import { loadLedger8 } from './load';
+import { loadLedger8Protocol } from './load';
 
 const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (character) =>
   character.charCodeAt(0)
@@ -23,13 +23,13 @@ const TRANSACTION_TAG_PREFIX_BYTES = Uint8Array.from(TRANSACTION_TAG_PREFIX, (ch
 
 // Establishes that the bytes are a serialized TRANSACTION, and deliberately not
 // which era wrote them: both eras' tags open identically. The era is carried by
-// the `version` discriminant of the payload the seam received, and the runtime
+// the `version` discriminant of the payload `proveTx` received, and the runtime
 // re-validates the full tag when it deserializes.
 //
 // Compared byte-wise rather than by decoding a prefix to text: the input is
-// attacker-controlled at this seam.
+// attacker-controlled here.
 const assertSerializedTransaction = (txBytes: Uint8Array): void => {
-  // Checked despite the declared type: this is the seam an untyped caller
+  // Checked despite the declared type: this is the function an untyped caller
   // reaches, and reading `.byteLength` off whatever actually arrived would
   // raise a bare `TypeError` carrying no code.
   if (!(txBytes instanceof Uint8Array)) {
@@ -47,12 +47,12 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * Proves a retained-era transaction, taking serialized bytes and returning
  * serialized bytes.
  *
- * Bytes on both sides is the seam's contract, not an implementation detail: a
+ * Bytes on both sides is this function's contract, not an implementation detail: a
  * retained-era transaction cannot cross a provider boundary as a live object,
  * because the runtime that owns it is loaded lazily and its instances are not
  * interchangeable with the current era's.
  *
- * The cost model comes from the same `loadLedger8` result as the transaction
+ * The cost model comes from the same `loadLedger8Protocol` result as the transaction
  * class, and that pairing is load-bearing: the retained ledger ships its own
  * `CostModel` and its `prove()` checks the argument against that class across
  * the WASM boundary, so the current era's cost model is rejected with
@@ -78,12 +78,12 @@ const assertSerializedTransaction = (txBytes: Uint8Array): void => {
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
  * @see docs/adr/0010-publish-era-handles-alongside-their-plain-data.md
  */
-export const proveV8Transaction = async (
+export const proveLedger8Transaction = async (
   txBytes: Uint8Array,
   provingProvider: ProvingProvider
 ): Promise<Uint8Array> => {
   assertSerializedTransaction(txBytes);
-  const v8 = await loadLedger8();
+  const v8 = await loadLedger8Protocol();
   const unproven = v8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', txBytes);
   const proven = await unproven.prove(provingProvider, v8.CostModel.initialCostModel());
   return proven.serialize();

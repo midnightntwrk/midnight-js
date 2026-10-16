@@ -39,11 +39,11 @@ import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError, MixedEraScopeError, ScopedTxEraUnsupportedError } from '../errors';
+import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
-import { assertScopeAdmitsRetainedEraCall, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
+import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
-import { submitTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
@@ -107,7 +107,7 @@ describe('per-scope era resolution', () => {
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
     vi.mocked(createUnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
-    vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+    vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
   const callOptions = (): CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
@@ -148,7 +148,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = new Error('node unreachable');
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
     // Act
@@ -170,7 +170,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = new HeadReadFailedError('head read failed');
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
     // Act
@@ -192,7 +192,7 @@ describe('per-scope era resolution', () => {
     // Arrange
     onPostForkHead();
     const failure = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
-    vi.mocked(submitTx).mockRejectedValue(failure);
+    vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
 
     // Act
     const error = await withContractScopedTransaction(providers, async (txCtx) => {
@@ -237,7 +237,7 @@ describe('per-scope era resolution', () => {
     // composed half against each era.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(createUnprovenCallTx).toHaveBeenCalledTimes(2);
-    expect(submitTx).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a scope on a PRE-FORK head, before the scope body runs at all', async () => {
@@ -251,16 +251,16 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
     // The CODE, not only the class: a consumer that cannot import this
     // package's classes branches on `code`.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED)).toBe(true);
-    expect((caught as ScopedTxEraUnsupportedError).head).toBe('v8');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
+    expect((caught as ScopedTransactionEraUnsupportedError).head).toBe('v8');
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
     expect(createUnprovenCallTx).not.toHaveBeenCalled();
-    expect(submitTx).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
   it('refuses a PRE-FORK head WITHOUT acquiring that era, and still refuses when the acquisition would fail', async () => {
@@ -281,8 +281,8 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED)).toBe(true);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
     // NOTHING was acquired: not the era it refuses, and not any other.
     expect(eraLoadSlot.acquired).toEqual([]);
   });
@@ -327,7 +327,7 @@ describe('per-scope era resolution', () => {
     });
 
     expect(finalized.public.status).toBe('SucceedEntirely');
-    expect(submitTx).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
   it('admits a scope on a post-fork head reported by a LATER node minor release: eras decide, not integers', async () => {
@@ -349,7 +349,7 @@ describe('per-scope era resolution', () => {
     // by nesting into it. Reading it as an options bag would open a FRESH scope
     // and submit, on its own, the transaction the caller believed was nested:
     // the same "silently ran outside the scope it was handed" failure the
-    // mixed-era refusal exists to stop, one arm over.
+    // mixed-era refusal exists to stop, one path over.
     onPostForkHead();
 
     // Exercised through the internal entry the public one forwards to, whose
@@ -364,7 +364,7 @@ describe('per-scope era resolution', () => {
 
     // NOTHING was submitted: the outer scope owns the submission, exactly as
     // before. A fresh scope would have submitted here.
-    expect(submitTx).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
     // And no head read either -- a nested call inherits the outer scope's one
     // reading rather than taking a second.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -400,7 +400,7 @@ describe('a retained-era call handed a scope', () => {
   // A retained-era artifact, in the shape `resolveArtifactEra` recognises: own
   // `impureCircuits`, and an `initialState` that is a SYNCHRONOUS function.
   // Asserted below rather than assumed, so this fixture cannot drift into the
-  // current-era arm and make the negative vacuous.
+  // current-era path and make the negative vacuous.
   const retainedContract = {
     impureCircuits: { retainedCircuit: (): void => undefined },
     initialState: (): Record<string, never> => ({})
@@ -418,7 +418,7 @@ describe('a retained-era call handed a scope', () => {
     // longer decides the era -- it only says which declaration is consulted.
     const declaringRetained = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
 
-    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('ledger8');
+    await expect(resolveArtifactEra(retainedContract, declaringRetained)).resolves.toBe('v8');
   });
 
   it('is REFUSED rather than silently run outside the scope it was handed', () => {
@@ -427,7 +427,7 @@ describe('a retained-era call handed a scope', () => {
 
     let caught: unknown;
     try {
-      assertScopeAdmitsRetainedEraCall('retainedCircuit', scope);
+      assertScopeAdmitsLedger8Call('retainedCircuit', scope);
     } catch (error) {
       caught = error;
     }
@@ -441,7 +441,7 @@ describe('a retained-era call handed a scope', () => {
   });
 
   it('runs normally when it was handed no scope at all', () => {
-    expect(() => assertScopeAdmitsRetainedEraCall('retainedCircuit', undefined)).not.toThrow();
+    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined)).not.toThrow();
   });
 
   it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
@@ -462,7 +462,7 @@ describe('a retained-era call handed a scope', () => {
     try {
       await withContractScopedTransaction(providers, async (txCtx) => {
         // @ts-expect-error -- no overload admits a scope on the retained-era
-        // arm, which is what makes this reachable from JavaScript only. The
+        // overload, which is what makes this reachable from JavaScript only. The
         // directive PINS that claim: an overload that started accepting a
         // scope here would fail this line rather than silently widen the API.
         await submitCallTx(providers, retainedCallOptions(), txCtx);
@@ -486,7 +486,7 @@ describe('a retained-era call handed a scope', () => {
     // contract-scoped transaction" would name a scope it never had.
     let caught: unknown;
     try {
-      assertScopeAdmitsRetainedEraCall('retainedCircuit', bad);
+      assertScopeAdmitsLedger8Call('retainedCircuit', bad);
     } catch (error) {
       caught = error;
     }
@@ -522,7 +522,7 @@ describe('where the two fork-window behaviours meet', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTxEraUnsupportedError);
+    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
     // The head is read ONCE. Nothing re-reads it looking for a fork, because
     // there is no submission to diagnose -- the scope was refused before one
     // could exist.

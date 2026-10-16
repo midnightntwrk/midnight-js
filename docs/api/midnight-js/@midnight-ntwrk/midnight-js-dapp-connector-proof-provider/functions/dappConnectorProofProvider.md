@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -59,3 +59,8 @@ A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `pr
 Combines a wallet-backed [dappConnectorProvingProvider](dappConnectorProvingProvider.md) with the given `costModel`
 to produce a transaction-level proof provider. The wallet's proving provider is obtained
 once during initialization and reused for all subsequent `proveTx` calls.
+
+## Throws
+
+InvalidArgumentError raised by `proveTx`, before any proving starts, if
+`proveTxConfig.timeout` is set (including `0`): the wallet proving API takes no timeout.

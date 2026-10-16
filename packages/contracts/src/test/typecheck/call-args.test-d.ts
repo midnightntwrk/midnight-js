@@ -72,11 +72,11 @@ describe('CallOptionsWithArguments', () => {
       .toEqualTypeOf<[CoinReceiver016Coin]>();
   });
 
-  // The zero-argument arm of the same case, and the only assertion in this file that covers the
+  // The zero-argument side of the same case, and the only assertion in this file that covers the
   // half of the failure mode the header states: `args` staying present on a circuit that takes
   // NONE. The literal-keyed omission assertion above cannot reach it -- no brand enters its
   // computation. Should the branded key resolve to `unknown[]` again, it does NOT extend `[]`,
-  // so the conditional takes the wrong arm and this type gains a spurious REQUIRED `args`.
+  // so the conditional takes the wrong branch and this type gains a spurious REQUIRED `args`.
   it('omits args for a zero-argument circuit at the BRANDED id too', () => {
     type BrandedIncrementId = ProvableCircuitId<Counter016Contract, 'increment'>;
     expectTypeOf<CallOptionsWithArguments<Counter016Contract, BrandedIncrementId>>().not.toHaveProperty('args');
@@ -120,7 +120,7 @@ declare const transactionContext: TransactionContext<CoinReceiver016Contract, Re
 // `createCircuitCallTxInterface` is the one changed production path with no test of its own. Its
 // explicit type arguments and both `as` casts are ASSERTIONS -- a wrong one compiles -- and the
 // runtime tests mock `submitCallTx` and check only that arguments are passed through, so nothing
-// else pins the types the options reach it at. These assertions replicate both arms of the call it
+// else pins the types the options reach it at. These assertions replicate both overloads of the call it
 // makes, at the branded id a real call site carries.
 describe('createCircuitCallTxInterface', () => {
   it('hands submitCallTx options carrying the circuit\'s real argument tuple', () => {
@@ -139,7 +139,7 @@ describe('createCircuitCallTxInterface', () => {
     >();
   });
 
-  it('resolves both submitCallTx arms to the results the interface promises', () => {
+  it('resolves both submitCallTx overloads to the results the interface promises', () => {
     const callOptions = createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>(
       compiledContract,
       brandedCircuitId,

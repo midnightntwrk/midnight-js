@@ -26,13 +26,13 @@ import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
 // `yarn typecheck:tests` is what proves the guide's instructions compile for a
 // reader who follows them.
 //
-// The recipe is not executed: the `v8` arm's `tx` is a WASM class from
+// The recipe is not executed: the `v8` variant's `tx` is a WASM class from
 // `protocol/v8`, which this package may reference in a type position but not
 // import at runtime.
 
 // #region guide:narrowing-recipe
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
@@ -95,7 +95,7 @@ describe('migration guide narrowing recipe', () => {
     // Arrange / Act: guards the equality above passing on '' if both were emptied.
     const compiled = regionSource('guide:narrowing-recipe');
 
-    // Assert: both arms present, each reading its own era's `tx`, and closed by the
+    // Assert: both variants present, each reading its own era's `tx`, and closed by the
     // helper the chapter is about.
     expect(compiled).toContain('describeNative(record.tx)');
     expect(compiled).toContain('describeRetained(record.tx)');

@@ -100,7 +100,7 @@ describe('Protocol type ACL', () => {
       'ConstructorResultPojo',
       // The balances a contract holds, published because they are a member of
       // `ContractStatePojo` and a REQUIRED option of the engine's
-      // `executeCircuit`: a consumer driving the retained arm cannot name what
+      // `executeCircuit`: a consumer driving the retained-era path cannot name what
       // it has to carry without this.
       'ContractBalance',
       'ContractEntryPointPojo',
@@ -112,16 +112,21 @@ describe('Protocol type ACL', () => {
       'DeployResultPojo',
       'DownConvertStage',
       'EncodedStateValue',
+      'Ledger8CircuitOptions',
+      'Ledger8ConstructorOptions',
       // The retained era's execution surface: a consumer holding one needs to
       // name it to annotate a variable or write a helper. Its option and result
       // types are published beside it for the same reason.
       'Ledger8Engine',
+      'Ledger8EngineContract',
       'Ledger8InstanceAxis',
-      // Named by `RunRetainedConstructorOptions.signingKey` and reported back
+      'Ledger8Protocol',
+      // Named by `Ledger8ConstructorOptions.signingKey` and reported back
       // on `ConstructorResultPojo`. The retained era's signing key is a
       // different shape from the current era's, so a consumer cannot name it by
       // reusing the current-era one.
       'Ledger8SigningKey',
+      'Ledger8Subpath',
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
@@ -130,14 +135,9 @@ describe('Protocol type ACL', () => {
       'PartitionContext',
       'PartitionedCallTranscript',
       'ProtocolErrorCode',
-      'ProtocolV8',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
-      'RetainedContract',
-      'RetainedEraSubpath',
       'RetainedLedgerVersion',
-      'RunRetainedCircuitOptions',
-      'RunRetainedConstructorOptions',
       'TranscriptPojo',
       'VerifierKeyReader',
       'VersionedRecord',
@@ -150,7 +150,7 @@ describe('Protocol type ACL', () => {
   });
 
   it('publishes exactly this type surface from the ./engine subpath', () => {
-    // `Ledger8Engine.reexpressOperationsForCurrentEra` takes
+    // `Ledger8Engine.reexpressOperationsForLedger9` takes
     // `ContractEntryPointPojo[]`, so this entry has to publish that name to be
     // callable by a consumer that imports the engine through its own subpath.
     expect(engineTypeNames).toEqual([
@@ -163,15 +163,15 @@ describe('Protocol type ACL', () => {
       // to `executeCircuit`, primary state and balances together.
       'ContractStatePojo',
       'EncodedStateValue',
+      'Ledger8CircuitOptions',
+      'Ledger8ConstructorOptions',
       'Ledger8Engine',
-      'Ledger8SigningKey',
-      // `RunRetainedCircuitOptions.contract` is one of these, so a consumer
+      // `Ledger8CircuitOptions.contract` is one of these, so a consumer
       // building the container cannot declare it without this name.
-      'RetainedContract',
-      'RunRetainedCircuitOptions',
-      'RunRetainedConstructorOptions',
+      'Ledger8EngineContract',
+      'Ledger8SigningKey',
       'TranscriptPojo',
-      // `runRetainedConstructor` TAKES one: deployment registers verifier keys,
+      // `runLedger8Constructor` TAKES one: deployment registers verifier keys,
       // so a consumer has to be able to declare the reader it supplies.
       'VerifierKeyReader',
       'WrapKeepStateCallOptions'

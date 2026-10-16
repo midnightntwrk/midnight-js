@@ -36,7 +36,7 @@
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 
-import type { HeadEraReading, PipelineEra } from './era';
+import type { HeadEraReading } from './era';
 
 /**
  * Where a head reading came from.
@@ -97,7 +97,7 @@ export interface PipelineSelectionBreadcrumb {
   readonly source: 'artifact-runtime-version-declaration';
   readonly readingProvenance: HeadReadingProvenance;
   /** The pipeline the artifact belongs to. */
-  readonly path: PipelineEra;
+  readonly path: LedgerVersion;
   /**
    * The contract being operated on, present exactly when the operation names
    * one. ABSENT rather than empty for a deploy — an empty string would read as
@@ -109,12 +109,10 @@ export interface PipelineSelectionBreadcrumb {
 /**
  * The fetched contract state was dated from its envelope tag.
  *
- * The byte-level answer, and NOT the same claim as `RawContractState.version`.
+ * The byte-level answer, read from the bytes themselves.
  *
  * Carries no head integer and no reading provenance: dating an envelope is not
  * a head reading.
- *
- * @see {@link Breadcrumbs} for the difference from `RawContractState.version`.
  */
 export interface EncodingBreadcrumb {
   readonly decision: 'encoding';
@@ -137,8 +135,8 @@ export interface EncodingBreadcrumb {
  * @see {@link Breadcrumbs} for why this decision is breadcrumbed where the
  * refusals are not, and why the outcome may not carry the entry itself.
  */
-export interface RetainedSigningKeyEntryBreadcrumb {
-  readonly decision: 'retained-signing-key-entry';
+export interface Ledger8SigningKeyEntryBreadcrumb {
+  readonly decision: 'ledger8-signing-key-entry';
   readonly source: 'private-state-provider';
   /** Why the entry could not be read as a retained-era key. */
   readonly outcome:
@@ -163,7 +161,7 @@ export type DispatchBreadcrumb =
   | HeadResolutionBreadcrumb
   | PipelineSelectionBreadcrumb
   | EncodingBreadcrumb
-  | RetainedSigningKeyEntryBreadcrumb;
+  | Ledger8SigningKeyEntryBreadcrumb;
 
 /**
  * The ONE logger member a breadcrumb reaches.
@@ -236,7 +234,7 @@ export const emitHeadResolution = (
 export const emitPipelineSelection = (
   sink: BreadcrumbSink | undefined,
   reading: HeadEraReading,
-  path: PipelineEra,
+  path: LedgerVersion,
   contractAddress?: string
 ): void =>
   emit(sink, {
@@ -268,9 +266,9 @@ export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: Ledg
  * @param contractAddress The address the entry was stored against.
  * @param outcome Why the entry was not usable.
  */
-export const emitRetainedSigningKeyEntry = (
+export const emitLedger8SigningKeyEntry = (
   sink: BreadcrumbSink | undefined,
   contractAddress: string,
-  outcome: RetainedSigningKeyEntryBreadcrumb['outcome']
+  outcome: Ledger8SigningKeyEntryBreadcrumb['outcome']
 ): void =>
-  emit(sink, { decision: 'retained-signing-key-entry', source: 'private-state-provider', outcome, contractAddress });
+  emit(sink, { decision: 'ledger8-signing-key-entry', source: 'private-state-provider', outcome, contractAddress });

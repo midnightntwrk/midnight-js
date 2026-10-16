@@ -22,7 +22,7 @@ import type { BlockHashQueryQuery } from '../gen/graphql';
 import { IndexerPublicDataProvider } from '../provider';
 import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
-import { UNRESOLVABLE_PROTOCOL_VERSION, V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { LEDGER8_ERA_PROTOCOL_VERSION, LEDGER9_ERA_PROTOCOL_VERSION,UNRESOLVABLE_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -62,31 +62,31 @@ const blockQueryReturning = (block: NonNullable<BlockHashQueryQuery['block']>): 
 describe('IndexerPublicDataProvider query methods', () => {
   describe('queryBlock', () => {
     test('maps a block-height config to a height offset and returns the whole block', async () => {
-      const query = blockQueryReturning({ hash: '0xabc', height: 42, protocolVersion: V8_ERA_PROTOCOL_VERSION });
+      const query = blockQueryReturning({ hash: '0xabc', height: 42, protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION });
 
       const result = await providerWithQuery(query).queryBlock({ type: 'blockHeight', blockHeight: 42 });
 
-      expect(result).toEqual({ hash: '0xabc', height: 42, protocolVersion: V8_ERA_PROTOCOL_VERSION });
+      expect(result).toEqual({ hash: '0xabc', height: 42, protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION });
       expect(query).toHaveBeenCalledWith(
         expect.objectContaining({ query: BLOCK_QUERY, variables: { offset: { height: 42 } } })
       );
     });
 
     test('maps a block-hash config to a hash offset and returns the whole block', async () => {
-      const query = blockQueryReturning({ hash: '0xabc', height: 1, protocolVersion: V8_ERA_PROTOCOL_VERSION });
+      const query = blockQueryReturning({ hash: '0xabc', height: 1, protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION });
 
       const result = await providerWithQuery(query).queryBlock({ type: 'blockHash', blockHash: '0xdeadbeef' });
 
-      expect(result).toEqual({ hash: '0xabc', height: 1, protocolVersion: V8_ERA_PROTOCOL_VERSION });
+      expect(result).toEqual({ hash: '0xabc', height: 1, protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION });
       expect(query).toHaveBeenCalledWith(expect.objectContaining({ variables: { offset: { hash: '0xdeadbeef' } } }));
     });
 
     test('uses a null (latest) offset when no config is given and returns the whole block', async () => {
-      const query = blockQueryReturning({ hash: '0x1', height: 1, protocolVersion: V9_ERA_PROTOCOL_VERSION });
+      const query = blockQueryReturning({ hash: '0x1', height: 1, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION });
 
       const result = await providerWithQuery(query).queryBlock();
 
-      expect(result).toEqual({ hash: '0x1', height: 1, protocolVersion: V9_ERA_PROTOCOL_VERSION });
+      expect(result).toEqual({ hash: '0x1', height: 1, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION });
       // `no-cache` is pinned on this case in particular: the latest-block read is the one a cached
       // answer would date to a stale era across a fork.
       expect(query).toHaveBeenCalledWith(
@@ -158,11 +158,11 @@ describe('IndexerPublicDataProvider query methods', () => {
   });
   describe('queryLatestProtocolVersion', () => {
     test('reads the version off the head block, asking for no offset so the indexer serves the latest', async () => {
-      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_PROTOCOL_VERSION)]]));
 
       const version = await providerWithQuery(query).queryLatestProtocolVersion();
 
-      expect(version).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(version).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
       expect(query).toHaveBeenCalledWith(
         expect.objectContaining({ query: HEAD_PROTOCOL_VERSION_QUERY, fetchPolicy: 'no-cache' })
       );
@@ -183,7 +183,7 @@ describe('IndexerPublicDataProvider query methods', () => {
     });
 
     test('issues a request on every call, whatever era the head reports', async () => {
-      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(LEDGER9_ERA_PROTOCOL_VERSION)]]));
       const provider = providerWithQuery(query);
 
       await provider.queryLatestProtocolVersion();

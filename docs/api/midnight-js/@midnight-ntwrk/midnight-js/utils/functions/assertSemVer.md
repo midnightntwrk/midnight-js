@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -33,4 +33,4 @@ Human-readable name of the parameter (for error messages).
 
 ## Throws
 
-Error if `version` is not SemVer-shaped.
+InvalidArgumentError if `version` is not SemVer-shaped.

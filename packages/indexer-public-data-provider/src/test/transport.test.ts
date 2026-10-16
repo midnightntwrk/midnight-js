@@ -283,7 +283,7 @@ describe('createApolloClient — WebSocket liveness', () => {
     }
   });
 
-  test('does not arm the deadline for a ping the server sent us', async () => {
+  test('does not start the deadline for a ping the server sent us', async () => {
     vi.useFakeTimers();
     try {
       await buildHandle();

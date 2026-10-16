@@ -12,7 +12,7 @@ yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -20,12 +20,12 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-// Transaction payloads cross a provider seam version-tagged: tag on the way
+// Transaction payloads are passed to a provider version-tagged: tag on the way
 // in, narrow on `version` on the way out. There is no untagged form.
-// `unwrapV9` is the framework's narrowing helper — it throws
-// V8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
+// `unwrapLedger9` is the framework's narrowing helper — it throws
+// Ledger8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
 // `code` you can match with `hasErrorCode`.
-const provenTx = unwrapV9(
+const provenTx = unwrapLedger9(
   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
   'proveTx'
 );
@@ -57,7 +57,7 @@ Use `dappConnectorProofProvider` for most use cases. It wraps the wallet's provi
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -65,7 +65,7 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = unwrapV9(
+const provenTx = unwrapLedger9(
   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
   'proveTx'
 );

@@ -64,7 +64,7 @@ describe('Protocol ACL package', () => {
       // Strict sorted-key equality over the whole barrel: the five pre-existing
       // namespace exports (unchanged) plus every value exported from ./errors,
       // ./version, lib/era/load-era and lib/v8/load. If this fails after adding/removing a
-      // protocol export, update the expected list. `ProtocolV8` is a
+      // protocol export, update the expected list. `Ledger8Protocol` is a
       // type-only export and does not appear here (types have no runtime key).
       expect(sortedKeys(protocol)).toEqual([
         'COMMON_ERROR_CATEGORIES',
@@ -87,8 +87,8 @@ describe('Protocol ACL package', () => {
         'Ledger8InstanceMismatchError',
         'Ledger8RuntimeInvalidError',
         'Ledger8RuntimeMissingError',
-        'loadLedger8',
         'loadLedger8Engine',
+        'loadLedger8Protocol',
         'loadLedgerEra',
         'MerkleNotRehashedError',
         'MIDNIGHT_JS_ERROR_CATEGORIES',

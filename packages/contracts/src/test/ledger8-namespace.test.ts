@@ -27,13 +27,14 @@ import { describe, expect, it } from 'vitest';
 // wrong one of the two leaves every gate green.
 import {
   Ledger8AmbiguousEntryPointError,
+  Ledger8ArtifactOnLedger9StateError,
   Ledger8CallTxFailedError,
+  Ledger8ContractStateUnsupportedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnV9Error,
+  Ledger8DeployOnLedger9Error,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
-  Ledger8SeamFailedError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError
 } from '../errors';
@@ -49,15 +50,16 @@ import { createLedger8CircuitCallTxInterface } from '../tx-interfaces';
  * Asserted by strict equality in both directions, so a member dropped from the namespace and a
  * member that leaked into it fail the same test.
  */
-const RETAINED_ERA_MEMBERS = [
+const LEDGER8_MEMBERS = [
   'AmbiguousEntryPointError',
+  'ArtifactOnLedger9StateError',
   'CallTxFailedError',
+  'ContractStateUnsupportedError',
   'DeployNotStoredError',
-  'DeployOnV9Error',
+  'DeployOnLedger9Error',
   'DeployTxFailedError',
   'DeployUnconfirmedError',
   'RecipientUnmappableError',
-  'SeamFailedError',
   'ShieldedSpendUnsupportedError',
   'SigningKeyUnusableError',
   'createCircuitCallTxInterface'
@@ -72,10 +74,8 @@ const RETAINED_ERA_MEMBERS = [
  */
 const ERA_NEUTRAL_MEMBERS = [
   'AnyEraTxFailedError',
-  'CURRENT_PIPELINE_ERA',
-  'RETAINED_PIPELINE_ERA',
   'isLedger8Result',
-  'UnrecognisedResultEraError'
+  'UnknownResultEraError'
 ];
 
 /**
@@ -84,7 +84,7 @@ const ERA_NEUTRAL_MEMBERS = [
  * The bundle rather than `../index`, for the reason `contracts-value-acl.test.ts` states: vitest
  * resolves the barrel through its own per-file transform, so a member rollup elides from the frozen
  * namespace object stays invisible to every assertion made against the source -- while a consumer's
- * `instanceof Ledger8.SeamFailedError` throws on an undefined right-hand side.
+ * `instanceof Ledger8.CallTxFailedError` throws on an undefined right-hand side.
  *
  * A missing bundle throws rather than skipping: a skipped test reports as a pass. Turbo's `test`
  * task dependsOn `build`, so `dist/` is present in CI.
@@ -106,14 +106,14 @@ describe('the retained era is published as one namespace', () => {
   it('publishes exactly the retained-era runtime members under it', () => {
     const published = Object.keys(Ledger8).sort();
 
-    expect(published).toEqual([...RETAINED_ERA_MEMBERS].sort());
+    expect(published).toEqual([...LEDGER8_MEMBERS].sort());
   });
 
   it('leaves no retained-era RUNTIME name on the flat surface', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 40 members are types, which
+    // RUNTIME names only: `Object.keys` sees bindings, and 31 of the 43 members are types, which
     // have none. A flat retained-era TYPE re-export is caught by the strict list in
     // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
     // narrowing it would reopen the larger half of the hole.
@@ -127,13 +127,14 @@ describe('the retained era is published as one namespace', () => {
     // Identity, not spelling. Every assertion below fails if the rename table in `src/ledger8.ts`
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
+    expect(Ledger8.ArtifactOnLedger9StateError).toBe(Ledger8ArtifactOnLedger9StateError);
     expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
+    expect(Ledger8.ContractStateUnsupportedError).toBe(Ledger8ContractStateUnsupportedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
-    expect(Ledger8.DeployOnV9Error).toBe(Ledger8DeployOnV9Error);
+    expect(Ledger8.DeployOnLedger9Error).toBe(Ledger8DeployOnLedger9Error);
     expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
-    expect(Ledger8.SeamFailedError).toBe(Ledger8SeamFailedError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
     expect(Ledger8.SigningKeyUnusableError).toBe(Ledger8SigningKeyUnusableError);
     expect(Ledger8.createCircuitCallTxInterface).toBe(createLedger8CircuitCallTxInterface);
@@ -142,7 +143,7 @@ describe('the retained era is published as one namespace', () => {
   it('ships the same members in the built bundle', async () => {
     const shipped = await distNamespaceMembers();
 
-    expect(shipped).toEqual([...RETAINED_ERA_MEMBERS].sort());
+    expect(shipped).toEqual([...LEDGER8_MEMBERS].sort());
   });
 
   it('keeps the era-neutral half flat, so receiving a result needs no opt-in', () => {
@@ -154,9 +155,9 @@ describe('the retained era is published as one namespace', () => {
   it('carries the registered error code on a class reached through the namespace', () => {
     // The namespace is a RENAME of the existing classes, not a second set of them. A same-named
     // stub would satisfy the key list above and fail here.
-    const error = new Ledger8.DeployOnV9Error();
+    const error = new Ledger8.DeployOnLedger9Error();
 
-    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9)).toBe(true);
+    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
   });
 
   it('keeps the retained failure class under the era-neutral base a consumer catches', () => {

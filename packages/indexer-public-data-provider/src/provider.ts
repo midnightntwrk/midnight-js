@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type {
   ContractAddress,
-  LedgerParameters,
-  TransactionId,
-  ZswapChainState
+  TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
@@ -35,20 +32,16 @@ import type {
   PublicDataProvider,
   RawContractState,
   UnshieldedBalances,
+  VersionedContractState,
   VersionedFinalizedTxData,
+  VersionedPublicStates,
   WatchOptions
 } from '@midnight-ntwrk/midnight-js-types';
 import { type WatchTarget, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
-import {
-  parseHexContractState,
-  parseHexLedgerParameters,
-  parseHexZswapState,
-  toRawContractState,
-  toUnshieldedBalances
-} from './codec';
+import { toRawContractState, toUnshieldedBalances, toVersionedContractState, toVersionedPublicStates } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
@@ -72,6 +65,7 @@ import {
   dropReplayed,
   fromTransaction,
   type Identified,
+  type LatestAnchor,
   maybeThrowQueryError,
   ordinalWithinBlock,
   pollUntilPresent,
@@ -224,21 +218,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   /**
    * Reads the contract state at `address` as the bytes the indexer served,
-   * without deserializing them, paired with the ledger era those bytes belong
-   * to.
+   * without deserializing them, tagged with the ledger era that wrote them.
    *
-   * The block that dates the state and the state itself are asked for in a
-   * single document. That saves a round trip; it does **not** make the two
-   * fields a consistent snapshot — the indexer resolves Query-root siblings
-   * concurrently, from independent reads, so they can still come from
-   * different blocks. The era on the returned record therefore describes the
-   * block that dated these bytes, and is not a reading of where the network is
-   * now: for that, ask {@link queryLatestProtocolVersion}, which reads it.
+   * `version` is read off the envelope of the bytes. `protocolVersion` dates the
+   * block the read resolved; on a pinned read an envelope newer than that block
+   * is refused. The block and the state are asked for in a single document. That
+   * saves a round trip; it does **not** make the two fields a consistent
+   * snapshot — the indexer resolves Query-root siblings concurrently, from
+   * independent reads, so they can still come from different blocks. Neither
+   * field is a reading of where the network is now: for that, ask
+   * {@link queryLatestProtocolVersion}, which reads it.
    *
    * @throws {TagParseError} When the served state does not carry a
    *   contract-state envelope from a supported ledger runtime.
-   * @throws {IndexerDataError} When the served state is not hex-encoded, or
-   *   when a state is served with no block to date it.
+   * @throws {IndexerDataError} When the served state is not hex-encoded, when a
+   *   state is served with no block to date it, or when a pinned read serves an
+   *   envelope newer than its block.
    */
   async queryRawContractState(
     address: ContractAddress,
@@ -268,13 +263,16 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // caller a wrong answer that reads exactly like a correct one.
       throw IndexerDataError.undatedState();
     }
-    return toRawContractState(state, block.protocolVersion, block.ledgerParameters);
+    // Unpinned, `block` and `contract` are siblings that can straddle a fork; see `queryContractState`.
+    return toRawContractState(state, block.protocolVersion, block.ledgerParameters, {
+      upperBound: offset === null ? 'withheld' : 'enforced'
+    });
   }
 
   queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractState | null> {
+  ): Promise<VersionedContractState | null> {
     assertIsContractAddress(address);
     // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
     // contract action at or before it), which is what cross-contract reads require.
@@ -306,17 +304,16 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // followed the chain tip, so a block indexed between the two reads
         // leaves them on either side of a fork. Pinned: both resolved against
         // the offset the caller named, so the bound is real.
-        const contractState = parseHexContractState(state, block.protocolVersion, {
+        return toVersionedContractState(state, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        return contractState;
       });
   }
 
   queryZSwapAndContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
+  ): Promise<VersionedPublicStates | null> {
     assertIsContractAddress(address);
     // One request pinned to a single block yields a coherent triple: `block` supplies the ledger
     // parameters and the contract's zswap commitment tree resolved from that block's ledger state,
@@ -347,23 +344,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!block || contractState == null || contractZswapState == null) {
           return null;
         }
-        // TWO of the three carry an era envelope, not one: the contract state and the block's
-        // ledger parameters. Each is dated inside its own reader, immediately before that reader
-        // decodes it, so correctness does not depend on the order of the two calls — only which
-        // error surfaces first when both fields are un-decodable does, and the state's wins.
-        //
         // The zswap chain state carries no era to date: both runtimes write
         // `zswap-ledger-state[v5]` and each reads the other's bytes back unchanged. That is
         // measured, not assumed — see `test/ledger-parameters.test.ts` and
         // `docs/architecture/era-tagged-payload-decoders.md`.
-        const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
+        return toVersionedPublicStates(contractZswapState, contractState, block.ledgerParameters, block.protocolVersion, {
           upperBound: offset === null ? 'withheld' : 'enforced'
         });
-        return [
-          parseHexZswapState(contractZswapState),
-          parsedContractState,
-          parseHexLedgerParameters(block.ledgerParameters)
-        ] as [ZswapChainState, ContractState, LedgerParameters];
       });
   }
 
@@ -398,13 +385,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       );
   }
 
-  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
+  /**
+   * Reads the deploy's record, or the latest update's record when the contract
+   * has been updated. The record keeps the encoding its block wrote: a v8-era
+   * record comes back as its stored bytes, never translated to the v9 encoding.
+   */
+  queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null> {
     assertIsContractAddress(contractAddress);
-    // Shape discrimination kept inline: this branch additionally does an
-    // address-correlated `find` over `contractActions` and throws
-    // `IndexerDataError.missingContractAction` (not `IndexerInvariantError`)
-    // on missing match — different error semantics from the helpers in
-    // `mapping.ts`, so extraction would obscure rather than simplify.
     return this.client
       .query({
         query: DEPLOY_CONTRACT_STATE_TX_QUERY,
@@ -414,30 +401,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then((queryResult) => {
-        if (queryResult.data?.contractAction) {
-          const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
-            DeployContractStateTxQueryQuery['contractAction']
-          >;
-          if (!('deploy' in contract)) {
-            return { state: contract.state, protocolVersion: contract.transaction.protocolVersion };
-          }
-          const deployAction = contract.deploy.transaction.contractActions.find(
-            ({ address }) => address === contractAddress
-          );
-          if (!deployAction) {
-            throw IndexerDataError.missingContractAction(contractAddress);
-          }
-          return {
-            state: deployAction.state,
-            protocolVersion: contract.deploy.transaction.protocolVersion
-          };
+        if (!queryResult.data?.contractAction) {
+          return null;
         }
-        return null;
-      })
-      .then((dated) => (dated === null ? null : parseHexContractState(dated.state, dated.protocolVersion)));
+        const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
+          DeployContractStateTxQueryQuery['contractAction']
+        >;
+        const { contractActions } = 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
+        const record = contractActions.find(({ address }) => address === contractAddress);
+        if (!record) {
+          throw IndexerDataError.missingContractAction(contractAddress);
+        }
+        return toVersionedContractState(record.state, record.stateAt.protocolVersion);
+      });
   }
 
-  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<VersionedContractState> {
     assertIsContractAddress(contractAddress);
     const maxWaitMs = validMaxWaitMs(options);
     return Rx.firstValueFrom(
@@ -447,7 +426,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
         Rx.map(({ state, protocolVersion }) =>
-          parseHexContractState(state, protocolVersion, { upperBound: 'withheld' })
+          toVersionedContractState(state, protocolVersion, { upperBound: 'withheld' })
         )
       )
     );
@@ -558,22 +537,23 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => feed(GENESIS))
       );
     }
-    return this.fromBlock$(contractAddress, config, feed);
+    return this.fromBlock$(contractAddress, config, feed, 'stateAt');
   }
 
   /**
    * Starts a per-contract feed at the block a `blockHeight` or `blockHash`
-   * config names, or at the block of the latest action for `latest`.
+   * config names, or, for `latest`, at the block `latestAnchor` names.
    * `inclusive: false` is a filter on the block height rather than a count of
    * skipped records, so a reconnect cannot spend it.
    */
   private fromBlock$<R extends ChainPosition>(
     contractAddress: ContractAddress,
     config: Exclude<ContractStateObservableConfig, { readonly type: 'txId' | 'all' }>,
-    feed: (offset: BlockOffset) => Rx.Observable<R>
+    feed: (offset: BlockOffset) => Rx.Observable<R>,
+    latestAnchor: LatestAnchor
   ): Rx.Observable<R> {
     if (config.type === 'latest') {
-      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress).pipe(
+      return contractAddressToLatestBlockOffset$(this.client, this.pollInterval)(contractAddress, latestAnchor).pipe(
         Rx.concatMap(feed)
       );
     }
@@ -589,12 +569,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   /**
    * Creates a stream of contract states for `contractAddress`.
    *
-   * DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
-   * stream — so a state written by the retained runtime does not arrive as a
-   * skipped emission, it ends the subscription through the subscriber's `error`
-   * callback. A contract deployed before the ledger fork and not written to
-   * since serves exactly such a state, indefinitely. Use
-   * {@link rawContractStateObservable} where that is possible.
+   * Each state is tagged with the ledger era that wrote it: a v9 state arrives
+   * decoded, a v8 state as its stored bytes. A v8 state does not end the stream,
+   * so a stream started before the ledger fork keeps going across it.
    *
    * Every branch reads the indexer's feed of this contract's actions, filtered
    * by address on the server. A transport reconnect makes the indexer replay
@@ -609,20 +586,17 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   contractStateObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
-  ): Rx.Observable<PositionedRecord<ContractState>> {
-    return this.contractStates$(contractAddress, config, parseHexContractState);
+  ): Rx.Observable<PositionedRecord<VersionedContractState>> {
+    return this.contractStates$(contractAddress, config, toVersionedContractState);
   }
 
   /**
    * Creates a stream of contract states for `contractAddress` as the bytes the
    * indexer served, without deserializing them.
    *
-   * The streaming twin of {@link queryRawContractState}: no era of contract
-   * state ends this subscription, because none is deserialized here.
-   * {@link contractStateObservable} decodes with the current era's runtime
-   * inside the pipeline, so one retained-era state terminates that
-   * subscription; here the era is carried on the record and the caller narrows
-   * on it.
+   * The streaming twin of {@link queryRawContractState}: no state is
+   * deserialized here, in either era. `version` on each record is the era read
+   * off its envelope.
    *
    * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The subscription does
    * not ask for the parameters, which would cost one blob per contract action.
@@ -632,18 +606,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Every branch and every replay-suppression rule is exactly
    * {@link contractStateObservable}'s; only the element type differs.
    *
-   * WHAT IS WITHHELD, PRECISELY: the deserialization, and the envelope-versus-
-   * served-era cross-check {@link parseHexContractState} runs. The envelope tag
-   * is still read, so a payload carrying no supported contract-state envelope
-   * still fails the stream. Two things can still end it on era grounds — an
-   * envelope from an era this client's tag table does not list, and a
-   * `protocolVersion` integer it cannot place on the era timeline. The second
-   * is the one asymmetry with {@link contractStateObservable}, which tolerates
-   * such an integer and decodes on the envelope alone; here `version` is a
-   * required field with nothing to fall back to, so the read is refused as
-   * {@link IndexerDataError} with `kind: 'unresolvable-era'` rather than
-   * guessed. Both arrive as an `IndexerError`, like every other failure from
-   * this package.
+   * WHAT IS WITHHELD, PRECISELY: the deserialization only. `version` is the era
+   * read off the envelope, and the envelope is checked against the record's
+   * dating block exactly as {@link contractStateObservable} checks it, so a
+   * payload carrying no supported contract-state envelope still fails the stream
+   * as a `TagParseError`, and an envelope newer than its dating block as an
+   * `IndexerDataError`.
    *
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the stream. Defaults to `latest`.
@@ -691,7 +659,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         ? waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
             Rx.concatMap(() => feed(GENESIS))
           )
-        : this.fromBlock$(contractAddress, config, feed);
+        : this.fromBlock$(contractAddress, config, feed, 'action');
     return balances.pipe(dropReplayed(), Rx.map(toPositionedRecord));
   }
 

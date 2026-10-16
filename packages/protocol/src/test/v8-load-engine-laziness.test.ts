@@ -33,14 +33,14 @@ import { fixturePath } from './fixtures';
 // `@midnight-ntwrk/compact-js/v8/effect` IS ledger-v8, and `lib/v8/executable.ts`
 // decodes chain bytes through it -- so a retained-era execution does load that
 // module now. The property still worth gating is that there is exactly ONE
-// acquisition path: `loadLedger8` exists for the composition legs, and an engine
+// acquisition path: `loadLedger8Protocol` exists for the composition legs, and an engine
 // method reaching for it would be a second one.
 //
 // The era facade has its own version of this property, and it is a DIFFERENT
 // one: `era-load-era-v8-laziness.test.ts` gates `loadLedgerEra('v9')`, which is
 // a separate call graph from this one. Neither test covers the other's claim.
 //
-// Asserted against `loadLedger8` itself rather than against the built bundle,
+// Asserted against `loadLedger8Protocol` itself rather than against the built bundle,
 // because this is a property of the call graph, not of how rollup happened to
 // chunk it.
 describe('createLedger8Engine — v8 ledger module acquisition', () => {
@@ -53,22 +53,22 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
   });
 
   it('never acquires the v8 ledger module through this package\'s own loader', async () => {
-    const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const loadLedger8Protocol = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { createLedger8Engine } = await import('../lib/v8/engine');
 
     const engine = await createLedger8Engine();
 
-    expect(loadLedger8).not.toHaveBeenCalled();
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
 
     // Constructed but never used is a weaker claim than constructed and usable:
     // a method that reached for this package's v8 loader lazily would pass the
-    // assertion above and fail here. `reexpressOperationsForCurrentEra` is the
+    // assertion above and fail here. `reexpressOperationsForLedger9` is the
     // cheapest real work on the surface and targets the CURRENT era, so it has
     // no business touching the retained ledger at all. It refuses an empty
     // entry-point list, so a real registered key is supplied.
     expect(
-      engine.reexpressOperationsForCurrentEra([
+      engine.reexpressOperationsForLedger9([
         {
           circuitId: 'increment',
           verifierKey: new Uint8Array(readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))),
@@ -76,13 +76,13 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
         }
       ])
     ).toBeDefined();
-    expect(loadLedger8).not.toHaveBeenCalled();
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
 
     // The two methods that could PLAUSIBLY reach the loader lazily, which the
     // call above cannot speak for: it targets the current era, so it has no
     // business touching the retained ledger either way. Both are driven far
     // enough to run their own body -- each refuses its arguments before any
-    // execution -- which is all this gate needs: an `await loadLedger8()` added
+    // execution -- which is all this gate needs: an `await loadLedger8Protocol()` added
     // inside either one fires before the refusal does.
     await engine
       .executeCircuit({
@@ -95,7 +95,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
         privateState: {}
       })
       .catch(() => undefined);
-    expect(loadLedger8).not.toHaveBeenCalled();
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
 
     await engine
       .executeConstructor({
@@ -107,7 +107,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
         verifierKeys: () => Promise.resolve(undefined)
       })
       .catch(() => undefined);
-    expect(loadLedger8).not.toHaveBeenCalled();
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
   });
 
   // The assertion above is only as good as its premise: it covers the surface
@@ -115,8 +115,8 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
   // would leave the claim above true and the contract broken, so the surface
   // this file reasons about is pinned here rather than assumed.
   it('reasons about the whole engine surface', async () => {
-    const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const loadLedger8Protocol = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { createLedger8Engine } = await import('../lib/v8/engine');
 
     const engine = await createLedger8Engine();
@@ -124,7 +124,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     expect(Object.keys(engine).sort()).toEqual([
       'executeCircuit',
       'executeConstructor',
-      'reexpressOperationsForCurrentEra',
+      'reexpressOperationsForLedger9',
       'wrapKeepStateCall'
     ]);
   });

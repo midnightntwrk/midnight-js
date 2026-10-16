@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, ProviderFailedError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -134,16 +134,17 @@ describe('Unshielded tokens', () => {
     });
 
     test('should receive tokens - invalid', async () => {
-      await expect(() =>
-        submitCallTx(providers, {
-          compiledContract: CompiledUnshieldedContract,
-          contractAddress,
-          circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuit,
-          args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
-        })
-      ).rejects.toMatchObject({
-        name: expect.stringContaining('Wallet.InsufficientFunds'),
-        message: 'Insufficient funds'
+      const rejection = submitCallTx(providers, {
+        compiledContract: CompiledUnshieldedContract,
+        contractAddress,
+        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuit,
+        args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+      });
+
+      await expect(rejection).rejects.toBeInstanceOf(ProviderFailedError);
+      await expect(rejection).rejects.toMatchObject({
+        method: 'balanceTx',
+        cause: { message: expect.stringMatching(/Wallet\.InsufficientFunds.*: Insufficient funds$/) }
       });
     });
 

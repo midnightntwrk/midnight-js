@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@ Client for interacting with a Midnight node's JSON-RPC API
 
 ### Constructor
 
-> **new NodeClient**(`nodeURL`, `logger`): `NodeClient`
+> **new NodeClient**(`nodeURL`, `logger`, `networkId`): `NodeClient`
 
 Creates a new NodeClient instance
 
@@ -25,6 +25,12 @@ URL of the Midnight node
 `Logger`
 
 Logger instance for recording operations
+
+##### networkId
+
+`string`
+
+Network the node serves, used to address contract state
 
 #### Returns
 
@@ -62,14 +68,14 @@ Contract state or null if not found
 
 ### health()
 
-> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 Checks the health status of the node.
 Makes a GET request to the health endpoint of the node.
 
 #### Returns
 
-`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
+`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}, `any`\>\>
 
 A promise that resolves to the response of the health check or logs an error if the request fails.
 

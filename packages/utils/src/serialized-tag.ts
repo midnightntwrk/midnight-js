@@ -36,7 +36,7 @@ const DEFENCE_IN_DEPTH_NOTE =
   'input and is never the authority on the body; the node remains the sole authority on the decoded body.';
 
 const NEXT_STEP_NOTE =
-  "Expected a '<namespace>:<version>:' prefix — verify the payload came from a sanctioned serialization seam " +
+  "Expected a '<namespace>:<version>:' prefix — verify the payload came from a sanctioned serialization source " +
   '(wallet balance response, proof request, or raw contract-state query).';
 
 export class TagParseError extends MidnightJsError {

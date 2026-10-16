@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -47,6 +47,17 @@ Configuration.
 
 When transaction fails in either guaranteed or fallible phase.
         The error contains the finalized transaction data for debugging.
+
+## Throws
+
+When `privateStateId` is present without
+        `initialPrivateState`, or `initialPrivateState` holds a value without `privateStateId`.
+        Raised before anything is built or submitted.
+
+## Throws
+
+When `privateStateId` is present with an undefined value. Raised before anything
+        is built or submitted, and ahead of the pairing refusal.
 
 ## Remarks
 

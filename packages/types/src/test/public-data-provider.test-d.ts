@@ -14,7 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
@@ -200,16 +200,77 @@ describe('PositionedRecord', () => {
   });
 });
 
+// Spelled out independently of `VersionedContractState`, so the equality check
+// pins the shape rather than restating it.
+type VersionedContractStateFixture =
+  | { readonly version: 'v8'; readonly stateBytes: Uint8Array }
+  | { readonly version: 'v9'; readonly state: ContractState };
+
 describe('positioned stream members', () => {
-  it('pins contractStateObservable to positioned decoded states', () => {
+  it('pins contractStateObservable to positioned states tagged by the era that wrote them', () => {
     expectTypeOf<PublicDataProvider['contractStateObservable']>().toEqualTypeOf<
-      (address: ContractAddress, config: ContractStateObservableConfig) => Observable<PositionedRecordFixture<ContractState>>
+      (
+        address: ContractAddress,
+        config: ContractStateObservableConfig
+      ) => Observable<PositionedRecordFixture<VersionedContractStateFixture>>
     >();
   });
 
   it('pins unshieldedBalancesObservable to positioned balances', () => {
     expectTypeOf<PublicDataProvider['unshieldedBalancesObservable']>().toEqualTypeOf<
       (address: ContractAddress, config: ContractStateObservableConfig) => Observable<PositionedRecordFixture<UnshieldedBalances>>
+    >();
+  });
+});
+
+describe('queryDeployContractState', () => {
+  it('returns the deploy state tagged by era, bytes for v8 and a decoded state for v9', () => {
+    expectTypeOf<PublicDataProvider['queryDeployContractState']>().toEqualTypeOf<
+      (contractAddress: ContractAddress) => Promise<VersionedContractStateFixture | null>
+    >();
+  });
+
+  it('has no untagged form, so a bare decoded state is not a valid result', () => {
+    expectTypeOf<ContractState>().not.toExtend<VersionedContractStateFixture>();
+  });
+});
+
+type VersionedPublicStatesFixture =
+  | {
+      readonly version: 'v8';
+      readonly zswapChainState: ZswapChainState;
+      readonly stateBytes: Uint8Array;
+      readonly ledgerParametersBytes: Uint8Array;
+    }
+  | {
+      readonly version: 'v9';
+      readonly zswapChainState: ZswapChainState;
+      readonly contractState: ContractState;
+      readonly ledgerParameters: LedgerParameters;
+    };
+
+describe('contract state reads', () => {
+  it('pins queryContractState to a state tagged by the era that wrote it, or null', () => {
+    expectTypeOf<PublicDataProvider['queryContractState']>().toEqualTypeOf<
+      (
+        contractAddress: ContractAddress,
+        config?: BlockHeightConfig | BlockHashConfig
+      ) => Promise<VersionedContractStateFixture | null>
+    >();
+  });
+
+  it('pins watchForContractState to a state tagged by the era that wrote it', () => {
+    expectTypeOf<PublicDataProvider['watchForContractState']>().toEqualTypeOf<
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<VersionedContractStateFixture>
+    >();
+  });
+
+  it('pins queryZSwapAndContractState to named public states tagged by era, or null', () => {
+    expectTypeOf<PublicDataProvider['queryZSwapAndContractState']>().toEqualTypeOf<
+      (
+        contractAddress: ContractAddress,
+        config?: BlockHeightConfig | BlockHashConfig
+      ) => Promise<VersionedPublicStatesFixture | null>
     >();
   });
 });
@@ -221,12 +282,6 @@ describe('the watchFor* surface', () => {
 
   it('WatchTarget covers every WatchOperation', () => {
     expectTypeOf<WatchTarget['operation']>().toEqualTypeOf<WatchOperation>();
-  });
-
-  it('watchForContractState takes an optional bound', () => {
-    expectTypeOf<PublicDataProvider['watchForContractState']>().toEqualTypeOf<
-      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<ContractState>
-    >();
   });
 
   it('watchForUnshieldedBalances takes an optional bound', () => {

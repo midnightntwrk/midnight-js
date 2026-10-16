@@ -19,20 +19,17 @@ import * as Rx from 'rxjs';
 import { describe, expect, test } from 'vitest';
 
 import { IndexerPublicDataProvider } from '../provider';
-import { mintV9ContractStateHex, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { LEDGER9_ERA_PROTOCOL_VERSION,mintLedger9ContractStateHex } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
-const STATE = mintV9ContractStateHex();
+const STATE = mintLedger9ContractStateHex();
 
 const stateFrame = (height: number) => ({
   data: {
     contractActions: {
       state: STATE,
-      transaction: {
-        protocolVersion: V9_ERA_PROTOCOL_VERSION,
-        identifiers: [`tx-${height}`],
-        block: { height, hash: `0x${height}` }
-      }
+      stateAt: { height, hash: `0x${height}`, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION },
+      transaction: { identifiers: [`tx-${height}`] }
     }
   }
 });
@@ -49,7 +46,7 @@ const providerOverLiveFeed = (): IndexerPublicDataProvider => {
           subscriber.next(stateFrame(10));
           subscriber.next(stateFrame(11));
         })
-      : Rx.of({ data: { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } } })
+      : Rx.of({ data: { block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } } })
   );
   const client = new ApolloClient({ link, cache: new InMemoryCache() });
   return new IndexerPublicDataProvider({ client, connectionCount: () => 1, dispose: () => Promise.resolve() }, 1000);

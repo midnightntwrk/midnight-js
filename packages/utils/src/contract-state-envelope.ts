@@ -31,7 +31,7 @@ import { parseSerializedTag, TagParseError } from './serialized-tag';
 //
 // Both entries are pinned against what the runtimes actually WRITE, by
 // `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`, which mints a real
-// state with each runtime through `midnight-js-protocol` -- `ledger` for v9, `loadLedger8()` for
+// state with each runtime through `midnight-js-protocol` -- `ledger` for v9, `loadLedger8Protocol()` for
 // v8 -- rather than checking byte blobs in.
 //
 // Keyed by ERA and searched, rather than keyed by tag and indexed: the lookup key is

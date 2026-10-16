@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "5.0.0-rc.3",
+  "version": "5.0.0-rc.4",
   "type": "module",
   "description": "Shared utilities for MidnightJS modules",
   "types": "dist/index.d.ts",
@@ -27,12 +27,13 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/wallet-sdk-address-format": "4.0.0-rc.0",
-    "@noble/hashes": "^2.2.0"
+    "@noble/hashes": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "rollup": "^4.60.4",
-    "vitest": "^4.1.7"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": ">=22.12"

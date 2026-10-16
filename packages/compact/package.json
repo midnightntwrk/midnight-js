@@ -10,7 +10,7 @@
     "node": ">=22.12"
   },
   "license": "Apache-2.0",
-  "version": "5.0.0-rc.3",
+  "version": "5.0.0-rc.4",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -28,7 +28,8 @@
     "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
   },
   "files": [
     "dist/"

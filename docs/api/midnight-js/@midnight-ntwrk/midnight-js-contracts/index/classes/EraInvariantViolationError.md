@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -31,7 +31,7 @@ UntaggedPayloadError instead.
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -78,9 +78,19 @@ The era the payload actually carried, when it carried a
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId?
 
@@ -95,6 +105,10 @@ The circuit, or circuits, whose flow this happened on,
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION"` = `CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 

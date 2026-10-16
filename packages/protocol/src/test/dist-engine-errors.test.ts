@@ -84,7 +84,7 @@ describe('dist engine error gate', () => {
     const engine = await loadLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForCurrentEra', 'wrapKeepStateCall'].sort()
+      ['executeCircuit', 'executeConstructor', 'reexpressOperationsForLedger9', 'wrapKeepStateCall'].sort()
     );
   });
 
@@ -117,7 +117,7 @@ describe('dist engine error gate', () => {
   // The era facade is published through the root barrel, so its failures cross
   // the SAME bundle boundary the engine's do: a caller narrowing on
   // `ComposeFailedError` imported from the package root must still match one
-  // raised inside the era arm, and must still find its discriminants.
+  // raised inside the era path, and must still find its discriminants.
   it('raises an era composition failure the root package can discriminate by class and by code', async () => {
     const { loadLedgerEra, ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
       '@midnight-ntwrk/midnight-js-protocol'
@@ -132,7 +132,7 @@ describe('dist engine error gate', () => {
             contractAddress: ocrt3.dummyContractAddress(),
             circuitId: 'increment',
             // A blank state: it declares no operation for the circuit, which is
-            // the shortest real path to a failure raised inside the era arm.
+            // the shortest real path to a failure raised inside the era path.
             contractStateBytes: new ocrt3.ContractState().serialize(),
             // Named explicitly: the failure under test is raised before the partitioner runs.
             ledgerParametersBytes: 'initial',

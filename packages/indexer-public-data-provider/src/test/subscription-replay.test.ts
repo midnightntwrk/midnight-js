@@ -33,10 +33,10 @@ import {
   UNSHIELDED_BALANCE_SUB
 } from '../query-definitions';
 import { type ApolloRequest, reconnectingSubscription, stubApolloHandle, subscribedOffsets } from './apollo-stub';
-import { mintV8ContractStateHex, mintV9ContractStateHex, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { LEDGER9_ERA_PROTOCOL_VERSION,mintLedger8ContractStateHex, mintLedger9ContractStateHex } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
-const STATE = mintV9ContractStateHex();
+const STATE = mintLedger9ContractStateHex();
 
 const positions = (...pairs: [number, number][]): Rx.Observable<ChainPosition> =>
   Rx.from(pairs.map(([blockHeight, ordinal]) => ({ blockHeight, ordinal })));
@@ -159,11 +159,8 @@ const stateFrame = (height: number, identifier: string, state: string = STATE): 
   data: {
     contractActions: {
       state,
-      transaction: {
-        protocolVersion: V9_ERA_PROTOCOL_VERSION,
-        identifiers: [identifier],
-        block: { height, hash: `0x${height}` }
-      }
+      stateAt: { height, hash: `0x${height}`, protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION },
+      transaction: { identifiers: [identifier] }
     }
   }
 });
@@ -172,6 +169,7 @@ const stateFrame = (height: number, identifier: string, state: string = STATE): 
 const balanceFrame = (height: number): unknown => ({
   data: {
     contractActions: {
+      stateAt: { hash: `0x${height}` },
       transaction: { block: { height, hash: `0x${height}` } },
       unshieldedBalances: []
     }
@@ -183,8 +181,8 @@ const queryEmission = (data: unknown): Rx.Observable<unknown> =>
 
 /** Every poll a branch issues before it subscribes, each answered as though the contract sits at block 10. */
 const POLLS: ReadonlyMap<DocumentNode, unknown> = new Map<DocumentNode, unknown>([
-  [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { transaction: { block: { height: 10 } } } }],
-  [CONTRACT_STATE_QUERY, { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } }],
+  [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, { contractAction: { stateAt: { height: 10 }, transaction: { block: { height: 10 } } } }],
+  [CONTRACT_STATE_QUERY, { block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: STATE } }],
   [UNSHIELDED_BALANCE_QUERY, { contractAction: { unshieldedBalances: [] } }],
   [BLOCK_QUERY, { block: { height: 10, hash: '0x10' } }],
   [TX_ID_QUERY, { transactions: [{ block: { height: 10 }, contractActions: [{ address: ADDRESS }] }] }]
@@ -285,7 +283,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   });
 
   test('txId: the states of transactions before the named one stay withheld after a reconnect', async () => {
-    const earlier = await mintV8ContractStateHex();
+    const earlier = await mintLedger8ContractStateHex();
     const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
     const subscription = reconnectingSubscription(served, served);
 
@@ -300,7 +298,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   ])(
     'txId (inclusive:%s): a reconnect before the named transaction was seen still starts at it',
     async (inclusive, expected) => {
-      const earlier = await mintV8ContractStateHex();
+      const earlier = await mintLedger8ContractStateHex();
       const subscription = reconnectingSubscription(
         [stateFrame(10, 'tx-earlier', earlier)],
         [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11', earlier)]
@@ -318,7 +316,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   ])(
     'txId (inclusive:%s): every action of the named transaction is kept or dropped together',
     async (inclusive, expected) => {
-      const later = await mintV8ContractStateHex();
+      const later = await mintLedger8ContractStateHex();
       const subscription = reconnectingSubscription(
         [stateFrame(10, 'tx-10'), stateFrame(10, 'tx-10'), stateFrame(10, 'tx-later', later)],
         []
@@ -331,7 +329,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   );
 
   test('txId: a state in the named transaction’s block after it is kept when inclusive is false', async () => {
-    const later = await mintV8ContractStateHex();
+    const later = await mintLedger8ContractStateHex();
     const subscription = reconnectingSubscription(
       [stateFrame(10, 'tx-earlier'), stateFrame(10, 'tx-10'), stateFrame(10, 'tx-later', later)],
       []
@@ -343,7 +341,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   });
 
   test('txId: a second subscription to the same stream starts from the named transaction again', async () => {
-    const earlier = await mintV8ContractStateHex();
+    const earlier = await mintLedger8ContractStateHex();
     const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
     const stream = providerOver(reconnectingSubscription(served, [])).rawContractStateObservable(ADDRESS, {
       type: 'txId',

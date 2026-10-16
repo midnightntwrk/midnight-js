@@ -19,13 +19,13 @@
  *
  * This is `./v8-native.test.ts`'s twin. The contract, the committed recording
  * and the pipeline are the same; what differs is which era object the pipeline
- * is handed and, consequently, which ledger tags the transaction and which arm
- * of the provider seams it crosses on. Read the two files together — the
+ * is handed and, consequently, which ledger tags the transaction and which payload
+ * variant it hands the providers. Read the two files together — the
  * orchestration order assertion is deliberately IDENTICAL in both, because the
- * claim under test is that the two arms differ only in the era object.
+ * claim under test is that the two paths differ only in the era object.
  *
  * `wrapKeepStateCall` is absent from that order on purpose, and it is worth
- * saying why here of all places, since the method is named for this arm: the
+ * saying why here of all places, since the method is named for this path: the
  * current era's own `composeCallTx` reaches exactly the same call-assembly step
  * the wrap reaches, so calling both would bind the call twice; and the wrap's
  * result is a live ledger handle, which may not cross this package boundary at
@@ -39,16 +39,15 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
+  type Ledger8CircuitOptions,
+  type Ledger8EngineContract,
   type LedgerEra,
-  loadLedgerEra,
-  type RetainedContract,
-  type RunRetainedCircuitOptions
-} from '@midnight-ntwrk/midnight-js-protocol';
+  loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type RawContractState,
   type VersionedFinalizedTransaction,
-  type VersionedTx,
+  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -58,9 +57,8 @@ import {
   EraInvariantViolationError,
   HeadStateEraMismatchError,
   IndexerInconsistencyError,
-  LedgerParametersUnservedError,
-  RetainedArtifactOnCurrentEraStateError
-} from '../errors';
+  Ledger8ArtifactOnLedger9StateError,
+  LedgerParametersUnservedError} from '../errors';
 import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
@@ -72,18 +70,18 @@ import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-f
  * about which OPTIONS the engine requires, not about any particular artifact,
  * so the narrowest contract that satisfies compact-js's constraint is used.
  */
-type AnyRetainedContract = RetainedContract;
+type AnyLedger8EngineContract = Ledger8EngineContract;
 import {
   type CoinReceiverRecording,
   createReplayEngine,
-  CURRENT_ERA_TX_TAG,
   hfFixturePath,
+  LEDGER8_TX_TAG,
+  LEDGER9_TX_TAG,
   loadCoinReceiverRecording,
   type OrchestrationLog,
   readHfHexFixture,
   recordEraCalls,
   type ReplayState,
-  RETAINED_ERA_TX_TAG,
   txTagPrefix
 } from './ledger8-replay';
 import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
@@ -123,8 +121,8 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 );
 
 interface SeenPayloads {
-  proveTx?: VersionedTx<unknown>;
-  balanceTx?: VersionedTx<unknown>;
+  proveTx?: VersionedTransaction<unknown>;
+  balanceTx?: VersionedTransaction<unknown>;
   submitTx?: VersionedFinalizedTransaction;
 }
 
@@ -145,7 +143,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
 /**
  * The same record with the block's parameters missing, which is what a `PublicDataProvider` that
  * does not serve them produces. `RawContractState.ledgerParameters` is optional, so such a provider
- * is type-correct and the omission cannot be caught at the seam.
+ * is type-correct and the omission cannot be caught at the provider interface.
  */
 const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): RawContractState => {
   const { ledgerParameters: _omitted, ...withoutParameters } = rawState(raw, protocolVersion);
@@ -157,12 +155,12 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   let contract: CoinReceiver016Contract;
   let currentEra: LedgerEra;
   let retainedEra: LedgerEra;
-  let v9Envelope: Uint8Array;
+  let ledger9Envelope: Uint8Array;
   let v6Envelope: Uint8Array;
 
   beforeAll(async () => {
     recording = loadCoinReceiverRecording();
-    v9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
+    ledger9Envelope = readHfHexFixture('coin-receiver-016', 'state-v9.hex');
     v6Envelope = readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex');
     const module: CoinReceiver016Module = await import(
       /* @vite-ignore */ hfFixturePath('coin-receiver-016', 'compiled', 'contract', 'index.js')
@@ -198,11 +196,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       .mockResolvedValue(rawState(envelope, POST_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.proveTx = tx;
       return Promise.resolve(tx);
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTx<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
       seen.balanceTx = tx;
       return Promise.resolve(tx);
     });
@@ -221,7 +219,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     args: [recording.receivedCoin]
   });
 
-  it('composes the recorded call on the CURRENT ledger, in the same fixed order as the retained arm', async () => {
+  it('composes the recorded call on the CURRENT ledger, in the same fixed order as the retained path', async () => {
     const log: OrchestrationLog = [];
     let composed: ComposeCallOptions | undefined;
     const providers = postForkProviders(v6Envelope);
@@ -250,12 +248,12 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       )
     });
 
-    // IDENTICAL to the retained arm's order, which is the claim: the two arms
+    // IDENTICAL to the retained path's order, which is the claim: the two paths
     // differ only in which era object they are handed. `wrapKeepStateCall` is
     // not in it -- see this file's own header for why. The transcript crosses
     // UNPARTITIONED: the composer draws the split once and hands it back through
     // the offer factory, so there is no second split to disagree with it.
-    // The order is the retained arm's, plus the one step that only keep-state
+    // The order is the retained path's, plus the one step that only keep-state
     // needs. Read the ERAS in it, not just the names: the two reads are the
     // RETAINED era's -- it is the only one that can read these bytes -- and
     // everything after execution is the CURRENT era's. That split IS
@@ -265,7 +263,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       'era.v8.extractState',
       'era.v8.decodeContractState',
       'engine.executeCircuit',
-      'engine.reexpressOperationsForCurrentEra',
+      'engine.reexpressOperationsForLedger9',
       'era.v9.composeCallTx',
       // The CURRENT era's, inside its own composition: the split is drawn by the
       // era that composes, so the offer is routed against the same pair the
@@ -292,8 +290,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ContractState.deserialize(registry!).operation(CIRCUIT_ID)?.verifierKey).toEqual(chainKey);
 
     // The CURRENT era tagged this one, and the retained tag does not match it.
-    expect(txTagPrefix(result.txBytes, CURRENT_ERA_TX_TAG)).toBe(CURRENT_ERA_TX_TAG);
-    expect(txTagPrefix(result.txBytes, RETAINED_ERA_TX_TAG)).not.toBe(RETAINED_ERA_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
+    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment here too', async () => {
@@ -323,8 +321,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     });
 
     // GUARANTEED because this recording's ops PARTITION that way, not because
-    // the arm cannot route: this arm resolves the split before it builds the
-    // offer too. See the retained arm's 'routes a coin the partition places in
+    // the path cannot route: this path resolves the split before it builds the
+    // offer too. See the retained path's 'routes a coin the partition places in
     // the fallible half' for the other direction.
     expect(result.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
     expect(result.fallibleZswapOfferBytes).toBeUndefined();
@@ -343,7 +341,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   // than taken from `decodeContractState`, because deriving it from the very
   // function the pipeline calls would satisfy the assertion whatever that
   // function returned. What is under test is the PIPELINE's carrying, so the
-  // decoder is the seam to stub; that the real decoder reads a real retained
+  // decoder is the place to stub; that the real decoder reads a real retained
   // balance is `shared-contract-state.test.ts`'s claim, not this one's.
   it('hands the engine the contract balance the chain state declares, not an empty one', async () => {
     const log: OrchestrationLog = [];
@@ -390,7 +388,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // record here is the read surface answering for an era the chain has left.
     //
     // Note what is NOT being asserted: that `era` and `version` must agree.
-    // They legitimately disagree on this arm -- `era: 'ledger8'` with
+    // They legitimately disagree on this path -- `era: 'v8'` with
     // `version: 'v9'` IS keep-state, and the happy path below relies on it.
     // What must agree is the record and the HEAD the operation resolved.
     providers.publicDataProvider.watchForTxData = vi
@@ -404,7 +402,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
     expect(rejection).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-    expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+    expect((rejection as EraInvariantViolationError).method).toBe('watchForTxData');
     expect((rejection as EraInvariantViolationError).expected).toBe('v9');
     expect((rejection as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
   });
@@ -420,7 +418,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
   });
 
-  it('passes the providers.config TTL to the wallet on the current-era arm', async () => {
+  it('passes the providers.config TTL to the wallet on the current-era path', async () => {
     const providers = { ...postForkProviders(v6Envelope), config: { networkId: 'undeployed', ttlSeconds: 30 } };
     const before = Date.now();
 
@@ -431,7 +429,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('hands every provider seam the CURRENT-era arm, as a live ledger transaction', async () => {
+  it('hands every provider method the CURRENT-era variant, as a live ledger transaction', async () => {
     const providers = postForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
@@ -439,20 +437,20 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // The `version` tag names the LEDGER RUNTIME that produced the payload, not
     // the toolchain that produced the contract. A keep-state transaction is an
     // ordinary current-era transaction that happens to carry a retained-era
-    // call, so it crosses as the current era's live handle -- both sides of the
-    // seam share that runtime. Tagging it `'v8'` would claim the retained
+    // call, so it crosses as the current era's live handle -- the framework and the
+    // providers share that runtime. Tagging it `'v8'` would claim the retained
     // runtime built it, which is false, and would send a current-era-only
     // provider looking for a runtime it does not need.
     for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
       expect(payload).toBeDefined();
       expect(payload?.version).toBe('v9');
-      // The WRITE surface's current-era arm carries `tx`, and carries no
-      // `txBytes` at all -- the two arms are genuinely different shapes.
+      // The WRITE surface's current-era variant carries `tx`, and carries no
+      // `txBytes` at all -- the two variants are genuinely different shapes.
       expect(payload).not.toHaveProperty('txBytes');
     }
 
     // A LIVE HANDLE, not merely a `'v9'` tag over anything.
-    // `readCurrentEraTransaction` could be replaced with `() => undefined` and
+    // `readLedger9Transaction` could be replaced with `() => undefined` and
     // every assertion above would still pass, handing `undefined` down the
     // whole chain: `{ version: 'v9', tx: undefined }` satisfies both the tag
     // check and the absence of `txBytes`.
@@ -464,7 +462,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   it('refuses a provider that answers this current-era flow in the retained era', async () => {
     const providers = postForkProviders(v6Envelope);
     // A broken or mis-pointed provider: it accepted a current-era payload and
-    // answered with retained-era bytes. Nothing in the seam types ties a
+    // answered with retained-era bytes. Nothing in the provider method types ties a
     // provider's output era to its input era, so this is checked rather than
     // assumed.
     providers.proofProvider.proveTx = vi
@@ -479,13 +477,13 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     expect(caught).toBeInstanceOf(EraInvariantViolationError);
-    expect((caught as EraInvariantViolationError).seam).toBe('proveTx');
+    expect((caught as EraInvariantViolationError).method).toBe('proveTx');
     expect((caught as EraInvariantViolationError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as EraInvariantViolationError).expected).toBe('v9');
   });
 
   it('refuses when the head reading has fallen behind the state it fetched, and says re-running fixes it', async () => {
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     // The fork-window case: the operation started from a pre-fork head reading
     // and then fetched a post-fork state. A FRESH head read agrees with the
     // state, so the first reading was merely stale.
@@ -510,7 +508,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
   });
 
   it('refuses, differently, when the disagreement survives a fresh head read', async () => {
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     // The head is confirmed, so the served state and the served head cannot
     // both describe one chain. A fault in what was served, not a stale reading
     // this client can correct -- and deliberately not reported as a fork in
@@ -601,7 +599,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const providers = postForkProviders(v6Envelope);
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
-      .mockResolvedValue({ ...rawState(v9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
+      .mockResolvedValue({ ...rawState(ledger9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
 
     await expect(submitCallTx(providers, callOptions())).resolves.toBeDefined();
   });
@@ -614,7 +612,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // for this contract. Measured on the committed goldens: a real migrated
     // 8-to-9 state carries the SAME `midnight:verifier-key[v6]:` bytes its
     // pre-migration form did, and the current-era decoder reads them.
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
 
     const finalized = await submitCallTx(providers, callOptions());
 
@@ -634,7 +632,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // artifacts holds a key these retained artifacts cannot match, and the
     // refusal has to name that rather than the envelope -- which, after a
     // migration, says nothing about which artifacts the contract was built from.
-    const providers = postForkProviders(v9Envelope);
+    const providers = postForkProviders(ledger9Envelope);
     providers.zkConfigProvider.getVerifierKey = vi.fn().mockResolvedValue(Uint8Array.from([0x01, 0x02, 0x03]));
 
     let caught: unknown;
@@ -644,8 +642,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(RetainedArtifactOnCurrentEraStateError);
-    expect((caught as RetainedArtifactOnCurrentEraStateError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(Ledger8ArtifactOnLedger9StateError);
+    expect((caught as Ledger8ArtifactOnLedger9StateError).contractAddress).toBe(recording.contractAddress);
     // Refused before anything is paid for: a proof against a key the chain does
     // not hold is rejected on submission, which is the late failure this
     // ordering exists to prevent.
@@ -683,7 +681,7 @@ type RequiredKeys<T> = { [K in keyof T]-?: object extends Pick<T, K> ? never : K
 type _RequestNamesEveryEngineOption = Assert<
   [
     Exclude<
-      RequiredKeys<RunRetainedCircuitOptions<AnyRetainedContract, undefined>>,
+      RequiredKeys<Ledger8CircuitOptions<AnyLedger8EngineContract, undefined>>,
       keyof Ledger8ExecuteRequest
     >
   ] extends [never]
@@ -693,17 +691,17 @@ type _RequestNamesEveryEngineOption = Assert<
 type _RequestAgreesOnTheState = Assert<
   MutuallyAssignable<
     Ledger8ExecuteRequest['contractState'],
-    RunRetainedCircuitOptions<AnyRetainedContract, undefined>['contractState']
+    Ledger8CircuitOptions<AnyLedger8EngineContract, undefined>['contractState']
   >
 >;
 // And on the CONTRACT. ONE-directional deliberately: the request is narrower
 // than what the engine accepts, and what has to hold is that the value this
 // package threads SATISFIES the engine -- not that the two are interchangeable.
 //
-// This is the pin the seam did not have. `compiledContract` was `unknown` on the
+// This is the pin the era boundary did not have. `compiledContract` was `unknown` on the
 // request side, so the two packages could and did disagree about what a retained
 // contract is, and the engine failed only at run time with a message naming
 // neither the contract nor the real cause.
 type _RequestContractSatisfiesTheEngine = Assert<
-  Ledger8ExecuteRequest['contract'] extends RetainedContract ? true : false
+  Ledger8ExecuteRequest['contract'] extends Ledger8EngineContract ? true : false
 >;

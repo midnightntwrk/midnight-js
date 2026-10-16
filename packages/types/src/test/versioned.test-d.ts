@@ -21,11 +21,11 @@ import type {
   TransactionHash,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
+import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -36,10 +36,10 @@ import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
 // runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
 // Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
-// from it) so the equality check below actually pins the v9 arm's shape
+// from it) so the equality check below actually pins the v9 variant's shape
 // instead of reflexively restating it. Keep in step with `FinalizedTxData`
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
-type FinalizedTxDataV9Fixture = {
+type Ledger9FinalizedTxDataFixture = {
   readonly version: 'v9';
   readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
   readonly status: TxStatus;
@@ -57,13 +57,13 @@ type FinalizedTxDataV9Fixture = {
   readonly unshielded: UnshieldedUtxos;
 };
 
-// The v8 mirror of the fixture above. The v8 arm has no producer yet, so it
+// The v8 mirror of the fixture above. The v8 variant has no producer yet, so it
 // gets the least review pressure of anything in this union — which is exactly
 // why it needs its own field-for-field pin rather than being covered only by
 // the discriminant check.
-type FinalizedTxDataV8Fixture = {
+type Ledger8FinalizedTxDataFixture = {
   readonly version: 'v8';
-  readonly tx: V8Transaction;
+  readonly tx: Ledger8FinalizedTransaction;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -88,7 +88,7 @@ describe('VersionedFinalizedTxData', () => {
         case 'v9':
           return `v9:${data.txId}`;
         default: {
-          // Fails to compile if an arm is added to the union without a case
+          // Fails to compile if a variant is added to the union without a case
           // above, which is the property under test.
           const unhandled: never = data;
           return unhandled;
@@ -98,7 +98,7 @@ describe('VersionedFinalizedTxData', () => {
 
     // Asserting the *inferred* return type: annotating it `string` would make
     // this unfalsifiable. `never` from the default branch drops out of the
-    // union, so a genuine `string` here means both arms were reached.
+    // union, so a genuine `string` here means both variants were reached.
     expectTypeOf(describeVersion).returns.toEqualTypeOf<string>();
   });
 
@@ -106,37 +106,37 @@ describe('VersionedFinalizedTxData', () => {
     const data = {} as VersionedFinalizedTxData;
 
     // @ts-expect-error `data.tx` on the unnarrowed union is
-    // `FinalizedTxDataV8['tx'] | FinalizedTxData['tx']` (a v8 transaction object
+    // `Ledger8FinalizedTxData['tx'] | FinalizedTxData['tx']` (a v8 transaction object
     // or a v9 one) — not assignable to the v9-only `FinalizedTxData['tx']` type
     // required here without first narrowing on `data.version`.
-    const v9Tx: FinalizedTxData['tx'] = data.tx;
+    const ledger9Tx: FinalizedTxData['tx'] = data.tx;
 
-    expectTypeOf(v9Tx).not.toBeAny();
+    expectTypeOf(ledger9Tx).not.toBeAny();
   });
 
-  it('pins the v9 arm field-for-field — fails if any field is dropped, added, or retyped', () => {
+  it('pins the v9 variant field-for-field — fails if any field is dropped, added, or retyped', () => {
     // Bidirectional: catches a field being dropped (fixture would then demand
     // a field FinalizedTxData no longer has), added (FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
     // type breaks assignability in at least one direction).
-    expectTypeOf<FinalizedTxDataV9Fixture>().toEqualTypeOf<FinalizedTxData>();
+    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<FinalizedTxData>();
   });
 
-  it('has exactly the v8 and v9 arms — fails if an arm is silently removed, a third arm added, or a discriminant widened', () => {
+  it('has exactly the v8 and v9 variants — fails if a variant is silently removed, a third variant added, or a discriminant widened', () => {
     // The real discriminating check: comparing the union's discriminant
-    // property against a hardcoded literal union. Removing an arm shrinks
-    // the actual union; adding a third arm (with its own literal `version`)
-    // or widening an arm's `version` to a non-literal grows it — either way
+    // property against a hardcoded literal union. Removing a variant shrinks
+    // the actual union; adding a third variant (with its own literal `version`)
+    // or widening a variant's `version` to a non-literal grows it — either way
     // it stops equaling the hardcoded `'v8' | 'v9'`.
     expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 
-  it('pins the v8 arm field-for-field, so the producerless arm cannot drift', () => {
-    // `FinalizedTxDataV8` inherits from `FinalizedTxRecord`, which stops the
-    // two arms diverging as fields are added to the *base*. It does not stop a
-    // field being added to this arm alone, nor an inherited field being
+  it('pins the v8 variant field-for-field, so the producerless variant cannot drift', () => {
+    // `Ledger8FinalizedTxData` inherits from `FinalizedTxRecord`, which stops the
+    // two variants diverging as fields are added to the *base*. It does not stop a
+    // field being added to this variant alone, nor an inherited field being
     // narrowed here. That is what this pins.
-    expectTypeOf<FinalizedTxDataV8Fixture>().toEqualTypeOf<FinalizedTxDataV8>();
+    expectTypeOf<Ledger8FinalizedTxDataFixture>().toEqualTypeOf<Ledger8FinalizedTxData>();
   });
 });
 
@@ -148,30 +148,30 @@ describe('the compile-time bridge to LedgerVersion', () => {
   // silently — it type-checks in both directions and reads as if it works.
   type Assert<T extends true> = T;
 
-  it('accepts an era set whose eras all have an arm', () => {
+  it('accepts an era set whose eras all have a variant', () => {
     type Eras = 'v8' | 'v9';
-    type Arms = 'v8' | 'v9';
-    type Matched = Assert<[Exclude<Eras, Arms>] extends [never] ? true : false>;
+    type Variants = 'v8' | 'v9';
+    type Matched = Assert<[Exclude<Eras, Variants>] extends [never] ? true : false>;
 
     expectTypeOf<Matched>().toEqualTypeOf<true>();
   });
 
-  it('rejects an era that has no arm — the failure versioned.ts depends on', () => {
+  it('rejects an era that has no variant — the failure versioned.ts depends on', () => {
     type Eras = 'v8' | 'v9' | 'v10';
-    type Arms = 'v8' | 'v9';
+    type Variants = 'v8' | 'v9';
 
-    // @ts-expect-error `'v10'` has no arm, so the difference is non-empty, the
+    // @ts-expect-error `'v10'` has no variant, so the difference is non-empty, the
     // condition resolves to `false`, and `false` does not satisfy `T extends
     // true`. If this stops erroring, the directive itself becomes unused
     // (TS2578) and the typecheck pass fails — so this test cannot rot into a
     // no-op.
     //
     // The tuple brackets are what make it fire. A bare
-    // `Exclude<Eras, Arms> extends never ? true : false` is a *distributive*
+    // `Exclude<Eras, Variants> extends never ? true : false` is a *distributive*
     // conditional: an empty difference distributes over the empty union and
     // yields `never`, not `true` — and `never` satisfies `T extends true`. So
     // the undistributed form is satisfied whether the sets agree or not.
-    type Mismatched = Assert<[Exclude<Eras, Arms>] extends [never] ? true : false>;
+    type Mismatched = Assert<[Exclude<Eras, Variants>] extends [never] ? true : false>;
 
     expectTypeOf<Mismatched>().toEqualTypeOf<false>();
   });

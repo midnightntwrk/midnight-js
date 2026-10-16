@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -15,8 +15,8 @@ structured context, with the original value on `cause`.
 A non-`Error` throw is classified on its string form rather than escaping
 unwrapped.
 
-SYNC-ONLY BY CONTRACT: if `fn()` returns a thenable the wrapper throws a
-`TypeError`. The typed wrappers in `./typed-wrappers.ts` are the primary API;
+SYNC-ONLY BY CONTRACT: if `fn()` returns a thenable the wrapper throws an
+`InvalidArgumentError`. The typed wrappers in `./typed-wrappers.ts` are the primary API;
 use this HOF directly only for ad-hoc deserialization sites not covered there.
 
 ## Type Parameters

@@ -6,7 +6,7 @@
       "envelopeTag": "midnight:contract-state[v6]:",
       "status": "valid",
       "kind": "golden-bridged",
-      "notes": "Byte-identical to state-v8-v6-envelope.hex: LedgerContractStateV8.deserialize(...).serialize() is a no-op round-trip on this input (see generators/mint-state-v8.mjs)."
+      "notes": "Byte-identical to state-v8-v6-envelope.hex: Ledger8ContractState.deserialize(...).serialize() is a no-op round-trip on this input (see generators/mint-state-v8.mjs)."
     },
     "state-v8-v6-envelope.hex": {
       "protocolVersion": 1000000,

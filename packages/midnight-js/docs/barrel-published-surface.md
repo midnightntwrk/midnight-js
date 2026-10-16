@@ -31,7 +31,7 @@ So the shape was decided on two other grounds:
 - The cost equality is an accident of `contracts` reaching for the root.
   `export * as protocol` would convert that accident into a load-bearing
   constraint, blocking the very optimisation someone will eventually want.
-- A wholesale namespace would publish `loadLedger8`, `loadLedger8Engine`,
+- A wholesale namespace would publish `loadLedger8Protocol`, `loadLedger8Engine`,
   `ledger` and `onchainRuntime` from the barrel — the opposite of keeping the
   retained-era runtime off the eager path.
 
@@ -52,8 +52,11 @@ compared against qualifies on the same grounds, which is why `NO_CIRCUIT`
 travels with `ComposeFailedError`: it is the value that error's `circuitId`
 carries when the refusal names no circuit. That rule is why
 `VersionResolutionPath` is present (the error's `path`) and why
-`RetainedEraSubpath`, `ComposeStage` and `ComposeOption` came in with the
-classes whose payloads name them.
+`Ledger8Subpath`, `ComposeStage` and `ComposeOption` came in with the
+classes whose payloads name them. `CURRENT_LEDGER_VERSION` and
+`CurrentLedgerVersion` qualify the same way: a current-era result's `era` (on
+the `contracts` results) is compared against them, and without them a barrel
+consumer would have to write `'v9'` by hand and update it at the next fork.
 
 Two deliberate exclusions:
 
@@ -106,7 +109,7 @@ which this repo does not accept. Publishing each class next to its code is what
 closes that.
 
 `PayloadNotATransactionError` is the one that does not come from the era
-pipeline: a proof provider raises it from `proveV8Transaction`, and it reaches
+pipeline: a proof provider raises it from `proveLedger8Transaction`, and it reaches
 application code as a `proveTx` rejection out of `contracts.deployContract` or
 `submitCallTx`. Its constructor is private and its only public member is
 `code`, so it is published purely so a consumer can `instanceof` it.

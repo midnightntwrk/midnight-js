@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -24,7 +24,7 @@ Generic in the era, so a further ledger era needs no change here.
 
 ### era
 
-`"v9"` \| `"v8"`
+`"v8"` \| `"v9"`
 
 The ledger era this operation will run on.
 

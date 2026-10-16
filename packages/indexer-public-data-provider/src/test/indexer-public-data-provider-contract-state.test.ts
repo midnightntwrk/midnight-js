@@ -26,7 +26,7 @@ type BlockQueryData = { block: { height: number; hash: string } | null };
 
 // Apollo's ObservableQuery is a class with private fields and an invariant
 // TData generic; structural typing of an Rx.Observable widened to `unknown` is
-// the cleanest test seam available without injecting a custom ApolloLink into
+// the cleanest place to stub available without injecting a custom ApolloLink into
 // the provider's internal client construction.
 const buildBlockQueryEmission = (data: BlockQueryData): ObservableQuery<unknown> =>
   Rx.of({

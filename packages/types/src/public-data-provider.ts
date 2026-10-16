@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
-import type { VersionedFinalizedTxData } from './versioned';
+import type { VersionedContractState, VersionedFinalizedTxData, VersionedPublicStates } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -192,12 +191,12 @@ export interface ContractEventBase {
   readonly maxId: number;
   /**
    * Payload schema version — selects the (future) per-event payload decoder.
-   * Iteration-1 events are `version: 1`.
+   * Iteration-1 events are `payloadVersion: 1`. Not a ledger era.
    */
-  readonly version: number;
+  readonly payloadVersion: number;
   /**
    * Protocol version of the block this event was emitted in, as the network
-   * reported it. Distinct from {@link version}: this one says which ledger era
+   * reported it. Distinct from {@link payloadVersion}: this one says which ledger era
    * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
    * to decode them with. Resolve it with `versionOfRecord` from
    * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
@@ -376,8 +375,9 @@ export interface PublicDataProvider {
   queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
 
   /**
-   * Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
-   * contract state at the address in the latest block is returned.
+   * Retrieves the on-chain state of a contract, tagged with the ledger era that wrote it. If no
+   * block hash or block height are provided, the contract state at the address in the latest block
+   * is returned. A v8-era state is returned as the stored bytes, never translated to the v9 encoding.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
@@ -386,13 +386,14 @@ export interface PublicDataProvider {
   queryContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractState | null>;
+  ): Promise<VersionedContractState | null>;
 
   /**
    * Retrieves the zswap chain state (token balances), the contract state of the contract at the
-   * given address, and the ledger parameters in effect on the associated block. Both states are
-   * retrieved in a single query to ensure consistency between the two.
+   * given address, and the ledger parameters in effect on the associated block, tagged with the
+   * ledger era that wrote them. All three are retrieved in a single query to ensure consistency.
    * Immediately returns null if no matching data is found.
+   * @throws When the contract state and the ledger parameters were written by different eras.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -400,14 +401,16 @@ export interface PublicDataProvider {
   queryZSwapAndContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>;
+  ): Promise<VersionedPublicStates | null>;
 
   /**
-   * Retrieves the contract state included in the deployment of the contract at the given contract address.
+   * Retrieves the contract state in the deploy's record for the contract at the given contract address,
+   * or in the latest update's record when the contract has been updated, tagged with the ledger era
+   * that wrote it. A v8-era record is returned as the stored bytes, never translated to the v9 encoding.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    */
-  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null>;
+  queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null>;
 
   /**
    * Retrieves the unshielded balances associated with a specific contract address.
@@ -421,12 +424,12 @@ export interface PublicDataProvider {
   ): Promise<UnshieldedBalances | null>;
 
   /**
-   * Retrieves the contract state of the contract with the given address.
-   * Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
+   * Retrieves the contract state of the contract with the given address, tagged with the ledger era
+   * that wrote it. Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
    * @param contractAddress The address of the contract of interest.
    * @param options Bounds the wait; see {@link WatchOptions}.
    */
-  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<ContractState>;
+  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<VersionedContractState>;
 
   /**
    * Waits for unshielded balances to appear for the given contract address,
@@ -466,8 +469,9 @@ export interface PublicDataProvider {
   watchForTxData(txId: TransactionId, options?: WatchOptions): Promise<VersionedFinalizedTxData>;
 
   /**
-   * Creates a stream of contract states. The observable emits a value every time a state is either
-   * created or updated at the given address.
+   * Creates a stream of contract states, each tagged with the ledger era that wrote it. The
+   * observable emits a value every time a state is either created or updated at the given address.
+   * A replay that starts before the hard fork emits the pre-fork states as v8 values and carries on.
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
@@ -479,29 +483,21 @@ export interface PublicDataProvider {
   contractStateObservable(
     address: ContractAddress,
     config: ContractStateObservableConfig
-  ): Observable<PositionedRecord<ContractState>>;
+  ): Observable<PositionedRecord<VersionedContractState>>;
 
   /**
    * Creates a stream of contract states as the raw serialized bytes the network
-   * returned, without deserializing them, each together with the era its record
-   * is dated to. The observable emits a value every time a state is either
+   * returned, without deserializing them, each tagged with the ledger era that
+   * wrote it. The observable emits a value every time a state is either
    * created or updated at the given address.
    * Waits indefinitely for matching data to appear.
    *
-   * THE STREAMING COUNTERPART OF {@link queryRawContractState}, and the reason
-   * to prefer it over {@link contractStateObservable} is the same: it is the
-   * contract-state stream that works across the ledger fork. An implementation
-   * that deserializes inside the stream can only do so with the eras its own
-   * runtime has, and a state from any other era then ENDS the subscription
-   * rather than skipping one emission — a contract deployed before a fork and
-   * not written to since serves exactly such a state for as long as it stays
-   * dormant. Here the era travels on the record instead.
+   * THE STREAMING COUNTERPART OF {@link queryRawContractState}. Prefer it over
+   * {@link contractStateObservable} when the caller decodes the bytes itself.
    *
-   * {@link RawContractState.version} DATES THE RECORD, it does not read the
-   * bytes — see that field's own documentation. A caller that must know which
-   * runtime WROTE the bytes reads the envelope off
-   * {@link RawContractState.raw}; the two can disagree, and where they can is
-   * stated on the field.
+   * {@link RawContractState.version} is the era read off the envelope of
+   * {@link RawContractState.raw}; {@link RawContractState.protocolVersion}
+   * dates the block that served it.
    *
    * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
    * where the same implementation serves it on
@@ -600,8 +596,9 @@ export interface PublicDataProvider {
    * reading held indefinitely is forbidden.
    *
    * PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
-   * is the question — it is dated to the same block as the bytes it describes
-   * and costs no extra request. Reach for this method only where there is no
+   * is the question — it dates the block the read resolved and costs no extra
+   * request. For a contract state that block can be newer than the bytes; the
+   * era that wrote the bytes is the record's `version`. Reach for this method only where there is no
    * record to date: the deploy path.
    *
    * The answer is a LOWER BOUND on the era of the block that will include a
@@ -617,14 +614,13 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the on-chain state of a contract as the raw serialized bytes the
-   * network returned, without deserializing them, together with the era the
-   * record is dated to.
+   * network returned, without deserializing them, tagged with the ledger era
+   * that wrote them.
    *
-   * This is the state input for callers that must work across the ledger fork:
-   * they narrow on {@link RawContractState.version} and then hand the bytes to
-   * that era's deserializer. Both eras' envelopes are returned unchanged. The
-   * era comes from the record's protocol version and is not checked against
-   * the envelope the bytes carry.
+   * For callers that decode the bytes themselves: they narrow on
+   * {@link RawContractState.version} and then hand the bytes to that era's
+   * deserializer. Both eras' envelopes are returned unchanged. The era is read
+   * off the envelope the bytes carry.
    *
    * Immediately returns null if no matching data is found.
    *

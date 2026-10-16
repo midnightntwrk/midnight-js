@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -15,7 +15,7 @@ USE THIS RATHER THAN TAGGING BY HAND. It keeps the `version` tag out of
 implementation code, where a hand-tagged implementation meets a compiler error
 that does not name the real problem.
 
-The returned provider serves the v9 arm only — `supportedEras` says so — and
+The returned provider serves v9 payloads only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a v9-only implementation. It
 rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
 `UntaggedPayloadError`. To serve a retained era as well, use
@@ -39,7 +39,7 @@ A [WalletProvider](../interfaces/WalletProvider.md) that narrows inbound payload
 ## See
 
 SeamEraDeclarations for the compiler error this avoids, and for
-why serving the v9 arm only is permanent rather than a gap.
+why serving v9 payloads only is permanent rather than a gap.
 
 ## Example
 

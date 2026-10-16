@@ -17,8 +17,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ContractState as LedgerContractStateV8 } from '@midnightntwrk/ledger-v8';
-import { ContractState as LedgerContractStateV9 } from '@midnightntwrk/ledger-v9';
+import { ContractState as Ledger8ContractState } from '@midnightntwrk/ledger-v8';
+import { ContractState as Ledger9ContractState } from '@midnightntwrk/ledger-v9';
 
 // The fixture bytes reach the ledgers through the package's own accessor, not
 // through a local reader: its whole-hex check is what stops a truncated decode
@@ -108,25 +108,25 @@ describe('[Unit tests] hard-fork fixtures', () => {
     it('state-v8.hex deserializes with ledger-v8', () => {
       const bytes = readHexFixture('state-v8.hex');
 
-      expect(() => LedgerContractStateV8.deserialize(bytes)).not.toThrow();
+      expect(() => Ledger8ContractState.deserialize(bytes)).not.toThrow();
     });
 
     it('state-v8-v6-envelope.hex deserializes with ledger-v8', () => {
       const bytes = readHexFixture('state-v8-v6-envelope.hex');
 
-      expect(() => LedgerContractStateV8.deserialize(bytes)).not.toThrow();
+      expect(() => Ledger8ContractState.deserialize(bytes)).not.toThrow();
     });
 
     it('state-migrated-v9.hex deserializes with ledger-v9', () => {
       const bytes = readHexFixture('state-migrated-v9.hex');
 
-      expect(() => LedgerContractStateV9.deserialize(bytes)).not.toThrow();
+      expect(() => Ledger9ContractState.deserialize(bytes)).not.toThrow();
     });
 
     it('state-migrated-v9-merkle.hex deserializes with ledger-v9', () => {
       const bytes = readHexFixture('state-migrated-v9-merkle.hex');
 
-      const state = LedgerContractStateV9.deserialize(bytes);
+      const state = Ledger9ContractState.deserialize(bytes);
       const tree = state.data.state.asBoundedMerkleTree();
 
       expect(tree).toBeDefined();
@@ -138,12 +138,12 @@ describe('[Unit tests] hard-fork fixtures', () => {
     it('deserializes cleanly as a ContractState on ledger-v9 (shape-positive, not a decode failure)', () => {
       const bytes = readHexFixture('state-co-v2-only-foreign.hex');
 
-      expect(() => LedgerContractStateV9.deserialize(bytes)).not.toThrow();
+      expect(() => Ledger9ContractState.deserialize(bytes)).not.toThrow();
     });
 
     it('registers an "increment" operation whose verifier key is genuinely foreign to the twin contract', () => {
       const bytes = readHexFixture('state-co-v2-only-foreign.hex');
-      const state = LedgerContractStateV9.deserialize(bytes);
+      const state = Ledger9ContractState.deserialize(bytes);
 
       const operation = state.operation('increment');
       expect(operation).toBeDefined();
@@ -155,7 +155,7 @@ describe('[Unit tests] hard-fork fixtures', () => {
     it('is not a valid v8-era ContractState (this fixture is v9-era only)', () => {
       const bytes = readHexFixture('state-co-v2-only-foreign.hex');
 
-      expect(() => LedgerContractStateV8.deserialize(bytes)).toThrow();
+      expect(() => Ledger8ContractState.deserialize(bytes)).toThrow();
     });
   });
 
@@ -172,8 +172,8 @@ describe('[Unit tests] hard-fork fixtures', () => {
       it('is rejected by ledger-v8 AND ledger-v9 (no silent mis-dispatch)', () => {
         const bytes = readHexFixture(name);
 
-        expect(() => LedgerContractStateV8.deserialize(bytes)).toThrow();
-        expect(() => LedgerContractStateV9.deserialize(bytes)).toThrow();
+        expect(() => Ledger8ContractState.deserialize(bytes)).toThrow();
+        expect(() => Ledger9ContractState.deserialize(bytes)).toThrow();
       });
     });
   });

@@ -12,19 +12,19 @@ yarn add @midnight-ntwrk/midnight-js-http-client-proof-provider
 
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
   zkConfigProvider
 );
 
-// Transaction payloads cross a provider seam version-tagged: tag on the way
+// Transaction payloads are passed to a provider version-tagged: tag on the way
 // in, narrow on `version` on the way out. There is no untagged form.
-// `unwrapV9` is the framework's narrowing helper — it throws
-// V8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
+// `unwrapLedger9` is the framework's narrowing helper — it throws
+// Ledger8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
 // `code` you can match with `hasErrorCode`.
-const provenTx = unwrapV9(
+const provenTx = unwrapLedger9(
   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
   'proveTx'
 );
@@ -56,14 +56,14 @@ Use `httpClientProofProvider` for most use cases. It handles complete transactio
 
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
   zkConfigProvider
 );
 
-const provenTx = unwrapV9(
+const provenTx = unwrapLedger9(
   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
   'proveTx'
 );
@@ -98,10 +98,10 @@ proveTx(
 
 Proves all circuits in a transaction and returns the proven transaction.
 
-Both the argument and the result are version-tagged unions: the `'v9'` arm
-carries the live ledger object as `tx`, the `'v8'` arm carries serialized
+Both the argument and the result are version-tagged unions: the `'v9'` variant
+carries the live ledger object as `tx`, the `'v8'` variant carries serialized
 bytes as `txBytes`. Narrow on `version` before touching the payload. This
-provider serves the `'v9'` arm; a `'v8'` payload is rejected.
+provider serves the `'v9'` variant; a `'v8'` payload is rejected.
 
 ### ProvingProvider (Low-Level)
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
 
 ***
 
@@ -28,7 +28,8 @@ ran against — is gone. Why, and what the move cost, is in
 
 The error classes named here are described in [FailClosedDecoding](FailClosedDecoding.md), which owns
 the division of labour between `DownConvertFailedError`,
-`StateDecodeFailedError` and `Ledger8RuntimeInvalidError`; the refusal ordering
+`StateDecodeFailedError`, `StateInconsistentError` and
+`Ledger8RuntimeInvalidError`; the refusal ordering
 on the composition legs is in [ComposeRefusalOrder](ComposeRefusalOrder.md).
 
 ## The state a circuit executes against

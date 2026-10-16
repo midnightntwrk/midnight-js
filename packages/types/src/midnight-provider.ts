@@ -16,7 +16,8 @@
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEraArm, type RetainedEraHandlers } from './era-arms';
+import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
+import { readEraEntries } from './internal/read-era-entries';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
 /**
@@ -27,7 +28,7 @@ export interface MidnightProvider {
   /**
    * The ledger eras THIS INSTANCE serves. See
    * {@link ProofProvider.supportedEras} — the field means the same on all three
-   * transaction seams, and all three are read together before an operation
+   * transaction providers, and all three are read together before an operation
    * starts.
    */
   readonly supportedEras: readonly LedgerVersion[];
@@ -39,23 +40,24 @@ export interface MidnightProvider {
    *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
    * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
    *          transaction identifier is era-independent.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
 }
 
 /**
- * Submits a CURRENT-era transaction, which crosses this seam as a live ledger
- * object.
+ * Submits a ledger 9 transaction, which is passed to `submitTx` as a live ledger
+ * object. It fills the `currentEra` slot while ledger 9 is the current era.
  */
-export type CurrentEraSubmitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
+export type Ledger9Submitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
 
 /**
- * Submits a RETAINED-era transaction, which crosses this seam as serialized
+ * Submits a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
+ * ledger 8), which is passed to `submitTx` as serialized
  * bytes.
  *
- * Unlike the other two seams this arm answers untagged, because a transaction
+ * Unlike the other two transaction methods this one answers untagged, because a transaction
  * identifier is era-independent — the eras differ only in what they are handed.
  */
 export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionId>;
@@ -66,31 +68,41 @@ export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionI
  */
 export interface MidnightProviderHandlers {
   /** Required: every submitter serves the current era. */
-  readonly currentEra: CurrentEraSubmitter;
+  readonly currentEra: Ledger9Submitter;
   /** Optional, one entry per retained era this submitter serves. */
-  readonly retainedEras?: RetainedEraHandlers<RetainedEraSubmitter>;
+  readonly retainedEras?: RetainedEraEntries<RetainedEraSubmitter>;
 }
 
 /**
- * Assembles a {@link MidnightProvider} from one arm per ledger era it serves.
+ * Assembles a {@link MidnightProvider} from one handler per ledger era it serves.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
  * `supportedEras` is computed from the handlers supplied, and the tag never appears
  * in implementation code.
  *
+ * `currentEra` is called with `handlers` as `this`; a retained-era handler is
+ * called with no `this`.
+ *
  * @param handlers The current-era handler, and one for each retained era served.
- * @returns A {@link MidnightProvider} routing each submission to its era's arm.
+ * @returns A {@link MidnightProvider} routing each submission to its era's handler.
+ * @throws UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
+ *         than `undefined`, is not a function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, or `retainedEras`
+ *         is not a plain object keyed only by retained eras. Raised at construction.
  */
-export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => ({
-  supportedEras: erasServedBy(handlers.retainedEras),
+export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
+  const { currentEra, retainedEras } = readEraEntries('submitTx', handlers, 'handler');
+  return {
+    supportedEras: erasServedBy(retainedEras),
 
-  async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-    const request = narrowToEraArm(tx, 'submitTx', handlers.retainedEras);
-    return request.era === CURRENT_LEDGER_VERSION
-      ? handlers.currentEra(request.tx)
-      : request.handler(request.txBytes);
-  }
-});
+    async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
+      const request = narrowToEra(tx, 'submitTx', retainedEras);
+      return request.era === CURRENT_LEDGER_VERSION
+        ? Reflect.apply(currentEra, handlers, [request.tx])
+        : Reflect.apply(request.handler, undefined, [request.txBytes]);
+    }
+  };
+};
 
 /**
  * Lifts a v9-only submission function into the version-tagged
@@ -99,15 +111,15 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  * The counterpart to `createWalletProvider`, and worth using for the same
  * reason: it keeps the `version` tag out of implementation code.
  *
- * The returned provider serves the v9 arm only — `supportedEras` says so — and
+ * The returned provider serves v9 payloads only — `supportedEras` says so — and
  * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+ * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
  * `UntaggedPayloadError`. To serve a retained era as well, use
  * {@link createMidnightProviderFromHandlers}.
  *
  * @param submitTx The v9-only submission function to wrap.
  * @returns A {@link MidnightProvider} that narrows inbound payloads.
- * @see {@link SeamEraDeclarations} for the compiler error this avoids.
+ * @see {@link ProviderEraDeclarations} for the compiler error this avoids.
  *
  * @example
  * ```typescript

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -7,11 +7,11 @@
 # Class: V8PayloadUnsupportedError
 
 Thrown by a provider that only speaks the v9 ledger runtime when it is
-handed the v8 arm of a versioned transaction payload — serialized,
-tag-prefixed bytes instead of a live v9 transaction object.
+handed a v8 payload — serialized, tag-prefixed bytes instead of a live v9
+transaction object.
 
 Catching this does NOT mean "the framework cannot do it yet". It means the
-specific implementation on that seam does not serve the v8 arm — permanently
+specific implementation on that seam does not serve v8 payloads — permanently
 for the lifting adapters, contingently for a concrete provider.
 
 Catch it via its stable `code`, using `hasErrorCode` from
@@ -24,7 +24,7 @@ how it differs from [SeamEraUnsupportedError](SeamEraUnsupportedError.md).
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -56,7 +56,7 @@ Size of the rejected payload, recorded so a report of
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
@@ -72,9 +72,23 @@ Size of the rejected payload, recorded so a report of
 
 ***
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
+
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED"` = `V8_PAYLOAD_UNSUPPORTED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)
 
 ***
 

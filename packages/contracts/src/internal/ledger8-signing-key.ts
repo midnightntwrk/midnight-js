@@ -51,13 +51,13 @@ import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type BreadcrumbSink, emitRetainedSigningKeyEntry } from './breadcrumbs';
+import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './breadcrumbs';
 
 /**
  * The signature kind a retained-era key is, and the only kind that may be read
  * back out as one.
  */
-const RETAINED_SIGNING_KEY_TAG: SigningKey['tag'] = 'schnorr';
+const LEDGER8_SIGNING_KEY_TAG: SigningKey['tag'] = 'schnorr';
 
 /**
  * How many hex characters a retained-era key is: 32 bytes, so 64.
@@ -73,23 +73,23 @@ const RETAINED_SIGNING_KEY_TAG: SigningKey['tag'] = 'schnorr';
  * samples a key from a retained runtime and asserts its length against this
  * constant, so a sampler that changed length fails there.
  */
-export const RETAINED_SIGNING_KEY_HEX_LENGTH = 64;
+export const LEDGER8_SIGNING_KEY_HEX_LENGTH = 64;
 
 /**
  * Wraps a retained-era key in the shape `PrivateStateProvider.setSigningKey`
  * takes.
  *
  * THE SLOT IS SHARED WITH THE CURRENT ERA, and this wrapper cannot separate
- * them. Both eras sample `schnorr`, and both arms write ONE address-keyed slot,
+ * them. Both eras sample `schnorr`, and both paths write ONE address-keyed slot,
  * so a stored entry does not record which era wrote it. An address whose slot
- * the current-era arm filled -- it SAMPLES a fresh key when it finds none --
- * would be read back by the retained arm as that contract's authority, when it
+ * the current-era path filled -- it SAMPLES a fresh key when it finds none --
+ * would be read back by the retained path as that contract's authority, when it
  * is a key the chain never heard of.
  *
  * This is REACHABLE. Recompiled current-era artifacts pass `verifyContractState`
  * against a contract deployed before the fork, so a current-era find on a store
  * that holds no key for that address samples one and stores it, as it does for
- * any contract. The retained arm then reports that key as `signingKey`. It signs
+ * any contract. The retained path then reports that key as `signingKey`. It signs
  * nothing there -- the retained handle carries no maintenance interfaces -- but
  * the value it reports is not the contract's authority. A key the pre-fork deploy
  * stored is never replaced: the current era samples only into an empty slot.
@@ -103,7 +103,7 @@ export const RETAINED_SIGNING_KEY_HEX_LENGTH = 64;
  * @returns The same key, as the store's structured key.
  */
 export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): SigningKey => ({
-  tag: RETAINED_SIGNING_KEY_TAG,
+  tag: LEDGER8_SIGNING_KEY_TAG,
   value: signingKey
 });
 
@@ -123,13 +123,13 @@ export const toStoredLedger8SigningKey = (signingKey: Ledger8SigningKey): Signin
  *   cover the other: {@link isValidSigningKey} is the shape the level-backed
  *   provider validates an IMPORT against, so an entry this read admits is one a
  *   restore will too -- but it is the import-format rule, shared with the
- *   current era. {@link RETAINED_SIGNING_KEY_HEX_LENGTH} is this era's own
+ *   current era. {@link LEDGER8_SIGNING_KEY_HEX_LENGTH} is this era's own
  *   rule, and without it `signatureVerifyingKey()` on such an entry answers an
  *   authority nobody holds, silently.
  *
  * ABSENT rather than a throw, and that is a deliberate choice about blast
  * radius. This read sits on `findDeployedContract`, whose result is used to
- * call circuits; the retained arm exposes no maintenance interface, so nothing
+ * call circuits; the retained path exposes no maintenance interface, so nothing
  * on that path consumes the key. A throw here would fail every attach to the
  * address — circuit calls included — over a value none of them reads. The
  * caller's remedy is unchanged: supply the retained key on the attach options,
@@ -151,16 +151,16 @@ export const fromStoredLedger8SigningKey = (
   contractAddress: string,
   sink: BreadcrumbSink | undefined
 ): Ledger8SigningKey | undefined => {
-  if (stored.tag !== RETAINED_SIGNING_KEY_TAG) {
-    emitRetainedSigningKeyEntry(sink, contractAddress, 'other-signature-kind');
+  if (stored.tag !== LEDGER8_SIGNING_KEY_TAG) {
+    emitLedger8SigningKeyEntry(sink, contractAddress, 'other-signature-kind');
     return undefined;
   }
   // The WHOLE entry through `isValidSigningKey`, and not just its value: that is
   // the rule the level-backed provider validates an import against, so an entry
   // this read admits is one a restore will too. The length is checked SEPARATELY
   // because that rule is the import format's and not this era's -- see above.
-  if (!isValidSigningKey(stored) || stored.value.length !== RETAINED_SIGNING_KEY_HEX_LENGTH) {
-    emitRetainedSigningKeyEntry(sink, contractAddress, 'malformed-value');
+  if (!isValidSigningKey(stored) || stored.value.length !== LEDGER8_SIGNING_KEY_HEX_LENGTH) {
+    emitLedger8SigningKeyEntry(sink, contractAddress, 'malformed-value');
     return undefined;
   }
   return stored.value;

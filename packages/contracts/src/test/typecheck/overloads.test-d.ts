@@ -24,7 +24,8 @@ import type {
   SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { PrivateStateId, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -46,8 +47,13 @@ import {
   type DeployContractOptionsWithPrivateState,
   type DeployedContract
 } from '../../deploy-contract';
-import type { CurrentPipelineEra, PipelineEra, RetainedPipelineEra } from '../../era';
-import { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from '../../era-results';
+import {
+  type AnyEraDeployedContract,
+  type AnyEraFinalizedCallTxData,
+  type AnyEraFoundContract,
+  type AnyEraSubmittedCallTx,
+  isLedger8Result
+} from '../../era-results';
 import {
   findDeployedContract,
   type FindDeployedContractOptionsBase,
@@ -87,7 +93,7 @@ import type {
   FinalizedCallTxData,
   FinalizedDeployTxPublicData,
   FoundDeployTxPublicData,
-  FoundDeployTxPublicDataV8,
+  Ledger8FoundDeployTxPublicData,
   SubmittedCallTx
 } from '../../tx-model';
 import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
@@ -144,7 +150,7 @@ declare const neitherShapeContract: { readonly nonsense: true };
 
 // Signing-key material for the two eras. They are DIFFERENT SHAPES -- the retained runtime's key is
 // a bare string, the current era's a `{ tag, value }` record -- which is the only reason the
-// retained arms can be pinned to one of them at all.
+// retained-era overloads can be pinned to one of them at all.
 declare const retainedSigningKey: Ledger8SigningKey;
 declare const currentSigningKey: SigningKey;
 
@@ -287,7 +293,7 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
   // guard is `args_1.length !== 2`), and these four assertions are what a zero-argument fixture
   // could never have caught: with `Ledger8Circuit`'s tail widened to `unknown[]`, contravariance
   // put this contract OUTSIDE `Ledger8Contract` altogether, so `submitCallTx` silently fell through
-  // to the current-era arms and the retained-era overload did not apply to it at all.
+  // to the current-era overloads and the retained-era overload did not apply to it at all.
   it('satisfies the retained-era family through the family own machinery', () => {
     expectTypeOf<Ledger8CircuitId<CoinReceiver016Contract>>().toEqualTypeOf<'receive_coin'>();
   });
@@ -321,11 +327,11 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
     expectTypeOf<AnyLedger8CallTxOptions>().toHaveProperty('additionalCoinEncPublicKeyMappings');
   });
 
-  it('RESOLVES to the retained-era arm, which is the assertion the unknown[] tail failed', () => {
+  it('RESOLVES to the retained-era overload, which is the assertion the unknown[] tail failed', () => {
     // The load-bearing one. Compiling is not the property under test: an argument-taking contract
     // that fell out of `Ledger8Contract` would still have compiled here by matching a current-era
-    // arm, or failed for a reason that says nothing about eras. Only the resolved return type shows
-    // that the retained-era arm was selected.
+    // overload, or failed for a reason that says nothing about eras. Only the resolved return type shows
+    // that the retained-era overload was selected.
     expectTypeOf(submitCallTx(providersCoin, optionsCoin)).toEqualTypeOf<
       Promise<Ledger8FinalizedCallTxData<CoinReceiver016Contract, 'receive_coin'>>
     >();
@@ -337,7 +343,7 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
 
 describe('every result names the pipeline that produced it', () => {
   // The fact a caller cannot get anywhere else. `public.version` and
-  // `deployTxData.version` answer a DIFFERENT question -- which ledger recorded
+  // `deployTxData.public.version` answer a DIFFERENT question -- which ledger recorded
   // the transaction -- and after the fork they disagree with this one: a
   // retained-era call is recorded as a keep-state transaction tagged `'v9'`
   // while every object in its result comes from `onchain-runtime-v3`. A caller
@@ -348,19 +354,19 @@ describe('every result names the pipeline that produced it', () => {
     | Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
 
   it('tags both eras at the same path, with that era own literal', () => {
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['era']
-    >().toEqualTypeOf<RetainedPipelineEra>();
+    >().toEqualTypeOf<'v8'>();
     // Both literals belong to the ONE vocabulary the dispatch already resolves.
-    expectTypeOf<CurrentPipelineEra | RetainedPipelineEra>().toEqualTypeOf<PipelineEra>();
+    expectTypeOf<CurrentLedgerVersion | 'v8'>().toEqualTypeOf<LedgerVersion>();
   });
 
   it('DISCRIMINATES: a union of the two eras narrows on `era` alone', () => {
-    // The property under test. Declaring `era: PipelineEra` on both arms would
+    // The property under test. Declaring `era: LedgerVersion` on both variants would
     // satisfy every assertion above and narrow nothing.
     const narrow = (result: EitherEraCall): Uint8Array | undefined =>
-      result.era === 'ledger8' ? result.private.txBytes : undefined;
+      result.era === 'v8' ? result.private.txBytes : undefined;
 
     expectTypeOf(narrow).parameter(0).toEqualTypeOf<EitherEraCall>();
     expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
@@ -373,25 +379,25 @@ describe('every result names the pipeline that produced it', () => {
     // instantiation is the one a shared handler wants -- telemetry, retry, a
     // queue consumer -- which is why these are the published form rather than
     // a four-parameter generic nobody would write.
-    // The RETAINED arm is pinned by strict equality: it is published
+    // The RETAINED variant is pinned by strict equality: it is published
     // unmodified, so anything that moves it moves this.
-    expectTypeOf<Extract<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnyEraFinalizedCallTxData, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
-    expectTypeOf<Extract<AnyEraSubmittedCallTx, { era: RetainedPipelineEra }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnyEraSubmittedCallTx, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
 
-    // The CURRENT arm is the widest instantiation with its two `any` members
+    // The CURRENT variant is the widest instantiation with its two `any` members
     // restated as `unknown` (see below), so strict equality against the raw
     // instantiation would pin the `any` back in. What has to hold instead is
-    // that it is the current era's arm and carries that arm's members.
-    type CurrentFinalized = Exclude<AnyEraFinalizedCallTxData, { era: RetainedPipelineEra }>;
-    expectTypeOf<CurrentFinalized['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    // that it is the current era's variant and carries that variant's members.
+    type CurrentFinalized = Exclude<AnyEraFinalizedCallTxData, { era: 'v8' }>;
+    expectTypeOf<CurrentFinalized['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<CurrentFinalized['public']['logEvents']>().toEqualTypeOf<readonly LogEvent[]>();
     expectTypeOf<CurrentFinalized['circuitId']>().toEqualTypeOf<Contract.ProvableCircuitId<Contract.Any>>();
 
-    // The guard narrows by `era`, on any union whose arms carry the tag -- not
+    // The guard narrows by `era`, on any union whose members carry the tag -- not
     // only on the published ones above. Stated against the NARROW union a
     // caller with concrete contract types would build, because that is the
     // case a widest-instantiation-only guard would fail to serve.
@@ -400,7 +406,7 @@ describe('every result names the pipeline that produced it', () => {
     expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
 
     // And it narrows the OTHER way too: the else branch is the current era's
-    // arm, so a member only that arm carries is reachable there.
+    // variant, so a member only that variant carries is reachable there.
     const narrowCurrent = (result: EitherEraCall): readonly LogEvent[] | undefined =>
       isLedger8Result(result) ? undefined : result.public.logEvents;
     expectTypeOf(narrowCurrent).returns.toEqualTypeOf<readonly LogEvent[] | undefined>();
@@ -409,8 +415,8 @@ describe('every result names the pipeline that produced it', () => {
     // `Contract<any>`, so on the WIDEST instantiation `Contract.PrivateState`
     // and `Contract.CircuitReturnType` both resolve to `any` -- and a union
     // member typed `any` silently disables checking for exactly the handlers
-    // these unions exist to serve. The retained arm already answers `unknown`;
-    // this pins the current arm to the same.
+    // these unions exist to serve. The retained variant already answers `unknown`;
+    // this pins the current variant to the same.
     expectTypeOf<AnyEraFinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
     expectTypeOf<AnyEraFinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
     expectTypeOf<AnyEraSubmittedCallTx['callTxData']['private']['result']>().toEqualTypeOf<unknown>();
@@ -425,22 +431,47 @@ describe('every result names the pipeline that produced it', () => {
     // A caller whose parameter is tagged with the WIDE union still narrows to
     // something usable. `Extract` alone answers `never` here -- there is no
     // union member to pick -- which rejects every property access in the true
-    // branch with no hint as to why. `PipelineEra` is published, so this is a
+    // branch with no hint as to why. `LedgerVersion` is published, so this is a
     // parameter consumers will write.
-    const wide = (result: { readonly era: PipelineEra; readonly txId: string }): string | undefined =>
+    const wide = (result: { readonly era: LedgerVersion; readonly txId: string }): string | undefined =>
       isLedger8Result(result) ? result.txId : undefined;
     expectTypeOf(wide).returns.toEqualTypeOf<string | undefined>();
   });
 
+  it('publishes one union for a found contract and one for a deployed contract, of either era', () => {
+    type Found = AnyEraFoundContract<Twin018, Counter016Contract>;
+    type Deployed = AnyEraDeployedContract<Twin018, Counter016Contract>;
+
+    expectTypeOf<Extract<Found, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundContract<Counter016Contract>>();
+    expectTypeOf<Exclude<Found, { era: 'v8' }>>().toEqualTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<Extract<Deployed, { era: 'v8' }>>().toEqualTypeOf<Ledger8DeployedContract<Counter016Contract>>();
+    expectTypeOf<Exclude<Deployed, { era: 'v8' }>>().toEqualTypeOf<DeployedContract<Twin018>>();
+
+    expectTypeOf<Deployed>().toExtend<Found>();
+
+    const signingKeyOf = (found: Found): string | undefined =>
+      isLedger8Result(found) ? found.signingKey : undefined;
+    expectTypeOf(signingKeyOf).returns.toEqualTypeOf<string | undefined>();
+  });
+
+  it('keeps the deploy record at deployTxData.public in both eras', () => {
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['deployTxData']['public']>().toEqualTypeOf<
+      VersionedFinalizedTxData
+    >();
+    const recordEra = (found: AnyEraFoundContract<Twin018, Counter016Contract>): LedgerVersion =>
+      found.deployTxData.public.version;
+    expectTypeOf(recordEra).returns.toEqualTypeOf<LedgerVersion>();
+  });
+
   it('tags the asynchronous submit and the contract handles too', () => {
-    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentPipelineEra>();
+    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['era']
-    >().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    >().toEqualTypeOf<'v8'>();
+    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
   });
 });
 
@@ -463,13 +494,13 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8DeployContractOptions<Counter016Contract>>().not.toHaveProperty('args');
   });
 
-  it('demands constructor args on BOTH deploy-option arms, and on neither for a nullary constructor', () => {
+  it('demands constructor args on BOTH deploy-option variants, and on neither for a nullary constructor', () => {
     type SeededArgs = { readonly args: [seed: bigint] };
 
-    // Each arm of the union, with the conditional applied. A conditional that stopped DISTRIBUTING
+    // Each variant of the union, with the conditional applied. A conditional that stopped DISTRIBUTING
     // over the union would leave one of these two unsatisfiable, and `toHaveProperty('args')` on
-    // the union alone cannot see that: `keyof` a union already intersects the arms' keys, so an arm
-    // that lost `args` and an arm that never had it read the same.
+    // the union alone cannot see that: `keyof` a union already intersects the variants' keys, so a variant
+    // that lost `args` and a variant that never had it read the same.
     expectTypeOf<Ledger8DeployContractOptionsBase<SeededContract> & SeededArgs>().toMatchTypeOf<
       Ledger8DeployContractOptions<SeededContract>
     >();
@@ -483,7 +514,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
       Ledger8DeployContractOptions<SeededContract>
     >();
 
-    // The zero-argument constructor: both arms stand as they are, and neither carries the member.
+    // The zero-argument constructor: both variants stand as they are, and neither carries the member.
     expectTypeOf<Ledger8DeployContractOptionsBase<Counter016Contract>>().toMatchTypeOf<
       Ledger8DeployContractOptions<Counter016Contract>
     >();
@@ -494,15 +525,15 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8DeployContractOptionsWithPrivateState<Counter016Contract>>().not.toHaveProperty('args');
   });
 
-  it('names where the constructor private state is stored, on the private-state arm alone', () => {
+  it('names where the constructor private state is stored, on the private-state variant alone', () => {
     expectTypeOf<
       Ledger8DeployContractOptionsWithPrivateState<SeededContract>['privateStateId']
     >().toEqualTypeOf<PrivateStateId>();
     expectTypeOf<
       Ledger8DeployContractOptionsWithPrivateState<SeededContract>['initialPrivateState']
     >().toEqualTypeOf<SeededPrivateState>();
-    // Declared on the no-private-state arm as `never`, not absent from it. Absent, union
-    // excess-property checking admits a member declared on the SIBLING arm as long as one arm is
+    // Declared on the no-private-state variant as `never`, not absent from it. Absent, union
+    // excess-property checking admits a member declared on the SIBLING variant as long as one variant is
     // satisfied -- and `compiledContract` alone satisfies this one -- so `{ compiledContract,
     // privateStateId }` compiled, the constructor ran on `privateState: undefined`, and
     // `undefined` was stored under the caller's id.
@@ -512,7 +543,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     >().toEqualTypeOf<undefined>();
   });
 
-  // THE FOUR SHAPES, as a table. The two arms are SIBLINGS rather than base-and-derived: a derived
+  // THE FOUR SHAPES, as a table. The two variants are SIBLINGS rather than base-and-derived: a derived
   // `privateStateId: PrivateStateId` over a base `privateStateId?: never` is an illegal extension,
   // and for the intersection-shaped `args` variant it collapses the member to `never`.
   it('admits the private-state PAIR, and refuses either half on its own', () => {
@@ -566,7 +597,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf<Ledger8FindDeployedContractOptions<Counter016Contract>['signingKey']>().toEqualTypeOf<
       Ledger8SigningKey | undefined
     >();
-    // The member this arm persists a key INTO, and the one omitted when this assertion was
+    // The member this path persists a key INTO, and the one omitted when this assertion was
     // written: widened to the current era's wrapped `SigningKey | undefined`, every other gate in
     // this package still compiled and passed.
     expectTypeOf<Ledger8FoundContract<Counter016Contract>['signingKey']>().toEqualTypeOf<
@@ -588,7 +619,7 @@ describe('the retained-era deploy publishes what it produced, and takes what a c
     expectTypeOf(deployWithKey.signingKey).toEqualTypeOf<Ledger8SigningKey | undefined>();
     expectTypeOf(findWithKey.signingKey).toEqualTypeOf<Ledger8SigningKey | undefined>();
     // A key sampled from the CURRENT runtime -- which is what every other entry point in this
-    // package takes -- cannot reach a retained arm by accident.
+    // package takes -- cannot reach a retained-era overload by accident.
     expectTypeOf(currentSigningKey).not.toMatchTypeOf<Ledger8SigningKey>();
 
     const refusedKey: Ledger8DeployContractOptionsBase<Counter016Contract> = {
@@ -636,7 +667,7 @@ describe('the retained-era find takes the private-state configuration the curren
 });
 
 describe('both eras resolve a call to the SAME result structure', () => {
-  // The caller-facing property. The retained arm used to answer a thin
+  // The caller-facing property. The retained-era result used to answer a thin
   // `{ circuitId, nextPrivateState, txData }` while the current era answered
   // `{ public, private }`, so the two eras' results were different objects and
   // the circuit's own return value was reachable in one era only -- even though
@@ -654,7 +685,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
   // THE RULE THE ALLOW-LISTS ANSWER TO: an era may add only what the other era
   // CANNOT answer, and every entry names why it cannot. "An era may add; it may
   // not drop" is the ratchet, and it is not sufficient on its own -- it licensed
-  // `circuitId` and `nextPrivateState` on the retained arm alone, both of which
+  // `circuitId` and `nextPrivateState` on the retained-era result alone, both of which
   // the current era could answer and one of which it already answered by
   // another path. What is left below is about the retained TOOLCHAIN (no
   // log-event concept) and about TRANSPORT (bytes instead of a live
@@ -752,7 +783,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
 
     // `partitionInputs` is the four values a transcript's partition was built
     // from, which compact-js publishes as of 3.0.0-rc.2
-    // (midnightntwrk/midnight-sdk#400). The retained arm answers the same
+    // (midnightntwrk/midnight-sdk#400). The retained-era result answers the same
     // question through `preContractState` plus the `partitionContext` its
     // transcript carries, so it has no member of this name -- yet. Retiring
     // `lib/v8/execute.ts` onto `ContractExecutable` puts both eras on this one
@@ -786,16 +817,16 @@ describe('both eras resolve a call to the SAME result structure', () => {
     >().toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
   });
 
-  it('declares BOTH call arms on the current era, and only the bare one on the retained era', () => {
+  it('declares BOTH call overloads on the current era, and only the bare one on the retained era', () => {
     // The key sets above match while the SIGNATURES diverge, so nothing there
-    // notices an arm going missing. The current era lifts each circuit to a
+    // notices an overload going missing. The current era lifts each circuit to a
     // PAIR -- bare args, or a scope context plus args -- and the retained era
-    // to a single arm.
+    // to a single overload.
     //
     // Asserted through `Parameters`/`ReturnType`, which resolve from the LAST
-    // overload by design. That is what makes them usable here: the scoped arm
-    // is declared last on the current era, so reading the last arm names it,
-    // and on the retained era the last arm is the only one.
+    // overload by design. That is what makes them usable here: the scoped overload
+    // is declared last on the current era, so reading the last overload names it,
+    // and on the retained era the last overload is the only one.
     expectTypeOf(currentCallTx).toBeCallableWith();
     expectTypeOf<ReturnType<FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
       Promise<CallResult<Twin018, 'increment'>>
@@ -804,10 +835,10 @@ describe('both eras resolve a call to the SAME result structure', () => {
       [txCtx: TransactionContext<Twin018, 'increment'>]
     >();
 
-    // The retained era's ONE arm takes the circuit's own args with no context
+    // The retained era's ONE overload takes the circuit's own args with no context
     // prepended: a scope refuses a retained-era call outright with
-    // `MixedEraScopeError`, so there is nothing for a second arm to reach. Add
-    // a context arm here and this equality is what fails.
+    // `MixedEraScopeError`, so there is nothing for a second overload to reach. Add
+    // a context overload here and this equality is what fails.
     expectTypeOf<Parameters<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>>().toEqualTypeOf<
       Ledger8CircuitParameters<Counter016Contract, 'increment'>
     >();
@@ -818,11 +849,11 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // with -- which is a reason it cannot carry a FINALIZED record, and not a
     // reason to drop the execution data itself.
     //
-    // No allow-list: the retained arm used to add `circuitId`, which the
+    // No allow-list: the retained-era result used to add `circuitId`, which the
     // current era can answer and now does, and `nextPrivateState`, which was
-    // reachable TWICE on that arm -- at the top level and at
+    // reachable TWICE on that result -- at the top level and at
     // `callTxData.private.nextPrivateState`, the path the current era publishes
-    // and this arm's own TSDoc example tells the caller to read. Two paths to
+    // and this result's own TSDoc example tells the caller to read. Two paths to
     // one value is a divergence waiting to happen, so the duplicate went rather
     // than being mirrored onto the current era.
     expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
@@ -832,7 +863,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // Descends into `callTxData` itself. The assertion above compares only the
     // TOP-LEVEL members of the two submitted results, so a member dropped from
     // the nested execution data is invisible to it -- which is how `era` fell
-    // off this arm while every top-level key set still matched.
+    // off this result while every top-level key set still matched.
     expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>['callTxData']>().toEqualTypeOf<
       keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['callTxData']
     >();
@@ -881,14 +912,14 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   // The handle types escaped the discipline ADR-0009 wrote for the RESULT
   // types, and drifted in BOTH directions while every result-shape assertion
   // above stayed green. A base cannot hold these in step: `era`, `callTx` and
-  // `deployTxData` are era-specific types on every arm, so a base over them
+  // `deployTxData` are era-specific types in every era, so a base over them
   // would declare a key set and nothing else -- the shape ADR-0009 already
   // rejected for `FinalizedCallTxData`. The key-set gate is the whole
   // mechanism here.
 
   /**
    * Members the current era's found contract carries and the retained era does
-   * NOT. The retained era has no governance arm for a maintenance interface to
+   * NOT. The retained era has no governance API for a maintenance interface to
    * reach, so there is no value to carry rather than a value being dropped.
    */
   type CurrentEraOnlyFoundMembers = 'circuitMaintenanceTx' | 'contractMaintenanceTx';
@@ -916,9 +947,9 @@ describe('both eras answer with the SAME contract-handle structure', () => {
    * current era carries under `deployTxData` instead.
    *
    * The same path disagreement {@link RetainedEraOnlyDeployedMembers} records,
-   * reaching the attach arm for the same reason: the current era nests the
-   * resolved key under `deployTxData.private.signingKey`, while the retained
-   * arm's `deployTxData` is the read surface's own `VersionedFinalizedTxData`,
+   * reaching the attach path for the same reason: the current era nests the
+   * resolved key under `deployTxData.private.signingKey`, while the retained-era
+   * handle's `deployTxData` is the read surface's own `VersionedFinalizedTxData`,
    * which carries no private half to nest anything in.
    */
   type RetainedEraOnlyFoundMembers = 'signingKey';
@@ -956,7 +987,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   });
 
   it('names the contract and its address on the handle in BOTH eras', () => {
-    // The two members that drifted onto the retained arm alone. A caller that
+    // The two members that drifted onto the retained-era handle alone. A caller that
     // has a handle can reach the artifact and the address it was attached with,
     // without carrying either alongside it -- in either era.
     //
@@ -975,10 +1006,10 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   });
 
   it('discriminates a handle on `era` alone, in both directions', () => {
-    expectTypeOf<CurrentFound['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<RetainedFound['era']>().toEqualTypeOf<RetainedPipelineEra>();
-    expectTypeOf<CurrentDeployed['era']>().toEqualTypeOf<CurrentPipelineEra>();
-    expectTypeOf<RetainedDeployed['era']>().toEqualTypeOf<RetainedPipelineEra>();
+    expectTypeOf<CurrentFound['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<RetainedFound['era']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<CurrentDeployed['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<RetainedDeployed['era']>().toEqualTypeOf<'v8'>();
   });
 });
 
@@ -1024,23 +1055,23 @@ describe('the two eras options types do not structurally match each other', () =
 });
 
 describe('submitCallTx resolves a retained-era call to the retained-era return type', () => {
-  // The overload-order hazard, asserted POSITIVELY. `submitCallTx` carries the retained-era arm
-  // alongside four pre-existing current-era arms, and TypeScript picks the FIRST arm that matches.
-  // "It compiles" would not prove the retained-era arm was the one chosen — only the resolved
+  // The overload-order hazard, asserted POSITIVELY. `submitCallTx` carries the retained-era overload
+  // alongside four pre-existing current-era overloads, and TypeScript picks the FIRST overload that matches.
+  // "It compiles" would not prove the retained-era overload was the one chosen — only the resolved
   // return type does.
-  it('picks the retained-era arm for retained-era options without a private state id', () => {
+  it('picks the retained-era overload for retained-era options without a private state id', () => {
     expectTypeOf(submitCallTx(providers016, options016)).toEqualTypeOf<
       Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>
     >();
   });
 
-  it('picks the retained-era arm for retained-era options WITH a private state id', () => {
+  it('picks the retained-era overload for retained-era options WITH a private state id', () => {
     expectTypeOf(submitCallTx(providers016, options016WithPrivateStateId)).toEqualTypeOf<
       Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>
     >();
   });
 
-  it('still picks the current-era arm for current-era options', () => {
+  it('still picks the current-era overload for current-era options', () => {
     expectTypeOf(submitCallTx(providers018, options018)).toEqualTypeOf<
       Promise<FinalizedCallTxData<Twin018, 'increment'>>
     >();
@@ -1058,7 +1089,7 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
     expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<SubmittedCallTx<Twin018, 'increment'>>>();
   });
 
-  // The retained DEPLOYED-contract type, not `never`: the arm composes and
+  // The retained DEPLOYED-contract type, not `never`: the path composes and
   // submits, so there is a value to describe -- and the type is reachable by
   // name through the `Ledger8` namespace, so a caller that receives one by
   // inference can also annotate it.
@@ -1100,7 +1131,7 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
 });
 
 describe('an object belonging to neither era is refused by both eras', () => {
-  // No overload arm names a "neither era" type, deliberately. An arm that is not LAST never
+  // No overload names a "neither era" type, deliberately. An overload that is not LAST never
   // renders a diagnostic, and putting one last made every mistyped CURRENT-era call report that
   // the caller's ordinary contract belonged to neither era. The guidance belongs in the thrown,
   // typed error era resolution raises, which can carry full remediation text where a compiler
@@ -1110,7 +1141,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   // refused by BOTH eras' options types, and that the message the future error will carry is the
   // wording that was reviewed.
   it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
-    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a retained-era nor a current-era generated contract.'>();
+    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a ledger 8 nor a ledger 9 generated contract.'>();
   });
 
   it('keeps the message and the named shape in step', () => {
@@ -1130,35 +1161,35 @@ describe('an object belonging to neither era is refused by both eras', () => {
   });
 
   it('refuses a neither-era call outright', () => {
-    // A GUARD, not a driver: this call fails against the current-era arms whatever the retained-era
-    // arm does, so the directive stays "used" either way. The two assertions above are what
+    // A GUARD, not a driver: this call fails against the current-era overloads whatever the retained-era
+    // overload does, so the directive stays "used" either way. The two assertions above are what
     // actually discriminate.
     // @ts-expect-error - neither a retained-era nor a current-era contract
     submitCallTx(providers016, { compiledContract: neitherShapeContract, contractAddress, circuitId: 'increment' });
   });
 });
 
-describe('adding era arms leaves the pre-existing entry points public surface untouched', () => {
-  // THE LOAD-BEARING GUARD ON THE ARM ORDER — not belt-and-braces. Read this before touching an
+describe('adding era overloads leaves the pre-existing entry points public surface untouched', () => {
+  // THE LOAD-BEARING GUARD ON THE OVERLOAD ORDER — not belt-and-braces. Read this before touching an
   // overload list in `../../submit-call-tx.ts`, `../../deploy-contract.ts` or
   // `../../find-deployed-contract.ts`.
   //
   // THREE things resolve from an overloaded function's LAST signature: `ReturnType<typeof f>`,
-  // `Parameters<typeof f>`, and the error TypeScript prints when no arm matches. So the era arms
-  // are declared FIRST and the arm that was already last is left exactly where it was. Both
+  // `Parameters<typeof f>`, and the error TypeScript prints when no overload matches. So the era overloads
+  // are declared FIRST and the overload that was already last is left exactly where it was. Both
   // families of pin below exist because both `ReturnType` and `Parameters` read that last
   // signature, so neither can be moved silently -- and because they do, the third moves only when
   // they do. Its exact wording is TypeScript's to choose, and is not pinned anywhere.
   //
   // Every expected type below was DERIVED from the state of these entry points BEFORE the era
-  // arms were added (the tip of the parent PR in this stack) rather than hand-written: each was
+  // overloads were added (the tip of the parent PR in this stack) rather than hand-written: each was
   // stated as a candidate and verified there by a strict type-identity assertion before being
   // written down here. No commit SHA is cited, because the parent branch is squash-merged and the
   // SHA would not survive it.
   //
   // `Parameters` in particular had already regressed once, reporting
-  // `[providers: unknown, options: ...]` off a trailing catch-all arm that instantiated
-  // `providers` to `unknown`, with nothing watching. That arm is gone; these pins are why its
+  // `[providers: unknown, options: ...]` off a trailing catch-all overload that instantiated
+  // `providers` to `unknown`, with nothing watching. That overload is gone; these pins are why its
   // return could not come back unnoticed.
   it('leaves ReturnType<typeof submitCallTx> reporting the current-era CallResult', () => {
     expectTypeOf<ReturnType<typeof submitCallTx>>().toEqualTypeOf<Promise<CallResult<Contract<undefined>, string>>>();
@@ -1256,7 +1287,7 @@ describe('a found contract may have been deployed in either ledger era', () => {
     expectTypeOf<FoundPublic['version']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 
-  it('exposes the contract address on both arms without narrowing', () => {
+  it('exposes the contract address on both variants without narrowing', () => {
     expectTypeOf<FoundPublic['contractAddress']>().toEqualTypeOf<ContractAddress>();
   });
 
@@ -1264,8 +1295,8 @@ describe('a found contract may have been deployed in either ledger era', () => {
     expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
     expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
     expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
-    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<FoundDeployTxPublicDataV8>();
-    expectTypeOf<FoundDeployTxPublicDataV8>().not.toHaveProperty('initialContractState');
+    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
+    expectTypeOf<Ledger8FoundDeployTxPublicData>().not.toHaveProperty('initialContractState');
   });
 
   it('keeps a deployed contract usable wherever a found contract is expected', () => {

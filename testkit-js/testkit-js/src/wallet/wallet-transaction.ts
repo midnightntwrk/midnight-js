@@ -15,7 +15,7 @@
 
 import { type FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  type ProviderSeam,
+  type TransactionMethod,
   UntaggedPayloadError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
@@ -27,14 +27,14 @@ import {
   type WalletFacade,
   WalletTransaction
 } from '@midnightntwrk/wallet-sdk';
-// From the same copy `retainedLedger()` loads at runtime.
-import type * as RetainedLedger from '@midnightntwrk/wallet-sdk/ledger/v8';
+// From the same copy `loadWalletLedger8()` loads at runtime.
+import type * as LedgerV8 from '@midnightntwrk/wallet-sdk/ledger/v8';
 import { Either } from 'effect';
 import * as Rx from 'rxjs';
 
 import { FORK_SCHEDULE } from './wallet-configuration-mapper';
 
-let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
+let walletLedger8Module: Promise<typeof LedgerV8> | undefined;
 
 /**
  * The ledger-v8 module retained payloads are deserialized with: the wallet SDK's
@@ -49,10 +49,10 @@ let retainedLedgerModule: Promise<typeof RetainedLedger> | undefined;
  *
  * @see docs/architecture/retained-era-coverage.md
  */
-export const retainedLedger = (): Promise<typeof RetainedLedger> =>
-  (retainedLedgerModule ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
-    retainedLedgerModule = undefined;
-    throw new Error("the wallet SDK's retained ledger ('@midnightntwrk/wallet-sdk/ledger/v8') could not be loaded", {
+export const loadWalletLedger8 = (): Promise<typeof LedgerV8> =>
+  (walletLedger8Module ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
+    walletLedger8Module = undefined;
+    throw new Error("the wallet SDK's ledger 8 module ('@midnightntwrk/wallet-sdk/ledger/v8') could not be loaded", {
       cause: error
     });
   }));
@@ -85,25 +85,25 @@ const unwrapWithinActive = <T>(handle: WalletTransaction, accepted: ProtocolVers
 /**
  * Establishes that a payload carries a version discriminant at all.
  *
- * `unwrapV9` used to do this on the way past, and removing it to serve both eras
+ * `unwrapLedger9` used to do this on the way past, and removing it to serve both eras
  * would otherwise turn the likeliest migration mistake -- a consumer built
- * against the pre-5.0.0 seam handing over a bare transaction -- from a coded,
+ * against the pre-5.0.0 API handing over a bare transaction -- from a coded,
  * actionable error into a `TypeError` raised somewhere inside the wallet SDK.
  */
-const assertTagged = (payload: unknown, seam: ProviderSeam): void => {
+const assertTagged = (payload: unknown, method: TransactionMethod): void => {
   if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
   const version = (payload as { version?: unknown }).version;
   if (version !== 'v8' && version !== 'v9') {
-    throw new UntaggedPayloadError(seam, payload);
+    throw new UntaggedPayloadError(method, payload);
   }
 };
 
 /**
  * Adopts either era's unbound payload.
  *
- * The retained arm arrives as serialized bytes rather than a live object (ADR
+ * The retained variant arrives as serialized bytes rather than a live object (ADR
  * 0007), so it is deserialized here. Its markers are `signature`/`proof`/
  * `pre-binding`: proving has already run -- `proveTx` returned `proven.serialize()`
  * -- and binding is precisely what balancing is about to add.
@@ -117,7 +117,7 @@ export const adoptVersionedUnbound = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Unbound', payload.tx, active);
   }
-  const v8 = await retainedLedger();
+  const v8 = await loadWalletLedger8();
   return WalletTransaction.adopt(
     'Unbound',
     v8.Transaction.deserialize('signature', 'proof', 'pre-binding', payload.txBytes),
@@ -135,7 +135,7 @@ export const adoptVersionedFinalized = async (
   if (payload.version === 'v9') {
     return WalletTransaction.adopt('Finalized', payload.tx, active);
   }
-  const v8 = await retainedLedger();
+  const v8 = await loadWalletLedger8();
   return WalletTransaction.adopt(
     'Finalized',
     v8.Transaction.deserialize('signature', 'proof', 'binding', payload.txBytes),
@@ -146,8 +146,8 @@ export const adoptVersionedFinalized = async (
 /**
  * Unwraps a finalized handle back into the era it came in as.
  *
- * The era is taken from the payload that entered the seam, never re-derived from
- * the chain: the seam's contract is that what comes out is tagged as what went
+ * The era is taken from the payload passed to the provider, never re-derived
+ * from the chain: the provider's contract is that what comes out is tagged as what went
  * in, and a transaction does not change era while it is being balanced.
  */
 export const unwrapVersionedFinalized = async (
@@ -161,6 +161,6 @@ export const unwrapVersionedFinalized = async (
   }
   return {
     version: 'v8',
-    txBytes: unwrapWithinActive<RetainedLedger.FinalizedTransaction>(handle, accepted).serialize()
+    txBytes: unwrapWithinActive<LedgerV8.FinalizedTransaction>(handle, accepted).serialize()
   };
 };

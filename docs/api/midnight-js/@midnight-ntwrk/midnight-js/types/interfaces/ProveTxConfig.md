@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -18,3 +18,7 @@ The timeout for the request, in milliseconds. This is a per-request timeout for 
 proof server call, not a hard wall-clock ceiling for the whole `proveTx` call — the proof
 provider's internal retry/backoff means a `proveTx` call may take longer than this value when
 retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
+
+Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
+`InvalidArgumentError` instead of ignoring it: [createProofProvider](../variables/createProofProvider.md),
+[createProofProviderForEras](../variables/createProofProviderForEras.md) and `dappConnectorProofProvider`.

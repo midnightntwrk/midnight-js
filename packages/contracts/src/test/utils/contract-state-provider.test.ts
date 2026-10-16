@@ -18,6 +18,7 @@ import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ContractStateUnsupportedError } from '../../errors';
 import { makeCalleeStateResolver } from '../../internal/utils';
 
 const BLOCK_HASH = 'ab'.repeat(32);
@@ -38,6 +39,13 @@ const providerWith = (
   queryZSwapAndContractState: PublicDataProvider['queryZSwapAndContractState']
 ): PublicDataProvider => ({ queryZSwapAndContractState } as unknown as PublicDataProvider);
 
+const ledger9States = (zswapChainState: ZswapChainState, contractState: ContractState) => ({
+  version: 'v9',
+  zswapChainState,
+  contractState,
+  ledgerParameters: {}
+});
+
 describe('makeCalleeStateResolver', () => {
   it('exposes the pinned block hash and an initially empty resolved-states map', () => {
     const resolver = makeCalleeStateResolver(providerWith(vi.fn()), BLOCK_HASH);
@@ -47,7 +55,7 @@ describe('makeCalleeStateResolver', () => {
   });
 
   it('resolves a callee state at the resolver block hash, ignoring the runtime-supplied block', async () => {
-    const query = vi.fn().mockResolvedValue([ZSWAP_STATE, STATE]);
+    const query = vi.fn().mockResolvedValue(ledger9States(ZSWAP_STATE, STATE));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
 
     // The runtime passes its own block hash; the resolver must query at the block the whole call
@@ -63,7 +71,7 @@ describe('makeCalleeStateResolver', () => {
     // getContractState returns only the contract state, so the Zswap chain state would be dropped
     // if the resolver did not retain it. It is the half a callee needs to spend a settled coin of
     // its own, and re-fetching it later would anchor it to a different block.
-    const query = vi.fn().mockResolvedValue([ZSWAP_STATE, STATE]);
+    const query = vi.fn().mockResolvedValue(ledger9States(ZSWAP_STATE, STATE));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
 
     await resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
@@ -75,7 +83,7 @@ describe('makeCalleeStateResolver', () => {
   });
 
   it('memoizes a resolved state and serves subsequent reads from the cache', async () => {
-    const query = vi.fn().mockResolvedValue([ZSWAP_STATE, STATE]);
+    const query = vi.fn().mockResolvedValue(ledger9States(ZSWAP_STATE, STATE));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
 
     const first = await resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
@@ -91,8 +99,8 @@ describe('makeCalleeStateResolver', () => {
   it('memoizes per address', async () => {
     const query = vi
       .fn()
-      .mockResolvedValueOnce([ZSWAP_STATE, STATE])
-      .mockResolvedValueOnce([OTHER_ZSWAP_STATE, OTHER_STATE]);
+      .mockResolvedValueOnce(ledger9States(ZSWAP_STATE, STATE))
+      .mockResolvedValueOnce(ledger9States(OTHER_ZSWAP_STATE, OTHER_STATE));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
 
     await resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
@@ -102,6 +110,22 @@ describe('makeCalleeStateResolver', () => {
     expect(resolver.resolvedStates.size).toBe(2);
     expect(resolver.resolvedStates.get(String(ADDRESS))?.zswapChainState).toBe(ZSWAP_STATE);
     expect(resolver.resolvedStates.get(String(OTHER_ADDRESS))?.zswapChainState).toBe(OTHER_ZSWAP_STATE);
+  });
+
+  it('refuses a callee whose state was written by the v8 ledger', async () => {
+    const query = vi.fn().mockResolvedValue({
+      version: 'v8',
+      zswapChainState: ZSWAP_STATE,
+      stateBytes: new Uint8Array([1]),
+      ledgerParametersBytes: new Uint8Array([2])
+    });
+    const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
+
+    const rejection = resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
+
+    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+    await expect(rejection).rejects.toMatchObject({ contractAddress: ADDRESS, operation: 'makeCalleeStateResolver' });
+    expect(resolver.resolvedStates.has(String(ADDRESS))).toBe(false);
   });
 
   it('maps a null provider result to undefined and does not memoize it', async () => {

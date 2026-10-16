@@ -16,7 +16,7 @@
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
@@ -105,7 +105,11 @@ export const getCounterLedgerState = async (
   logger.info('Checking contract ledger state...');
   const state = await providers.publicDataProvider
     .queryContractState(contractAddress)
-    .then((contractState) => (contractState != null ? CompiledCounter.ledger(contractState.data).round : null));
+    .then((contractState) =>
+      contractState != null
+        ? CompiledCounter.ledger(requireLedger9(contractState, 'getCounterLedgerState').state.data).round
+        : null
+    );
   logger.info(`Ledger state: ${state}`);
   return state;
 };

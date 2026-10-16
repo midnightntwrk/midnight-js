@@ -18,7 +18,7 @@
  *
  * `httpClientProvingProvider` builds every `/check` and `/prove` payload with
  * the CURRENT era's builders and drives both eras' transactions through them:
- * the proving protocol is per-circuit, so `proveV8Transaction` hands the
+ * the proving protocol is per-circuit, so `proveLedger8Transaction` hands the
  * retained runtime the same provider a v9 transaction would get. The retained
  * ledger ships its own `createCheckPayload`, `createProvingPayload` and
  * `parseCheckResult`, and nothing else in the repo checks that the two agree.
@@ -45,7 +45,7 @@ import * as ledgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { loadLedger8 } from '../lib/v8/load';
+import { loadLedger8Protocol } from '../lib/v8/load';
 import { fixturePath } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -88,50 +88,50 @@ const capturePreimage = async (
 };
 
 describe('proof-server wire builders are byte-identical across eras', () => {
-  let v8Preimage: Uint8Array;
-  let v9Preimage: Uint8Array;
+  let ledger8Preimage: Uint8Array;
+  let ledger9Preimage: Uint8Array;
 
   beforeAll(async () => {
-    const v8 = await loadLedger8();
+    const v8 = await loadLedger8Protocol();
 
-    const v8TokenType = v8.sampleRawTokenType();
-    const v8Tx = v8.Transaction.fromParts(
+    const ledger8TokenType = v8.sampleRawTokenType();
+    const ledger8Tx = v8.Transaction.fromParts(
       NETWORK_ID,
       v8.ZswapOffer.fromOutput(
         v8.ZswapOutput.new(
-          v8.createShieldedCoinInfo(v8TokenType, 100n),
+          v8.createShieldedCoinInfo(ledger8TokenType, 100n),
           1,
           v8.sampleCoinPublicKey(),
           v8.sampleEncryptionPublicKey()
         ),
-        v8TokenType,
+        ledger8TokenType,
         100n
       )
     ).serialize();
 
-    v8Preimage = await capturePreimage(v8Tx, (bytes, provider) =>
+    ledger8Preimage = await capturePreimage(ledger8Tx, (bytes, provider) =>
       v8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes).prove(
         provider,
         v8.CostModel.initialCostModel()
       )
     );
 
-    const v9TokenType = ledgerV9.sampleRawTokenType();
-    const v9Tx = ledgerV9.Transaction.fromParts(
+    const ledger9TokenType = ledgerV9.sampleRawTokenType();
+    const ledger9Tx = ledgerV9.Transaction.fromParts(
       NETWORK_ID,
       ledgerV9.ZswapOffer.fromOutput(
         ledgerV9.ZswapOutput.new(
-          ledgerV9.createShieldedCoinInfo(v9TokenType, 100n),
+          ledgerV9.createShieldedCoinInfo(ledger9TokenType, 100n),
           1,
           ledgerV9.sampleCoinPublicKey(),
           ledgerV9.sampleEncryptionPublicKey()
         ),
-        v9TokenType,
+        ledger9TokenType,
         100n
       )
     ).serialize();
 
-    v9Preimage = await capturePreimage(v9Tx, (bytes, provider) =>
+    ledger9Preimage = await capturePreimage(ledger9Tx, (bytes, provider) =>
       ledgerV9.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes).prove(
         provider,
         ledgerV9.CostModel.initialCostModel()
@@ -140,11 +140,11 @@ describe('proof-server wire builders are byte-identical across eras', () => {
   });
 
   // Both directions, because substitutability has to hold both ways: the
-  // retained arm sends a v8 preimage through v9 builders today, and a future
+  // retained-era path sends a v8 preimage through v9 builders today, and a future
   // change could just as easily route the other way.
   const preimages = (): readonly { readonly label: string; readonly preimage: Uint8Array }[] => [
-    { label: 'a preimage produced by the retained runtime', preimage: v8Preimage },
-    { label: 'a preimage produced by the current runtime', preimage: v9Preimage }
+    { label: 'a preimage produced by the retained runtime', preimage: ledger8Preimage },
+    { label: 'a preimage produced by the current runtime', preimage: ledger9Preimage }
   ];
 
   it('captures a real preimage from each runtime', () => {

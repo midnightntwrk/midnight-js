@@ -23,16 +23,16 @@ import { readHexFixture } from './fixtures';
 // This suite only makes sense against a real build: it inspects the rollup
 // output to guarantee the v8 ledger WASM is never inlined or statically
 // imported into the eagerly-loaded index bundle — it may load only through
-// the dynamic import inside loadLedger8().
+// the dynamic import inside loadLedger8Protocol().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
 // The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
-// chunk reaches loadLedger8: the dynamic import of `../../v8.js` in
+// chunk reaches loadLedger8Protocol: the dynamic import of `../../v8.js` in
 // src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
 // depth that chunk sits. Built from parts so the runtime-reference scan in
 // v8-surface.test.ts keeps matching only lib/v8/load.ts.
-const V8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
-const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
+const LEDGER8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
+const LEDGER8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
 // The `./engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/v8/load-engine.ts comes
 // out as an output-relative specifier too, at whatever depth the chunk that
@@ -58,7 +58,7 @@ const readDistFile = (path: string): string => {
 // Rollup hoists a module that several entries share into its own chunk, so the
 // accessor's dynamic import can sit one static hop away from the index bundle
 // rather than inside it — it does exactly that once more than one entry reaches
-// loadLedger8. The invariant is about everything loading the package root pulls
+// loadLedger8Protocol. The invariant is about everything loading the package root pulls
 // in EAGERLY, so every gate below is asserted over that whole static closure
 // instead of over dist/index.js alone; otherwise a static link hidden in a
 // shared chunk slips through, which is the very thing being gated.
@@ -119,10 +119,10 @@ describe('dist laziness gate', () => {
   it('what the index bundle loads eagerly keeps the lazy dynamic import of the v8 chunk', () => {
     const content = eagerContents(DIST_INDEX_PATH);
 
-    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_CHUNK_PATTERN}['"]\\s*\\)`));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${LEDGER8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
-  it.each(V8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
+  it.each(LEDGER8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
@@ -151,7 +151,7 @@ describe('dist laziness gate', () => {
   // `from './v8.js'` anywhere in the closure would defeat both of the others
   // while still leaving the dynamic import in place.
   it.each([
-    ['v8', V8_CHUNK_PATTERN],
+    ['v8', LEDGER8_CHUNK_PATTERN],
     ['engine', ENGINE_CHUNK_PATTERN]
   ])('the %s chunk is reached from the eager closure only by dynamic import', (_name, pattern) => {
     const content = eagerContents(DIST_INDEX_PATH);

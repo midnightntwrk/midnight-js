@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8DeployOnV9Error } from '../errors';
+import { EraArtifactMismatchError, Ledger8DeployOnLedger9Error } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
@@ -311,18 +311,18 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // `resolveArtifactEra` is the single era decision. The retained artifacts are placed from the
       // runtime version their bundle declares; the current-era container is placed from its own
       // `tag`, without the bundle being consulted at all.
-      await expect(resolveArtifactEra(contract, zkConfigProvider)).resolves.toBe('ledger8');
-      await expect(resolveArtifactEra(coinReceiverContract, zkConfigProvider)).resolves.toBe('ledger8');
+      await expect(resolveArtifactEra(contract, zkConfigProvider)).resolves.toBe('v8');
+      await expect(resolveArtifactEra(coinReceiverContract, zkConfigProvider)).resolves.toBe('v8');
       await expect(
         resolveArtifactEra({ tag: 'counter', pipe: (): void => undefined }, zkConfigProvider)
-      ).resolves.toBe('ledger9');
+      ).resolves.toBe('v9');
     });
 
     it('places a REAL current-era container, not just a hand-rolled stand-in', async () => {
       // `createMockCompiledContract` goes through `CompiledContract.make(...).pipe(withVacantWitnesses)`,
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
       // transient `make()` result and would keep passing if the check were widened.
-      await expect(resolveArtifactEra(createMockCompiledContract(), zkConfigProvider)).resolves.toBe('ledger9');
+      await expect(resolveArtifactEra(createMockCompiledContract(), zkConfigProvider)).resolves.toBe('v9');
     });
 
     it('refuses a RAW current-era contract instance, which also carries impureCircuits', async () => {
@@ -348,7 +348,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       );
     });
 
-    // The deploy arm no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
+    // The deploy path no longer refuses by artifact. It runs, and what decides it is the ERA PAIRING:
     // the retained era has no post-fork deployment, so a retained artifact against a post-fork head
     // is refused by the same table every other retained operation is measured against. This shared
     // mock reports a post-fork head, which is the refusing cell.
@@ -362,8 +362,8 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
       // The CLASS, not the message constant: asserting against the same string the production code
       // throws can only fail if one file disagrees with itself, which it cannot.
-      expect(caught).toBeInstanceOf(Ledger8DeployOnV9Error);
-      // POSITIVE evidence that the arm REACHED the era gate rather than refusing in front of it:
+      expect(caught).toBeInstanceOf(Ledger8DeployOnLedger9Error);
+      // POSITIVE evidence that the path REACHED the era gate rather than refusing in front of it:
       // the head was read. A refusal raised before any provider was touched -- which is what stood
       // here -- would leave this untouched.
       expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalled();
@@ -390,7 +390,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       expect((caught as Error).message).toMatch(/sampleSigningKey/);
       // And it is not an era refusal of any kind.
       expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
-      expect(caught).not.toBeInstanceOf(Ledger8DeployOnV9Error);
+      expect(caught).not.toBeInstanceOf(Ledger8DeployOnLedger9Error);
     });
 
   });

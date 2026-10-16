@@ -23,7 +23,7 @@
  * even a development one: the engine's construction guard exists to detect a
  * second acquisition path, and an alias here would create one.
  *
- * @see {@link KeepStatePipeline} for the two arms, why `wrapKeepStateCall` is
+ * @see {@link KeepStatePipeline} for the two paths, why `wrapKeepStateCall` is
  *      not called from here, and why the engine is a narrowed generic slice.
  */
 
@@ -46,10 +46,10 @@ import { Option } from 'effect';
 import {
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
+  Ledger8ArtifactOnLedger9StateError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   LedgerParametersUnservedError,
-  RetainedArtifactOnCurrentEraStateError,
   VerifierKeyMismatchError
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -73,7 +73,7 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * naming it structurally here keeps this package from importing that era's
  * runtime types directly.
  */
-export type RetainedStateValue = TranscriptPojo['postContractState'];
+export type Ledger8StateValue = TranscriptPojo['postContractState'];
 
 /**
  * The transcript members this pipeline is entitled to read, narrowed off the
@@ -89,7 +89,7 @@ export type RetainedStateValue = TranscriptPojo['postContractState'];
  *
  * @see {@link KeepStatePipeline} for what is left out and why nothing is lost.
  */
-export type Ledger8Transcript<TState = RetainedStateValue> = Pick<
+export type Ledger8Transcript<TState = Ledger8StateValue> = Pick<
   TranscriptPojo,
   | 'circuitId'
   | 'result'
@@ -209,7 +209,7 @@ export interface Ledger8ExecutionEngine<TState> {
    * Needed only when the two eras differ, i.e. keep-state. See the call below for why the chain's
    * own bytes cannot be passed through in that case.
    */
-  reexpressOperationsForCurrentEra(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
+  reexpressOperationsForLedger9(entryPoints: ContractStatePojo['entryPoints']): Uint8Array;
 }
 
 /**
@@ -290,14 +290,11 @@ export const readLedger8Snapshot = async (
 
   // Read with the era the ENVELOPE names, never with the head's and never with
   // a fixed one. A retained envelope is the retained ledger's to read -- pre-
-  // fork natively, post-fork as keep-state, because the fork does not rewrite a
-  // contract's stored state. A current-era envelope belongs to the head's era,
-  // and post-fork it is what a contract looks like once an earlier call has
-  // migrated it; its retained verifier keys survive that migration unchanged,
-  // so this pipeline is still the right one to run it.
-  //
-  // Pinning this to the retained era is what made a migrated contract callable
-  // exactly once.
+  // fork natively, post-fork as keep-state, where a pinned read still serves
+  // one. A current-era envelope belongs to the head's era, and post-fork it is
+  // what a contract looks like once the fork has translated it; its retained
+  // verifier keys survive that unchanged, so this pipeline is still the right
+  // one to run it.
   const reader = stateEra === 'v8' ? retainedEra : headEra;
   const encoded = reader.extractState(state.raw);
   const decoded = reader.decodeContractState(state.raw);
@@ -323,10 +320,10 @@ export const readLedger8Snapshot = async (
  * @param contractAddress The contract being operated on, named in the era-level refusal.
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
- * @throws RetainedArtifactOnCurrentEraStateError if the keys differ byte for byte AND the state
- * carries a current-era envelope, which together mean the contract was built with current-toolchain
+ * @throws Ledger8ArtifactOnLedger9StateError if the keys differ byte for byte AND the state
+ * carries a ledger 9 envelope, which together mean the contract was built with ledger 9 toolchain
  * artifacts — carrying the byte-level mismatch on `cause`.
- * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a retained-era state.
+ * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a ledger 8 state.
  * @see {@link VerificationPath} for what this check buys.
  */
 export const assertSnapshotVerifierKey = (
@@ -342,15 +339,15 @@ export const assertSnapshotVerifierKey = (
   try {
     assertVerifierKeyMatches(localVerifierKey, matches[0]?.verifierKey, circuitId);
   } catch (cause) {
-    // A key mismatch on a CURRENT-era state has one likely cause worth naming: the contract was
-    // deployed with current-toolchain artifacts, so no retained artifact can ever match it and a
-    // retry is pointless. On a retained-era state the same mismatch means something else entirely
+    // A key mismatch on a ledger 9 state has one likely cause worth naming: the contract was
+    // deployed with ledger 9 toolchain artifacts, so no ledger 8 artifact can ever match it and a
+    // retry is pointless. On a ledger 8 state the same mismatch means something else entirely
     // -- the wrong build of the right contract -- so the generic refusal is the accurate one there.
     //
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
-      throw new RetainedArtifactOnCurrentEraStateError(contractAddress, { cause });
+      throw new Ledger8ArtifactOnLedger9StateError(contractAddress, { cause });
     }
     throw cause;
   }
@@ -450,7 +447,7 @@ export interface Ledger8CallPipelineRequest<TState> {
  * What one retained-era call produced.
  *
  * @typeParam TState - The retained-era state type the engine works in. The
- * framework's own engine fills it with `RetainedStateValue`; the replay double
+ * framework's own engine fills it with `Ledger8StateValue`; the replay double
  * fills it with its own marker.
  */
 export interface Ledger8CallPipelineResult<TState> {
@@ -460,7 +457,7 @@ export interface Ledger8CallPipelineResult<TState> {
    * trades plain data whatever ADR-0010 allows one layer up, so there is no
    * handle here to hold in the first place.
    *
-   * Which form it crosses the PROVIDER SEAMS in is a separate question decided
+   * Which form it is passed to the PROVIDERS in is a separate question decided
    * by the network head, not by this field — a post-fork head deserializes
    * these bytes and crosses as a live current-era handle. See
    * `submitLedger8Tx`.
@@ -581,7 +578,7 @@ export const runLedger8CallPipeline = async <TState>(
   assertSnapshotVerifierKey(snapshot, circuitId, request.localVerifierKey, contractAddress);
 
   // The DECODED state, read by whichever era's reader the envelope named. A
-  // contract an earlier post-fork call migrated carries a current-era envelope
+  // contract the fork translated carries a current-era envelope
   // while still executing on the retained runtime, so the chain's own bytes
   // cannot be handed to one era's decoder. The balance rides on this same
   // value, so the state and its balances cannot come off different reads.
@@ -599,7 +596,7 @@ export const runLedger8CallPipeline = async <TState>(
   // pipeline reads no Zswap chain state, so a coin the contract already held
   // cannot be located in the chain's commitment tree. Without this the
   // condition surfaced as a bare assertion inside the offer builder, naming
-  // neither the era nor the circuit. Supplying the retained arm with a chain
+  // neither the era nor the circuit. Supplying the retained path with a chain
   // state is the real fix and is tracked separately; until then this refuses in
   // the caller's own test run rather than in production.
   if (spendsHeldCoin(transcript.zswapLocalState)) {
@@ -607,7 +604,7 @@ export const runLedger8CallPipeline = async <TState>(
   }
 
   // Also before the offer is built, and for the same reason: a recipient this
-  // arm cannot resolve is refused by name here rather than by a bare assertion
+  // path cannot resolve is refused by name here rather than by a bare assertion
   // inside the offer builder.
   assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
 
@@ -621,13 +618,13 @@ export const runLedger8CallPipeline = async <TState>(
   // untouched -- and a constructor-built state will not do, because it declares its entry points
   // with blank keys.
   //
-  // Post-fork they are NOT: the fork does not rewrite a contract's stored state, so a contract
-  // deployed before it is still served carrying the retained envelope, which the current composer
-  // cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
+  // Post-fork they are NOT guaranteed to be: a pinned read or an indexer older than 4.4.0-rc.6
+  // still serves a contract deployed before the fork carrying the retained envelope, which the
+  // current composer cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
   // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
   // the local artifact against.
   const registeredOperations =
-    head === 'v9' ? engine.reexpressOperationsForCurrentEra(snapshot.decoded.entryPoints) : snapshot.state.raw;
+    head === 'v9' ? engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints) : snapshot.state.raw;
 
   // Undefined until the composer calls the factory back, which is the fact the
   // refusal below rests on: an offer that is absent because the call moved no
@@ -671,7 +668,7 @@ export const runLedger8CallPipeline = async <TState>(
       // composer that answered with fewer partitions than calls would hand
       // `undefined` to the router below, whose own parameter then defaults to
       // `[undefined, undefined]` and routes every movement into the guaranteed
-      // segment -- silently, which is the failure this seam exists to prevent.
+      // segment -- silently, which is the failure this check exists to prevent.
       const [partition] = partitions;
       assertDefined(
         partition,
@@ -692,7 +689,7 @@ export const runLedger8CallPipeline = async <TState>(
   });
 
   // The factory is the ONLY place this pipeline builds its offer, and
-  // `zswapOffer` is optional on the seam -- so an era that never calls back
+  // `zswapOffer` is optional at the era boundary -- so an era that never calls back
   // composes a transaction carrying none of the circuit's coin movements, and
   // reports offers indistinguishable from a call that legitimately moved none.
   // The wallet would diagnose that as `Wallet.InsufficientFunds`, naming
@@ -776,7 +773,7 @@ export interface Ledger8DeployPipelineRequest {
   readonly networkId: string;
   readonly ttl: Date;
   /**
-   * REQUIRED for the same reason the call arm requires it: a constructor may
+   * REQUIRED for the same reason the call path requires it: a constructor may
    * mint a coin, and encrypting that output to its recipient needs a key this
    * pipeline cannot derive on its own.
    */
@@ -872,9 +869,9 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   });
 
   // Refused by name here rather than by a bare assertion inside the offer
-  // builder, exactly as the call arm refuses it. A constructor cannot SPEND --
+  // builder, exactly as the call path refuses it. A constructor cannot SPEND --
   // a contract that does not exist yet holds nothing -- so the recipient check
-  // is the only one this arm needs.
+  // is the only one this path needs.
   assertRecipientsResolvable(constructed.zswapLocalState, request.encryptionPublicKey, LEDGER8_CONSTRUCTOR_ENTRY_POINT);
 
   // A deploy has no transcript to partition against, and `composeDeployTx`

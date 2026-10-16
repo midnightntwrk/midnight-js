@@ -155,6 +155,8 @@ asserting it.
     (`packages/indexer-public-data-provider/src/query-definitions.ts`), so the
     era arrives with the data, per record. ADR-0007 records why that
     per-record answer — and not a head reading — is what dates a read.
+    `queryDeployContractState` has since become version-tagged: it returns a
+    `VersionedContractState`, with a v8-era deploy as its stored bytes.
   - Branding `V8TxBytes.txBytes` as tag-prefixed bytes behind a smart
     constructor. Free while nothing produces the arm; breaking for every
     producer once v8 support ships.
@@ -374,7 +376,7 @@ proof server, which remains untested.
 
 The decision above stands unchanged. This note records that one consequence its
 first amendment described has been addressed, by
-[ADR-0014](./0014-build-provider-seams-from-per-era-arms.md).
+[ADR-0014](./0014-build-provider-seams-from-per-era-handlers.md).
 
 That amendment closed with:
 
@@ -496,3 +498,53 @@ can no longer be a devDependency of `types`. Two things follow: their names say
 reaches the registry any more; and each such assertion is paired with
 `toBeInstanceOf`, which the guard used to supply. Without that pairing a
 rejection that stopped being an `Error` at all would have kept the suite green.
+
+## Amendment — "seam" leaves the names (2026-10-14)
+
+Issue #1489. The decision is unchanged; only names change. This ADR says
+"seam" for a provider method that carries a version-tagged payload. A caller
+never writes anything called a seam, so the public names and messages now say
+"method" or "provider":
+
+- `ProviderSeam`, `ReadSeam` and `Seam` are `TransactionMethod`, `ReadMethod`
+  and `ProviderMethod`; the field `seam` is `method` on every error that
+  carried it, and so is the `seam` key of a decode failure's `details` (the full
+  list is in `docs/releases/v5.0.0/breaking-changes.md`, section 12);
+- `SeamEraUnsupportedError` is `ProviderEraUnsupportedError`, with code
+  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
+  `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
+
+The era prefix is now `Ledger8` / `Ledger9` everywhere, never `V8` / `V9`:
+`VersionedTx`, `V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
+`VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
+`unwrapLedger9` and `Ledger8PayloadUnsupportedError` (code
+`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`). The tag values `'v8'` / `'v9'`
+stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
+
+The title and file name of this ADR keep the old word, and so do the
+amendments above.
+
+## Amendment — the read results follow the same rule (2026-10-16)
+
+Issue #1508. The decision now covers every public value whose shape depends on the era, not
+only the transaction payloads:
+
+1. `version: 'v8' | 'v9'` means one thing: the ledger era that WROTE the value, read from the
+   payload's envelope. The era of the block that dated a read stays only in `protocolVersion`.
+   `RawContractState.version` follows this rule; the event payload schema field is
+   `payloadVersion`.
+2. `era` is kept only on `contracts` pipeline results, where it names the pipeline that produced
+   the result.
+3. An era-dependent value is a `Versioned*` union, `Ledger8X | Ledger9X`. The v8 variant carries
+   the stored bytes, the v9 variant the decoded object: `VersionedContractState`,
+   `VersionedPublicStates`, `VersionedFinalizedTxData`.
+4. Era-neutral values stay plain (`UnshieldedBalances`, `BlockInfo`).
+5. Code that handles only v9 narrows with `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`.
+   It lives in `utils` rather than `types` because both of its errors, `Ledger8ValueUnsupportedError`
+   and `UnrecognisedEraTagError`, carry codes from the `utils` error-code table, while
+   `UntaggedPayloadError` takes only the closed provider-method list.
+
+`submitTx` reads the network head once and routes on it; the input's `version` only says how to
+read the input. The full list of changed signatures is in
+`docs/releases/v5.0.0/breaking-changes.md`, section 14.
+

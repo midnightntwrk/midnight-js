@@ -38,10 +38,10 @@ describe('loadLedgerEra v8 failure path', () => {
   // the process: a consumer that repaired its node_modules and retried would
   // still be handed the original failure.
   it('does not memoise a failed v8 acquisition, and retries on the next call', async () => {
-    const loadLedger8 = vi.fn(() =>
+    const loadLedger8Protocol = vi.fn(() =>
       Promise.reject(new Ledger8RuntimeMissingError('/v8', new Error('simulated v8 load failure')))
     );
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const first = loadLedgerEra('v8');
@@ -50,7 +50,7 @@ describe('loadLedgerEra v8 failure path', () => {
     const second = loadLedgerEra('v8');
     expect(second).not.toBe(first);
     await expect(second).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
-    expect(loadLedger8).toHaveBeenCalledTimes(2);
+    expect(loadLedger8Protocol).toHaveBeenCalledTimes(2);
   });
 
   // De-memoising on failure is only half the contract. The other half is that
@@ -59,11 +59,11 @@ describe('loadLedgerEra v8 failure path', () => {
   // cleared and every later call re-importing the WASM.
   it('memoises the era a repaired install finally produces', async () => {
     const repairedModule = { ContractState: class {} };
-    const loadLedger8 = vi
+    const loadLedger8Protocol = vi
       .fn()
       .mockRejectedValueOnce(new Ledger8RuntimeMissingError('/v8', new Error('simulated v8 load failure')))
       .mockResolvedValue(repairedModule);
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     await expect(loadLedgerEra('v8')).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
@@ -71,21 +71,21 @@ describe('loadLedgerEra v8 failure path', () => {
     const repaired = await loadLedgerEra('v8');
     expect(repaired.version).toBe('v8');
     expect(await loadLedgerEra('v8')).toBe(repaired);
-    expect(loadLedger8).toHaveBeenCalledTimes(2);
+    expect(loadLedger8Protocol).toHaveBeenCalledTimes(2);
   });
 
   // The acquisition failure already carries a protocol code and its own
   // wrapped cause. Re-wrapping it here would bury both behind a second layer
   // and break `instanceof` narrowing for every caller.
   // The mock rejects with an already-wrapped Ledger8RuntimeMissingError
-  // because that is the real loadLedger8 contract: it never rejects with a raw
+  // because that is the real loadLedger8Protocol contract: it never rejects with a raw
   // module-resolution error (see ../lib/v8/load.ts). Asserted by IDENTITY, not
   // just by class: a re-wrap would still be an instance of the same class
   // while burying the original cause a level deeper.
   it('lets a coded acquisition failure through unwrapped', async () => {
     const cause = new Error('ERR_MODULE_NOT_FOUND');
     const missing = new Ledger8RuntimeMissingError('/v8', cause);
-    vi.doMock('../lib/v8/load', () => ({ loadLedger8: () => Promise.reject(missing) }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8Protocol: () => Promise.reject(missing) }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const rejection = await loadLedgerEra('v8').then(

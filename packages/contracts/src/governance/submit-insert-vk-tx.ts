@@ -25,7 +25,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 
 import { type ContractProviders } from '../contract-providers';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
-import { submitTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { InsertVerifierKeyTxFailedError } from './errors';
 import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
 
@@ -98,7 +98,7 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
     providers.walletProvider.getCoinPublicKey(),
     providers.config
   );
-  const submitTxResult = await submitTx(providers, { unprovenTx });
+  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
     throw new InsertVerifierKeyTxFailedError(submitTxResult);
   }
