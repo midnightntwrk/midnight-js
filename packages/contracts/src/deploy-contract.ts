@@ -295,7 +295,7 @@ export async function deployContract<C extends Contract.Any>(
       era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: deployed.contractAddress,
-      deployTxData: deployed.deployTxData,
+      deployTxData: { public: deployed.deployTxData },
       signingKey: deployed.signingKey,
       initialContractStateBytes: deployed.initialContractStateBytes,
       initialContractState: deployed.initialContractState,

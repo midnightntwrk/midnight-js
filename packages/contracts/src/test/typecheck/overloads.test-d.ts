@@ -25,7 +25,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -47,7 +47,13 @@ import {
   type DeployContractOptionsWithPrivateState,
   type DeployedContract
 } from '../../deploy-contract';
-import { type AnyEraFinalizedCallTxData, type AnyEraSubmittedCallTx, isLedger8Result } from '../../era-results';
+import {
+  type AnyEraDeployedContract,
+  type AnyEraFinalizedCallTxData,
+  type AnyEraFoundContract,
+  type AnyEraSubmittedCallTx,
+  isLedger8Result
+} from '../../era-results';
 import {
   findDeployedContract,
   type FindDeployedContractOptionsBase,
@@ -337,7 +343,7 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
 
 describe('every result names the pipeline that produced it', () => {
   // The fact a caller cannot get anywhere else. `public.version` and
-  // `deployTxData.version` answer a DIFFERENT question -- which ledger recorded
+  // `deployTxData.public.version` answer a DIFFERENT question -- which ledger recorded
   // the transaction -- and after the fork they disagree with this one: a
   // retained-era call is recorded as a keep-state transaction tagged `'v9'`
   // while every object in its result comes from `onchain-runtime-v3`. A caller
@@ -430,6 +436,31 @@ describe('every result names the pipeline that produced it', () => {
     const wide = (result: { readonly era: LedgerVersion; readonly txId: string }): string | undefined =>
       isLedger8Result(result) ? result.txId : undefined;
     expectTypeOf(wide).returns.toEqualTypeOf<string | undefined>();
+  });
+
+  it('publishes one union for a found contract and one for a deployed contract, of either era', () => {
+    type Found = AnyEraFoundContract<Twin018, Counter016Contract>;
+    type Deployed = AnyEraDeployedContract<Twin018, Counter016Contract>;
+
+    expectTypeOf<Extract<Found, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundContract<Counter016Contract>>();
+    expectTypeOf<Exclude<Found, { era: 'v8' }>>().toEqualTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<Extract<Deployed, { era: 'v8' }>>().toEqualTypeOf<Ledger8DeployedContract<Counter016Contract>>();
+    expectTypeOf<Exclude<Deployed, { era: 'v8' }>>().toEqualTypeOf<DeployedContract<Twin018>>();
+
+    expectTypeOf<Deployed>().toExtend<Found>();
+
+    const signingKeyOf = (found: Found): string | undefined =>
+      isLedger8Result(found) ? found.signingKey : undefined;
+    expectTypeOf(signingKeyOf).returns.toEqualTypeOf<string | undefined>();
+  });
+
+  it('keeps the deploy record at deployTxData.public in both eras', () => {
+    expectTypeOf<Ledger8FoundContract<Counter016Contract>['deployTxData']['public']>().toEqualTypeOf<
+      VersionedFinalizedTxData
+    >();
+    const recordEra = (found: AnyEraFoundContract<Twin018, Counter016Contract>): LedgerVersion =>
+      found.deployTxData.public.version;
+    expectTypeOf(recordEra).returns.toEqualTypeOf<LedgerVersion>();
   });
 
   it('tags the asynchronous submit and the contract handles too', () => {

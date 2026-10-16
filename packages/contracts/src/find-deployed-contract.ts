@@ -583,7 +583,7 @@ export async function findDeployedContract<C extends Contract.Any>(
       era: 'v8',
       compiledContract: options.compiledContract,
       contractAddress: options.contractAddress,
-      deployTxData: found.deployTxData,
+      deployTxData: { public: found.deployTxData },
       signingKey,
       // Built AFTER the attach has checked every declared circuit's key, so a
       // handle a caller receives is one whose circuits the chain can serve.

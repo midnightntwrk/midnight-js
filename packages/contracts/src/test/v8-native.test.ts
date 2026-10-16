@@ -2515,8 +2515,8 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect('initialPrivateState' in deployed).toBe(true);
     expect(deployed.initialPrivateState).toBeUndefined();
     expect(deployed.initialZswapState.outputs).toEqual([]);
-    expect(deployed.deployTxData.version).toBe('v8');
-    expect(deployed.deployTxData.txId).toBe(retainedEraRecord().txId);
+    expect(deployed.deployTxData.public.version).toBe('v8');
+    expect(deployed.deployTxData.public.txId).toBe(retainedEraRecord().txId);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
     // The retained tag on the bytes that were passed to the transaction providers, which is what
     // says the RETAINED ledger composed this deployment.
@@ -3259,8 +3259,8 @@ describe('attaching to a retained-era contract already on chain', () => {
     // a retained-era contract was deployed in whichever era was current then,
     // and refusing the pre-fork variant would refuse the contracts this path exists
     // to keep callable.
-    expect(found.deployTxData.version).toBe('v9');
-    expect(found.deployTxData.txId).toBe(createMockFinalizedTxData().txId);
+    expect(found.deployTxData.public.version).toBe('v9');
+    expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
 
     // Every declared circuit is checked, and this artifact declares exactly one.
     expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledTimes(1);
@@ -3584,7 +3584,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
       const found = await findDeployedContract(providers, attachOptions());
 
-      expect(found.deployTxData.version).toBe(version);
+      expect(found.deployTxData.public.version).toBe(version);
     }
   });
 

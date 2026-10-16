@@ -315,3 +315,16 @@ a live handle in particular -- fails the build.
 `initialContractStateBytes` and the constructor's handle are the same state:
 given the verifier keys the deploy registers, the bytes the deploy derives the
 address from are byte-identical to the handle serialized.
+
+## Amendment — the retained deploy record moves under `public` (2026-10-16)
+
+Issue #1508. `Ledger8FoundContract.deployTxData` is `{ public: VersionedFinalizedTxData }`,
+not the flat record. The deploy record now sits at `deployTxData.public` in both eras, so
+`deployTxData.public.txId` and `deployTxData.public.version` read the same on every found or
+deployed handle, and `AnyEraFoundContract` / `AnyEraDeployedContract` can be read without
+branching on `era` for the record.
+
+Only the record moves. The rest of the note above stands: the retained handle keeps
+`signingKey`, `initialPrivateState`, `initialZswapState` and the initial contract state at the
+top level, because a found handle's `deployTxData` still has no private half.
+

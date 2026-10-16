@@ -90,7 +90,9 @@ describe('Contracts type ACL', () => {
     expect(typeOnlyExportNames()).toEqual([
       'AnyEraContractState',
       'AnyEraContractStateReadSurface',
+      'AnyEraDeployedContract',
       'AnyEraFinalizedCallTxData',
+      'AnyEraFoundContract',
       'AnyEraSubmittedCallTx',
       'CallOptions',
       'CallOptionsBase',

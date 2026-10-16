@@ -755,18 +755,12 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
   /** The address on chain every call made through {@link Ledger8FoundContract.callTx} targets. */
   readonly contractAddress: ContractAddress;
   /**
-   * The record of the transaction that DEPLOYED this contract, version-tagged
+   * The record of the transaction that DEPLOYED this contract, under `public`
+   * as on the current era's `FoundContract.deployTxData`. It is version-tagged
    * because a retained-era contract was deployed in whichever era was current
-   * at the time — narrow it with `switch (deployTxData.version)`.
-   *
-   * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-   * which is a `FoundDeployTxData` whose record sits under `.public` and is
-   * tagged on `.public.version`. Here the record is the read surface's own
-   * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
-   * members. Code written against one era does not read the other's record
-   * unchanged.
+   * at the time — narrow it with `switch (deployTxData.public.version)`.
    */
-  readonly deployTxData: VersionedFinalizedTxData;
+  readonly deployTxData: { readonly public: VersionedFinalizedTxData };
   /**
    * One function per circuit the artifact declares, each bound to
    * {@link Ledger8FoundContract.contractAddress} and to the private state id

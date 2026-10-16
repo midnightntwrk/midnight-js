@@ -1005,11 +1005,8 @@ const deployRetained = async (key, providers) => {
         });
   const state = await waitForContract(providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
 
-  // `deployTxData` is a `VersionedFinalizedTxData`, which carries `txId` at the
-  // top level on BOTH variants -- not under `.public`, which is where the CURRENT
-  // era's `DeployedContract` puts it. The two results differ exactly here.
   return {
-    txId: deployed.deployTxData.txId,
+    txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw),
@@ -1486,7 +1483,7 @@ await leg('pre-fork retained deploy', async () => {
   process.stdout.write(`FORK_CONTRACT ${deployed.contractAddress}\n`);
   const state = await waitForContract(session.providers.publicDataProvider, deployed.contractAddress, 5 * 60_000);
   return {
-    txId: deployed.deployTxData.txId,
+    txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
     indexedAs: state.version,
     envelope: envelopeTag(state.raw)

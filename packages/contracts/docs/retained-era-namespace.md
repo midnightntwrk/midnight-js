@@ -88,8 +88,9 @@ anything while that pipeline runs.
 A name that serves BOTH eras stays on the flat surface, so a consumer that only
 RECEIVES results never imports the transitional half:
 
-- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx` and `isLedger8Result` --
-  the union a shared handler declares, and the guard that narrows it.
+- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
+  `AnyEraDeployedContract` and `isLedger8Result` -- the unions a shared handler
+  declares, and the guard that narrows them.
 - `AnyEraTxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
