@@ -39,7 +39,7 @@ services:
   # One-shot. Lifts the new runtime blob out of the new node image into a volume the toolkit can read,
   # in place of a `docker create` + `docker cp` on the host.
   runtime-blob:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-beta.1}'
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-rc.4}'
     container_name: runtime-blob_$TESTCONTAINERS_UID
     user: '0:0'
     entrypoint: ['/bin/bash', '-c']
@@ -61,7 +61,7 @@ services:
   # New binary, old chain. `restart: "no"` on purpose: if the boundary breaks the node, the test
   # should show that rather than paper over it with a restart.
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-beta.1}'
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.0-rc.4}'
     container_name: node_$TESTCONTAINERS_UID
     depends_on:
       chainspec:
@@ -192,7 +192,7 @@ services:
   # as well. Re-check the registry when bumping TOOLKIT_TAG.
   toolkit:
     profiles: ['tools']
-    image: 'midnightntwrk/midnight-node-toolkit:${TOOLKIT_TAG:-2.1.0-beta.1}'
+    image: 'midnightntwrk/midnight-node-toolkit:${TOOLKIT_TAG:-2.1.0-rc.4}'
     volumes:
       - runtime:/runtime:ro
     environment:
