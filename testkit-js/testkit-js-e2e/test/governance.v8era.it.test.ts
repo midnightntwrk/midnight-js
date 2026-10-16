@@ -114,7 +114,7 @@ describe('Contract maintenance through a retained-era artifact on a pre-fork (le
   });
 
   test(
-    'a removed verifier key stops the circuit before anything is proven',
+    'a removed verifier key makes the circuit refuse to run',
     async () => {
       // Act.
       const removed = await submitRemoveVerifierKeyTx(providers, contract, contractAddress, CIRCUIT_ID);
@@ -153,12 +153,13 @@ describe('Contract maintenance through a retained-era artifact on a pre-fork (le
       const replaced = await submitReplaceAuthorityTx(providers, contract, contractAddress)(newKey);
       const storedAfterReplace = await providers.privateStateProvider.getSigningKey(contractAddress);
       await providers.privateStateProvider.setSigningKey(contractAddress, deployKey);
-      const withOldKey = submitRemoveVerifierKeyTx(providers, contract, contractAddress, CIRCUIT_ID);
 
       // Assert.
       expect([replaced.era, replaced.public.status]).toEqual(['v8', SucceedEntirely]);
       expect(storedAfterReplace).toEqual(newKey);
-      await expect(withOldKey).rejects.toThrow(MaintenanceAuthorityMismatchError);
+      await expect(submitRemoveVerifierKeyTx(providers, contract, contractAddress, CIRCUIT_ID)).rejects.toThrow(
+        MaintenanceAuthorityMismatchError
+      );
 
       // And the new key does maintain it.
       await providers.privateStateProvider.setSigningKey(contractAddress, newKey);

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -557,7 +557,8 @@ export interface SubmittedOperation {
   readonly kind: StaleHeadOperationKind;
   /**
    * The entry point this operation ran. A deploy has no circuit of its own and
-   * reports the constructor's own name, `'initialState'`.
+   * reports the constructor's own name, `'initialState'`; a maintenance
+   * authority replacement reports {@link NO_CIRCUIT}.
    */
   readonly circuitId: string;
   /**
@@ -586,7 +587,7 @@ export interface SubmittedOperation {
 // `deploy` through `deployContract`'s retained-era overload, and `maintenance`
 // through the retained-era overloads of the governance functions. `kind: 'deploy'`
 // is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
-// inside `runLedger8Maintenance`.
+// inside `submitLedger8MaintenanceTx`.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
@@ -614,9 +615,11 @@ const STALE_HEAD_MESSAGES: Readonly<
     `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger fork ` +
     `while the update was being built. Take two steps, in this order. First, verify the update did not ` +
     `finalize: a submission rejected while the head was moving can still have been recorded, so read the ` +
-    `state of the contract at '${operation.contractAddress}' and check whether its verifier key for ` +
-    `'${operation.circuitId}', or its maintenance authority, already reflects the update before doing anything ` +
-    `that would repeat it. Then recompile the contract with the ledger 9 Compact toolchain and run the same ` +
+    `state of the contract at '${operation.contractAddress}' and check whether its ` +
+    (operation.circuitId === NO_CIRCUIT
+      ? 'maintenance authority'
+      : `verifier key for '${operation.circuitId}'`) +
+    ` already reflects the update before doing anything that would repeat it. Then recompile the contract with the ledger 9 Compact toolchain and run the same ` +
     `maintenance function with that artifact - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
     `cannot maintain a contract on a post-fork head.`
 });
@@ -644,8 +647,8 @@ export class StaleHeadError extends MidnightJsError {
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
   /**
-   * Whether the refused operation was a call or a deploy — the discriminant a
-   * caller branches on, and which remediation the message carries.
+   * Whether the refused operation was a call, a deploy or a maintenance update —
+   * the discriminant a caller branches on, and which remediation the message carries.
    */
   readonly kind: StaleHeadOperationKind;
   /** The entry point that was run, so a caller with several in flight knows which. */
@@ -698,11 +701,30 @@ export type SubmitRejectionUndiagnosedCause =
 // nothing observed in either case establishes one, and telling a caller to wait
 // out a fork that is not happening is worse than telling it to retry. Same
 // discipline as `IndexerInconsistencyError`.
+const undiagnosedSubject = (kind: StaleHeadOperationKind): string => {
+  switch (kind) {
+    case 'call':
+      return 'call';
+    case 'deploy':
+      return 'deployment';
+    case 'maintenance':
+      return 'maintenance update';
+    default: {
+      const unhandled: never = kind;
+      throw new InvariantViolationError(`unknown operation kind '${String(unhandled)}'`);
+    }
+  }
+};
+
 const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRejectionUndiagnosedCause): string => {
-  const subject = operation.kind === 'deploy' ? 'deployment' : 'call';
+  const subject = undiagnosedSubject(operation.kind);
+  const target =
+    operation.circuitId === NO_CIRCUIT
+      ? `contract '${operation.contractAddress}'`
+      : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
   const opening =
     `This ${subject} was built against a '${operation.head}'-era network head and the node rejected its ` +
-    `transaction (circuit '${operation.circuitId}', contract '${operation.contractAddress}').`;
+    `transaction (${target}).`;
 
   switch (undiagnosed.reason) {
     case 'head-read-failed':
@@ -1591,18 +1613,19 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the `signingKey` supplied on a retained-era deploy
- * or attach is not one the retained era can sign with.
+ * An error indicating that a signing key the caller supplied in this call - on a
+ * retained-era deploy, an attach, or an authority replacement - is not one the
+ * retained era can sign with.
  *
- * Refused BEFORE the write rather than after it. Stored unchecked, a key the
+ * Refused BEFORE anything is composed or stored. Stored unchecked, a key the
  * read rejects is reported on the attach that supplied it and read as ABSENT on
  * every later one - the same store answering two different things about the
  * same address, with nothing erroring - and the bad entry has by then already
  * replaced whatever was held there.
  *
- * A refusal is cheap here in a way it is not on the READ path, which reports an
- * unusable stored entry as absent instead: this value came from the caller, in
- * this call, so the caller can correct it.
+ * A refusal is cheap here in a way it is not on the attach's READ path, which
+ * reports an unusable stored entry as absent instead: this value came from the
+ * caller, in this call, so the caller can correct it.
  *
  * The key is not rendered, and is not carried as a member either: the caller
  * already holds it.
@@ -1695,5 +1718,46 @@ export class Ledger8SigningKeyNotStoredError extends MidnightJsError {
       { cause }
     );
     this.name = 'Ledger8SigningKeyNotStoredError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era maintenance authority REPLACEMENT was submitted, but
+ * what the chain did with it could not be confirmed.
+ *
+ * Covers every way that step fails after the transaction may have landed: a submission rejected
+ * while the head was moving (a {@link StaleHeadError} or {@link SubmitRejectionUndiagnosedError}
+ * on `cause`), the read surface rejecting, a record with no era tag, or a record from an era the
+ * head this replacement composed on cannot have recorded. The new key is NOT stored, because the
+ * replacement may not have landed - and it may have, so this error carries it.
+ *
+ * {@link Ledger8ReplaceAuthorityUnconfirmedError.signingKey} is NAMED but never rendered into the
+ * message: if the replacement landed, it is the only key that authorizes anything on the contract.
+ */
+export class Ledger8ReplaceAuthorityUnconfirmedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED];
+
+  /**
+   * @param contractAddress The contract whose authority the replacement targets.
+   * @param signingKey The key the replacement would install.
+   * @param cause Why the replacement could not be confirmed.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: SigningKey,
+    cause: unknown
+  ) {
+    super(
+      `The maintenance authority replacement for the ledger 8 contract at '${contractAddress}' was submitted, ` +
+        "but whether the chain applied it could not be confirmed - see this error's cause for what failed. The " +
+        "new key was NOT stored. Keep this error's 'signingKey': if the replacement landed, it is the only key " +
+        "that authorizes the contract now. Find out which key the contract's authority holds before doing " +
+        'anything else: try a maintenance update with the key still stored; if it is refused with ' +
+        "MaintenanceAuthorityMismatchError, the replacement landed - store this error's 'signingKey' with " +
+        '`privateStateProvider.setSigningKey(address, error.signingKey)`.',
+      { cause }
+    );
+    this.name = 'Ledger8ReplaceAuthorityUnconfirmedError';
   }
 }

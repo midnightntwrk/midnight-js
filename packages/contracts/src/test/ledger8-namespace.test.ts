@@ -36,6 +36,7 @@ import {
   Ledger8DeployUnconfirmedError,
   Ledger8MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError,
+  Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
@@ -71,6 +72,7 @@ const LEDGER8_MEMBERS = [
   'MaintenanceOnLedger9Error',
   'RecipientUnmappableError',
   'RemoveVerifierKeyTxFailedError',
+  'ReplaceAuthorityUnconfirmedError',
   'ReplaceMaintenanceAuthorityTxFailedError',
   'ShieldedSpendUnsupportedError',
   'SigningKeyNotStoredError',
@@ -154,6 +156,7 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.MaintenanceOnLedger9Error).toBe(Ledger8MaintenanceOnLedger9Error);
     expect(Ledger8.SigningKeyUnavailableError).toBe(Ledger8SigningKeyUnavailableError);
     expect(Ledger8.SigningKeyNotStoredError).toBe(Ledger8SigningKeyNotStoredError);
+    expect(Ledger8.ReplaceAuthorityUnconfirmedError).toBe(Ledger8ReplaceAuthorityUnconfirmedError);
     expect(Ledger8.InsertVerifierKeyTxFailedError).toBe(Ledger8InsertVerifierKeyTxFailedError);
     expect(Ledger8.RemoveVerifierKeyTxFailedError).toBe(Ledger8RemoveVerifierKeyTxFailedError);
     expect(Ledger8.ReplaceMaintenanceAuthorityTxFailedError).toBe(Ledger8ReplaceMaintenanceAuthorityTxFailedError);

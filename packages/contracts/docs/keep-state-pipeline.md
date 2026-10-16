@@ -576,12 +576,14 @@ caller supplied one.
 `undefined` collapses three cases — nothing stored; something stored this
 framework did not write; the entry could not be read at all. Neither of the last
 two fails the attach, because a circuit call never CONSUMES the key, and would
-otherwise stop working over a value it never reads. The maintenance interfaces on
-the same handle do consume it, and for them the same three cases are a refusal,
-`Ledger8SigningKeyUnavailableError`, raised before anything is composed: a
-maintenance update cannot proceed without the key. Both are reported to the logger provider as
-a DEBUG-level dispatch breadcrumb, which is the only place the three are
-distinguishable.
+otherwise stop working over a value it never reads. On the attach, both are
+reported to the logger provider as a DEBUG-level dispatch breadcrumb, which is
+the only place the three are distinguishable.
+
+The maintenance interfaces on the same handle do consume the key, and for them
+the same three cases are a refusal, `Ledger8SigningKeyUnavailableError`, raised
+before anything is composed: a maintenance update cannot proceed without the key.
+An unreadable store is carried on that error's `cause`.
 
 ## Contract maintenance on the retained era
 
@@ -592,22 +594,32 @@ the artifact's era like `deployContract` and `submitCallTx`. The retained path i
 `submitLedger8MaintenanceTx`, in this order:
 
 1. Refuse a circuit the artifact does not declare, and a replacement key the
-   retained era cannot sign with (`Ledger8SigningKeyUnusableError`). Nothing is read
-   yet.
+   retained era cannot sign with (`Ledger8SigningKeyUnusableError`). No head, state
+   or key is read yet.
 2. Acquire the era. A post-fork head is refused with
    `Ledger8MaintenanceOnLedger9Error` before the signing key is read.
 3. Read the signing key. Missing, unusable or unreadable is
    `Ledger8SigningKeyUnavailableError`.
 4. Read ONE snapshot, check the slot the update targets (an insert needs it empty, a
    remove needs a key in it), and hand the snapshot's own bytes to the engine.
-5. The engine builds and signs the update through compact-js, after checking the key
-   is the authority's first committee member (`MaintenanceAuthorityMismatchError`
-   otherwise). See `packages/protocol/docs/retained-era-execution.md`.
+5. The engine builds and signs the update through compact-js, after checking the
+   authority can be signed for the way compact-js signs: one signature, by its first
+   committee member (`MaintenanceAuthorityMismatchError` otherwise). See
+   `packages/protocol/docs/retained-era-execution.md`.
 6. Prove, balance and submit as a `{ version: 'v8', txBytes }` payload, with
    `kind: 'maintenance'` for the fork-crossing diagnosis.
 7. Refuse a record from any era but ledger 8, then a non-success status with
    `Ledger8InsertVerifierKeyTxFailedError`, `Ledger8RemoveVerifierKeyTxFailedError`
-   or `Ledger8ReplaceMaintenanceAuthorityTxFailedError`.
+   or `Ledger8ReplaceMaintenanceAuthorityTxFailedError`. A maintenance update sits
+   in the guaranteed part of the transaction, so the messages say what to read
+   before retrying, and the replacement's class carries the new key.
+   For a REPLACEMENT, every failure after the transaction may have landed — a
+   submission rejected while the head moved (`StaleHeadError`,
+   `SubmitRejectionUndiagnosedError`), a record that cannot be read back, carries
+   no era tag, or comes from another era — is raised as
+   `Ledger8ReplaceAuthorityUnconfirmedError` with that failure on `cause`. It
+   carries the new key, which is not stored, because the replacement may have
+   landed and the old key would then authorize nothing.
 8. After a confirmed replacement, store the new key. A store that refuses it raises
    `Ledger8SigningKeyNotStoredError`, which carries the key: the old one no longer
    authorizes anything.

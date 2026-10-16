@@ -75,6 +75,8 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
+import type { Ledger8FoundDeployTxPublicData } from './tx-model';
+
 
 /**
  * The context a retained-era circuit receives as its first argument, as a
@@ -806,7 +808,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
      *
      * @remarks **Privacy-sensitive.**
      */
-    readonly initialPrivateState: Ledger8PrivateState<C>;
+    readonly initialPrivateState: Ledger8PrivateState<C> | undefined;
   };
 }
 
@@ -819,7 +821,11 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
  * private state and shielded coin material.
  */
 export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
-  readonly public: Ledger8FoundDeployTxData<C>['public'] & {
+  /**
+   * The record of the deploy transaction, always a ledger 8 one: a retained-era
+   * deploy runs only on a pre-fork head.
+   */
+  readonly public: Ledger8FoundDeployTxPublicData & {
     /**
      * The state the contract was deployed with, as the LIVE handle the retained
      * constructor built. See ADR-0010 for its lifetime, and prefer

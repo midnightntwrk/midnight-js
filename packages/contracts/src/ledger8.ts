@@ -41,6 +41,7 @@ export {
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
   Ledger8MaintenanceOnLedger9Error as MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
+  Ledger8ReplaceAuthorityUnconfirmedError as ReplaceAuthorityUnconfirmedError,
   Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
   Ledger8SigningKeyNotStoredError as SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError as SigningKeyUnavailableError,

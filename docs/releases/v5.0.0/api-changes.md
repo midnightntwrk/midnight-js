@@ -347,13 +347,19 @@ export namespace Ledger8 {
   //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
   //   contractMaintenanceTx: ContractMaintenanceTxInterface
   // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
-  //   InsertVerifierKeyTxFailedError, RemoveVerifierKeyTxFailedError,
-  //   ReplaceMaintenanceAuthorityTxFailedError.
+  //   ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
+  //   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.
 }
 ```
 
-`StaleHeadOperationKind` gains `'maintenance'`. The `@midnight-ntwrk/midnight-js-protocol` engine
-gains `Ledger8Engine.composeMaintenanceTx` and the `MaintenanceAuthorityMismatchError` class.
+`StaleHeadOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
+
+- `Ledger8Engine.composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>`, with
+  the `Ledger8MaintenanceRequest` and `Ledger8MaintenanceUpdateRequest` types;
+- `MaintenanceAuthorityMismatchError` with its `MaintenanceAuthorityMismatchReason`, and the code
+  `PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH`;
+- `'maintenance-update'` on `ComposeStage` and `'newSigningKey'` on `ComposeOption`. Both unions are
+  closed, so an exhaustive `switch` over either must handle the new member (see breaking-changes.md).
 
 ---
 

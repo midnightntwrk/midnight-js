@@ -8,10 +8,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 37 types, 17 error classes and one interface factory, 55 names --
+era's family -- 37 types, 18 error classes and one interface factory, 56 names --
 goes when the window closes.
 
-Published flat, side by side, those 55 would be 55 published API names, and
+Published flat, side by side, those 56 would be 56 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -147,14 +147,18 @@ IMPLEMENTATION signatures and are never a signature a caller sees.
 When the fork window closes, the retained era's own family goes by deleting
 `src/ledger8.ts` and its one re-export line in `src/index.ts`, then the modules
 that serve only it (`src/ledger8-contract.ts`, `src/internal/ledger8-*.ts`) and
-the retained members of the modules it SHARES with the current era -- `errors.ts`
-and `tx-interfaces.ts` hold both eras and are not deleted. The retained overloads
-on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract` and
-`deployContract` go with them, which narrows those entry points' overload sets.
+the retained members of the modules it SHARES with the current era --
+`errors.ts`, `tx-interfaces.ts`, `governance/errors.ts` and
+`governance/tx-interfaces.ts` hold both eras and are not deleted. The retained
+overloads on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract`,
+`deployContract`, `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`,
+`submitReplaceAuthorityTx`, `createCircuitMaintenanceTxInterface(s)` and
+`createContractMaintenanceTxInterface` go with them, which narrows those entry
+points' overload sets.
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 40 published names instead of one.
+would have removed 56 published names instead of one.
 
 ## What guards it
 

@@ -489,11 +489,14 @@ export const NO_CIRCUIT = '(none)';
  *   supplied for a circuit.
  *
  * Maintenance stage:
- * - `'maintenance-update'` — compact-js refused to build or sign the
- *   maintenance update: a verifier key the ledger will not read, an address it
- *   will not take, or a key it cannot sign with. Names the circuit for a
+ * - `'maintenance-update'` — the maintenance update could not be built,
+ *   signed, or wrapped into a transaction: platform-js refused the contract
+ *   address, compact-js refused one of its own steps (building the update,
+ *   creating it with the address and counter, reading the data to sign,
+ *   signing, attaching the signature), or the ledger refused the signed update
+ *   when it was wrapped into the transaction. Names the circuit for a
  *   verifier-key update and {@link NO_CIRCUIT} for an authority replacement.
- *   Carries compact-js's own failure on `cause`.
+ *   Carries the refusing library's own failure on `cause`.
  *
  * Keep-state stage:
  * - `'wrap-call'` — the keep-state leg could not resolve a registered
@@ -532,8 +535,8 @@ export type ComposeStage =
  * a closed union, so a consumer can `switch` on it exhaustively; `version`
  * names the ledger era the composition was running against.
  *
- * Most stages carry no `cause`. The exceptions are the stages where the ledger
- * itself rejected caller-supplied bytes, enumerated under `cause` below.
+ * Most stages carry no `cause`. The exceptions are the stages where a runtime
+ * library rejected what it was handed, enumerated under `cause` below.
  *
  * `circuitId` names the entry point, never its raw contents: this class renders
  * no hex and no byte-array dump.
@@ -544,9 +547,10 @@ export type ComposeStage =
  * @param circuitId The entry-point name, already decoded. {@link NO_CIRCUIT}
  *   for `'call-empty'`, the one stage raised before any circuit is looked up.
  * @param cause The runtime's own failure, present only for the stages where
- *   the ledger itself rejected caller-supplied bytes: `'call-contract-state'`,
+ *   the ledger rejected caller-supplied bytes — `'call-contract-state'`,
  *   `'call-partition-context'`, `'call-partition'`, `'call-prototype'`,
- *   `'deploy-verifier-key-blob'` and `'maintenance-update'`.
+ *   `'deploy-verifier-key-blob'` — and for `'maintenance-update'`, where it is
+ *   the failure of platform-js, compact-js or the ledger, whichever refused.
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
@@ -662,9 +666,12 @@ export class ComposeFailedError extends MidnightJsError {
       (circuitId === NO_CIRCUIT
         ? 'to replace the maintenance authority. '
         : `for circuit '${circuitId}'. `) +
-      'Read the wrapped cause for what was refused; it distinguishes a verifier key that is not the ' +
-      'tagged blob the compiler emits as keys/<circuit>.verifier from a contract address the ledger will ' +
-      'not read.'
+      'Read the wrapped cause for the step that refused it: the contract address, building the update, ' +
+      'creating it with the address and counter, reading the data to sign, signing, attaching the ' +
+      'signature, or wrapping the signed update into the transaction. A verifier key that is not the tagged ' +
+      'blob the compiler emits as keys/<circuit>.verifier is refused while building the update. A failure ' +
+      'naming an expected instance, or a null pointer, usually means a second copy of the ledger package is ' +
+      'installed, not that a key is wrong.'
   };
 }
 
@@ -805,9 +812,37 @@ export class ComposeOptionError extends MidnightJsError {
 }
 
 /**
- * Thrown when a maintenance update would be signed with a key that is not the
- * first member of the contract's maintenance authority committee — the member
- * every maintenance update this framework composes is signed for.
+ * Why a maintenance update cannot be signed by the key held for a contract:
+ * - `'not-first-member'` — the key's verifying key is not the first member of
+ *   the contract's maintenance authority committee, the member every update is
+ *   signed for.
+ * - `'empty-committee'` — the authority has no committee, so no key can sign
+ *   for it.
+ * - `'threshold-above-one'` — the authority needs more signatures than the one
+ *   every update carries.
+ */
+export type MaintenanceAuthorityMismatchReason = 'not-first-member' | 'empty-committee' | 'threshold-above-one';
+
+const MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES: Readonly<Record<MaintenanceAuthorityMismatchReason, string>> = {
+  'not-first-member':
+    "the signing key's verifying key is not the first member of the contract's maintenance authority " +
+    'committee, which is the member the update is signed for, so the ledger would refuse it. The key held ' +
+    'for this address is not the one the authority was built from - most often a key another deployment or ' +
+    'the other ledger era stored under the same address, or a previous authority replacement whose new key ' +
+    'was never stored. Supply the key the contract was deployed with, or the key a previous authority ' +
+    'replacement installed.',
+  'empty-committee':
+    "the contract's maintenance authority has no committee, so no key can sign an update for it and the " +
+    'contract cannot be maintained.',
+  'threshold-above-one':
+    "the contract's maintenance authority needs more than one signature, and every update this framework " +
+    'composes carries exactly one, so the ledger would refuse it.'
+};
+
+/**
+ * Thrown when a maintenance update cannot be signed so that the ledger accepts
+ * it with the key held for the contract — see
+ * {@link MaintenanceAuthorityMismatchReason} for the three ways.
  *
  * Raised BEFORE anything is signed or proven: the ledger would accept the
  * signature into the transaction and refuse the update only at submission,
@@ -818,6 +853,7 @@ export class ComposeOptionError extends MidnightJsError {
  *
  * @param version The ledger era the update was being composed on.
  * @param contractAddress The contract whose authority was checked.
+ * @param reason Which check refused it.
  * @see {@link RetainedEraExecution}
  */
 export class MaintenanceAuthorityMismatchError extends MidnightJsError {
@@ -826,15 +862,12 @@ export class MaintenanceAuthorityMismatchError extends MidnightJsError {
 
   constructor(
     readonly version: LedgerVersion,
-    readonly contractAddress: string
+    readonly contractAddress: string,
+    readonly reason: MaintenanceAuthorityMismatchReason
   ) {
     super(
-      `Refusing to sign a ${version} maintenance update for the contract at '${contractAddress}': the signing ` +
-        "key's verifying key is not the first member of the contract's maintenance authority committee, " +
-        'which is the member the update is signed for, so the ledger would refuse it. The key held for this ' +
-        'address is not the one the authority was built from - most often a key another deployment or the ' +
-        'other ledger era stored under the same address. Supply the key the contract was deployed with, or ' +
-        'the key a previous authority replacement installed.'
+      `Refusing to sign a ${version} maintenance update for the contract at '${contractAddress}': ` +
+        MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES[reason]
     );
     this.name = 'MaintenanceAuthorityMismatchError';
   }

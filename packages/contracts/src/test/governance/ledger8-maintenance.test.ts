@@ -34,6 +34,7 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import {
   FailFallible,
   type RawContractState,
+  UntaggedPayloadError,
   type VerifierKey,
   type VersionedTransaction,
   type ZKConfigProvider
@@ -42,10 +43,15 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   BlankVerifierKeySlotError,
+  EraInvariantViolationError,
   Ledger8MaintenanceOnLedger9Error,
+  Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
-  Ledger8SigningKeyUnusableError
+  Ledger8SigningKeyUnusableError,
+  ProviderFailedError,
+  StaleHeadError,
+  SubmitRejectionUndiagnosedError
 } from '../../errors';
 import {
   Ledger8InsertVerifierKeyTxFailedError,
@@ -235,7 +241,7 @@ describe('contract maintenance through a retained-era artifact', () => {
 
       await expect(
         submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK)
-      ).rejects.toThrow(InvalidArgumentError);
+      ).rejects.toThrow(/already defined for contract/);
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
     });
 
@@ -314,12 +320,134 @@ describe('contract maintenance through a retained-era artifact', () => {
 
     it('lets a foreign key refusal through before anything is proven', async () => {
       const providers = providersOn(keyedState);
-      composeMaintenanceTx.mockRejectedValue(new MaintenanceAuthorityMismatchError('v8', CONTRACT_ADDRESS));
+      composeMaintenanceTx.mockRejectedValue(
+        new MaintenanceAuthorityMismatchError('v8', CONTRACT_ADDRESS, 'not-first-member')
+      );
 
       await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
         MaintenanceAuthorityMismatchError
       );
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a replacement whose outcome is unknown', () => {
+    const expectStranded = async (providers: Providers, causeClass: abstract new (...args: never[]) => Error) => {
+      // Act
+      const failure = await submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(Ledger8ReplaceAuthorityUnconfirmedError);
+      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY });
+      expect((failure as Error).cause).toBeInstanceOf(causeClass);
+      expect((failure as Error).message).not.toContain(NEW_KEY.value);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    };
+
+    it('hands back the new key when the record cannot be read', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.watchForTxData = vi.fn().mockRejectedValue(new Error('subscription closed'));
+
+      // Act & Assert
+      await expectStranded(providers, Error);
+    });
+
+    it('hands back the new key when the record carries no era tag', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      const { version: _version, ...untagged } = createMockLedger8FinalizedTxData();
+      providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
+
+      // Act & Assert
+      await expectStranded(providers, UntaggedPayloadError);
+    });
+
+    it('hands back the new key when the record comes back from the ledger 9 era', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
+
+      // Act & Assert
+      await expectStranded(providers, EraInvariantViolationError);
+    });
+
+    it('hands back the new key when the submission was rejected while the head crossed the fork', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.queryLatestProtocolVersion = vi
+        .fn()
+        .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
+        .mockResolvedValueOnce(POST_FORK_PROTOCOL_VERSION);
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      // Act & Assert
+      await expectStranded(providers, StaleHeadError);
+    });
+
+    it('hands back the new key when the submission was rejected and the head could not be re-read', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.queryLatestProtocolVersion = vi
+        .fn()
+        .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
+        .mockRejectedValueOnce(new Error('indexer unreachable'));
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      // Act & Assert
+      await expectStranded(providers, SubmitRejectionUndiagnosedError);
+    });
+
+    it('does not claim an unknown outcome for a submission rejected on an unmoved head', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      // Act
+      const failure = await submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(ProviderFailedError);
+    });
+
+    it('does not claim an unknown outcome when proving failed and nothing was submitted', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('prover down'));
+
+      // Act
+      const failure = await submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(ProviderFailedError);
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a verifier key update rejected while the head crossed the fork', () => {
+    it('refuses with the maintenance remediation', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.queryLatestProtocolVersion = vi
+        .fn()
+        .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
+        .mockResolvedValueOnce(POST_FORK_PROTOCOL_VERSION);
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      // Act
+      const failure = await submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(StaleHeadError);
+      expect(failure).toMatchObject({ kind: 'maintenance', circuitId: CIRCUIT_ID, contractAddress: CONTRACT_ADDRESS });
     });
   });
 
@@ -351,16 +479,48 @@ describe('contract maintenance through a retained-era artifact', () => {
 
       expect(failure).toBeInstanceOf(errorClass);
       expect(failure).toMatchObject({ record: createMockLedger8FinalizedTxData(FailFallible) });
+      expect((failure as Error).message).toContain(CONTRACT_ADDRESS);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('names the circuit on a failed verifier key update', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));
+
+      // Act
+      const failure = await submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(Ledger8RemoveVerifierKeyTxFailedError);
+      expect((failure as Error).message).toContain(`'${CIRCUIT_ID}'`);
+    });
+
+    it('carries the new key on a failed replacement, because a FailFallible replacement may have landed', async () => {
+      // Arrange
+      const providers = providersOn(keyedState);
+      providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));
+
+      // Act
+      const failure = await submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY).catch(
+        (error: unknown) => error
+      );
+
+      // Assert
+      expect(failure).toBeInstanceOf(Ledger8ReplaceMaintenanceAuthorityTxFailedError);
+      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY });
+      expect((failure as Error).message).not.toContain(NEW_KEY.value);
     });
 
     it('refuses a record the ledger 9 era recorded', async () => {
       const providers = providersOn(keyedState);
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
 
-      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toMatchObject({
-        name: 'EraInvariantViolationError'
-      });
+      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
+        EraInvariantViolationError
+      );
     });
 
     it('hands back the new key when the store refuses it after a confirmed replacement', async () => {

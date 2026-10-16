@@ -3710,16 +3710,16 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.deployTxData.private.signingKey).toBeUndefined();
     // The current era samples a fresh key in this case. The retained era must not: a sampled key
     // bears no relation to the authority the chain holds for a contract deployed by someone else,
-    // and this path carries no maintenance interface for one to be used through, so storing it
-    // would report a key that can maintain nothing.
+    // so the handle's maintenance interfaces would refuse it with MaintenanceAuthorityMismatchError,
+    // and storing it would report a key that can maintain nothing.
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
   // The store is shared with the current era, whose keys may legitimately be `ecdsa`, and a stored
-  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the key is
-  // reported on the handle and consumed by nothing on this path, so a circuit call that never looks
-  // at it would otherwise stop working because of an entry it does not read. Both read as ABSENT,
-  // and the breadcrumb is what keeps absent from meaning silent.
+  // entry can also have been hand-edited or half-written. Neither may FAIL the attach: the attach
+  // and its circuit calls never read the key, so they would otherwise stop working because of an
+  // entry they do not read. Both read as ABSENT, and the breadcrumb is what keeps absent from meaning
+  // silent; the handle's maintenance interfaces, which do read the key, refuse such an entry.
   it('reports no key, and still attaches, when the stored entry is of the other signature kind', async () => {
     const { providers, debug } = attachProvidersLogging({ tag: 'ecdsa', value: LEDGER9_KEY_SHAPE });
 

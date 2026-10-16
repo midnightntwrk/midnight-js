@@ -68,6 +68,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertIsContractAddress,
+  assertNever,
   assertValidMidnightConfig,
   intentTtl,
   parseCoinPublicKeyToHex
@@ -80,10 +81,13 @@ import {
   Ledger8DeployNotStoredError,
   Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
+  Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
   PrivateStateNotFoundError,
+  StaleHeadError,
   type StaleHeadOperationKind,
+  SubmitRejectionUndiagnosedError,
   type SubmittedOperation
 } from '../errors';
 import {
@@ -747,6 +751,26 @@ const assertLedger8RecordEra = (
   throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
 };
 
+/**
+ * Reads back a record that only the ledger 8 era can have made, narrowing it to that era: the
+ * record of an operation the era gate admits only on a pre-fork head.
+ *
+ * @throws UntaggedPayloadError if the record carries no era tag.
+ * @throws EraInvariantViolationError if the record is not a ledger 8 one.
+ */
+const requireLedger8Record = (
+  record: VersionedFinalizedTxData,
+  head: LedgerVersion,
+  circuitId: string,
+  method: ReadMethod
+): Ledger8FinalizedTxData => {
+  const tagged = requireTaggedRecord(record, method);
+  if (tagged.version !== 'v8') {
+    throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
+  }
+  return tagged;
+};
+
 /** The private-state members a retained-era call reads and writes. */
 export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set' | 'setContractAddress'>;
 
@@ -1047,7 +1071,7 @@ export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
 export interface Ledger8DeployedState {
   /** The address the composition minted, which no other deployment shares. */
   readonly contractAddress: string;
-  readonly deployTxData: VersionedFinalizedTxData;
+  readonly deployTxData: Ledger8FinalizedTxData;
   readonly signingKey: SigningKey;
   readonly initialContractStateBytes: Uint8Array;
   readonly initialContractState: Ledger8ConstructedState['contractState'];
@@ -1113,14 +1137,18 @@ export const submitLedger8DeployTx = async (
   // happens here, so every refusal below carries the signing key. A sampled key
   // discarded here leaves a contract on chain that nobody can ever maintain,
   // which is the harm this path exists to remove.
-  let deployTxData: VersionedFinalizedTxData;
+  let deployTxData: Ledger8FinalizedTxData;
   try {
     // The ADDRESS, not the transaction id: a deployment is recorded against the
     // contract it created, and `watchForDeployTxData` is the read surface's own
-    // method for that.
-    deployTxData = await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress);
-    // Attribute the record BEFORE reading anything off it -- see the helper.
-    assertLedger8RecordEra(deployTxData, head, 'initialState', 'watchForDeployTxData');
+    // method for that. Attributed BEFORE anything is read off it: a deploy runs
+    // only on a pre-fork head, so its record can only be a ledger 8 one.
+    deployTxData = requireLedger8Record(
+      await providers.publicDataProvider.watchForDeployTxData(deploy.contractAddress),
+      head,
+      'initialState',
+      'watchForDeployTxData'
+    );
   } catch (error) {
     // EVERY way this step can fail -- the read surface rejecting, a record from
     // the wrong era, a record with no readable tag at all -- leaves the same
@@ -1269,19 +1297,32 @@ const toLedger8MaintenanceUpdate = (
  * @throws Ledger8InsertVerifierKeyTxFailedError, Ledger8RemoveVerifierKeyTxFailedError,
  * Ledger8ReplaceMaintenanceAuthorityTxFailedError if the recorded status is not `SucceedEntirely`.
  */
-const assertLedger8MaintenanceSucceeded = (record: Ledger8FinalizedTxData, update: Ledger8MaintenanceUpdate): void => {
+const assertLedger8MaintenanceSucceeded = (
+  record: Ledger8FinalizedTxData,
+  contractAddress: string,
+  update: Ledger8MaintenanceEntryUpdate
+): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
   switch (update.kind) {
     case 'insert-verifier-key':
-      throw new Ledger8InsertVerifierKeyTxFailedError(record);
+      throw new Ledger8InsertVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
     case 'remove-verifier-key':
-      throw new Ledger8RemoveVerifierKeyTxFailedError(record);
+      throw new Ledger8RemoveVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
     case 'replace-authority':
-      throw new Ledger8ReplaceMaintenanceAuthorityTxFailedError(record);
+      throw new Ledger8ReplaceMaintenanceAuthorityTxFailedError(record, contractAddress, update.newSigningKey);
+    default:
+      return assertNever(update, 'assertLedger8MaintenanceSucceeded');
   }
 };
+
+/**
+ * Whether a failure from {@link submitLedger8Tx} leaves open that the transaction landed: only a
+ * submission rejected while the head was moving, or one whose rejection could not be diagnosed.
+ */
+const mayHaveLanded = (error: unknown): boolean =>
+  error instanceof StaleHeadError || error instanceof SubmitRejectionUndiagnosedError;
 
 /**
  * Runs one retained-era maintenance update end to end and waits for the chain to record it: check
@@ -1348,21 +1389,38 @@ export const submitLedger8MaintenanceTx = async (
   });
 
   const circuitId = update.kind === 'replace-authority' ? NO_CIRCUIT : update.circuitId;
-  const txId = await submitLedger8Tx(providers, txBytes, {
-    head: resolved.head,
-    kind: 'maintenance',
-    circuitId,
-    contractAddress
-  });
+  const unconfirmed = (error: unknown): unknown =>
+    request.update.kind === 'replace-authority'
+      ? new Ledger8ReplaceAuthorityUnconfirmedError(contractAddress, request.update.newSigningKey, error)
+      : error;
 
-  const record = requireTaggedRecord(await providers.publicDataProvider.watchForTxData(txId), 'watchForTxData');
-  if (record.version !== 'v8') {
-    throw new EraInvariantViolationError('watchForTxData', circuitId, resolved.head, record.version);
+  let txId: string;
+  try {
+    txId = await submitLedger8Tx(providers, txBytes, {
+      head: resolved.head,
+      kind: 'maintenance',
+      circuitId,
+      contractAddress
+    });
+  } catch (error) {
+    throw mayHaveLanded(error) ? unconfirmed(error) : error;
   }
-  assertLedger8MaintenanceSucceeded(record, update);
 
-  if (update.kind === 'replace-authority') {
-    const newSigningKey = toStoredLedger8SigningKey(update.newSigningKey);
+  let record: Ledger8FinalizedTxData;
+  try {
+    record = requireLedger8Record(
+      await providers.publicDataProvider.watchForTxData(txId),
+      resolved.head,
+      circuitId,
+      'watchForTxData'
+    );
+  } catch (error) {
+    throw unconfirmed(error);
+  }
+  assertLedger8MaintenanceSucceeded(record, contractAddress, request.update);
+
+  if (request.update.kind === 'replace-authority') {
+    const newSigningKey = request.update.newSigningKey;
     try {
       await providers.privateStateProvider.setSigningKey(contractAddress, newSigningKey);
     } catch (error) {

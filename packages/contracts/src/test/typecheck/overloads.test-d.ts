@@ -946,6 +946,40 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     expectTypeOf<keyof RetainedDeployed['deployTxData']>().toEqualTypeOf<'era' | 'public' | 'private'>();
   });
 
+  it('gives the deploy data the same members one level down, except the ones each era alone carries', () => {
+    // Allow-lists, so a difference added on one side only fails here rather than going unnoticed.
+    type RetainedOnlyDeployedPublic = 'initialContractStateBytes';
+    type CurrentOnlyDeployedPrivate = 'unprovenTx' | 'newCoins';
+
+    expectTypeOf<keyof CurrentFound['deployTxData']['public']>().toEqualTypeOf<
+      keyof RetainedFound['deployTxData']['public']
+    >();
+    expectTypeOf<keyof CurrentFound['deployTxData']['private']>().toEqualTypeOf<
+      keyof RetainedFound['deployTxData']['private']
+    >();
+    expectTypeOf<keyof CurrentDeployed['deployTxData']['public']>().toEqualTypeOf<
+      Exclude<keyof RetainedDeployed['deployTxData']['public'], RetainedOnlyDeployedPublic>
+    >();
+    expectTypeOf<Exclude<keyof CurrentDeployed['deployTxData']['private'], CurrentOnlyDeployedPrivate>>().toEqualTypeOf<
+      keyof RetainedDeployed['deployTxData']['private']
+    >();
+
+    // The allow-listed members must still exist, or the lists above would excuse nothing.
+    expectTypeOf<RetainedDeployed['deployTxData']['public']>().toHaveProperty('initialContractStateBytes');
+    expectTypeOf<CurrentDeployed['deployTxData']['private']>().toHaveProperty('unprovenTx');
+    expectTypeOf<CurrentDeployed['deployTxData']['private']>().toHaveProperty('newCoins');
+  });
+
+  it('types a retained-era deploy record as a ledger 8 record, the only era that can make one', () => {
+    expectTypeOf<RetainedDeployed['deployTxData']['public']['version']>().toEqualTypeOf<'v8'>();
+  });
+
+  it('admits an absent private state on a retained-era attach that named no private-state id', () => {
+    expectTypeOf<RetainedFound['deployTxData']['private']['initialPrivateState']>().toEqualTypeOf<
+      Counter016PrivateState | undefined
+    >();
+  });
+
   it('names the contract and its address on the handle in BOTH eras', () => {
     // The two members that drifted onto the retained-era handle alone. A caller that
     // has a handle can reach the artifact and the address it was attached with,

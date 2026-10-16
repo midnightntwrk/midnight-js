@@ -66,6 +66,8 @@ export interface CircuitMaintenanceTxInterface {
  * @param compiledContract The contract the circuit belongs to.
  * @param contractAddress The address of the deployed contract for which this
  *                        interface is being created.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createCircuitMaintenanceTxInterface<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -86,6 +88,7 @@ export function createCircuitMaintenanceTxInterface<C extends Contract.Any>(
   contractAddress: ContractAddress
 ): CircuitMaintenanceTxInterface | Ledger8CircuitMaintenanceTxInterface {
   assertIsContractAddress(contractAddress);
+  // Both branches are the same expression: the narrowing is what lets each call resolve an overload.
   if (hasLedger8ContractShape(compiledContract)) {
     return {
       removeVerifierKey: () => submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId),
@@ -113,6 +116,8 @@ export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Cont
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract to use to execute circuits.
  * @param contractAddress The ledger address of the contract.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createCircuitMaintenanceTxInterfaces<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -168,6 +173,8 @@ export interface ContractMaintenanceTxInterface {
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract the interface is for.
  * @param contractAddress The ledger address of the contract.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createContractMaintenanceTxInterface<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -185,6 +192,7 @@ export function createContractMaintenanceTxInterface<C extends Contract.Any>(
   contractAddress: ContractAddress
 ): ContractMaintenanceTxInterface | Ledger8ContractMaintenanceTxInterface {
   assertIsContractAddress(contractAddress);
+  // Both branches are the same expression: the narrowing is what lets the call resolve an overload.
   if (hasLedger8ContractShape(compiledContract)) {
     return { replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress) };
   }

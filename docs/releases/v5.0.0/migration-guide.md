@@ -534,7 +534,7 @@ deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 
 | Fact | Before (retained era, up to rc.4) | Now (both eras) |
 |---|---|---|
-| Deploy record | `deployTxData.public` | `deployTxData.public` |
+| Deploy record | `deployTxData` (the flat record) | `deployTxData.public` (a ledger 8 record on a deployed handle) |
 | Contract address | `contractAddress` | `deployTxData.public.contractAddress` (and `contractAddress`) |
 | Signing key | `signingKey` | `deployTxData.private.signingKey` |
 | Private state from the constructor | `initialPrivateState` | `deployTxData.private.initialPrivateState` |
@@ -630,6 +630,12 @@ A retained-era update reads the stored key before it composes anything, and
 refuses a missing, foreign-kind or unreadable entry with
 `Ledger8.SigningKeyUnavailableError`, and a key that is not the contract's
 authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
+
+An authority replacement whose outcome cannot be confirmed - the submission was
+rejected while the head moved, or the record could not be read back - is raised
+as `Ledger8.ReplaceAuthorityUnconfirmedError`. It carries the new key, which was
+NOT stored: keep it, and store it once a maintenance update with the old key is
+refused with `MaintenanceAuthorityMismatchError`.
 
 ### The ledger 8 (pre-fork) toolchain stays where it is
 
@@ -861,7 +867,10 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
+- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
+- [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
+- [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8ReplaceAuthorityUnconfirmedError` or `Ledger8SigningKeyNotStoredError` keeps the `signingKey` it carries.
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.

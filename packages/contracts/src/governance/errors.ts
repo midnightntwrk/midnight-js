@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { FinalizedTxData, Ledger8FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 import { AnyEraTxFailedError, TxFailedError } from '../errors';
@@ -55,15 +56,20 @@ export class InsertVerifierKeyTxFailedError extends TxFailedError {
  * here is the ledger 8 one. Carries no registered error code of its own, exactly as
  * `Ledger8CallTxFailedError` does: branch on the class, or on the inherited
  * {@link AnyEraTxFailedError.code}.
+ *
+ * A maintenance update sits in the guaranteed part of the transaction, so on `FailFallible` it may
+ * have landed: the message says what to read before acting.
  */
 abstract class Ledger8MaintenanceTxFailedError extends AnyEraTxFailedError {
   constructor(
     readonly txData: Ledger8FinalizedTxData,
-    update: string
+    readonly contractAddress: string,
+    update: string,
+    reconcile: string
   ) {
     super(
-      `The ledger 8 ${update} was recorded on chain with status '${txData.status}' rather ` +
-        `than 'SucceedEntirely' (transaction id '${txData.txId}').`
+      `The ledger 8 ${update} on the contract at '${contractAddress}' was recorded on chain with status ` +
+        `'${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ${reconcile}`
     );
   }
 
@@ -73,26 +79,55 @@ abstract class Ledger8MaintenanceTxFailedError extends AnyEraTxFailedError {
   }
 }
 
-/** A retained-era maintenance authority replacement that the chain recorded as failed. */
+const reconcileVerifierKey = (circuitId: string): string =>
+  `Read the contract's verifier key for '${circuitId}' before retrying: the update may have landed.`;
+
+/**
+ * A retained-era maintenance authority replacement that the chain recorded as failed.
+ *
+ * {@link Ledger8ReplaceMaintenanceAuthorityTxFailedError.signingKey} is NAMED but never rendered
+ * into the message: the store still holds the old key, and if the replacement landed this is the
+ * only copy of the one that authorizes the contract.
+ */
 export class Ledger8ReplaceMaintenanceAuthorityTxFailedError extends Ledger8MaintenanceTxFailedError {
-  constructor(txData: Ledger8FinalizedTxData) {
-    super(txData, 'maintenance authority replacement');
+  constructor(
+    txData: Ledger8FinalizedTxData,
+    contractAddress: string,
+    readonly signingKey: SigningKey
+  ) {
+    super(
+      txData,
+      contractAddress,
+      'maintenance authority replacement',
+      "The new key was NOT stored; the store still holds the old one. Keep this error's 'signingKey': if the " +
+        'replacement landed after all, it is the only key that authorizes the contract. Try a maintenance ' +
+        'update with the stored key; if it is refused with MaintenanceAuthorityMismatchError, store this ' +
+        "error's 'signingKey' with `privateStateProvider.setSigningKey(address, error.signingKey)`."
+    );
     this.name = 'Ledger8ReplaceMaintenanceAuthorityTxFailedError';
   }
 }
 
 /** A retained-era verifier key removal that the chain recorded as failed. */
 export class Ledger8RemoveVerifierKeyTxFailedError extends Ledger8MaintenanceTxFailedError {
-  constructor(txData: Ledger8FinalizedTxData) {
-    super(txData, 'verifier key removal');
+  constructor(
+    txData: Ledger8FinalizedTxData,
+    contractAddress: string,
+    readonly circuitId: string
+  ) {
+    super(txData, contractAddress, 'verifier key removal', reconcileVerifierKey(circuitId));
     this.name = 'Ledger8RemoveVerifierKeyTxFailedError';
   }
 }
 
 /** A retained-era verifier key insertion that the chain recorded as failed. */
 export class Ledger8InsertVerifierKeyTxFailedError extends Ledger8MaintenanceTxFailedError {
-  constructor(txData: Ledger8FinalizedTxData) {
-    super(txData, 'verifier key insertion');
+  constructor(
+    txData: Ledger8FinalizedTxData,
+    contractAddress: string,
+    readonly circuitId: string
+  ) {
+    super(txData, contractAddress, 'verifier key insertion', reconcileVerifierKey(circuitId));
     this.name = 'Ledger8InsertVerifierKeyTxFailedError';
   }
 }

@@ -130,6 +130,7 @@ describe('Protocol type ACL', () => {
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
+      'MaintenanceAuthorityMismatchReason',
       'MidnightJsErrorCategory',
       'MidnightJsErrorCodeFormat',
       'PartitionContext',

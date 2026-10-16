@@ -811,7 +811,7 @@ off the top level, and the retained era's signing key is now the current era's `
 | `Ledger8.DeployedContract.initialPrivateState`, `initialZswapState` | top level | `deployTxData.private.*` |
 | `Ledger8.DeployContractOptions.signingKey`, `Ledger8.FindDeployedContractOptions.signingKey` | `Ledger8SigningKey` (bare hex) | `SigningKey` |
 | `Ledger8.DeployTxFailedError.signingKey`, `Ledger8.DeployUnconfirmedError.signingKey`, `Ledger8.DeployNotStoredError.signingKey` | `Ledger8SigningKey` | `SigningKey` |
-| `Ledger8.SigningKeyUnusableError` | raised by `findDeployedContract` only; `contractAddress: string` | also raised by `deployContract`, before anything is composed; `contractAddress?: string` (absent on a deploy) |
+| `Ledger8.SigningKeyUnusableError` | raised by `findDeployedContract` only; `contractAddress: string` | also raised by `deployContract` and by the retained-era `submitReplaceAuthorityTx` / `replaceAuthority`, before anything is composed; `contractAddress?: string` (absent on a deploy) |
 
 The retained era signs with `schnorr` only. An `ecdsa` key, or a `schnorr` key whose value is not
 exactly 64 hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError`
@@ -842,6 +842,8 @@ maintenance result is now nested like every other `contracts` result.
 | `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8.CircuitMaintenanceTxInterface(s)` / `Ledger8.ContractMaintenanceTxInterface` |
 | `Ledger8.FoundContract`, `Ledger8.DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
 | `StaleHeadOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
+| `ComposeStage` (protocol) | no maintenance stage | gains `'maintenance-update'` |
+| `ComposeOption` (protocol) | no replacement-key option | gains `'newSigningKey'` |
 
 ```diff
   const result = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
@@ -851,6 +853,9 @@ maintenance result is now nested like every other `contracts` result.
 
 `AnyEraMaintenanceTxData` is the union of both results; narrowing on `era` narrows `public`. The
 `*TxFailedError` records are unchanged.
+
+`StaleHeadOperationKind`, `ComposeStage` and `ComposeOption` are closed unions: an exhaustive
+`switch` over one of them in consumer code stops compiling until it handles the new member.
 
 A retained-era maintenance update on a post-fork head is refused with
 `Ledger8.MaintenanceOnLedger9Error` (`LEDGER8_MAINTENANCE_ON_LEDGER9`). After the fork, recompile
@@ -863,8 +868,9 @@ New refusals on the retained path:
 | `Ledger8.MaintenanceOnLedger9Error` | `LEDGER8_MAINTENANCE_ON_LEDGER9` (USAGE) | retained-era artifact on a post-fork head |
 | `Ledger8.SigningKeyUnavailableError` | `LEDGER8_SIGNING_KEY_UNAVAILABLE` (USAGE) | no usable key stored, or the store cannot be read (on `cause`) |
 | `Ledger8.SigningKeyNotStoredError` | `LEDGER8_SIGNING_KEY_NOT_STORED` (ENVIRONMENT) | a confirmed replacement whose new key the store refused; carries the key |
-| `MaintenanceAuthorityMismatchError` (protocol) | `MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH` (USAGE) | the stored key is not the contract's authority; raised before proving |
-| `Ledger8.InsertVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TX_FAILED` (inherited from `AnyEraTxFailedError`) | the chain recorded a non-success status |
+| `Ledger8.ReplaceAuthorityUnconfirmedError` | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` (UNCERTAIN) | a submitted replacement whose outcome could not be confirmed; carries the new key, which was not stored |
+| `MaintenanceAuthorityMismatchError` (protocol) | `MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH` (USAGE) | the stored key cannot sign for the contract's authority (`reason`: `'not-first-member'`, `'empty-committee'`, `'threshold-above-one'`); raised before proving |
+| `Ledger8.InsertVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TX_FAILED` (inherited from `AnyEraTxFailedError`) | the chain recorded a non-success status; each names the contract, the first two the circuit, and the third carries the new key |
 
 A retained-era replacement key must be a `schnorr` key; any other is refused with
 `Ledger8.SigningKeyUnusableError` before anything is composed.

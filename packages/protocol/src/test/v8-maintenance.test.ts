@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { NO_CIRCUIT, PROTOCOL_ERROR_CODES } from '../errors';
+import { InvalidArgumentError, NO_CIRCUIT, PROTOCOL_ERROR_CODES } from '../errors';
 import { createLedger8Engine } from '../lib/v8/engine';
 import type { Ledger8EngineContract } from '../lib/v8/executable';
 import {
@@ -55,14 +55,14 @@ beforeAll(async () => {
   contract = new Contract({});
 });
 
-const contractStateBytes = (committee: readonly string[], counter: bigint = COUNTER): Uint8Array => {
+const contractStateBytes = (committee: readonly string[], counter: bigint = COUNTER, threshold = 1): Uint8Array => {
   const state = new LedgerV8.ContractState();
   const operation = new LedgerV8.ContractOperation();
   operation.verifierKey = VERIFIER_KEY;
   state.setOperation(CIRCUIT_ID, operation);
   state.maintenanceAuthority = new LedgerV8.ContractMaintenanceAuthority(
     committee.map((key) => LedgerV8.signatureVerifyingKey(key)),
-    1,
+    threshold,
     counter
   );
   return state.serialize();
@@ -164,15 +164,49 @@ describe('composeLedger8MaintenanceTx', () => {
     const act = composeLedger8MaintenanceTx(request(INSERT, { contractStateBytes: stateBytes }));
 
     // Assert
-    await expect(act).rejects.toMatchObject({ code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH });
+    await expect(act).rejects.toMatchObject({
+      code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH,
+      reason: 'not-first-member'
+    });
   });
 
-  it('refuses a key that is not in the committee before signing anything', async () => {
+  it('refuses a key that is not in the committee', async () => {
     // Act
     const act = composeLedger8MaintenanceTx(request(INSERT, { signingKey: FOREIGN_KEY }));
 
     // Assert
-    await expect(act).rejects.toMatchObject({ code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH });
+    await expect(act).rejects.toMatchObject({
+      code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH,
+      reason: 'not-first-member'
+    });
+  });
+
+  it('refuses a contract whose maintenance authority has no committee', async () => {
+    // Arrange
+    const stateBytes = contractStateBytes([]);
+
+    // Act
+    const act = composeLedger8MaintenanceTx(request(INSERT, { contractStateBytes: stateBytes }));
+
+    // Assert
+    await expect(act).rejects.toMatchObject({
+      code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH,
+      reason: 'empty-committee'
+    });
+  });
+
+  it('refuses an authority whose threshold needs more than the one signature every update carries', async () => {
+    // Arrange
+    const stateBytes = contractStateBytes([AUTHORITY_KEY, FOREIGN_KEY], COUNTER, 2);
+
+    // Act
+    const act = composeLedger8MaintenanceTx(request(INSERT, { contractStateBytes: stateBytes }));
+
+    // Assert
+    await expect(act).rejects.toMatchObject({
+      code: PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH,
+      reason: 'threshold-above-one'
+    });
   });
 
   it('does not render key material in the committee refusal', async () => {
@@ -184,6 +218,7 @@ describe('composeLedger8MaintenanceTx', () => {
     // Assert
     const message = error instanceof Error ? error.message : '';
     expect(message).toContain(CONTRACT_ADDRESS);
+    expect(message).toMatch(/previous authority replacement whose new key was never stored/);
     expect(message).not.toContain(FOREIGN_KEY);
     expect(message).not.toContain(LedgerV8.signatureVerifyingKey(FOREIGN_KEY));
     expect(message).not.toContain(LedgerV8.signatureVerifyingKey(AUTHORITY_KEY));
@@ -200,6 +235,18 @@ describe('composeLedger8MaintenanceTx', () => {
     await expect(act).rejects.toMatchObject({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'signingKey' });
   });
 
+  it('refuses a signing key of the right form that the ledger 8 runtime cannot read as a Schnorr scalar', async () => {
+    // Act
+    const act = composeLedger8MaintenanceTx(request(INSERT, { signingKey: 'ff'.repeat(32) }));
+
+    // Assert
+    await expect(act).rejects.toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
+      option: 'signingKey',
+      cause: expect.anything()
+    });
+  });
+
   it('refuses a malformed new authority key as a compose option', async () => {
     // Act
     const act = composeLedger8MaintenanceTx(request({ kind: 'replace-authority', newSigningKey: 'not-a-key' }));
@@ -209,6 +256,18 @@ describe('composeLedger8MaintenanceTx', () => {
       code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
       option: 'newSigningKey'
     });
+  });
+
+  it('refuses an update kind an untyped caller invented, rather than reading it as an authority replacement', async () => {
+    // Arrange
+    const invented: Ledger8MaintenanceUpdateRequest = JSON.parse('{"kind":"rotate-authority","circuitId":"increment"}');
+
+    // Act
+    const act = composeLedger8MaintenanceTx(request(invented));
+
+    // Assert
+    await expect(act).rejects.toThrow(InvalidArgumentError);
+    await expect(act).rejects.toThrow(/'rotate-authority'/);
   });
 
   it('refuses contract state bytes the ledger 8 runtime cannot read', async () => {

@@ -62,8 +62,7 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
- * @param compiledContract The compiled contract for which the maintenance authority
- *                         should be updated.
+ * @param compiledContract The contract the circuit belongs to.
  * @param contractAddress The address of the contract containing the circuit for which
  *                        the verifier key should be removed.
  * @param circuitId The circuit for which the verifier key should be removed.
@@ -78,6 +77,10 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable key.
  * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
  *         the contract's maintenance authority. Raised before anything is proven.
+ * @throws {InvalidArgumentError} When the contract state, or the retained-era artifact, declares no
+ *         such circuit. Raised before anything is composed.
+ * @throws {BlankVerifierKeySlotError} When the circuit's verifier key slot holds no key. Raised before
+ *         anything is composed.
  *
  * TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
  *       automatically rotated in this function. This likely involves storing key versions

@@ -63,8 +63,7 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
- * @param compiledContract The compiled contract for which the maintenance authority
- *                         should be updated.
+ * @param compiledContract The contract whose maintenance authority should be replaced.
  * @param contractAddress The address of the contract for which the maintenance
  *                        authority should be updated.
  *
@@ -74,7 +73,7 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  *
  * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging. The retained-era overload
- *         raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead.
+ *         raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
  * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used on a post-fork head.
  * @throws {Ledger8SigningKeyUnusableError} When the retained-era overload is given a new key that era
  *         cannot sign with. Raised before anything is composed.
@@ -83,6 +82,8 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  *         the contract's maintenance authority. Raised before anything is proven.
  * @throws {Ledger8SigningKeyNotStoredError} When a retained-era replacement was confirmed and the
  *         store then refused the new key. It carries the key.
+ * @throws {Ledger8ReplaceAuthorityUnconfirmedError} When a retained-era replacement was submitted but
+ *         whether it landed could not be confirmed. It carries the new key, which was not stored.
  *
  * TODO: There are at least three options we should support in the future:
  *       1. Replace authority and maintain key (current).

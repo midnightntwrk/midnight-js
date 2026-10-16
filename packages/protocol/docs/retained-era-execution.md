@@ -313,9 +313,14 @@ authority rebuilt in its place carries neither the real counter nor the real
 committee, and the ledger refuses the update only at submission, after a proof
 has been paid for.
 
-compact-js signs every update at committee index 0. Before anything is signed,
-this module checks that the signing key's verifying key IS the committee's
-first member, and refuses otherwise with `MaintenanceAuthorityMismatchError`.
+compact-js signs every update once, at committee index 0. Before anything is
+signed, this module checks that the authority can accept that: it has a
+committee, its threshold is one signature, and the signing key's verifying key
+IS the committee's first member. It refuses otherwise with
+`MaintenanceAuthorityMismatchError`, whose `reason` names which check failed
+(`'empty-committee'`, `'threshold-above-one'`, `'not-first-member'`). A
+threshold above one would otherwise compose and prove an update the ledger
+refuses at submission.
 That is the one guard against the shared signing-key slot: both eras store
 their key under the same contract address, so the key a caller holds for an
 address may be one the other era stored. Requiring index 0 rather than any
@@ -326,12 +331,25 @@ address and renders no key, signing or verifying.
 
 Malformed `signingKey` and `newSigningKey` values are `ComposeOptionError`s,
 for the reason the constructor's is: compact-js's own refusal names neither the
-option nor the era. Unreadable state bytes are `ComposeOptionError` naming
-`'contractStateBytes'`. Anything compact-js refuses while building or signing
-the update -- a verifier key or address the ledger will not take -- is
-`ComposeFailedError` at stage `'maintenance-update'`, with compact-js's failure
-on `cause`. Whether the targeted verifier-key slot is occupied is the caller's
-decision, made against the same state, and is not checked here.
+option nor the era. So is a `signingKey` of the right form that is not a
+Schnorr scalar the ledger 8 runtime can read. Unreadable state bytes are
+`ComposeOptionError` naming `'contractStateBytes'`.
+
+Everything refused after that is `ComposeFailedError` at stage
+`'maintenance-update'`, with the refusing library's own failure on `cause`:
+platform-js refusing the contract address, compact-js refusing one of the steps
+it keeps apart (building the update, creating it with the address and counter,
+reading the data to sign, signing, attaching the signature), or the ledger
+refusing the signed update when it is wrapped into the transaction. compact-js
+keeps those steps apart so that a second installed copy of the ledger package
+is not misread as a bad key, and the `cause` keeps that distinction. One
+exception: a failure that already carries a coded midnight-js error on its
+`cause` chain -- the refusing verifier-key reader's `InvariantViolationError`,
+say -- is rethrown as that error, not wrapped, so an internal invariant breach
+is never reported as a caller's refusal.
+
+Whether the targeted verifier-key slot is occupied is the caller's decision,
+made against the same state, and is not checked here.
 
 ## Binding the result back onto v9
 

@@ -50,17 +50,24 @@ record already answer — not a finer code.
 ## Which errors carry a registered code, and which do not
 
 Every class here carries a registered code (ADR 0017). The retained era's
-recorded-failure classes — `Ledger8CallTxFailedError` and
-`Ledger8DeployTxFailedError` — carry none of their OWN: they inherit `TX_FAILED`.
+recorded-failure classes — `Ledger8CallTxFailedError`,
+`Ledger8DeployTxFailedError`, `Ledger8InsertVerifierKeyTxFailedError`,
+`Ledger8RemoveVerifierKeyTxFailedError` and
+`Ledger8ReplaceMaintenanceAuthorityTxFailedError` — carry none of their OWN:
+they inherit `TX_FAILED`. The three maintenance classes carry the narrower
+`Ledger8FinalizedTxData`, because a retained-era maintenance update runs only on
+a pre-fork head; the call and deploy classes carry `VersionedFinalizedTxData`.
 That era's record type is expected to converge with the current era's, and a
 finer code promised now would outlive the shape it describes. A caller branches
 on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
 message.
 
-The post-submission classes are different: `Ledger8DeployUnconfirmedError` and
-`Ledger8DeployNotStoredError` describe what the caller must do next, not the
-record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` is
-`UNCERTAIN`, because the deployment may still land.
+The post-submission classes are different: `Ledger8DeployUnconfirmedError`,
+`Ledger8DeployNotStoredError`, `Ledger8ReplaceAuthorityUnconfirmedError` and
+`Ledger8SigningKeyNotStoredError` describe what the caller must do next, not the
+record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` and
+`LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` are `UNCERTAIN`, because the deployment
+or the replacement may still land.
 
 `SubmitRejectionUndiagnosedError` is the exception that proves the rule: it has
 its own code, and **the code of the rejection it carries must not be copied onto
@@ -159,10 +166,13 @@ ahead of it is raised with no key having been sampled.
 
 ### The key is named, never rendered
 
-`Ledger8DeployTxFailedError.signingKey` and `Ledger8DeployNotStoredError.signingKey`
-are referenced in their classes' documentation but never interpolated into a
-message. An error message reaches logs and issue trackers, and this is the only
-copy of the authority over a deployment that landed.
+`Ledger8DeployTxFailedError.signingKey`, `Ledger8DeployNotStoredError.signingKey`,
+`Ledger8ReplaceMaintenanceAuthorityTxFailedError.signingKey`,
+`Ledger8ReplaceAuthorityUnconfirmedError.signingKey` and
+`Ledger8SigningKeyNotStoredError.signingKey` are referenced in their classes'
+documentation but never interpolated into a message. An error message reaches
+logs and issue trackers, and each may be the only copy of the authority over a
+deployment or a replacement that landed.
 
 ## Why a failed deploy is not a failed call
 

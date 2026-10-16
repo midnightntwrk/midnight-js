@@ -26,10 +26,12 @@
  * - the current `sampleSigningKey()` answers `{ tag: 'schnorr', value }` whose
  *   `value` is the same 64 characters;
  * - the retained runtime's `signatureVerifyingKey()` accepts a current-era
- *   key's `value` verbatim. MEASURED BY HAND, once, and asserted nowhere in
- *   this repo -- treat it as an observation about the runtimes pinned today,
- *   not as a standing guarantee. Nothing below depends on it: this module only
- *   ever hands the retained runtime a key the retained era produced;
+ *   key's `value` verbatim. The retained path DEPENDS on this: a caller's
+ *   `{ tag: 'schnorr', value }` key on a deploy or an authority replacement is
+ *   handed to the retained runtime whichever runtime sampled it. It is
+ *   asserted end to end, not here: `governance.v8era.it.test.ts` in
+ *   testkit-js-e2e and the Hard fork lane both sign on the retained path with a
+ *   key the current runtime sampled;
  * - `{ tag: 'schnorr', value: <retained key> }` satisfies `isValidSigningKey`,
  *   which is what the level-backed provider validates imports against. That
  *   last one is re-measured on every run rather than trusted as written here:
@@ -90,10 +92,12 @@ export const LEDGER8_SIGNING_KEY_HEX_LENGTH = 64;
  * This is REACHABLE. Recompiled current-era artifacts pass `verifyContractState`
  * against a contract deployed before the fork, so a current-era find on a store
  * that holds no key for that address samples one and stores it, as it does for
- * any contract. The retained path then reports that key as `signingKey`. It signs
- * nothing there -- the retained handle carries no maintenance interfaces -- but
- * the value it reports is not the contract's authority. A key the pre-fork deploy
- * stored is never replaced: the current era samples only into an empty slot.
+ * any contract. The retained path then reports that key as `signingKey`, and the
+ * value it reports is not the contract's authority. A maintenance update through
+ * the retained handle signs nothing with it: the engine finds the key outside the
+ * authority's committee and refuses with `MaintenanceAuthorityMismatchError`
+ * before anything is signed or proven. A key the pre-fork deploy stored is never
+ * replaced: the current era samples only into an empty slot.
  *
  * DOCUMENTED rather than fixed here on purpose: an address-prefixed record, or
  * any other change to the stored shape, changes what
@@ -152,11 +156,13 @@ const unusableLedger8SigningKey = (key: SigningKey): 'other-signature-kind' | 'm
  *
  * ABSENT rather than a throw, and that is a deliberate choice about blast
  * radius. This read sits on `findDeployedContract`, whose result is used to
- * call circuits; the retained path exposes no maintenance interface, so nothing
- * on that path consumes the key. A throw here would fail every attach to the
- * address — circuit calls included — over a value none of them reads. The
- * caller's remedy is unchanged: supply the retained key on the attach options,
- * or remove the entry with `privateStateProvider.removeSigningKey(address)`.
+ * call circuits, and a circuit call never reads the key. A throw here would
+ * fail every attach to the address — circuit calls included — over a value
+ * none of them reads. The maintenance interfaces on the same handle DO read it,
+ * and there a missing, unusable or unreadable entry is a refusal,
+ * `Ledger8SigningKeyUnavailableError`, not an absence. The caller's remedy is
+ * unchanged: supply the retained key on the attach options, or remove the entry
+ * with `privateStateProvider.removeSigningKey(address)`.
  *
  * Absent must not mean SILENT, so each case emits a breadcrumb. The breadcrumb
  * names the member and the address and never the stored value: the value is
