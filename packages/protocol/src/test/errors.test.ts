@@ -66,7 +66,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
       UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
       PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
+      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
+      MAINTENANCE_AUTHORITY_MISMATCH: 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH'
     });
   });
 
@@ -438,7 +439,8 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'deploy-verifier-key': true,
   'deploy-unknown-circuit': true,
   'deploy-ambiguous-circuit': true,
-  'deploy-verifier-key-blob': true
+  'deploy-verifier-key-blob': true,
+  'maintenance-update': true
 };
 const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
 
@@ -478,6 +480,7 @@ const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   guaranteedZswapOfferBytes: true,
   ledgerParametersBytes: true,
   networkId: true,
+  newSigningKey: true,
   signingKey: true,
   ttl: true,
   verifierKeys: true,

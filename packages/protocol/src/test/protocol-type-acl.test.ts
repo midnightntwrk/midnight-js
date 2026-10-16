@@ -169,6 +169,9 @@ describe('Protocol type ACL', () => {
       // `Ledger8CircuitOptions.contract` is one of these, so a consumer
       // building the container cannot declare it without this name.
       'Ledger8EngineContract',
+      // `Ledger8Engine.composeMaintenanceTx` takes one, and the update inside it.
+      'Ledger8MaintenanceRequest',
+      'Ledger8MaintenanceUpdateRequest',
       'Ledger8SigningKey',
       'TranscriptPojo',
       // `runLedger8Constructor` TAKES one: deployment registers verifier keys,

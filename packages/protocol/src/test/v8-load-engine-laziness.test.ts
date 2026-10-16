@@ -78,12 +78,12 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     ).toBeDefined();
     expect(loadLedger8Protocol).not.toHaveBeenCalled();
 
-    // The two methods that could PLAUSIBLY reach the loader lazily, which the
+    // The three methods that could PLAUSIBLY reach the loader lazily, which the
     // call above cannot speak for: it targets the current era, so it has no
-    // business touching the retained ledger either way. Both are driven far
+    // business touching the retained ledger either way. Each is driven far
     // enough to run their own body -- each refuses its arguments before any
     // execution -- which is all this gate needs: an `await loadLedger8Protocol()` added
-    // inside either one fires before the refusal does.
+    // inside any one fires before the refusal does.
     await engine
       .executeCircuit({
         contract: { provableCircuits: {}, initialState: () => undefined },
@@ -108,10 +108,24 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
       })
       .catch(() => undefined);
     expect(loadLedger8Protocol).not.toHaveBeenCalled();
+
+    await engine
+      .composeMaintenanceTx({
+        contract: { provableCircuits: {}, initialState: () => undefined },
+        contractAddress: '00'.repeat(32),
+        contractStateBytes: new Uint8Array([1, 2, 3]),
+        coinPublicKey: '0'.repeat(64),
+        signingKey: '0'.repeat(64),
+        networkId: 'test-network',
+        ttl: new Date(Date.now() + 3_600_000),
+        update: { kind: 'remove-verifier-key', circuitId: 'increment' }
+      })
+      .catch(() => undefined);
+    expect(loadLedger8Protocol).not.toHaveBeenCalled();
   });
 
   // The assertion above is only as good as its premise: it covers the surface
-  // that exists. A fifth method added later — one that DOES need the v8 module —
+  // that exists. A sixth method added later — one that DOES need the v8 module —
   // would leave the claim above true and the contract broken, so the surface
   // this file reasons about is pinned here rather than assumed.
   it('reasons about the whole engine surface', async () => {
@@ -122,6 +136,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     const engine = await createLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual([
+      'composeMaintenanceTx',
       'executeCircuit',
       'executeConstructor',
       'reexpressOperationsForLedger9',

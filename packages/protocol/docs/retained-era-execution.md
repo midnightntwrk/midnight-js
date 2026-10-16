@@ -290,6 +290,49 @@ straight into a deploy: both `composeLedger8DeployTx` and the era facade's
 handle produces. The deploy-side consequences — and why the address cannot be
 recomputed — are in [VerifierKeys](./verifier-keys.md) and [ComposeRefusalOrder](./compose-refusal-order.md).
 
+## Contract maintenance
+
+`composeMaintenanceTx` on the engine (`lib/v8/maintenance.ts`) composes an
+UNPROVEN v8 transaction carrying one maintenance update: insert a verifier key,
+remove one, or replace the maintenance authority. The update itself is built
+and signed by compact-js's ledger 8 `ContractExecutable` --
+`addOrReplaceContractOperation`, `removeContractOperation` and
+`replaceContractMaintenanceAuthority` -- on the same `containerFor`,
+`keysLayer` and `runOrRethrow` the circuit and constructor paths use. The
+signing key reaches compact-js as the CURRENT authority key on
+`Configuration.Keys`; the ZK configuration is the refusing reader, because none
+of the three operations reads a key. This module adds only what compact-js
+does not do, and wraps compact-js's `maintenanceUpdate` into an intent and a
+transaction.
+
+It reads the contract's FULL state from the bytes the chain holds, as the
+ledger 8 runtime's `ContractState` compact-js takes, never from a
+`ContractStatePojo`. The decoded POJO carries no maintenance authority, and
+compact-js builds the update against the authority's counter; a default
+authority rebuilt in its place carries neither the real counter nor the real
+committee, and the ledger refuses the update only at submission, after a proof
+has been paid for.
+
+compact-js signs every update at committee index 0. Before anything is signed,
+this module checks that the signing key's verifying key IS the committee's
+first member, and refuses otherwise with `MaintenanceAuthorityMismatchError`.
+That is the one guard against the shared signing-key slot: both eras store
+their key under the same contract address, so the key a caller holds for an
+address may be one the other era stored. Requiring index 0 rather than any
+member costs nothing for contracts this framework deploys -- every deploy and
+every replacement builds a one-key committee -- and a key at another index
+would only produce a signature the ledger refuses. The refusal names the
+address and renders no key, signing or verifying.
+
+Malformed `signingKey` and `newSigningKey` values are `ComposeOptionError`s,
+for the reason the constructor's is: compact-js's own refusal names neither the
+option nor the era. Unreadable state bytes are `ComposeOptionError` naming
+`'contractStateBytes'`. Anything compact-js refuses while building or signing
+the update -- a verifier key or address the ledger will not take -- is
+`ComposeFailedError` at stage `'maintenance-update'`, with compact-js's failure
+on `cause`. Whether the targeted verifier-key slot is occupied is the caller's
+decision, made against the same state, and is not checked here.
+
 ## Binding the result back onto v9
 
 `wrapKeepStateCall` wraps a `TranscriptPojo` into a v9-native
@@ -331,8 +374,9 @@ place for the values to disagree.
 
 `zkConfigurationLayer` adapts a plain `VerifierKeyReader` into the service
 `initialize` reads keys through, so no Effect type reaches a caller. A circuit
-call substitutes `refuseVerifierKeyRead`, which refuses by name: a call reuses
-the key already registered on-chain and has no business reading one.
+call and a maintenance update substitute `refuseVerifierKeyRead`, which refuses
+by name: a call reuses the key already registered on-chain, and a maintenance
+update is handed the key it inserts, so neither has any business reading one.
 
 The clock is pinned with `Effect.withClock`, NOT with a `Layer` over
 `Clock.Clock`. The clock is one of Effect's DEFAULT services — it lives on the

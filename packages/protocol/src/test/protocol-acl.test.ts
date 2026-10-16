@@ -90,6 +90,7 @@ describe('Protocol ACL package', () => {
         'loadLedger8Engine',
         'loadLedger8Protocol',
         'loadLedgerEra',
+        'MaintenanceAuthorityMismatchError',
         'MerkleNotRehashedError',
         'MIDNIGHT_JS_ERROR_CATEGORIES',
         'MidnightJsError',

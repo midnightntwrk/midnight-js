@@ -543,7 +543,7 @@ describe('the balance a circuit actually reads', () => {
 });
 
 describe('refuseVerifierKeyRead', () => {
-  it('names the circuit whose key a circuit call tried to read', async () => {
+  it('names the circuit whose key a circuit call or maintenance update tried to read', async () => {
     // Arrange, Act.
     const rejection = await refuseVerifierKeyRead('increment').catch((error: unknown) => error);
 
@@ -555,8 +555,8 @@ describe('refuseVerifierKeyRead', () => {
     expect(rejection).toMatchObject({
       code: 'MIDNIGHT_JS_G_INVARIANT_VIOLATED',
       message:
-        "a ledger 8 circuit call read the verifier key for 'increment'. Circuit calls are " +
-        'not supposed to read ZK configuration; only deployment and maintenance are.'
+        "a ledger 8 circuit call or maintenance update read the verifier key for 'increment'. " +
+        'Only deployment is supposed to read ZK configuration.'
     });
   });
 });
