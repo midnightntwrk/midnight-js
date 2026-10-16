@@ -247,7 +247,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` narrows internally, so its return type is unchanged.
+`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 

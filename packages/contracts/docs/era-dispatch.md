@@ -251,9 +251,12 @@ LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction rather than an artifact, so it cannot know the era in advance, and
-it pays for one head read and routes on it. A v9 transaction on a pre-fork head
-is refused there, before proving, as `EraArtifactMismatchError` with reason
-`'current-era-transaction-on-pre-fork-head'`. The call and deploy pipelines do
+it pays for one head read and accepts only a transaction of the head's era. The
+other era is refused there, before proving, as `EraArtifactMismatchError`: a v9
+transaction on a pre-fork head with reason `'current-era-transaction-on-pre-fork-head'`,
+v8 bytes on a post-fork head with reason `'retained-era-transaction-on-post-fork-head'`.
+The v9 ledger cannot read v8 transaction bytes, so there is nothing to route the
+second case to. The call and deploy pipelines do
 not go through that read: they submit through an internal current-era path.
 
 Do not read the table as a guarantee that all four cells fail fast. Lifting that

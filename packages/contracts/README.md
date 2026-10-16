@@ -78,18 +78,18 @@ await submitCallTx(providers, callOptions);
 await submitDeployTx(providers, deployOptions);
 
 // Generic transaction submission. Tag the transaction with the era that wrote it;
-// submitTx reads the network head and runs on the head's era.
+// submitTx reads the network head and accepts only a transaction of the head's era.
 await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
 await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
 ```
 
-`submitTx` routes on the network head, not on the input:
+`submitTx` reads the network head once. The transaction's era must match it:
 
 | input | head | what happens |
 |---|---|---|
 | v9 | v9 | proved, balanced and submitted as v9 payloads |
 | v8 | v8 | proved, balanced and submitted as v8 payloads |
-| v8 | v9 | the bytes are read as a v9 transaction, then as v9 |
+| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
 It returns `VersionedFinalizedTxData`, tagged with the head's era.

@@ -30,7 +30,7 @@ import {
 import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { EraArtifactMismatchError, EraInvariantViolationError } from './errors';
+import { EraArtifactMismatchError, type EraArtifactMismatchReason, EraInvariantViolationError } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord,unwrapLedger9ProviderResult } from './internal/era';
 import { submitLedger8TxBytes } from './internal/ledger8-entry';
 
@@ -142,27 +142,43 @@ export const submitCurrentEraTx = async <C extends Contract.Any, PCK extends Con
 const describeCircuitId = (circuitId: string | string[] | undefined): string =>
   Array.isArray(circuitId) ? circuitId.join('-') : circuitId ?? 'unknown-circuit';
 
-const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
-  options: SubmitTxOptions<PCK>
-): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
-  assertValidMidnightConfig(providers.config);
-  const { head } = await readHeadEra(providers.publicDataProvider);
-  const { unprovenTx, circuitId } = options;
-  if (head === 'v8' && unprovenTx.version === 'v9') {
-    throw new EraArtifactMismatchError('current-era-transaction-on-pre-fork-head');
+const transactionEra = (unprovenTx: VersionedUnprovenTransaction): LedgerVersion => {
+  if (typeof unprovenTx !== 'object' || unprovenTx === null) {
+    throw new UntaggedPayloadError('proveTx', unprovenTx);
   }
-  assertProvidersSupportEra(head, providers);
   switch (unprovenTx.version) {
-    case 'v9':
-      return { txId: await submitCurrentEraTxAsync(providers, { unprovenTx: unprovenTx.tx, circuitId }), head };
     case 'v8':
-      return { txId: await submitLedger8TxBytes(providers, unprovenTx.txBytes, head, describeCircuitId(circuitId)), head };
+    case 'v9':
+      return unprovenTx.version;
     default: {
       const unhandled: never = unprovenTx;
       throw new UntaggedPayloadError('proveTx', unhandled);
     }
   }
+};
+
+const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
+  v8: 'retained-era-transaction-on-post-fork-head',
+  v9: 'current-era-transaction-on-pre-fork-head'
+};
+
+const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: SubmitTxOptions<PCK>
+): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
+  const { unprovenTx, circuitId } = options;
+  const era = transactionEra(unprovenTx);
+  assertValidMidnightConfig(providers.config);
+  const { head } = await readHeadEra(providers.publicDataProvider);
+  if (era !== head) {
+    throw new EraArtifactMismatchError(ERA_MISMATCH_REASON[era]);
+  }
+  assertProvidersSupportEra(head, providers);
+  const txId =
+    unprovenTx.version === 'v9'
+      ? await submitCurrentEraTxAsync(providers, { unprovenTx: unprovenTx.tx, circuitId })
+      : await submitLedger8TxBytes(providers, unprovenTx.txBytes, describeCircuitId(circuitId));
+  return { txId, head };
 };
 
 /**
@@ -178,7 +194,7 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  * |---|---|---|
  * | v9 | v9 | proved, balanced and submitted as v9 payloads |
  * | v8 | v8 | proved, balanced and submitted as v8 payloads (`txBytes`) |
- * | v8 | v9 | the bytes are read as a v9 transaction, then as v9 |
+ * | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
  * | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
  *
  * ## Blocking Behavior
@@ -214,7 +230,8 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  *
  * @returns A promise that resolves with the finalized transaction data, tagged with the era of
  *          the head it ran on, or rejects if an error occurs along the way.
- * @throws EraArtifactMismatchError for a v9 transaction on a pre-fork head.
+ * @throws UntaggedPayloadError for an untagged transaction, before the head is read.
+ * @throws EraArtifactMismatchError for a transaction whose era is not the head's.
  * @throws EraInvariantViolationError if the record's era differs from the head's.
  */
 export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(

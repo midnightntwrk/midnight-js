@@ -682,9 +682,12 @@ eras are refused as `IndexerDataError` kind `mixed-era-public-states`.
 
 ### 14c. `submitTx` routes on the network head
 
-`submitTx` / `submitTxAsync` read the head once and run on its era. The input's `version` only says
-how to read the input. A v9 transaction on a pre-fork head is refused before proving, as
-`EraArtifactMismatchError` with reason `current-era-transaction-on-pre-fork-head`.
+`submitTx` / `submitTxAsync` read the head once and accept only a transaction of the head's era. A
+transaction of the other era is refused before proving, as `EraArtifactMismatchError`: a v9
+transaction on a pre-fork head with reason `current-era-transaction-on-pre-fork-head`, v8 bytes on a
+post-fork head with reason `retained-era-transaction-on-post-fork-head`. Both reasons are new members
+of `EraArtifactMismatchReason`, so an exhaustive `switch` on `reason` must handle them. An untagged
+transaction is refused as `UntaggedPayloadError` before the head is read.
 
 ```ts
 // Before

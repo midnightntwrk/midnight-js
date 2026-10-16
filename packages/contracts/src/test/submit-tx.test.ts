@@ -17,7 +17,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type AnyProvableCircuitId,
   ProviderEraUnsupportedError,
@@ -436,7 +435,7 @@ describe('submit-tx', () => {
   describe('routing on the network head', () => {
     const LEDGER8_HEAD = 1_000_000;
     const LEDGER9_HEAD = 2_000_000;
-    const ledger8Bytes = (): Uint8Array => Transaction.fromParts('local-test').serialize();
+    const ledger8Bytes = (): Uint8Array => new Uint8Array([0x6d, 0x69, 0x64]);
 
     let mockProviders: ReturnType<typeof createMockProviders>;
 
@@ -469,22 +468,28 @@ describe('submit-tx', () => {
       expect(result).toBe(record);
     });
 
-    it('reads v8 bytes as a v9 transaction on a v9 head and submits v9 payloads', async () => {
+    it('refuses v8 transaction bytes on a v9 head before proving them', async () => {
       onHead(LEDGER9_HEAD);
-      const txBytes = ledger8Bytes();
-      const provenTx = createMockProvenTx();
-      mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: provenTx });
-      mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: provenTx });
-      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
-      mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
 
-      const result = await submitTx(mockProviders, { unprovenTx: { version: 'v8', txBytes }, circuitId: 'testCircuit' });
+      const rejection = await submitTx(mockProviders, {
+        unprovenTx: { version: 'v8', txBytes: ledger8Bytes() }
+      }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
 
-      const [proved] = vi.mocked(mockProviders.proofProvider.proveTx).mock.calls[0]!;
-      expect(proved.version).toBe('v9');
-      expect(proved.version === 'v9' ? Array.from(proved.tx.serialize()) : []).toEqual(Array.from(txBytes));
-      expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalledWith({ version: 'v9', tx: provenTx });
-      expect(result.version).toBe('v9');
+      expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
+      expect((rejection as EraArtifactMismatchError).reason).toBe('retained-era-transaction-on-post-fork-head');
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses v8 transaction bytes on a v9 head from submitTxAsync too', async () => {
+      onHead(LEDGER9_HEAD);
+
+      const rejection = submitTxAsync(mockProviders, { unprovenTx: { version: 'v8', txBytes: ledger8Bytes() } });
+
+      await expect(rejection).rejects.toBeInstanceOf(EraArtifactMismatchError);
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
     it('refuses a v9 transaction on a v8 head before proving it', async () => {
@@ -502,12 +507,13 @@ describe('submit-tx', () => {
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
-    it('refuses an untagged transaction, the pre-5.0.0 shape, before proving it', async () => {
+    it('refuses an untagged transaction, the pre-5.0.0 shape, before reading the head', async () => {
       onHead(LEDGER9_HEAD);
       const unprovenTx = createMockUnprovenTx();
 
       // @ts-expect-error the pre-5.0.0 shape passes the transaction untagged
       await expect(submitTx(mockProviders, { unprovenTx })).rejects.toBeInstanceOf(UntaggedPayloadError);
+      expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 

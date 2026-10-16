@@ -113,9 +113,9 @@ export class EraInvariantViolationError extends MidnightJsError {
  *
  * One error class over every reason rather than a class per reason: a caller catches "this operation
  * cannot be placed on a ledger era" as one condition, and the reason is what tells it which mistake
- * it made. Two of the reasons are about the CALLER's contract object and two are about the artifact
- * set its ZK config provider serves, which is one condition from the caller's side: something in the
- * bundle it passed does not belong to the era it is being run against.
+ * it made. Some reasons are about the CALLER's contract object, some about the artifact set its ZK
+ * config provider serves, and two about a transaction handed to `submitTx`. From the caller's side
+ * that is one condition: something it passed does not belong to the era it is being run against.
  */
 export type EraArtifactMismatchReason =
   /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
@@ -126,6 +126,8 @@ export type EraArtifactMismatchReason =
   | 'current-era-artifact-on-pre-fork-head'
   /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
   | 'current-era-transaction-on-pre-fork-head'
+  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
+  | 'retained-era-transaction-on-post-fork-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
   /** A ZK config provider that cannot report a declared runtime version at all. */
@@ -155,6 +157,10 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'A v9 transaction was handed to submitTx, but the network head is still on the pre-fork ledger era, ' +
     'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
     'until the network head has crossed the fork.',
+  'retained-era-transaction-on-post-fork-head':
+    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
+    'v9 ledger and submit it as { version: \'v9\', tx }.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':
