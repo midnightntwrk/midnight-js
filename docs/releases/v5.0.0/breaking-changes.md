@@ -590,7 +590,7 @@ names.
 | `contracts` | `UnrecognisedResultEraError` (`MIDNIGHT_JS_C_UNRECOGNISED_RESULT_ERA`) | `UnknownResultEraError` (`MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA`) |
 | `contracts` | `ScopedTxEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED`) | `ScopedTransactionEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED`) |
 | `contracts` | `ScopedTransactionIdentityMismatchError`'s code `MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH` (the class is from 4.x; the code is new in 5.0) | `MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH` |
-| `indexer-public-data-provider` | `IndexerDataError` kind `'unresolvable-era'` | `'unknown-record-era'` |
+| `indexer-public-data-provider` | `IndexerDataError` kind `'unresolvable-era'` | removed, with no replacement: the raw reads tag a record by its envelope ([14a](#14a-changed-signatures)) |
 
 The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
 `ledger-v8` / `ledger-v9` package names.
@@ -668,11 +668,19 @@ depends on the era is a `Versioned*` union; narrow it with `switch (value.versio
 | `submitTx` | `Promise<FinalizedTxData>` | `Promise<VersionedFinalizedTxData>` |
 | `TransactionContext.getCurrentStates` / `CacheStates` | `ContractStates<PS> \| PublicContractStates` | their v9 variants (`Ledger9Variant<ContractStates<PS>> \| Ledger9PublicStates`) |
 | `IndexerDataError` kind `unknown-record-era` | raised by the raw reads | removed; the raw reads tag by the envelope |
+| `IndexerDataError.unresolvableEra` | static factory | removed |
+| `IndexerDataErrorContext` | — | new kinds `mixed-era-public-states` and `malformed-protocol-version`; an exhaustive `switch` on `kind` must handle them |
+| `queryRawContractState`, `rawContractStateObservable` | never compared the envelope with the block | refuse an envelope newer than an enforced dating block (`era-disagreement`) and a malformed `protocolVersion` (`malformed-protocol-version`) |
+| `EraArtifactMismatchReason` | — | new members `current-era-transaction-on-pre-fork-head` and `retained-era-transaction-on-post-fork-head` ([14c](#14c-submittx-routes-on-the-network-head)) |
 
 ### 14b. What a pre-fork state does now
 
-The four decoding reads return the v8 variant (`{ version: 'v8', stateBytes }`) instead of
-throwing `IndexerDataError` `unsupported-decode-era`. `contractStateObservable` emits a pre-fork
+The four decoding reads — `queryContractState`, `watchForContractState`,
+`contractStateObservable` and `queryZSwapAndContractState` — return the v8 variant
+(`{ version: 'v8', stateBytes }`) instead of throwing `IndexerDataError` `unsupported-decode-era`.
+`findDeployedContract`, `createUnprovenCallTx`, a cross-contract callee read and the maintenance
+reads still need a v9 state: for a v8 one they now throw `Ledger8.ContractStateUnsupportedError`,
+naming the contract, instead of `unsupported-decode-era`. `contractStateObservable` emits a pre-fork
 record as a v8 value and keeps going, so a replay that starts before the fork no longer ends on
 its first record.
 
