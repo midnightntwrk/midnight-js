@@ -24,7 +24,7 @@ import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '../src/cons
 const logger = createLogger(path.resolve(`${process.cwd()}`, 'logs', 'tests', `v8era_${new Date().toISOString()}.log`));
 
 /**
- * The pre-fork era environment (spec QA-6).
+ * The pre-fork era environment.
  *
  * This file runs against the `v8era` docker image set -- node 1.0.0, indexer
  * 4.4.0-rc.6-68702121, proof server 8.1.0 -- which is a real ledger-v8 network, not a mock

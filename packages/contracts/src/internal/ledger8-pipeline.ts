@@ -290,15 +290,11 @@ export const readLedger8Snapshot = async (
 
   // Read with the era the ENVELOPE names, never with the head's and never with
   // a fixed one. A retained envelope is the retained ledger's to read -- pre-
-  // fork natively, post-fork as keep-state, where a pinned read or an indexer
-  // older than 4.4.0-rc.6 still serves one. A current-era envelope belongs to
-  // the head's era, and post-fork it is what a contract looks like once the fork
-  // has translated it or an earlier call has migrated it; its retained verifier
-  // keys survive that unchanged,
-  // so this pipeline is still the right one to run it.
-  //
-  // Pinning this to the retained era is what made a migrated contract callable
-  // exactly once.
+  // fork natively, post-fork as keep-state, where a pinned read still serves
+  // one. A current-era envelope belongs to the head's era, and post-fork it is
+  // what a contract looks like once the fork has translated it; its retained
+  // verifier keys survive that unchanged, so this pipeline is still the right
+  // one to run it.
   const reader = stateEra === 'v8' ? retainedEra : headEra;
   const encoded = reader.extractState(state.raw);
   const decoded = reader.decodeContractState(state.raw);

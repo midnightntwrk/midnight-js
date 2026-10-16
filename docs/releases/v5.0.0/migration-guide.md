@@ -749,6 +749,33 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 
 ---
 
+## Step 17 — Run indexer `4.4.0-rc.6` or later, and narrow `queryDeployContractState`
+
+`indexerPublicDataProvider` requires indexer `4.4.0-rc.6` or later (#1452). If
+you pin the indexer image, move it to that version or later; the framework's own
+test environments use `4.4.0-rc.6-68702121`.
+
+`queryDeployContractState` now resolves to `VersionedContractState | null`.
+Narrow on `version`:
+
+```ts
+// Before (4.x)
+const state = await publicDataProvider.queryDeployContractState(address);
+
+// After (5.0.0)
+const deployState = await publicDataProvider.queryDeployContractState(address);
+if (deployState?.version === 'v9') {
+  use(deployState.state);
+} else if (deployState?.version === 'v8') {
+  useBytes(deployState.stateBytes);
+}
+```
+
+A `v8` result carries the stored bytes (`stateBytes`), not a decoded state.
+See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-version-tagged-and-the-indexer-floor-is-440-rc6-1452).
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -771,3 +798,4 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
+- [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.

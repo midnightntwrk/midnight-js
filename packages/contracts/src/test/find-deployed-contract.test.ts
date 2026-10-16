@@ -126,9 +126,9 @@ describe('findDeployedContract', () => {
 
       const rejection = await rejectionOf();
 
-      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      assert(rejection instanceof UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).method).toBe('watchForDeployTxData');
+      expect(rejection.method).toBe('watchForDeployTxData');
     });
   });
 
@@ -144,10 +144,26 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(EraInvariantViolationError);
-      expect((rejection as EraInvariantViolationError).method).toBe('queryDeployContractState');
-      expect((rejection as EraInvariantViolationError).expected).toBe('v9');
-      expect((rejection as EraInvariantViolationError).received).toBe('v8');
+      assert(rejection instanceof EraInvariantViolationError);
+      expect(rejection.method).toBe('queryDeployContractState');
+      expect(rejection.expected).toBe('v9');
+      expect(rejection.received).toBe('v8');
+      expect(rejection.contractAddress).toBe(contractAddress);
+      expect(rejection.message).toContain(contractAddress);
+    });
+  });
+
+  describe('a v9 deploy record whose deploy state carries no era tag', () => {
+    it('rejects the untagged deploy state as an untagged payload, not as the other era', async () => {
+      providers.publicDataProvider.queryDeployContractState = vi.fn().mockResolvedValue(contractState);
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof UntaggedPayloadError);
+      expect(rejection.method).toBe('queryDeployContractState');
     });
   });
 

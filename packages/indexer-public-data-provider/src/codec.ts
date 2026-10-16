@@ -361,11 +361,9 @@ export type EnvelopeUpperBound = 'enforced' | 'withheld';
  *   also reads: a mismatched envelope is rejected on the header tag before the
  *   body, so it cannot produce a wrong answer, only a failure.
  * - The reported version dates the *read*, not the bytes, so a state can
- *   legitimately be older than the block that dates it — an indexer older than
- *   `4.4.0-rc.6` serves a contract untouched since a fork with its pre-fork
- *   envelope under a post-fork block (midnight-indexer #1605). Treating that
- *   case as a contradiction would send callers hunting a fault that is not
- *   there.
+ *   legitimately be older than the block that dates it — a record of a
+ *   pre-fork contract action keeps its pre-fork envelope when it is read under
+ *   a post-fork block.
  *
  * So an older envelope under a newer block is normal and decided on the
  * envelope alone. The reverse — bytes written by a runtime the dating block

@@ -34,6 +34,7 @@ import {
   LEDGER8_ERA_PROTOCOL_VERSION,
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateHex,
+  mintLedger9ContractStateBytes,
   mintLedger9ContractStateHex,
   mintLedger9TransactionHex,
   UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
@@ -628,6 +629,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
     );
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
+    expect(Array.from(seen[0]!.value.serialize())).toEqual(Array.from(mintLedger9ContractStateBytes()));
   });
 
   test('carries the pre-fork action and its re-emission as two records in two blocks', async () => {
@@ -649,15 +651,36 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
     ]);
   });
 
-  test('a start between the action and the fork, exclusive, still delivers the re-emission', async () => {
+  test('an exclusive start at the action’s block drops the action and still delivers the re-emission', async () => {
     const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 11, hash: '0x11' } }]])),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(mintLedger9ContractStateHex())])
+      watchQuery: dispatchingWatchQuery(
+        new Map([[BLOCK_QUERY, { block: { height: ACTION_HEIGHT, hash: `0x${ACTION_HEIGHT}` } }]])
+      ),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, ACTION_HEIGHT),
+        reEmittedFrame(mintLedger9ContractStateHex())
+      ])
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11, inclusive: false })
+      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: ACTION_HEIGHT, inclusive: false })
     );
+
+    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
+  });
+
+  test('an exclusive txId start at the action delivers the re-emission exactly once', async () => {
+    const provider = buildProvider({
+      watchQuery: dispatchingWatchQuery(
+        new Map([[TX_ID_QUERY, { transactions: [{ block: { height: ACTION_HEIGHT }, contractActions: [{ address: ADDRESS }] }] }]])
+      ),
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, ACTION_HEIGHT),
+        reEmittedFrame(mintLedger9ContractStateHex())
+      ])
+    });
+
+    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false }));
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
   });

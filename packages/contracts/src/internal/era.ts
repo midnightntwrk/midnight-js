@@ -733,17 +733,15 @@ export const resolveContractStateEra = async (
   // From here the state carries a CURRENT-era envelope.
   //
   // Under a post-fork head that is ORDINARY, and it is what makes keep-state
-  // more than a single call: the fork (or, against an indexer older than
-  // 4.4.0-rc.6, the first post-fork call) migrates the contract's envelope from
+  // more than a single call: the fork migrates the contract's envelope from
   // retained to current-era, and the ledger carries the retained VERIFIER KEYS
   // across unchanged. So the bytes are the current decoder's to
   // read while the artifacts that fit the contract are still the retained ones.
   //
   // The envelope answers ONE question -- which decoder may read these bytes --
   // and it is not the question of whether the caller's artifacts fit this
-  // contract. Refusing here answered the second question with the first, and
-  // cost every call against a migrated contract. The key check does
-  // answer it, against the keys this state actually declares; see
+  // contract. The key check
+  // answers it, against the keys this state actually declares; see
   // `assertSnapshotVerifierKey`.
   if (head === 'v9') {
     return stateEra;

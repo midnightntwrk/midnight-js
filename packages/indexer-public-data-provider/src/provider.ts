@@ -371,18 +371,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Reads the deploy's own record, never the contract's latest state: a ledger
-   * fork translates the latest state, while the record keeps the encoding its
-   * block wrote. So a v8-era deploy always comes back as its stored bytes,
-   * whether or not the contract has been called since.
+   * Reads the deploy's record, or the latest update's record when the contract
+   * has been updated. The record keeps the encoding its block wrote: a v8-era
+   * record comes back as its stored bytes, never translated to the v9 encoding.
    */
   queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null> {
     assertIsContractAddress(contractAddress);
-    // Shape discrimination kept inline: this branch additionally does an
-    // address-correlated `find` over `contractActions` and throws
-    // `IndexerDataError.missingContractAction` (not `IndexerInvariantError`)
-    // on missing match — different error semantics from the helpers in
-    // `mapping.ts`, so extraction would obscure rather than simplify.
     return this.client
       .query({
         query: DEPLOY_CONTRACT_STATE_TX_QUERY,
@@ -555,9 +549,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * DECODES WITH THE CURRENT ERA'S RUNTIME ONLY, and the decode runs inside the
    * stream — so a state written by the retained runtime does not arrive as a
    * skipped emission, it ends the subscription through the subscriber's `error`
-   * callback. A stream started before the ledger fork meets such states first;
-   * so does any stream against an indexer older than `4.4.0-rc.6`. Use
-   * {@link rawContractStateObservable} where that is possible.
+   * callback. A stream started before the ledger fork meets such states first.
+   * Use {@link rawContractStateObservable} where that is possible.
    *
    * Every branch reads the indexer's feed of this contract's actions, filtered
    * by address on the server. A transport reconnect makes the indexer replay

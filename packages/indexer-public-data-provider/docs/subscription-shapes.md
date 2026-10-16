@@ -52,7 +52,7 @@ asks for.
 | `latest` | for the state streams, `stateAt.height` of the contract's latest action, so a contract untouched since a fork starts at its fork-block re-emission; for the balance stream, the block of that action's transaction (`LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY`) | none |
 | `all` | `{ height: 0 }`, once the contract exists | none |
 | `blockHeight` / `blockHash` | the named block, once it exists | `inclusive: false` keeps only records with a greater block height |
-| `txId` | the block of the named transaction (`TX_ID_QUERY`); a transaction with no action for the contract is refused with `IndexerProviderConfigError` before anything is subscribed | records of that block before the named transaction are dropped; `inclusive: false` drops the named transaction's own |
+| `txId` | the block of the named transaction (`TX_ID_QUERY`); a transaction with no action for the contract is refused with `IndexerProviderConfigError` before anything is subscribed | records of that block before the named transaction are dropped; `inclusive: false` drops the named transaction's own. After a fork it does not drop the re-emission: that record carries the same transaction identifiers but a higher block, so it is delivered |
 
 `all` passes `{ height: 0 }` explicitly. The schema documents an omitted offset
 as "the latest block", so the full history is not left to that reading.

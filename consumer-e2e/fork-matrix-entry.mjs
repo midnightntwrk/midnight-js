@@ -2216,6 +2216,17 @@ if (MEASURES_READ_SURFACE) {
 // that translated state (`contract-state[v8]`) from then on. These legs ATTACH
 // ONLY: a call here would wake the contract and shift what the legs below read.
 // (c3) and (c4) cover calling through a re-attached handle.
+// The deploy's own record keeps the encoding its block wrote, so the fork's
+// translation of the current state must not reach it.
+const expectLedger8DeployState = async (name, publicDataProvider, contractAddress) => {
+  const deployState = await publicDataProvider.queryDeployContractState(contractAddress);
+  const version = deployState === null ? 'absent' : deployState.version;
+  if (version !== 'v8') {
+    failures.push(`${name}: expected queryDeployContractState to report the deploy state tagged 'v8', got '${version}'`);
+  }
+  return version;
+};
+
 for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retained, candidate.key))) {
   const name = `a dormant ${entry.key}, found after the fork with its pre-fork artifacts`;
   await leg(name, async () => {
@@ -2228,6 +2239,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     if (envelope !== 'midnight:contract-state[v8]:') {
       failures.push(`${name}: expected the fork-translated envelope 'midnight:contract-state[v8]:', got ${envelope}`);
     }
+    const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
     const { Contract } = await import(`@midnight-ntwrk/fork-retained-${entry.key}`);
     const compiledContract = new Contract(retainedWitnesses(entry.key));
     const privateState = entry.privateState;
@@ -2244,7 +2256,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     if (missing.length > 0) {
       failures.push(`${name}: the re-attached handle exposes no call site for ${missing.join(', ')}`);
     }
-    return { envelope, callable };
+    return { envelope, deployStateVersion, callable };
   });
 }
 
@@ -2269,6 +2281,10 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       privateStateStoreName: 'fork-recompiled-dormant-simple'
     });
     const envelope = await contractPresent(providers.publicDataProvider, deployed.contractAddress);
+    if (envelope !== 'midnight:contract-state[v8]:') {
+      failures.push(`${name}: expected the fork-translated envelope 'midnight:contract-state[v8]:', got ${envelope}`);
+    }
+    const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
 
     const found = await findDeployedContract(providers, {
       compiledContract,
@@ -2278,7 +2294,7 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
     if (found.deployTxData.public.version !== 'v8') {
       failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
     }
-    return { envelope, deployRecordVersion: found.deployTxData.public.version };
+    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.version };
   });
 }
 

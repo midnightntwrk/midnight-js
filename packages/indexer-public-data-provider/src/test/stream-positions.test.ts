@@ -17,9 +17,10 @@ import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js
 import type { PositionedRecord, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
-import { describe, expect, test, vi } from 'vitest';
+import { assert, describe, expect, test, vi } from 'vitest';
 
 import { toUnshieldedBalances } from '../codec';
+import { IndexerInvariantError } from '../errors';
 import { blockOffsetToState$, blockOffsetToUnshieldedBalances$ } from '../observables';
 import { IndexerPublicDataProvider } from '../provider';
 import {
@@ -42,6 +43,17 @@ const clientServing = (payloads: readonly unknown[]) =>
 const toArray = <T>(source: Rx.Observable<T>): Promise<T[]> => Rx.lastValueFrom(source.pipe(Rx.toArray()));
 
 describe('stream pipelines carry the block that served each value', () => {
+  const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
+  const actionInBlock10 = (stateAtHeight: number, stateAtHash: string): unknown => ({
+    data: {
+      contractActions: {
+        unshieldedBalances: balances,
+        stateAt: { height: stateAtHeight, hash: stateAtHash },
+        transaction: { block: { height: 10, hash: '0x10' } }
+      }
+    }
+  });
+
   test('the per-action state feed reads the block off stateAt and the identifiers off the transaction', async () => {
     const client = clientServing([
       {
@@ -71,13 +83,12 @@ describe('stream pipelines carry the block that served each value', () => {
   });
 
   test('the balance feed reads the block off the action’s transaction', async () => {
-    const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
     const client = clientServing([
       {
         data: {
           contractActions: {
             unshieldedBalances: balances,
-            stateAt: { hash: '0x08' },
+            stateAt: { height: 8, hash: '0x08' },
             transaction: { block: { height: 8, hash: '0x08' } }
           }
         }
@@ -90,21 +101,35 @@ describe('stream pipelines carry the block that served each value', () => {
   });
 
   test('the balance feed skips an action re-emitted at the fork block, whose balances did not change', async () => {
-    const balances = [{ tokenType: 'ab'.repeat(32), amount: '5' }];
-    const actionInBlock10 = (stateAtHash: string): unknown => ({
-      data: {
-        contractActions: {
-          unshieldedBalances: balances,
-          stateAt: { hash: stateAtHash },
-          transaction: { block: { height: 10, hash: '0x10' } }
-        }
-      }
-    });
-    const client = clientServing([actionInBlock10('0x10'), actionInBlock10('0x12')]);
+    const client = clientServing([actionInBlock10(10, '0x10'), actionInBlock10(12, '0x12')]);
 
     const seen = await toArray(blockOffsetToUnshieldedBalances$(client)(ADDRESS)({ height: 10 }));
 
     expect(seen).toEqual([{ value: toUnshieldedBalances(balances), blockHeight: 10, blockHash: '0x10' }]);
+  });
+
+  test('the balance feed refuses an action whose state is dated by another block at its own height', async () => {
+    const client = clientServing([actionInBlock10(10, '0xff')]);
+
+    const rejection = await toArray(blockOffsetToUnshieldedBalances$(client)(ADDRESS)({ height: 10 })).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    assert(rejection instanceof IndexerInvariantError);
+    expect(rejection.message).toContain('0xff');
+  });
+
+  test('the balance feed refuses an action whose state is dated before its own block', async () => {
+    const client = clientServing([actionInBlock10(9, '0x09')]);
+
+    const rejection = await toArray(blockOffsetToUnshieldedBalances$(client)(ADDRESS)({ height: 10 })).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    assert(rejection instanceof IndexerInvariantError);
+    expect(rejection.message).toContain('0x09');
   });
 });
 
@@ -117,7 +142,7 @@ describe('unshieldedBalancesObservable — latest after a fork', () => {
           data: {
             contractActions: {
               unshieldedBalances: [],
-              stateAt: { hash: '0x10' },
+              stateAt: { height: 10, hash: '0x10' },
               transaction: { block: { height: 10, hash: '0x10' } }
             }
           }
@@ -153,7 +178,7 @@ describe('unshieldedBalancesObservable — every element carries the block that 
     data: {
       contractActions: {
         unshieldedBalances: balances,
-        stateAt: { hash: `0x${height}` },
+        stateAt: { height, hash: `0x${height}` },
         transaction: { block: { height, hash: `0x${height}` } }
       }
     }
@@ -201,7 +226,7 @@ describe('unshieldedBalancesObservable — resume from an emitted position', () 
 
   const actionFrame = (height: number, amount: string): unknown => ({
     data: {
-      contractActions: { unshieldedBalances: balanceOf(amount), stateAt: { hash: `0x${height}` }, transaction: { block: { height, hash: `0x${height}` } } }
+      contractActions: { unshieldedBalances: balanceOf(amount), stateAt: { height, hash: `0x${height}` }, transaction: { block: { height, hash: `0x${height}` } } }
     }
   });
 

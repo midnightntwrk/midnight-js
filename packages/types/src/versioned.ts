@@ -142,7 +142,7 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
-// `protocolVersion` to an era. These four assertions keep the discriminant set
+// `protocolVersion` to an era. These six assertions keep the discriminant sets
 // here and `LedgerVersion` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its
 // `true` constraint. No runtime declarations, so `versioned.ts` stays
@@ -166,4 +166,10 @@ type _EveryEraHasAReadVariant = Assert<
 >;
 type _NoReadVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
+>;
+type _EveryEraHasAStateVariant = Assert<
+  [Exclude<LedgerVersion, VersionedContractState['version']>] extends [never] ? true : false
+>;
+type _NoStateVariantOutsideTheEraSet = Assert<
+  [Exclude<VersionedContractState['version'], LedgerVersion>] extends [never] ? true : false
 >;

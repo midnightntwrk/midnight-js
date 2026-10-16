@@ -87,16 +87,20 @@ export class EraInvariantViolationError extends MidnightJsError {
    *                 readable one. Named in the message: a refusal that states
    *                 only what it wanted leaves the reader to find out what it
    *                 got.
+   * @param contractAddress The contract the payload was read for, when the
+   *                        flow reads one contract's records.
    */
   constructor(
     readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
-    readonly received?: LedgerVersion
+    readonly received?: LedgerVersion,
+    readonly contractAddress?: string
   ) {
     super(
       `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
-        `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}. ` +
+        `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
+        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -211,9 +215,8 @@ export class EraArtifactMismatchError extends MidnightJsError {
  * while the artifacts handed to this operation came from the retained Compact toolchain.
  *
  * The retained era stays supported for a contract whose state the retained ledger wrote, and it
- * stays supported after that state has been MIGRATED: the fork (or, against an indexer older than
- * `4.4.0-rc.6`, a contract's first post-fork call) rewrites its envelope to the current era, and
- * the ledger carries the retained verifier keys across unchanged. So a current-era envelope on its
+ * stays supported after that state has been MIGRATED: the fork rewrites its envelope to the current
+ * era, and the ledger carries the retained verifier keys across unchanged. So a current-era envelope on its
  * own says nothing about which toolchain built the contract, and this error is not raised for one.
  *
  * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
@@ -240,8 +243,8 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
     super(
       `The contract at '${contractAddress}' is held on chain in a current-era state whose verifier key ` +
         `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
-        `this contract. A contract deployed before the fork keeps its retained keys even after a post-fork ` +
-        `call migrates its state, so this is not that case: it is a contract built with current-toolchain ` +
+        `this contract. A contract deployed before the fork keeps its retained keys even after the fork ` +
+        `translates its state, so this is not that case: it is a contract built with current-toolchain ` +
         `artifacts. Re-run the operation with the artifacts the current toolchain produced for it. Retrying ` +
         `with the same artifacts cannot succeed.`,
       options

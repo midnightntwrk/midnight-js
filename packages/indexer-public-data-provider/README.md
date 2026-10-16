@@ -2,6 +2,12 @@
 
 Public data provider implementation based on the Midnight Pub-sub Indexer. Provides blockchain data queries and real-time subscriptions via GraphQL.
 
+## Requirements
+
+Indexer `4.4.0-rc.6` or later. This provider selects `stateAt` on every
+contract-state read, and older indexers do not serve that field. The framework's
+own test environments pin the build tag `4.4.0-rc.6-68702121`.
+
 ## Installation
 
 ```bash
@@ -109,23 +115,21 @@ and points at `queryRawContractState`, instead of a header-tag error from deep
 inside a decoder.
 
 `queryDeployContractState` does not refuse a v8 envelope. It reads the deploy's
-own record, never the latest state, and returns a `VersionedContractState`: the
-decoded state for a v9-era deploy, the stored bytes (`stateBytes`) for a v8-era
-deploy. Narrow on `version` before touching it.
+record, or the latest update's record when the contract has been updated, and
+returns a `VersionedContractState`: the decoded state for a v9-era record, the
+stored bytes (`stateBytes`) for a v8-era record. Narrow on `version` before
+touching it.
 
 #### Which reads still meet a v8 envelope
 
 The node translates every contract's state to the v9 encoding in the fork
-block. From indexer `4.4.0-rc.6` on, an unpinned read serves that translated
-state, so a contract deployed before the fork and not called since reads
-normally. A v8 envelope is still served in three cases:
+block. An unpinned read serves that translated state, so a contract deployed
+before the fork and not called since reads normally. A v8 envelope is still
+served in two cases:
 
 - a read pinned to a block before the fork;
 - a record of one contract action's own state, such as the deploy's — a
-  record keeps the encoding it was written in, forever;
-- any read against an indexer older than `4.4.0-rc.6`, which serves an
-  untouched pre-fork contract with its v8 envelope under a v9 head
-  (midnight-indexer #1605).
+  record keeps the encoding it was written in, forever.
 
 The four methods above refuse it in those cases.
 
@@ -143,11 +147,8 @@ contract state terminates it. See
 [Which state stream to use](#which-state-stream-to-use).
 
 On the `latest` branch the stream starts at the block the contract's current
-state is dated by (`stateAt`). From indexer `4.4.0-rc.6` on, that is the fork
-block for a contract not called since the fork, and the first item is the
-translated state, which decodes. Against an older indexer the stream does not
-fail at subscribe time — it fails on the first matching contract action that
-flows through it.
+state is dated by (`stateAt`). For a contract not called since the fork, that is
+the fork block, and the first item is the translated state, which decodes.
 
 The `all` branch is the harsher case: it replays every contract action from the
 deploy onward, so for a contract deployed before the fork the replay always
@@ -182,9 +183,8 @@ Two things that look interchangeable and are not:
 
 - `read.envelopeVersion` is the era that **wrote the bytes**.
   `queryRawContractState(...).version` is derived from `protocolVersion` and is
-  a statement about the **block**. They disagree when an indexer older than
-  `4.4.0-rc.6` serves an untouched pre-fork contract under a v9 head, which is
-  when it matters.
+  a statement about the **block**. When they disagree, the envelope is the one
+  that decides which runtime can decode the bytes.
 - `read.state` is encoded, not a live handle. A handle minted inside the
   framework belongs to the framework's copy of the WASM module and is rejected
   by a dApp's own `ledger()`; encoded state crosses that boundary, and also
@@ -200,9 +200,9 @@ record's own `version`. `rawContractStateObservable` serves the same record
 type as a stream (without `ledgerParameters`), and the same caution applies to
 it.
 
-A state older than the block that dates the read is normal, not a fault: an
-indexer older than `4.4.0-rc.6` serves a contract untouched since a fork with
-its pre-fork envelope under a post-fork block. The protocol version the
+A state older than the block that dates the read is normal, not a fault: a
+record of a pre-fork contract action keeps its v8 envelope when it is read
+under a post-fork block. The protocol version the
 indexer reports is therefore an upper bound — only a state whose envelope is
 *newer* than its dating block is reported as an inconsistency, and only where
 the two are known to describe the same block.

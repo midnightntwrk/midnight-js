@@ -15,7 +15,7 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { VersionedContractState } from '@midnight-ntwrk/midnight-js-types';
-import { describe, expect, test, vi } from 'vitest';
+import { assert, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
@@ -35,15 +35,15 @@ const OTHER_ADDRESS = '34'.repeat(32) as ContractAddress;
 
 type ActionArm = 'ContractDeploy' | 'ContractUpdate' | 'ContractCall';
 
-/** The transaction carrying the record the deploy state is read from, dated by the record's own `stateAt`. */
+/** The transaction carrying the record the state is read from (the deploy's, or the latest update's), dated by the record's own `stateAt`. */
 const recordTransaction = (state: string, protocolVersion: number, address: string = ADDRESS) => ({
   contractActions: [{ address, state, stateAt: { protocolVersion } }]
 });
 
 /**
  * One `DEPLOY_CONTRACT_STATE_TX_QUERY` answer, shaped by the arm the contract's latest action
- * resolves to: a call reaches the deploy through `deploy`, the other two through their own
- * transaction.
+ * resolves to: a call reaches the deploy through `deploy`, a deploy and an update through their
+ * own transaction.
  */
 const answer = (arm: ActionArm, transaction: ReturnType<typeof recordTransaction>): unknown =>
   arm === 'ContractCall' ? { contractAction: { deploy: { transaction } } } : { contractAction: { transaction } };
@@ -63,10 +63,14 @@ const serialized = (result: VersionedContractState | null): { version: string; b
   }
 };
 
-const ARMS: readonly ActionArm[] = ['ContractDeploy', 'ContractUpdate', 'ContractCall'];
+const ARMS: readonly { arm: ActionArm; record: string }[] = [
+  { arm: 'ContractDeploy', record: "the deploy's record" },
+  { arm: 'ContractUpdate', record: "the latest update's record" },
+  { arm: 'ContractCall', record: "the deploy's record" }
+];
 
 describe('queryDeployContractState', () => {
-  test.each(ARMS)('%s: a v9 deploy comes back decoded, tagged v9', async (arm) => {
+  test.each(ARMS)('$arm: $record from the v9 era comes back decoded, tagged v9', async ({ arm }) => {
     const { provider, query } = providerAnswering(
       answer(arm, recordTransaction(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION))
     );
@@ -77,7 +81,7 @@ describe('queryDeployContractState', () => {
     expect(query).toHaveBeenCalledWith(expect.objectContaining({ query: DEPLOY_CONTRACT_STATE_TX_QUERY }));
   });
 
-  test.each(ARMS)('%s: a v8 deploy comes back as the stored bytes, tagged v8', async (arm) => {
+  test.each(ARMS)('$arm: $record from the v8 era comes back as the stored bytes, tagged v8', async ({ arm }) => {
     const { provider } = providerAnswering(
       answer(arm, recordTransaction(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION))
     );
@@ -97,8 +101,8 @@ describe('queryDeployContractState', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({
+    assert(rejection instanceof IndexerDataError);
+    expect(rejection.context).toEqual({
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
@@ -116,8 +120,8 @@ describe('queryDeployContractState', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({
+    assert(rejection instanceof IndexerDataError);
+    expect(rejection.context).toEqual({
       kind: 'missing-contract-action',
       contractAddress: ADDRESS
     });

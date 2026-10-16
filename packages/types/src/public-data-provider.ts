@@ -381,10 +381,9 @@ export interface PublicDataProvider {
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>;
 
   /**
-   * Retrieves the contract state included in the deployment of the contract at the given contract address,
-   * tagged with the ledger era that wrote it. A v8-era deploy is returned as the stored bytes, never
-   * translated to the v9 encoding, so the result does not change when a ledger fork translates the
-   * contract's current state.
+   * Retrieves the contract state in the deploy's record for the contract at the given contract address,
+   * or in the latest update's record when the contract has been updated, tagged with the ledger era
+   * that wrote it. A v8-era record is returned as the stored bytes, never translated to the v9 encoding.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    */

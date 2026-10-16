@@ -375,6 +375,7 @@ export const UNSHIELDED_BALANCE_SUB = gql(
   subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
       stateAt {
+        height
         hash
       }
       transaction {

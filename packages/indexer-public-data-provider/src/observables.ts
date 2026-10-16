@@ -392,9 +392,13 @@ export const waitForUnshieldedBalancesToAppear =
  * server-filtered feed of this contract's actions as {@link blockOffsetToState$},
  * selecting the balances each action leaves instead of the state.
  *
- * Drops the indexer's fork-block re-emission of an action (its `stateAt` is not
- * its own block): a ledger fork translates the state, not the balances, so the
- * re-emission would repeat the action's balances as a second element.
+ * Drops the indexer's fork-block re-emission of an action (its `stateAt` is a
+ * later block than its own): a ledger fork translates the state, not the
+ * balances, so the re-emission would repeat the action's balances as a second
+ * element.
+ *
+ * @throws IndexerInvariantError When an action's `stateAt` is neither its own
+ * block nor a later one.
  */
 export const blockOffsetToUnshieldedBalances$ =
   (apolloClient: ApolloClient) =>
@@ -419,7 +423,19 @@ export const blockOffsetToUnshieldedBalances$ =
           }
           return contractAction;
         }),
-        Rx.filter(({ stateAt, transaction }) => stateAt.hash === transaction.block.hash),
+        Rx.filter(({ stateAt, transaction }) => {
+          if (stateAt.hash === transaction.block.hash) {
+            return true;
+          }
+          if (stateAt.height > transaction.block.height) {
+            return false;
+          }
+          throw new IndexerInvariantError(
+            `blockOffsetToUnshieldedBalances$: action in block ${transaction.block.height} (${transaction.block.hash}) ` +
+              `has its state dated by block ${stateAt.height} (${stateAt.hash}), which is neither its own block ` +
+              `nor a later one`
+          );
+        }),
         Rx.map(({ unshieldedBalances, transaction }) => ({
           value: toUnshieldedBalances(unshieldedBalances),
           blockHeight: transaction.block.height,
