@@ -621,7 +621,10 @@ Before the fork, a contract deployed with ledger 8 artifacts is maintained with
 those artifacts and the key the deploy stored. After the fork, the retained
 artifact is refused with `Ledger8.MaintenanceOnLedger9Error`: recompile the
 contract with the ledger 9 Compact toolchain and call the same function with
-that artifact. The stored key is unchanged.
+that artifact. The stored key is unchanged, and the fork keeps the contract's
+maintenance authority, so that key still signs for the migrated contract. Keep
+the same private-state store when you switch artifacts: the key is in that store
+and nowhere else.
 
 A retained-era update reads the stored key before it composes anything, and
 refuses a missing, foreign-kind or unreadable entry with

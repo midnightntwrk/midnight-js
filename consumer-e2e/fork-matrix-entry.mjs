@@ -43,10 +43,12 @@ import {
   deployContract,
   findDeployedContract,
   getAnyEraContractState,
+  Ledger8,
   StaleHeadError,
   SubmitRejectionUndiagnosedError,
   submitCallTx,
-  submitCallTxAsync
+  submitCallTxAsync,
+  submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
 
@@ -1672,6 +1674,59 @@ for (const entry of RETAINED_MATRIX.filter(
   });
 }
 
+// (a) continued: the retained `simple` twin's maintenance authority, replaced
+// before the fork through the v8 overload of the governance entry point. The
+// post-fork legs in (c5) maintain the SAME contract from the SAME store, so the
+// pair is what shows the authority and the stored key cross the fork.
+//
+// Gated on the shard that installs BOTH `simple` artifacts: (c5) needs the
+// recompiled one, and replace-authority -- rather than removing or inserting a
+// verifier key -- leaves every circuit the other legs call untouched.
+const MAINTAINS_ACROSS_THE_FORK = covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple');
+
+/**
+ * A fresh maintenance key from the current runtime the `simple` wrapper installs.
+ *
+ * Its default kind is `schnorr` and its value 64 hex characters, which is the one
+ * key shape BOTH eras' maintenance paths accept.
+ */
+const sampleMaintenanceKey = async (key = 'simple') =>
+  (await import(`@midnight-ntwrk/fork-current-${key}/runtime`)).sampleSigningKey();
+
+/** By tag and value: the store and the caller each hold their own `{ tag, value }` object. */
+const sameSigningKey = (left, right) =>
+  left !== undefined && left !== null && right !== undefined && left.tag === right.tag && left.value === right.value;
+
+if (MAINTAINS_ACROSS_THE_FORK) {
+  await leg('pre-fork retained simple, maintenance authority replaced', async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const providers = retainedProvidersFor('v8', session.wallet, 'simple');
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const newKey = await sampleMaintenanceKey();
+    const replaced = await submitReplaceAuthorityTx(
+      providers,
+      new Contract(retainedWitnesses('simple')),
+      deployed.contractAddress
+    )(newKey);
+    if (replaced.era !== 'v8' || replaced.public.version !== 'v8') {
+      throw new Error(`expected a v8 result on a v8 record; got '${replaced.era}' on '${replaced.public.version}'`);
+    }
+    if (!sameSigningKey(await providers.privateStateProvider.getSigningKey(deployed.contractAddress), newKey)) {
+      throw new Error('the store does not hold the key the authority was replaced with');
+    }
+    // The key (c3) asserts survived the fork is now this one, not the deploy's.
+    deployed.signingKey = newKey;
+    return { era: replaced.era, version: replaced.public.version, status: replaced.public.status, txId: replaced.public.txId };
+  });
+} else {
+  await leg('pre-fork retained simple, maintenance authority replaced', () =>
+    "skipped: this shard does not install both 'simple' artifacts"
+  );
+}
+
 // (a) continued, as a probe rather than an assertion: what a consumer sees if
 // they point a current-era contract at a chain that has not forked yet. Nothing
 // in the spec says which side refuses it, or with what -- and "the deploy just
@@ -2848,6 +2903,100 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       [state.label]: { before: before.toString(), after: after.toString() }
     };
   });
+}
+
+// ── (c5) the same contract, maintained after the fork ─────────────────────────
+//
+// Two answers, both against the contract (a) replaced the authority on, from the
+// store that holds that key:
+//
+// - the v8 artifact is refused on the v9 head before anything is proven or
+//   submitted -- the proof and submission providers here refuse to be reached;
+// - the RECOMPILED artifact, through the v9 entry point, replaces the authority
+//   again with the stored key. That is only possible if the fork translation kept
+//   the maintenance authority's committee and counter, which nothing else in this
+//   run observes.
+if (MAINTAINS_ACROSS_THE_FORK) {
+  const refusedName = 'a migrated simple, v8 maintenance refused after the fork';
+  await leg(refusedName, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const base = retainedProvidersFor('v9', session.wallet, 'simple');
+    const reached = [];
+    const providers = {
+      ...base,
+      proofProvider: {
+        supportedEras: base.proofProvider.supportedEras,
+        proveTx: () => {
+          reached.push('proveTx');
+          return Promise.reject(new Error('proveTx must not be reached'));
+        }
+      },
+      midnightProvider: {
+        supportedEras: base.midnightProvider.supportedEras,
+        submitTx: () => {
+          reached.push('submitTx');
+          return Promise.reject(new Error('submitTx must not be reached'));
+        }
+      }
+    };
+    const keyBefore = await base.privateStateProvider.getSigningKey(deployed.contractAddress);
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const error = await submitReplaceAuthorityTx(
+      providers,
+      new Contract(retainedWitnesses('simple')),
+      deployed.contractAddress
+    )(await sampleMaintenanceKey()).then(
+      () => undefined,
+      (refusal) => refusal
+    );
+    if (!(error instanceof Ledger8.MaintenanceOnLedger9Error)) {
+      throw new Error(`expected Ledger8.MaintenanceOnLedger9Error; got ${describeError(error)}`, { cause: error });
+    }
+    if (reached.length > 0) {
+      throw new Error(`the refused update still reached ${reached.join(', ')}`);
+    }
+    if (!sameSigningKey(await base.privateStateProvider.getSigningKey(deployed.contractAddress), keyBefore)) {
+      throw new Error('the refused update changed the stored key');
+    }
+    return { refusedWith: error.name, reached: 'nothing' };
+  });
+
+  const recompiledName = 'a migrated simple, authority replaced after the fork with recompiled artifacts';
+  await leg(recompiledName, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const zkConfigPath = config.matrixZkConfigPaths?.simple;
+    if (zkConfigPath === undefined) {
+      throw new Error("the driver passed no current-era ZK artifact path for 'simple'");
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
+    const compiledContract = CompiledContract.withCompiledFileAssets(
+      CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
+      zkConfigPath
+    );
+    // The retained twin's store, under the recompiled artifacts: a recompiled dApp
+    // keeps its store, and that store holds the key (a) replaced the authority with.
+    const providers = providersFor(testkit, 'v9', session.wallet, {
+      zkConfigPath,
+      privateStateStoreName: 'fork-retained-simple'
+    });
+    const newKey = await sampleMaintenanceKey();
+    const replaced = await submitReplaceAuthorityTx(providers, compiledContract, deployed.contractAddress)(newKey);
+    if (replaced.era !== 'v9') {
+      throw new Error(`expected a v9 result; got '${replaced.era}'`);
+    }
+    if (!sameSigningKey(await providers.privateStateProvider.getSigningKey(deployed.contractAddress), newKey)) {
+      throw new Error('the store does not hold the key the authority was replaced with');
+    }
+    return { era: replaced.era, status: replaced.public.status, txId: replaced.public.txId };
+  });
+} else {
+  await leg('maintenance after the fork', () => "skipped: this shard does not install both 'simple' artifacts");
 }
 
 // ── (d) reads its own pre-fork history ────────────────────────────────────────

@@ -242,6 +242,14 @@ migrated contract with the signing key stored for its address. So the retained
 artifact is refused there with `Ledger8MaintenanceOnLedger9Error`, which names
 that path, rather than routed anywhere.
 
+That path depends on one fact this package does not control: the fork
+translation keeps the contract's maintenance authority, its committee and its
+counter. The Hard fork lane asserts it on the `simple` shard. It replaces the
+authority before the fork with the retained artifact, checks that the retained
+artifact is refused after it with nothing proven or submitted, and replaces the
+authority again with the recompiled artifact and the key the first replacement
+stored. See `consumer-e2e/README.md`.
+
 Only the two RETAINED rows are enforced in production. Every call site passes
 the literal `'v8'`, so the current-era rows are reachable from tests alone,
 and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
