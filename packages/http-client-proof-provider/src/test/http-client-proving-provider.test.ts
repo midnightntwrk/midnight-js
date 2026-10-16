@@ -31,16 +31,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { httpClientProvingProvider } from '../http-client-proving-provider';
 
-const { mockFetchRetry } = vi.hoisted(() => ({
-  mockFetchRetry: vi.fn()
-}));
-
-vi.mock('cross-fetch', () => ({
-  default: vi.fn()
-}));
+const { mockFetchRetry, mockFetchBuilder } = vi.hoisted(() => {
+  const retry = vi.fn();
+  const builder = vi.fn(() => retry);
+  return { mockFetchRetry: retry, mockFetchBuilder: builder };
+});
 
 vi.mock('fetch-retry', () => ({
-  default: () => mockFetchRetry
+  default: mockFetchBuilder
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', async () => {
@@ -74,6 +72,7 @@ describe('httpClientProvingProvider', () => {
 
   beforeEach(() => {
     mockFetchRetry.mockReset();
+    mockFetchBuilder.mockClear();
     vi.mocked(ledger.createCheckPayload).mockReset();
     vi.mocked(ledger.createProvingPayload).mockReset();
     vi.mocked(ledger.parseCheckResult).mockReset();
@@ -120,6 +119,17 @@ describe('httpClientProvingProvider', () => {
       const customTimeout = 60000;
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: customTimeout });
       expect(provider).toBeDefined();
+    });
+
+    it('should use globalThis.fetch by default', () => {
+      httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+      expect(mockFetchBuilder).toHaveBeenCalledWith(globalThis.fetch, expect.any(Object));
+    });
+
+    it('should use custom fetch when provided in config', () => {
+      const customFetch = vi.fn<typeof globalThis.fetch>();
+      httpClientProvingProvider(mockUrl, mockZkConfigProvider, { fetch: customFetch });
+      expect(mockFetchBuilder).toHaveBeenCalledWith(customFetch, expect.any(Object));
     });
   });
 

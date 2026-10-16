@@ -18,7 +18,6 @@ import { HttpLink } from '@apollo/client/link/http';
 import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
-import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 
 import type { ValidatedConfig } from './config';
@@ -99,11 +98,14 @@ export type ApolloHandle = {
  */
 export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => {
   /**
-   * `cross-fetch` resolves to `node-fetch` in Node and to the platform `fetch` in
-   * browsers, both of which negotiate compression on their own. That is what
-   * satisfies the indexer's HTTP-response compression contract with no configuration.
+   * Native platform `fetch` (or a custom fetch supplied via `validated.fetch`)
+   * negotiates HTTP compression natively in both Node and browser environments,
+   * satisfying the indexer's HTTP-response compression contract without polyfills.
    */
-  const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
+  const httpLink = new HttpLink({
+    fetch: validated.fetch ?? globalThis.fetch,
+    uri: validated.queryURLString
+  });
   const retryLink = new RetryLink({
     delay: {
       initial: 1000,
