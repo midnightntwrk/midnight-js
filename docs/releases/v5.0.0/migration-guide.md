@@ -776,6 +776,35 @@ See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-v
 
 ---
 
+## Step 18 — Narrow the contract-state reads, `getPublicStates` and `submitTx`
+
+The contract-state reads, `getPublicStates` / `getStates` and `submitTx` are version-tagged (#1508).
+In code that handles only v9, narrow with `requireLedger9`:
+
+```ts
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+// Before
+const state = await publicDataProvider.queryContractState(address);
+const [zswap, contractState, params] = (await publicDataProvider.queryZSwapAndContractState(address))!;
+await submitTx(providers, { unprovenTx });
+
+// After
+const { state } = requireLedger9(
+  (await publicDataProvider.queryContractState(address))!,
+  'readCounter'
+);
+const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
+  (await publicDataProvider.queryZSwapAndContractState(address))!,
+  'readCounter'
+);
+await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
+```
+
+Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
+`version`, and read a retained-era deploy record at `deployTxData.public`. The full list is in
+[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -799,3 +828,4 @@ See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-v
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
 - [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.
+- [ ] Every contract-state read, `getPublicStates` / `getStates` result and `submitTx` input is version-tagged and narrowed (`switch` + `assertNever`, or `requireLedger9`).

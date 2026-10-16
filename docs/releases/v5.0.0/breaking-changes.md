@@ -641,6 +641,67 @@ that field. The framework's test environments pin the build tag
 
 ---
 
+## 14. One rule for era-dependent values: every read and `submitTx` are version-tagged (#1508)
+
+`version: 'v8' | 'v9'` now has one meaning on every public type: the ledger era that **wrote**
+the value. The era of the block that dated a read stays in `protocolVersion`. A value whose shape
+depends on the era is a `Versioned*` union; narrow it with `switch (value.version)` closed by
+`assertNever`, or, in code that handles only v9, with `requireLedger9(value, '<call site>')` from
+`@midnight-ntwrk/midnight-js-utils`, which throws `Ledger8ValueUnsupportedError` on a v8 value.
+
+### 14a. Changed signatures
+
+| Where | Before | After |
+|---|---|---|
+| `PublicDataProvider.queryContractState` | `Promise<ContractState \| null>` | `Promise<VersionedContractState \| null>` |
+| `PublicDataProvider.watchForContractState` | `Promise<ContractState>` | `Promise<VersionedContractState>` |
+| `PublicDataProvider.contractStateObservable` | `Observable<PositionedRecord<ContractState>>` | `Observable<PositionedRecord<VersionedContractState>>` |
+| `PublicDataProvider.queryZSwapAndContractState` | `Promise<[ZswapChainState, ContractState, LedgerParameters] \| null>` | `Promise<VersionedPublicStates \| null>` (an object, not a tuple) |
+| `RawContractState.version` | the era of `protocolVersion` | the era of the envelope of `raw` |
+| `ContractEventBase.version` | payload schema version | renamed to `payloadVersion` |
+| `getPublicStates` (contracts) | `Promise<PublicContractStates>` | `Promise<VersionedPublicStates>` |
+| `getStates` (contracts) | `ContractStates<PS>` (an interface) | `ContractStates<PS> = VersionedPublicStates & { privateState }` |
+| `PublicContractStates` (contracts) | exported | removed; use `VersionedPublicStates` from types |
+| `AnyEraContractState.envelopeVersion` | `envelopeVersion` | renamed to `version` |
+| `Ledger8FoundContract.deployTxData` (and `Ledger8DeployedContract`) | the flat `VersionedFinalizedTxData` | `{ public: VersionedFinalizedTxData }` |
+| `SubmitTxOptions.unprovenTx` | `UnprovenTransaction` | `VersionedUnprovenTransaction` |
+| `submitTx` | `Promise<FinalizedTxData>` | `Promise<VersionedFinalizedTxData>` |
+| `TransactionContext.getCurrentStates` / `CacheStates` | `ContractStates<PS> \| PublicContractStates` | their v9 variants (`Ledger9Variant<ContractStates<PS>> \| Ledger9PublicStates`) |
+| `IndexerDataError` kind `unknown-record-era` | raised by the raw reads | removed; the raw reads tag by the envelope |
+
+### 14b. What a pre-fork state does now
+
+The four decoding reads return the v8 variant (`{ version: 'v8', stateBytes }`) instead of
+throwing `IndexerDataError` `unsupported-decode-era`. `contractStateObservable` emits a pre-fork
+record as a v8 value and keeps going, so a replay that starts before the fork no longer ends on
+its first record.
+
+`queryZSwapAndContractState` returns `{ version: 'v8', zswapChainState, stateBytes,
+ledgerParametersBytes }` for a v8 block. A contract state and ledger parameters from different
+eras are refused as `IndexerDataError` kind `mixed-era-public-states`.
+
+### 14c. `submitTx` routes on the network head
+
+`submitTx` / `submitTxAsync` read the head once and run on its era. The input's `version` only says
+how to read the input. A v9 transaction on a pre-fork head is refused before proving, as
+`EraArtifactMismatchError` with reason `current-era-transaction-on-pre-fork-head`.
+
+```ts
+// Before
+await submitTx(providers, { unprovenTx });
+// After
+await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
+```
+
+### 14d. New exports
+
+- `requireLedger9`, `Ledger9Variant`, `Ledger8ValueUnsupportedError`
+  (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`) — utils.
+- `VersionedPublicStates`, `Ledger8PublicStates`, `Ledger9PublicStates` — types.
+- `AnyEraFoundContract<C, L8>`, `AnyEraDeployedContract<C, L8>` — contracts.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

@@ -523,3 +523,27 @@ stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
 
 The title and file name of this ADR keep the old word, and so do the
 amendments above.
+
+## Amendment — the read results follow the same rule (2026-10-16)
+
+Issue #1508. The decision now covers every public value whose shape depends on the era, not
+only the transaction payloads:
+
+1. `version: 'v8' | 'v9'` means one thing: the ledger era that WROTE the value, read from the
+   payload's envelope. The era of the block that dated a read stays only in `protocolVersion`.
+   `RawContractState.version` follows this rule; the event payload schema field is
+   `payloadVersion`.
+2. `era` is kept only on `contracts` pipeline results, where it names the pipeline that produced
+   the result.
+3. An era-dependent value is a `Versioned*` union, `Ledger8X | Ledger9X`. The v8 variant carries
+   the stored bytes, the v9 variant the decoded object: `VersionedContractState`,
+   `VersionedPublicStates`, `VersionedFinalizedTxData`.
+4. Era-neutral values stay plain (`UnshieldedBalances`, `BlockInfo`).
+5. Code that handles only v9 narrows with `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`.
+   It sits next to `assertNever` rather than in `types` because its error for a missing tag is
+   `assertNever`'s, while `UntaggedPayloadError` takes only the closed provider-method list.
+
+`submitTx` reads the network head once and routes on it; the input's `version` only says how to
+read the input. The full list of changed signatures is in
+`docs/releases/v5.0.0/breaking-changes.md`, section 14.
+

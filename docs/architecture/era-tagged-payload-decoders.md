@@ -3,6 +3,15 @@
 Covers every place this repository hands network-sourced bytes to a `*.deserialize` from a ledger
 runtime, and states which era each of those decoders is allowed to be.
 
+## The rule every public value follows
+
+`version: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
+envelope; `protocolVersion` is the era of the block that dated the read. A value whose shape depends
+on the era is a `Versioned*` union whose v8 variant carries the stored bytes and whose v9 variant
+carries the decoded object. A consumer narrows it with `switch (value.version)` closed by
+`assertNever`, or with `requireLedger9` when only v9 is handled. `era` appears only on `contracts`
+pipeline results. See ADR 0006, amendment of 2026-10-16.
+
 ## The defect class
 
 A serialized ledger payload carries an envelope tag naming the schema its writer used, and the
@@ -71,8 +80,10 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 ### Decoders that are correct because the era is chosen per payload
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseHexContractState` dates the envelope
-  before decoding and refuses an era it cannot read; `parseHexLedgerParameters` now does the same;
+- `packages/indexer-public-data-provider/src/codec.ts` — `toVersionedContractState` and
+  `toVersionedPublicStates` read the envelope first and decode only a v9 one, handing a v8 one on
+  as bytes; `toRawContractState` tags the record by the envelope; `parseHexContractState` and
+  `parseHexLedgerParameters` stay v9-only and refuse an era they cannot read;
   `decodeRecordTransaction` dispatches per record to a table with one entry per era.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
