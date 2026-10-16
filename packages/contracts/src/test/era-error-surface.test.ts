@@ -76,6 +76,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'unwrapped-current-era-contract': 'wrap-it',
       'unrecognised-contract-shape': 'recompile',
       'current-era-artifact-on-pre-fork-head': 'wait-for-fork',
+      'current-era-transaction-on-pre-fork-head': 'submit-v8-bytes',
       'artifact-era-undeclared': 'serve-contract-info',
       'provider-cannot-declare-era': 'implement-the-member',
       'unknown-artifact-runtime-version': 'upgrade-midnight-js'
@@ -84,6 +85,9 @@ describe('the era and verification-path errors a caller has to catch are reachab
     expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-current-era-contract').reason]).toBe('wrap-it');
     expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
     expect(REMEDIATION[new EraArtifactMismatchError('current-era-artifact-on-pre-fork-head').reason]).toBe('wait-for-fork');
+    expect(REMEDIATION[new EraArtifactMismatchError('current-era-transaction-on-pre-fork-head').reason]).toBe(
+      'submit-v8-bytes'
+    );
     expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
     expect(REMEDIATION[new EraArtifactMismatchError('provider-cannot-declare-era').reason]).toBe(
       'implement-the-member'

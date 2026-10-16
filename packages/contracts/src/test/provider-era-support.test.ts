@@ -157,7 +157,7 @@ describe('a current-era submission checks the transaction providers at its entry
     providers = createMockProviders();
   });
 
-  const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: createMockUnprovenTx() };
+  const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } };
 
   const withProofEras = (eras: readonly LedgerVersion[]): MockProviders => ({
     ...providers,

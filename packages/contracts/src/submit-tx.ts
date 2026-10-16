@@ -18,16 +18,21 @@ import {
   type Transaction,
   type UnprovenTransaction,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
   type FinalizedTxData,
+  UntaggedPayloadError,
+  type VersionedFinalizedTxData,
+  type VersionedUnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { requireLedger9Answer, requireLedger9Record } from './internal/era';
+import { EraArtifactMismatchError, EraInvariantViolationError } from './errors';
+import { readHeadEra, requireLedger9Answer, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { submitLedger8TxBytes } from './internal/ledger8-entry';
 
 declare const __DEBUG__: boolean;
 
@@ -36,9 +41,11 @@ declare const __DEBUG__: boolean;
  */
 export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
   /**
-   * The transaction to prove, balance, and submit.
+   * The transaction to prove, balance, and submit, tagged with the ledger era that wrote it:
+   * `{ version: 'v9', tx }` for a live v9 transaction, `{ version: 'v8', txBytes }` for the
+   * serialized bytes of a v8 one.
    */
-  readonly unprovenTx: UnprovenTransaction;
+  readonly unprovenTx: VersionedUnprovenTransaction;
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
@@ -82,9 +89,19 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
-async function submitTxCore<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+/** @internal Configuration for the current-era submit the contracts pipelines use. */
+export interface CurrentEraSubmitTxOptions<PCK extends AnyProvableCircuitId> {
+  readonly unprovenTx: UnprovenTransaction;
+  readonly circuitId?: PCK | PCK[];
+}
+
+/**
+ * @internal Proves, balances and submits a v9 transaction, for the pipelines that resolved the
+ * era before they built it. Reads no head.
+ */
+export async function submitCurrentEraTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
-  options: SubmitTxOptions<PCK>
+  options: CurrentEraSubmitTxOptions<PCK>
 ): Promise<string> {
   const { circuitId } = options;
   // Before the first provider call, not after it. This flow is current-era only —
@@ -109,9 +126,60 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   return providers.midnightProvider.submitTx({ version: 'v9', tx: toSubmit });
 }
 
+/** @internal {@link submitCurrentEraTxAsync}, then waits for the v9 record. */
+export const submitCurrentEraTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: CurrentEraSubmitTxOptions<PCK>
+): Promise<FinalizedTxData> => {
+  const txId = await submitCurrentEraTxAsync(providers, options);
+  return requireLedger9Record(
+    await providers.publicDataProvider.watchForTxData(txId),
+    'watchForTxData',
+    options.circuitId
+  );
+};
+
+const describeCircuitId = (circuitId: string | string[] | undefined): string =>
+  Array.isArray(circuitId) ? circuitId.join('-') : circuitId ?? 'unknown-circuit';
+
+const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: SubmitTxOptions<PCK>
+): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
+  assertValidMidnightConfig(providers.config);
+  const { head } = await readHeadEra(providers.publicDataProvider);
+  const { unprovenTx, circuitId } = options;
+  if (head === 'v8' && unprovenTx.version === 'v9') {
+    throw new EraArtifactMismatchError('current-era-transaction-on-pre-fork-head');
+  }
+  assertProvidersSupportEra(head, providers);
+  switch (unprovenTx.version) {
+    case 'v9':
+      return { txId: await submitCurrentEraTxAsync(providers, { unprovenTx: unprovenTx.tx, circuitId }), head };
+    case 'v8':
+      return { txId: await submitLedger8TxBytes(providers, unprovenTx.txBytes, head, describeCircuitId(circuitId)), head };
+    default: {
+      const unhandled: never = unprovenTx;
+      throw new UntaggedPayloadError('proveTx', unhandled);
+    }
+  }
+};
+
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
  * the given providers, according to the given options.
+ *
+ * ## Which era it runs on
+ *
+ * It reads the network head once and runs on the head's era. The input's `version` only says how
+ * to read the input:
+ *
+ * | input | head | what happens |
+ * |---|---|---|
+ * | v9 | v9 | proved, balanced and submitted as v9 payloads |
+ * | v8 | v8 | proved, balanced and submitted as v8 payloads (`txBytes`) |
+ * | v8 | v9 | the bytes are read as a v9 transaction, then as v9 |
+ * | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
  *
  * ## Blocking Behavior
  *
@@ -144,19 +212,21 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
  *
- * @returns A promise that resolves with the finalized transaction data for the invocation,
- *          or rejects if an error occurs along the way.
+ * @returns A promise that resolves with the finalized transaction data, tagged with the era of
+ *          the head it ran on, or rejects if an error occurs along the way.
+ * @throws EraArtifactMismatchError for a v9 transaction on a pre-fork head.
+ * @throws EraInvariantViolationError if the record's era differs from the head's.
  */
 export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
-): Promise<FinalizedTxData> => {
-  const txId = await submitTxCore(providers, options);
-  return requireLedger9Record(
-    await providers.publicDataProvider.watchForTxData(txId),
-    'watchForTxData',
-    options.circuitId
-  );
+): Promise<VersionedFinalizedTxData> => {
+  const { txId, head } = await submitOnHead(providers, options);
+  const record = requireTaggedRecord(await providers.publicDataProvider.watchForTxData(txId), 'watchForTxData');
+  if (record.version !== head) {
+    throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.version);
+  }
+  return record;
 };
 
 /**
@@ -175,5 +245,6 @@ export const submitTxAsync = async <C extends Contract.Any, PCK extends Contract
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
 ): Promise<string> => {
-  return submitTxCore(providers, options);
+  const { txId } = await submitOnHead(providers, options);
+  return txId;
 };

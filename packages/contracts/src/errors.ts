@@ -124,6 +124,8 @@ export type EraArtifactMismatchReason =
   | 'unrecognised-contract-shape'
   /** A current-era artifact, on a network head that is still pre-fork. */
   | 'current-era-artifact-on-pre-fork-head'
+  /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
+  | 'current-era-transaction-on-pre-fork-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
   /** A ZK config provider that cannot report a declared runtime version at all. */
@@ -149,6 +151,10 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'This contract was produced by the current Compact toolchain, but the network head is still on the ' +
     'pre-fork ledger era, which cannot execute it. Run this operation against a contract produced by the ' +
     'retained toolchain until the network head has crossed the fork.',
+  'current-era-transaction-on-pre-fork-head':
+    'A v9 transaction was handed to submitTx, but the network head is still on the pre-fork ledger era, ' +
+    'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
+    'until the network head has crossed the fork.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':

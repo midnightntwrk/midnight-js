@@ -34,7 +34,7 @@ import { isLedger8Result } from '../era-results';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
-import { submitTx, submitTxAsync } from '../submit-tx';
+import { submitCurrentEraTx, submitCurrentEraTxAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
@@ -87,7 +87,7 @@ describe('submit-call-tx', () => {
     const mockFinalizedTxData = createMockFinalizedTxData();
 
     vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-    vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+    vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
 
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
@@ -125,7 +125,7 @@ describe('submit-call-tx', () => {
       options,
       expect.anything() // Ignore transaction context.
     );
-    expect(submitTx).toHaveBeenCalledWith(mockProviders, {
+    expect(submitCurrentEraTx).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
       circuitId: 'testCircuit'
     });
@@ -197,7 +197,7 @@ describe('submit-call-tx', () => {
         const rootCall = createMockContractCall({ circuitId: 'testCircuit' });
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({ calls: [rootCall] });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(createMockFinalizedTxData());
 
         // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
         // the nested path rebuilds `CallResult` member by member rather than spreading the
@@ -305,7 +305,7 @@ describe('submit-call-tx', () => {
         );
 
         expect(createUnprovenCallTx).not.toHaveBeenCalled();
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitCurrentEraTx).not.toHaveBeenCalled();
       });
 
       it('should accept privateStateProvider without privateStateId', async () => {
@@ -325,7 +325,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
@@ -337,7 +337,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
           await submitCallTx(mockProviders, options, txCtx);
@@ -353,7 +353,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         try {
           await submitCallTx(mockProviders, options);
@@ -371,7 +371,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
@@ -383,7 +383,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
           await submitCallTx(mockProviders, options, txCtx);
@@ -399,7 +399,7 @@ describe('submit-call-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         try {
           await submitCallTx(mockProviders, options);
@@ -427,7 +427,7 @@ describe('submit-call-tx', () => {
         };
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
         try {
           await submitCallTx(mockProviders, options);
@@ -467,7 +467,7 @@ describe('submit-call-tx', () => {
         vi.mocked(createUnprovenCallTx).mockRejectedValue(createError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to create unproven call tx');
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitCurrentEraTx).not.toHaveBeenCalled();
       });
 
       it('should propagate errors from submitTx', async () => {
@@ -476,7 +476,7 @@ describe('submit-call-tx', () => {
         const submitError = new Error('Network error during submission');
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockRejectedValue(submitError);
+        vi.mocked(submitCurrentEraTx).mockRejectedValue(submitError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
@@ -489,7 +489,7 @@ describe('submit-call-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
@@ -514,11 +514,11 @@ describe('submit-call-tx', () => {
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitCallTx(mockProviders, options);
 
-        expect(submitTx).toHaveBeenCalledWith(mockProviders, {
+        expect(submitCurrentEraTx).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
           circuitId: 'testCircuit'
         });
@@ -573,12 +573,12 @@ describe('submit-call-tx', () => {
         const mockTxId = 'test-tx-id-123';
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         const result = await submitCallTxAsync(mockProviders, options);
 
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
-        expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
+        expect(submitCurrentEraTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
           circuitId: 'testCircuit'
         });
@@ -600,7 +600,7 @@ describe('submit-call-tx', () => {
         const mockTxId = 'test-tx-id-456';
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         await submitCallTxAsync(mockProviders, options);
 
@@ -618,7 +618,7 @@ describe('submit-call-tx', () => {
         );
 
         expect(createUnprovenCallTx).not.toHaveBeenCalled();
-        expect(submitTxAsync).not.toHaveBeenCalled();
+        expect(submitCurrentEraTxAsync).not.toHaveBeenCalled();
       });
 
       it('should accept privateStateProvider without privateStateId', async () => {
@@ -627,7 +627,7 @@ describe('submit-call-tx', () => {
         const mockTxId = 'test-tx-id-789';
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         await submitCallTxAsync(mockProviders, options);
 
@@ -660,7 +660,7 @@ describe('submit-call-tx', () => {
         vi.mocked(createUnprovenCallTx).mockRejectedValue(createError);
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow('Failed to create unproven call tx');
-        expect(submitTxAsync).not.toHaveBeenCalled();
+        expect(submitCurrentEraTxAsync).not.toHaveBeenCalled();
       });
 
       it('should propagate errors from submitTxAsync', async () => {
@@ -669,7 +669,7 @@ describe('submit-call-tx', () => {
         const submitError = new Error('Network error during submission');
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockRejectedValue(submitError);
+        vi.mocked(submitCurrentEraTxAsync).mockRejectedValue(submitError);
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
@@ -693,11 +693,11 @@ describe('submit-call-tx', () => {
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         const result = await submitCallTxAsync(mockProviders, options);
 
-        expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
+        expect(submitCurrentEraTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
           circuitId: 'testCircuit'
         });
@@ -723,7 +723,7 @@ describe('submit-call-tx', () => {
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         const { txId, callTxData } = await submitCallTxAsync(mockProviders, options);
 
@@ -754,7 +754,7 @@ describe('submit-call-tx', () => {
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+        vi.mocked(submitCurrentEraTxAsync).mockResolvedValue(mockTxId);
 
         const result = await submitCallTxAsync(mockProviders, options);
 
@@ -788,7 +788,7 @@ describe('submit-call-tx', () => {
       };
 
       vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-      vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+      vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFailedTxData);
 
       try {
         await submitCallTx(mockProviders, options);

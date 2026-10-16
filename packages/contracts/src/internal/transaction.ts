@@ -35,7 +35,7 @@ import {
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError} from '../errors';
 import { type ContractStates } from '../get-states';
-import { submitTx, type SubmitTxOptions } from '../submit-tx';
+import { type CurrentEraSubmitTxOptions, submitCurrentEraTx } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
@@ -78,9 +78,9 @@ export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/C
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
 const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
-  current: SubmitTxOptions<PCK> | undefined,
-  next: SubmitTxOptions<PCK>
-): SubmitTxOptions<PCK> => {
+  current: CurrentEraSubmitTxOptions<PCK> | undefined,
+  next: CurrentEraSubmitTxOptions<PCK>
+): CurrentEraSubmitTxOptions<PCK> => {
   if (!current) {
     return next;
   }
@@ -174,7 +174,7 @@ export class TransactionContextImpl<
   currentUnsubmittedCall:
     | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
     | undefined;
-  submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
+  submitTxOptions: CurrentEraSubmitTxOptions<PCK> | undefined = undefined;
 
   constructor(
     providers: ContractProviders<C, PCK>,
@@ -227,7 +227,7 @@ export class TransactionContextImpl<
       throw new InvalidArgumentError('No calls were submitted.');
     }
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
-    const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
+    const finalizedTxData = await submitCurrentEraTx(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
       throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
     }

@@ -473,6 +473,36 @@ const submitLedger8TxOnRetainedEra = async (
   return submit(() => providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced }));
 };
 /**
+ * Proves, balances and submits serialized v8 transaction bytes on the head's era, for
+ * `submitTx`. The same two era functions {@link submitLedger8Tx} runs, without its fork-crossing
+ * diagnosis: `submitTx` is handed a transaction, not a call or a deploy it could name.
+ *
+ * @param providers The proof, wallet and submission providers.
+ * @param txBytes The serialized unproven transaction.
+ * @param head The era of the network head.
+ * @param circuitId The circuit, or circuits, named in any refusal.
+ * @returns The transaction id the network assigned.
+ */
+export const submitLedger8TxBytes = (
+  providers: Pick<Ledger8EntryProviders, 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'config'>,
+  txBytes: Uint8Array,
+  head: LedgerVersion,
+  circuitId: string
+): Promise<string> => {
+  const submit: SubmitRunner = (call) => atProviderMethod('submitTx', circuitId, call);
+  switch (head) {
+    case 'v9':
+      return submitLedger8TxOnCurrentEra(providers, txBytes, circuitId, submit);
+    case 'v8':
+      return submitLedger8TxOnRetainedEra(providers, txBytes, circuitId, submit);
+    default: {
+      const unhandled: never = head;
+      throw new UnknownLedgerVersionError(String(unhandled));
+    }
+  }
+};
+
+/**
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *

@@ -37,7 +37,7 @@ import {
   type Ledger8SubmittedCallTx
 } from './ledger8-contract';
 import type { SubmitTxProviders } from './submit-tx';
-import { submitTxAsync } from './submit-tx';
+import { submitCurrentEraTxAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
 import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
 import {
@@ -372,7 +372,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
 
   const unprovenCallTxData = await createUnprovenCallTx(providers, options);
 
-  const txId = await submitTxAsync(providers, {
+  const txId = await submitCurrentEraTxAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,
     circuitId: options.circuitId
   });

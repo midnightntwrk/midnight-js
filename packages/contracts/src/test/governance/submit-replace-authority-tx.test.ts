@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitReplaceAuthorityTx } from '../../governance/submit-replace-authority-tx';
 import { createUnprovenReplaceAuthorityTx } from '../../governance/unproven-tx';
-import { submitTx } from '../../submit-tx';
+import { submitCurrentEraTx } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -76,7 +76,7 @@ describe('submitReplaceAuthorityTx', () => {
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
 
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+      vi.mocked(submitCurrentEraTx).mockResolvedValue(mockFinalizedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
       const result = await replaceAuthorityFn(mockNewAuthority);
@@ -93,7 +93,7 @@ describe('submitReplaceAuthorityTx', () => {
         mockCoinPublicKey,
         mockProviders.config
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(submitCurrentEraTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);
       expect(result).toBe(mockFinalizedTxData);
     });
@@ -110,7 +110,7 @@ describe('submitReplaceAuthorityTx', () => {
         code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND,
         message: `No contract state found on chain for contract address '${mockContractAddress}'`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitCurrentEraTx).not.toHaveBeenCalled();
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
@@ -124,7 +124,7 @@ describe('submitReplaceAuthorityTx', () => {
         code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
         message: `Signing key for contract address '${mockContractAddress}' not found`
       });
-      expect(submitTx).not.toHaveBeenCalled();
+      expect(submitCurrentEraTx).not.toHaveBeenCalled();
     });
 
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
@@ -138,7 +138,7 @@ describe('submitReplaceAuthorityTx', () => {
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
 
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
-      vi.mocked(submitTx).mockResolvedValue(failedTxData);
+      vi.mocked(submitCurrentEraTx).mockResolvedValue(failedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
 
