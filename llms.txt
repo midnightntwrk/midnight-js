@@ -356,9 +356,16 @@ const provingProvider = await dappConnectorProvingProvider(
 ```typescript
 import { dappConnectorWalletProviders } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
 
-// Both serve ledger 8 and ledger 9. Wallet rejections reach the caller unchanged.
+// Both serve ledger 8 and ledger 9.
 const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(walletConnectedAPI);
 ```
+
+- A wallet rejection leaves `balanceTx` / `submitTx` unchanged, with the connector's `code`. Through
+  `deployContract` / `callTx` it arrives as `ProviderFailedError`, and the `code` is not kept.
+- The connector takes no TTL: the `ttl` argument of `balanceTx` is not forwarded and the wallet picks the
+  expiry (midnightntwrk/midnight-dapp-connector-api#102).
+- `InvalidArgumentError`: the wallet answer is not hex or not a balanced transaction of the requested ledger,
+  or `submitTx` gets a transaction without an identifier (checked before submitting).
 
 ### Barrel Package
 

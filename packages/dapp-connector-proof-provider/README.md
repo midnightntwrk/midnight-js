@@ -44,11 +44,16 @@ import { dappConnectorWalletProviders } from '@midnight-ntwrk/midnight-js-dapp-c
 const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(walletConnectedAPI);
 ```
 
-`walletConnectedAPI` is the `ConnectedAPI` the wallet returned from `connect`. The factory reads the shielded keys once, from `getShieldedAddresses`. `balanceTx` calls `balanceUnsealedTransaction` and `submitTx` calls `submitTransaction`. The connector takes no TTL, so the `ttl` argument of `balanceTx` is not forwarded.
+`walletConnectedAPI` is the `ConnectedAPI` the wallet returned from `connect`. The factory reads the shielded keys once, from `getShieldedAddresses`. `balanceTx` calls `balanceUnsealedTransaction` and `submitTx` calls `submitTransaction`.
 
-A wallet rejection (for example, the user declined) reaches your code unchanged, with the connector's own `code`. Two cases are refused with `InvalidArgumentError`:
+**Known limit: no TTL.** The connector takes no TTL, so the `ttl` argument of `balanceTx` is not forwarded. The wallet picks the expiry, and `config.ttlSeconds` has no effect on the intents it adds. See [midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102).
 
-- the wallet returns a transaction that is not a hex string;
+A wallet rejection (for example, the user declined) leaves `balanceTx` and `submitTx` unchanged, with the connector's own `code`. `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the `code`.
+
+Three cases are refused with `InvalidArgumentError`:
+
+- the wallet answer is not even-length hex without a `0x` prefix;
+- the wallet answer is not a balanced transaction of the requested ledger;
 - `submitTx` gets a transaction without an identifier. This is checked before anything is submitted.
 
 ## Configuration

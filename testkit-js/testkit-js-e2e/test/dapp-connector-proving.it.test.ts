@@ -122,8 +122,8 @@ describe('DApp Connector Proving', () => {
    * @given A DAppConnectorWalletAdapter wrapping a started MidnightWalletProvider
    * @and The proof, wallet and midnight providers all built from the adapter
    * @when Deploying a simple contract and calling a circuit on it
-   * @then Both transactions are balanced through balanceUnsealedTransaction, submitted through submitTransaction
-   * @and confirmed on-chain
+   * @then Both transactions are balanced through balanceUnsealedTransaction and submitted through submitTransaction
+   * @and Both are confirmed on-chain
    */
   test('should deploy and call contract with every transaction provider built from the DApp Connector [@slow]', async () => {
     await deployAndCall(async (zkConfigProvider) => ({

@@ -132,6 +132,30 @@ describe('dappConnectorWalletProviders', () => {
       expect(hasErrorCode(failure, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
     });
 
+    it.each([
+      ['an empty answer', () => ''],
+      ['a ledger 9 transaction', () => toHex(finalized.serialize())]
+    ])('rejects a ledger 8 wallet answer that is %s', async (_, answer) => {
+      const balanceUnsealedTransaction = vi.fn().mockResolvedValue({ tx: answer() });
+      const { walletProvider } = await dappConnectorWalletProviders(createApi({ balanceUnsealedTransaction }));
+
+      const failure = await walletProvider.balanceTx({ version: 'v8', txBytes: ledger8TxBytes }).catch((e: unknown) => e);
+
+      expect(hasErrorCode(failure, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+    });
+
+    it.each([
+      ['an empty answer', () => ''],
+      ['a ledger 8 transaction', () => toHex(ledger8BalancedTxBytes)]
+    ])('rejects a ledger 9 wallet answer that is %s', async (_, answer) => {
+      const balanceUnsealedTransaction = vi.fn().mockResolvedValue({ tx: answer() });
+      const { walletProvider } = await dappConnectorWalletProviders(createApi({ balanceUnsealedTransaction }));
+
+      const failure = await walletProvider.balanceTx({ version: 'v9', tx: unbound }).catch((e: unknown) => e);
+
+      expect(hasErrorCode(failure, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+    });
+
     it.each(['v8', 'v9'] as const)('lets a %s wallet rejection reach the caller unchanged', async (version) => {
       const rejection = Object.assign(new Error('User rejected'), { code: 'Rejected' });
       const balanceUnsealedTransaction = vi.fn().mockRejectedValue(rejection);
