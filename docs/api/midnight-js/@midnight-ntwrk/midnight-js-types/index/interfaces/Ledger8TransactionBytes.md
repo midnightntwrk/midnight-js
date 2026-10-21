@@ -1,0 +1,36 @@
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../../README.md) / [index](../README.md) / Ledger8TransactionBytes
+
+# Interface: Ledger8TransactionBytes
+
+The v8 variant of every transaction payload passed to a provider method
+(`proveTx`, `balanceTx`, `submitTx`), in both directions.
+
+A v8-era transaction crosses as serialized, tag-prefixed bytes rather than as
+a live ledger object, and `version` says which runtime produced them.
+
+NOT VALIDATED: any `Uint8Array` satisfies `txBytes`, and nothing here checks
+the tag prefix. The variant is identical for all three methods, so it says nothing
+about which pipeline stage the transaction has reached — on this path, stage
+is the caller's responsibility.
+
+## See
+
+[VersionTaggedPayloads](../../documents/VersionTaggedPayloads.md) for why a live object cannot cross.
+
+## Properties
+
+### txBytes
+
+> `readonly` **txBytes**: `Uint8Array`
+
+Serialized, tag-prefixed byte form. Unvalidated — see the note above.
+
+***
+
+### version
+
+> `readonly` **version**: `"v8"`

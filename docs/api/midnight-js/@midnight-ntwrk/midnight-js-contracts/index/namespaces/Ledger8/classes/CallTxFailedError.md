@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -19,7 +19,7 @@ inherited [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#cod
 
 ## See
 
-[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why this arm registers no code, and for the
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why this retained-era class registers no code, and for the
 local-versus-chain consequence the message states per status.
 
 ## Extends
@@ -100,7 +100,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either arm on this class.
+See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 

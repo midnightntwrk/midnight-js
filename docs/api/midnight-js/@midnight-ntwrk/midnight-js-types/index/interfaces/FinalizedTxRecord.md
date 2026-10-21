@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ differ in exactly two places — the `version` discriminant and the type of
 ## Extended by
 
 - [`FinalizedTxData`](FinalizedTxData.md)
-- [`FinalizedTxDataV8`](FinalizedTxDataV8.md)
+- [`Ledger8FinalizedTxData`](Ledger8FinalizedTxData.md)
 
 ## Properties
 

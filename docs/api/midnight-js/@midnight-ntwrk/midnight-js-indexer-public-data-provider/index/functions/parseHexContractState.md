@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -20,11 +20,10 @@ whole rule, and it follows from how the two signals are obtained:
   proves nothing about the network, but it is the one thing the deserializer
   also reads: a mismatched envelope is rejected on the header tag before the
   body, so it cannot produce a wrong answer, only a failure.
-- The reported version dates the *read*, not the bytes. The indexer serves
-  the latest contract action at or before the requested block, so a state can
-  legitimately be older than the block that dates it — after a fork, every
-  contract dormant across it is exactly that. Treating that ordinary case as
-  a contradiction would send callers hunting a fault that is not there.
+- The reported version dates the *read*, not the bytes, so a state can
+  legitimately be older than the block that dates it — a record of a
+  pre-fork contract action keeps its pre-fork envelope when it is read under
+  a post-fork block.
 
 So an older envelope under a newer block is normal and decided on the
 envelope alone. The reverse — bytes written by a runtime the dating block

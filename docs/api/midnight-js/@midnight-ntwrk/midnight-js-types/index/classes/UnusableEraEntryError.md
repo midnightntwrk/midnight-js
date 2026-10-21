@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -27,13 +27,13 @@ Catch it via its stable `code`, using `hasErrorCode` from
 
 ### Constructor
 
-> **new UnusableEraEntryError**(`seam`, `era`, `expected`, `received`): `UnusableEraEntryError`
+> **new UnusableEraEntryError**(`method`, `era`, `expected`, `received`): `UnusableEraEntryError`
 
 #### Parameters
 
-##### seam
+##### method
 
-[`ProviderSeam`](../type-aliases/ProviderSeam.md)
+[`TransactionMethod`](../type-aliases/TransactionMethod.md)
 
 The provider method the rejected entry would have served.
 
@@ -103,6 +103,14 @@ The shape the factory needs for that entry.
 
 ***
 
+### method
+
+> `readonly` **method**: [`TransactionMethod`](../type-aliases/TransactionMethod.md)
+
+The provider method the rejected entry would have served.
+
+***
+
 ### received
 
 > `readonly` **received**: `string`
@@ -110,11 +118,3 @@ The shape the factory needs for that entry.
 What was passed instead, for the message only: for example
                 `'null'`, `'a class'`, `'an instance of Map'`, or
                 `"an object without callable 'prove'"`.
-
-***
-
-### seam
-
-> `readonly` **seam**: [`ProviderSeam`](../type-aliases/ProviderSeam.md)
-
-The provider method the rejected entry would have served.

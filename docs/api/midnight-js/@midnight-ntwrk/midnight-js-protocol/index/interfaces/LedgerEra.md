@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -24,7 +24,7 @@ nothing left to await.
 
 ## See
 
-[EraSeam](../../documents/EraSeam.md)
+[EraBoundary](../../documents/EraBoundary.md)
 
 ## Properties
 
@@ -44,7 +44,7 @@ Composes an UNPROVEN call transaction and serializes it.
 
 The returned bytes are what `Transaction.serialize()` produces before
 `.prove()` is ever called; proving needs a proving provider and a running
-proof server, neither of which this seam has.
+proof server, neither of which this method has.
 
 The retained pre-fork era composes exactly ONE call and refuses a longer
 list. A Zswap offer is NOT refused on either era.
@@ -81,7 +81,7 @@ which step refused it.
 #### See
 
  - [ComposeRefusalOrder](../../documents/ComposeRefusalOrder.md)
- - [EraSeam](../../documents/EraSeam.md)
+ - [EraBoundary](../../documents/EraBoundary.md)
 
 ***
 

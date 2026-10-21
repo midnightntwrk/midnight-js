@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -112,6 +112,26 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### malformedProtocolVersion()
+
+> `static` **malformedProtocolVersion**(`protocolVersion`, `cause`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### cause
+
+`unknown`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### malformedStateEncoding()
 
 > `static` **malformedStateEncoding**(): `IndexerDataError`
@@ -202,6 +222,26 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### mixedEraPublicStates()
+
+> `static` **mixedEraPublicStates**(`stateVersion`, `parametersVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### stateVersion
+
+`"v8"` \| `"v9"`
+
+##### parametersVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### undatedState()
 
 > `static` **undatedState**(): `IndexerDataError`
@@ -261,29 +301,6 @@ Construct via the static factory methods to ensure the message and
 ##### value
 
 `string`
-
-#### Returns
-
-`IndexerDataError`
-
-***
-
-### unresolvableEra()
-
-> `static` **unresolvableEra**(`protocolVersion`, `cause`): `IndexerDataError`
-
-#### Parameters
-
-##### protocolVersion
-
-`number`
-
-##### cause
-
-`unknown`
-
-The protocol-layer failure, preserved so the resolution path
-             that refused the integer is still readable.
 
 #### Returns
 

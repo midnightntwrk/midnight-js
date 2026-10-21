@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -30,15 +30,15 @@
 - [LedgerParametersUnservedError](classes/LedgerParametersUnservedError.md)
 - [MixedEraScopeError](classes/MixedEraScopeError.md)
 - [PrivateStateNotFoundError](classes/PrivateStateNotFoundError.md)
+- [ProviderFailedError](classes/ProviderFailedError.md)
 - [RemoveVerifierKeyTxFailedError](classes/RemoveVerifierKeyTxFailedError.md)
 - [ReplaceMaintenanceAuthorityTxFailedError](classes/ReplaceMaintenanceAuthorityTxFailedError.md)
-- [RetainedArtifactOnCurrentEraStateError](classes/RetainedArtifactOnCurrentEraStateError.md)
+- [ScopedTransactionEraUnsupportedError](classes/ScopedTransactionEraUnsupportedError.md)
 - [ScopedTransactionIdentityMismatchError](classes/ScopedTransactionIdentityMismatchError.md)
-- [ScopedTxEraUnsupportedError](classes/ScopedTxEraUnsupportedError.md)
 - [StaleHeadError](classes/StaleHeadError.md)
 - [SubmitRejectionUndiagnosedError](classes/SubmitRejectionUndiagnosedError.md)
 - [TxFailedError](classes/TxFailedError.md)
-- [UnrecognisedResultEraError](classes/UnrecognisedResultEraError.md)
+- [UnknownResultEraError](classes/UnknownResultEraError.md)
 - [VerifierKeyMismatchError](classes/VerifierKeyMismatchError.md)
 - [ZswapOutputResolutionError](classes/ZswapOutputResolutionError.md)
 
@@ -54,7 +54,6 @@
 - [ContractConstructorOptionsProviderDataDependencies](interfaces/ContractConstructorOptionsProviderDataDependencies.md)
 - [ContractConstructorResult](interfaces/ContractConstructorResult.md)
 - [ContractMaintenanceTxInterface](interfaces/ContractMaintenanceTxInterface.md)
-- [ContractStates](interfaces/ContractStates.md)
 - [ContractTypeMismatch](interfaces/ContractTypeMismatch.md)
 - [CrossContractConfig](interfaces/CrossContractConfig.md)
 - [DeployedContract](interfaces/DeployedContract.md)
@@ -64,13 +63,13 @@
 - [FinalizedDeployTxData](interfaces/FinalizedDeployTxData.md)
 - [FinalizedDeployTxDataBase](interfaces/FinalizedDeployTxDataBase.md)
 - [FinalizedDeployTxPublicData](interfaces/FinalizedDeployTxPublicData.md)
+- [FinalizedMaintenanceTxData](interfaces/FinalizedMaintenanceTxData.md)
 - [FindDeployedContractOptionsBase](interfaces/FindDeployedContractOptionsBase.md)
 - [FindDeployedContractOptionsExistingPrivateState](interfaces/FindDeployedContractOptionsExistingPrivateState.md)
 - [FindDeployedContractOptionsStorePrivateState](interfaces/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](interfaces/FoundContract.md)
 - [FoundDeployTxData](interfaces/FoundDeployTxData.md)
-- [FoundDeployTxPublicDataV8](interfaces/FoundDeployTxPublicDataV8.md)
-- [PublicContractStates](interfaces/PublicContractStates.md)
+- [Ledger8FoundDeployTxPublicData](interfaces/Ledger8FoundDeployTxPublicData.md)
 - [ScopedTransactionOptions](interfaces/ScopedTransactionOptions.md)
 - [SubmittedCallTx](interfaces/SubmittedCallTx.md)
 - [SubmittedOperation](interfaces/SubmittedOperation.md)
@@ -88,7 +87,10 @@
 ## Type Aliases
 
 - [AnyEraContractStateReadSurface](type-aliases/AnyEraContractStateReadSurface.md)
+- [AnyEraDeployedContract](type-aliases/AnyEraDeployedContract.md)
 - [AnyEraFinalizedCallTxData](type-aliases/AnyEraFinalizedCallTxData.md)
+- [AnyEraFoundContract](type-aliases/AnyEraFoundContract.md)
+- [AnyEraMaintenanceTxData](type-aliases/AnyEraMaintenanceTxData.md)
 - [AnyEraSubmittedCallTx](type-aliases/AnyEraSubmittedCallTx.md)
 - [CallOptions](type-aliases/CallOptions.md)
 - [CallOptionsWithArguments](type-aliases/CallOptionsWithArguments.md)
@@ -105,7 +107,7 @@
 - [ContractConstructorOptionsWithPrivateState](type-aliases/ContractConstructorOptionsWithPrivateState.md)
 - [ContractConstructorOptionsWithProviderDataDependencies](type-aliases/ContractConstructorOptionsWithProviderDataDependencies.md)
 - [ContractProviders](type-aliases/ContractProviders.md)
-- [CurrentPipelineEra](type-aliases/CurrentPipelineEra.md)
+- [ContractStates](type-aliases/ContractStates.md)
 - [DeployContractOptions](type-aliases/DeployContractOptions.md)
 - [DeployContractOptionsBase](type-aliases/DeployContractOptionsBase.md)
 - [DeployContractOptionsShared](type-aliases/DeployContractOptionsShared.md)
@@ -115,11 +117,8 @@
 - [DeployTxOptionsWithPrivateState](type-aliases/DeployTxOptionsWithPrivateState.md)
 - [DeployTxOptionsWithPrivateStateId](type-aliases/DeployTxOptionsWithPrivateStateId.md)
 - [EraArtifactMismatchReason](type-aliases/EraArtifactMismatchReason.md)
-- [EraSeam](type-aliases/EraSeam.md)
 - [FindDeployedContractOptions](type-aliases/FindDeployedContractOptions.md)
 - [FoundDeployTxPublicData](type-aliases/FoundDeployTxPublicData.md)
-- [PipelineEra](type-aliases/PipelineEra.md)
-- [RetainedPipelineEra](type-aliases/RetainedPipelineEra.md)
 - [StaleHeadOperationKind](type-aliases/StaleHeadOperationKind.md)
 - [SubmitCallTxProviders](type-aliases/SubmitCallTxProviders.md)
 - [SubmitRejectionUndiagnosedCause](type-aliases/SubmitRejectionUndiagnosedCause.md)
@@ -131,10 +130,8 @@
 
 ## Variables
 
-- [CURRENT\_PIPELINE\_ERA](variables/CURRENT_PIPELINE_ERA.md)
 - [DISPATCH\_BREADCRUMB\_MESSAGE](variables/DISPATCH_BREADCRUMB_MESSAGE.md)
 - [isTransactionContext](variables/isTransactionContext.md)
-- [RETAINED\_PIPELINE\_ERA](variables/RETAINED_PIPELINE_ERA.md)
 - [withContractScopedTransaction](variables/withContractScopedTransaction.md)
 
 ## Functions

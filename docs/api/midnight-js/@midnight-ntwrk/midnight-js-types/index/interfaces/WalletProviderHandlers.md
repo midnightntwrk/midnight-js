@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ answers to one question.
 
 ### currentEra
 
-> `readonly` **currentEra**: [`CurrentEraBalancer`](../type-aliases/CurrentEraBalancer.md)
+> `readonly` **currentEra**: [`Ledger9Balancer`](../type-aliases/Ledger9Balancer.md)
 
 Required: every wallet balances the current era.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ComposeOption
 
-> **ComposeOption** = `"calls"` \| `"contractStateBytes"` \| `"guaranteedZswapOfferBytes"` \| `"ledgerParametersBytes"` \| `"networkId"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
+> **ComposeOption** = `"calls"` \| `"contractStateBytes"` \| `"guaranteedZswapOfferBytes"` \| `"ledgerParametersBytes"` \| `"networkId"` \| `"newSigningKey"` \| `"signingKey"` \| `"ttl"` \| `"verifierKeys"` \| `"zswapOffer"`
 
 Which option handed to a composition leg was unusable:
 - `'contractStateBytes'` — the state could not be bridged into the target
@@ -32,6 +32,11 @@ Which option handed to a composition leg was unusable:
   contract's keys itself and so always needs the map, while the current era
   accepts its omission for a state that already carries its keys and refuses
   it only for a state still declaring a blank-keyed entry point.
+- `'signingKey'` — a signing key is not the 32 bytes of hex the era's runtime
+  reads: the key a constructor builds the maintenance authority from, or the
+  key a maintenance update is signed with.
+- `'newSigningKey'` — the key a maintenance update would make the new
+  authority is not the 32 bytes of hex the era's runtime reads.
 - `'zswapOffer'` — the offer bytes a call's offer factory returned were
   rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
   remediation: pass the bytes that era's own offer serialization produced.

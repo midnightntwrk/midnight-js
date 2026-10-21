@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,12 +6,12 @@
 
 # Variable: isLedger8Result
 
-> `const` **isLedger8Result**: \<`T`\>(`result`) => `result is NarrowedToRetained<T>`
+> `const` **isLedger8Result**: \<`T`\>(`result`) => `result is NarrowedToLedger8<T>`
 
 Whether a result came from the RETAINED pipeline, narrowing it to that era's
-arm.
+variant.
 
-Reads `era`, which every result carries and which each arm declares as its
+Reads `era`, which every result carries and which each variant declares as its
 own literal -- so this narrows a union of any two result shapes that carry
 the tag, not only the published unions above.
 
@@ -38,6 +38,6 @@ Any result carrying an era tag.
 
 ## Returns
 
-`result is NarrowedToRetained<T>`
+`result is NarrowedToLedger8<T>`
 
 `true` when the retained pipeline produced it.

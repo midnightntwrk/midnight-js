@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -92,7 +92,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 arm on this class.
+See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 variant on this class.
 
 ##### Returns
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -9,7 +9,7 @@
 An error indicating that a provider, or the read surface, answered in a
 different ledger era from the one the flow submitted.
 
-The provider seams and the read surface both carry two eras, but any ONE
+The transaction methods and the read methods both carry two eras, but any ONE
 flow through this package tags every outgoing payload with a single era and
 cannot submit or report anything else. An answer in the other era therefore
 means the provider re-tagged or converted the payload it was handed, or that
@@ -19,7 +19,7 @@ the flow is pointed at a network whose records belong to the other era.
 accept back, and so which direction the violation went. For the current
 era's flows that is the era they submit, which is always `'v9'` — the
 default, so call sites that predate the retained-era pipelines read exactly
-as they did before it existed. The retained era's finalizing arm passes the
+as they did before it existed. The retained era's finalizing path passes the
 network HEAD instead: it composes retained-era transactions but is recorded
 by whichever ledger the head is on, so the head, not the pipeline, is what
 the record has to agree with.
@@ -37,13 +37,13 @@ UntaggedPayloadError instead.
 
 ### Constructor
 
-> **new EraInvariantViolationError**(`seam`, `circuitId?`, `expected?`, `received?`): `EraInvariantViolationError`
+> **new EraInvariantViolationError**(`method`, `circuitId?`, `expected?`, `received?`, `contractAddress?`, `txId?`): `EraInvariantViolationError`
 
 #### Parameters
 
-##### seam
+##### method
 
-[`Seam`](../../types/type-aliases/Seam.md)
+[`ProviderMethod`](../../types/type-aliases/ProviderMethod.md)
 
 The provider method that returned the payload.
 
@@ -61,7 +61,7 @@ The circuit, or circuits, whose flow this happened on,
 
 The only era this flow can accept back. Defaults to
                 `'v9'`. See the class comment for which fact this names
-                on each arm.
+                on each path.
 
 ##### received?
 
@@ -71,6 +71,21 @@ The era the payload actually carried, when it carried a
                 readable one. Named in the message: a refusal that states
                 only what it wanted leaves the reader to find out what it
                 got.
+
+##### contractAddress?
+
+`string`
+
+The contract the payload was read for, when the
+                       flow reads one contract's records.
+
+##### txId?
+
+`string`
+
+The transaction the payload belongs to, when it is already on
+            chain. A caller needs it to reconcile a transaction it cannot
+            take back.
 
 #### Returns
 
@@ -108,9 +123,21 @@ The era the payload actually carried, when it carried a
 
 ***
 
+### contractAddress?
+
+> `readonly` `optional` **contractAddress?**: `string`
+
+***
+
 ### expected
 
 > `readonly` **expected**: `"v8"` \| `"v9"`
+
+***
+
+### method
+
+> `readonly` **method**: [`ProviderMethod`](../../types/type-aliases/ProviderMethod.md)
 
 ***
 
@@ -120,6 +147,6 @@ The era the payload actually carried, when it carried a
 
 ***
 
-### seam
+### txId?
 
-> `readonly` **seam**: [`Seam`](../../types/type-aliases/Seam.md)
+> `readonly` `optional` **txId?**: `string`

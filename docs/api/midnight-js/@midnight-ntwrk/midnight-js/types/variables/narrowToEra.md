@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,12 +6,12 @@
 
 # Variable: narrowToEra
 
-> `const` **narrowToEra**: \<`T`, `H`\>(`payload`, `seam`, `retainedEras`) => [`EraRequest`](../type-aliases/EraRequest.md)\<`T`, `H`\>
+> `const` **narrowToEra**: \<`T`, `H`\>(`payload`, `method`, `retainedEras`) => [`EraRequest`](../type-aliases/EraRequest.md)\<`T`, `H`\>
 
 Narrows a version-tagged payload onto the era that serves it, refusing an era
 no handler was registered for.
 
-This is `unwrapV9` generalised to a provider that serves more than one era,
+This is `unwrapLedger9` generalised to a provider that serves more than one era,
 and it reports the same two errors for the same two reasons — so widening a
 provider to a second era does not change what a caller catches when it sends
 an era that provider still does not serve.
@@ -30,19 +30,19 @@ an era that provider still does not serve.
 
 ### payload
 
-[`VersionedTx`](../type-aliases/VersionedTx.md)\<`T`\>
+[`VersionedTransaction`](../type-aliases/VersionedTransaction.md)\<`T`\>
 
-The version-tagged payload that arrived at the seam.
+The version-tagged payload that arrived at the method.
 
-### seam
+### method
 
-[`ProviderSeam`](../type-aliases/ProviderSeam.md)
+[`TransactionMethod`](../type-aliases/TransactionMethod.md)
 
 The provider method being implemented, used in error messages.
 
 ### retainedEras
 
-[`RetainedEraHandlers`](../type-aliases/RetainedEraHandlers.md)\<`H`\> \| `undefined`
+[`RetainedEraEntries`](../type-aliases/RetainedEraEntries.md)\<`H`\> \| `undefined`
 
 The retained handlers this provider was built with.
 
@@ -54,7 +54,7 @@ The era to run, the payload it takes, and for a retained era its handler.
 
 ## Throws
 
-V8PayloadUnsupportedError if the payload carries a retained era for
+Ledger8PayloadUnsupportedError if the payload carries a retained era for
         which no handler was registered.
 
 ## Throws

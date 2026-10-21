@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ was moving can still have been recorded.
 
 The provider's own rejection travels on `cause`, already sanitized of
 anything that could carry transaction or witness material — see
-[Ledger8SeamFailedError](../namespaces/Ledger8/classes/SeamFailedError.md), which is the form it arrives in.
+[ProviderFailedError](ProviderFailedError.md), which is the form it arrives in.
 
 ## See
 
@@ -45,7 +45,7 @@ Which operation was rejected. Flattened onto the error
 
 ##### freshEra
 
-`"v8"` \| `"v9"`
+`"v9"` \| `"v8"`
 
 The era a fresh head read reports now. Retained on the
                 error because it is what a caller re-runs against.
@@ -104,7 +104,7 @@ The contract to reconcile, which is the first remediation step's subject.
 
 ### freshEra
 
-> `readonly` **freshEra**: `"v8"` \| `"v9"`
+> `readonly` **freshEra**: `"v9"` \| `"v8"`
 
 The era a fresh head read reports now. Retained on the
                 error because it is what a caller re-runs against.
@@ -115,13 +115,13 @@ The era a fresh head read reports now. Retained on the
 
 > `readonly` **kind**: [`StaleHeadOperationKind`](../type-aliases/StaleHeadOperationKind.md)
 
-Whether the refused operation was a call or a deploy — the discriminant a
-caller branches on, and which remediation the message carries.
+Whether the refused operation was a call, a deploy or a maintenance update —
+the discriminant a caller branches on, and which remediation the message carries.
 
 ***
 
 ### startEra
 
-> `readonly` **startEra**: `"v8"` \| `"v9"`
+> `readonly` **startEra**: `"v9"` \| `"v8"`
 
 The era the operation resolved when it started.
