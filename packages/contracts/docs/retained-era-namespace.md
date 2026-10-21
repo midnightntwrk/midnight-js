@@ -78,7 +78,8 @@ A name belongs in the namespace when BOTH hold:
 
 1. it disappears when the retained era does, and
 2. it is part of the retained era's own API family -- its contract and result
-   types, its interface factory, the refusals its pipeline raises.
+   types, the refusals its pipeline raises. A function that takes both eras'
+   contracts, such as `createCircuitCallTxInterface`, stays flat.
 
 The second clause is what the namespace's name commits to: it is `Ledger8`, the
 ERA, not the fork window. The error classes pass both clauses and are inside: a

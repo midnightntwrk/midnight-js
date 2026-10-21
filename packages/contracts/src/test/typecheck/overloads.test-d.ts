@@ -1360,7 +1360,7 @@ describe('the maintenance functions select their era by the artifact, and answer
 
 describe('createCircuitCallTxInterface selects its era by the artifact, and answers in that era', () => {
   it('builds the retained-era interface for a retained-era artifact', () => {
-    const callTx = createCircuitCallTxInterface(providers016, contract016, contractAddress);
+    const callTx = createCircuitCallTxInterface(providers016, contract016, contractAddress, undefined);
 
     expectTypeOf(callTx).toEqualTypeOf<Ledger8CircuitCallTxInterface<Counter016Contract>>();
     expectTypeOf(callTx.increment).returns.resolves.toEqualTypeOf<
@@ -1376,6 +1376,11 @@ describe('createCircuitCallTxInterface selects its era by the artifact, and answ
 
   it('refuses a neither-era contract', () => {
     // @ts-expect-error - neither a retained-era nor a current-era contract
-    createCircuitCallTxInterface(providers016, neitherShapeContract, contractAddress);
+    createCircuitCallTxInterface(providers016, neitherShapeContract, contractAddress, undefined);
+  });
+
+  it('takes the same argument count in both eras, so a short call is not reported in the other era', () => {
+    // @ts-expect-error - the private state id is required, `undefined` included, as in the current era
+    createCircuitCallTxInterface(providers016, contract016, contractAddress);
   });
 });
