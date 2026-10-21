@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ rehashed.
 NOTHING RAISES THIS ANY MORE: the walk it served
 (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
 hand-maintained execution layer, and the condition it named cannot reach the
-seam that replaced it. Execution now takes an already-encoded
+code that replaced it. Execution now takes an already-encoded
 `EncodedStateValue`, and a tree's rehash state does not survive that
 encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
 decoding either yields the same root. Being un-rehashed is a property of a

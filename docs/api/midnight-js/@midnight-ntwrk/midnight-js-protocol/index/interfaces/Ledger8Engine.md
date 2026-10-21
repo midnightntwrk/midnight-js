@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,9 +18,48 @@ caller.
 
 ## See
 
-[EraSeam](../../documents/EraSeam.md)
+[EraBoundary](../../documents/EraBoundary.md)
 
 ## Methods
+
+### composeMaintenanceTx()
+
+> **composeMaintenanceTx**(`request`): `Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
+
+Composes an UNPROVEN v8 transaction carrying one maintenance update --
+insert a verifier key, remove one, or replace the maintenance authority --
+built and signed by compact-js's ledger 8 `ContractExecutable`.
+
+ASYNCHRONOUS for the same reason [Ledger8Engine.executeCircuit](#executecircuit) is.
+Reads the FULL state off the bytes the chain holds, and refuses a signing
+key other than the committee's first member before anything is signed.
+
+#### Parameters
+
+##### request
+
+`Ledger8MaintenanceRequest`
+
+#### Returns
+
+`Promise`\<`Uint8Array`\<`ArrayBufferLike`\>\>
+
+#### Throws
+
+ComposeOptionError Naming `'networkId'`, `'ttl'`, `'signingKey'`,
+  `'newSigningKey'` or `'contractStateBytes'` when that option is unusable.
+
+#### Throws
+
+MaintenanceAuthorityMismatchError When the signing key is not the
+  committee's first member.
+
+#### Throws
+
+ComposeFailedError At stage `'maintenance-update'` when compact-js
+  refuses to build or sign the update.
+
+***
 
 ### executeCircuit()
 
@@ -29,7 +68,7 @@ caller.
 Runs one circuit against the decoded contract state the chain serves.
 
 Takes the state and the balances beside it as ONE value -- see
-[RunRetainedCircuitOptions.contractState](RunRetainedCircuitOptions.md#contractstate) -- because the balances a
+[Ledger8CircuitOptions.contractState](Ledger8CircuitOptions.md#contractstate) -- because the balances a
 circuit reads do not live inside the primary state, and two separate
 options could describe two different blocks.
 
@@ -37,7 +76,7 @@ options could describe two different blocks.
 
 ##### C
 
-`C` *extends* [`RetainedContract`](RetainedContract.md)
+`C` *extends* [`Ledger8EngineContract`](Ledger8EngineContract.md)
 
 ##### PS
 
@@ -47,7 +86,7 @@ options could describe two different blocks.
 
 ##### options
 
-[`RunRetainedCircuitOptions`](RunRetainedCircuitOptions.md)\<`C`, `PS`\>
+[`Ledger8CircuitOptions`](Ledger8CircuitOptions.md)\<`C`, `PS`\>
 
 #### Returns
 
@@ -80,7 +119,7 @@ hand-written constructor left every slot blank.
 
 ##### C
 
-`C` *extends* [`RetainedContract`](RetainedContract.md)
+`C` *extends* [`Ledger8EngineContract`](Ledger8EngineContract.md)
 
 ##### PS
 
@@ -90,7 +129,7 @@ hand-written constructor left every slot blank.
 
 ##### options
 
-[`RunRetainedConstructorOptions`](RunRetainedConstructorOptions.md)\<`C`, `PS`\>
+[`Ledger8ConstructorOptions`](Ledger8ConstructorOptions.md)\<`C`, `PS`\>
 
 #### Returns
 
@@ -108,15 +147,15 @@ ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
 
 ***
 
-### reexpressOperationsForCurrentEra()
+### reexpressOperationsForLedger9()
 
-> **reexpressOperationsForCurrentEra**(`entryPoints`): `Uint8Array`
+> **reexpressOperationsForLedger9**(`entryPoints`): `Uint8Array`
 
-Re-expresses a retained-era contract's entry points as a current-era contract state, so a
-keep-state call has an operation registry the current composer can read.
+Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state, so a
+keep-state call has an operation registry the ledger 9 composer can read.
 
 Fork-crossing work, which is why it sits here rather than on either era facade: the input is
-what the retained decoder read off the chain, and the output is for the current ledger.
+what the ledger 8 decoder read off the chain, and the output is for ledger 9.
 
 #### Parameters
 

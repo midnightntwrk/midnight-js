@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,11 +10,11 @@ An error indicating that a call against a contract produced by the RETAINED
 Compact toolchain was handed a contract-scoped transaction to join.
 
 A scope merges live CURRENT-era transactions, and a retained-era call crosses
-the provider seams as its own transaction, so there is nothing to merge it
+the provider methods as its own transaction, so there is nothing to merge it
 into at either head.
 
 Raised rather than ignored, and that is the change it makes: the retained-era
-arm previously accepted a scope context and ran outside it.
+path previously accepted a scope context and ran outside it.
 
 ## See
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -33,7 +33,7 @@ shared registry object at runtime.
 table whose mutation would reroute contract-state bytes to the wrong era's
 codec, and it should not be the one left writable.
 
-Both era arms handed out by `loadLedgerEra`
+Both era objects handed out by `loadLedgerEra`
 (`packages/protocol/src/lib/era/load-era.ts`) are frozen for the matching
 reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
@@ -225,4 +225,4 @@ would cost.
   selected, and how the failure classes divide the work between them.
 - [ModuleGraphAndLazyLoading](ModuleGraphAndLazyLoading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
   and which modules are build entries.
-- [EraSeam](EraSeam.md) — why the era arms are memoised per era and what crosses the seam.
+- [EraBoundary](EraBoundary.md) — why the era objects are memoised per era and what crosses the boundary.

@@ -1,0 +1,52 @@
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../../../README.md) / [contracts](../../../README.md) / [Ledger8](../README.md) / DeployOnLedger9Error
+
+# Class: DeployOnLedger9Error
+
+An error indicating that a contract produced by the retained Compact toolchain was submitted for
+DEPLOYMENT to a network head that has already crossed the fork.
+
+The retained era is supported for calls against contracts already on chain, which is what keeps
+pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
+rather than written to the chain in an era the network has left.
+
+## Extends
+
+- [`MidnightJsError`](../../../../classes/MidnightJsError.md)
+
+## Constructors
+
+### Constructor
+
+> **new DeployOnLedger9Error**(): `Ledger8DeployOnLedger9Error`
+
+#### Returns
+
+`Ledger8DeployOnLedger9Error`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`constructor`](../../../../classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`category`](../../../../classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9"`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`code`](../../../../classes/MidnightJsError.md#code)

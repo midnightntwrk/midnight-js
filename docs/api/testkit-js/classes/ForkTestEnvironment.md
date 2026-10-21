@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.5**](../README.md)
 
 ***
 
@@ -86,7 +86,7 @@ Writes each stack container's logs into `directory`, one file per service, and a
 paths written.
 
 For the failures the framework's own errors cannot explain. A submission the NODE rejects
-surfaces as `SubmissionError: Transaction submission error` with no reason on it, and the seam
+surfaces as `SubmissionError: Transaction submission error` with no reason on it, and the error
 that wraps it redacts the provider's message deliberately -- so the only account of WHY the
 chain refused is in the node's log.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -20,9 +20,27 @@ Re-exports [AnyEraContractStateReadSurface](../../contracts/type-aliases/AnyEraC
 
 ***
 
+### AnyEraDeployedContract
+
+Re-exports [AnyEraDeployedContract](../../contracts/type-aliases/AnyEraDeployedContract.md)
+
+***
+
 ### AnyEraFinalizedCallTxData
 
 Re-exports [AnyEraFinalizedCallTxData](../../contracts/type-aliases/AnyEraFinalizedCallTxData.md)
+
+***
+
+### AnyEraFoundContract
+
+Re-exports [AnyEraFoundContract](../../contracts/type-aliases/AnyEraFoundContract.md)
+
+***
+
+### AnyEraMaintenanceTxData
+
+Re-exports [AnyEraMaintenanceTxData](../../contracts/type-aliases/AnyEraMaintenanceTxData.md)
 
 ***
 
@@ -202,7 +220,7 @@ Re-exports [ContractProviders](../../contracts/type-aliases/ContractProviders.md
 
 ### ContractStates
 
-Re-exports [ContractStates](../../contracts/interfaces/ContractStates.md)
+Re-exports [ContractStates](../../contracts/type-aliases/ContractStates.md)
 
 ***
 
@@ -232,19 +250,19 @@ Re-exports [createCircuitCallTxInterface](../../contracts/variables/createCircui
 
 ### createCircuitMaintenanceTxInterface
 
-Re-exports [createCircuitMaintenanceTxInterface](../../contracts/variables/createCircuitMaintenanceTxInterface.md)
+Re-exports [createCircuitMaintenanceTxInterface](../../contracts/functions/createCircuitMaintenanceTxInterface.md)
 
 ***
 
 ### createCircuitMaintenanceTxInterfaces
 
-Re-exports [createCircuitMaintenanceTxInterfaces](../../contracts/variables/createCircuitMaintenanceTxInterfaces.md)
+Re-exports [createCircuitMaintenanceTxInterfaces](../../contracts/functions/createCircuitMaintenanceTxInterfaces.md)
 
 ***
 
 ### createContractMaintenanceTxInterface
 
-Re-exports [createContractMaintenanceTxInterface](../../contracts/variables/createContractMaintenanceTxInterface.md)
+Re-exports [createContractMaintenanceTxInterface](../../contracts/functions/createContractMaintenanceTxInterface.md)
 
 ***
 
@@ -275,18 +293,6 @@ Re-exports [createUnprovenDeployTxFromVerifierKeys](../../contracts/functions/cr
 ### CrossContractConfig
 
 Re-exports [CrossContractConfig](../../contracts/interfaces/CrossContractConfig.md)
-
-***
-
-### CURRENT\_PIPELINE\_ERA
-
-Re-exports [CURRENT_PIPELINE_ERA](../../contracts/variables/CURRENT_PIPELINE_ERA.md)
-
-***
-
-### CurrentPipelineEra
-
-Re-exports [CurrentPipelineEra](../../contracts/type-aliases/CurrentPipelineEra.md)
 
 ***
 
@@ -386,12 +392,6 @@ Re-exports [EraInvariantViolationError](../../contracts/classes/EraInvariantViol
 
 ***
 
-### EraSeam
-
-Re-exports [EraSeam](../../contracts/type-aliases/EraSeam.md)
-
-***
-
 ### FinalizedCallTxData
 
 Re-exports [FinalizedCallTxData](../../contracts/interfaces/FinalizedCallTxData.md)
@@ -419,6 +419,12 @@ Re-exports [FinalizedDeployTxDataBase](../../contracts/interfaces/FinalizedDeplo
 ### FinalizedDeployTxPublicData
 
 Re-exports [FinalizedDeployTxPublicData](../../contracts/interfaces/FinalizedDeployTxPublicData.md)
+
+***
+
+### FinalizedMaintenanceTxData
+
+Re-exports [FinalizedMaintenanceTxData](../../contracts/interfaces/FinalizedMaintenanceTxData.md)
 
 ***
 
@@ -467,12 +473,6 @@ Re-exports [FoundDeployTxData](../../contracts/interfaces/FoundDeployTxData.md)
 ### FoundDeployTxPublicData
 
 Re-exports [FoundDeployTxPublicData](../../contracts/type-aliases/FoundDeployTxPublicData.md)
-
-***
-
-### FoundDeployTxPublicDataV8
-
-Re-exports [FoundDeployTxPublicDataV8](../../contracts/interfaces/FoundDeployTxPublicDataV8.md)
 
 ***
 
@@ -560,6 +560,12 @@ Re-exports [Ledger8](../../contracts/namespaces/Ledger8/README.md)
 
 ***
 
+### Ledger8FoundDeployTxPublicData
+
+Re-exports [Ledger8FoundDeployTxPublicData](../../contracts/interfaces/Ledger8FoundDeployTxPublicData.md)
+
+***
+
 ### LedgerParametersUnservedError
 
 Re-exports [LedgerParametersUnservedError](../../contracts/classes/LedgerParametersUnservedError.md)
@@ -572,21 +578,15 @@ Re-exports [MixedEraScopeError](../../contracts/classes/MixedEraScopeError.md)
 
 ***
 
-### PipelineEra
-
-Re-exports [PipelineEra](../../contracts/type-aliases/PipelineEra.md)
-
-***
-
 ### PrivateStateNotFoundError
 
 Re-exports [PrivateStateNotFoundError](../../contracts/classes/PrivateStateNotFoundError.md)
 
 ***
 
-### PublicContractStates
+### ProviderFailedError
 
-Re-exports [PublicContractStates](../../contracts/interfaces/PublicContractStates.md)
+Re-exports [ProviderFailedError](../../contracts/classes/ProviderFailedError.md)
 
 ***
 
@@ -602,21 +602,9 @@ Re-exports [ReplaceMaintenanceAuthorityTxFailedError](../../contracts/classes/Re
 
 ***
 
-### RETAINED\_PIPELINE\_ERA
+### ScopedTransactionEraUnsupportedError
 
-Re-exports [RETAINED_PIPELINE_ERA](../../contracts/variables/RETAINED_PIPELINE_ERA.md)
-
-***
-
-### RetainedArtifactOnCurrentEraStateError
-
-Re-exports [RetainedArtifactOnCurrentEraStateError](../../contracts/classes/RetainedArtifactOnCurrentEraStateError.md)
-
-***
-
-### RetainedPipelineEra
-
-Re-exports [RetainedPipelineEra](../../contracts/type-aliases/RetainedPipelineEra.md)
+Re-exports [ScopedTransactionEraUnsupportedError](../../contracts/classes/ScopedTransactionEraUnsupportedError.md)
 
 ***
 
@@ -629,12 +617,6 @@ Re-exports [ScopedTransactionIdentityMismatchError](../../contracts/classes/Scop
 ### ScopedTransactionOptions
 
 Re-exports [ScopedTransactionOptions](../../contracts/interfaces/ScopedTransactionOptions.md)
-
-***
-
-### ScopedTxEraUnsupportedError
-
-Re-exports [ScopedTxEraUnsupportedError](../../contracts/classes/ScopedTxEraUnsupportedError.md)
 
 ***
 
@@ -676,7 +658,7 @@ Re-exports [submitDeployTx](../../contracts/functions/submitDeployTx.md)
 
 ### submitInsertVerifierKeyTx
 
-Re-exports [submitInsertVerifierKeyTx](../../contracts/variables/submitInsertVerifierKeyTx.md)
+Re-exports [submitInsertVerifierKeyTx](../../contracts/functions/submitInsertVerifierKeyTx.md)
 
 ***
 
@@ -694,13 +676,13 @@ Re-exports [SubmitRejectionUndiagnosedError](../../contracts/classes/SubmitRejec
 
 ### submitRemoveVerifierKeyTx
 
-Re-exports [submitRemoveVerifierKeyTx](../../contracts/variables/submitRemoveVerifierKeyTx.md)
+Re-exports [submitRemoveVerifierKeyTx](../../contracts/functions/submitRemoveVerifierKeyTx.md)
 
 ***
 
 ### submitReplaceAuthorityTx
 
-Re-exports [submitReplaceAuthorityTx](../../contracts/variables/submitReplaceAuthorityTx.md)
+Re-exports [submitReplaceAuthorityTx](../../contracts/functions/submitReplaceAuthorityTx.md)
 
 ***
 
@@ -752,6 +734,12 @@ Re-exports [TxFailedError](../../contracts/classes/TxFailedError.md)
 
 ***
 
+### UnknownResultEraError
+
+Re-exports [UnknownResultEraError](../../contracts/classes/UnknownResultEraError.md)
+
+***
+
 ### UnprovenCallTxProvidersBase
 
 Re-exports [UnprovenCallTxProvidersBase](../../contracts/type-aliases/UnprovenCallTxProvidersBase.md)
@@ -773,12 +761,6 @@ Re-exports [UnprovenDeployTxOptions](../../contracts/type-aliases/UnprovenDeploy
 ### UnprovenDeployTxProviders
 
 Re-exports [UnprovenDeployTxProviders](../../contracts/type-aliases/UnprovenDeployTxProviders.md)
-
-***
-
-### UnrecognisedResultEraError
-
-Re-exports [UnrecognisedResultEraError](../../contracts/classes/UnrecognisedResultEraError.md)
 
 ***
 

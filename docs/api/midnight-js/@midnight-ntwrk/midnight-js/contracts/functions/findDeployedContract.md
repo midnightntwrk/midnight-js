@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../namespaces/Ledger8/interfaces/FoundContract.md)\<`C`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the

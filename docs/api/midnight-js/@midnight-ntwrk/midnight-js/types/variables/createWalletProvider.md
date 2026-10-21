@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ that does not name the real problem.
 
 The returned provider serves v9 payloads only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a v9-only implementation. It
-rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
 `UntaggedPayloadError`. To serve a retained era as well, use
 [createWalletProviderFromHandlers](createWalletProviderFromHandlers.md).
 
@@ -25,7 +25,7 @@ rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
 
 ### impl
 
-[`V9WalletProvider`](../interfaces/V9WalletProvider.md)
+[`Ledger9WalletProvider`](../interfaces/Ledger9WalletProvider.md)
 
 The v9-only wallet implementation to wrap.
 
@@ -38,7 +38,7 @@ A [WalletProvider](../interfaces/WalletProvider.md) that narrows inbound payload
 
 ## See
 
-SeamEraDeclarations for the compiler error this avoids, and for
+ProviderEraDeclarations for the compiler error this avoids, and for
 why serving v9 payloads only is permanent rather than a gap.
 
 ## Example

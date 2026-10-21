@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -46,7 +46,7 @@ InvalidArgumentError if `handlers` is not an object, or `retainedEras`
 ```typescript
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
 });
 // proofProvider.supportedEras === ['v9', 'v8']
 ```

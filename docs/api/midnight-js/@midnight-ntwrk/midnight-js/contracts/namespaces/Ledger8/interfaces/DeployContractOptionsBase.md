@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -6,10 +6,10 @@
 
 # Interface: DeployContractOptionsBase\<C\>
 
-The deploy arm for a retained-era contract whose private state is stored
+The deploy options variant for a retained-era contract whose private state is stored
 NOWHERE: the constructor runs against `undefined` and nothing is written.
 
-The other arm is [Ledger8DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
+The other variant is [Ledger8DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
 
 ## Extends
 
@@ -37,7 +37,7 @@ The other arm is [Ledger8DeployContractOptionsWithPrivateState](DeployContractOp
 
 > `readonly` `optional` **initialPrivateState?**: `undefined`
 
-DECLARED on this arm, and only ever `undefined` — see
+DECLARED on this variant, and only ever `undefined` — see
 [Ledger8DeployContractOptionsBase.privateStateId](#privatestateid) for why the member
 is present rather than absent.
 
@@ -47,11 +47,11 @@ is present rather than absent.
 
 > `readonly` `optional` **privateStateId?**: `undefined`
 
-DECLARED on this arm, and only ever `undefined`.
+DECLARED on this variant, and only ever `undefined`.
 
-Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
 compiled: union excess-property checking admits a member declared on the
-SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
 satisfies this one. The constructor then ran against `undefined`,
 `undefined` was stored under the caller's id, and the handle reported an
 `initialPrivateState` typed non-optional while actually undefined.
@@ -60,10 +60,15 @@ satisfies this one. The constructor then ran against `undefined`,
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: `string`
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key to register as the deployed contract's maintenance
 authority. If undefined, a fresh one is sampled.
+
+The same `{ tag, value }` shape the current era takes. The retained era
+signs with `schnorr` only, so any other key -- or a value that is not
+exactly 64 hexadecimal characters -- is refused with
+`Ledger8SigningKeyUnusableError` before anything is composed.
 
 #### Inherited from
 

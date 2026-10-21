@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -11,12 +11,12 @@ The four entry points of this package — `deployContract`,
 contracts from two Compact toolchains. The current one
 (`compact-runtime@0.20`) hands over a `CompiledContract` container; the retained
 one (`compact-runtime@0.16`) hands over a raw contract instance. Both are
-accepted through an ADDITIVE overload: a retained-era arm is declared alongside
-the current-era arms rather than replacing them.
+accepted through an ADDITIVE overload: a retained-era overload is declared alongside
+the current-era overloads rather than replacing them.
 
 This document records why the retained-era declarations are hand-written, what
 discriminates the two eras at the type level, how the family expresses openness
-without `any`, and why the ORDER of the overload arms is load-bearing. The
+without `any`, and why the ORDER of the overloads is load-bearing. The
 declarations themselves live in `packages/contracts/src/ledger8-contract.ts`.
 
 ## Why the retained-era types are hand-written
@@ -81,7 +81,7 @@ which is not the order of importance, and was measured rather than assumed:
    contract does install `impureCircuits`, which is why it cannot be used as a
    runtime discriminator.
 
-**The container** is what the current-era arms take, and it is what keeps a raw
+**The container** is what the current-era overloads take, and it is what keeps a raw
 current-era instance from reaching them: a `CompiledContract` carries a `tag`
 and a branded property that a plain object does not have.
 
@@ -134,7 +134,7 @@ signature, and TypeScript gives one to an object type alias but not to an
 interface. A consumer who writes `interface MyCircuits { ... }` gets
 `Index signature for type 'string' is missing`, which mentions nothing about
 eras — and because the failure is on the CONSTRAINT, the call then falls
-through to the current-era arms and reports something about `CompiledContract`
+through to the current-era overloads and reports something about `CompiledContract`
 instead. Generated Compact declarations are written as aliases already, so this
 matches real generated code, and the fixtures in
 `packages/contracts/src/test/ledger8-fixture-types.ts` are now typed from the
@@ -183,46 +183,46 @@ previous runtime. The current era's `Contract.CircuitParameters` strips its own
 leading `CircuitContext` for the matching reason — the context is built by the
 framework from provider data, never passed in by the caller.
 
-## Overload order is load-bearing, and the last arm is left alone
+## Overload order is load-bearing, and the last overload is left alone
 
 Three separate things resolve from an overloaded function's LAST signature, and
 all three were measured against this code rather than assumed:
 
 1. `ReturnType<typeof f>`;
 2. `Parameters<typeof f>`;
-3. the error TypeScript prints when NO arm matches a call.
+3. the error TypeScript prints when NO overload matches a call.
 
-So every entry point declares its retained-era arm FIRST — where it cannot be
-shadowed by a current-era arm — and leaves the arm that was already last exactly
+So every entry point declares its retained-era overload FIRST — where it cannot be
+shadowed by a current-era overload — and leaves the overload that was already last exactly
 where it was. Nothing is appended. `ReturnType` and `Parameters` therefore
 report what they reported before the retained-era family existed, and a call
-that matches nothing is still reported against a real current-era arm, which
+that matches nothing is still reported against a real current-era overload, which
 names a real cause: a typo'd circuit id, a private state of the wrong type.
 
 That last point is the one worth protecting, because a mistyped CURRENT-era call
 is the common case and a retained-era call is the rare one.
 
-`overloads.test-d.ts` pins it: that each retained-era arm is REACHABLE (a
+`overloads.test-d.ts` pins it: that each retained-era overload is REACHABLE (a
 retained-era call resolves to the retained-era result type, not merely
 compiles), and that `ReturnType` AND `Parameters` on all four entry points still
 report exactly what they reported at the base commit. Those two are what read
-from the LAST signature, so an arm appended to the end of any of these lists
+from the LAST signature, so an overload appended to the end of any of these lists
 fails them. The diagnostic a failed call prints resolves from that same last
 signature, and so moves only when they do; its exact wording is TypeScript's to
 choose and is deliberately not pinned.
 
-## There is no catch-all arm
+## There is no catch-all overload
 
-Adding a last arm carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
+Adding a last overload carrying `NEITHER_ERA_CONTRACT_MESSAGE` would have made every
 mistyped current-era call report that the caller's perfectly ordinary contract
 "is neither a retained-era nor a current-era generated contract" — a false
-statement on the common path. An arm that is NOT last never renders at all, so placing one
+statement on the common path. An overload that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
 
 `NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
 `resolveArtifactEra` raises when it is handed an object belonging to neither era. A
 thrown error can carry full remediation text where a compiler diagnostic cannot,
-which is why the text is not wired into an overload arm.
+which is why the text is not wired into an overload.
 
 `NeitherContractShape` and `NeitherEraContractOptions` are the named shapes that
 error reports against. Neither is constructed by anything; they exist so a
@@ -237,7 +237,7 @@ surface, and that error IS exported — so a consumer narrows on the error rathe
 than comparing against the message. `overloads.test-d.ts` pins the wording
 verbatim, and pins that a neither-era object really is refused by
 `NeitherEraContractOptions` — the assignability fact the overloads rely on,
-whether or not any arm spells it out.
+whether or not any overload spells it out.
 
 ## The runtime decision lives elsewhere
 
@@ -257,8 +257,8 @@ blind spot; `resolveArtifactEra` replaced it.
 `Ledger8FinalizedCallTxData.txData` is a `VersionedFinalizedTxData` rather than
 a single-era record: the same retained-era contract is called as a v8
 transaction before the fork and as a v9 keep-state transaction after it, so the
-record it finalizes as carries the era that produced it. Providers sit at that
-same version-tagged seam and serve both eras, which is why
+record it finalizes as carries the era that produced it. Providers take that
+same version-tagged payload and serve both eras, which is why
 `Ledger8ContractProviders` is the ordinary provider set keyed by a retained-era
 circuit id, and why there is no separate retained-era provider surface. Both
 follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
@@ -267,7 +267,7 @@ follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
 
 The private-state half of a find's configuration is read through a STRUCTURAL
 type, `FindContractPrivateStateConfig`, not through either era's own options
-type. The rule it feeds is one rule, and the retained arm reaches it holding a
+type. The rule it feeds is one rule, and the retained-era path reaches it holding a
 `Ledger8FindDeployedContractOptions`.
 
 Both of its members are optional, because the current era's three option
@@ -289,8 +289,8 @@ current-era find.
 Published unnarrowed, that hands a shared handler two members with checking
 switched off — and a shared handler is precisely what these unions exist for.
 
-`WithOpaqueCircuitValues` restates both as `unknown`. The retained arm answers
-`unknown` for them already, so this puts the two arms on the same footing rather
+`WithOpaqueCircuitValues` restates both as `unknown`. The retained-era variant answers
+`unknown` for them already, so this puts the two variants on the same footing rather
 than restricting one. A concrete result stays assignable, since every `Result`
 and `PrivateState` is assignable to `unknown`. Narrow to one era, or to a
 concrete instantiation, to get the precise types back.
@@ -298,25 +298,25 @@ concrete instantiation, to get the precise types back.
 ### Why the retained narrowing falls back to an intersection
 
 `Extract` is the right answer for a UNION, and the only answer that removes the
-other era's arm. It is the wrong answer for a value whose `era` is the whole
-`PipelineEra` union rather than one literal: there is no member to pick, so it
+other era's variant. It is the wrong answer for a value whose `era` is the whole
+`LedgerVersion` union rather than one literal: there is no member to pick, so it
 collapses to `never` and rejects every property access in the true branch.
-`PipelineEra` is published, so that is a parameter callers write —
-`NarrowedToRetained` falls back to an intersection in exactly that case.
+`LedgerVersion` is published, so that is a parameter callers write —
+`NarrowedToLedger8` falls back to an intersection in exactly that case.
 
 The tuple wrapper around the `extends` is what stops the conditional
 distributing. Without it the conditional evaluates once per union member and
 takes the fallback for all of them.
 
-## The call entry point's provider set has two arms
+## The call entry point's provider set has two variants
 
-`SubmitCallTxProviders` names two arms because a call does not always need
+`SubmitCallTxProviders` names two variants because a call does not always need
 private state. `SubmitTxProviders` is `ContractProviders` without
 `privateStateProvider`, so a contract that declares no private state can be
 called with a set that has none. Naming only `ContractProviders` would demand a
 provider such a caller has no reason to build.
 
-The arm without the provider is valid only for options that name no
+The variant without the provider is valid only for options that name no
 `privateStateId`. That pairing cannot be stated in the type, so it is enforced at
 run time: naming an id without a `privateStateProvider` is refused with
 `IncompleteCallTxPrivateStateConfig` before any provider is touched. That refusal

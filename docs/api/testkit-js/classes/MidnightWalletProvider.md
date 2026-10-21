@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.5**](../README.md)
 
 ***
 
@@ -40,16 +40,16 @@ Handles transaction balancing, submission, and wallet state management.
 
 > `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
 
-Both eras, declared once for both seams this class implements.
+Both eras, declared once for both providers this class implements.
 
-Written out rather than assembled from per-era arms, which is the escape
+Written out rather than assembled from per-era handlers, which is the escape
 hatch the tagged interfaces deliberately keep open for a class. The two
 methods below genuinely run both eras through ONE call each — the wallet
 SDK adopts a transaction AT a protocol version, so the era is data flowing
-through rather than a branch — and splitting them into arms would duplicate
+through rather than a branch — and splitting them into handlers would duplicate
 the balance/sign/finalize sequence to no end.
 
-Read before an operation starts, by `assertSeamsSupportEra`. Frozen for the
+Read before an operation starts, by `assertProvidersSupportEra`. Frozen for the
 same reason the factories freeze their computed declaration: a widened
 declaration would let that check pass for an era this wallet cannot serve.
 
@@ -106,11 +106,11 @@ Expiry for the intent the wallet adds while balancing. The framework always pass
 `Promise`\<`VersionedFinalizedTransaction`\>
 
 The balanced, signed transaction, version-tagged. Narrow on `version` — or call
-         `unwrapV9` — before reading the payload.
+         `unwrapLedger9` — before reading the payload.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 
@@ -200,7 +200,7 @@ The transaction identifier of the submitted transaction. Not version-tagged — 
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 

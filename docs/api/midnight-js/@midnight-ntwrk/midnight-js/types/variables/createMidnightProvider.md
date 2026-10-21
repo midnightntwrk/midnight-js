@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ reason: it keeps the `version` tag out of implementation code.
 
 The returned provider serves v9 payloads only — `supportedEras` says so — and
 that is permanent rather than a gap: it lifts a v9-only implementation. It
-rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
+rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
 `UntaggedPayloadError`. To serve a retained era as well, use
 [createMidnightProviderFromHandlers](createMidnightProviderFromHandlers.md).
 
@@ -36,7 +36,7 @@ A [MidnightProvider](../interfaces/MidnightProvider.md) that narrows inbound pay
 
 ## See
 
-SeamEraDeclarations for the compiler error this avoids.
+ProviderEraDeclarations for the compiler error this avoids.
 
 ## Example
 

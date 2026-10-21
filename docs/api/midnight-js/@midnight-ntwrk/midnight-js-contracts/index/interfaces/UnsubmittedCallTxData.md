@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -58,7 +58,7 @@ for a call in the tree. Treat as confidential alongside [private](CallResult.md#
 
 ### era
 
-> `readonly` **era**: `"ledger9"`
+> `readonly` **era**: `"v9"`
 
 The pipeline that produced this result: always the current era here.
 

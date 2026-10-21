@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -35,13 +35,13 @@ one.
 
 ##### head
 
-`"v8"` \| `"v9"`
+`"v9"` \| `"v8"`
 
 The era the operation resolved from the network head.
 
 ##### stateEra
 
-`"v8"` \| `"v9"`
+`"v9"` \| `"v8"`
 
 The era the fetched state's own envelope was written by.
 
@@ -77,7 +77,7 @@ The era the fetched state's own envelope was written by.
 
 ### head
 
-> `readonly` **head**: `"v8"` \| `"v9"`
+> `readonly` **head**: `"v9"` \| `"v8"`
 
 The era the operation resolved from the network head.
 
@@ -85,6 +85,6 @@ The era the operation resolved from the network head.
 
 ### stateEra
 
-> `readonly` **stateEra**: `"v8"` \| `"v9"`
+> `readonly` **stateEra**: `"v9"` \| `"v8"`
 
 The era the fetched state's own envelope was written by.

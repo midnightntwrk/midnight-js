@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -78,7 +78,7 @@ This prevents silent state mismatches when batching calls to different contracts
 
 ### code
 
-> `readonly` **code**: `"MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH"` = `CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH`
+> `readonly` **code**: `"MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH"` = `CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH`
 
 #### Overrides
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,6 +11,7 @@
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options. Unlike [submitTx](submitTx.md),
 this function returns immediately after submission without waiting for finalization.
+It reads the head and routes on it exactly as [submitTx](submitTx.md) does.
 
 ## Type Parameters
 
@@ -43,3 +44,15 @@ Configuration.
 A promise that resolves with the transaction ID immediately after submission,
          or rejects if an error occurs during preparation or submission.
          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
+
+## Throws
+
+UntaggedPayloadError for an untagged transaction, before the head is read.
+
+## Throws
+
+EraArtifactMismatchError for a transaction whose era is not the head's.
+
+## Throws
+
+ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
