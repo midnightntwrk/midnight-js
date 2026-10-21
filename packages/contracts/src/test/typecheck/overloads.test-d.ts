@@ -74,6 +74,7 @@ import {
   type Ledger8CallTxOptionsWithPrivateStateId,
   type Ledger8CallTxTarget,
   type Ledger8Circuit,
+  type Ledger8CircuitCallTxInterface,
   type Ledger8CircuitId,
   type Ledger8CircuitMaintenanceTxInterfaces,
   type Ledger8CircuitParameters,
@@ -99,6 +100,7 @@ import {
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
+import { type CircuitCallTxInterface, createCircuitCallTxInterface } from '../../tx-interfaces';
 import type {
   FinalizedCallTxData,
   FinalizedDeployTxPublicData,
@@ -1353,5 +1355,32 @@ describe('the maintenance functions select their era by the artifact, and answer
     } else {
       expectTypeOf(result.public.version).toEqualTypeOf<'v9'>();
     }
+  });
+});
+
+describe('createCircuitCallTxInterface selects its era by the artifact, and answers in that era', () => {
+  it('builds the retained-era interface for a retained-era artifact', () => {
+    const callTx = createCircuitCallTxInterface(providers016, contract016, contractAddress, undefined);
+
+    expectTypeOf(callTx).toEqualTypeOf<Ledger8CircuitCallTxInterface<Counter016Contract>>();
+    expectTypeOf(callTx.increment).returns.resolves.toEqualTypeOf<
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>
+    >();
+  });
+
+  it('builds the current interface for a current-era artifact', () => {
+    expectTypeOf(
+      createCircuitCallTxInterface(providers018, compiledContract018, contractAddress, undefined)
+    ).toEqualTypeOf<CircuitCallTxInterface<Twin018>>();
+  });
+
+  it('refuses a neither-era contract', () => {
+    // @ts-expect-error - neither a retained-era nor a current-era contract
+    createCircuitCallTxInterface(providers016, neitherShapeContract, contractAddress, undefined);
+  });
+
+  it('takes the same argument count in both eras, so a short call is not reported in the other era', () => {
+    // @ts-expect-error - the private state id is required, `undefined` included, as in the current era
+    createCircuitCallTxInterface(providers016, contract016, contractAddress);
   });
 });

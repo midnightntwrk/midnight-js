@@ -22,7 +22,7 @@
  * this reference calls `Ledger8X` is the member published as `Ledger8.X`.
  *
  * Membership is the retained era's own family: its contract and result types,
- * its interface factory, and the refusals its pipeline raises. Names that serve
+ * and the refusals its pipeline raises. Names that serve
  * BOTH eras stay on the flat surface, so a consumer that only receives results
  * never imports the transitional half.
  *
@@ -91,4 +91,3 @@ export type {
   Ledger8UnsubmittedCallTxData as UnsubmittedCallTxData,
   Ledger8Witness as Witness
 } from './ledger8-contract';
-export { createLedger8CircuitCallTxInterface as createCircuitCallTxInterface } from './tx-interfaces';

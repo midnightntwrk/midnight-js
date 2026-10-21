@@ -21,6 +21,7 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
+import { hasLedger8ContractShape } from './internal/era';
 import type {
   Ledger8CallTxOptions,
   Ledger8CircuitCallTxInterface,
@@ -76,45 +77,6 @@ export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract
 };
 
 /**
- * Creates a circuit call transaction interface for a contract.
- *
- * @param providers The providers to use to build transactions.
- * @param compiledContract The contract to use to execute circuits.
- * @param contractAddress The ledger address of the contract.
- * @param privateStateId The identifier of the state of the witnesses of the contract.
- */
-export const createCircuitCallTxInterface = <C extends Contract.Any>(
-  providers: ContractProviders<C>,
-  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractAddress: ContractAddress,
-  privateStateId: PrivateStateId | undefined
-): CircuitCallTxInterface<C> => {
-  assertIsContractAddress(contractAddress);
-  providers.privateStateProvider.setContractAddress(contractAddress);
-  return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
-    (acc, circuitId) => ({
-      ...acc,
-      [circuitId]: (...args: unknown[]) => {
-        const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
-        const callArgs = txCtx ? args.slice(1) : args;
-        const callOptions = createCallTxOptions<C, Contract.ProvableCircuitId<C>>(
-          compiledContract,
-          circuitId,
-          contractAddress,
-          privateStateId,
-          txCtx?.getAdditionalMappings(),
-          callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
-        );
-        return txCtx
-          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)
-          : submitCallTx(providers, callOptions)
-      }
-    }),
-    {}
-  ) as CircuitCallTxInterface<C>;
-};
-
-/**
  * Builds the retained-era call options for one circuit.
  *
  * `args` is omitted entirely for a circuit that takes none, because
@@ -144,7 +106,7 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
  * Creates a circuit call transaction interface for a RETAINED-ERA contract.
  *
  * `privateStateId` is carried on every call this interface makes, exactly as
- * the current era's {@link createCircuitCallTxInterface} carries it. A handle
+ * the ledger 9 path of {@link createCircuitCallTxInterface} carries it. A handle
  * that could not carry one would execute against a DEFAULT private state and
  * then discard the state each call produced, with nothing erroring at any
  * stage — see the private-state section of `docs/keep-state-pipeline.md`.
@@ -159,7 +121,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   compiledContract: C,
   contractAddress: ContractAddress,
-  privateStateId?: PrivateStateId
+  privateStateId: PrivateStateId | undefined
 ): Ledger8CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
   const circuitIds = Object.keys(compiledContract.provableCircuits) as Ledger8CircuitId<C>[];
@@ -175,3 +137,62 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
     {}
   ) as Ledger8CircuitCallTxInterface<C>;
 };
+
+/**
+ * Creates a {@link CircuitCallTxInterface}, or the retained era's `Ledger8.CircuitCallTxInterface`
+ * for a contract the retained Compact toolchain produced.
+ *
+ * @param providers The providers to use to build transactions.
+ * @param compiledContract The contract to use to execute circuits.
+ * @param contractAddress The ledger address of the contract.
+ * @param privateStateId The identifier of the state of the witnesses of the contract,
+ * or `undefined` for a contract that carries none.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraArtifactMismatchError If `compiledContract` is neither a ledger 8 contract nor a
+ * ledger 9 `CompiledContract`, including a ledger 9 contract that is not wrapped in one.
+ */
+export function createCircuitCallTxInterface<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined
+): Ledger8CircuitCallTxInterface<C>;
+export function createCircuitCallTxInterface<C extends Contract.Any>(
+  providers: ContractProviders<C>,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined
+): CircuitCallTxInterface<C>;
+export function createCircuitCallTxInterface<C extends Contract.Any>(
+  providers: ContractProviders<C>,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined
+): CircuitCallTxInterface<C> | Ledger8CircuitCallTxInterface<Ledger8Contract> {
+  assertIsContractAddress(contractAddress);
+  if (hasLedger8ContractShape(compiledContract)) {
+    return createLedger8CircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId);
+  }
+  providers.privateStateProvider.setContractAddress(contractAddress);
+  return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
+    (acc, circuitId) => ({
+      ...acc,
+      [circuitId]: (...args: unknown[]) => {
+        const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
+        const callArgs = txCtx ? args.slice(1) : args;
+        const callOptions = createCallTxOptions<C, Contract.ProvableCircuitId<C>>(
+          compiledContract,
+          circuitId,
+          contractAddress,
+          privateStateId,
+          txCtx?.getAdditionalMappings(),
+          callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
+        );
+        return txCtx
+          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)
+          : submitCallTx(providers, callOptions)
+      }
+    }),
+    {}
+  ) as CircuitCallTxInterface<C>;
+}
