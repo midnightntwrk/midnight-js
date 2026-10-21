@@ -835,6 +835,18 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
  */
 export class TxFailedError extends AnyEraTxFailedError {
   /**
+   * Allows `instanceof TxFailedError` to catch recorded failures across both eras
+   * (including retained-era failures such as `Ledger8CallTxFailedError`), preventing
+   * callers from silently missing ledger-8 transaction failures.
+   */
+  static [Symbol.hasInstance](instance: unknown): boolean {
+    if (this !== TxFailedError) {
+      return Function.prototype[Symbol.hasInstance].call(this, instance);
+    }
+    return instance instanceof AnyEraTxFailedError;
+  }
+
+  /**
    * @param finalizedTxData The finalization data of the transaction that failed.
    * @param circuitId The name of the circuit that was called to create the call
    *                  transaction that failed. Only defined if a call transaction
@@ -1246,8 +1258,15 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8CallTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+    /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
   get record(): VersionedFinalizedTxData {
+    return this.txData;
+  }
+
+  /**
+   * Alias for {@link txData} for compatibility with {@link TxFailedError.finalizedTxData}.
+   */
+  get finalizedTxData(): VersionedFinalizedTxData {
     return this.txData;
   }
 }
@@ -1302,6 +1321,13 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
 
   /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
   get record(): VersionedFinalizedTxData {
+    return this.txData;
+  }
+
+  /**
+   * Alias for {@link txData} for compatibility with {@link TxFailedError.finalizedTxData}.
+   */
+  get finalizedTxData(): VersionedFinalizedTxData {
     return this.txData;
   }
 }

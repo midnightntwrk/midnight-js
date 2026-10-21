@@ -106,11 +106,14 @@ describe('the era-agnostic failure base', () => {
 
     expect(currentEra).toBeInstanceOf(AnyEraTxFailedError);
     expect(retainedEra).toBeInstanceOf(AnyEraTxFailedError);
+    // Both eras are caught by instanceof TxFailedError so legacy and common handlers
+    // do not silently miss retained-era call failures (#1492).
+    expect(currentEra).toBeInstanceOf(TxFailedError);
+    expect(retainedEra).toBeInstanceOf(TxFailedError);
     // And the pre-existing hierarchy is untouched: the retained-era class is
     // still NOT a `CallTxFailedError`, because it cannot carry that class's
-    // v9-only record. The base is what the two now share, not that one.
+    // v9-only record.
     expect(retainedEra).not.toBeInstanceOf(CallTxFailedError);
-    expect(currentEra).toBeInstanceOf(TxFailedError);
   });
 
   it('reads the record through ONE member in either era, without dropping the old names', () => {
@@ -125,6 +128,7 @@ describe('the era-agnostic failure base', () => {
     // breaks.
     expect(currentEra.finalizedTxData).toBe(record);
     expect(retainedEra.txData).toBe(record);
+    expect(retainedEra.finalizedTxData).toBe(record);
   });
 
   it('carries the retained era version-tagged record, which the v9-only member could not hold', () => {
