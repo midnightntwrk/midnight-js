@@ -71,10 +71,33 @@ const result = await deployed.callTx.increment();
 
 What the snippet expects from you:
 
-- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js.
+- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js. In a browser with a wallet extension, see [In a browser](#in-a-browser).
 - `myContract` is your compiled Compact contract. See [Contracts](#contracts).
 - `PRIVATE_STATE_PASSWORD` encrypts private state at rest. It needs at least 16 characters, at least 3 of uppercase, lowercase, digits and special characters, no more than 3 identical characters in a row, and no sequences such as `1234` or `abcd`.
 - `createMidnightProviders` checks at start-up that every required provider and the `config` are present.
+
+### In a browser
+
+In a browser dApp, the user's wallet extension (for example Lace) proves, balances and submits. Build those three providers from the wallet's `ConnectedAPI` with `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider`. Add the packages this needs:
+
+```bash
+yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider @midnight-ntwrk/midnight-js-protocol
+```
+
+```typescript
+import {
+  dappConnectorProofProvider,
+  dappConnectorWalletProviders
+} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+
+const connectedAPI = await initialAPI.connect('preview');
+
+const proofProvider = await dappConnectorProofProvider(connectedAPI, zkConfigProvider, CostModel.initialCostModel());
+const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(connectedAPI);
+```
+
+`initialAPI` is the wallet's entry in `window.midnight`. Pass the three providers to `createMidnightProviders` in place of `httpClientProofProvider`, `createWalletProvider` and `createMidnightProvider` above. All three serve ledger 8 and ledger 9 transactions. The connector takes no TTL, so the wallet picks the expiry and `config.ttlSeconds` has no effect on balancing ([midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102)).
 
 ### Ledger eras
 
@@ -113,7 +136,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
 | [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
 | [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
-| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
+| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof, wallet and midnight providers delegating to a DApp Connector wallet |
 | [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
 | [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
@@ -137,6 +160,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
 | PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
 | ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
+| WalletProvider, MidnightProvider | your wallet integration, or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
 | ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnightntwrk/dapp-connector-api |
 | Wallet | @midnightntwrk/wallet-sdk |
