@@ -8,10 +8,10 @@ The fork window is transitional; a duplicated public interface is not. This
 package dispatches two Compact toolchains, so it carries two families of nearly
 the same types -- `FoundContract` and `Ledger8FoundContract`, `CallTxOptions`
 and `Ledger8CallTxOptions`. The current era's family is permanent. The retained
-era's family -- 37 types, 18 error classes and one interface factory, 56 names --
+era's family -- 37 types and 18 error classes, 55 names --
 goes when the window closes.
 
-Published flat, side by side, those 56 would be 56 published API names, and
+Published flat, side by side, those 55 would be 55 published API names, and
 removing them would be a second breaking change after the one this release
 already makes. They are published as ONE name instead:
 
@@ -152,13 +152,14 @@ the retained members of the modules it SHARES with the current era --
 `governance/tx-interfaces.ts` hold both eras and are not deleted. The retained
 overloads on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract`,
 `deployContract`, `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`,
-`submitReplaceAuthorityTx`, `createCircuitMaintenanceTxInterface(s)` and
+`submitReplaceAuthorityTx`, `createCircuitCallTxInterface`,
+`createCircuitMaintenanceTxInterface(s)` and
 `createContractMaintenanceTxInterface` go with them, which narrows those entry
 points' overload sets.
 
 No current-era NAME changes, and no consumer that never touched the retained era
 has an import to rewrite. That is the property the flat family did not have: it
-would have removed 56 published names instead of one.
+would have removed 55 published names instead of one.
 
 ## What guards it
 
@@ -166,9 +167,8 @@ would have removed 56 published names instead of one.
   strict equality -- in the source and again in the built bundle -- asserts that
   each is bound to the declaration it renames, and that no retained-era runtime
   name has returned to the flat surface. The identity assertions are the ones
-  that matter: `Ledger8.createCircuitCallTxInterface` has the same spelling as
-  the flat current-era factory, so publishing the wrong one of the two passes
-  every name-based check.
+  that matter: a transposed pair in the rename table passes every name-based
+  check.
 - `src/test/contracts-type-acl.test.ts` pins its TYPE members by name, read off
   the barrel with the compiler's own resolution, and its flat list is what
   catches a retained-era type re-exported flat.

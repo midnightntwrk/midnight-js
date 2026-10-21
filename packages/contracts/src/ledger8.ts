@@ -91,4 +91,3 @@ export type {
   Ledger8UnsubmittedCallTxData as UnsubmittedCallTxData,
   Ledger8Witness as Witness
 } from './ledger8-contract';
-export { createLedger8CircuitCallTxInterface as createCircuitCallTxInterface } from './tx-interfaces';

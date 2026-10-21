@@ -22,9 +22,7 @@ import { describe, expect, it } from 'vitest';
 
 // The left-hand side of the renaming table, from the modules that DECLARE it. The namespace is
 // `Ledger8X as X` written by hand, and a transposed pair keeps every name on the surface -- the key
-// list below cannot see it. `createLedger8CircuitCallTxInterface` is the sharpest case: its
-// namespace-local name is the SAME spelling as the flat current-era factory, so publishing the
-// wrong one of the two leaves every gate green.
+// list below cannot see it.
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8ArtifactOnLedger9StateError,
@@ -51,7 +49,6 @@ import {
 // era reaches a consumer through ONE name, and everything it publishes is reachable under it.
 import * as barrel from '../index';
 import { AnyEraTxFailedError, Ledger8 } from '../index';
-import { createLedger8CircuitCallTxInterface } from '../tx-interfaces';
 
 /**
  * Every runtime member the retained-era namespace publishes.
@@ -77,8 +74,7 @@ const LEDGER8_MEMBERS = [
   'ShieldedSpendUnsupportedError',
   'SigningKeyNotStoredError',
   'SigningKeyUnavailableError',
-  'SigningKeyUnusableError',
-  'createCircuitCallTxInterface'
+  'SigningKeyUnusableError'
 ];
 
 /**
@@ -160,7 +156,6 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.InsertVerifierKeyTxFailedError).toBe(Ledger8InsertVerifierKeyTxFailedError);
     expect(Ledger8.RemoveVerifierKeyTxFailedError).toBe(Ledger8RemoveVerifierKeyTxFailedError);
     expect(Ledger8.ReplaceMaintenanceAuthorityTxFailedError).toBe(Ledger8ReplaceMaintenanceAuthorityTxFailedError);
-    expect(Ledger8.createCircuitCallTxInterface).toBe(createLedger8CircuitCallTxInterface);
   });
 
   it('ships the same members in the built bundle', async () => {

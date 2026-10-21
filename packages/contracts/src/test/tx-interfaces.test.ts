@@ -15,6 +15,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { EraArtifactMismatchError } from '../errors';
+import type { Ledger8Contract, Ledger8ContractProviders } from '../ledger8-contract';
 import {
   createCallTxOptions,
   createCircuitCallTxInterface,
@@ -235,6 +237,47 @@ describe('tx-interfaces', () => {
         expect.not.objectContaining({ args: expect.anything() }),
         txCtx
       );
+    });
+
+    it('should build the ledger 8 interface for a ledger 8 contract', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      vi.mocked(submitCallTx).mockResolvedValue(mockFinalizedTxData as never);
+      const circuit = vi.fn();
+      const ledger8Contract: Ledger8Contract = {
+        witnesses: {},
+        circuits: { increment: circuit },
+        impureCircuits: { increment: circuit },
+        provableCircuits: { increment: circuit },
+        initialState: () => {
+          throw new Error('not called by this test');
+        }
+      };
+      const ledger8Providers: Ledger8ContractProviders<Ledger8Contract, string> = mockProviders;
+
+      const callInterface = createCircuitCallTxInterface(
+        ledger8Providers,
+        ledger8Contract,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+      await (callInterface.increment as (...args: unknown[]) => Promise<unknown>)('arg1');
+
+      expect(Object.keys(callInterface)).toEqual(['increment']);
+      expect(submitCallTx).toHaveBeenCalledWith(ledger8Providers, {
+        compiledContract: ledger8Contract,
+        contractAddress: mockContractAddress,
+        circuitId: 'increment',
+        privateStateId: mockPrivateStateId,
+        args: ['arg1']
+      });
+    });
+
+    it('should refuse a contract of neither era', () => {
+      const act = () =>
+        createCircuitCallTxInterface(mockProviders, { nonsense: true } as never, mockContractAddress, undefined);
+
+      expect(act).toThrow(EraArtifactMismatchError);
+      expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
     });
   });
 });
