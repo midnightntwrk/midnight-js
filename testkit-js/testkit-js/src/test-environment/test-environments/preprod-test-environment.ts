@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { networks } from '@midnight-ntwrk/midnight-js-utils';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 
 import type { EnvironmentConfiguration } from '..';
@@ -35,10 +36,10 @@ export class PreprodTestEnvironment extends RemoteTestEnvironment {
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
       walletNetworkId: NetworkId.NetworkId.PreProd,
-      networkId: 'preprod',
-      indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
-      indexerWS: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
-      node: 'https://rpc.preprod.midnight.network',
+      networkId: networks.preprod.networkId,
+      indexer: networks.preprod.indexer.queryURL,
+      indexerWS: networks.preprod.indexer.subscriptionURL,
+      node: networks.preprod.nodeURL,
       nodeWS: 'wss://rpc.preprod.midnight.network',
       faucet: 'https://faucet.preprod.midnight.network/api/drips',
       proofServer: this.proofServerContainer?.getUrl()

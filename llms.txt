@@ -503,15 +503,15 @@ ledger and onchain-runtime, because `contracts` needs them.
 The network id is not global state: it travels on the provider set as
 `config.networkId` (see the provider setup example below).
 `@midnight-ntwrk/midnight-js-network-id` is deprecated — the framework ignores
-`setNetworkId()`.
+`setNetworkId()`. Predefined endpoints for public networks are shipped in
+`@midnight-ntwrk/midnight-js-utils`:
 
 ```typescript
+import { networks } from '@midnight-ntwrk/midnight-js-utils';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-const publicDataProvider = indexerPublicDataProvider(
-  'https://indexer.example.com/graphql',    // HTTP endpoint
-  'wss://indexer.example.com/graphql'        // WebSocket endpoint
-);
+const net = networks.preview; // or networks.preprod
+const publicDataProvider = indexerPublicDataProvider(net.indexer);
 ```
 
 ### Error Handling
@@ -544,12 +544,17 @@ of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](T
 ## Provider Setup Example
 
 ```typescript
+<<<<<<< HEAD
+=======
+import { networks } from '@midnight-ntwrk/midnight-js-utils';
+>>>>>>> 9c2c67cf (feat(utils): ship predefined network endpoints for preprod and preview (#1529))
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
-import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
+import { createMidnightProviders, networks } from '@midnight-ntwrk/midnight-js-utils';
 
+const net = networks.preview;
 const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
 // Checks the set and returns it unchanged: a missing provider or a bad config fails here,
@@ -559,12 +564,12 @@ const providers = createMidnightProviders({
     privateStoragePasswordProvider: () => password,
     accountId: walletAddress
   }),
-  publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
+  publicDataProvider: indexerPublicDataProvider(net.indexer),
   zkConfigProvider,
   proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
   walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
   midnightProvider,  // from @midnight-ntwrk/wallet-sdk-facade
-  config: { networkId: 'preview', ttlSeconds: 3600 } // network and transaction TTL, required
+  config: { networkId: net.networkId, ttlSeconds: 3600 } // network and transaction TTL, required
 });
 ```
 

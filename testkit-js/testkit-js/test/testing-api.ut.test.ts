@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { networks } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
 import { WebSocket } from 'ws';
 
@@ -73,5 +74,23 @@ describe('[Unit tests] Testing API', () => {
     process.env.MN_TEST_NODE_WS = 'ws://test.url';
     delete process.env.MN_TEST_NETWORK_ID;
     expect(() => getTestEnvironment(logger)).toThrow(`Environment variable 'MN_TEST_NETWORK_ID' is required`);
+  });
+
+  it('preprod environment configuration should match networks.preprod', () => {
+    const env = new PreprodTestEnvironment(logger);
+    const config = env.getEnvironmentConfiguration();
+    expect(config.networkId).toBe(networks.preprod.networkId);
+    expect(config.indexer).toBe(networks.preprod.indexer.queryURL);
+    expect(config.indexerWS).toBe(networks.preprod.indexer.subscriptionURL);
+    expect(config.node).toBe(networks.preprod.nodeURL);
+  });
+
+  it('preview environment configuration should match networks.preview', () => {
+    const env = new PreviewTestEnvironment(logger);
+    const config = env.getEnvironmentConfiguration();
+    expect(config.networkId).toBe(networks.preview.networkId);
+    expect(config.indexer).toBe(networks.preview.indexer.queryURL);
+    expect(config.indexerWS).toBe(networks.preview.indexer.subscriptionURL);
+    expect(config.node).toBe(networks.preview.nodeURL);
   });
 });
