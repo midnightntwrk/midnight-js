@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the current Compact toolchain, the fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical narrowing in [Step 13](#step-13--narrow-the-version-tagged-provider-payloads) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -74,7 +74,7 @@ The framework asks for `@midnightntwrk/onchain-runtime-v4` and `@midnight-ntwrk/
 }
 ```
 
-There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the current toolchain is `0.20.0`, the framework's own.
+There is no `@midnight-ntwrk/compact-runtime` entry: depend on the version your contracts were compiled for, which with the ledger 9 toolchain is `0.20.0`, the framework's own.
 
 Register the new scope if you import the protocol packages anywhere (the framework already does this in `packages/protocol`):
 
@@ -240,11 +240,11 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ## Step 13 — Narrow the version-tagged provider payloads
 
-The three transaction seams carry a `version` discriminant in both directions,
+The three transaction methods carry a `version` discriminant in both directions,
 and the read surface reports a `version`-discriminated record. This is the half
 of 5.0.0 that type-checking will not let you defer.
 
-Only the first call needs wrapping. Each seam's output is already the tagged
+Only the first call needs wrapping. Each method's output is already the tagged
 input the next one expects, so a straight pipeline changes in one place:
 
 ```diff
@@ -254,25 +254,25 @@ input the next one expects, so a straight pipeline changes in one place:
   const txId = await midnightProvider.submitTx(balanced);
 ```
 
-You only narrow where you need the ledger object itself. `unwrapV9` throws a
+You only narrow where you need the ledger object itself. `unwrapLedger9` throws a
 coded error rather than letting a bare `TypeError` surface from inside a WASM
 call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
-const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
-The read surface is a *different* union — its v8 arm carries `tx`, not
-`txBytes` — so `unwrapV9` does not accept it. Both arms are records you will
+The read surface is a *different* union — its v8 variant carries `tx`, not
+`txBytes` — so `unwrapLedger9` does not accept it. Both variants are records you will
 receive, so handle both:
 
 ```ts
 import { types, utils } from '@midnight-ntwrk/midnight-js';
 
 declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.FinalizedTxDataV8['tx']) => string;
+declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
@@ -287,12 +287,12 @@ const summarize = (record: types.VersionedFinalizedTxData): string => {
 ```
 
 `describeNative` and `describeRetained` stand in for your own code. They are two
-separate functions on purpose: `record.tx` is a different ledger type on each arm,
+separate functions on purpose: `record.tx` is a different ledger type on each variant,
 which is the whole reason this union has to be narrowed rather than unwrapped. Swap
 the two calls over and the recipe stops compiling.
 
 Close the switch with `assertNever`. While your switch covers the union it
-compiles; the moment the union carries an arm your switch does not handle,
+compiles; the moment the union carries a variant your switch does not handle,
 **that line stops compiling and points at the switch that has to change**.
 
 Be clear about which direction that buys you, because it is not the one you
@@ -302,7 +302,7 @@ era, the now-stale `case 'v8':` label is already a compile error on its own —
 removal visible. What it uniquely catches is the other direction: a union that
 *grows* a further era. For a switch that returns a value, the compiler can
 sometimes catch that at the function signature instead; for a `void`,
-side-effecting switch it catches nothing at all, and the unhandled arm falls
+side-effecting switch it catches nothing at all, and the unhandled variant falls
 through in silence. That is the case `assertNever` closes.
 
 The second argument is required. `assertNever` never puts the unhandled value into
@@ -316,8 +316,8 @@ and a dApp that reads its own pre-fork history will meet one.
 
 `findDeployedContract` reports the deploy record the same way. A contract deployed
 before the ledger fork keeps a ledger-8 deploy record forever, so
-`found.deployTxData.public` is tagged too. `contractAddress` is on both arms; narrow
-on `version` before reading `tx` or `initialContractState`. The `v8` arm has no
+`found.deployTxData.public` is tagged too. `contractAddress` is on both variants; narrow
+on `version` before reading `tx` or `initialContractState`. The `v8` variant has no
 `initialContractState`, because the current runtime cannot decode a ledger-8
 deploy-time state — read the current state with `queryContractState` instead.
 
@@ -337,11 +337,11 @@ That is why a v8-era network is served rather than refused: the indexer
 provider decodes each record with the runtime of the era that record reports,
 acquiring the pre-fork runtime lazily on first use. What throws at the read
 boundary is a `protocolVersion` this client cannot place on the era timeline at
-all (`EraUnresolvableError`), where before it would have returned a record that
+all (`UnknownRecordEraError`), where before it would have returned a record that
 failed later inside the codec. Bytes that will not decode on the era selected
 for them — whether the record disagrees with itself or your ledger package is a
 different vintage than the network's — surface as `DeserializationError`,
-carrying the era, the `protocolVersion`, the seam and the record on
+carrying the era, the `protocolVersion`, the provider method and the record on
 `context.details`.
 
 ---
@@ -352,7 +352,7 @@ This release is the one that carries a dApp across the ledger v8 → v9 hard
 fork. Steps 1 and 13 are the whole code migration — bump, then narrow where the
 compiler tells you to.
 
-**If you recompile your contracts with the current Compact toolchain, there is
+**If you recompile your contracts with the ledger 9 Compact toolchain, there is
 no further code change**, and most of this step is about timing and operations
 rather than code. This includes re-attaching to a contract deployed before the
 fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
@@ -399,7 +399,7 @@ applies before it lands, the framework raises `StaleHeadError`
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-Both arms are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+Both kinds are reachable. `kind: 'deploy'` comes from a retained-era deploy that
 was built on a pre-fork head and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
@@ -421,9 +421,9 @@ For a **deploy** the remediation is different, and it is also two steps:
    composed*, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
    fresh nonce, so a second attempt lands at a *different* address and a skipped check
    leaves two copies of the contract on chain.
-2. **Recompile with the current Compact toolchain and deploy that artifact.** Unlike the
+2. **Recompile with the ledger 9 Compact toolchain and deploy that artifact.** Unlike the
    call case, a plain re-run does not work: after the fork a contract produced by the
-   retained toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
+   ledger 8 (pre-fork) toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
@@ -433,27 +433,27 @@ For a **deploy** the remediation is different, and it is also two steps:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8.DeployOnV9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`).
+This section is linked from `Ledger8.DeployOnLedger9Error`
+(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. New deployments of a retained-toolchain artifact work **only on a
+the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only on a
 pre-fork head**. On a post-fork head `deployContract` refuses one with
-`Ledger8.DeployOnV9Error`, before the constructor runs and before any verifier
+`Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either
-`options.signingKey` or a freshly sampled one. The key is reported on the
-handle's `signingKey` and stored against the new address through
+`options.signingKey` or a freshly sampled one. The key is reported at
+`deployTxData.private.signingKey` and stored against the new address through
 `privateStateProvider`. That store is the only copy besides the handle: lose it
 and no verifier key on that contract can ever be inserted, removed or replaced.
 
 In practice:
 
-- **Obtain current-toolchain artifacts for every contract you deploy at
+- **Obtain ledger 9 toolchain artifacts for every contract you deploy at
   runtime**, and ship them before the fork. From the fork on, a retained
   artifact cannot be deployed.
 - Contracts you deployed *before* the fork are unaffected — they keep working
@@ -473,8 +473,7 @@ is the result type below, `Ledger8.Contract` the constraint for a helper of
 your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
 dropped inside, so each member is the retained twin of the flat current-era
 name it mirrors, where one exists. The half that serves BOTH eras --
-`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`, the
-`*_PIPELINE_ERA` vocabulary -- stays flat, so a handler that only receives
+`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError` -- stays flat, so a handler that only receives
 results imports nothing era-specific. When the fork window closes, the whole
 namespace goes in one step; the fork-window refusals (`StaleHeadError` and the
 rest of that group) are published flat and go in a separate one.
@@ -482,7 +481,7 @@ rest of that group) are published flat and go in a separate one.
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
 unchanged — you pass the raw contract instance instead of a `CompiledContract`
-container, and an additive overload picks the retained arm. What comes BACK is
+container, and an additive overload picks the retained-era path. What comes BACK is
 the same two-level shape (`public` / `private`), built from the same shared
 bases, so `private.result`, `public.txId` and `public.status` read identically
 in both eras.
@@ -490,17 +489,18 @@ in both eras.
 Six differences are worth knowing before you write a handler that has to accept
 either era.
 
-- **Every result names its era.** `result.era` is `'ledger8'` or `'ledger9'`,
-  read off the compiled artifact. Narrow with `isLedger8Result(result)`, and
+- **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
+  `LedgerVersion`, the same values as `public.version`), read off the compiled
+  artifact. Narrow with `isLedger8Result(result)`, and
   declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
   `AnyEraSubmittedCallTx`.
 - **`era` is not `public.version`.** `era` names the pipeline that produced the
   objects; `public.version` names the ledger that recorded the transaction.
-  After the fork they disagree for every retained-era call: `era: 'ledger8'`
+  After the fork they disagree for every retained-era call: `era: 'v8'`
   with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
   on `era` to decide which module an object came from, on `version` before
   touching `public.tx`.
-- **`public.version` is a union on the retained arm.** A retained-era call is
+- **`public.version` is a union on the retained-era path.** A retained-era call is
   recorded by whichever era the head is on, so narrow it. The current era's is
   pinned `'v9'`.
 - **`public.nextContractState` is a different KIND of object per era.** The
@@ -510,7 +510,7 @@ either era.
   ledger runtimes. That is the member to read, persist, `structuredClone` or
   post to a worker; the handles are valid only inside the process that built
   them.
-- **No `logEvents` on the retained arm.** The previous toolchain has no
+- **No `logEvents` on the retained-era path.** The previous toolchain has no
   log-event concept at any layer, so there is no value to read rather than an
   empty list to read.
 - **`private.txBytes` instead of `private.unprovenTx`.** The retained composer
@@ -519,32 +519,44 @@ either era.
 
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
-HANDLES differ in only four places: the retained handle has no maintenance
-interfaces (the retained era has no governance arm), its `deployTxData` is
-the flat record where the current era's is `{ era, public, private }`, its
+HANDLES differ in one place: the retained handle's
 `callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
-recipient key mappings (see below), and a deployed handle keeps the deployer's
-data at a different path (table below). And `getStates` / `getPublicStates` have no retained
-arm: they decode with the current-era deserializer and refuse anything else, so
-for a contract whose state envelope is still pre-fork, read the state through
-`queryRawContractState` and narrow on its `version`, or read
-`public.nextContractStateEncoded` off a call result.
+recipient key mappings (see below). Both handles carry the maintenance
+interfaces; the retained one works only before the fork, and after it the same
+contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
+return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
+ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
+on `version` before reading the state.
 
-Where a deployed handle keeps the deployer's data. The paths stay different
-until the retained era is removed, so branch on `deployed.era` before reading
-them:
+`deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
+a found handle and on a deployed one. The retained-era handle used to keep the
+deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 
-| Fact | Current era (`DeployedContract`) | Retained era (`Ledger8.DeployedContract`) |
+| Fact | Before (retained era, up to rc.4) | Now (both eras) |
 |---|---|---|
-| Signing key | `deployTxData.private.signingKey` | `signingKey` |
-| Private state from the constructor | `deployTxData.private.initialPrivateState` | `initialPrivateState` |
-| Zswap state from the constructor | `deployTxData.private.initialZswapState` | `initialZswapState` |
-| Initial contract state (live handle) | `deployTxData.public.initialContractState` | `initialContractState` |
-| Initial contract state (bytes) | — | `initialContractStateBytes` |
+| Deploy record | `deployTxData` (the flat record) | `deployTxData.public` (a ledger 8 record on a deployed handle) |
+| Contract address | `contractAddress` | `deployTxData.public.contractAddress` (and `contractAddress`) |
+| Signing key | `signingKey` | `deployTxData.private.signingKey` |
+| Private state from the constructor | `initialPrivateState` | `deployTxData.private.initialPrivateState` |
+| Zswap state from the constructor | `initialZswapState` | `deployTxData.private.initialZswapState` |
+| Initial contract state (live handle) | `initialContractState` | `deployTxData.public.initialContractState` |
+| Initial contract state (bytes, retained era only) | `initialContractStateBytes` | `deployTxData.public.initialContractStateBytes` |
 
-The signing key differs on a found handle too: `findDeployedContract` reports it
-at `deployTxData.private.signingKey` in the current era and at the top-level
-`signingKey` in the retained era.
+The retained era's signing key is now the same `SigningKey` the current era
+uses, `{ tag, value }`, on `deployTxData.private.signingKey`, on the
+`signingKey` option of `deployContract` and `findDeployedContract`, and on the
+`signingKey` member of `Ledger8.DeployTxFailedError`,
+`Ledger8.DeployUnconfirmedError` and `Ledger8.DeployNotStoredError`. The retained
+era signs with `schnorr` only: an `ecdsa` key, or a value that is not exactly 64
+hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError` before
+anything is composed or stored.
+
+```diff
+- await deployContract(providers, { compiledContract: retained, signingKey: keyHex });
+- const key = deployed.signingKey;
++ await deployContract(providers, { compiledContract: retained, signingKey: { tag: 'schnorr', value: keyHex } });
++ const key = deployed.deployTxData.private.signingKey;
+```
 
 `initialContractStateBytes` was called `initialState` in the earlier 5.0.0
 release candidates. It holds the same bytes under the new name.
@@ -594,7 +606,38 @@ try {
 }
 ```
 
-### The retained toolchain stays where it is
+### Maintaining a contract in either era
+
+`submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx`
+and the maintenance interfaces on both handles take either era's artifact. Their
+result is now nested like every other result, so read the record under `public`:
+
+```diff
+- const { status } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
++ const { public: { status } } = await submitRemoveVerifierKeyTx(providers, compiledContract, address, 'increment');
+```
+
+Before the fork, a contract deployed with ledger 8 artifacts is maintained with
+those artifacts and the key the deploy stored. After the fork, the retained
+artifact is refused with `Ledger8.MaintenanceOnLedger9Error`: recompile the
+contract with the ledger 9 Compact toolchain and call the same function with
+that artifact. The stored key is unchanged, and the fork keeps the contract's
+maintenance authority, so that key still signs for the migrated contract. Keep
+the same private-state store when you switch artifacts: the key is in that store
+and nowhere else.
+
+A retained-era update reads the stored key before it composes anything, and
+refuses a missing, foreign-kind or unreadable entry with
+`Ledger8.SigningKeyUnavailableError`, and a key that is not the contract's
+authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
+
+An authority replacement whose outcome cannot be confirmed - the submission was
+rejected while the head moved, or the record could not be read back - is raised
+as `Ledger8.ReplaceAuthorityUnconfirmedError`. It carries the new key, which was
+NOT stored: keep it, and store it once a maintenance update with the old key is
+refused with `MaintenanceAuthorityMismatchError`.
+
+### The ledger 8 (pre-fork) toolchain stays where it is
 
 You do not install a second Compact toolchain, and you do not add the retained
 ledger or runtime packages to your own dependencies. The framework carries what
@@ -633,7 +676,7 @@ See also [Vite WASM resolution](../../guides/vite-wasm-resolution.md).
 
 ### ZKIR-v2 support is not sunsetting
 
-Contracts compiled with the retained toolchain remain transactable on the
+Contracts compiled with the ledger 8 (pre-fork) toolchain remain transactable on the
 network indefinitely; upstream has not announced a sunset. The retained-era
 support in *this framework* is a separate question and is scheduled for removal
 in the next major after the window closes — announced from day one so it is
@@ -750,6 +793,64 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 
 ---
 
+## Step 17 — Run indexer `4.4.0-rc.6` or later, and narrow `queryDeployContractState`
+
+`indexerPublicDataProvider` requires indexer `4.4.0-rc.6` or later (#1452). If
+you pin the indexer image, move it to that version or later; the framework's own
+test environments use `4.4.0-rc.6-68702121`.
+
+`queryDeployContractState` now resolves to `VersionedContractState | null`.
+Narrow on `version`:
+
+```ts
+// Before (4.x)
+const state = await publicDataProvider.queryDeployContractState(address);
+
+// After (5.0.0)
+const deployState = await publicDataProvider.queryDeployContractState(address);
+if (deployState?.version === 'v9') {
+  use(deployState.state);
+} else if (deployState?.version === 'v8') {
+  useBytes(deployState.stateBytes);
+}
+```
+
+A `v8` result carries the stored bytes (`stateBytes`), not a decoded state.
+See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-version-tagged-and-the-indexer-floor-is-440-rc6-1452).
+
+---
+
+## Step 18 — Narrow the contract-state reads, `getPublicStates` and `submitTx`
+
+The contract-state reads, `getPublicStates` / `getStates` and `submitTx` are version-tagged (#1508).
+In code that handles only v9, narrow with `requireLedger9`:
+
+```ts
+import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+
+// Before
+const state = await publicDataProvider.queryContractState(address);
+const [zswap, contractState, params] = (await publicDataProvider.queryZSwapAndContractState(address))!;
+await submitTx(providers, { unprovenTx });
+
+// After
+const { state } = requireLedger9(
+  (await publicDataProvider.queryContractState(address))!,
+  'readCounter'
+);
+const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
+  (await publicDataProvider.queryZSwapAndContractState(address))!,
+  'readCounter'
+);
+await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
+```
+
+Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
+`version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
+any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
+match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
+[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -763,12 +864,17 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
 - [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
 - [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).
-- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era arm cannot fall through unhandled.
+- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then re-run.
-- [ ] Contracts deployed at runtime have current-toolchain artifacts shipped.
+- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
+- [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
+- [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8ReplaceAuthorityUnconfirmedError` or `Ledger8SigningKeyNotStoredError` keeps the `signingKey` it carries.
+- [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
 - [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
+- [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.
+- [ ] Every contract-state read, `getPublicStates` / `getStates` result and `submitTx` input is version-tagged and narrowed (`switch` + `assertNever`, or `requireLedger9`).

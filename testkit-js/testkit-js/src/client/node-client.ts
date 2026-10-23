@@ -19,6 +19,7 @@ import type { BlockHash, NetworkId } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
+import { HEALTH_CHECK_TIMEOUT_MS } from '../configuration';
 import { buildUrlWithPath, redactUrl } from '../utils';
 
 /**
@@ -53,7 +54,7 @@ export class NodeClient {
    */
   async health() {
     const url = buildUrlWithPath(this.nodeURL, '/health');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: HEALTH_CHECK_TIMEOUT_MS });
     this.logger.info(`Connected to node ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }

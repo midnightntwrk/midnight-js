@@ -283,7 +283,7 @@ const withoutVersions = (info: CompiledContractInfo): Record<string, unknown> =>
   Object.fromEntries(Object.entries(info).filter(([member]) => !VERSION_MEMBERS.includes(member)));
 
 /** The retained build, typed as the engine's own `executeCircuit` demands it. */
-interface RetainedContract extends CompactContract.Contract<CounterPrivateState> {
+interface Ledger8EngineContract extends CompactContract.Contract<CounterPrivateState> {
   initialState(constructorContext: unknown): {
     readonly currentPrivateState: CounterPrivateState;
     readonly currentContractState: { data: { state: { encode(): EncodedStateValue } } };
@@ -291,7 +291,7 @@ interface RetainedContract extends CompactContract.Contract<CounterPrivateState>
 }
 
 interface RetainedModule {
-  readonly Contract: new (witnesses: Witnesses) => RetainedContract;
+  readonly Contract: new (witnesses: Witnesses) => Ledger8EngineContract;
   readonly ledger: (state: unknown) => CounterLedger;
 }
 
@@ -323,7 +323,7 @@ interface CompactRuntimeLike {
 /**
  * The CURRENT runtime, by its own types — which are the right ones for it,
  * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.20.0.
- * The retained arm cannot use them (its VALUE is the 0.16 glue while these
+ * The retained-era path cannot use them (its VALUE is the 0.16 glue while these
  * types are 0.20's), which is why {@link CompactRuntimeLike} above spells out
  * by hand the few members that exist, and agree, on both sides.
  */

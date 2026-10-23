@@ -16,16 +16,16 @@
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it } from 'vitest';
 
-import { assertSeamsSupportEra, type TransactionSeams } from '../era-support';
-import { PROVIDER_ERROR_CODES, SeamEraUnsupportedError } from '../errors';
+import { assertProvidersSupportEra, type TransactionProviders } from '../era-support';
+import { PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
 
 const declaring = (...eras: LedgerVersion[]) => ({ supportedEras: Object.freeze(eras) });
 
-const seams = (
+const providers = (
   proof: readonly LedgerVersion[],
   wallet: readonly LedgerVersion[],
   midnight: readonly LedgerVersion[]
-): TransactionSeams => ({
+): TransactionProviders => ({
   proofProvider: declaring(...proof),
   walletProvider: declaring(...wallet),
   midnightProvider: declaring(...midnight)
@@ -34,59 +34,59 @@ const seams = (
 const BOTH: readonly LedgerVersion[] = ['v8', 'v9'];
 const CURRENT_ONLY: readonly LedgerVersion[] = ['v9'];
 
-const refusalFrom = (era: LedgerVersion, set: TransactionSeams): SeamEraUnsupportedError => {
+const refusalFrom = (era: LedgerVersion, set: TransactionProviders): ProviderEraUnsupportedError => {
   try {
-    assertSeamsSupportEra(era, set);
+    assertProvidersSupportEra(era, set);
   } catch (error) {
-    return error as SeamEraUnsupportedError;
+    return error as ProviderEraUnsupportedError;
   }
-  throw new Error(`assertSeamsSupportEra accepted ${era} when it should have refused it`);
+  throw new Error(`assertProvidersSupportEra accepted ${era} when it should have refused it`);
 };
 
-describe('assertSeamsSupportEra', () => {
-  it('accepts a set where all three seams declare the era', () => {
-    expect(() => assertSeamsSupportEra('v8', seams(BOTH, BOTH, BOTH))).not.toThrow();
-    expect(() => assertSeamsSupportEra('v9', seams(BOTH, BOTH, BOTH))).not.toThrow();
+describe('assertProvidersSupportEra', () => {
+  it('accepts a set where all three providers declare the era', () => {
+    expect(() => assertProvidersSupportEra('v8', providers(BOTH, BOTH, BOTH))).not.toThrow();
+    expect(() => assertProvidersSupportEra('v9', providers(BOTH, BOTH, BOTH))).not.toThrow();
   });
 
   it('accepts the current era on a set that serves nothing else', () => {
-    expect(() => assertSeamsSupportEra('v9', seams(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY))).not.toThrow();
+    expect(() => assertProvidersSupportEra('v9', providers(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY))).not.toThrow();
   });
 
   // The whole point of the pre-flight check: the refusal has to land before the
   // proof is paid for, so the wallet's gap is reported even though the proof
   // provider would have accepted the work.
-  it('refuses on the wallet seam when only the wallet lacks the era', () => {
-    const refusal = refusalFrom('v8', seams(BOTH, CURRENT_ONLY, BOTH));
+  it('refuses on balanceTx when only the wallet lacks the era', () => {
+    const refusal = refusalFrom('v8', providers(BOTH, CURRENT_ONLY, BOTH));
 
-    expect(refusal).toBeInstanceOf(SeamEraUnsupportedError);
-    expect(refusal.seam).toBe('balanceTx');
+    expect(refusal).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect(refusal.method).toBe('balanceTx');
     expect(refusal.era).toBe('v8');
     expect([...refusal.declared].sort()).toEqual(['v9']);
   });
 
-  it('refuses on the proof seam when only the proof provider lacks the era', () => {
-    expect(refusalFrom('v8', seams(CURRENT_ONLY, BOTH, BOTH)).seam).toBe('proveTx');
+  it('refuses on proveTx when only the proof provider lacks the era', () => {
+    expect(refusalFrom('v8', providers(CURRENT_ONLY, BOTH, BOTH)).method).toBe('proveTx');
   });
 
-  it('refuses on the submission seam when only the submitter lacks the era', () => {
-    expect(refusalFrom('v8', seams(BOTH, BOTH, CURRENT_ONLY)).seam).toBe('submitTx');
+  it('refuses on submitTx when only the submitter lacks the era', () => {
+    expect(refusalFrom('v8', providers(BOTH, BOTH, CURRENT_ONLY)).method).toBe('submitTx');
   });
 
-  // Reported in pipeline order so the message names the seam a caller would
+  // Reported in pipeline order so the message names the method a caller would
   // hit first, rather than whichever gap the check happened to notice.
-  it('names the earliest seam in pipeline order when several lack the era', () => {
-    expect(refusalFrom('v8', seams(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY)).seam).toBe('proveTx');
+  it('names the earliest method in pipeline order when several lack the era', () => {
+    expect(refusalFrom('v8', providers(CURRENT_ONLY, CURRENT_ONLY, CURRENT_ONLY)).method).toBe('proveTx');
   });
 
   it('carries its stable error code', () => {
-    const refusal = refusalFrom('v8', seams(CURRENT_ONLY, BOTH, BOTH));
+    const refusal = refusalFrom('v8', providers(CURRENT_ONLY, BOTH, BOTH));
 
-    expect(refusal.code).toBe(PROVIDER_ERROR_CODES.SEAM_ERA_UNSUPPORTED);
+    expect(refusal.code).toBe(PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED);
   });
 
   it('names the era and the declaration in the message, so a report is actionable', () => {
-    const refusal = refusalFrom('v8', seams(CURRENT_ONLY, BOTH, BOTH));
+    const refusal = refusalFrom('v8', providers(CURRENT_ONLY, BOTH, BOTH));
 
     expect(refusal.message).toContain('proveTx');
     expect(refusal.message).toContain('v8');
@@ -97,7 +97,7 @@ describe('assertSeamsSupportEra', () => {
   // an empty list is a statement that it serves no era, and the check reads
   // declarations literally.
   it('refuses an empty declaration', () => {
-    expect(refusalFrom('v9', seams([], BOTH, BOTH)).seam).toBe('proveTx');
+    expect(refusalFrom('v9', providers([], BOTH, BOTH)).method).toBe('proveTx');
   });
 
   // Reachable from JavaScript and from a consumer built against an older
@@ -106,9 +106,9 @@ describe('assertSeamsSupportEra', () => {
   it('refuses a provider carrying no declaration at all', () => {
     const undeclared = { proofProvider: {}, walletProvider: declaring('v9'), midnightProvider: declaring('v9') };
 
-    const refusal = refusalFrom('v9', undeclared as unknown as TransactionSeams);
+    const refusal = refusalFrom('v9', undeclared as unknown as TransactionProviders);
 
-    expect(refusal.seam).toBe('proveTx');
+    expect(refusal.method).toBe('proveTx');
     expect([...refusal.declared]).toEqual([]);
   });
 
@@ -119,6 +119,6 @@ describe('assertSeamsSupportEra', () => {
       midnightProvider: declaring('v9')
     };
 
-    expect(refusalFrom('v9', malformed as unknown as TransactionSeams).seam).toBe('proveTx');
+    expect(refusalFrom('v9', malformed as unknown as TransactionProviders).method).toBe('proveTx');
   });
 });

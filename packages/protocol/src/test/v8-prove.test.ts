@@ -18,9 +18,9 @@ import { Transaction } from '@midnightntwrk/ledger-v9';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES, TRANSACTION_TAG_PREFIX } from '../errors';
-import { loadLedger8 } from '../lib/v8/load';
-import { proveV8Transaction } from '../lib/v8/prove';
-import { V8_UNPROVEN_TX_TAG } from './fixtures';
+import { loadLedger8Protocol } from '../lib/v8/load';
+import { proveLedger8Transaction } from '../lib/v8/prove';
+import { LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
 
@@ -54,14 +54,14 @@ const errorChainText = (error: unknown): string => {
   return parts.join(' | ');
 };
 
-describe('proveV8Transaction', () => {
+describe('proveLedger8Transaction', () => {
   let retainedEraTxBytes: Uint8Array;
   let circuitDrivingTxBytes: Uint8Array;
-  let v8Module: Awaited<ReturnType<typeof loadLedger8>>;
+  let ledger8Module: Awaited<ReturnType<typeof loadLedger8Protocol>>;
 
   beforeAll(async () => {
-    const v8 = await loadLedger8();
-    v8Module = v8;
+    const v8 = await loadLedger8Protocol();
+    ledger8Module = v8;
     retainedEraTxBytes = v8.Transaction.fromParts(NETWORK_ID).serialize();
 
     // A transaction carrying one Zswap output. Unlike the empty one above it
@@ -87,29 +87,29 @@ describe('proveV8Transaction', () => {
     // that class across the WASM boundary: handing it the current era's cost
     // model throws `expected instance of CostModel`. So this test passing IS
     // the check that the retained cost model is used.
-    const provenBytes = await proveV8Transaction(retainedEraTxBytes, inertProvingProvider);
+    const provenBytes = await proveLedger8Transaction(retainedEraTxBytes, inertProvingProvider);
 
     // The stage marker in the tag is the observable difference between input
     // and output: an unproven transaction serializes as `proof-preimage`, a
     // proven one as `proof`. Asserting the flip is what distinguishes "the
     // transaction was proved" from "some bytes came back".
-    const provenTag = V8_UNPROVEN_TX_TAG.replace('proof-preimage', 'proof');
-    expect(provenTag).not.toBe(V8_UNPROVEN_TX_TAG);
-    expect(asLatin1(retainedEraTxBytes, V8_UNPROVEN_TX_TAG.length)).toBe(V8_UNPROVEN_TX_TAG);
+    const provenTag = LEDGER8_UNPROVEN_TX_TAG.replace('proof-preimage', 'proof');
+    expect(provenTag).not.toBe(LEDGER8_UNPROVEN_TX_TAG);
+    expect(asLatin1(retainedEraTxBytes, LEDGER8_UNPROVEN_TX_TAG.length)).toBe(LEDGER8_UNPROVEN_TX_TAG);
     expect(asLatin1(provenBytes, provenTag.length)).toBe(provenTag);
 
-    expect(() => v8Module.Transaction.deserialize('signature', 'proof', 'pre-binding', provenBytes)).not.toThrow();
+    expect(() => ledger8Module.Transaction.deserialize('signature', 'proof', 'pre-binding', provenBytes)).not.toThrow();
   });
 
   describe('the payload tag assertion', () => {
     it('refuses a payload that is not a serialized transaction, before the runtime sees it', async () => {
-      const rejection = await proveV8Transaction(new Uint8Array([1, 2, 3, 4]), inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(new Uint8Array([1, 2, 3, 4]), inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
 
       // Our own coded refusal, not a runtime decode failure: the caller gets an
-      // actionable error naming the seam instead of an opaque WASM message.
+      // actionable error instead of an opaque WASM message.
       expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
       expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
     });
@@ -161,7 +161,7 @@ describe('proveV8Transaction', () => {
       // Reachable exactly as an untagged payload is: from JavaScript, from a
       // consumer built against a pre-5.0.0 `midnight-js-types`, or across an
       // untyped boundary.
-      const rejection = await proveV8Transaction(payload as unknown as Uint8Array, inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(payload as unknown as Uint8Array, inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -184,7 +184,7 @@ describe('proveV8Transaction', () => {
     });
 
     it('refuses a payload shorter than the tag prefix', async () => {
-      const rejection = await proveV8Transaction(new Uint8Array(), inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(new Uint8Array(), inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -193,12 +193,12 @@ describe('proveV8Transaction', () => {
     });
 
     it('does not echo the payload back in the refusal', async () => {
-      // The bytes are attacker-controlled at this seam. Reporting the length is
+      // The bytes are attacker-controlled here. Reporting the length is
       // fine and useful; reproducing any of the content is not.
       const marker = 'DEADBEEF';
       const payload = new Uint8Array(Buffer.from(`${marker}${'x'.repeat(64)}`, 'latin1'));
 
-      const rejection = await proveV8Transaction(payload, inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(payload, inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -213,10 +213,10 @@ describe('proveV8Transaction', () => {
       // passes this check and is then refused by the retained runtime itself.
       // That is the intended division of labour: the tag is a defence-in-depth
       // discriminant on the KIND of payload, while the era is carried by the
-      // seam's `version` field.
+      // payload's `version` field.
       const currentEraTxBytes = Transaction.fromParts(NETWORK_ID).serialize();
 
-      const rejection = await proveV8Transaction(currentEraTxBytes, inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(currentEraTxBytes, inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -229,15 +229,15 @@ describe('proveV8Transaction', () => {
       expect(errorChainText(rejection)).toContain('expected header tag');
     });
 
-    it('leaves a real tag with a truncated body to the runtime, not the seam', async () => {
+    it('leaves a real tag with a truncated body to the runtime, not the tag check', async () => {
       // The realistic corruption case for bytes that crossed a network or a
       // storage boundary: the tag survives, the body does not. It passes the
-      // seam's check by construction, so what it pins is that the seam does not
+      // tag check by construction, so what it pins is that the check does not
       // over-claim -- a damaged transaction is the runtime's refusal to make.
-      const truncated = retainedEraTxBytes.subarray(0, V8_UNPROVEN_TX_TAG.length + 4);
-      expect(asLatin1(truncated, V8_UNPROVEN_TX_TAG.length)).toBe(V8_UNPROVEN_TX_TAG);
+      const truncated = retainedEraTxBytes.subarray(0, LEDGER8_UNPROVEN_TX_TAG.length + 4);
+      expect(asLatin1(truncated, LEDGER8_UNPROVEN_TX_TAG.length)).toBe(LEDGER8_UNPROVEN_TX_TAG);
 
-      const rejection = await proveV8Transaction(truncated, inertProvingProvider).then(
+      const rejection = await proveLedger8Transaction(truncated, inertProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -258,14 +258,14 @@ describe('proveV8Transaction', () => {
       const bodyMarker = 'BODY-MARKER-MUST-NOT-BE-ECHOED';
       const payload = new Uint8Array(Buffer.from(`${TRANSACTION_TAG_PREFIX}${tagRegion}${bodyMarker}`, 'latin1'));
       const bodyOffset = TRANSACTION_TAG_PREFIX.length + tagRegion.length;
-      expect(bodyOffset).toBeGreaterThan(V8_UNPROVEN_TX_TAG.length);
+      expect(bodyOffset).toBeGreaterThan(LEDGER8_UNPROVEN_TX_TAG.length);
 
       // The runtime's own refusal, read directly: routing it through
-      // `proveV8Transaction` would only add indirection to the same throw. The
+      // `proveLedger8Transaction` would only add indirection to the same throw. The
       // read is kept out of the `try` so nothing swallows an assertion failure.
       let rejection: unknown;
       try {
-        v8Module.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', payload);
+        ledger8Module.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', payload);
       } catch (error: unknown) {
         rejection = error;
       }
@@ -292,7 +292,7 @@ describe('proveV8Transaction', () => {
     };
 
     it('propagates the failure without echoing the preimage or the payload into it', async () => {
-      const rejection = await proveV8Transaction(circuitDrivingTxBytes, rejectingProvingProvider).then(
+      const rejection = await proveLedger8Transaction(circuitDrivingTxBytes, rejectingProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -305,7 +305,7 @@ describe('proveV8Transaction', () => {
       // Nothing of the transaction may ride along. Checked in BOTH encodings:
       // the header-mismatch case above shows the runtime echoes payload bytes
       // as latin1, so a hex-only check could never fail.
-      const bodySlice = circuitDrivingTxBytes.subarray(V8_UNPROVEN_TX_TAG.length + 16, V8_UNPROVEN_TX_TAG.length + 32);
+      const bodySlice = circuitDrivingTxBytes.subarray(LEDGER8_UNPROVEN_TX_TAG.length + 16, LEDGER8_UNPROVEN_TX_TAG.length + 32);
       expect(text).not.toContain(Buffer.from(bodySlice).toString('latin1'));
       expect(text).not.toContain(Buffer.from(bodySlice).toString('hex'));
       expect(text).not.toContain('proof-preimage');
@@ -329,7 +329,7 @@ describe('proveV8Transaction', () => {
         lookupKey: () => Promise.resolve(undefined)
       };
 
-      const rejection = await proveV8Transaction(circuitDrivingTxBytes, recording).then(
+      const rejection = await proveLedger8Transaction(circuitDrivingTxBytes, recording).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -337,7 +337,7 @@ describe('proveV8Transaction', () => {
       // The provider handed in is the one the retained runtime consults, and
       // WHICH member it consults is part of the claim -- labelled, so this
       // cannot pass on `check` when it says `prove`.
-      expect(consulted, `proveV8Transaction rejected with: ${String(rejection)}`).toEqual([
+      expect(consulted, `proveLedger8Transaction rejected with: ${String(rejection)}`).toEqual([
         'prove:midnight/zswap/output'
       ]);
     });

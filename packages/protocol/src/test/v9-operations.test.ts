@@ -16,9 +16,9 @@
 /**
  * Re-expressing a retained-era contract's operations for the CURRENT ledger.
  *
- * This is the step that makes keep-state composable at all. The fork does not rewrite a contract's
- * stored state, so a contract deployed before it is served carrying a retained envelope for as long
- * as it stays untouched — and the current composer cannot deserialize those bytes. What has to
+ * This is the step that makes keep-state composable at all. A contract deployed before the fork can
+ * still be served after it carrying a retained envelope — by a pinned read, a record, or an indexer
+ * older than 4.4.0-rc.6 — and the current composer cannot deserialize those bytes. What has to
  * cross the boundary is not the state but the OPERATION REGISTRY the composer looks the circuit's
  * verifier key up in.
  */
@@ -29,7 +29,7 @@ import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeOptionError } from '../errors';
-import { reexpressOperationsForCurrentEra } from '../lib/v9/operations';
+import { reexpressOperationsForLedger9 } from '../lib/v9/operations';
 import { fixturePath } from './fixtures';
 
 /**
@@ -37,56 +37,56 @@ import { fixturePath } from './fixtures';
  * across the fork. Its own envelope names the retained key version, which is the fact that makes
  * this fixture the right one: the assertions below turn on the current ledger accepting it.
  */
-const RETAINED_VERIFIER_KEY = Uint8Array.from(
+const LEDGER8_VERIFIER_KEY = Uint8Array.from(
   readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
 );
 
 /** The envelope the CURRENT ledger writes contract states in. Retained states carry `[v6]`. */
-const CURRENT_ERA_STATE_TAG = 'midnight:contract-state[v8]:';
+const LEDGER9_STATE_TAG = 'midnight:contract-state[v8]:';
 
 const tagOf = (bytes: Uint8Array): string => Buffer.from(bytes.subarray(0, 64)).toString('ascii');
 
-describe('reexpressOperationsForCurrentEra', () => {
+describe('reexpressOperationsForLedger9', () => {
   it('is handed a genuinely RETAINED-era verifier key, which is the premise of the rest', () => {
     // Arrange / Act / Assert: if this fixture ever stopped being a retained-era key, every
     // assertion below would still pass while testing nothing about the fork.
-    expect(tagOf(RETAINED_VERIFIER_KEY)).toContain('midnight:verifier-key[v6]:');
+    expect(tagOf(LEDGER8_VERIFIER_KEY)).toContain('midnight:verifier-key[v6]:');
   });
 
   it('emits a CURRENT-era contract state, which is the whole reason it exists', () => {
     // Arrange.
-    const entryPoints = [{ circuitId: 'increment', verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined }];
+    const entryPoints = [{ circuitId: 'increment', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined }];
 
     // Act.
-    const serialized = reexpressOperationsForCurrentEra(entryPoints);
+    const serialized = reexpressOperationsForLedger9(entryPoints);
 
     // Assert: the current composer refuses anything else, so the envelope is the deliverable.
-    expect(tagOf(serialized)).toContain(CURRENT_ERA_STATE_TAG);
+    expect(tagOf(serialized)).toContain(LEDGER9_STATE_TAG);
     expect(() => LedgerV9.ContractState.deserialize(serialized)).not.toThrow();
   });
 
   it('carries the retained key through unchanged, so the chain and the prototype agree', () => {
     // Arrange.
-    const entryPoints = [{ circuitId: 'increment', verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined }];
+    const entryPoints = [{ circuitId: 'increment', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined }];
 
     // Act.
-    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForCurrentEra(entryPoints));
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
 
     // Assert: byte equality, not merely "a key is present". The composer hashes this value into the
     // key location a prover resolves by, so a re-encoded key would point at artifacts that do not
     // exist. That the current ledger holds it at all is the upstream half of keep-state.
-    expect(state.operation('increment')?.verifierKey).toEqual(RETAINED_VERIFIER_KEY);
+    expect(state.operation('increment')?.verifierKey).toEqual(LEDGER8_VERIFIER_KEY);
   });
 
   it('registers every entry point that has a key, not only the first', () => {
     // Arrange.
     const entryPoints = [
-      { circuitId: 'increment', verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined },
-      { circuitId: 'decrement', verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined }
+      { circuitId: 'increment', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined },
+      { circuitId: 'decrement', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined }
     ];
 
     // Act.
-    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForCurrentEra(entryPoints));
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
 
     // Assert: strict set equality, so an entry point silently dropped fails here rather than as an
     // unresolvable circuit much later.
@@ -97,12 +97,12 @@ describe('reexpressOperationsForCurrentEra', () => {
     // Arrange: a declared entry point whose key the chain does not hold. Carried as `undefined`
     // rather than as empty bytes -- see the fail-closed decoding note on ContractEntryPointPojo.
     const entryPoints = [
-      { circuitId: 'increment', verifierKey: RETAINED_VERIFIER_KEY, verifierKeyHash: undefined },
+      { circuitId: 'increment', verifierKey: LEDGER8_VERIFIER_KEY, verifierKeyHash: undefined },
       { circuitId: 'unregistered', verifierKey: undefined, verifierKeyHash: undefined }
     ];
 
     // Act.
-    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForCurrentEra(entryPoints));
+    const state = LedgerV9.ContractState.deserialize(reexpressOperationsForLedger9(entryPoints));
 
     // Assert: the blank slot stays blank. A caller that goes on to call `unregistered` is refused
     // by the composer, naming that circuit -- which is a better message than anything inventable here.
@@ -116,7 +116,7 @@ describe('reexpressOperationsForCurrentEra', () => {
 
     // Act / Assert: refused here rather than handed on, because an empty registry makes the
     // composer's refusal name a circuit when the real fault is that no key was readable at all.
-    expect(() => reexpressOperationsForCurrentEra(entryPoints)).toThrow(ComposeOptionError);
+    expect(() => reexpressOperationsForLedger9(entryPoints)).toThrow(ComposeOptionError);
   });
 
   it('refuses bytes that are not a verifier key, rather than registering them', () => {
@@ -126,7 +126,7 @@ describe('reexpressOperationsForCurrentEra', () => {
     // Act / Assert: fail-closed, and the refusal comes from the ledger rather than from a check
     // restated here -- one that could drift from what the ledger actually accepts.
     expect(() =>
-      reexpressOperationsForCurrentEra([{ circuitId: 'increment', verifierKey: notAKey, verifierKeyHash: undefined }])
+      reexpressOperationsForLedger9([{ circuitId: 'increment', verifierKey: notAKey, verifierKeyHash: undefined }])
     ).toThrow();
   });
 });

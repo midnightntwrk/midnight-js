@@ -21,7 +21,7 @@
 // `pragma language_version >= 0.23` deliberately: this source is compiled by
 // BOTH toolchains -- 0.31.1 for the retained twin and this repo's current
 // compactc for the e2e build -- and the floor is what the retained one accepts.
-// Adding a form newer than 0.23 breaks the retained twin, which is the arm that
+// Adding a form newer than 0.23 breaks the retained twin, which is the one that
 // matters here.
 //
 // The unit-tier twin of this file is

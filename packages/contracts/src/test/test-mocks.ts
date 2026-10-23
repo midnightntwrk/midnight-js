@@ -54,11 +54,12 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type FinalizedTxData,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   type MidnightConfig,
   type PrivateStateId,
   type ProverKey,
@@ -70,11 +71,11 @@ import {
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
+import type { Mock } from 'vitest';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -126,7 +127,7 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
+export const createDefaultCircuit = (): Mock => vi.fn().mockImplementation((ctx) => {
   finalizeCallProofData(ctx, {
     input: { value: [], alignment: [] },
     output: { value: [], alignment: [] },
@@ -141,7 +142,7 @@ export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
   };
 });
 
-export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
+export const createFailingCircuit = (failMessage: string): Mock => vi.fn().mockImplementation((() => {
   compactAssert(false, failMessage);
 }));
 
@@ -258,13 +259,13 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
 const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
 
 /**
- * What the three write seams declare here: BOTH eras, mirroring the testkit's
+ * What the three transaction providers declare here: BOTH eras, mirroring the testkit's
  * real `MidnightWalletProvider`, which serves both.
  *
- * Declared once and shared by the three mocks, because a set where the seams
+ * Declared once and shared by the three mocks, because a set where the providers
  * disagree is the thing a test should have to say out loud. A test that wants a
  * gap replaces one provider's declaration explicitly — see
- * `seam-era-support.test.ts`.
+ * `provider-era-support.test.ts`.
  */
 export const MOCK_CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 3600 };
 
@@ -366,16 +367,16 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   }
 });
 
-export const createMockFinalizedTxDataV8 = (status: TxStatus = SucceedEntirely): FinalizedTxDataV8 => ({
+export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
   version: 'v8',
-  tx: {} as FinalizedTxDataV8['tx'],
+  tx: {} as Ledger8FinalizedTxData['tx'],
   // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
   protocolVersion: 1_000_000
 });
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
-  era: CURRENT_PIPELINE_ERA,
+  era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -432,7 +433,7 @@ export const createMockContractCall = (
 });
 
 export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),
       nextContractStateEncoded: StateValue.newNull().encode(),
@@ -477,7 +478,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOpt
 });
 
 export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
-  era: CURRENT_PIPELINE_ERA,
+  era: CURRENT_LEDGER_VERSION,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),

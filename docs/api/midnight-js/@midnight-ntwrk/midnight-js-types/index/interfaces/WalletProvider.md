@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -13,7 +13,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 ### supportedEras
 
-> `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
+> `readonly` **supportedEras**: readonly (`"v8"` \| `"v9"`)[]
 
 The ledger eras THIS INSTANCE serves. See
 [ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
@@ -41,8 +41,10 @@ The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
 
 `Date`
 
-Time-to-live for the balanced transaction. Implementation-defined when omitted;
-           the testkit's `MidnightWalletProvider` defaults to one hour.
+Expiry for the intent the wallet adds while balancing. The framework always passes
+           a `Date` `providers.config.ttlSeconds` after balancing starts; honour it rather than a
+           TTL of your own. Implementation-defined when omitted; the testkit's
+           `MidnightWalletProvider` defaults to one hour.
 
 #### Returns
 
@@ -53,7 +55,7 @@ The balanced, signed transaction, version-tagged. Narrow on `version` — or cal
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
 
 #### Throws
 

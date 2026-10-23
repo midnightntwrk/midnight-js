@@ -33,18 +33,13 @@
  *
  * @see {@link OverloadTyping} for why the declarations are hand-written and
  *      runtime-pinned, how openness is expressed without `any`, and why the
- *      order of the overload arms is load-bearing.
+ *      order of the overloads is load-bearing.
  * @see {@link EraDispatch} for the runtime decision and what it may not use.
  */
 
-// `Ledger8SigningKey` by NAME, never respelled as the `string` it resolves to: the two eras' keys
-// are different shapes, and a local restatement would keep type-checking after the retained runtime
-// changed its own. It reaches here through the protocol barrel, so this package still takes no
-// dependency on the retained runtime, type-only or otherwise.
 import type {
   ConstructorResultPojo,
   EncodedStateValue,
-  Ledger8SigningKey,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
 
@@ -56,12 +51,13 @@ import type {
  * compact-js's ledger-8 types, and naming them structurally keeps this package
  * free of any dependency on the retained runtime.
  */
-type RetainedStateValue = TranscriptPojo['postContractState'];
-type RetainedConstructedState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
+type Ledger8StateValue = TranscriptPojo['postContractState'];
+type Ledger8SerializableContractState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
 
 import type {
   CommunicationCommitmentData,
   ContractAddress,
+  SigningKey,
   ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
@@ -69,15 +65,18 @@ import type {
   CallResultPrivateBase,
   CallResultPublicBase,
   ContractCallPrivateBase,
+  Ledger8FinalizedTxData,
   MidnightProviders,
   PrivateStateId,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase,
+  VerifierKey,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
-import type { RetainedPipelineEra } from './era';
+import type { Ledger8FoundDeployTxPublicData } from './tx-model';
+
 
 /**
  * The context a retained-era circuit receives as its first argument, as a
@@ -322,7 +321,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * transaction after it, so the record it finalizes as carries the era that
  * produced it.
  *
- * @see {@link OverloadTyping} for the seam that rule follows from.
+ * @see {@link OverloadTyping} for the version-tagged provider methods that rule follows from.
  */
 /**
  * What a retained-era circuit's own return value narrows to.
@@ -358,7 +357,7 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
    * means nothing outside its module. Serialize it yourself if you need to
    * keep it; see ADR-0010.
    */
-  readonly nextContractState: RetainedStateValue;
+  readonly nextContractState: Ledger8StateValue;
   /**
    * The same state as an {@link EncodedStateValue}: the form that survives this
    * process, a `structuredClone`, a worker transfer and storage.
@@ -426,7 +425,7 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly circuitId: K;
   readonly public: Ledger8FinalizedCallTxPublicData;
   readonly private: Ledger8CallResultPrivate<C, K>;
@@ -447,7 +446,7 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
  * @typeParam TState - The retained-era state type; the framework's own
  * retained runtime fills it with compact-js's ledger-8 state handle.
  */
-export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends CallResultPublicBase {
+export interface Ledger8ContractCallPublic<TState = Ledger8StateValue> extends CallResultPublicBase {
   /**
    * The state this call ENDED on.
    *
@@ -496,7 +495,7 @@ export interface Ledger8ContractCallPublic<TState = RetainedStateValue> extends 
  *
  * @typeParam TState - See {@link Ledger8ContractCallPublic}.
  */
-export interface Ledger8ContractCall<TState = RetainedStateValue> {
+export interface Ledger8ContractCall<TState = Ledger8StateValue> {
   readonly contractAddress: ContractAddress;
   readonly circuitId: string;
   readonly public: Ledger8ContractCallPublic<TState>;
@@ -524,7 +523,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly public: Ledger8CallResultPublic;
   readonly private: Ledger8CallResultPrivate<C, K>;
   /**
@@ -552,7 +551,7 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Led
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   readonly circuitId: K;
 }
 
@@ -568,44 +567,49 @@ export type Ledger8ConstructorParameters<C extends Ledger8Contract> =
   Parameters<C['initialState']> extends [unknown, ...infer A] ? A : never[];
 
 /**
- * What both retained-era deploy arms carry, and nothing either arm decides.
+ * What both retained-era deploy options variants carry, and nothing either variant decides.
  *
- * NOT published, and neither arm extends the other. An arm declaring
+ * NOT published, and neither variant extends the other. A variant declaring
  * `privateStateId: PrivateStateId` over a base declaring `privateStateId?:
  * never` is an illegal extension, and under the `args` intersection below it
  * collapses the member to `never` — so the pairing rule can only be stated by
- * making the two arms siblings over this.
+ * making the two variants siblings over this.
  */
 interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
   readonly compiledContract: C;
   /**
    * The signing key to register as the deployed contract's maintenance
    * authority. If undefined, a fresh one is sampled.
+   *
+   * The same `{ tag, value }` shape the current era takes. The retained era
+   * signs with `schnorr` only, so any other key -- or a value that is not
+   * exactly 64 hexadecimal characters -- is refused with
+   * `Ledger8SigningKeyUnusableError` before anything is composed.
    */
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
- * The deploy arm for a retained-era contract whose private state is stored
+ * The deploy options variant for a retained-era contract whose private state is stored
  * NOWHERE: the constructor runs against `undefined` and nothing is written.
  *
- * The other arm is {@link Ledger8DeployContractOptionsWithPrivateState}.
+ * The other variant is {@link Ledger8DeployContractOptionsWithPrivateState}.
  */
 export interface Ledger8DeployContractOptionsBase<C extends Ledger8Contract>
   extends Ledger8DeployContractOptionsShared<C> {
   /**
-   * DECLARED on this arm, and only ever `undefined`.
+   * DECLARED on this variant, and only ever `undefined`.
    *
-   * Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+   * Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
    * compiled: union excess-property checking admits a member declared on the
-   * SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+   * SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
    * satisfies this one. The constructor then ran against `undefined`,
    * `undefined` was stored under the caller's id, and the handle reported an
    * `initialPrivateState` typed non-optional while actually undefined.
    */
   readonly privateStateId?: never;
   /**
-   * DECLARED on this arm, and only ever `undefined` — see
+   * DECLARED on this variant, and only ever `undefined` — see
    * {@link Ledger8DeployContractOptionsBase.privateStateId} for why the member
    * is present rather than absent.
    */
@@ -641,13 +645,13 @@ export interface Ledger8DeployContractOptionsWithPrivateState<C extends Ledger8C
  * `args` is CONDITIONAL, exactly as {@link Ledger8CallTxOptionsBase}'s is: a
  * constructor that takes no arguments of its own has no `args` member at all.
  * A retained constructor CAN take arguments — `Ledger8Contract.initialState`
- * says so, and the pipeline under this arm has always passed them through — so
+ * says so, and the pipeline under this overload has always passed them through — so
  * denying them here made a zero-argument constructor the only deployable one.
  *
- * The conditional is applied to the WHOLE union, so it reaches both arms: a
+ * The conditional is applied to the WHOLE union, so it reaches both variants: a
  * constructor with parameters demands `args` whether or not private state is
  * named, and a nullary one carries the member on neither. Writing the union
- * inside one branch only would have made the private-state arm the one shape a
+ * inside one branch only would have made the private-state variant the one shape a
  * caller could not supply arguments on.
  *
  * `additionalCoinEncPublicKeyMappings`, which the current era's deploy options
@@ -695,26 +699,27 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * The key to record as this contract's maintenance authority key, for a
    * caller that holds one and deployed the contract somewhere else.
    *
-   * VALIDATED BEFORE IT IS STORED. A retained-era key is exactly 64 hexadecimal
-   * characters, which is what that era's `sampleSigningKey` produces; this type
-   * is `string`, so a shorter one type-checks and is refused with
-   * `Ledger8SigningKeyUnusableError`. Nothing is written when it is refused.
+   * VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
+   * value is exactly 64 hexadecimal characters, which is what that era's
+   * `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
+   * length, and those are refused with `Ledger8SigningKeyUnusableError`.
+   * Nothing is written when it is refused.
    *
    * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}
-   * in the private-state provider, which is the same storage
-   * {@link Ledger8DeployedContract.signingKey} is written to -- so a key
-   * supplied here REPLACES whatever is held for that address, and is what
-   * {@link Ledger8FoundContract.signingKey} then reports.
+   * in the private-state provider, which is the same storage a deploy writes its
+   * key to -- so a key supplied here REPLACES whatever is held for that
+   * address, and is what `deployTxData.private.signingKey` on the found
+   * handle then reports.
    *
    * OMITTING it reports the key already stored, and stores nothing. It does NOT
    * sample a fresh key when none is stored, where the current era's
    * `findDeployedContract` does.
    *
    * @remarks **Privacy-sensitive.** Signing-key material.
-   * @see {@link KeepStatePipeline} for why this arm samples nothing, and why a
+   * @see {@link KeepStatePipeline} for why this path samples nothing, and why a
    * supplied key replaces a stored one rather than falling back to it.
    */
-  readonly signingKey?: Ledger8SigningKey;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -724,7 +729,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  * ONE signature per circuit, where the current era's `CircuitCallTxInterface`
  * has two: the retained era cannot join a scoped transaction — a scope refuses
  * a retained-era call with `MixedEraScopeError` — so there is no context-taking
- * arm to declare.
+ * overload to declare.
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
   [K in Ledger8CircuitId<C>]: (
@@ -733,15 +738,202 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
 };
 
 /**
+ * The deploy data of a retained-era contract found on chain: the same
+ * `{ era, public, private }` structure the current era's `FoundDeployTxData`
+ * has, so a caller reads `deployTxData.public.txId` and
+ * `deployTxData.private.signingKey` identically in both eras.
+ *
+ * @remarks **Privacy-sensitive.** `private` carries signing-key material and
+ * private state. Read only `public` when logging or transmitting.
+ */
+export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
+  /**
+   * The pipeline this handle runs on: always the retained era here. The era
+   * that recorded the deploy transaction is `public.version`.
+   */
+  readonly era: 'v8';
+  /**
+   * The record of the transaction that DEPLOYED the contract, and the address
+   * it created. Version-tagged because a retained-era contract was deployed in
+   * whichever era was current at the time — narrow it with
+   * `switch (deployTxData.public.version)`.
+   */
+  readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+  /**
+   * What this device holds for the contract.
+   *
+   * @remarks **Privacy-sensitive.** Signing-key material and private state.
+   */
+  readonly private: {
+    /**
+     * The key this framework holds for the contract's maintenance authority, or
+     * `undefined` when it holds none it can use.
+     *
+     * ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
+     * {@link Ledger8DeployTxData}: a deploy always has a key, because it built
+     * the authority; an attach has one only if a deploy on this machine stored
+     * it, or the caller supplied one through
+     * {@link Ledger8FindDeployedContractOptions.signingKey}.
+     *
+     * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
+     * apart has to look at the logger rather than at this field:
+     *
+     * 1. nothing is stored for this address;
+     * 2. something is stored that this framework did not write -- an entry naming
+     *    the other signature kind, which the CURRENT era legitimately stores
+     *    under the same address in the same provider, or one whose value is not
+     *    the shape a retained-era key has;
+     * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
+     *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
+     *    provider refuses as not a signing key.
+     *
+     * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
+     * as a DEBUG-level dispatch breadcrumb, which is the only place the three
+     * cases are distinguishable.
+     *
+     * The remedy for case 2, and for a refused entry in case 3, is the caller's
+     * either way: pass the retained-era key on
+     * {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
+     * entry, or remove the entry with
+     * `privateStateProvider.removeSigningKey(address)` first.
+     *
+     * @remarks **Privacy-sensitive.** Signing-key material.
+     * @see {@link KeepStatePipeline} for why the member is not optional, and why
+     * an unreadable entry does not fail the attach.
+     */
+    readonly signingKey: SigningKey | undefined;
+    /**
+     * The private state the attach seeded, or the one already stored under the
+     * id it named; `undefined` when it named none.
+     *
+     * @remarks **Privacy-sensitive.**
+     */
+    readonly initialPrivateState: Ledger8PrivateState<C> | undefined;
+  };
+}
+
+/**
+ * The deploy data of a retained-era contract deployed by the caller: the
+ * {@link Ledger8FoundDeployTxData} structure, carrying what the constructor
+ * produced as well.
+ *
+ * @remarks **Privacy-sensitive.** `private` carries signing-key material,
+ * private state and shielded coin material.
+ */
+export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+  /**
+   * The record of the deploy transaction, always a ledger 8 one: a retained-era
+   * deploy runs only on a pre-fork head.
+   */
+  readonly public: Ledger8FoundDeployTxPublicData & {
+    /**
+     * The state the contract was deployed with, as the LIVE handle the retained
+     * constructor built. See ADR-0010 for its lifetime, and prefer
+     * `initialContractStateBytes` for anything that has to outlive the runtime
+     * instance.
+     */
+    readonly initialContractState: Ledger8SerializableContractState;
+    /**
+     * The same state, serialized — the bytes the contract address was derived
+     * from. A deploy mints a fresh nonce, so these bytes and that address belong
+     * to each other and to no other deployment.
+     */
+    readonly initialContractStateBytes: Uint8Array;
+  };
+  readonly private: {
+    /**
+     * The key the deployed contract's maintenance authority was built from: ONE
+     * verifying key at threshold 1, so this single key is the whole authority.
+     *
+     * SAMPLED when the caller named none on the deploy options, and stored
+     * against the contract address in the private-state provider once the chain
+     * has recorded the deployment — the same storage and the same moment the
+     * current era's deploy writes its own key to. Attaching to the same address
+     * through the same provider reports it again.
+     *
+     * The provider is the ONLY copy besides this handle. It is not on chain and
+     * not derivable from anything that is, so a store that is lost, cleared or
+     * never persisted takes the authority with it: no verifier key can then be
+     * inserted, removed or replaced on that contract by anyone.
+     *
+     * @remarks **Privacy-sensitive.** Signing-key material.
+     */
+    readonly signingKey: SigningKey;
+    /**
+     * The private state the constructor produced.
+     *
+     * @remarks **Privacy-sensitive.**
+     */
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+    /**
+     * The Zswap local state the constructor ended on, carrying any coin it
+     * minted. Empty for a constructor that minted none.
+     *
+     * @remarks **Privacy-sensitive.** Shielded coin material.
+     */
+    readonly initialZswapState: ZswapLocalState;
+  };
+}
+
+/**
+ * What a retained-era maintenance update resolves with once the chain has recorded it: the
+ * retained era's counterpart of the current era's `FinalizedMaintenanceTxData`.
+ *
+ * `public` is always the ledger 8 record. A retained-era artifact maintains a contract only before
+ * the fork, so no other era can record the update.
+ */
+export interface Ledger8FinalizedMaintenanceTxData {
+  /** The pipeline that produced this result: always the retained era here. */
+  readonly era: 'v8';
+  /** The finalized record of the maintenance transaction. */
+  readonly public: Ledger8FinalizedTxData;
+}
+
+/**
+ * Maintenance updates for one circuit of a retained-era contract, bound to one address: the
+ * retained era's counterpart of `CircuitMaintenanceTxInterface`.
+ */
+export interface Ledger8CircuitMaintenanceTxInterface {
+  /** Removes the verifier key the contract holds for this circuit. */
+  removeVerifierKey(): Promise<Ledger8FinalizedMaintenanceTxData>;
+  /**
+   * Inserts a verifier key for this circuit into a slot that holds none.
+   *
+   * @param newVk The verifier key to insert.
+   */
+  insertVerifierKey(newVk: VerifierKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+
+/** One {@link Ledger8CircuitMaintenanceTxInterface} per circuit the retained-era contract declares. */
+export type Ledger8CircuitMaintenanceTxInterfaces<C extends Ledger8Contract> = Record<
+  Ledger8CircuitId<C>,
+  Ledger8CircuitMaintenanceTxInterface
+>;
+
+/**
+ * Maintenance updates for a whole retained-era contract, bound to one address: the retained era's
+ * counterpart of `ContractMaintenanceTxInterface`.
+ */
+export interface Ledger8ContractMaintenanceTxInterface {
+  /**
+   * Replaces the contract's maintenance authority with one built from `newAuthority`, and stores
+   * that key for the address once the chain has recorded the replacement.
+   *
+   * @param newAuthority The new authority's key: a `schnorr` key, as every ledger 8 key is.
+   */
+  replaceAuthority(newAuthority: SigningKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+
+/**
  * A retained-era contract found on the blockchain.
  *
  * Carries a {@link Ledger8CircuitCallTxInterface} for the same reason the
  * current era's `FoundContract` carries one: a caller that has just supplied
  * the contract and its address should not have to supply them again to call it.
  *
- * The maintenance interfaces the current era's `FoundContract` also carries are
- * NOT here: the retained era has no governance arm at all, so there is nothing
- * for them to reach.
+ * It carries the maintenance interfaces the current era's `FoundContract` carries,
+ * for the same reason. They work only before the fork; after it, the same contract
+ * is maintained through a handle built from the recompiled artifact.
  */
 export interface Ledger8FoundContract<C extends Ledger8Contract> {
   /**
@@ -750,24 +942,17 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * `'v9'`. Those are different facts, and only this one says which module
    * produced the objects below.
    */
-  readonly era: RetainedPipelineEra;
+  readonly era: 'v8';
   /** The artifact this handle was built from: the caller's own contract instance, unchanged. */
   readonly compiledContract: C;
   /** The address on chain every call made through {@link Ledger8FoundContract.callTx} targets. */
   readonly contractAddress: ContractAddress;
   /**
-   * The record of the transaction that DEPLOYED this contract, version-tagged
-   * because a retained-era contract was deployed in whichever era was current
-   * at the time — narrow it with `switch (deployTxData.version)`.
-   *
-   * SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-   * which is a `FoundDeployTxData` whose record sits under `.public` and is
-   * tagged on `.public.version`. Here the record is the read surface's own
-   * `VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
-   * members. Code written against one era does not read the other's record
-   * unchanged.
+   * The deploy record under `public` and what this device holds for the
+   * contract under `private`, at the same paths as on the current era's
+   * `FoundContract.deployTxData`.
    */
-  readonly deployTxData: VersionedFinalizedTxData;
+  readonly deployTxData: Ledger8FoundDeployTxData<C>;
   /**
    * One function per circuit the artifact declares, each bound to
    * {@link Ledger8FoundContract.contractAddress} and to the private state id
@@ -775,106 +960,26 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
    * arguments.
    */
   readonly callTx: Ledger8CircuitCallTxInterface<C>;
-  /**
-   * The key this framework holds for the contract's maintenance authority, or
-   * `undefined` when it holds none it can use.
-   *
-   * ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
-   * {@link Ledger8DeployedContract}: a deploy always has a key, because it built
-   * the authority; an attach has one only if a deploy on this machine stored it,
-   * or the caller supplied one through
-   * {@link Ledger8FindDeployedContractOptions.signingKey}.
-   *
-   * `undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
-   * apart has to look at the logger rather than at this field:
-   *
-   * 1. nothing is stored for this address;
-   * 2. something is stored that this framework did not write -- an entry naming
-   *    the other signature kind, which the CURRENT era legitimately stores
-   *    under the same address in the same provider, or one whose value is not
-   *    the shape a retained-era key has;
-   * 3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   *    wrong store password, a rotation-lock timeout, store I/O, or an entry the
-   *    provider refuses as not a signing key.
-   *
-   * Neither 2 nor 3 fails the attach. Both are reported to the logger provider
-   * as a DEBUG-level dispatch breadcrumb, which is the only place the three
-   * cases are distinguishable.
-   *
-   * The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
-   * on {@link Ledger8FindDeployedContractOptions.signingKey}, which replaces the
-   * entry, or remove the entry with
-   * `privateStateProvider.removeSigningKey(address)` first.
-   *
-   * @remarks **Privacy-sensitive.** Signing-key material.
-   * @see {@link KeepStatePipeline} for why the member is not optional, and why
-   * an unreadable entry does not fail the attach.
-   */
-  readonly signingKey: Ledger8SigningKey | undefined;
+  /** One maintenance interface per circuit the artifact declares, bound to this address. */
+  readonly circuitMaintenanceTx: Ledger8CircuitMaintenanceTxInterfaces<C>;
+  /** The contract-wide maintenance interface, bound to this address. */
+  readonly contractMaintenanceTx: Ledger8ContractMaintenanceTxInterface;
 }
 
 /**
  * A retained-era contract deployed by the caller.
  *
- * It differs from {@link Ledger8FoundContract} in two ways. Its
- * {@link Ledger8DeployedContract.signingKey} is REQUIRED where the found
- * handle's may be `undefined`. The key itself is no longer something only a
- * deployer has -- the deploy stores it, and an attach through the same provider
- * reports it back -- so what a deploy guarantees is that there IS one, not that
- * nobody else could hold it. And it carries what the constructor produced:
- * the initial contract state, as a handle and as bytes, and the initial private
- * and Zswap states.
+ * It differs from {@link Ledger8FoundContract} only in its
+ * {@link Ledger8DeployedContract.deployTxData}, which carries what the
+ * constructor produced and a signing key that is always present.
  *
  * Published under the retained-era namespace so a caller that receives one by
- * inference can also NAME it. This is what `deployContract`'s retained-era arm
+ * inference can also NAME it. This is what `deployContract`'s retained-era overload
  * answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
-  /**
-   * The key the deployed contract's maintenance authority was built from: ONE
-   * verifying key at threshold 1, so this single key is the whole authority.
-   *
-   * SAMPLED here when the caller named none on the deploy options, and stored
-   * against {@link Ledger8FoundContract.contractAddress} in the private-state
-   * provider once the chain has recorded the deployment — the same storage and
-   * the same moment the current era's deploy writes its own key to. Attaching
-   * to the same address through the same provider reports it again on
-   * {@link Ledger8FoundContract.signingKey}.
-   *
-   * The provider is the ONLY copy besides this handle. It is not on chain and
-   * not derivable from anything that is, so a store that is lost, cleared or
-   * never persisted takes the authority with it: no verifier key can then be
-   * inserted, removed or replaced on that contract by anyone.
-   *
-   * @remarks **Privacy-sensitive.** Signing-key material.
-   */
-  readonly signingKey: Ledger8SigningKey;
-  /**
-   * The state the contract was deployed with, as the LIVE handle the retained
-   * constructor built. See ADR-0010 for its lifetime, and prefer
-   * {@link Ledger8DeployedContract.initialContractStateBytes} for anything that has to
-   * outlive the runtime instance.
-   */
-  readonly initialContractState: RetainedConstructedState;
-  /**
-   * The same state, serialized — the bytes the contract address was derived
-   * from. A deploy mints a fresh nonce, so these bytes and that address belong
-   * to each other and to no other deployment.
-   */
-  readonly initialContractStateBytes: Uint8Array;
-  /**
-   * The private state the constructor produced.
-   *
-   * @remarks **Privacy-sensitive.**
-   */
-  readonly initialPrivateState: Ledger8PrivateState<C>;
-  /**
-   * The Zswap local state the constructor ended on, carrying any coin it
-   * minted. Empty for a constructor that minted none.
-   *
-   * @remarks **Privacy-sensitive.** Shielded coin material.
-   */
-  readonly initialZswapState: ZswapLocalState;
+  /** See {@link Ledger8DeployTxData}. */
+  readonly deployTxData: Ledger8DeployTxData<C>;
 }
 
 /**
@@ -882,7 +987,7 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
  * signatures widen to.
  *
  * An implementation signature has to be compatible with every overload declared over it, so each
- * entry point's implementation carries the retained-era arm's parameter and result types alongside
+ * entry point's implementation carries the retained-era overload's parameter and result types alongside
  * the current era's. It is never the signature a caller sees — the overloads above it are.
  */
 export type AnyLedger8CallTxOptions = Ledger8CallTxOptions<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
@@ -920,22 +1025,21 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * from the package index.
  *
  * @see {@link OverloadTyping} for why the text is a runtime `const`, and why it is not wired into
- *      an overload arm.
+ *      an overload.
  */
-// WHY NO VERSION NUMBERS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
+// WHY LEDGER NUMBERS, NOT TOOLCHAIN VERSIONS. Earlier wordings named the toolchains -- "neither a 0.16- nor a
 // 0.18-generated contract" -- and that text contradicted itself as soon as the current side moved:
 // a consumer on `0.19.0-rc.0`, which that release pinned, was told their object matched neither of
-// two versions, neither of which was theirs. The message is about which ERA an object belongs to,
-// and the eras are named by role everywhere else in this package, so it names them that way here
-// too and no future toolchain release invalidates it.
+// two versions, neither of which was theirs. The message is about which LEDGER an object belongs to,
+// so it names the ledger, not the toolchain version, and no future toolchain release invalidates it.
 // ONE string literal deliberately, never a `+` concatenation: TypeScript widens `'a' + 'b'` to
 // `string`, which would cost {@link NeitherContractShape} its string LITERAL member and break the
 // verbatim pin in `src/test/typecheck/overloads.test-d.ts`.
 export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a retained-era nor a current-era generated contract.';
+  'Object is neither a ledger 8 nor a ledger 9 generated contract.';
 
 /**
- * The type the catch-all arm of every era-dispatching entry point expects, so that an object
+ * The type the catch-all overload of every era-dispatching entry point expects, so that an object
  * matching NEITHER era's shape is refused against a name whose own definition says what went
  * wrong.
  *
@@ -950,11 +1054,11 @@ export type NeitherContractShape = { readonly __error: typeof NEITHER_ERA_CONTRA
  * An options object whose contract belongs to neither era, kept as the named counterpart to
  * {@link NeitherContractShape}.
  *
- * No overload arm takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
+ * No overload takes this type. `src/test/typecheck/overloads.test-d.ts` pins that a
  * neither-era object really is refused by it — the assignability fact the overloads rely on,
- * whether or not any arm spells it out.
+ * whether or not any overload spells it out.
  *
- * @see {@link OverloadTyping} for why no arm spells it out.
+ * @see {@link OverloadTyping} for why no overload spells it out.
  */
 export interface NeitherEraContractOptions {
   readonly compiledContract: NeitherContractShape;

@@ -26,7 +26,7 @@
  * of the CURRENT era's ledger classes — that is the ledger the `contracts`
  * package links — and then hands the serialized bytes to whichever era the
  * retained-era pipelines are composing against. Were the two eras' offer
- * encodings different, the retained arm would need a second offer builder, and
+ * encodings different, the retained-era path would need a second offer builder, and
  * an offer built by the wrong one would surface as an opaque deserialization
  * failure deep inside a composition.
  *
@@ -56,7 +56,7 @@ const VALUE = 42n;
 
 /**
  * The offer-building slice each era exposes. Declared once, structurally, so
- * the two arms below are the same code against two modules rather than two
+ * the two cases below are the same code against two modules rather than two
  * copies of it.
  */
 interface OfferLedger {
@@ -97,7 +97,7 @@ describe('Zswap offer portability across the ledger eras', () => {
   // A ROUND TRIP, not merely "the other era's deserializer did not throw".
   // `toBeDefined()` alone passes for an offer that decoded into something
   // structurally valid but semantically wrong -- a dropped field, a different
-  // value, a different token type -- and the retained arm reuses the current
+  // value, a different token type -- and the retained-era path reuses the current
   // era's offer builder on the strength of exactly this claim. Re-serializing
   // on the far era and comparing bytes pins the shared ENCODING, which is what
   // the reuse actually depends on.

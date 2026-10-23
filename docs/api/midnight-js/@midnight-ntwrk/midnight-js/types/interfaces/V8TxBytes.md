@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -6,14 +6,14 @@
 
 # Interface: V8TxBytes
 
-The v8 arm of every transaction payload crossing a provider seam
+The v8 variant of every transaction payload crossing a provider seam
 (`proveTx`, `balanceTx`, `submitTx`), in both directions.
 
 A v8-era transaction crosses as serialized, tag-prefixed bytes rather than as
 a live ledger object, and `version` says which runtime produced them.
 
 NOT VALIDATED: any `Uint8Array` satisfies `txBytes`, and nothing here checks
-the tag prefix. The arm is identical for all three seams, so it says nothing
+the tag prefix. The variant is identical for all three seams, so it says nothing
 about which pipeline stage the transaction has reached — on this path, stage
 is the caller's responsibility.
 

@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AnyProvableCircuitId,
   FailEntirely,
   FailFallible,
   type FinalizedTxData,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   SegmentFail,
   SegmentSuccess,
   type TxStatus
@@ -42,14 +43,14 @@ import {
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
-// The v8 arm of the record union. Its `tx` is a live `V8Transaction` handle
+// The v8 variant of the record union. Its `tx` is a live `Ledger8FinalizedTransaction` handle
 // from the retained ledger module, which no unit test can construct and none
 // of these read -- every assertion here is about the tag and the members
 // around it. One cast, in one place, rather than one per call site.
-const v8FailedRecord = (status: TxStatus = FailFallible): FinalizedTxDataV8 => ({
+const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
   version: 'v8',
-  tx: undefined as unknown as FinalizedTxDataV8['tx']
+  tx: undefined as unknown as Ledger8FinalizedTxData['tx']
 });
 
 describe('TxFailedError', () => {
@@ -131,7 +132,7 @@ describe('the era-agnostic failure base', () => {
     // The reason the two cannot share a record TYPE: a retained-era call is
     // recorded by whichever era the head is on, so its record is the tagged
     // union. Reading it through `record` requires narrowing on `version`.
-    const retainedEra = new Ledger8CallTxFailedError(v8FailedRecord(), 'increment');
+    const retainedEra = new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment');
 
     expect(retainedEra.record.version).toBe('v8');
   });
@@ -215,11 +216,11 @@ describe('the incomplete private-state configuration refusals', () => {
 });
 
 describe('Ledger8DeployTxFailedError', () => {
-  const SIGNING_KEY = 'a1'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
   const ADDRESS = '0200'.repeat(8);
 
   it('reads the record through the era-agnostic member and names the address it composed', () => {
-    const record = v8FailedRecord();
+    const record = ledger8FailedRecord();
 
     const error = new Ledger8DeployTxFailedError(record, ADDRESS, SIGNING_KEY);
 
@@ -235,8 +236,8 @@ describe('Ledger8DeployTxFailedError', () => {
     // contract DID land, under the authority this key built. One message for both statuses told
     // that caller nothing local refers to the address, and it never went looking for the
     // deployment it now owns and cannot maintain.
-    const fallible = new Ledger8DeployTxFailedError(v8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
-    const entirely = new Ledger8DeployTxFailedError(v8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
+    const fallible = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
+    const entirely = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
 
     expect(fallible.message).toContain('LANDED');
     expect(entirely.message).toContain('Nothing was deployed');
@@ -244,25 +245,25 @@ describe('Ledger8DeployTxFailedError', () => {
   });
 
   it('carries the signing key, and says where to read it, without printing the key itself', () => {
-    const error = new Ledger8DeployTxFailedError(v8FailedRecord(), ADDRESS, SIGNING_KEY);
+    const error = new Ledger8DeployTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY);
 
     expect(error.signingKey).toBe(SIGNING_KEY);
     expect(error.message).toContain('signingKey');
     // The key is a SECRET. Named as a member to read, never rendered: an error message reaches
     // logs, crash reporters and issue trackers, and this one is the only copy of the authority
     // over the deployed contract.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
 describe('Ledger8DeployUnconfirmedError', () => {
-  const SIGNING_KEY = 'b2'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'b2'.repeat(32) };
   const ADDRESS = '0300'.repeat(8);
   const eraViolation = (): EraInvariantViolationError =>
     new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9');
 
   it('keeps the era violation on cause, so the condition and its registered code stay reachable', () => {
-    // The class no longer EXTENDS the violation, so `cause` is the only route left to the seam and
+    // The class no longer EXTENDS the violation, so `cause` is the only route left to the method and
     // the code a caller branches on. Dropping it would strand the original stack too.
     const violation = eraViolation();
 
@@ -310,7 +311,7 @@ describe('Ledger8DeployUnconfirmedError', () => {
     expect(error.message).toContain('signingKey');
     // The key is a SECRET, and after submission this error holds the only copy. Named as a member
     // to read, never rendered into text that reaches a log or an issue tracker.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
@@ -324,7 +325,7 @@ describe('the recorded-failure code', () => {
     const errors: AnyEraTxFailedError[] = [
       new TxFailedError(record),
       new CallTxFailedError(record, 'increment'),
-      new Ledger8CallTxFailedError(v8FailedRecord(), 'increment')
+      new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')
     ];
 
     expect(errors.map((error) => error.code)).toEqual([
@@ -336,7 +337,7 @@ describe('the recorded-failure code', () => {
 });
 
 describe('Ledger8DeployNotStoredError', () => {
-  const SIGNING_KEY = 'c3'.repeat(32);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'c3'.repeat(32) };
   const ADDRESS = '0400'.repeat(8);
 
   it('keeps the store rejection on cause, unreplaced', () => {
@@ -376,8 +377,8 @@ describe('Ledger8DeployNotStoredError', () => {
     expect(error.signingKey).toBe(SIGNING_KEY);
     expect(error.contractAddress).toBe(ADDRESS);
     expect(error.message).toContain('signingKey');
-    // The key is a SECRET, and on the refused-key arm this error holds the only copy of it.
-    expect(error.message).not.toContain(SIGNING_KEY);
+    // The key is a SECRET, and on the refused-key path this error holds the only copy of it.
+    expect(error.message).not.toContain(SIGNING_KEY.value);
   });
 });
 
@@ -391,7 +392,16 @@ describe('Ledger8SigningKeyUnusableError', () => {
     expect(error.name).toBe('Ledger8SigningKeyUnusableError');
     expect(error.message).toContain(ADDRESS);
     expect(error.message).toContain('signingKey');
+    expect(error.message).toContain('schnorr');
     expect(error.message).toContain('64');
+  });
+
+  it('refuses a key supplied before any address exists, without naming one', () => {
+    const error = new Ledger8SigningKeyUnusableError();
+
+    expect(error.contractAddress).toBeUndefined();
+    expect(error.message).toContain('signingKey');
+    expect(error.message).not.toContain('undefined');
   });
 
   it('never renders the value it refused, and does not carry it as a member either', () => {
@@ -426,7 +436,7 @@ describe('Ledger8RecipientUnmappableError', () => {
     expect(error.circuitId).toBe('initialState');
     expect(error.message).toContain(RECIPIENT);
     expect(error.message).toMatch(/constructor/);
-    expect(error.message).toMatch(/retained-era deploy takes no `additionalCoinEncPublicKeyMappings`/);
+    expect(error.message).toMatch(/ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`/);
     expect(error.message).not.toMatch(/on the call options/);
   });
 });

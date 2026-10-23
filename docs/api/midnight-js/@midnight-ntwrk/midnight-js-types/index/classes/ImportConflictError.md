@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -38,6 +38,16 @@ Error thrown when import conflicts with existing data and conflictStrategy is 'e
 
 ## Properties
 
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`PrivateStateImportError`](PrivateStateImportError.md).[`category`](PrivateStateImportError.md#category)
+
+***
+
 ### cause?
 
 > `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
@@ -45,6 +55,16 @@ Error thrown when import conflicts with existing data and conflictStrategy is 'e
 #### Inherited from
 
 [`PrivateStateImportError`](PrivateStateImportError.md).[`cause`](PrivateStateImportError.md#cause)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_IMPORT_CONFLICT"` = `IMPORT_CONFLICT`
+
+#### Overrides
+
+[`PrivateStateImportError`](PrivateStateImportError.md).[`code`](PrivateStateImportError.md#code)
 
 ***
 

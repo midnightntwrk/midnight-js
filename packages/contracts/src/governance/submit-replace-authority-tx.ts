@@ -16,12 +16,22 @@
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from '../contract-providers';
+import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
-import { submitTx } from '../submit-tx';
+import type {
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8FinalizedMaintenanceTxData
+} from '../ledger8-contract';
+import { submitLedger9Payload } from '../submit-tx';
+import type { FinalizedMaintenanceTxData } from '../tx-model';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
 
@@ -53,33 +63,60 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
- * @param compiledContract The compiled contract for which the maintenance authority
- *                         should be updated.
+ * @param compiledContract The contract whose maintenance authority should be replaced.
  * @param contractAddress The address of the contract for which the maintenance
  *                        authority should be updated.
+ *
+ * @returns A function that takes the signing key of the new contract maintenance authority and
+ *          resolves with the finalized transaction data under `public`, tagged with the pipeline's
+ *          `era`, or rejects if an error occurs along the way.
+ *
+ * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data for debugging. The retained-era overload
+ *         raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
+ * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used on a post-fork head.
+ * @throws {Ledger8SigningKeyUnusableError} When the retained-era overload is given a new key that era
+ *         cannot sign with. Raised before anything is composed.
+ * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable current key.
+ * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
+ *         the contract's maintenance authority. Raised before anything is proven.
+ * @throws {Ledger8SigningKeyNotStoredError} When a retained-era replacement was confirmed and the
+ *         store then refused the new key. It carries the key.
+ * @throws {Ledger8ReplaceAuthorityUnconfirmedError} When a retained-era replacement was submitted but
+ *         whether it landed could not be confirmed. It carries the new key, which was not stored.
  *
  * TODO: There are at least three options we should support in the future:
  *       1. Replace authority and maintain key (current).
  *       2. Replace authority and do not maintain key.
  *       3. Add additional authorities and maintain original key.
  */
-export const submitReplaceAuthorityTx =
-  <C extends Contract.Any>(
-    providers: ContractProviders,
-    compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-    contractAddress: ContractAddress
-  ) =>
-  /**
-   * @param newAuthority The signing key of the new contract maintenance authority.
-   *
-   * @returns A promise that resolves with the finalized transaction data, or rejects if
-   *          an error occurs along the way.
-   *
-   * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
-   *         The error contains the finalized transaction data for debugging.
-   */
-  async (newAuthority: SigningKey): Promise<FinalizedTxData> => {
+export function submitReplaceAuthorityTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress
+): (newAuthority: SigningKey) => Promise<Ledger8FinalizedMaintenanceTxData>;
+export function submitReplaceAuthorityTx<C extends Contract.Any>(
+  providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress
+): (newAuthority: SigningKey) => Promise<FinalizedMaintenanceTxData>;
+export function submitReplaceAuthorityTx<C extends Contract.Any>(
+  providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress
+): (newAuthority: SigningKey) => Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
+  return async (newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> => {
     assertValidMidnightConfig(providers.config);
+    if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
+      return {
+        era: 'v8',
+        public: await submitLedger8MaintenanceTx(providers, {
+          contract: compiledContract,
+          contractAddress,
+          update: { kind: 'replace-authority', newSigningKey: newAuthority }
+        })
+      };
+    }
     assertIsContractAddress(contractAddress);
     const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
     const currentAuthority = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
@@ -93,12 +130,13 @@ export const submitReplaceAuthorityTx =
       providers.walletProvider.getCoinPublicKey(),
       providers.config
     );
-    const submitTxResult = await submitTx(providers, { unprovenTx });
+    const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
     if (submitTxResult.status !== SucceedEntirely) {
       throw new ReplaceMaintenanceAuthorityTxFailedError(submitTxResult);
     }
     // TODO: What if machine crashes right before the following set executes? How to recover?
     //       Likely will need a history of pending transactions.
     await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
-    return submitTxResult;
+    return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
   };
+}

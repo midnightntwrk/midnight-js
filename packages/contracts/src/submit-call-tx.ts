@@ -16,11 +16,11 @@
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
-import { CURRENT_PIPELINE_ERA } from './era';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
@@ -37,7 +37,7 @@ import {
   type Ledger8SubmittedCallTx
 } from './ledger8-contract';
 import type { SubmitTxProviders } from './submit-tx';
-import { submitTxAsync } from './submit-tx';
+import { submitLedger9PayloadAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
 import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
 import {
@@ -50,7 +50,7 @@ import {
 /**
  * The provider set a call entry point accepts.
  *
- * Two arms, because a call does not always need private state. The arm WITHOUT
+ * Two variants, because a call does not always need private state. The variant WITHOUT
  * `privateStateProvider` is valid only for options that name no
  * `privateStateId`; naming one without the provider is refused with
  * {@link IncompleteCallTxPrivateStateConfig} before any provider is touched.
@@ -63,20 +63,21 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
   | SubmitTxProviders<C, PCK>;
 
 /*
- * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
- * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
- * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * overload that was already LAST stays last. Do not append. Pinned by
+ * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
+ * gives an uncommented signature the comment of the first commented sibling -- which published
+ * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
- *      `'v8'` seam arm only while the network head is still pre-fork.
+ * @see {@link KeepStatePipeline} for the payload table, and for why a provider needs to handle the
+ *      `'v8'` payload variant only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -176,12 +177,12 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
     // that machinery merges live current-era transactions, and a retained-era
     // call is composed and submitted on its own, so there is nothing for it to
-    // merge into. A `transactionContext` is therefore REFUSED on this arm
+    // merge into. A `transactionContext` is therefore REFUSED on this path
     // rather than ignored -- ignoring it submitted a transaction the caller
     // believed had been batched with the rest of its scope. The retained-era
     // overload declares no parameter for one, so this is reachable from
     // JavaScript only.
-    Transaction.assertScopeAdmitsRetainedEraCall(options.circuitId, transactionContext);
+    Transaction.assertScopeAdmitsLedger8Call(options.circuitId, transactionContext);
 
     return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
   }
@@ -224,20 +225,21 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 }
 
 /*
- * ARM ORDER IS LOAD-BEARING: the retained-era arm below is declared FIRST, and the arm that was
- * already LAST stays last. Do not append. Pinned by `src/test/typecheck/overloads.test-d.ts`.
- * Every arm carries its own TSDoc, because TypeDoc gives an uncommented signature the comment of
- * the first commented sibling -- which published this arm's caveat on the current-era arms.
+ * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * overload that was already LAST stays last. Do not append. Pinned by
+ * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
+ * gives an uncommented signature the comment of the first commented sibling -- which published
+ * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * @see {@link KeepStatePipeline} for the seam table, and for why a provider needs to handle the
- *      `'v8'` seam arm only while the network head is still pre-fork.
+ * @see {@link KeepStatePipeline} for the payload table, and for why a provider needs to handle the
+ *      `'v8'` payload variant only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -306,7 +308,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  * //    record is version-tagged.
  * const record = await providers.publicDataProvider.watchForTxData(txId);
  *
- * // 3. Narrow to the v9 arm. This flow submits v9 transactions only, so a v8
+ * // 3. Narrow to the v9 variant. This flow submits v9 transactions only, so a v8
  * //    record means the provider is pointed at the wrong network.
  * if (record.version !== 'v9') {
  *   throw new EraInvariantViolationError('watchForTxData', options.circuitId);
@@ -370,13 +372,13 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
 
   const unprovenCallTxData = await createUnprovenCallTx(providers, options);
 
-  const txId = await submitTxAsync(providers, {
+  const txId = await submitLedger9PayloadAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,
     circuitId: options.circuitId
   });
 
   return {
-    era: CURRENT_PIPELINE_ERA,
+    era: CURRENT_LEDGER_VERSION,
     circuitId: options.circuitId,
     txId,
     callTxData: unprovenCallTxData

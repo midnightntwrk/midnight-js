@@ -15,8 +15,8 @@
 
 import { DustSecretKey, type TransactionId, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
-  V8PayloadUnsupportedError,
   type VersionedFinalizedTransaction,
   type VersionedUnboundTransaction
 } from '@midnight-ntwrk/midnight-js-types';
@@ -37,16 +37,16 @@ import type { EnvironmentConfiguration } from '../src/test-environment/environme
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 import { FORK_SCHEDULE } from '../src/wallet/wallet-configuration-mapper';
 import { WalletSeeds } from '../src/wallet/wallet-seed';
-import { retainedLedger } from '../src/wallet/wallet-transaction';
+import { loadWalletLedger8 } from '../src/wallet/wallet-transaction';
 
 // Two versions, one on each side of the fork. The retained one is what the
-// refusal-is-gone tests run at; the current one is what the v9 arm needs, since
+// refusal-is-gone tests run at; the current one is what the v9 variant needs, since
 // a handle only unwraps within the epoch it was authored in.
 const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
 
 // The handle each assertion compares against, sealed here rather than through
-// the seam under test so that the comparison is independent of it.
+// the provider method under test so that the comparison is independent of it.
 const adoptedAtCurrent = <TStage extends WalletTransaction.Stage>(
   stage: TStage,
   transaction: { readonly serialize: () => Uint8Array }
@@ -63,10 +63,10 @@ const createWalletStub = (): WalletFacade => {
   const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
     submitTransaction: vi.fn(),
-    // The seams adopt a transaction AT the chain's active protocol version, so a
+    // The transaction methods adopt a transaction AT the chain's active protocol version, so a
     // stub without this cannot reach either era's path. Pinned below the fork
     // version, i.e. the retained epoch. `activeProtocolVersion` is the only
-    // member of `FacadeState` these seams read, so the narrowing is confined to
+    // member of `FacadeState` these methods read, so the narrowing is confined to
     // this one member rather than spread across the assertions.
     state: walletAt(RETAINED_VERSION).state
   };
@@ -88,8 +88,8 @@ interface BalancingWallet {
 
 // The wallet's balancing path is three calls deep -- balance, sign, finalize --
 // and each stage's output has to reach the next one. The recipes it hands back
-// are opaque markers: this suite asserts the wiring across the seam, not the
-// wallet SDK's own types. The finalized stage is the exception: the seam unwraps
+// are opaque markers: this suite asserts the wiring through the provider, not the
+// wallet SDK's own types. The finalized stage is the exception: the provider unwraps
 // what `finalizeRecipe` returns, so that one has to be a real handle.
 const createBalancingWallet = async (): Promise<BalancingWallet> => {
   const recipe = {} as UnboundTransactionRecipe;
@@ -136,24 +136,24 @@ const createProvider = async (
 
 describe('MidnightWalletProvider', () => {
   // Set equality rather than `toContain`: this wallet serves both eras on both
-  // seams it implements, and an era silently dropped from the declaration would
+  // providers it implements, and an era silently dropped from the declaration would
   // have a retained-era operation refused before it started -- which
   // `toContain` would not catch.
   describe('the eras it declares', () => {
-    it('declares both eras, matching what the two seams below actually carry', async () => {
+    it('declares both eras, matching what the two methods below actually carry', async () => {
       const provider = await createProvider(createWalletStub());
 
       expect([...provider.supportedEras].sort()).toEqual(['v8', 'v9']);
     });
   });
 
-  // These two used to assert the opposite. The retained arm is now carried rather
+  // These two used to assert the opposite. The retained variant is now carried rather
   // than refused, so what they pin is that the refusal is GONE -- and that what
   // remains can only be a failure of the bytes, never of the version tag. Three
   // bytes are not a transaction, so each still rejects; the assertion is about
   // WHERE.
   describe('balanceTx with a v8 payload', () => {
-    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
+    it('carries the retained variant instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -163,18 +163,18 @@ describe('MidnightWalletProvider', () => {
       );
 
       expect(rejection).toBeDefined();
-      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+      expect(rejection).not.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
   // `ledger-v8` is installed twice, under both npm scopes, and the two copies'
   // classes refuse each other.
   // @see docs/architecture/retained-era-coverage.md
-  describe('the ledger the retained arm deserializes with', () => {
+  describe('the ledger the retained variant deserializes with', () => {
     it('is the module the wallet SDK publishes, so a revert to another copy fails here', async () => {
       // Arrange / Act.
-      const deserializer = await retainedLedger();
+      const deserializer = await loadWalletLedger8();
 
       // Assert: identity, not structural equality -- the copies are structurally
       // identical, which is why this went unseen.
@@ -188,7 +188,7 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe('submitTx with a v8 payload', () => {
-    it('carries the retained arm instead of refusing it, failing only in the retained deserializer', async () => {
+    it('carries the retained variant instead of refusing it, failing only in the retained deserializer', async () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
@@ -198,13 +198,13 @@ describe('MidnightWalletProvider', () => {
       );
 
       expect(rejection).toBeDefined();
-      expect(rejection).not.toBeInstanceOf(V8PayloadUnsupportedError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+      expect(rejection).not.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
     });
   });
 
   describe('balanceTx with a v9 payload', () => {
-    it("adopts the transaction at the chain's active version and tags the finalized result as the v9 arm", async () => {
+    it("adopts the transaction at the chain's active version and tags the finalized result as the v9 variant", async () => {
       const { wallet, recipe, signedRecipe, finalized } = await createBalancingWallet();
       const provider = await createProvider(wallet);
       const unbound = { serialize: () => new Uint8Array([1]) };
@@ -305,10 +305,10 @@ describe('MidnightWalletProvider', () => {
   });
 
   // The likely 5.0.0 migration failure: a consumer built against the pre-5.0.0
-  // seam passes a bare transaction. It must fail with a coded, actionable error
+  // API passes a bare transaction. It must fail with a coded, actionable error
   // rather than a TypeError inside the wallet SDK.
   describe('a payload with no recognised version discriminant', () => {
-    // These payloads are unrepresentable in the seam types on purpose — that is
+    // These payloads are unrepresentable in the provider method types on purpose — that is
     // the property under test. This helper is the one place the type system is
     // stepped around, rather than an `as unknown as` at each call site.
     const untagged = <T>(payload: object): T => payload as T;
@@ -326,7 +326,7 @@ describe('MidnightWalletProvider', () => {
 
       expect(rejection).toBeInstanceOf(UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+      expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
       expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
     });
 

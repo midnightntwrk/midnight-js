@@ -75,7 +75,7 @@ const readZswapOffer = (
  * call's contract state is unusable.
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultPojo => {
+export const composeLedger9CallTx = (options: ComposeCallOptions): ComposeCallResultPojo => {
   const { calls, networkId, ttl, zswapOffer } = options;
   assertComposeEnvelope(options, 'v9');
   if (calls.length === 0) {
@@ -123,7 +123,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): ComposeCallResultP
   }
 
   // LAST, after the unshielded payout has been aggregated off the assembled
-  // intent, because both steps refuse and the arms must refuse in one order --
+  // intent, because both steps refuse and both eras must refuse in one order --
   // see ComposeRefusalOrder. Built only once every call is split, which is the
   // whole point of taking a factory.
   const offers = zswapOffer?.(partitions);
@@ -202,7 +202,7 @@ const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => 
  * @see {@link VerifierKeys}
  * @see {@link ComposeRefusalOrder}
  */
-export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
+export const composeLedger9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
   const { contractStateBytes, verifierKeys, networkId, ttl, guaranteedZswapOfferBytes } = options;
   assertComposeEnvelope(options, 'v9');
 

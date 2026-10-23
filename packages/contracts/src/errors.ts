@@ -13,31 +13,20 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
   PrivateStateId,
-  Seam,
+  ProviderMethod,
   VersionedFinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
-import { CURRENT_PIPELINE_ERA, RETAINED_PIPELINE_ERA } from './era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
-
-/**
- * The seams this flow narrows an era at: the three transaction-flow provider
- * methods, plus the two read-surface methods that report a finalized record.
- *
- * An alias for {@link Seam} in `@midnight-ntwrk/midnight-js-types`, which owns
- * the vocabulary because it declares both the provider seams and the read
- * surface. Kept under this name so the error below reads in the era vocabulary
- * of this package.
- */
-export type EraSeam = Seam;
 
 // `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
 // carries several. Each id is quoted individually so a two-circuit list cannot
@@ -62,7 +51,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * An error indicating that a provider, or the read surface, answered in a
  * different ledger era from the one the flow submitted.
  *
- * The provider seams and the read surface both carry two eras, but any ONE
+ * The transaction methods and the read methods both carry two eras, but any ONE
  * flow through this package tags every outgoing payload with a single era and
  * cannot submit or report anything else. An answer in the other era therefore
  * means the provider re-tagged or converted the payload it was handed, or that
@@ -72,7 +61,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * accept back, and so which direction the violation went. For the current
  * era's flows that is the era they submit, which is always `'v9'` — the
  * default, so call sites that predate the retained-era pipelines read exactly
- * as they did before it existed. The retained era's finalizing arm passes the
+ * as they did before it existed. The retained era's finalizing path passes the
  * network HEAD instead: it composes retained-era transactions but is recorded
  * by whichever ledger the head is on, so the head, not the pipeline, is what
  * the record has to agree with.
@@ -87,27 +76,36 @@ export class EraInvariantViolationError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION];
 
   /**
-   * @param seam The provider method that returned the payload.
+   * @param method The provider method that returned the payload.
    * @param circuitId The circuit, or circuits, whose flow this happened on,
    *                  when known. A dApp firing many circuits needs this to
    *                  tell which call broke.
    * @param expected The only era this flow can accept back. Defaults to
    *                 `'v9'`. See the class comment for which fact this names
-   *                 on each arm.
+   *                 on each path.
    * @param received The era the payload actually carried, when it carried a
    *                 readable one. Named in the message: a refusal that states
    *                 only what it wanted leaves the reader to find out what it
    *                 got.
+   * @param contractAddress The contract the payload was read for, when the
+   *                        flow reads one contract's records.
+   * @param txId The transaction the payload belongs to, when it is already on
+   *             chain. A caller needs it to reconcile a transaction it cannot
+   *             take back.
    */
   constructor(
-    readonly seam: EraSeam,
+    readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
     readonly expected: LedgerVersion = 'v9',
-    readonly received?: LedgerVersion
+    readonly received?: LedgerVersion,
+    readonly contractAddress?: string,
+    readonly txId?: string
   ) {
     super(
-      `${seam} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
-        `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}. ` +
+      `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+        `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
+        `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}` +
+        `${txId === undefined ? '' : ` (transaction '${txId}', already submitted)`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
@@ -120,17 +118,21 @@ export class EraInvariantViolationError extends MidnightJsError {
  *
  * One error class over every reason rather than a class per reason: a caller catches "this operation
  * cannot be placed on a ledger era" as one condition, and the reason is what tells it which mistake
- * it made. Two of the reasons are about the CALLER's contract object and two are about the artifact
- * set its ZK config provider serves, which is one condition from the caller's side: something in the
- * bundle it passed does not belong to the era it is being run against.
+ * it made. Some reasons are about the CALLER's contract object, some about the artifact set its ZK
+ * config provider serves, and two about a transaction handed to `submitTx`. From the caller's side
+ * that is one condition: something it passed does not belong to the era it is being run against.
  */
 export type EraArtifactMismatchReason =
-  /** A raw current-era contract instance, passed where its `CompiledContract` container belongs. */
-  | 'unwrapped-current-era-contract'
+  /** A raw ledger 9 contract instance, passed where its `CompiledContract` container belongs. */
+  | 'unwrapped-ledger9-contract'
   /** An object matching no era's shape at all. */
   | 'unrecognised-contract-shape'
-  /** A current-era artifact, on a network head that is still pre-fork. */
-  | 'current-era-artifact-on-pre-fork-head'
+  /** A ledger 9 artifact, on a network head that is still on ledger 8. */
+  | 'ledger9-artifact-on-ledger8-head'
+  /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
+  | 'ledger9-transaction-on-ledger8-head'
+  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
+  | 'ledger8-transaction-on-ledger9-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
   /** A ZK config provider that cannot report a declared runtime version at all. */
@@ -141,21 +143,29 @@ export type EraArtifactMismatchReason =
 const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
   // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
   // nothing about the value the caller passed looks wrong to it.
-  'unwrapped-current-era-contract':
+  'unwrapped-ledger9-contract':
     'A raw contract instance was passed where a CompiledContract container is expected. ' +
-    'The current Compact toolchain wraps its generated contract in a CompiledContract, which is what ' +
+    'The ledger 9 Compact toolchain wraps its generated contract in a CompiledContract, which is what ' +
     'carries the witnesses and the compiled-asset paths an execution needs; the bare instance carries ' +
     'neither. Wrap it — CompiledContract.make(tag, Contract), then attach its witnesses — and pass the ' +
     'container instead of the instance.',
   // The single settled wording, read from where it is written rather than restated.
   'unrecognised-contract-shape':
     `${NEITHER_ERA_CONTRACT_MESSAGE} ` +
-    'Pass either a CompiledContract container produced by the current toolchain, or the contract ' +
-    'instance the retained toolchain generates.',
-  'current-era-artifact-on-pre-fork-head':
-    'This contract was produced by the current Compact toolchain, but the network head is still on the ' +
-    'pre-fork ledger era, which cannot execute it. Run this operation against a contract produced by the ' +
-    'retained toolchain until the network head has crossed the fork.',
+    'Pass either a CompiledContract container produced by the ledger 9 Compact toolchain, or the contract ' +
+    'instance the ledger 8 (pre-fork) Compact toolchain generates.',
+  'ledger9-artifact-on-ledger8-head':
+    'This contract was produced by the ledger 9 Compact toolchain, but the network head is still on ' +
+    'ledger 8, which cannot execute it. Run this operation against a contract produced by the ' +
+    'ledger 8 (pre-fork) Compact toolchain until the network head has crossed the fork.',
+  'ledger9-transaction-on-ledger8-head':
+    'A v9 transaction was handed to submitTx, but the network head is still on ledger 8, ' +
+    'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
+    'until the network head has crossed the fork.',
+  'ledger8-transaction-on-ledger9-head':
+    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
+    'v9 ledger and submit it as { version: \'v9\', tx }.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':
@@ -218,26 +228,25 @@ export class EraArtifactMismatchError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the contract at this address is held on chain in a CURRENT-era state,
- * while the artifacts handed to this operation came from the retained Compact toolchain.
+ * An error indicating that the contract at this address is held on chain in a ledger 9 state,
+ * while the artifacts handed to this operation came from the ledger 8 (pre-fork) Compact toolchain.
  *
- * The retained era stays supported for a contract whose state the retained ledger wrote, and it
- * stays supported after that state has been MIGRATED: a contract's first post-fork call rewrites
- * its envelope to the current era, and the ledger carries the retained verifier keys across
- * unchanged. So a current-era envelope on its own says nothing about which toolchain built the
- * contract, and this error is not raised for one.
+ * Ledger 8 artifacts stay supported for a contract whose state ledger 8 wrote, and they stay
+ * supported after that state has been MIGRATED: the fork rewrites its envelope to ledger 9, and the
+ * ledger carries the ledger 8 verifier keys across unchanged. So a ledger 9 envelope on its own says
+ * nothing about which toolchain built the contract, and this error is not raised for one.
  *
- * What raises it is the pair: a current-era envelope AND a key these artifacts cannot match. A
- * migrated pre-fork contract still declares the keys the retained toolchain produced, so it does not
- * reach here; a contract deployed with current-toolchain artifacts declares keys no retained
+ * What raises it is the pair: a ledger 9 envelope AND a key these artifacts cannot match. A
+ * migrated pre-fork contract still declares the keys the ledger 8 toolchain produced, so it does not
+ * reach here; a contract deployed with ledger 9 toolchain artifacts declares keys no ledger 8
  * artifact can match, and that is the case named here.
  *
  * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
  * a retry cannot change it. What has to change is which artifacts the caller passes.
  */
-export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.RETAINED_ARTIFACT_ON_CURRENT_ERA_STATE];
+export class Ledger8ArtifactOnLedger9StateError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE];
 
   /**
    * @param contractAddress The contract whose on-chain state was read.
@@ -249,15 +258,46 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
     options?: ErrorOptions
   ) {
     super(
-      `The contract at '${contractAddress}' is held on chain in a current-era state whose verifier key ` +
+      `The contract at '${contractAddress}' is held on chain in a ledger 9 state whose verifier key ` +
         `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
-        `this contract. A contract deployed before the fork keeps its retained keys even after a post-fork ` +
-        `call migrates its state, so this is not that case: it is a contract built with current-toolchain ` +
-        `artifacts. Re-run the operation with the artifacts the current toolchain produced for it. Retrying ` +
+        `this contract. A contract deployed before the fork keeps its ledger 8 keys even after the fork ` +
+        `translates its state, so this is not that case: it is a contract built with ledger 9 Compact toolchain ` +
+        `artifacts. Re-run the operation with the artifacts the ledger 9 Compact toolchain produced for it. Retrying ` +
         `with the same artifacts cannot succeed.`,
       options
     );
-    this.name = 'RetainedArtifactOnCurrentEraStateError';
+    this.name = 'Ledger8ArtifactOnLedger9StateError';
+  }
+}
+
+/**
+ * An error indicating that the contract at this address is held on chain in a state the v8 ledger
+ * wrote, while the operation runs only against states the v9 ledger wrote.
+ *
+ * The contracts-level counterpart of `Ledger8ValueUnsupportedError` from `midnight-js-utils`, for
+ * the reads this package makes on the caller's behalf: it names the contract and the operation,
+ * because the caller has no `switch` of its own to put the v8 branch in.
+ */
+export class Ledger8ContractStateUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED];
+
+  /**
+   * @param contractAddress The contract whose on-chain state was read.
+   * @param operation The operation that handles only v9 states.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly operation: string
+  ) {
+    super(
+      `The contract at '${contractAddress}' is held on chain in a state written by the v8 ledger, and ` +
+        `${operation} runs only against states written by the v9 ledger. Before the hard fork, run the ` +
+        `operation through the contract the ledger 8 (pre-fork) Compact toolchain produced. After the fork, the ` +
+        `indexer serves every contract's state translated to v9 from version 4.4.0-rc.6 on: upgrade an ` +
+        `older indexer.`
+    );
+    this.name = 'Ledger8ContractStateUnsupportedError';
   }
 }
 
@@ -269,18 +309,41 @@ export class RetainedArtifactOnCurrentEraStateError extends MidnightJsError {
  * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
  * rather than written to the chain in an era the network has left.
  */
-export class Ledger8DeployOnV9Error extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9];
+export class Ledger8DeployOnLedger9Error extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9];
 
   constructor() {
     super(
-      'A contract produced by the retained Compact toolchain cannot be deployed to a post-fork network ' +
-        'head. The retained era stays supported for calls against contracts that were deployed before the ' +
+      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a post-fork network ' +
+        'head. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
         'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
-        'current toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
+        'ledger 9 Compact toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
     );
-    this.name = 'Ledger8DeployOnV9Error';
+    this.name = 'Ledger8DeployOnLedger9Error';
+  }
+}
+
+/**
+ * An error indicating that a contract MAINTENANCE update was given a contract produced by the
+ * retained Compact toolchain while the network head has already crossed the fork.
+ *
+ * The retained era maintains contracts only before the fork. After it, the same contract is
+ * maintained through the same functions with the artifact recompiled by the current toolchain, and
+ * with the signing key already stored for its address.
+ */
+export class Ledger8MaintenanceOnLedger9Error extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9];
+
+  constructor() {
+    super(
+      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot maintain a contract on a ' +
+        'post-fork network head. Recompile the contract with the ledger 9 Compact toolchain and run the same ' +
+        'maintenance function with that artifact: it maintains the migrated contract with the signing key ' +
+        'already stored for its address.'
+    );
+    this.name = 'Ledger8MaintenanceOnLedger9Error';
   }
 }
 
@@ -394,7 +457,7 @@ export class LedgerParametersUnservedError extends MidnightJsError {
  * output as a transient and needs no chain state. Only spends of previously
  * held coins are.
  *
- * @see {@link ErrorTaxonomy} for what the retained arm is missing and why this
+ * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this
  * refuses before the offer is built.
  */
 export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
@@ -407,19 +470,19 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
   constructor(readonly circuitId: string) {
     super(
       `Circuit '${circuitId}' spends a shielded coin the contract already holds on chain, which a ` +
-        'retained-era call cannot compose: building the Zswap offer for such a spend needs the ' +
-        "contract's Zswap chain state, and the retained-era pipeline does not read one. A coin the same " +
+        'ledger 8 call cannot compose: building the Zswap offer for such a spend needs the ' +
+        "contract's Zswap chain state, and the ledger 8 pipeline does not read one. A coin the same " +
         'call produces is fine — it is paired with its own output — so only spends of previously held ' +
-        'coins are affected. Run this circuit against a contract produced by the current toolchain.'
+        'coins are affected. Run this circuit against a contract produced by the ledger 9 Compact toolchain.'
     );
     this.name = 'Ledger8ShieldedSpendUnsupportedError';
   }
 }
 
 /**
- * An error indicating that a provider rejected a retained-era transaction at
- * one of the three transaction-flow seams, with the provider's own failure
- * SANITIZED onto `cause`.
+ * An error indicating that a provider rejected a transaction at one of the
+ * three transaction methods, with the provider's own failure SANITIZED onto
+ * `cause`. Raised on every submit path, whatever era the transaction belongs to.
  *
  * ## Why the external failure does not travel as-is
  *
@@ -432,44 +495,44 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  * no own properties, and no further `cause` chain.
  *
  * This package's own coded errors are NOT wrapped: they carry no external
- * payload, and a caller narrowing on `V8PayloadUnsupportedError` or
+ * payload, and a caller narrowing on `Ledger8PayloadUnsupportedError` or
  * {@link EraInvariantViolationError} must keep seeing them.
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
-export class Ledger8SeamFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED];
+export class ProviderFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PROVIDER_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PROVIDER_FAILED];
 
   /**
-   * @param seam The provider method that rejected.
-   * @param circuitId The circuit this flow was running.
+   * @param method The provider method that rejected.
+   * @param circuitId The circuit, or circuits, the transaction runs, when known.
    * @param cause The provider's failure, already sanitized by the caller.
    */
   constructor(
-    readonly seam: EraSeam,
-    readonly circuitId: string,
+    readonly method: ProviderMethod,
+    readonly circuitId: string | readonly string[] | undefined,
     cause: Error
   ) {
     super(
-      `${seam} rejected a retained-era transaction (circuit '${circuitId}'). The provider's own failure ` +
+      `${method} rejected the transaction${formatCircuitClause(circuitId) ?? ''}. The provider's own failure ` +
         'is on `cause`, with its message redacted of anything that could carry transaction or witness ' +
         'material; read the provider\'s own logs for the unredacted detail.',
       { cause }
     );
-    this.name = 'Ledger8SeamFailedError';
+    this.name = 'ProviderFailedError';
   }
 }
 
 /**
  * Whether the operation a {@link StaleHeadError} refuses was deploying a
- * contract or calling one already deployed.
+ * contract, calling one already deployed, or maintaining one.
  *
  * The same discriminant the era pairing table takes, kept as its own type here
- * because it decides which of two genuinely different remediations the error
+ * because it decides which of the genuinely different remediations the error
  * carries.
  */
-export type StaleHeadOperationKind = 'call' | 'deploy';
+export type StaleHeadOperationKind = 'call' | 'deploy' | 'maintenance';
 
 /**
  * WHICH operation a submit rejection belongs to: the identity every refusal
@@ -485,16 +548,17 @@ export interface SubmittedOperation {
   /**
    * The era the network head was on when this operation started.
    *
-   * One field, two uses, and they are the same fact: it decides which arm of
-   * the provider seams the transaction crossed on, and it is the `startEra` a
+   * One field, two uses, and they are the same fact: it decides which payload
+   * variant the transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;
-  /** Whether this operation deploys a contract or calls one already deployed. */
+  /** Whether this operation deploys a contract, calls one already deployed, or maintains one. */
   readonly kind: StaleHeadOperationKind;
   /**
    * The entry point this operation ran. A deploy has no circuit of its own and
-   * reports the constructor's own name, `'initialState'`.
+   * reports the constructor's own name, `'initialState'`; a maintenance
+   * authority replacement reports {@link NO_CIRCUIT}.
    */
   readonly circuitId: string;
   /**
@@ -506,22 +570,24 @@ export interface SubmittedOperation {
   readonly contractAddress: string;
 }
 
-// The remediation, written once per operation kind. A call and a deploy do NOT
-// share one text, and the reason is not tone: after the head has crossed, a
-// retained-era CALL can simply be run again -- it lands on the keep-state
-// pipeline with no change to the caller's code -- while a retained-era DEPLOY
-// cannot be run again at all, because the retained era has no post-fork
-// deployment. Telling a deployer to re-run would send them at a refusal.
+// The remediation, written once per operation kind. The kinds do NOT share one
+// text, and the reason is not tone: after the head has crossed, a retained-era
+// CALL can simply be run again -- it lands on the keep-state pipeline with no
+// change to the caller's code -- while a retained-era DEPLOY or MAINTENANCE
+// update cannot be run again at all, because the retained era has neither after
+// the fork. Telling a deployer or a maintainer to re-run would send them at a refusal.
 //
-// Both texts open with the same first step, and its position is load-bearing:
+// Every text opens with the same first step, and its position is load-bearing:
 // a submission rejected while the head was moving may still have been recorded,
-// so anything that repeats the operation has to come second. Both also NAME the
+// so anything that repeats the operation has to come second. Each also NAMES the
 // thing to check, because "verify it did not finalize" is not an instruction a
 // caller with several operations in flight can act on otherwise.
 //
-// Both arms are reachable in production: the `call` arm through `submitCallTx`,
-// the `deploy` arm through `deployContract`'s retained-era arm. `kind: 'deploy'`
-// is set at exactly one place, inside `runLedger8Deploy`.
+// Every kind is reachable in production: `call` through `submitCallTx`,
+// `deploy` through `deployContract`'s retained-era overload, and `maintenance`
+// through the retained-era overloads of the governance functions. `kind: 'deploy'`
+// is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
+// inside `submitLedger8MaintenanceTx`.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
@@ -541,9 +607,21 @@ const STALE_HEAD_MESSAGES: Readonly<
     `deployment did not finalize: a submission rejected while the head was moving can still have been ` +
     `recorded, so check the address this deployment composed, '${operation.contractAddress}', before ` +
     `deploying again - a deploy mints a fresh nonce, so a second attempt lands at a different address and ` +
-    `would leave two copies of the contract on chain. Then recompile the contract with the current ` +
-    `Compact toolchain and deploy that artifact instead - a contract produced by the retained toolchain ` +
-    `cannot be deployed to a post-fork head at all. See the runtime-deploy chapter of the migration guide.`
+    `would leave two copies of the contract on chain. Then recompile the contract with the ledger 9 ` +
+    `Compact toolchain and deploy that artifact instead - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
+    `cannot be deployed to a post-fork head at all. See the runtime-deploy chapter of the migration guide.`,
+  maintenance: (operation, freshEra) =>
+    `This maintenance update was built against a '${operation.head}'-era network head and the node rejected its ` +
+    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger fork ` +
+    `while the update was being built. Take two steps, in this order. First, verify the update did not ` +
+    `finalize: a submission rejected while the head was moving can still have been recorded, so read the ` +
+    `state of the contract at '${operation.contractAddress}' and check whether its ` +
+    (operation.circuitId === NO_CIRCUIT
+      ? 'maintenance authority'
+      : `verifier key for '${operation.circuitId}'`) +
+    ` already reflects the update before doing anything that would repeat it. Then recompile the contract with the ledger 9 Compact toolchain and run the same ` +
+    `maintenance function with that artifact - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
+    `cannot maintain a contract on a post-fork head.`
 });
 
 /**
@@ -557,7 +635,7 @@ const STALE_HEAD_MESSAGES: Readonly<
  *
  * The provider's own rejection travels on `cause`, already sanitized of
  * anything that could carry transaction or witness material — see
- * {@link Ledger8SeamFailedError}, which is the form it arrives in.
+ * {@link ProviderFailedError}, which is the form it arrives in.
  *
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.
@@ -569,8 +647,8 @@ export class StaleHeadError extends MidnightJsError {
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
   /**
-   * Whether the refused operation was a call or a deploy — the discriminant a
-   * caller branches on, and which remediation the message carries.
+   * Whether the refused operation was a call, a deploy or a maintenance update —
+   * the discriminant a caller branches on, and which remediation the message carries.
    */
   readonly kind: StaleHeadOperationKind;
   /** The entry point that was run, so a caller with several in flight knows which. */
@@ -623,11 +701,30 @@ export type SubmitRejectionUndiagnosedCause =
 // nothing observed in either case establishes one, and telling a caller to wait
 // out a fork that is not happening is worse than telling it to retry. Same
 // discipline as `IndexerInconsistencyError`.
+const undiagnosedSubject = (kind: StaleHeadOperationKind): string => {
+  switch (kind) {
+    case 'call':
+      return 'call';
+    case 'deploy':
+      return 'deployment';
+    case 'maintenance':
+      return 'maintenance update';
+    default: {
+      const unhandled: never = kind;
+      throw new InvariantViolationError(`unknown operation kind '${String(unhandled)}'`);
+    }
+  }
+};
+
 const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRejectionUndiagnosedCause): string => {
-  const subject = operation.kind === 'deploy' ? 'deployment' : 'call';
+  const subject = undiagnosedSubject(operation.kind);
+  const target =
+    operation.circuitId === NO_CIRCUIT
+      ? `contract '${operation.contractAddress}'`
+      : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
   const opening =
     `This ${subject} was built against a '${operation.head}'-era network head and the node rejected its ` +
-    `transaction (circuit '${operation.circuitId}', contract '${operation.contractAddress}').`;
+    `transaction (${target}).`;
 
   switch (undiagnosed.reason) {
     case 'head-read-failed':
@@ -667,7 +764,7 @@ const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndia
  * DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
  *
  * @see {@link ErrorTaxonomy} for why the two codes name different things.
- * @see {@link StaleHeadRemediation} for the two arms.
+ * @see {@link StaleHeadRemediation} for the two reasons.
  */
 export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
@@ -774,11 +871,13 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
  * tag is a guess, and the caller would then read the result through the wrong
  * era's shape. Every result this framework builds carries one of the two
  * literals; a value that does not has been round-tripped through something
- * that dropped it -- a queue, a JSON boundary, a structured clone.
+ * that dropped it -- a queue, a JSON boundary, a structured clone -- or was
+ * stored under a 5.0.0 pre-release, which tagged results `'ledger9'` /
+ * `'ledger8'`.
  */
-export class UnrecognisedResultEraError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNRECOGNISED_RESULT_ERA];
+export class UnknownResultEraError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA];
 
   /**
    * @param received What the result's `era` field actually held.
@@ -786,11 +885,12 @@ export class UnrecognisedResultEraError extends MidnightJsError {
   constructor(readonly received: unknown) {
     super(
       `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
-        `Results are tagged '${CURRENT_PIPELINE_ERA}' or '${RETAINED_PIPELINE_ERA}' by the pipeline that built ` +
+        `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
         `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
-        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it.`
+        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
+        `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
     );
-    this.name = 'UnrecognisedResultEraError';
+    this.name = 'UnknownResultEraError';
   }
 }
 
@@ -830,7 +930,7 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  *
- * The current era's arm of {@link AnyEraTxFailedError}: its record is always
+ * The current era's subclass of {@link AnyEraTxFailedError}: its record is always
  * the v9 one. Catch the base to catch both eras.
  */
 export class TxFailedError extends AnyEraTxFailedError {
@@ -859,7 +959,7 @@ export class TxFailedError extends AnyEraTxFailedError {
     );
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Always the v9 arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.finalizedTxData;
   }
@@ -1026,9 +1126,9 @@ export class ContractTypeError extends MidnightJsError {
  * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
  * @see {@link StaleHeadRemediation} for what each placement property prevents.
  */
-export class ScopedTxEraUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_ERA_UNSUPPORTED];
+export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED];
 
   /**
    * @param head The era the network head is on, as the scope resolved it.
@@ -1041,7 +1141,7 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
         `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
         `the network head has crossed the fork.`
     );
-    this.name = 'ScopedTxEraUnsupportedError';
+    this.name = 'ScopedTransactionEraUnsupportedError';
   }
 }
 
@@ -1050,11 +1150,11 @@ export class ScopedTxEraUnsupportedError extends MidnightJsError {
  * Compact toolchain was handed a contract-scoped transaction to join.
  *
  * A scope merges live CURRENT-era transactions, and a retained-era call crosses
- * the provider seams as its own transaction, so there is nothing to merge it
+ * the provider methods as its own transaction, so there is nothing to merge it
  * into at either head.
  *
  * Raised rather than ignored, and that is the change it makes: the retained-era
- * arm previously accepted a scope context and ran outside it.
+ * path previously accepted a scope context and ran outside it.
  *
  * @see {@link StaleHeadRemediation} for why the two cannot be batched.
  */
@@ -1067,11 +1167,11 @@ export class MixedEraScopeError extends MidnightJsError {
    */
   constructor(readonly circuitId: string) {
     super(
-      `Circuit '${circuitId}' belongs to a contract produced by the retained Compact toolchain and cannot ` +
-        `join a contract-scoped transaction: a scope merges its calls into one current-era transaction, ` +
-        `while a retained-era call is composed and submitted on its own. Submit this call as its own ` +
+      `Circuit '${circuitId}' belongs to a contract produced by the ledger 8 (pre-fork) Compact toolchain and cannot ` +
+        `join a contract-scoped transaction: a scope merges its calls into one ledger 9 transaction, ` +
+        `while a ledger 8 call is composed and submitted on its own. Submit this call as its own ` +
         `transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ` +
-        `produced by the current toolchain.`
+        `produced by the ledger 9 Compact toolchain.`
     );
     this.name = 'MixedEraScopeError';
   }
@@ -1140,8 +1240,8 @@ export class IncompleteFindContractPrivateStateConfig extends MidnightJsError {
  * This prevents silent state mismatches when batching calls to different contracts.
  */
 export class ScopedTransactionIdentityMismatchError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TX_IDENTITY_MISMATCH];
+  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH];
 
   constructor(
     readonly cached: { contractAddress: string; privateStateId?: PrivateStateId },
@@ -1226,7 +1326,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * inherited {@link AnyEraTxFailedError.code}, and read the record off
  * {@link txData} rather than out of the message.
  *
- * @see {@link ErrorTaxonomy} for why this arm registers no code, and for the
+ * @see {@link ErrorTaxonomy} for why this retained-era class registers no code, and for the
  * local-versus-chain consequence the message states per status.
  */
 export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
@@ -1235,7 +1335,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     readonly circuitId: string
   ) {
     super(
-      `The retained-era call to circuit '${circuitId}' was recorded on chain with status ` +
+      `The ledger 8 call to circuit '${circuitId}' was recorded on chain with status ` +
         `'${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
         (txData.status === 'FailFallible'
           ? 'The guaranteed phase LANDED, so the contract state advanced on chain, but no private state ' +
@@ -1246,7 +1346,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8CallTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1280,10 +1380,10 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   constructor(
     readonly txData: VersionedFinalizedTxData,
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey
+    readonly signingKey: SigningKey
   ) {
     super(
-      `The retained-era deployment of the contract at '${contractAddress}' was recorded on chain with ` +
+      `The ledger 8 deployment of the contract at '${contractAddress}' was recorded on chain with ` +
         `status '${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
         (txData.status === 'FailFallible'
           ? 'The deployment itself LANDED - a contract deployment sits in the guaranteed phase - so the ' +
@@ -1300,7 +1400,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8DeployTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either arm on this class. */
+  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
   get record(): VersionedFinalizedTxData {
     return this.txData;
   }
@@ -1334,7 +1434,7 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  *
  * Branch on `cause` for the underlying failure — an unreachable indexer, a
  * timeout, an untagged payload, an era violation. It is wrapped rather than
- * replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+ * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
  * registered code all stay reachable.
  *
  * Reachable only AFTER submission. Every refusal ahead of it is raised with no
@@ -1356,11 +1456,11 @@ export class Ledger8DeployUnconfirmedError extends MidnightJsError {
    */
   constructor(
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey,
+    readonly signingKey: SigningKey,
     cause: unknown
   ) {
     super(
-      `The retained-era deployment of the contract at '${contractAddress}' was submitted, but what the ` +
+      `The ledger 8 deployment of the contract at '${contractAddress}' was submitted, but what the ` +
         'chain did with it could not be confirmed. ' +
         (cause instanceof EraInvariantViolationError
           ? `The record came back from an era the head this deployment composed on cannot have recorded: ${cause.message}`
@@ -1423,7 +1523,7 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
  * balance and submit, and leave the recipient owning a coin it could never
  * discover.
  *
- * @see {@link KeepStatePipeline} for how the retained arm resolves each
+ * @see {@link KeepStatePipeline} for how the retained-era path resolves each
  *      recipient's encryption key.
  */
 /** The entry-point name a retained-era deploy reports its constructor under. */
@@ -1445,7 +1545,7 @@ export class Ledger8RecipientUnmappableError extends MidnightJsError {
         "encrypting the coin to the caller's own key would submit successfully and leave the " +
         'recipient unable to discover it. ' +
         (isConstructor
-          ? 'A retained-era deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
+          ? 'A ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
             'cannot pay a shielded coin to a third party.'
           : "Add the recipient's coin public key and encryption public key to " +
             '`additionalCoinEncPublicKeyMappings` on the call options.')
@@ -1487,19 +1587,19 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
    */
   constructor(
     readonly contractAddress: string,
-    readonly signingKey: Ledger8SigningKey,
+    readonly signingKey: SigningKey,
     readonly stage: 'signing-key' | 'private-state',
     cause: unknown
   ) {
     super(
-      `The retained-era deployment of the contract at '${contractAddress}' was CONFIRMED on chain, but the ` +
+      `The ledger 8 deployment of the contract at '${contractAddress}' was CONFIRMED on chain, but the ` +
         'private-state provider refused to record it locally. ' +
         (stage === 'signing-key'
           ? "The SIGNING KEY could not be stored, so this error's 'signingKey' is the only copy that now " +
             'exists. The contract is on chain under a maintenance authority built from it, and without it ' +
             'no verifier key can ever be inserted, removed or replaced there. Keep it, fix what the store ' +
             "refused - see this error's cause - and write it back with " +
-            "`privateStateProvider.setSigningKey(address, { tag: 'schnorr', value: <key> })`."
+            "`privateStateProvider.setSigningKey(address, error.signingKey)`."
           : "The INITIAL PRIVATE STATE could not be stored. The signing key was written first and is held " +
             "by the provider, and is on this error's 'signingKey' as well. Reconcile the local state " +
             "against the chain before calling this contract - see this error's cause for what the store " +
@@ -1513,18 +1613,19 @@ export class Ledger8DeployNotStoredError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the `signingKey` supplied on a retained-era attach
- * is not one this framework can store and read back.
+ * An error indicating that a signing key the caller supplied in this call - on a
+ * retained-era deploy, an attach, or an authority replacement - is not one the
+ * retained era can sign with.
  *
- * Refused BEFORE the write rather than after it. Stored unchecked, a key the
+ * Refused BEFORE anything is composed or stored. Stored unchecked, a key the
  * read rejects is reported on the attach that supplied it and read as ABSENT on
  * every later one - the same store answering two different things about the
  * same address, with nothing erroring - and the bad entry has by then already
  * replaced whatever was held there.
  *
- * A refusal is cheap here in a way it is not on the READ path, which reports an
- * unusable stored entry as absent instead: this value came from the caller, in
- * this call, so the caller can correct it.
+ * A refusal is cheap here in a way it is not on the attach's READ path, which
+ * reports an unusable stored entry as absent instead: this value came from the
+ * caller, in this call, so the caller can correct it.
  *
  * The key is not rendered, and is not carried as a member either: the caller
  * already holds it.
@@ -1534,16 +1635,129 @@ export class Ledger8SigningKeyUnusableError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE];
 
   /**
-   * @param contractAddress The address the key was supplied for.
+   * @param contractAddress The address the key was supplied for, or `undefined`
+   * for a deploy, which has no address until it is composed.
    */
-  constructor(readonly contractAddress: string) {
+  constructor(readonly contractAddress?: string) {
     super(
-      `The 'signingKey' supplied for the retained-era contract at '${contractAddress}' is not a key this ` +
-        'framework can store and read back, so it was not stored. A retained-era key is exactly 64 ' +
-        "hexadecimal characters - 32 bytes - which is what that era's `sampleSigningKey` produces. The " +
-        'supplied value is not rendered here: it is secret material, and an error message reaches logs and ' +
-        'issue trackers.'
+      "The 'signingKey' supplied for the ledger 8 contract" +
+        (contractAddress === undefined ? '' : ` at '${contractAddress}'`) +
+        ' is not a key that era can sign with, so nothing was composed or stored. A ledger 8 key is a ' +
+        "`schnorr` key whose value is exactly 64 hexadecimal characters - 32 bytes - which is what that era's " +
+        '`sampleSigningKey` produces. The supplied value is not rendered here: it is secret material, and an ' +
+        'error message reaches logs and issue trackers.'
     );
     this.name = 'Ledger8SigningKeyUnusableError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era maintenance update found no signing key it can sign with
+ * for the contract it targets.
+ *
+ * Covers three cases a caller remedies the same way: nothing is stored for the address, the stored
+ * entry is not a retained-era key, or the store could not be read, in which case the read failure is
+ * on `cause`. Raised before anything is composed or proven.
+ *
+ * Unlike an attach, which reports an unusable entry as absent, a maintenance update cannot proceed
+ * without the key, so the absence is a refusal here. The key is never rendered.
+ */
+export class Ledger8SigningKeyUnavailableError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE];
+
+  /**
+   * @param contractAddress The contract the maintenance update targets.
+   * @param cause The store's own failure, when the entry could not be read at all.
+   */
+  constructor(
+    readonly contractAddress: string,
+    cause?: unknown
+  ) {
+    super(
+      `No usable ledger 8 signing key is held for the contract at '${contractAddress}', so the maintenance ` +
+        'update was not composed. Either nothing is stored for that address, the stored entry is not a ledger 8 ' +
+        "key - a `schnorr` key of 64 hexadecimal characters - or the store could not be read (see this error's " +
+        'cause). Store the key the contract\'s maintenance authority was built from with ' +
+        '`privateStateProvider.setSigningKey(address, key)`, or attach with `findDeployedContract` passing ' +
+        '`signingKey`.',
+      cause === undefined ? undefined : { cause }
+    );
+    this.name = 'Ledger8SigningKeyUnavailableError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era maintenance authority REPLACEMENT was confirmed on chain,
+ * but the private-state provider refused to store the new key.
+ *
+ * {@link Ledger8SigningKeyNotStoredError.signingKey} is NAMED but never rendered into the message:
+ * the key it held before no longer authorizes anything on the contract, so this is the only copy of
+ * the one that does.
+ */
+export class Ledger8SigningKeyNotStoredError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED];
+
+  /**
+   * @param contractAddress The contract whose authority was replaced.
+   * @param signingKey The new authority's key, which the store refused.
+   * @param cause The store's own failure.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: SigningKey,
+    cause: unknown
+  ) {
+    super(
+      `The maintenance authority of the ledger 8 contract at '${contractAddress}' was REPLACED on chain, but the ` +
+        "private-state provider refused to store the new key, so this error's 'signingKey' is the only copy that " +
+        'now exists. The key held before no longer authorizes anything on that contract. Keep it, fix what the ' +
+        "store refused - see this error's cause - and write it back with " +
+        '`privateStateProvider.setSigningKey(address, error.signingKey)`.',
+      { cause }
+    );
+    this.name = 'Ledger8SigningKeyNotStoredError';
+  }
+}
+
+/**
+ * An error indicating that a retained-era maintenance authority REPLACEMENT was submitted, but
+ * what the chain did with it could not be confirmed.
+ *
+ * Covers every way that step fails after the transaction may have landed: a submission rejected
+ * while the head was moving (a {@link StaleHeadError} or {@link SubmitRejectionUndiagnosedError}
+ * on `cause`), the read surface rejecting, a record with no era tag, or a record from an era the
+ * head this replacement composed on cannot have recorded. The new key is NOT stored, because the
+ * replacement may not have landed - and it may have, so this error carries it.
+ *
+ * {@link Ledger8ReplaceAuthorityUnconfirmedError.signingKey} is NAMED but never rendered into the
+ * message: if the replacement landed, it is the only key that authorizes anything on the contract.
+ */
+export class Ledger8ReplaceAuthorityUnconfirmedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED];
+
+  /**
+   * @param contractAddress The contract whose authority the replacement targets.
+   * @param signingKey The key the replacement would install.
+   * @param cause Why the replacement could not be confirmed.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly signingKey: SigningKey,
+    cause: unknown
+  ) {
+    super(
+      `The maintenance authority replacement for the ledger 8 contract at '${contractAddress}' was submitted, ` +
+        "but whether the chain applied it could not be confirmed - see this error's cause for what failed. The " +
+        "new key was NOT stored. Keep this error's 'signingKey': if the replacement landed, it is the only key " +
+        "that authorizes the contract now. Find out which key the contract's authority holds before doing " +
+        'anything else: try a maintenance update with the key still stored; if it is refused with ' +
+        "MaintenanceAuthorityMismatchError, the replacement landed - store this error's 'signingKey' with " +
+        '`privateStateProvider.setSigningKey(address, error.signingKey)`.',
+      { cause }
+    );
+    this.name = 'Ledger8ReplaceAuthorityUnconfirmedError';
   }
 }

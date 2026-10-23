@@ -14,7 +14,7 @@
  */
 
 import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
-import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
+import { ContractState as Ledger9ContractState, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import {
   DownConvertFailedError,
@@ -54,9 +54,9 @@ type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractSt
  * carrying the runtime's own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
  */
-export const extractV9EncodedStateValue = (raw: Uint8Array): EncodedStateValue => {
+export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateValue => {
   try {
-    return LedgerContractStateV9.deserialize(raw).data.state.encode();
+    return Ledger9ContractState.deserialize(raw).data.state.encode();
   } catch (cause) {
     throw new DownConvertFailedError('v9 envelope extraction', cause);
   }
@@ -79,7 +79,7 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
       ledger8ContractState.deserialize(raw).data.state.encode(),
     // A reference to the standalone decoder, not a second copy of the same
     // read -- see FailClosedDecoding.
-    v9: extractV9EncodedStateValue
+    v9: extractLedger9EncodedStateValue
   } satisfies Record<LedgerVersion, EnvelopeDecoder>)
 );
 

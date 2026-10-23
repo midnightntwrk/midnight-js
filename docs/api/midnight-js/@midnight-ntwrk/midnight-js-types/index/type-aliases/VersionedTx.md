@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -26,7 +26,7 @@ expected to check that at its own boundary.
 
 `T`
 
-The v9 ledger transaction type carried by the `'v9'` arm.
+The v9 ledger transaction type carried by the `'v9'` variant.
 
 ## Example
 

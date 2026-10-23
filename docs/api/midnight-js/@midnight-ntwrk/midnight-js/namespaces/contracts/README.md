@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -185,6 +185,12 @@ Re-exports [ContractConstructorResult](../../contracts/interfaces/ContractConstr
 ### ContractMaintenanceTxInterface
 
 Re-exports [ContractMaintenanceTxInterface](../../contracts/interfaces/ContractMaintenanceTxInterface.md)
+
+***
+
+### ContractNotFoundError
+
+Re-exports [ContractNotFoundError](../../contracts/classes/ContractNotFoundError.md)
 
 ***
 
@@ -494,6 +500,12 @@ Re-exports [getUnshieldedBalances](../../contracts/variables/getUnshieldedBalanc
 
 ***
 
+### HeadReadFailedError
+
+Re-exports [HeadReadFailedError](../../contracts/classes/HeadReadFailedError.md)
+
+***
+
 ### HeadStateEraMismatchError
 
 Re-exports [HeadStateEraMismatchError](../../contracts/classes/HeadStateEraMismatchError.md)
@@ -548,6 +560,12 @@ Re-exports [Ledger8](../../contracts/namespaces/Ledger8/README.md)
 
 ***
 
+### LedgerParametersUnservedError
+
+Re-exports [LedgerParametersUnservedError](../../contracts/classes/LedgerParametersUnservedError.md)
+
+***
+
 ### MixedEraScopeError
 
 Re-exports [MixedEraScopeError](../../contracts/classes/MixedEraScopeError.md)
@@ -557,6 +575,12 @@ Re-exports [MixedEraScopeError](../../contracts/classes/MixedEraScopeError.md)
 ### PipelineEra
 
 Re-exports [PipelineEra](../../contracts/type-aliases/PipelineEra.md)
+
+***
+
+### PrivateStateNotFoundError
+
+Re-exports [PrivateStateNotFoundError](../../contracts/classes/PrivateStateNotFoundError.md)
 
 ***
 
@@ -581,6 +605,12 @@ Re-exports [ReplaceMaintenanceAuthorityTxFailedError](../../contracts/classes/Re
 ### RETAINED\_PIPELINE\_ERA
 
 Re-exports [RETAINED_PIPELINE_ERA](../../contracts/variables/RETAINED_PIPELINE_ERA.md)
+
+***
+
+### RetainedArtifactOnCurrentEraStateError
+
+Re-exports [RetainedArtifactOnCurrentEraStateError](../../contracts/classes/RetainedArtifactOnCurrentEraStateError.md)
 
 ***
 
@@ -821,3 +851,9 @@ Re-exports [verifyContractState](../../contracts/variables/verifyContractState.m
 ### withContractScopedTransaction
 
 Re-exports [withContractScopedTransaction](../../contracts/variables/withContractScopedTransaction.md)
+
+***
+
+### ZswapOutputResolutionError
+
+Re-exports [ZswapOutputResolutionError](../../contracts/classes/ZswapOutputResolutionError.md)

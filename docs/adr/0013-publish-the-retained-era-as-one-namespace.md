@@ -103,3 +103,22 @@ one file, and a declaration named `Ledger8X` is published as `Ledger8.X`.
   `Ledger8Contract` is structurally different from the current era's `Contract`
   (a raw instance with `impureCircuits`, against a `CompiledContract`
   container). A shared generic would be a facade over two unrelated shapes.
+
+## Amendment — consistent member names, and one `Ledger8` name that stays flat (2026-10-14)
+
+Issue #1489. The decision is unchanged.
+
+- Two members are renamed: `Ledger8.SeamFailedError` is
+  `Ledger8.ProviderFailedError`, and `Ledger8.DeployOnV9Error` is
+  `Ledger8.DeployOnLedger9Error`. The era prefix is `Ledger8` / `Ledger9`
+  everywhere, never `V8` / `V9`.
+- `FoundDeployTxPublicDataV8` is `Ledger8FoundDeployTxPublicData`, and it stays
+  on the flat surface. It is the v8 half of the CURRENT era's
+  `FoundDeployTxData.public`, which the current pipeline returns for a contract
+  deployed before the fork. Chain history outlives the retained pipeline, so the
+  type fails both membership clauses in
+  `packages/contracts/docs/retained-era-namespace.md`. A `Ledger8` prefix
+  therefore does not by itself mean "inside the namespace": it names the era,
+  and here the era that recorded the deployment.
+- `ScopedTxEraUnsupportedError`, one of the fork-window refusals published flat,
+  is `ScopedTransactionEraUnsupportedError`.

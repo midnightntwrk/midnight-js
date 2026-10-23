@@ -30,7 +30,7 @@ export default defineConfig({
       exclude: ['**/test/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage',
-      // Raised to just under the measured figures when the seam tests landed.
+      // Raised to just under the measured figures when the provider method tests landed.
       // Left at the old, much lower values these would not hold the new
       // coverage: deleting the narrowing tests would still pass CI.
       thresholds: {
@@ -43,7 +43,7 @@ export default defineConfig({
     reporters: [
       'default',
       ['junit', { outputFile: `reports/report/test-report.xml` }],
-      ['html', { outputFile: `reports/report/test-report.html` }]
+      ['html', { outputDir: 'reports/report' }]
     ],
     // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) assert
     // nothing at plain runtime — vitest's typecheck pass is what turns tsc

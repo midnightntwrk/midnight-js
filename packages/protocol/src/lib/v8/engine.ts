@@ -17,19 +17,24 @@ import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import type { EncodedStateValue } from '../era/envelope';
 import type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
-import { reexpressOperationsForCurrentEra } from '../v9/operations';
+import { reexpressOperationsForLedger9 } from '../v9/operations';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
+  type Ledger8CircuitOptions,
+  type Ledger8ConstructorOptions,
+  type Ledger8EngineContract,
   type Ledger8SigningKey,
-  type RetainedContract,
-  runRetainedCircuit,
-  type RunRetainedCircuitOptions,
-  runRetainedConstructor,
-  type RunRetainedConstructorOptions,
+  runLedger8Circuit,
+  runLedger8Constructor,
   type TranscriptPojo,
   type VerifierKeyReader
 } from './executable';
+import {
+  composeLedger8MaintenanceTx,
+  type Ledger8MaintenanceRequest,
+  type Ledger8MaintenanceUpdateRequest
+} from './maintenance';
 
 export type {
   ConstructorResultPojo,
@@ -37,10 +42,12 @@ export type {
   ContractEntryPointPojo,
   ContractStatePojo,
   EncodedStateValue,
+  Ledger8CircuitOptions,
+  Ledger8ConstructorOptions,
+  Ledger8EngineContract,
+  Ledger8MaintenanceRequest,
+  Ledger8MaintenanceUpdateRequest,
   Ledger8SigningKey,
-  RetainedContract,
-  RunRetainedCircuitOptions,
-  RunRetainedConstructorOptions,
   TranscriptPojo,
   VerifierKeyReader,
   WrapKeepStateCallOptions
@@ -57,14 +64,14 @@ export type {
  * crossing it is still plain data or an era handle, and no `Effect` reaches a
  * caller.
  *
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export interface Ledger8Engine {
   /**
    * Runs one circuit against the decoded contract state the chain serves.
    *
    * Takes the state and the balances beside it as ONE value -- see
-   * {@link RunRetainedCircuitOptions.contractState} -- because the balances a
+   * {@link Ledger8CircuitOptions.contractState} -- because the balances a
    * circuit reads do not live inside the primary state, and two separate
    * options could describe two different blocks.
    *
@@ -73,8 +80,8 @@ export interface Ledger8Engine {
    *   balance the retained runtime cannot read.
    * @throws InvalidArgumentError When the contract declares no circuit of that name.
    */
-  executeCircuit<C extends RetainedContract, PS>(
-    options: RunRetainedCircuitOptions<C, PS>
+  executeCircuit<C extends Ledger8EngineContract, PS>(
+    options: Ledger8CircuitOptions<C, PS>
   ): Promise<TranscriptPojo>;
   /**
    * Runs one retained-era constructor and returns the state it built.
@@ -89,18 +96,35 @@ export interface Ledger8Engine {
    * @throws ComposeFailedError At stage `'deploy-verifier-key-blob'` when the
    *   ledger refuses the bytes served for a circuit.
    */
-  executeConstructor<C extends RetainedContract, PS>(
-    options: RunRetainedConstructorOptions<C, PS>
+  executeConstructor<C extends Ledger8EngineContract, PS>(
+    options: Ledger8ConstructorOptions<C, PS>
   ): Promise<ConstructorResultPojo>;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
   /**
-   * Re-expresses a retained-era contract's entry points as a current-era contract state, so a
-   * keep-state call has an operation registry the current composer can read.
+   * Composes an UNPROVEN v8 transaction carrying one maintenance update --
+   * insert a verifier key, remove one, or replace the maintenance authority --
+   * built and signed by compact-js's ledger 8 `ContractExecutable`.
+   *
+   * ASYNCHRONOUS for the same reason {@link Ledger8Engine.executeCircuit} is.
+   * Reads the FULL state off the bytes the chain holds, and refuses a signing
+   * key other than the committee's first member before anything is signed.
+   *
+   * @throws ComposeOptionError Naming `'networkId'`, `'ttl'`, `'signingKey'`,
+   *   `'newSigningKey'` or `'contractStateBytes'` when that option is unusable.
+   * @throws MaintenanceAuthorityMismatchError When the signing key is not the
+   *   committee's first member.
+   * @throws ComposeFailedError At stage `'maintenance-update'` when compact-js
+   *   refuses to build or sign the update.
+   */
+  composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>;
+  /**
+   * Re-expresses a ledger 8 contract's entry points as a ledger 9 contract state, so a
+   * keep-state call has an operation registry the ledger 9 composer can read.
    *
    * Fork-crossing work, which is why it sits here rather than on either era facade: the input is
-   * what the retained decoder read off the chain, and the output is for the current ledger.
+   * what the ledger 8 decoder read off the chain, and the output is for ledger 9.
    */
-  reexpressOperationsForCurrentEra(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
+  reexpressOperationsForLedger9(entryPoints: readonly ContractEntryPointPojo[]): Uint8Array;
 }
 
 /**
@@ -122,13 +146,14 @@ export interface Ledger8Engine {
  * check on THIS repo's lockfile, not on a consumer's process.
  *
  * @returns The engine surface.
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  * @see {@link ModuleGraphAndLazyLoading}
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> =>
   Promise.resolve({
-    executeCircuit: runRetainedCircuit,
-    executeConstructor: runRetainedConstructor,
+    executeCircuit: runLedger8Circuit,
+    executeConstructor: runLedger8Constructor,
+    composeMaintenanceTx: composeLedger8MaintenanceTx,
     wrapKeepStateCall,
-    reexpressOperationsForCurrentEra
+    reexpressOperationsForLedger9
   });

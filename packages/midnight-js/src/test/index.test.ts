@@ -19,11 +19,12 @@ import * as contracts from '../contracts';
 import type {
   ComposeOption,
   ComposeStage,
+  CurrentLedgerVersion,
+  Ledger8Subpath,
   LedgerVersion,
   MidnightJsErrorCategory,
   ProtocolVersionSource,
   ProtocolVersionUnknownReason,
-  RetainedEraSubpath,
   VersionedRecord,
   VersionResolutionPath
 } from '../index';
@@ -39,7 +40,7 @@ import * as utils from '../utils';
 // unintended re-export, off the barrel.
 //
 // Runtime names only -- a type-only export never appears in `Object.keys`, so
-// this list cannot gate one. The nine type-only exports are gated instead by
+// this list cannot gate one. The ten type-only exports are gated instead by
 // the `import type` above: dropping any of them from the barrel makes that
 // statement unresolvable, and `typecheck:tests:core` fails. The annotations
 // further down assert assignability on top of that.
@@ -49,6 +50,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeOptionError',
   'ConfigurationError',
   'ContractExecutionError',
+  'CURRENT_LEDGER_VERSION',
   'EnvironmentUnsupportedError',
   'InvalidArgumentError',
   'InvariantViolationError',
@@ -129,6 +131,11 @@ describe('ledger version vocabulary', () => {
   it('should export the closed set of ledger versions', () => {
     const eras: readonly LedgerVersion[] = midnightJs.LEDGER_VERSIONS;
     expect(eras).toEqual(['v8', 'v9']);
+  });
+
+  it('should export the current era, the value a current-era result carries in `era`', () => {
+    const current: CurrentLedgerVersion = midnightJs.CURRENT_LEDGER_VERSION;
+    expect(current).toBe('v9');
   });
 
   it('should resolve the era a record was written under', () => {
@@ -250,7 +257,7 @@ describe('retained-era error classes', () => {
   });
 
   it('should let a caller read each error payload without a cast', () => {
-    const subpath: RetainedEraSubpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
+    const subpath: Ledger8Subpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
     const stage: ComposeStage = new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment').stage;
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
     const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;

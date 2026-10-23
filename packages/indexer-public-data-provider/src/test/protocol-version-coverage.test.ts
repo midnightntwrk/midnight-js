@@ -21,7 +21,7 @@ import * as documents from '../query-definitions';
 /**
  * Every place a document asks for `protocolVersion`, as a dotted path through
  * the selection set. Inline fragments contribute their type condition as a path
- * segment, so the three arms of a `contractAction` selection stay distinguishable.
+ * segment, so the three members of a `contractAction` selection stay distinguishable.
  */
 const protocolVersionPaths = (document: DocumentNode): string[] => {
   const found: string[] = [];
@@ -76,14 +76,14 @@ const EXPECTED_PATHS: Readonly<Record<string, readonly string[]>> = {
     'contractAction.ContractUpdate.transaction.protocolVersion'
   ],
   DEPLOY_CONTRACT_STATE_TX_QUERY: [
-    'contractAction.ContractCall.deploy.transaction.protocolVersion',
-    'contractAction.ContractDeploy.transaction.protocolVersion',
-    'contractAction.ContractUpdate.transaction.protocolVersion'
+    'contractAction.ContractCall.deploy.transaction.contractActions.stateAt.protocolVersion',
+    'contractAction.ContractDeploy.transaction.contractActions.stateAt.protocolVersion',
+    'contractAction.ContractUpdate.transaction.contractActions.stateAt.protocolVersion'
   ],
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY: [],
   CONTRACT_STATE_QUERY: ['block.protocolVersion'],
   RAW_CONTRACT_STATE_QUERY: ['block.protocolVersion'],
-  CONTRACT_STATE_SUB: ['contractActions.transaction.protocolVersion'],
+  CONTRACT_STATE_SUB: ['contractActions.stateAt.protocolVersion'],
   CONTRACT_AND_ZSWAP_STATE_QUERY: ['block.protocolVersion'],
   UNSHIELDED_BALANCE_QUERY: [],
   QUERY_UNSHIELDED_BALANCES_WITH_OFFSET: [],

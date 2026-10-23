@@ -14,36 +14,35 @@
  */
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { ProtocolV8 } from '@midnight-ntwrk/midnight-js-protocol';
+import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { describe, expect, it, vi } from 'vitest';
 
 import { toFinalizedTxData } from '../mapping';
 import {
-  mintV9TransactionHex,
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger9TransactionHex,
   type RegularTransactionRow,
-  regularTransactionRow,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+  regularTransactionRow} from './state-fixtures';
 
 // Deliberately its own file, and deliberately WITHOUT a v8 fixture. The
 // sibling suite mints one in `beforeAll` and clears the spy in `beforeEach`,
-// which means an eager module-scope `loadLedger8()` in `codec.ts` would be
+// which means an eager module-scope `loadLedger8Protocol()` in `codec.ts` would be
 // recorded at import time and then cleared before any test body ran — so every
 // "never acquires the v8 runtime" assertion there would still pass. Nothing in
 // this file ever needs the v8 runtime, so the spy's call count here is a
 // statement about the module graph rather than about an arrange step.
-const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<ProtocolV8>>() }));
+const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn<() => Promise<Ledger8Protocol>>() }));
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
-  loadLedger8Spy.mockImplementation(original.loadLedger8);
-  return { ...original, loadLedger8: loadLedger8Spy };
+  loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
+  return { ...original, loadLedger8Protocol: loadLedger8Spy };
 });
 
 const TX_ID = 'lazy-acquisition-tx';
 
-const v9RecordAt = (raw: string): RegularTransactionRow =>
-  regularTransactionRow({ protocolVersion: V9_ERA_PROTOCOL_VERSION, raw, identifiers: [TX_ID] });
+const ledger9RecordAt = (raw: string): RegularTransactionRow =>
+  regularTransactionRow({ protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION, raw, identifiers: [TX_ID] });
 
 describe('the v8 runtime is acquired on demand, not on import', () => {
   it('is not acquired by importing the read path', () => {
@@ -51,7 +50,7 @@ describe('the v8 runtime is acquired on demand, not on import', () => {
   });
 
   it('is still not acquired after a v9 record has been decoded end to end', async () => {
-    const record = await toFinalizedTxData(TX_ID, v9RecordAt(mintV9TransactionHex()));
+    const record = await toFinalizedTxData(TX_ID, ledger9RecordAt(mintLedger9TransactionHex()));
 
     expect(record.version).toBe('v9');
     expect(loadLedger8Spy).not.toHaveBeenCalled();

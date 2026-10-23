@@ -140,7 +140,7 @@ describe('extractUserAddressedOutputs', () => {
     });
   });
 
-  // The refusal is on the token type this seam CAN pay out, not on an
+  // The refusal is on the token type this module CAN pay out, not on an
   // enumeration of the ones it cannot: a fourth `TokenType` member added by a
   // vendor bump must fail closed here rather than reach `tokenType.raw` and
   // compose a payout nothing can settle.

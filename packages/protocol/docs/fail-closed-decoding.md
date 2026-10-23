@@ -7,9 +7,9 @@ title: FailClosedDecoding
 Reading a contract state is the one place in `@midnightntwrk/midnight-js-protocol`
 where bytes of unknown provenance meet a WASM codec that will happily answer a
 question it was never asked. This document records the discipline that keeps
-that seam honest: what the decoders treat as authoritative, why no read is
+that read honest: what the decoders treat as authoritative, why no read is
 allowed to return a plausible-looking empty answer, and why the four failures
-this seam can raise are four distinct classes rather than one.
+this read can raise are four distinct classes rather than one.
 
 ## The envelope is the only authority over the bytes
 
@@ -47,7 +47,7 @@ empty bytes.
 `decodeContractStateWith`
 (`packages/protocol/src/lib/shared/contract-state.ts`) holds the same line one
 level up: the whole read is covered, not just the deserialization, so no raw
-runtime error escapes this seam uncoded. It is covered by two codes, not one.
+runtime error escapes this read uncoded. It is covered by two codes, not one.
 A failure inside the era's `deserialize` is `StateDecodeFailedError`: the bytes
 are not this era's to read, and resolving the right era may fix it. A failure
 after `deserialize` succeeded — an entry point the state cannot resolve, a
@@ -74,8 +74,8 @@ The same refusal to accept quietly governs the structural round trip further
 down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
 decodes the primary state a circuit runs against, re-encodes it, and refuses a
 value that did not come back — `DownConvertFailedError` at stage `'state
-down-convert'`. The comparison is cross-codec by construction: a contract an
-earlier post-fork call migrated carries a current-era envelope, so its state is
+down-convert'`. The comparison is cross-codec by construction: a contract the
+fork translated carries a current-era envelope, so its state is
 encoded by ledger-v9 and decoded by the retained runtime, and a retained
 envelope crosses between two physical copies of that runtime either way. A
 shape one side writes and the other merely tolerates would decode without
@@ -83,7 +83,7 @@ complaint and execute against a state that is not the chain's.
 
 ## Four failures, four remediations
 
-The seam raises four coded failures, and folding any two of them together
+The read raises four coded failures, and folding any two of them together
 would misdescribe the fix.
 
 | Error | Reports |
@@ -138,7 +138,7 @@ two it called. The extractor's own diagnosis stays on `cause`.
 
 ## Wrapped exactly once, and the stage is checked
 
-`extractV9EncodedStateValue` owns the same wrapping the dispatching entry
+`extractLedger9EncodedStateValue` owns the same wrapping the dispatching entry
 applies: a rejected envelope (malformed, truncated, over-long, or tagged for
 the other era) leaves as a `DownConvertFailedError` at stage
 `'v9 envelope extraction'`, carrying the runtime's own diagnosis on `cause`.
@@ -159,8 +159,8 @@ no gain.
 
 `extractEncodedStateValue` takes `ledger8ContractState` for every `version`,
 not just `'v8'`. Requiring it unconditionally costs nobody a runtime they would
-not otherwise hold. This seam is reached only from `createV8Era`
-(`lib/era/load-era.ts`), which has already awaited `loadLedger8()` and hands
+not otherwise hold. This decoder is reached only from `createLedger8Era`
+(`lib/era/load-era.ts`), which has already awaited `loadLedger8Protocol()` and hands
 that module's `ContractState` in; the `'v9'` decoder is here so that the
 *bridge* can read a post-fork envelope before down-converting it, not to serve
 a caller who has no pre-fork runtime at all. Such a caller reads ledger-v9
@@ -181,7 +181,7 @@ stops being free the moment this function is surfaced beyond the v8 era facade �
 if a v9-only path ever calls it, move the check into the `'v8'` decoder and make
 the parameter optional there.
 
-The standalone `extractV9EncodedStateValue` is the release valve that keeps
+The standalone `extractLedger9EncodedStateValue` is the release valve that keeps
 that requirement from spreading. It was split out of
 `extractEncodedStateValue`'s decoder table so the v9 read is reachable without
 a pre-fork runtime. The dispatching entry requires that runtime for every
@@ -214,7 +214,7 @@ is not worth having:
 
 - `UnknownLedgerVersionError` carries the offending era string on
   `requestedVersion` for programmatic use, deliberately kept out of the
-  message: this is the one input on the seam that comes straight from an
+  message: this is the one input to the read that comes straight from an
   untrusted caller, and the down-convert errors' "never renders caller-supplied
   text" property is only worth having if it holds here too. For the same reason
   that class names no `version` field — there is no valid era to name.

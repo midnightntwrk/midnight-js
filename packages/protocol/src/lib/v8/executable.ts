@@ -69,7 +69,7 @@ import { type ContractStatePojo, describeValue, isContractBalance } from '../sha
  * a valid Schnorr scalar is a cryptographic property this cannot check, and the
  * runtime's own `Malformed Schnorr signing key` already names it.
  */
-const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
+export const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
 /**
  * The signature kind this era's maintenance authority accepts.
@@ -85,6 +85,10 @@ const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 /** A retained-era signing key: 32 bytes of hex. @see {@link LEDGER8_SIGNING_KEY_PATTERN} */
 export type Ledger8SigningKey = string;
 
+/** A retained-era key as the tagged `SigningKey` compact-js reads. */
+export const toPlatformSigningKey = (signingKey: Ledger8SigningKey): SigningKey.SigningKey =>
+  SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND);
+
 /**
  * A retained-era contract, as the caller holds it: the CONSTRUCTED artifact the
  * previous toolchain generates.
@@ -92,10 +96,10 @@ export type Ledger8SigningKey = string;
  * Deliberately not compact-js's `CompiledContract` container. That container is
  * a recipe — a class plus witnesses, instantiated fresh per operation — and the
  * retained era's callers hold an instance whose witnesses are already bound.
- * {@link containerFor} adapts one to the other at this seam, which keeps the
+ * {@link containerFor} adapts one to the other here, which keeps the
  * adaptation in one place instead of on every consumer.
  */
-export interface RetainedContract {
+export interface Ledger8EngineContract {
   /** The map compact-js indexes to find the circuit to run. */
   readonly provableCircuits: Readonly<Record<string, unknown>>;
   /** The constructor a deployment runs. */
@@ -109,7 +113,7 @@ export interface RetainedContract {
  * whoever builds it, and this era's callers pass an instance that carries no
  * name of its own.
  */
-const RETAINED_CONTRACT_TAG = 'retained-era-contract';
+const LEDGER8_CONTRACT_TAG = 'ledger8-contract';
 
 /**
  * Wraps a constructed retained contract in the container compact-js executes.
@@ -128,19 +132,19 @@ const RETAINED_CONTRACT_TAG = 'retained-era-contract';
  * own `ZKConfiguration` reader, and {@link zkConfigurationLayer} replaces that
  * service outright, so nothing ever resolves it.
  */
-const containerFor = <PS>(contract: RetainedContract): CompiledContract.CompiledContract<
+export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
   Contract.Contract<PS>,
   PS,
   never
 > =>
   CompiledContract.make<Contract.Contract<PS>, PS>(
-    RETAINED_CONTRACT_TAG,
-    // The single assertion this seam needs, and it is here rather than at any
+    LEDGER8_CONTRACT_TAG,
+    // The single assertion this adapter needs, and it is here rather than at any
     // caller. A retained artifact satisfies compact-js's `Contract` structurally
     // -- same four circuit maps, and a synchronous `initialState` satisfies its
     // `Awaitable` return -- but the two declare their members over different
     // private-state parameters, so TypeScript will not see it. Narrowing what
-    // this module ASKS for (see `RetainedContract`) is what keeps the assertion
+    // this module ASKS for (see `Ledger8EngineContract`) is what keeps the assertion
     // to one line instead of pushing a cast onto every consumer.
     class {
       constructor() {
@@ -233,12 +237,12 @@ export interface ConstructorResultPojo {
  *
  * A plain function rather than compact-js's `ZKConfiguration` service, so no
  * Effect type reaches this package's callers; {@link zkConfigurationLayer}
- * adapts it at the seam.
+ * adapts it where the service is needed.
  */
 export type VerifierKeyReader = (provableCircuitId: string) => Promise<Uint8Array | undefined>;
 
-/** Everything {@link runRetainedCircuit} needs to run one circuit. */
-export interface RunRetainedCircuitOptions<C extends RetainedContract, PS> {
+/** Everything {@link runLedger8Circuit} needs to run one circuit. */
+export interface Ledger8CircuitOptions<C extends Ledger8EngineContract, PS> {
   readonly contract: C;
   readonly circuitId: string;
   readonly args: readonly unknown[];
@@ -277,8 +281,8 @@ export interface RunRetainedCircuitOptions<C extends RetainedContract, PS> {
   readonly nowSeconds?: number;
 }
 
-/** Everything {@link runRetainedConstructor} needs to run one constructor. */
-export interface RunRetainedConstructorOptions<C extends RetainedContract, PS> {
+/** Everything {@link runLedger8Constructor} needs to run one constructor. */
+export interface Ledger8ConstructorOptions<C extends Ledger8EngineContract, PS> {
   readonly contract: C;
   readonly args: readonly unknown[];
   readonly privateState: PS;
@@ -303,7 +307,7 @@ export interface RunRetainedConstructorOptions<C extends RetainedContract, PS> {
  * there is nothing a config round trip would add except a second place for the
  * values to disagree.
  */
-const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
+export const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
   Layer.succeed(
     Configuration.Keys,
     Configuration.Keys.of({
@@ -311,7 +315,7 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
       getSigningKey: () =>
         signingKey === undefined
           ? Option.none()
-          : Option.some(SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND))
+          : Option.some(toPlatformSigningKey(signingKey))
     })
   );
 
@@ -336,7 +340,7 @@ export const pinnedClock = (nowSeconds: number): Clock.Clock => {
   // variable unset is the obvious way to produce one.
   if (!Number.isFinite(nowSeconds)) {
     throw new InvalidArgumentError(
-      `the retained era cannot pin its execution clock to '${String(nowSeconds)}'. ` +
+      `the ledger 8 runtime cannot pin its execution clock to '${String(nowSeconds)}'. ` +
         '`nowSeconds` must be a finite number of seconds since the epoch.'
     );
   }
@@ -377,7 +381,7 @@ const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect
  * deploy composition was the only thing that checked coverage. It now fails
  * before a state is built at all.
  */
-const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
+export const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
   Layer.succeed(
     ZKConfiguration.ZKConfiguration,
     ZKConfiguration.ZKConfiguration.of({
@@ -411,20 +415,20 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
   );
 
 /**
- * The verifier-key reader a CIRCUIT call is given.
+ * The verifier-key reader a CIRCUIT call or a MAINTENANCE update is given.
  *
  * `ContractExecutable` declares `ZKConfiguration` in its context for every
- * method, but only `initialize` and the maintenance operations read a key — a
- * circuit call needs none, which is measured, not assumed. Providing a reader
- * that refuses keeps that fact enforced: were a future version to read a key
- * during a circuit call, this fails by name instead of silently serving
- * `Option.none()` and composing a call with a blank key slot.
+ * method, but only `initialize` reads a key — a circuit call needs none, and a
+ * maintenance update is handed the key it inserts, which is measured, not
+ * assumed. Providing a reader that refuses keeps that fact enforced: were a
+ * future version to read a key there, this fails by name instead of silently
+ * serving `Option.none()` and composing a transaction with a blank key slot.
  */
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
     new InvariantViolationError(
-      `a retained-era circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
-        'not supposed to read ZK configuration; only deployment and maintenance are.'
+      `a ledger 8 circuit call or maintenance update read the verifier key for '${provableCircuitId}'. ` +
+        'Only deployment is supposed to read ZK configuration.'
     )
   );
 
@@ -489,7 +493,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * does not re-encode to the bytes it came from.
  *
  * The comparison is CROSS-CODEC in production, which is what it is for. A
- * contract an earlier post-fork call migrated carries a current-era envelope,
+ * contract the fork translated carries a current-era envelope,
  * so the pipeline reads it with the HEAD era's reader
  * (`readLedger8Snapshot`) -- the state is then encoded by ledger-v9 and
  * decoded here by the retained runtime. A retained-era envelope is encoded by
@@ -498,7 +502,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  * merely tolerates would decode without complaint and execute a circuit
  * against a state that is not the chain's, with every guard green.
  *
- * Reachable with the REAL decoder, not only an injected one: the seam takes a
+ * Reachable with the REAL decoder, not only an injected one: `runLedger8Circuit` takes a
  * bare {@link EncodedStateValue} a caller can assemble by hand, and the
  * retained runtime canonicalises map order and drops members it does not
  * declare. Both are refused here rather than executed on.
@@ -557,7 +561,7 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   // nothing -- the circuit then reads zero where the chain says otherwise and
   // the node refuses the resulting transcript, with every guard green. That is
   // #1345. `tsc` reaches neither an untyped JavaScript caller nor an options
-  // object assembled dynamically, and both `RunRetainedCircuitOptions` and
+  // object assembled dynamically, and both `Ledger8CircuitOptions` and
   // `ContractStatePojo` are on the published surface.
   // @see FailClosedDecoding
   const { balance } = contractState;
@@ -652,7 +656,7 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
   const [only] = calls;
   if (only === undefined) {
     throw new InvariantViolationError(
-      `circuit '${circuitId}' produced no contract call. The retained era cannot make a ` +
+      `circuit '${circuitId}' produced no contract call. The ledger 8 runtime cannot make a ` +
         'cross-contract call, so exactly one is expected.'
     );
   }
@@ -675,13 +679,13 @@ export const soleCall = <T>(calls: readonly T[], circuitId: string): T => {
  * @param circuitId The circuit the caller asked for.
  * @throws InvalidArgumentError If the contract declares no such circuit.
  */
-const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): void => {
+const assertDeclaredCircuit = (contract: Ledger8EngineContract, circuitId: string): void => {
   const circuit = Object.hasOwn(contract.provableCircuits, circuitId)
     ? contract.provableCircuits[circuitId]
     : undefined;
   if (typeof circuit !== 'function') {
     throw new InvalidArgumentError(
-      `No circuit named '${circuitId}' on this retained-era contract instance. ` +
+      `No circuit named '${circuitId}' on this ledger 8 contract instance. ` +
         `Available circuits: ${Object.keys(contract.provableCircuits).sort().join(', ')}.`
     );
   }
@@ -692,15 +696,15 @@ const assertDeclaredCircuit = (contract: RetainedContract, circuitId: string): v
  * v9-native call prototype needs.
  *
  * The balances the contract holds travel on the state it is given — see
- * {@link RunRetainedCircuitOptions.contractState}.
+ * {@link Ledger8CircuitOptions.contractState}.
  *
  * @param options The retained contract, circuit id, arguments, decoded state,
  *   address, coin public key, private state and optional pinned clock.
  * @returns Every artifact a v9-native call prototype needs.
  * @see {@link RetainedEraExecution}
  */
-export const runRetainedCircuit = async <C extends RetainedContract, PS>(
-  options: RunRetainedCircuitOptions<C, PS>
+export const runLedger8Circuit = async <C extends Ledger8EngineContract, PS>(
+  options: Ledger8CircuitOptions<C, PS>
 ): Promise<TranscriptPojo> => {
   assertDeclaredCircuit(options.contract, options.circuitId);
   const executable = ContractExecutable.make(containerFor<PS>(options.contract));
@@ -805,8 +809,8 @@ export const recodeVerifierKeyBlobFailure = (error: unknown): unknown => {
  *   built from.
  * @see {@link RetainedEraExecution}
  */
-export const runRetainedConstructor = async <C extends RetainedContract, PS>(
-  options: RunRetainedConstructorOptions<C, PS>
+export const runLedger8Constructor = async <C extends Ledger8EngineContract, PS>(
+  options: Ledger8ConstructorOptions<C, PS>
 ): Promise<ConstructorResultPojo> => {
   // BEFORE the constructor runs, so nothing is executed against a key the
   // maintenance authority could never have been built from, and the refusal

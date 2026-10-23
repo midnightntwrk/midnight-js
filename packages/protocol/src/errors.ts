@@ -38,7 +38,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
   PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
+  CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
+  MAINTENANCE_AUTHORITY_MISMATCH: 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH'
 } as const);
 /** The union of every value in {@link PROTOCOL_ERROR_CODES}; the type of every error class's `code` field. */
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
@@ -91,7 +92,8 @@ export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, Midni
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
   [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
-  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED
+  [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED,
+  [PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH]: USAGE
 });
 
 export const COMMON_ERROR_CODES = Object.freeze({
@@ -222,16 +224,16 @@ export class UnknownProtocolVersionError extends MidnightJsError {
 
 /**
  * Which lazily-loaded subpath export {@link Ledger8RuntimeMissingError} failed
- * to acquire. Each chunk pulls a different set of retained-era dependencies, so
+ * to acquire. Each chunk pulls a different set of ledger 8 dependencies, so
  * naming the wrong one sends an operator to an entry point that loaded fine.
  *
  * @see {@link ModuleGraphAndLazyLoading}
  */
-export type RetainedEraSubpath = '/v8' | '/engine';
+export type Ledger8Subpath = '/v8' | '/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the retained pre-fork
- * runtime could not be acquired at all. Raised by `loadLedger8`
+ * runtime could not be acquired at all. Raised by `loadLedger8Protocol`
  * (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
  * surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
  *
@@ -239,22 +241,22 @@ export type RetainedEraSubpath = '/v8' | '/engine';
  * Distinct from {@link Ledger8RuntimeInvalidError}, which reports a runtime
  * that WAS acquired and then handed over incomplete.
  *
- * @param subpath Which chunk failed to load — see {@link RetainedEraSubpath}.
+ * @param subpath Which chunk failed to load — see {@link Ledger8Subpath}.
  * @param cause The underlying module-resolution or initialisation failure,
  *   preserved unchanged. Read it for which module actually failed.
  * @see {@link ModuleGraphAndLazyLoading}
- * @see {@link EraSeam}
+ * @see {@link EraBoundary}
  */
 export class Ledger8RuntimeMissingError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING];
 
   constructor(
-    readonly subpath: RetainedEraSubpath,
+    readonly subpath: Ledger8Subpath,
     cause: unknown
   ) {
     super(
-      `Failed to load the retained pre-fork runtime via the midnight-js-protocol${subpath} subpath export. ` +
+      `Failed to load the ledger 8 (pre-fork) runtime via the midnight-js-protocol${subpath} subpath export. ` +
         'Read the wrapped cause for which module actually failed to resolve or initialise. This usually means ' +
         'a broken or partial install of the protocol package — reinstall dependencies and retry.',
       { cause }
@@ -355,7 +357,7 @@ export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extractio
 /**
  * Thrown when a raw contract-state envelope, or an already-extracted
  * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
- * Raised by `extractV9EncodedStateValue` (`lib/era/envelope.ts`) and by
+ * Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`) and by
  * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
  * that decodes but does not re-encode to the bytes it came from.
  *
@@ -392,7 +394,7 @@ export class DownConvertFailedError extends MidnightJsError {
  * NOTHING RAISES THIS ANY MORE: the walk it served
  * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
  * hand-maintained execution layer, and the condition it named cannot reach the
- * seam that replaced it. Execution now takes an already-encoded
+ * code that replaced it. Execution now takes an already-encoded
  * `EncodedStateValue`, and a tree's rehash state does not survive that
  * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
  * decoding either yields the same root. Being un-rehashed is a property of a
@@ -486,13 +488,24 @@ export const NO_CIRCUIT = '(none)';
  * - `'deploy-verifier-key-blob'` — the ledger rejected the verifier-key bytes
  *   supplied for a circuit.
  *
+ * Maintenance stage:
+ * - `'maintenance-update'` — the maintenance update could not be built,
+ *   signed, or wrapped into a transaction: platform-js refused the contract
+ *   address, compact-js refused one of its own steps (building the update,
+ *   creating it with the address and counter, reading the data to sign,
+ *   signing, attaching the signature), or the ledger refused the signed update
+ *   when it was wrapped into the transaction. Names the circuit for a
+ *   verifier-key update and {@link NO_CIRCUIT} for an authority replacement.
+ *   Carries the refusing library's own failure on `cause`.
+ *
  * Keep-state stage:
  * - `'wrap-call'` — the keep-state leg could not resolve a registered
  *   operation for the transcript's circuit on the given contract state.
  *
  * Which ledger era the failure happened on is carried separately, on the
- * error's `version` field. Every stage but `'wrap-call'` is reachable on both
- * eras; `'wrap-call'` is only ever raised for `'v9'`.
+ * error's `version` field. Every stage but `'wrap-call'` and
+ * `'maintenance-update'` is reachable on both eras; `'wrap-call'` is only ever
+ * raised for `'v9'`, and `'maintenance-update'` only for `'v8'`.
  *
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
@@ -512,7 +525,8 @@ export type ComposeStage =
   | 'deploy-verifier-key'
   | 'deploy-unknown-circuit'
   | 'deploy-ambiguous-circuit'
-  | 'deploy-verifier-key-blob';
+  | 'deploy-verifier-key-blob'
+  | 'maintenance-update';
 
 /**
  * Thrown when a transaction cannot be composed because a circuit's operation
@@ -521,8 +535,8 @@ export type ComposeStage =
  * a closed union, so a consumer can `switch` on it exhaustively; `version`
  * names the ledger era the composition was running against.
  *
- * Most stages carry no `cause`. The exceptions are the stages where the ledger
- * itself rejected caller-supplied bytes, enumerated under `cause` below.
+ * Most stages carry no `cause`. The exceptions are the stages where a runtime
+ * library rejected what it was handed, enumerated under `cause` below.
  *
  * `circuitId` names the entry point, never its raw contents: this class renders
  * no hex and no byte-array dump.
@@ -533,9 +547,10 @@ export type ComposeStage =
  * @param circuitId The entry-point name, already decoded. {@link NO_CIRCUIT}
  *   for `'call-empty'`, the one stage raised before any circuit is looked up.
  * @param cause The runtime's own failure, present only for the stages where
- *   the ledger itself rejected caller-supplied bytes: `'call-contract-state'`,
- *   `'call-partition-context'`, `'call-partition'`, `'call-prototype'` and
- *   `'deploy-verifier-key-blob'`.
+ *   the ledger rejected caller-supplied bytes — `'call-contract-state'`,
+ *   `'call-partition-context'`, `'call-partition'`, `'call-prototype'`,
+ *   `'deploy-verifier-key-blob'` — and for `'maintenance-update'`, where it is
+ *   the failure of platform-js, compact-js or the ledger, whichever refused.
  * @see {@link ComposeRefusalOrder}
  * @see {@link VerifierKeys}
  */
@@ -645,7 +660,18 @@ export class ComposeFailedError extends MidnightJsError {
       `Failed to compose a ${version} deploy transaction: the ledger rejected the verifier-key bytes supplied ` +
       `for circuit '${circuitId}'. Read the wrapped cause for what the ledger reported; a verifier key must ` +
       'be the tagged blob the compiler emits as keys/<circuit>.verifier, so this usually means a truncated ' +
-      'or empty file, or a key emitted for a different ledger era.'
+      'or empty file, or a key emitted for a different ledger era.',
+    'maintenance-update': (version, circuitId) =>
+      `Failed to compose a ${version} maintenance transaction: the maintenance update could not be built ` +
+      (circuitId === NO_CIRCUIT
+        ? 'to replace the maintenance authority. '
+        : `for circuit '${circuitId}'. `) +
+      'Read the wrapped cause for the step that refused it: the contract address, building the update, ' +
+      'creating it with the address and counter, reading the data to sign, signing, attaching the ' +
+      'signature, or wrapping the signed update into the transaction. A verifier key that is not the tagged ' +
+      'blob the compiler emits as keys/<circuit>.verifier is refused while building the update. A failure ' +
+      'naming an expected instance, or a null pointer, usually means a second copy of the ledger package is ' +
+      'installed, not that a key is wrong.'
   };
 }
 
@@ -674,6 +700,11 @@ export class ComposeFailedError extends MidnightJsError {
  *   contract's keys itself and so always needs the map, while the current era
  *   accepts its omission for a state that already carries its keys and refuses
  *   it only for a state still declaring a blank-keyed entry point.
+ * - `'signingKey'` — a signing key is not the 32 bytes of hex the era's runtime
+ *   reads: the key a constructor builds the maintenance authority from, or the
+ *   key a maintenance update is signed with.
+ * - `'newSigningKey'` — the key a maintenance update would make the new
+ *   authority is not the 32 bytes of hex the era's runtime reads.
  * - `'zswapOffer'` — the offer bytes a call's offer factory returned were
  *   rejected by the target era's decoder. Raised on BOTH eras, for the same reason and with the same
  *   remediation: pass the bytes that era's own offer serialization produced.
@@ -687,6 +718,7 @@ export type ComposeOption =
   | 'guaranteedZswapOfferBytes'
   | 'ledgerParametersBytes'
   | 'networkId'
+  | 'newSigningKey'
   | 'signingKey'
   | 'ttl'
   | 'verifierKeys'
@@ -745,8 +777,8 @@ export class ComposeOptionError extends MidnightJsError {
       'the ledger as the Unix epoch, producing a transaction that has already expired. Pass a valid future ' +
       'instant as `ttl`.',
     signingKey: (version) =>
-      `Refusing to run a ${version}-era constructor with a malformed \`signingKey\`. The key builds the ` +
-      "deployed contract's maintenance authority, and the runtime reads it as 32 bytes written in hex - so " +
+      `Refusing to use a malformed \`signingKey\` on the ${version} era. The key builds a deployed ` +
+      "contract's maintenance authority or signs an update to it, and the runtime reads it as 32 bytes written in hex - so " +
       'pass exactly 64 hexadecimal characters, which is what that era\'s `sampleSigningKey` produces. The ' +
       'runtime itself reports a malformed key as `failed to fill whole buffer` or ' +
       "`Invalid character 'z' at position 0`, naming neither the option nor the era. The key is not " +
@@ -767,11 +799,78 @@ export class ComposeOptionError extends MidnightJsError {
       `Failed to compose a ${version} deploy transaction: the supplied guaranteed Zswap offer bytes could ` +
       `not be read by the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the ` +
       "bytes that era's own offer serialization produced.",
+    newSigningKey: (version) =>
+      `Refusing to compose a ${version} maintenance transaction with a malformed \`newSigningKey\`. The key ` +
+      'becomes the whole of the replacement maintenance authority, and the runtime reads it as 32 bytes ' +
+      "written in hex - so pass exactly 64 hexadecimal characters, which is what that era's " +
+      '`sampleSigningKey` produces. The key is not rendered here: it is a secret.',
     zswapOffer: (version) =>
       `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
       `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +
       "era's own offer serialization produced."
   };
+}
+
+/**
+ * Why a maintenance update cannot be signed by the key held for a contract:
+ * - `'not-first-member'` — the key's verifying key is not the first member of
+ *   the contract's maintenance authority committee, the member every update is
+ *   signed for.
+ * - `'empty-committee'` — the authority has no committee, so no key can sign
+ *   for it.
+ * - `'threshold-above-one'` — the authority needs more signatures than the one
+ *   every update carries.
+ */
+export type MaintenanceAuthorityMismatchReason = 'not-first-member' | 'empty-committee' | 'threshold-above-one';
+
+const MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES: Readonly<Record<MaintenanceAuthorityMismatchReason, string>> = {
+  'not-first-member':
+    "the signing key's verifying key is not the first member of the contract's maintenance authority " +
+    'committee, which is the member the update is signed for, so the ledger would refuse it. The key held ' +
+    'for this address is not the one the authority was built from - most often a key another deployment or ' +
+    'the other ledger era stored under the same address, or a previous authority replacement whose new key ' +
+    'was never stored. Supply the key the contract was deployed with, or the key a previous authority ' +
+    'replacement installed.',
+  'empty-committee':
+    "the contract's maintenance authority has no committee, so no key can sign an update for it and the " +
+    'contract cannot be maintained.',
+  'threshold-above-one':
+    "the contract's maintenance authority needs more than one signature, and every update this framework " +
+    'composes carries exactly one, so the ledger would refuse it.'
+};
+
+/**
+ * Thrown when a maintenance update cannot be signed so that the ledger accepts
+ * it with the key held for the contract — see
+ * {@link MaintenanceAuthorityMismatchReason} for the three ways.
+ *
+ * Raised BEFORE anything is signed or proven: the ledger would accept the
+ * signature into the transaction and refuse the update only at submission,
+ * after a proof has been paid for.
+ *
+ * Renders the contract address and no key material: neither the signing key
+ * nor any verifying key appears in the message.
+ *
+ * @param version The ledger era the update was being composed on.
+ * @param contractAddress The contract whose authority was checked.
+ * @param reason Which check refused it.
+ * @see {@link RetainedEraExecution}
+ */
+export class MaintenanceAuthorityMismatchError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH];
+
+  constructor(
+    readonly version: LedgerVersion,
+    readonly contractAddress: string,
+    readonly reason: MaintenanceAuthorityMismatchReason
+  ) {
+    super(
+      `Refusing to sign a ${version} maintenance update for the contract at '${contractAddress}': ` +
+        MAINTENANCE_AUTHORITY_MISMATCH_MESSAGES[reason]
+    );
+    this.name = 'MaintenanceAuthorityMismatchError';
+  }
 }
 
 /**
@@ -870,7 +969,7 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
       'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
         'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
         'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +
-        'loadLedger8() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
+        'loadLedger8Protocol() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
         'separate WASM instance. Read `missingMember` on this error for the absent member.'
     );
     this.name = 'Ledger8RuntimeInvalidError';
@@ -996,7 +1095,7 @@ const describeType = (value: unknown): string => {
 };
 
 /**
- * Thrown when a payload handed to a proving seam is not a serialized
+ * Thrown when a payload handed to a proving function is not a serialized
  * transaction at all.
  *
  * Distinct from a decode failure inside the ledger runtime: this is raised
@@ -1005,7 +1104,7 @@ const describeType = (value: unknown): string => {
  * can happen — a `txBytes` field that is not a byte string, a byte string
  * shorter than the tag prefix, and one that does not open with the prefix.
  *
- * @remarks Raised by `proveV8Transaction`, so it reaches application code as a
+ * @remarks Raised by `proveLedger8Transaction`, so it reaches application code as a
  * `proveTx` rejection. Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
@@ -1015,7 +1114,7 @@ export class PayloadNotATransactionError extends MidnightJsError {
 
   private constructor(detail: string) {
     super(
-      `${detail} Pass the bytes produced by a sanctioned composition seam; a contract state, a ` +
+      `${detail} Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a ` +
         'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
     );
     this.name = 'PayloadNotATransactionError';

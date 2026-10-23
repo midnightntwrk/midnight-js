@@ -37,15 +37,15 @@
  *   in another package and a wrapped key it stopped admitting is one a restore
  *   drops without a word;
  * - a change in the LENGTH a retained sampler answers, which is what the
- *   assertion against `RETAINED_SIGNING_KEY_HEX_LENGTH` measures.
+ *   assertion against `LEDGER8_SIGNING_KEY_HEX_LENGTH` measures.
  *
  * `isValidSigningKey` admits exactly 64 hex characters, so the 70-character
  * version-prefixed value the `onchain-runtime-v3` typings describe would fail
  * it as well as the length assertion.
  *
  * THE SAMPLER HERE IS A SUBSTITUTE, and that is a measurement rather than an
- * assumption. The deploy arm samples through `onchain-runtime-v3`; this file
- * samples through `loadLedger8()`, which resolves `@midnightntwrk/ledger-v8` --
+ * assumption. The deploy path samples through `onchain-runtime-v3`; this file
+ * samples through `loadLedger8Protocol()`, which resolves `@midnightntwrk/ledger-v8` --
  * a different package on its own release train. Eslint bans a direct
  * `onchain-runtime-v3` import outside `packages/protocol`, so the facade is the
  * only sampler reachable from here. Measured by hand before the substitution
@@ -54,13 +54,15 @@
  * does NOT show up in this file.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { Ledger8SigningKeyUnusableError } from '../errors';
 import {
   fromStoredLedger8SigningKey,
-  RETAINED_SIGNING_KEY_HEX_LENGTH,
+  LEDGER8_SIGNING_KEY_HEX_LENGTH,
+  requireLedger8SigningKey,
   toStoredLedger8SigningKey
 } from '../internal/ledger8-signing-key';
 import { createMockContractAddress } from './test-mocks';
@@ -71,10 +73,10 @@ describe('a retained-era signing key crossing the private-state provider', () =>
   let retainedKey: string;
 
   beforeAll(async () => {
-    // `loadLedger8()` and not a direct vendor import: everything outside
+    // `loadLedger8Protocol()` and not a direct vendor import: everything outside
     // `packages/protocol/src` reaches the retained era through the facade, and
     // eslint enforces it.
-    retainedKey = (await loadLedger8()).sampleSigningKey();
+    retainedKey = (await loadLedger8Protocol()).sampleSigningKey();
   });
 
   it('wraps into something the store validates an import as a signing key', () => {
@@ -103,7 +105,7 @@ describe('a retained-era signing key crossing the private-state provider', () =>
     // The rule in the source is a number, and a number written down only restates what that source
     // was told. This is where it is measured. A sampler that changed length fails here, rather than
     // the read admitting an entry the retained runtime cannot build an authority from.
-    expect(retainedKey).toHaveLength(RETAINED_SIGNING_KEY_HEX_LENGTH);
+    expect(retainedKey).toHaveLength(LEDGER8_SIGNING_KEY_HEX_LENGTH);
   });
 
   it.each([
@@ -114,5 +116,32 @@ describe('a retained-era signing key crossing the private-state provider', () =>
 
     expect(isValidSigningKey(entry)).toBe(false);
     expect(fromStoredLedger8SigningKey(entry, CONTRACT_ADDRESS, undefined)).toBeUndefined();
+  });
+
+  it('unwraps a published key into the bare string the retained runtime takes', () => {
+    expect(requireLedger8SigningKey(toStoredLedger8SigningKey(retainedKey), CONTRACT_ADDRESS)).toBe(retainedKey);
+  });
+
+  it.each([
+    ['of the other signature kind', (key: string) => ({ tag: 'ecdsa' as const, value: key })],
+    ['two characters short', (key: string) => toStoredLedger8SigningKey(key.slice(0, -2))]
+  ])('refuses a published key %s, naming the address and never the key', (_case, reshape) => {
+    const caught: unknown = (() => {
+      try {
+        return requireLedger8SigningKey(reshape(retainedKey), CONTRACT_ADDRESS);
+      } catch (error) {
+        return error;
+      }
+    })();
+
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
+    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(CONTRACT_ADDRESS);
+    expect((caught as Error).message).not.toContain(retainedKey.slice(0, -2));
+  });
+
+  it('refuses a published key with no address to name when none exists yet', () => {
+    expect(() => requireLedger8SigningKey({ tag: 'ecdsa', value: retainedKey }, undefined)).toThrow(
+      Ledger8SigningKeyUnusableError
+    );
   });
 });

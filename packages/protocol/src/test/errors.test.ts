@@ -66,7 +66,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
       UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
       PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
+      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
+      MAINTENANCE_AUTHORITY_MISMATCH: 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH'
     });
   });
 
@@ -339,7 +340,7 @@ describe('ComposeFailedError', () => {
     // The facade method a caller actually invokes, not the internal leg it
     // dispatches to: only one of the two is reachable from a consumer.
     expect(error.message).toContain('composeDeployTx');
-    expect(error.message).not.toContain('composeV8DeployTx');
+    expect(error.message).not.toContain('composeLedger8DeployTx');
   });
 
   it('carries the deploy-unknown-circuit stage and explains that the address would change', () => {
@@ -438,7 +439,8 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'deploy-verifier-key': true,
   'deploy-unknown-circuit': true,
   'deploy-ambiguous-circuit': true,
-  'deploy-verifier-key-blob': true
+  'deploy-verifier-key-blob': true,
+  'maintenance-update': true
 };
 const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
 
@@ -478,6 +480,7 @@ const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   guaranteedZswapOfferBytes: true,
   ledgerParametersBytes: true,
   networkId: true,
+  newSigningKey: true,
   signingKey: true,
   ttl: true,
   verifierKeys: true,
@@ -574,12 +577,12 @@ describe('ComposeOptionError', () => {
   // "this call cannot be composed on this era at all" — which was a refusal of
   // the whole capability, not a diagnosis of the bytes.
   it('diagnoses unreadable Zswap offer bytes the same way on both eras', () => {
-    const onV8 = new ComposeOptionError('v8', 'zswapOffer').message;
-    const onV9 = new ComposeOptionError('v9', 'zswapOffer').message;
+    const onLedger8 = new ComposeOptionError('v8', 'zswapOffer').message;
+    const onLedger9 = new ComposeOptionError('v9', 'zswapOffer').message;
 
-    expect(onV8).toMatch(/could not be read/i);
-    expect(onV9).toMatch(/could not be read/i);
-    expect(onV8).toBe(onV9.replaceAll('v9', 'v8'));
+    expect(onLedger8).toMatch(/could not be read/i);
+    expect(onLedger9).toMatch(/could not be read/i);
+    expect(onLedger8).toBe(onLedger9.replaceAll('v9', 'v8'));
   });
 });
 
@@ -651,7 +654,7 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
   });
 
-  // `loadLedger8()` resolves @midnightntwrk/ledger-v8, which exports its own
+  // `loadLedger8Protocol()` resolves @midnightntwrk/ledger-v8, which exports its own
   // ContractState with a matching `static deserialize` on a second, unrelated
   // WASM instance. A remediation naming it therefore hands the caller a class
   // that satisfies the duck-typed guard and decodes on the wrong copy, so the

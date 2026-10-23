@@ -23,18 +23,19 @@ export type Scalars = {
  * discriminator says which.
  */
 export type AddressOrContract = {
-  /** Hex-encoded contract address; populated when kind = CONTRACT. */
+  /** The hex-encoded contract address; populated when kind is CONTRACT. */
   readonly contractAddress: Maybe<Scalars['HexEncoded']['output']>;
+  /** Which of the two address fields is populated. */
   readonly kind: AddressOrContractKind;
-  /**
-   * Bech32m-encoded user address; populated when kind = USER.
-   * Hex-encoded here at the wire level; clients re-encode if needed.
-   */
+  /** The hex-encoded user address; populated when kind is USER. */
   readonly userAddress: Maybe<Scalars['HexEncoded']['output']>;
 };
 
+/** Discriminator for `AddressOrContract`. */
 export type AddressOrContractKind =
+  /** The address is a contract address. */
   | 'CONTRACT'
+  /** The address is a user (zswap coin public key) address. */
   | 'USER'
   | '%future added value';
 
@@ -46,17 +47,18 @@ export type Block = {
    * The zswap commitment tree filtered to the given contract address, resolved from this
    * block's ledger state; null if the contract does not exist at this block. Hex-encoded.
    * For building transactions, compose with `ledgerParameters` and `contract { state }` in
-   * one request, anchored to the same block; use the latest block, older trees age out of
-   * the ledger's root window.
+   * one request, anchored to the same block; use the latest block: older trees age out of
+   * the ledger's root window, and blocks beyond the chain-indexer's ledger state retention
+   * window no longer have a loadable ledger state and yield an error.
    */
   readonly contractZswapState: Maybe<Scalars['HexEncoded']['output']>;
   /** The dust commitment tree end index at this block; exclusive, i.e. the next free index. */
   readonly dustCommitmentEndIndex: Scalars['Int']['output'];
-  /** The hex-encoded dust commitment Merkle tree root at the latest indexed state. */
+  /** The hex-encoded dust commitment Merkle tree root at this block. */
   readonly dustCommitmentMerkleTreeRoot: Maybe<Scalars['HexEncoded']['output']>;
   /** The dust generation tree end index at this block; exclusive, i.e. the next free index. */
   readonly dustGenerationEndIndex: Scalars['Int']['output'];
-  /** The hex-encoded dust generation Merkle tree root at the latest indexed state. */
+  /** The hex-encoded dust generation Merkle tree root at this block. */
   readonly dustGenerationMerkleTreeRoot: Maybe<Scalars['HexEncoded']['output']>;
   /** The block hash. */
   readonly hash: Scalars['HexEncoded']['output'];
@@ -93,6 +95,159 @@ export type BlockOffset =
   |  /** A block height. */
   { readonly hash?: never; readonly height: Scalars['Int']['input']; };
 
+/** A block's height, hash and protocol version. Query `block` with the hash for the full block. */
+export type BlockReference = {
+  /** The block hash. */
+  readonly hash: Scalars['HexEncoded']['output'];
+  /** The block height. */
+  readonly height: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
+};
+
+/** Per-address bridge balance. */
+export type BridgeBalance = {
+  /**
+   * Remaining claimable, read from the ledger's `bridge_receiving` map (net, zero once fully
+   * claimed). 16-byte big-endian u128.
+   */
+  readonly balance: Scalars['HexEncoded']['output'];
+  /** Sum of bridge claim amounts for this address, net/post-fee (16-byte big-endian u128). */
+  readonly claimed: Scalars['HexEncoded']['output'];
+  /** Sum of UserTransfer amounts for this address, gross/pre-fee (16-byte big-endian u128). */
+  readonly deposited: Scalars['HexEncoded']['output'];
+};
+
+/**
+ * A claim of bridged NIGHT: a regular `ClaimRewards` transaction whose `ClaimKind` is
+ * `CardanoBridge`. Structurally a regular transaction, surfaced as its own type so consumers can
+ * tell it apart and read the bridged `recipient` and `amount` directly.
+ */
+export type BridgeClaimTransaction = Transaction & {
+  /** The claimed amount as 16-byte big-endian u128. */
+  readonly amount: Scalars['HexEncoded']['output'];
+  /** The block for this transaction. */
+  readonly block: Block;
+  /** The contract actions for this transaction. */
+  readonly contractActions: ReadonlyArray<ContractAction>;
+  /** Dust ledger events of this transaction. */
+  readonly dustLedgerEvents: ReadonlyArray<DustLedgerEvent>;
+  /** The hex-encoded transaction hash. */
+  readonly hash: Scalars['HexEncoded']['output'];
+  /** The transaction ID. */
+  readonly id: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized transaction content. */
+  readonly raw: Scalars['HexEncoded']['output'];
+  /** The Midnight address the bridged NIGHT is claimed to. */
+  readonly recipient: Scalars['HexEncoded']['output'];
+  /** Unshielded UTXOs created by this transaction. */
+  readonly unshieldedCreatedOutputs: ReadonlyArray<UnshieldedUtxo>;
+  /** Unshielded UTXOs spent (consumed) by this transaction. */
+  readonly unshieldedSpentOutputs: ReadonlyArray<UnshieldedUtxo>;
+  /** Zswap ledger events of this transaction. */
+  readonly zswapLedgerEvents: ReadonlyArray<ZswapLedgerEvent>;
+};
+
+/** Polymorphic c2m-bridge event. Each concrete variant exposes its own additional fields. */
+export type BridgeEvent = {
+  readonly blockHeight: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+};
+
+/** GraphQL discriminator for bridge events. */
+export type BridgeEventVariant =
+  | 'INVALID_TRANSFER'
+  | 'RESERVE_TRANSFER'
+  | 'SUBMINIMAL_FLUSH_TRANSFER'
+  | 'UNAPPROVED_TRANSFER'
+  | 'USER_TRANSFER'
+  | '%future added value';
+
+/** Malformed bridge metadata. NIGHT redirected to treasury. */
+export type BridgeInvalidTransfer = BridgeEvent & {
+  readonly amount: Scalars['HexEncoded']['output'];
+  readonly blockHeight: Scalars['Int']['output'];
+  readonly cardanoTxHash: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+};
+
+/** Aggregate bridge inflows snapshot. */
+export type BridgePoolSummary = {
+  readonly lastEventBlockHeight: Maybe<Scalars['Int']['output']>;
+  /** Cumulative ReserveTransfer amount (16-byte big-endian u128). */
+  readonly reserveTotal: Scalars['HexEncoded']['output'];
+  /** Sum of `count` from SubminimalFlushTransfer events. */
+  readonly subminimumTxCount: Scalars['Int']['output'];
+  readonly treasuryByReason: ReadonlyArray<BridgeTreasuryAggregate>;
+};
+
+/** Pair of latest bridge event and refreshed pool summary, emitted by `bridgePoolUpdates`. */
+export type BridgePoolUpdate = {
+  /** The triggering event, or None for the initial snapshot on subscribe. */
+  readonly newEvent: Maybe<BridgeEvent>;
+  readonly pool: BridgePoolSummary;
+};
+
+/** Reserve top-up. NIGHT credited to the protocol Reserve pool. */
+export type BridgeReserveTransfer = BridgeEvent & {
+  readonly amount: Scalars['HexEncoded']['output'];
+  readonly blockHeight: Scalars['Int']['output'];
+  readonly cardanoTxHash: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+};
+
+/** Aggregated subminimum transfers flushed to treasury. */
+export type BridgeSubminimalFlushTransfer = BridgeEvent & {
+  readonly amount: Scalars['HexEncoded']['output'];
+  readonly blockHeight: Scalars['Int']['output'];
+  /** Number of subminimum Cardano txs aggregated into this flush. */
+  readonly count: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+};
+
+/** Treasury inflow aggregate by reason. */
+export type BridgeTreasuryAggregate = {
+  readonly count: Scalars['Int']['output'];
+  readonly reason: BridgeTreasuryReason;
+  /** Cumulative amount (16-byte big-endian u128). */
+  readonly total: Scalars['HexEncoded']['output'];
+};
+
+/** GraphQL discriminator for treasury redirection reasons. */
+export type BridgeTreasuryReason =
+  | 'INVALID'
+  | 'SUBMINIMAL_FLUSH'
+  | 'UNAPPROVED'
+  | '%future added value';
+
+/** User deposit not in `ApprovedTransactions` at observation time. NIGHT redirected to treasury. */
+export type BridgeUnapprovedTransfer = BridgeEvent & {
+  readonly amount: Scalars['HexEncoded']['output'];
+  readonly blockHeight: Scalars['Int']['output'];
+  readonly cardanoTxHash: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+  /** The recipient parsed from metadata (would have received NIGHT if approved). */
+  readonly recipient: Scalars['HexEncoded']['output'];
+};
+
+/** Approved user deposit. NIGHT credited to `recipient`. */
+export type BridgeUserTransfer = BridgeEvent & {
+  /** Amount as 8-byte big-endian u64 NIGHT (in stars). */
+  readonly amount: Scalars['HexEncoded']['output'];
+  readonly blockHeight: Scalars['Int']['output'];
+  readonly cardanoTxHash: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly midnightTxHash: Scalars['HexEncoded']['output'];
+  readonly recipient: Scalars['HexEncoded']['output'];
+};
+
 /** A Merkle tree collapsed update between two indices. */
 export type CollapsedMerkleTree = {
   /** The end index. */
@@ -122,11 +277,15 @@ export type ConnectOptions = {
   readonly startIndex: InputMaybe<Scalars['Int']['input']>;
 };
 
-/** A contract, reflecting its state as of a particular block. */
+/**
+ * A contract, identified by address, resolved as of a given block (or the latest state if no
+ * offset is given). The topmost contract concept; its actions are a sub-query.
+ */
 export type Contract = {
   /**
-   * Recent contract actions for this contract, newest first, optionally filtered by type. Use
-   * the `contractActions` subscription to enumerate all actions.
+   * Recent contract actions for this contract, newest first, optionally filtered by type;
+   * `limit` defaults to 100 and is capped at 500. Use the `contractActions` subscription to
+   * enumerate all actions.
    */
   readonly actions: ReadonlyArray<ContractAction>;
   /** The hex-encoded contract address. */
@@ -135,13 +294,22 @@ export type Contract = {
   readonly maintenanceAuthority: ContractMaintenanceAuthority;
   /**
    * The hex-encoded serialized contract state as of the queried block (the latest contract
-   * action at or before it).
+   * action at or before it), in that block's encoding; as of the latest block if no offset is
+   * given.
    */
   readonly state: Scalars['HexEncoded']['output'];
+  /**
+   * The block at which `state` last changed: the latest action's block, or a later block at which
+   * the state was translated to a new ledger version.
+   */
+  readonly stateAt: BlockReference;
 };
 
 
-/** A contract, reflecting its state as of a particular block. */
+/**
+ * A contract, identified by address, resolved as of a given block (or the latest state if no
+ * offset is given). The topmost contract concept; its actions are a sub-query.
+ */
 export type ContractActionsArgs = {
   limit: InputMaybe<Scalars['Int']['input']>;
   type: InputMaybe<ContractActionType>;
@@ -151,6 +319,7 @@ export type ContractActionsArgs = {
 export type ContractAction = {
   readonly address: Scalars['HexEncoded']['output'];
   readonly state: Scalars['HexEncoded']['output'];
+  readonly stateAt: BlockReference;
   readonly transaction: Transaction;
   readonly unshieldedBalances: ReadonlyArray<ContractBalance>;
   readonly zswapState: Scalars['HexEncoded']['output'];
@@ -163,7 +332,7 @@ export type ContractActionOffset =
   |  /** Either a transaction hash or a transaction identifier. */
   { readonly blockOffset?: never; readonly transactionOffset: TransactionOffset; };
 
-/** The type of a contract action. */
+/** Contract action variant, used to filter `Contract.actions`. */
 export type ContractActionType =
   | 'CALL'
   | 'DEPLOY'
@@ -190,8 +359,7 @@ export type ContractCall = ContractAction & {
    * Contract events emitted by this contract call.
    *
    * Only `ContractCall` exposes this field — `ContractDeploy` and
-   * `ContractUpdate` don't execute circuits with the `log()` expression.
-   * Per Andrzej's 12 May design call (#feat-public-events).
+   * `ContractUpdate` don't execute circuits with the `emit` expression.
    *
    * Events are attributed to a call by matching contract address and entry
    * point within the transaction; if several calls in one transaction share
@@ -203,8 +371,18 @@ export type ContractCall = ContractAction & {
   readonly deploy: ContractDeploy;
   /** The entry point. */
   readonly entryPoint: Scalars['String']['output'];
-  /** The hex-encoded serialized state. */
+  /**
+   * The hex-encoded serialized contract state at the end of this action's block, in the encoding
+   * of the block the query is anchored to: the latest block for `contractAction` without an
+   * offset, the fork block for a `contractActions` re-emission, otherwise the action's own
+   * block.
+   */
   readonly state: Scalars['HexEncoded']['output'];
+  /**
+   * The block at which `state` last changed: this action's block, or a later block at which the
+   * state was translated to a new ledger version.
+   */
+  readonly stateAt: BlockReference;
   /** Transaction for this contract call. */
   readonly transaction: Transaction;
   /** Unshielded token balances held by this contract. */
@@ -217,8 +395,18 @@ export type ContractCall = ContractAction & {
 export type ContractDeploy = ContractAction & {
   /** The hex-encoded serialized address. */
   readonly address: Scalars['HexEncoded']['output'];
-  /** The hex-encoded serialized state. */
+  /**
+   * The hex-encoded serialized contract state at the end of this action's block, in the encoding
+   * of the block the query is anchored to: the latest block for `contractAction` without an
+   * offset, the fork block for a `contractActions` re-emission, otherwise the action's own
+   * block.
+   */
   readonly state: Scalars['HexEncoded']['output'];
+  /**
+   * The block at which `state` last changed: this action's block, or a later block at which the
+   * state was translated to a new ledger version.
+   */
+  readonly stateAt: BlockReference;
   /** Transaction for this contract deploy. */
   readonly transaction: Transaction;
   /** Unshielded token balances held by this contract. */
@@ -240,57 +428,63 @@ export type ContractEvent = {
 };
 
 /**
- * Filter for contract events queries and subscriptions. Block-range bounds
- * live here so the same shape works for both (per Andrzej 21 May review).
+ * Filter for contract events queries and subscriptions; block-range bounds live here so the
+ * same shape works for both.
  */
 export type ContractEventFilter = {
-  /** Required: the contract address to filter events for. */
+  /** The hex-encoded contract address to filter events for. */
   readonly contractAddress: Scalars['HexEncoded']['input'];
-  /** Optional: prefix-match on indexed fields of the event. Standard events only. */
+  /**
+   * Prefix matches on indexed event fields, combined with AND semantics; standard events
+   * only.
+   */
   readonly fieldPrefixes: InputMaybe<ReadonlyArray<FieldPrefixFilter>>;
   /**
-   * Optional: lower bound on the block height an event was emitted in. On
-   * subscription, acts as a starting cursor (alternative to `id`).
+   * Lower bound on the block height an event was emitted in; on subscription this acts as
+   * a starting cursor alongside `id`.
    */
   readonly fromBlock: InputMaybe<Scalars['Int']['input']>;
   /**
-   * Optional: upper bound on the block height an event was emitted in. On
-   * subscription, terminates the stream once the chain reaches this block.
+   * Upper bound on the block height an event was emitted in; on subscription, the stream
+   * completes once the chain has reached this block.
    */
   readonly toBlock: InputMaybe<Scalars['Int']['input']>;
-  /**
-   * Optional: hex-encoded transaction hash; narrows to events emitted from
-   * transactions with this hash ("I just submitted tx X, give me its
-   * events").
-   */
+  /** The hex-encoded transaction hash to narrow to events emitted by that transaction. */
   readonly transactionHash: InputMaybe<Scalars['HexEncoded']['input']>;
-  /**
-   * Optional: filter to a subset of contract event types. Indexer translates
-   * to `variant = ANY(...)` against the indexed variant column.
-   */
+  /** Event types to narrow to; must be non-empty when given. */
   readonly types: InputMaybe<ReadonlyArray<ContractEventType>>;
 };
 
 /**
  * Closed enum of contract event types the indexer surfaces. Used in filter
- * input only, response discrimination is via `__typename`. Mirrors the
- * 11 variants of `LogEventType` (onchain-vm/src/ops.rs, ledger-9 alpha).
+ * input only, response discrimination is via `__typename`.
  */
 export type ContractEventType =
+  /** A custom event emitted by a contract. */
   | 'MISC'
+  /** A contract is paused. */
   | 'PAUSED'
+  /** A contract burns a shielded coin. */
   | 'SHIELDED_BURN'
+  /** A contract mints a shielded coin. */
   | 'SHIELDED_MINT'
+  /** A contract or user receives a shielded coin. */
   | 'SHIELDED_RECEIVE'
+  /** A contract spends a shielded coin. */
   | 'SHIELDED_SPEND'
+  /** A contract is unpaused. */
   | 'UNPAUSED'
+  /** A contract burns an unshielded coin. */
   | 'UNSHIELDED_BURN'
+  /** A contract mints an unshielded coin. */
   | 'UNSHIELDED_MINT'
+  /** A contract or user receives an unshielded coin. */
   | 'UNSHIELDED_RECEIVE'
+  /** A contract spends an unshielded coin. */
   | 'UNSHIELDED_SPEND'
   | '%future added value';
 
-/** The maintenance authority governing updates to a contract. */
+/** The maintenance authority of a contract. */
 export type ContractMaintenanceAuthority = {
   /** The committee of verifying keys authorised to maintain the contract. */
   readonly committee: ReadonlyArray<ContractMaintenanceVerifyingKey>;
@@ -300,7 +494,7 @@ export type ContractMaintenanceAuthority = {
   readonly threshold: Scalars['Int']['output'];
 };
 
-/** A verifying key belonging to a contract maintenance authority committee. */
+/** A verifying key in a contract maintenance authority committee. */
 export type ContractMaintenanceVerifyingKey = {
   /** The hex-encoded tagged-serialized verifying key. */
   readonly key: Scalars['HexEncoded']['output'];
@@ -308,7 +502,7 @@ export type ContractMaintenanceVerifyingKey = {
   readonly kind: ContractMaintenanceVerifyingKeyKind;
 };
 
-/** The kind of a contract maintenance verifying key. */
+/** The signature scheme of a maintenance authority verifying key. */
 export type ContractMaintenanceVerifyingKeyKind =
   | 'ECDSA'
   | 'SCHNORR'
@@ -318,8 +512,18 @@ export type ContractMaintenanceVerifyingKeyKind =
 export type ContractUpdate = ContractAction & {
   /** The hex-encoded serialized address. */
   readonly address: Scalars['HexEncoded']['output'];
-  /** The hex-encoded serialized state. */
+  /**
+   * The hex-encoded serialized contract state at the end of this action's block, in the encoding
+   * of the block the query is anchored to: the latest block for `contractAction` without an
+   * offset, the fork block for a `contractActions` re-emission, otherwise the action's own
+   * block.
+   */
   readonly state: Scalars['HexEncoded']['output'];
+  /**
+   * The block at which `state` last changed: this action's block, or a later block at which the
+   * state was translated to a new ledger version.
+   */
+  readonly stateAt: BlockReference;
   /** Transaction for this contract update. */
   readonly transaction: Transaction;
   /** Unshielded token balances held by this contract after the update. */
@@ -449,6 +653,12 @@ export type DustGenerationsProgress = {
   readonly collapsedMerkleTree: Maybe<MerkleTreeCollapsedUpdate>;
   /** The highest index processed so far. */
   readonly highestIndex: Scalars['Int']['output'];
+  /**
+   * The protocol version at the snapshot's block, i.e. the one this snapshot is encoded at.
+   * Allows a wallet without any generations to observe a protocol upgrade, which it would
+   * otherwise only learn about from the items it receives.
+   */
+  readonly protocolVersion: Scalars['Int']['output'];
 };
 
 export type DustInitialUtxo = DustLedgerEvent & {
@@ -546,21 +756,16 @@ export type EpochPerf = {
   readonly validatorClass: Maybe<Scalars['String']['output']>;
 };
 
-/**
- * Prefix filter on an indexed field of a standard event. Indexer resolves
- * `fieldName` for all standard events from the variant; no descriptor needed.
- * Not supported on Misc events.
- */
+/** Prefix filter on an indexed field of a standard event; not supported on Misc events. */
 export type FieldPrefixFilter = {
   /**
-   * Field name (e.g. `nullifier`, `commitment`, `sender`). Must match an
-   * indexed field of the filtered event type.
+   * The indexed field name; one of `nullifier`, `commitment`, `ciphertext`, `domainSep`,
+   * `tokenType`, `sender` or `recipient`.
    */
   readonly fieldName: Scalars['String']['input'];
   /**
-   * Hex-encoded prefix bytes. Empty string matches all values; otherwise
-   * the indexer returns events whose field value starts with this prefix,
-   * client filters to exact match if needed.
+   * The hex-encoded field value prefix. An empty string matches all values; otherwise
+   * events whose field value starts with this prefix are returned.
    */
   readonly prefix: Scalars['HexEncoded']['input'];
 };
@@ -584,21 +789,28 @@ export type MerkleTreeCollapsedUpdate = {
 };
 
 export type MiscContractEvent = ContractEvent & {
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
-  /** Hex-encoded contract-defined event name (Compact Bytes<32>). */
+  /** The hex-encoded contract-defined event name (32 bytes). */
   readonly name: Scalars['HexEncoded']['output'];
   /**
-   * Hex-encoded opaque payload (Compact Bytes<256>); consumer brings
-   * descriptor to decode.
+   * The hex-encoded opaque event payload, up to 256 bytes; consumers decode it with their
+   * contract's descriptor.
    */
   readonly payload: Scalars['HexEncoded']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
@@ -632,14 +844,21 @@ export type ParamChange = DustLedgerEvent & {
 };
 
 export type PausedEvent = ContractEvent & {
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
@@ -664,6 +883,24 @@ export type PresenceEvent = {
 export type Query = {
   /** Find a block for the given optional offset; if not present, the latest block is returned. */
   readonly block: Maybe<Block>;
+  /** Get the c2m-bridge balance summary (deposited, claimed, balance) for an address. */
+  readonly bridgeBalance: BridgeBalance;
+  /**
+   * Convenience query for a recipient's deposit history. By default returns only successful
+   * `UserTransfer` events; pass `includeUnapproved: true` to also include `UnapprovedTransfer`.
+   */
+  readonly bridgeDeposits: ReadonlyArray<BridgeEvent>;
+  /** List c2m-bridge events with optional filters. */
+  readonly bridgeEvents: ReadonlyArray<BridgeEvent>;
+  /** Aggregate snapshot of bridge inflows to protocol pools (Reserve and Treasury). */
+  readonly bridgePoolSummary: BridgePoolSummary;
+  /** List Reserve top-up events (ReserveTransfer), optionally bounded by block height. */
+  readonly bridgeReserveInflows: ReadonlyArray<BridgeEvent>;
+  /**
+   * List treasury-redirected events (Invalid, Unapproved, SubminimalFlush), optionally
+   * filtered by reason and block range.
+   */
+  readonly bridgeTreasuryInflows: ReadonlyArray<BridgeEvent>;
   /** Get committee membership for an epoch. */
   readonly committee: ReadonlyArray<CommitteeMember>;
   /**
@@ -674,7 +911,8 @@ export type Query = {
   /** Find a contract action for the given address and optional offset. */
   readonly contractAction: Maybe<ContractAction>;
   /**
-   * Find contract events matching the filter, with optional pagination.
+   * Find contract events matching the filter, ordered by ID; `limit` defaults to 100 and is
+   * capped at 500, `offset` defaults to 0.
    *
    * Block-range bounds (`fromBlock`, `toBlock`) live on `ContractEventFilter`
    * for symmetry with the subscription. `limit`/`offset` are top-level args.
@@ -742,6 +980,51 @@ export type Query = {
 
 export type QueryBlockArgs = {
   offset: InputMaybe<BlockOffset>;
+};
+
+
+export type QueryBridgeBalanceArgs = {
+  address: Scalars['HexEncoded']['input'];
+};
+
+
+export type QueryBridgeDepositsArgs = {
+  includeUnapproved: InputMaybe<Scalars['Boolean']['input']>;
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  recipient: Scalars['HexEncoded']['input'];
+};
+
+
+export type QueryBridgeEventsArgs = {
+  blockHeightFrom: InputMaybe<Scalars['Int']['input']>;
+  blockHeightTo: InputMaybe<Scalars['Int']['input']>;
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  recipient: InputMaybe<Scalars['HexEncoded']['input']>;
+  variant: InputMaybe<BridgeEventVariant>;
+};
+
+
+export type QueryBridgePoolSummaryArgs = {
+  atBlock: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryBridgeReserveInflowsArgs = {
+  blockHeightFrom: InputMaybe<Scalars['Int']['input']>;
+  blockHeightTo: InputMaybe<Scalars['Int']['input']>;
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryBridgeTreasuryInflowsArgs = {
+  blockHeightFrom: InputMaybe<Scalars['Int']['input']>;
+  blockHeightTo: InputMaybe<Scalars['Int']['input']>;
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  reason: InputMaybe<BridgeTreasuryReason>;
 };
 
 
@@ -1015,36 +1298,50 @@ export type Segment = {
 };
 
 export type ShieldedBurnEvent = ContractEvent & {
-  /** Optional, hidden in some shielded burns (`Maybe<Uint<128>>`). */
+  /** The optional amount as a decimal string; hidden in some shielded burns. */
   readonly amount: Maybe<Scalars['String']['output']>;
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
-  /** Indexed. */
+  /** The hex-encoded nullifier; filterable via `fieldPrefixes`. */
   readonly nullifier: Scalars['HexEncoded']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type ShieldedMintEvent = ContractEvent & {
-  /** Optional, hidden in some shielded mints (`Maybe<Uint<128>>`). */
+  /** The optional amount as a decimal string; hidden in some shielded mints. */
   readonly amount: Maybe<Scalars['String']['output']>;
-  /** Indexed. */
+  /** The hex-encoded commitment; filterable via `fieldPrefixes`. */
   readonly commitment: Scalars['HexEncoded']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
-  /** Indexed (per Andrzej, useful for token-type queries). */
+  /** The hex-encoded domain separator; filterable via `fieldPrefixes`. */
   readonly domainSep: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
@@ -1066,41 +1363,53 @@ export type ShieldedNullifierTransaction = {
 
 export type ShieldedReceiveEvent = ContractEvent & {
   /**
-   * Indexed. Optional ciphertext for shielded coin receipt
-   * (`Maybe<Bytes<512>>`). Hex-encoded, up to 512 bytes.
+   * The hex-encoded optional ciphertext of the shielded coin receipt, up to 512 bytes;
+   * filterable via `fieldPrefixes`.
    */
   readonly ciphertext: Maybe<Scalars['HexEncoded']['output']>;
-  /** Indexed. */
+  /** The hex-encoded commitment; filterable via `fieldPrefixes`. */
   readonly commitment: Scalars['HexEncoded']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /**
-   * Set when received by a contract; null for user recipients
-   * (`Maybe<ContractAddress>`). Renamed from `contractAddress` in the CoIP
-   * to avoid collision with the top-level emitting `contractAddress`
-   * inherited from the ContractEvent interface.
+   * The hex-encoded receiving contract address; set when received by a contract, null for
+   * user recipients. Named to avoid collision with the emitting `contractAddress`.
    */
   readonly receivingContractAddress: Maybe<Scalars['HexEncoded']['output']>;
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type ShieldedSpendEvent = ContractEvent & {
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
-  /** Indexed. */
+  /** The hex-encoded nullifier; filterable via `fieldPrefixes`. */
   readonly nullifier: Scalars['HexEncoded']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
@@ -1152,6 +1461,14 @@ export type ShieldedTransactionsProgress = {
    * transactions have been indexed yet.
    */
   readonly highestZswapEndIndex: Scalars['Int']['output'];
+  /**
+   * The protocol version at the tip of the chain, i.e. the one currently in effect, not the
+   * one the transactions of this subscription were indexed at. Allows a wallet without any
+   * relevant transactions to observe a protocol upgrade, which it would otherwise only learn
+   * about from the transactions it receives. A value of zero means that no block has been
+   * indexed yet.
+   */
+  readonly protocolVersion: Scalars['Int']['output'];
 };
 
 /** SPO with optional metadata. */
@@ -1221,19 +1538,47 @@ export type Subscription = {
    */
   readonly blocks: Block;
   /**
+   * Subscribe to a recipient's bridge balance. Emits the current balance on subscribe and
+   * re-emits whenever a bridge event for the recipient indexes or the recipient's unshielded
+   * UTXOs change (a claim emits no bridge event, but it creates unshielded UTXOs for
+   * the recipient).
+   */
+  readonly bridgeBalance: BridgeBalance;
+  /**
+   * Subscribe to c2m-bridge events.
+   *
+   * Backfills events with id > `from` then live-tails new events. Filters apply across both
+   * phases.
+   */
+  readonly bridgeEvents: BridgeEvent;
+  /**
+   * Subscribe to bridge pool updates. Emits a snapshot of the pool summary alongside each
+   * pool-affecting event (Reserve, Invalid, Unapproved, SubminimalFlush). Useful for
+   * observability dashboards.
+   */
+  readonly bridgePoolUpdates: BridgePoolUpdate;
+  /**
    * Subscribe to contract actions with the given address starting at the given offset or at the
    * latest block if the offset is omitted.
+   *
+   * At a ledger hard fork, a contract without an action in the fork block has its latest action
+   * re-emitted with the translated `state` and `stateAt` set to the fork block.
    */
   readonly contractActions: ContractAction;
   /**
-   * Subscribe to contract events matching the given filter, returning
-   * events in monotonic `id` order.
+   * Subscribe to contract events matching the given filter, starting at the given event ID
+   * (inclusive) and returning events in monotonic ID order; completes once the chain has
+   * reached `filter.toBlock` if that is set.
    */
   readonly contractEvents: ContractEvent;
   /**
-   * Subscribe to dust generation entries for a dust address in `[start_index, end_index]`
-   * inclusive. `dustGenerationEndIndex` is exclusive, pass `dustGenerationEndIndex - 1`.
-   * Entries interleaved with collapsed Merkle tree updates and owned-entry dtime updates.
+   * Subscribe to a dust address's generations as a consistent snapshot at `block_hash`. The
+   * wallet's owned generation entries, interleaved with collapsed Merkle tree updates for the
+   * non-owned gaps, are served at that block's state (deterministic, independent of the tip).
+   * The dtime updates for the wallet's own generations in `(dtime_cutoff_height, block_hash]`
+   * are issued first, as a clean delta for the generations set rather than the tree (pass `0`
+   * to replay all). The subscription completes once emitted; re-subscribe at a newer
+   * `block_hash` to advance.
    */
   readonly dustGenerations: DustGenerationsEvent;
   /** Subscribe to dust ledger events starting at the given ID or at the very start if omitted. */
@@ -1271,6 +1616,18 @@ export type SubscriptionBlocksArgs = {
 };
 
 
+export type SubscriptionBridgeBalanceArgs = {
+  address: Scalars['HexEncoded']['input'];
+};
+
+
+export type SubscriptionBridgeEventsArgs = {
+  from: InputMaybe<Scalars['Int']['input']>;
+  recipient: InputMaybe<Scalars['HexEncoded']['input']>;
+  variant: InputMaybe<BridgeEventVariant>;
+};
+
+
 export type SubscriptionContractActionsArgs = {
   address: Scalars['HexEncoded']['input'];
   offset: InputMaybe<BlockOffset>;
@@ -1284,9 +1641,9 @@ export type SubscriptionContractEventsArgs = {
 
 
 export type SubscriptionDustGenerationsArgs = {
+  blockHash: Scalars['HexEncoded']['input'];
+  dtimeCutoffHeight: Scalars['Int']['input'];
   dustAddress: Scalars['DustAddress']['input'];
-  endIndex: Scalars['Int']['input'];
-  startIndex: Scalars['Int']['input'];
 };
 
 
@@ -1428,86 +1785,125 @@ export type TransactionResultStatus =
   | '%future added value';
 
 export type UnpausedEvent = ContractEvent & {
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type UnshieldedBurnEvent = ContractEvent & {
+  /** The amount as a decimal string. */
   readonly amount: Scalars['String']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The spending user or contract address; filterable via `fieldPrefixes`. */
   readonly sender: AddressOrContract;
-  /** Indexed; matches existing unshielded_utxos.token_type index. */
+  /** The hex-encoded token type; filterable via `fieldPrefixes`. */
   readonly tokenType: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type UnshieldedMintEvent = ContractEvent & {
+  /** The amount as a decimal string. */
   readonly amount: Scalars['String']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The hex-encoded domain separator; filterable via `fieldPrefixes`. */
   readonly domainSep: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
-  /** Indexed; matches existing unshielded_utxos.token_type index. */
+  /** The hex-encoded token type; filterable via `fieldPrefixes`. */
   readonly tokenType: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type UnshieldedReceiveEvent = ContractEvent & {
+  /** The amount as a decimal string. */
   readonly amount: Scalars['String']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The hex-encoded domain separator; filterable via `fieldPrefixes`. */
   readonly domainSep: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The receiving user or contract address; filterable via `fieldPrefixes`. */
   readonly recipient: AddressOrContract;
-  /** Indexed; matches existing unshielded_utxos.token_type index. */
+  /** The hex-encoded token type; filterable via `fieldPrefixes`. */
   readonly tokenType: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
 export type UnshieldedSpendEvent = ContractEvent & {
+  /** The amount as a decimal string. */
   readonly amount: Scalars['String']['output'];
+  /** The hex-encoded address of the emitting contract. */
   readonly contractAddress: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The hex-encoded domain separator; filterable via `fieldPrefixes`. */
   readonly domainSep: Scalars['HexEncoded']['output'];
+  /** The ID of this contract event. */
   readonly id: Scalars['Int']['output'];
+  /** The maximum ID of all contract events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The hex-encoded serialized event payload. */
   readonly raw: Scalars['HexEncoded']['output'];
-  /** Indexed. */
+  /** The spending user or contract address; filterable via `fieldPrefixes`. */
   readonly sender: AddressOrContract;
-  /** Indexed; matches existing unshielded_utxos.token_type index. */
+  /** The hex-encoded token type; filterable via `fieldPrefixes`. */
   readonly tokenType: Scalars['HexEncoded']['output'];
   /** The transaction this event was emitted from. */
   readonly transaction: Transaction;
+  /** The ID of the transaction this event was emitted from. */
   readonly transactionId: Scalars['Int']['output'];
+  /** The event schema version, as declared by the emitting contract's compiler. */
   readonly version: Scalars['Int']['output'];
 };
 
@@ -1528,6 +1924,14 @@ export type UnshieldedTransactionsEvent = UnshieldedTransaction | UnshieldedTran
 export type UnshieldedTransactionsProgress = {
   /** The highest transaction ID of all currently known transactions for a subscribed address. */
   readonly highestTransactionId: Scalars['Int']['output'];
+  /**
+   * The protocol version at the tip of the chain, i.e. the one currently in effect, not the
+   * one the transactions of this subscription were indexed at. Allows a wallet without any
+   * transactions to observe a protocol upgrade, which it would otherwise only learn about
+   * from the transactions it receives. A value of zero means that no block has been indexed
+   * yet.
+   */
+  readonly protocolVersion: Scalars['Int']['output'];
 };
 
 /** Represents an unshielded UTXO. */
@@ -1544,7 +1948,14 @@ export type UnshieldedUtxo = {
   readonly outputIndex: Scalars['Int']['output'];
   /** Owner Bech32m-encoded address. */
   readonly owner: Scalars['UnshieldedAddress']['output'];
-  /** Whether this UTXO is registered for DUST generation. */
+  /**
+   * Whether this UTXO is registered for DUST generation.
+   *
+   * Reported against the chain's current DUST epoch, so a fork that wipes DUST
+   * state (ledger 8 -> 9) turns this to `false` for every UTXO it strands,
+   * matching the ledger rather than the value recorded when the UTXO was
+   * created.
+   */
   readonly registeredForDustGeneration: Scalars['Boolean']['output'];
   /** Transaction that spent this UTXO. */
   readonly spentAtTransaction: Maybe<Transaction>;

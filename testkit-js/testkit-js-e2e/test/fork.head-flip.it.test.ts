@@ -201,7 +201,7 @@ describe('Fork-crossing environment', () => {
     'refuses a second enactment on a chain that has already forked',
     async () => {
       // A precondition, not decoration: if the crossing above failed, the guard under test would not
-      // be armed and calling enactFork() here would drive a real second governance upgrade.
+      // be active and calling enactFork() here would drive a real second governance upgrade.
       expect(testEnvironment.hasForked).toBe(true);
 
       await expect(testEnvironment.enactFork()).rejects.toThrow('already been enacted');

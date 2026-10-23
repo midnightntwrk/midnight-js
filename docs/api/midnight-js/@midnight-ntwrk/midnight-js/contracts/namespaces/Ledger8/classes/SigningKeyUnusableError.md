@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -22,12 +22,9 @@ this call, so the caller can correct it.
 The key is not rendered, and is not carried as a member either: the caller
 already holds it.
 
-Carries no registered error code of its own, for the same reason
-[Ledger8DeployUnconfirmedError](DeployUnconfirmedError.md) does not.
-
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -49,9 +46,29 @@ The address the key was supplied for.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`constructor`](../../../../classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`category`](../../../../classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY_UNUSABLE"`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`code`](../../../../classes/MidnightJsError.md#code)
+
+***
 
 ### contractAddress
 

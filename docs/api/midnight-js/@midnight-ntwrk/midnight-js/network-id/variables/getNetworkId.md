@@ -1,10 +1,10 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [network-id](../README.md) / getNetworkId
 
-# Variable: getNetworkId
+# ~~Variable: getNetworkId~~
 
 > `const` **getNetworkId**: () => [`NetworkId`](../type-aliases/NetworkId.md)
 
@@ -19,3 +19,8 @@ The currently set [NetworkId](../type-aliases/NetworkId.md).
 ## Throws
 
 If [setNetworkId](setNetworkId.md) has not been called.
+
+## Deprecated
+
+Since 5.0.0 the framework no longer reads this value. Read
+`MidnightProviders.config.networkId` instead. Removed in 6.0.

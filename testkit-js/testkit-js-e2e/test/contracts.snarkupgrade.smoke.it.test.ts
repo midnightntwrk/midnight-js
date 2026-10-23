@@ -16,6 +16,7 @@
 import {
   createCircuitMaintenanceTxInterfaces,
   findDeployedContract,
+  ProviderFailedError,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
@@ -108,9 +109,9 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
         const finalizedTxDataIncrement = await circuitMaintenanceTxInterfaces.increment.removeVerifierKey();
         const finalizedTxDataDecrement = await circuitMaintenanceTxInterfaces.decrement.removeVerifierKey();
 
-      expect(finalizedTxDataReset.status).toEqual(SucceedEntirely);
-      expect(finalizedTxDataIncrement.status).toEqual(SucceedEntirely);
-      expect(finalizedTxDataDecrement.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataReset.public.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataIncrement.public.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataDecrement.public.status).toEqual(SucceedEntirely);
 
       logger.info('Insert keys');
       const vkReset = await counterCloneContractProviders.zkConfigProvider.getVerifierKey('reset');
@@ -121,9 +122,9 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
         const finalizedTxDataIncrement2 = await circuitMaintenanceTxInterfaces.increment.insertVerifierKey(vkIncrement);
         const finalizedTxDataDecrement2 = await circuitMaintenanceTxInterfaces.decrement.insertVerifierKey(vkDecrement);
 
-      expect(finalizedTxDataReset2.status).toEqual(SucceedEntirely);
-      expect(finalizedTxDataIncrement2.status).toEqual(SucceedEntirely);
-      expect(finalizedTxDataDecrement2.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataReset2.public.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataIncrement2.public.status).toEqual(SucceedEntirely);
+      expect(finalizedTxDataDecrement2.public.status).toEqual(SucceedEntirely);
 
       logger.info('Interact with contract');
       const contract = await findDeployedContract(counterCloneContractProviders, {
@@ -164,13 +165,17 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
         const newAuthority = sampleSigningKey();
         const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, contractAddress)(newAuthority);
 
-        expect(finalizedTxData.status).toEqual(SucceedEntirely);
+        expect(finalizedTxData.public.status).toEqual(SucceedEntirely);
 
         await counterProviders.privateStateProvider.setSigningKey(contractAddress, oldAuthority);
 
-        await expect(submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET)).rejects.toThrow(
-          'Transaction submission error'
-        );
+        const rejection = submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET);
+
+        await expect(rejection).rejects.toBeInstanceOf(ProviderFailedError);
+        await expect(rejection).rejects.toMatchObject({
+          method: 'submitTx',
+          cause: { message: expect.stringContaining('Transaction submission error') }
+        });
       }
     },
     VERY_SLOW_TEST_TIMEOUT

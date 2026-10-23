@@ -24,7 +24,7 @@ import type { TranscriptPojo } from '../v8/executable';
  * `contractState` is the migrated, post-fork v9 `ContractState` — read from
  * chain, or otherwise carrying the contract's real registered operations —
  * used only to look up the `ContractOperation` for `transcript.circuitId`
- * (mirrors `ComposeV8CallOptions`'s `contractState` parameter in
+ * (mirrors `ComposeLedger8CallOptions`'s `contractState` parameter in
  * `../v8/compose.ts`).
  */
 export interface WrapKeepStateCallOptions {
@@ -44,7 +44,7 @@ export interface WrapKeepStateCallOptions {
 }
 
 /**
- * Wraps a {@link TranscriptPojo} — the output of {@link runRetainedCircuit}
+ * Wraps a {@link TranscriptPojo} — the output of {@link runLedger8Circuit}
  * (`../v8/executable.ts`) — into a v9-native `ContractCallPrototype`, ready for
  * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
  * (`./assemble-call.ts`) against the ledger-v9 module.

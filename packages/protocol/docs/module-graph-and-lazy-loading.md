@@ -10,7 +10,7 @@ them a consumer actually pays for is decided by the shape of the module graph:
 which modules are build entries, which direction the imports run, and which
 dependencies are reachable only through a dynamic import. This document
 records those decisions, the tests that hold them in place, and the rule that
-follows from them for how a seam names a vendor's classes without importing
+follows from them for how a function names a vendor's classes without importing
 them.
 
 The mechanism that exposes the v8 era — the `./v8` subpath, the relative
@@ -25,7 +25,7 @@ Every module directly under `src/` is a build entry paired with an `exports`
 subpath. `export-surface.test.ts` is the gate: it reads the `exports` map out
 of `package.json` and requires one subpath per top-level module under `src/`.
 
-That is why the accessors do not sit at the top of `src/`. `loadLedger8` lives
+That is why the accessors do not sit at the top of `src/`. `loadLedger8Protocol` lives
 in `lib/v8/load.ts` and `loadLedger8Engine` in `lib/v8/load-engine.ts`: both
 are published through the root barrel instead of through a subpath of their
 own, so neither may be a top-level module. It is also why the dynamic
@@ -68,7 +68,7 @@ retained-era dependencies:
   re-exported by `src/v8.ts`). The relative specifier in `lib/v8/load.ts`
   names this build entry, which rollup emits as its own chunk and links only
   through that dynamic import, so the v8 WASM loads on the first call to
-  `loadLedger8` and not before.
+  `loadLedger8Protocol` and not before.
 - `./engine` — the retained `compact-runtime@0.16` glue (installed under the
   `compact-runtime-ledger8` alias) and the
   `@midnight-ntwrk/onchain-runtime-v3` WASM. The relative specifier in
@@ -81,11 +81,11 @@ A consumer that only executes circuits and binds them onto v9 therefore never
 instantiates the v8 ledger WASM at all: `createLedger8Engine` deliberately
 does not acquire the v8 ledger module, so such a consumer never hard-depends
 on ledger-v8 resolving either. The reason that surface does not need it is
-recorded in [EraSeam](./era-seam.md).
+recorded in [EraBoundary](./era-boundary.md).
 
 ## The only sanctioned runtime access
 
-`loadLedger8()` is the only sanctioned runtime path to the v8 ledger era, and
+`loadLedger8Protocol()` is the only sanctioned runtime path to the v8 ledger era, and
 `loadLedger8Engine()` is the only sanctioned runtime path to the engine's
 public surface. Every other module in the package reaches the retained era
 through one of those two accessors, which is what keeps the number of physical
@@ -94,16 +94,16 @@ rather than of a convention spread across files.
 
 `lib/v8/load-engine.ts` re-exports engine option and result types type-only —
 `ConstructorResultPojo`, `EncodedStateValue`, `Ledger8Engine`,
-`Ledger8SigningKey`, `RetainedContract`, `RunRetainedCircuitOptions`,
-`RunRetainedConstructorOptions`, `TranscriptPojo`, `VerifierKeyReader` and
+`Ledger8SigningKey`, `Ledger8EngineContract`, `Ledger8CircuitOptions`,
+`Ledger8ConstructorOptions`, `TranscriptPojo`, `VerifierKeyReader` and
 `WrapKeepStateCallOptions` — so a consumer holding a `Ledger8Engine` can
 annotate a variable or write a helper without a second, subpath-gated import,
 and without linking the engine chunk.
 
-The list is complete for the execution seam: `executeConstructor(options:
-RunRetainedConstructorOptions): Promise<ConstructorResultPojo>`
+The list is complete for the execution engine: `executeConstructor(options:
+Ledger8ConstructorOptions): Promise<ConstructorResultPojo>`
 (`lib/v8/engine.ts`) has both its argument and its result type on the list
-above, so every method on the seam can be annotated without the gated
+above, so every method on the engine can be annotated without the gated
 import.
 
 ## The tests that enforce each property
@@ -132,7 +132,7 @@ Each property above is pinned by a named suite rather than by convention:
 
 Where a module names a vendor's types but must not link the vendor's module,
 the import is type-only. `import type * as` is erased with the rest of the
-type layer and links nothing; that is the same idiom `ProtocolV8` uses in
+type layer and links nothing; that is the same idiom `Ledger8Protocol` uses in
 `lib/v8/load.ts`.
 
 The rule is about values, not names. A value import of either era's module
@@ -140,8 +140,8 @@ would statically link that era's WASM into whatever bundle reaches the
 importing module — which for ledger-v8 is exactly what
 `dist-laziness.test.ts` forbids, and which for the other era would make a
 consumer pay for a runtime it never calls. Naming a type does not: type-only
-imports are erased. This is why the seams that need a vendor's classes at
-runtime take them by injection instead of importing them, and why a seam that
+imports are erased. This is why the functions that need a vendor's classes at
+runtime take them by injection instead of importing them, and why a module that
 cannot name a single vendor type — `lib/shared/unshielded.ts`, which runs on
 both eras — declares a structural slice rather than reaching for a value
 import.
@@ -152,24 +152,24 @@ so it takes a plain namespace import of the retained glue. That import is what
 makes the module non-lazy, which is why it sits behind the subpath gate rather
 than on the package's own graph.
 
-## Naming a type versus importing a value at the envelope seam
+## Naming a type versus importing a value at the envelope
 
 `Ledger8ContractState` in `lib/era/envelope.ts` is the clearest case of the
 distinction, because the module it names is one the package must not link
-eagerly. Injection is still what gets the runtime into that seam — that is
+eagerly. Injection is still what gets the runtime into that module — that is
 about not importing a value. The `import type * as` the declaration reads
 through is erased and links nothing, which leaves the lazy acquisition path
 the caller owns untouched. `lib/era/envelope.ts` sits inside the eager closure
 `dist-laziness.test.ts` scans, and that suite is what proves the erasure.
 
-The same distinction is stated again where the seam is used: whether
+The same distinction is stated again where the envelope is used: whether
 `ledger8ContractState` is required for every era is a statement about the call
 graph, not about bundling, and the reason the pre-fork types are imported with
 `import type` is unaffected either way.
 
 ## Injected vendor slices
 
-A seam that takes a vendor class by injection still has to name the shape it
+A function that takes a vendor class by injection still has to name the shape it
 expects, and this package makes that choice three ways — derived from the
 vendor's own class, declared structurally, or narrowed. That whole topic,
 including what each choice buys and how each slice is held to its vendor, is in

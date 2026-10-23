@@ -164,11 +164,12 @@ is what the key-set gate asserts directly.
   listed here while a live `StateValue` was still barred from every result
   type; ADR-0010 lifted that bar, so `Ledger8ContractCall` is published with a full
   call-entry parity assertion rather than an allow-list entry.
-  One handle divergence is excused rather than closed: both eras hold the
+  One handle divergence was excused here rather than closed: both eras hold the
   deployer's `signingKey`, `initialPrivateState`, `initialZswapState` and
-  `initialContractState`, but the current era nests them under `deployTxData`
-  and the retained era publishes them flat. The ADR-0010 amendment of
-  2026-10-07 keeps that layout until the retained era is removed.
+  `initialContractState`, but the current era nested them under `deployTxData`
+  and the retained era published them flat. Superseded: the ADR-0010
+  amendment of 2026-10-16 (#1514) moved them under `deployTxData` in both
+  eras, so that divergence is closed.
 
 ## Alternatives considered
 

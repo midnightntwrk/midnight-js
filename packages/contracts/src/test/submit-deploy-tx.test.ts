@@ -15,13 +15,13 @@
 
 import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CURRENT_PIPELINE_ERA } from '../era';
 import { DeployTxFailedError, IncompleteDeployContractPrivateStateConfig } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
-import { submitTx } from '../submit-tx';
+import { submitLedger9Payload } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import {
   createMockCompiledContract,
@@ -72,12 +72,12 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
 
         expect(createUnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
-        expect(submitTx).toHaveBeenCalledWith(mockProviders, {
+        expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenDeployTxData.private.unprovenTx
         });
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
@@ -86,7 +86,7 @@ describe('submit-deploy-tx', () => {
         );
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,
@@ -119,7 +119,7 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
 
@@ -129,7 +129,7 @@ describe('submit-deploy-tx', () => {
           mockSigningKey
         );
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,
@@ -151,7 +151,7 @@ describe('submit-deploy-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
 
@@ -170,7 +170,7 @@ describe('submit-deploy-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
 
@@ -189,7 +189,7 @@ describe('submit-deploy-tx', () => {
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         try {
           await submitDeployTx(mockProviders, options);
@@ -213,7 +213,7 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockRejectedValue(createError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to create unproven deploy tx');
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
       it('should propagate errors from submitTx', async () => {
@@ -227,7 +227,7 @@ describe('submit-deploy-tx', () => {
 
         const submitError = new Error('Network error during submission');
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockRejectedValue(submitError);
+        vi.mocked(submitLedger9Payload).mockRejectedValue(submitError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
@@ -255,7 +255,7 @@ describe('submit-deploy-tx', () => {
 
         const stateError = new Error('Failed to set private state');
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
@@ -273,7 +273,7 @@ describe('submit-deploy-tx', () => {
 
         const signingKeyError = new Error('Failed to set signing key');
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.setSigningKey = vi.fn().mockRejectedValue(signingKeyError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to set signing key');
@@ -300,15 +300,15 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
 
-        expect(submitTx).toHaveBeenCalledWith(mockProviders, {
+        expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenTx
         });
         expect(result).toEqual({
-          era: CURRENT_PIPELINE_ERA,
+          era: CURRENT_LEDGER_VERSION,
           private: mockUnprovenDeployTxData.private,
           public: {
             ...mockFinalizedTxData,
@@ -330,7 +330,7 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         await submitDeployTx(mockProviders, options);
 
@@ -347,11 +347,11 @@ describe('submit-deploy-tx', () => {
           initialPrivateState: undefined
         };
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
-        vi.mocked(submitTx).mockResolvedValue(createMockFinalizedTxData());
+        vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
 
         await submitDeployTx(mockProviders, options);
 
-        expect(submitTx).toHaveBeenCalledTimes(1);
+        expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
@@ -370,7 +370,7 @@ describe('submit-deploy-tx', () => {
           "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
         );
         expect(createUnprovenDeployTx).not.toHaveBeenCalled();
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
       it('refuses a private state id with no initial private state, before anything is built', async () => {
@@ -388,7 +388,7 @@ describe('submit-deploy-tx', () => {
           "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
         );
         expect(createUnprovenDeployTx).not.toHaveBeenCalled();
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
       it('refuses a private state id given as undefined, before anything is built', async () => {
@@ -408,7 +408,7 @@ describe('submit-deploy-tx', () => {
           message: expect.stringContaining("'privateStateId' was given as undefined")
         });
         expect(createUnprovenDeployTx).not.toHaveBeenCalled();
-        expect(submitTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
     });
   });

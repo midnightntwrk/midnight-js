@@ -296,14 +296,14 @@ jobs:
         if: always() && github.event_name != 'schedule'
         uses: ctrf-io/github-test-reporter@7974087018bf4857cf5a9d78723e152038c3fa31 # ratchet:ctrf-io/github-test-reporter@v1.3.0
         with:
-          title: 'E2E Tests Results'
+          title: "E2E Tests Results (${{ inputs.testkit_docker_env || 'default' }})"
           report-path: 'ctrf-results/ctrf-report-merged.json'
           suite-folded-report: true
           pull-request: true
           pull-request-report: true
           overwrite-comment: true
           collapse-large-reports: true
-          comment-tag: '${{ github.workflow }}-${{ github.job }}'
+          comment-tag: "${{ github.workflow }}-${{ github.job }}-${{ inputs.testkit_docker_env || 'default' }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 

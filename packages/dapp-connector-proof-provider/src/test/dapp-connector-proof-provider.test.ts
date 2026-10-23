@@ -13,8 +13,13 @@
  * limitations under the License.
  */
 
-import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import {
+  COMMON_ERROR_CODES,
+  InvalidArgumentError,
+  PayloadNotATransactionError,
+  PROTOCOL_ERROR_CODES
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type KeyMaterialProvider,
@@ -98,7 +103,7 @@ describe('dappConnectorProofProvider', () => {
   // Set equality rather than `toContain`: this provider serves both eras, and
   // an era silently dropped from the declaration would have a retained-era
   // operation refused before it started -- which `toContain` would not catch.
-  it('declares both eras, matching the two arms it is built from', async () => {
+  it('declares both eras, matching the two handlers it is built from', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
     expect([...proofProvider.supportedEras].sort()).toEqual(['v8', 'v9']);
@@ -118,26 +123,65 @@ describe('dappConnectorProofProvider', () => {
       mockCostModel
     );
     // Identity, not structural equality: the whole premise of the versioned
-    // seam is that ledger objects from different WASM instances must not be
+    // method is that ledger objects from different WASM instances must not be
     // interchanged, so a structurally-equal-but-different object must fail.
     expect(result.version).toBe('v9');
     expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
   });
 
-  // This package delegates the current era to `createProofProvider` but owns
-  // the retained arm itself, so these cases cover a body the types package's
-  // tests do not reach.
+  describe('proveTxConfig.timeout', () => {
+    it('refuses a v9 proof with a timeout before the wallet is asked to prove', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: 5_000 }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(hasErrorCode(rejection, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('refuses a zero timeout as well, since any timeout would be ignored', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      await expect(proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: 0 })).rejects.toBeInstanceOf(
+        InvalidArgumentError
+      );
+      expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
+    });
+
+    it('proves a v9 transaction when the config carries no timeout', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, {});
+
+      expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+    });
+
+    it('proves a v9 transaction when the timeout key is present but undefined', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx }, { timeout: undefined });
+
+      expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+    });
+  });
+
+  // The retained-era handler's body lives in this package, so these cases cover code the
+  // types package's tests do not reach.
   describe('v8 payload', () => {
     let retainedEraTxBytes: Uint8Array;
     let circuitDrivingTxBytes: Uint8Array;
 
     beforeAll(async () => {
-      const v8 = await loadLedger8();
+      const v8 = await loadLedger8Protocol();
       retainedEraTxBytes = v8.Transaction.fromParts('undeployed').serialize();
 
       // Carries one Zswap output, so proving it drives a real circuit. The
       // empty transaction above has nothing to prove, so it cannot show which
-      // proving provider -- if any -- the seam handed to the runtime.
+      // proving provider -- if any -- the provider handed to the runtime.
       const rawTokenType = v8.sampleRawTokenType();
       const output = v8.ZswapOutput.new(
         v8.createShieldedCoinInfo(rawTokenType, 100n),
@@ -151,7 +195,7 @@ describe('dappConnectorProofProvider', () => {
       ).serialize();
     });
 
-    it('answers the v8 arm with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
+    it('answers the v8 variant with the PROVEN serialization, ignoring the caller-supplied cost model', async () => {
       const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
       const result = await proofProvider.proveTx({ version: 'v8', txBytes: retainedEraTxBytes });
@@ -166,7 +210,7 @@ describe('dappConnectorProofProvider', () => {
       expect(returned).toBeInstanceOf(Uint8Array);
 
       // Derived from the input's own tag rather than spelled out -- see the
-      // matching case in `http-client-proof-provider`. The two seams answer the
+      // matching case in `http-client-proof-provider`. The two providers answer the
       // same contract, so they are asserted at the same strictness.
       const expectedTag = txTag(retainedEraTxBytes).replace('proof-preimage', 'proof');
       // Without this, a vendor rename of the stage marker would make `replace`
@@ -204,6 +248,21 @@ describe('dappConnectorProofProvider', () => {
       await proofProvider.proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }).catch(() => undefined);
 
       expect(keyLocations).toEqual(['midnight/zswap/output']);
+    });
+
+    it('refuses a v8 proof with a timeout before the wallet is asked to prove', async () => {
+      const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+      const rejection = await proofProvider
+        .proveTx({ version: 'v8', txBytes: circuitDrivingTxBytes }, { timeout: 5_000 })
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(hasErrorCode(rejection, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
+      expect(mockProvingProvider.prove).not.toHaveBeenCalled();
     });
   });
 

@@ -16,7 +16,6 @@
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { PipelineEra } from '../../era';
 import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era';
 
 // Compile-level tests, run by the typecheck pass this package enables in `vitest.config.ts` --
@@ -32,24 +31,24 @@ import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era
 
 describe('a pairing table must rule every artifact era', () => {
   it('is a total map from artifact era to rulings', () => {
-    expectTypeOf<EraPairingTable>().toEqualTypeOf<Readonly<Record<PipelineEra, EraRulings>>>();
+    expectTypeOf<EraPairingTable>().toEqualTypeOf<Readonly<Record<LedgerVersion, EraRulings>>>();
   });
 
   it('refuses a table missing an artifact era', () => {
-    // @ts-expect-error - no `ledger8` row
+    // @ts-expect-error - no `v8` row
     const missingRow: EraPairingTable = {
-      ledger9: { v8: 'artifact-newer-than-head', v9: 'run' }
+      v9: { v8: 'artifact-newer-than-head', v9: 'run' }
     };
     void missingRow;
   });
 
   it('refuses a table carrying an artifact era the vocabulary does not spell', () => {
     const excessRow: EraPairingTable = {
-      ledger8: { v8: 'run', v9: 'call-only' },
-      ledger9: { v8: 'artifact-newer-than-head', v9: 'run' },
-      // @ts-expect-error - `ledger10` is not a `PipelineEra`, so this cell could only ever be
+      v8: { v8: 'run', v9: 'call-only' },
+      v9: { v8: 'artifact-newer-than-head', v9: 'run' },
+      // @ts-expect-error - `v10` is not a `LedgerVersion`, so this cell could only ever be
       // reached by a value the vocabulary has already refused
-      ledger10: { v8: 'run', v9: 'run' }
+      v10: { v8: 'run', v9: 'run' }
     };
     void excessRow;
   });
@@ -82,7 +81,7 @@ describe('one row must rule every head era', () => {
 
   it('refuses a ruling outside the closed verdict set', () => {
     // Without this the table would type-check with a verdict `assertEraCompatible` never reads,
-    // which is a cell that silently falls through to its unreachable closing arm.
+    // which is a cell that silently falls through to its unreachable closing case.
     // @ts-expect-error - `'maybe'` is not an era pairing verdict
     const unknownVerdict: EraRulings = { v8: 'run', v9: 'maybe' };
     void unknownVerdict;

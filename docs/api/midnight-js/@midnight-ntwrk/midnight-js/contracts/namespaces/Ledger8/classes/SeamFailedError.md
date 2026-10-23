@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
 
 ***
 
@@ -30,7 +30,7 @@ payload, and a caller narrowing on `V8PayloadUnsupportedError` or
 
 ## Extends
 
-- `Error`
+- [`MidnightJsError`](../../../../classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -64,9 +64,19 @@ The provider's failure, already sanitized by the caller.
 
 #### Overrides
 
-`Error.constructor`
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`constructor`](../../../../classes/MidnightJsError.md#constructor)
 
 ## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`category`](../../../../classes/MidnightJsError.md#category)
+
+***
 
 ### circuitId
 
@@ -77,6 +87,10 @@ The provider's failure, already sanitized by the caller.
 ### code
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_LEDGER8_SEAM_FAILED"`
+
+#### Overrides
+
+[`MidnightJsError`](../../../../classes/MidnightJsError.md).[`code`](../../../../classes/MidnightJsError.md#code)
 
 ***
 

@@ -14,64 +14,52 @@
  */
 
 import { type ContractStatePojo, type LedgerVersion, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type {
+  PrivateStateId,
+  PrivateStateProvider,
+  PublicDataProvider,
+  VersionedPublicStates
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from './errors';
 
 /**
- * Object containing the publicly visible states of a contract.
+ * The publicly visible states of a contract, tagged with the ledger era that wrote them, together
+ * with the private state of the contract.
  */
-export interface PublicContractStates {
-  /**
-   * The (public) Zswap chain state of a contract.
-   */
-  readonly zswapChainState: ZswapChainState;
-  /**
-   * The (public) ledger state of a contract.
-   */
-  readonly contractState: ContractState;
-  /**
-   * The ledger parameters in effect on the block associated with the contract state.
-   */
-  readonly ledgerParameters: LedgerParameters;
-}
-
-/**
- * Object containing the publicly visible states of a contract and the private
- * state of a contract.
- */
-export interface ContractStates<PS> extends PublicContractStates {
+export type ContractStates<PS> = VersionedPublicStates & {
   /**
    * The private state of a contract.
    */
   readonly privateState: PS;
-}
+};
 
 /**
- * Fetches only the public visible (Zswap and ledger) states of a contract.
+ * Fetches only the public visible (Zswap and ledger) states of a contract, tagged with the ledger
+ * era that wrote them. Narrow on `version`, or use `requireLedger9` from
+ * `@midnight-ntwrk/midnight-js-utils` when only the v9 era is handled.
  *
  * @param publicDataProvider The provider to use to fetch the public states (Zswap and ledger)
  *                           from the blockchain.
  * @param contractAddress The ledger address of the contract.
+ * @param blockHash The block to read the states at. If `undefined`, the latest states are read.
  */
 export const getPublicStates = async (
   publicDataProvider: PublicDataProvider,
   contractAddress: ContractAddress,
   blockHash?: string
-): Promise<PublicContractStates> => {
+): Promise<VersionedPublicStates> => {
   assertIsContractAddress(contractAddress);
-  const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(
+  const publicStates = await publicDataProvider.queryZSwapAndContractState(
     contractAddress,
     blockHash === undefined ? undefined : { type: 'blockHash', blockHash }
   );
-  if (zswapAndContractState === undefined || zswapAndContractState === null) {
+  if (publicStates === undefined || publicStates === null) {
     throw new ContractNotFoundError(`No public state found at contract address '${contractAddress}'`);
   }
-  const [zswapChainState, contractState, ledgerParameters] = zswapAndContractState;
-  return { contractState, zswapChainState, ledgerParameters };
+  return publicStates;
 };
 
 /**
@@ -83,6 +71,7 @@ export const getPublicStates = async (
  * @param privateStateProvider The provider to use to fetch the private state.
  * @param contractAddress The ledger address of the contract.
  * @param privateStateId The identifier for the private state of the contract.
+ * @param blockHash The block to read the public states at. If `undefined`, the latest states are read.
  */
 export const getStates = async <PS>(
   publicDataProvider: PublicDataProvider,
@@ -91,12 +80,12 @@ export const getStates = async <PS>(
   privateStateId: PrivateStateId,
   blockHash?: string
 ): Promise<ContractStates<PS>> => {
-  const publicContractStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
+  const publicStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
   const privateState = await privateStateProvider.get(privateStateId);
   if (privateState === undefined || privateState === null) {
     throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
   }
-  return { ...publicContractStates, privateState };
+  return { ...publicStates, privateState };
 };
 
 /**
@@ -121,14 +110,10 @@ export interface AnyEraContractState extends ContractStatePojo {
   /**
    * The ledger era that wrote these bytes, read from the envelope they carry.
    *
-   * Not the `version` of the raw record, which is derived from `protocolVersion` and so describes
-   * the BLOCK. Two different things make the two disagree legitimately, and neither is a fault:
-   * a contract not written to since the fork keeps an OLDER envelope under a newer block, and an
-   * unpinned read resolves the state and the block as independent Query-root siblings that can
-   * land either side of the boundary. See `EnvelopeUpperBound` in
-   * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
+   * It can be older than the era of the block that dated the read (see {@link protocolVersion}):
+   * a record keeps the encoding it was written in.
    */
-  readonly envelopeVersion: LedgerVersion;
+  readonly version: LedgerVersion;
   /**
    * The protocol-version integer the network reported for the block that dated the read.
    *
@@ -151,10 +136,10 @@ export interface AnyEraContractState extends ContractStatePojo {
 /**
  * Fetches a contract's public state and decodes it with the era that wrote it, whichever that is.
  *
- * Use this wherever a contract may predate the ledger fork. The deserializing members of the
- * shipped `IndexerPublicDataProvider` — `queryContractState` and its siblings — decode with the
- * current era only and refuse anything else; this reads the era off the state's own envelope and
- * dispatches on it, so a contract deployed before the fork and not yet written to still reads.
+ * Use this wherever a contract may predate the ledger fork and the decoded state is needed in both
+ * eras. `queryContractState` and its siblings decode only a v9 state and hand a v8 one on as the
+ * stored bytes; this reads the era off the state's own envelope and decodes it with that era's
+ * runtime, so a contract deployed before the fork and not yet written to still reads.
  *
  * The read is relative to the network head. There is no block selector, so a historical read goes
  * through `queryRawContractState` directly.
@@ -183,13 +168,13 @@ export const getAnyEraContractState = async (
   if (served === null) {
     return null;
   }
-  const envelopeVersion = contractStateEnvelopeVersion(served.raw);
-  const era = await loadLedgerEra(envelopeVersion);
+  const version = contractStateEnvelopeVersion(served.raw);
+  const era = await loadLedgerEra(version);
   // ONE decode, not an `extractState` beside a `decodeContractState`. Those two are kept separate
   // in the keep-state pipeline because there the extraction feeds execution and the decode feeds
   // the key check, and each has to be able to fail without the other. Here both members are
   // returned together or not at all, so a second deserialization of the same bytes would buy
   // nothing and cost a full WASM pass over them.
   const decoded = era.decodeContractState(served.raw);
-  return { envelopeVersion, protocolVersion: served.protocolVersion, raw: served.raw, ...decoded };
+  return { version, protocolVersion: served.protocolVersion, raw: served.raw, ...decoded };
 };

@@ -4,38 +4,38 @@ title: ComposeRefusalOrder
 
 # The composition contract: refusal order
 
-Both era arms of this package compose the same two transaction kinds — a
+Both era paths of this package compose the same two transaction kinds — a
 contract call and a contract deploy — from the same facade options. This
-document records the contract the two arms hold in common: the order in which
+document records the contract the two paths hold in common: the order in which
 they refuse a caller's options, the one ordering difference that survives on
-purpose, what each arm accepts rather than refuses, and why every caller-caused
+purpose, what each path accepts rather than refuses, and why every caller-caused
 failure leaves as a coded error rather than as a raw WASM failure. The
 verifier-key rules a deploy is validated against are a separate thread — see
 [VerifierKeys](./verifier-keys.md).
 
-The legs described here are `composeEraV8CallTx` / `composeEraV8DeployTx`
-(`packages/protocol/src/lib/v8/adapt.ts`), `composeV8CallTx`
-(`packages/protocol/src/lib/v8/compose.ts`), `composeV8DeployTx`
-(`packages/protocol/src/lib/v8/deploy.ts`), `composeV9CallTx` /
-`composeV9DeployTx` (`packages/protocol/src/lib/v9/compose.ts`), and the shared
+The legs described here are `composeEraLedger8CallTx` / `composeEraLedger8DeployTx`
+(`packages/protocol/src/lib/v8/adapt.ts`), `composeLedger8CallTx`
+(`packages/protocol/src/lib/v8/compose.ts`), `composeLedger8DeployTx`
+(`packages/protocol/src/lib/v8/deploy.ts`), `composeLedger9CallTx` /
+`composeLedger9DeployTx` (`packages/protocol/src/lib/v9/compose.ts`), and the shared
 pieces under `packages/protocol/src/lib/shared/`.
 
-`composeV8CallTx` is the "same-era" leg: both the circuit's execution and the
+`composeLedger8CallTx` is the "same-era" leg: both the circuit's execution and the
 call it produces are bound entirely on the ledger-v8 axis, as opposed to
 `wrapKeepStateCall` (`packages/protocol/src/lib/v9/wrap.ts`), which binds a
 retained-execution transcript natively onto the current ledger-v9 axis instead.
 
-## Refusal order on both era arms
+## Refusal order on both era paths
 
-Both arms refuse a caller's options in the SAME order: the envelope, then the
+Both paths refuse a caller's options in the SAME order: the envelope, then the
 call list, then the era's own limits, then the state, and last the offers. A
 caller handing both an empty network id and unreadable offer bytes has one
 defect to fix per era, not a different one per era.
 
-Holding that order is why the v8 era arm checks the envelope and the call list
+Holding that order is why the v8 era path checks the envelope and the call list
 itself rather than leaving either to the inner v8 leg it delegates to. The inner
 leg checks the envelope again; the check is idempotent, and leaving it there is
-what keeps `composeV8CallTx` and `composeV8DeployTx` safe to call directly.
+what keeps `composeLedger8CallTx` and `composeLedger8DeployTx` safe to call directly.
 
 The call legs read their offers LAST, and cannot do otherwise: an offer arrives
 as a factory (`ComposeCallOptions.zswapOffer`) that is handed every call's
@@ -65,8 +65,8 @@ moment the offer is built — not that it was used.
 ## The one deliberate ordering difference
 
 Both deploy legs check the envelope first and the offer second, but the v9 leg
-reads the state before it looks at `verifierKeys`, and the v8 era arm cannot:
-the state is read by the leg it delegates to, and reading it in the arm as well
+reads the state before it looks at `verifierKeys`, and the v8 era path cannot:
+the state is read by the leg it delegates to, and reading it in the path as well
 would deserialize the same bytes twice.
 
 So a deploy that is BOTH unreadable and missing its key map reports
@@ -101,8 +101,8 @@ transaction that carries the call.
 An absent offer is the normal shape of a call that moved no shielded coins: a
 call omits the factory, and a factory may answer with either half absent. Bytes
 an era cannot decode are reported as `ComposeOptionError` with option
-`'zswapOffer'` — the same wrapping the other arm applies to the
-identical call. The same symmetry holds for the contract state: both arms wrap a
+`'zswapOffer'` — the same wrapping the other path applies to the
+identical call. The same symmetry holds for the contract state: both paths wrap a
 rejected state as `ComposeOptionError` with option `'contractState'` rather than
 letting a raw decoder failure escape.
 
@@ -113,7 +113,7 @@ the two carry different remediations.
 
 Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
 than bytes: that leg runs inside the retained era with the module already in
-hand, so the era arm that read the caller's offer bytes hands the decoded offer
+hand, so the era path that read the caller's offer bytes hands the decoded offer
 straight over. The contract state is different: it crosses as
 `contractStateBytes` and that leg decodes it itself. The v8-native
 CALL leg takes the `zswapOffer` factory unchanged and decodes the bytes it
@@ -141,7 +141,7 @@ against the callee's own balance update, under the `real_unshielded_spends`
 superset check, and `UtxoOutput.owner` takes a user address in the first place.
 Emitting an output for one would add a payout the transaction cannot cover.
 
-A user-addressed spend this seam cannot pay out is REFUSED, not skipped. That is
+A user-addressed spend the compose path cannot pay out is REFUSED, not skipped. That is
 a different case from a contract-addressed spend, which is not a UTXO payout at
 all: this one is a payout the transaction has no way to make. Dropping it
 silently composes a transaction that tells the user they were paid and pays them
@@ -150,7 +150,7 @@ types reach that refusal — dust, which carries no raw token type to pay out in
 (`'call-dust-payout'`), and a shielded type, whose value moves through a Zswap
 offer rather than a UTXO (`'call-unsupported-payout'`).
 
-The check is on the ONE type this seam can pay out rather than on a list of the
+The check is on the ONE type the compose path can pay out rather than on a list of the
 ones it cannot. `TokenType` is a vendor union, and a shielded type carries a
 `raw` field exactly as an unshielded one does, so an
 exclude-what-we-know-about test emits a plausible-looking `UtxoOutput` for
@@ -182,7 +182,7 @@ A partitioned source is passed through untouched — the whole point of the shap
 Re-partitioning it would need a query context the caller no longer has, to redo
 work compact-js already did. Only the CALLER-supplied pair is checked for
 emptiness: an empty pair coming back from the module's own partitioner is that
-module's answer for the program it was handed, and this seam does not overrule
+module's answer for the program it was handed, and the compose path does not overrule
 it. A partitioned source carrying neither half is different — it is a caller
 with nothing to compose, and a prototype built from it would claim a circuit ran
 while recording no operations, the same silent no-op `'call-empty'` refuses one
@@ -210,7 +210,7 @@ wasm, so the caller wraps the bridge in its own coded stage.
 
 ## Coded failures, and the one that is not
 
-Every failure a caller can cause on this seam is coded. On the call path an
+Every failure a caller can cause on the compose path is coded. On the call path an
 empty call list is refused with `ComposeFailedError` at stage `'call-empty'`,
 and an unreadable contract state, Zswap offer, network id or ttl with
 `ComposeOptionError`; the shared assembler contributes `'call-operation'`,
@@ -254,7 +254,7 @@ internal invariant of the ledger module, not a caller error, so that one throws
 ## One stage union across both eras
 
 `ComposeStage` (`packages/protocol/src/errors.ts`) is a single union covering
-both arms rather than one union per era, and the era a failure happened on is
+both paths rather than one union per era, and the era a failure happened on is
 carried separately, on the error's `version` field. Every stage but
 `'wrap-call'` is reachable on both eras, so folding the era into the stage would
 nearly double the union without adding a distinction any caller wants to
@@ -277,14 +277,14 @@ mergeable.
 No leg here proves the transaction it returns: the bytes are an UNPROVEN,
 tag-prefixed serialization, exactly what `Transaction.serialize()` produces
 before `.prove()` is ever called. Proving needs a proving provider and a running
-proof server, neither of which this seam has. That holds for the deploy legs
+proof server, neither of which the compose path has. That holds for the deploy legs
 too, including the constructor execution that feeds them — a constructor
 produces state, never a proof.
 
-## Injected era seams
+## Injected era slices
 
 The slices these legs take by injection — `CallAssemblyLedger`,
 `PartitionableQueryContext`, `CallOperationRegistry`, `UnshieldedOfferLedger`
-and the v8 deploy seam's two — are narrowed, and each narrowing is a different
+and the v8 deploy leg's two — are narrowed, and each narrowing is a different
 trade. How they are typed, and what each trade buys, is in
 [InjectedVendorSlices](./injected-vendor-slices.md).

@@ -1,8 +1,8 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
 
 ***
 
-Configuration class for local test environment implementing EnvironmentConfiguration
+Configuration interface for the test environment services
 
 ## Implements
 

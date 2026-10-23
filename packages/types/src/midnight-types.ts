@@ -229,7 +229,7 @@ export type BlockHash = string;
  * The era-independent metadata every finalized-transaction record carries,
  * whichever ledger runtime produced it.
  *
- * Both arms of {@link VersionedFinalizedTxData} extend this, so the two arms
+ * Both variants of {@link VersionedFinalizedTxData} extend this, so the two variants
  * differ in exactly two places — the `version` discriminant and the type of
  * `tx` — and cannot drift apart as fields are added here.
  */
@@ -293,10 +293,10 @@ export interface FinalizedTxRecord {
 /**
  * Data for any finalized transaction produced by the v9 ledger runtime.
  *
- * This is the v9 arm of {@link VersionedFinalizedTxData} — see
- * {@link FinalizedTxDataV8} for the v8 arm.
+ * This is the v9 variant of {@link VersionedFinalizedTxData} — see
+ * {@link Ledger8FinalizedTxData} for the v8 variant.
  *
- * NARROWING IS REQUIRED. A provider that decodes per era returns the v8 arm as
+ * NARROWING IS REQUIRED. A provider that decodes per era returns the v8 variant as
  * an ordinary value for any record whose `protocolVersion` places it in that
  * era.
  *

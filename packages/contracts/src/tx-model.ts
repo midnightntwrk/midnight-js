@@ -16,15 +16,15 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   FinalizedTxData,
-  FinalizedTxDataV8,
+  Ledger8FinalizedTxData,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
-import type { CurrentPipelineEra } from './era';
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -107,7 +107,7 @@ export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -183,8 +183,13 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * Carries no `initialContractState`: the deploy-time state of a ledger-8 contract
  * cannot be decoded by the current runtime. Read the current state with
  * `PublicDataProvider.queryContractState`.
+ *
+ * @remarks Published flat, not under the `Ledger8` namespace: it is part of the
+ * current era's `FoundDeployTxData`, and outlives the retained pipeline.
+ *
+ * @see {@link RetainedEraNamespace} for which names the namespace holds.
  */
-export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
+export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   /**
    * The ledger address of the contract that was deployed.
    */
@@ -194,9 +199,24 @@ export interface FoundDeployTxPublicDataV8 extends FinalizedTxDataV8 {
 /**
  * The public data of a deployment found on chain, discriminated by the ledger
  * era that recorded the deploy transaction. Narrow on `version` before reading
- * `tx` or `initialContractState`; `contractAddress` is present on both arms.
+ * `tx` or `initialContractState`; `contractAddress` is present on both variants.
  */
-export type FoundDeployTxPublicData = FoundDeployTxPublicDataV8 | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
+
+/**
+ * What a contract maintenance update -- a verifier key inserted or removed, or the maintenance
+ * authority replaced -- resolves with once the chain has recorded it.
+ *
+ * Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
+ * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
+ * are `AnyEraMaintenanceTxData`.
+ */
+export interface FinalizedMaintenanceTxData {
+  /** The pipeline that produced this result: always the current era here. */
+  readonly era: CurrentLedgerVersion;
+  /** The finalized record of the maintenance transaction. */
+  readonly public: FinalizedTxData;
+}
 
 /**
  * Data for a deployment found on chain by `findDeployedContract`.
@@ -211,7 +231,7 @@ export interface FoundDeployTxData<C extends Contract.Any> {
    * The pipeline this handle runs on: always the current era here. The era that
    * recorded the deploy transaction is `public.version`.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
   /**
    * The data of the deploy transaction that is visible on the blockchain.
    */
@@ -362,5 +382,5 @@ export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.Pr
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentPipelineEra;
+  readonly era: CurrentLedgerVersion;
 }

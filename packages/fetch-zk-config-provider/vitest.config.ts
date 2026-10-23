@@ -40,7 +40,7 @@ export default defineConfig({
     reporters: [
       'default',
       ['junit', { outputFile: `reports/report/test-report.xml` }],
-      ['html', { outputFile: `reports/report/test-report.html` }]
+      ['html', { outputDir: 'reports/report' }]
     ]
   }
 });

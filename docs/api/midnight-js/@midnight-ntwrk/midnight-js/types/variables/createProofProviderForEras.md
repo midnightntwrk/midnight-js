@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Variable: createProofProviderForEras
 
-> `const` **createProofProviderForEras**: (`{ currentEra, retainedEras, costModel }`) => [`ProofProvider`](../interfaces/ProofProvider.md)
+> `const` **createProofProviderForEras**: (`provingProviders`) => [`ProofProvider`](../interfaces/ProofProvider.md)
 
 Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger) per ledger
 era it serves, deriving the routing, the version tagging and the
@@ -15,16 +15,14 @@ era it serves, deriving the routing, the version tagging and the
 This is the route for an in-process prover that crosses the fork, which needs
 one instance per era; the package document explains why.
 
-[ProveTxConfig](../interfaces/ProveTxConfig.md) is not forwarded on either arm: a `ProvingProvider`
-takes no per-request configuration, so a `timeout` passed to `proveTx` does
-not reach the proving call. A provider that honours it is
-`httpClientProofProvider`.
-
 ## Parameters
 
-### \{ currentEra, retainedEras, costModel \}
+### provingProviders
 
 [`ProvingProvidersByEra`](../interfaces/ProvingProvidersByEra.md)
+
+One proving provider per era served, and an optional
+                        current-era cost model.
 
 ## Returns
 
@@ -35,23 +33,46 @@ A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its er
 
 ## Throws
 
-V8PayloadUnsupportedError if a payload arrives on a retained arm no
-        provider was registered for.
+UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
+        than `undefined`, is not an object with callable `check` and `prove`.
+        Raised at construction.
 
 ## Throws
 
-UntaggedPayloadError if `version` is missing or unrecognised.
+InvalidArgumentError if `provingProviders` is not an object,
+        `retainedEras` is not a plain object keyed only by retained eras, or
+        `costModel` is given but is not an object. Raised at construction.
 
 ## Throws
 
-PayloadNotATransactionError if a retained arm's `txBytes` is not a
-        serialized transaction.
+InvalidArgumentError raised by `proveTx`, before any proving starts,
+        if `proveTxConfig.timeout` is set (including `0`): a `ProvingProvider`
+        takes no per-request configuration. To bound proving time, use
+        `httpClientProofProvider`, which honours it.
 
 ## Throws
 
-Ledger8RuntimeMissingError if a retained arm is reached and that
-        era's runtime cannot be loaded. Both are defined in
-        `@midnight-ntwrk/midnight-js-protocol/errors`.
+V8PayloadUnsupportedError raised by `proveTx` if a payload arrives on
+        a retained era no provider was registered for.
+
+## Throws
+
+UntaggedPayloadError raised by `proveTx` if `version` is missing or
+        unrecognised.
+
+## Throws
+
+PayloadNotATransactionError raised by `proveTx` if a retained payload's
+        `txBytes` is not a serialized transaction.
+
+## Throws
+
+Ledger8RuntimeMissingError raised by `proveTx` if a retained era is
+        reached and that era's runtime cannot be loaded.
+
+`InvalidArgumentError`, `PayloadNotATransactionError` and
+`Ledger8RuntimeMissingError` are defined in
+`@midnight-ntwrk/midnight-js-protocol/errors`.
 
 ## Example
 

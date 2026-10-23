@@ -19,9 +19,9 @@ import {
   type VersionedRecord,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
+import type { ReadMethod } from '@midnight-ntwrk/midnight-js-types';
 
-import { EraUnresolvableError } from './errors';
+import { UnknownRecordEraError } from './errors';
 
 /**
  * Resolves the ledger era of a record read from the indexer, so the read path
@@ -40,16 +40,16 @@ import { EraUnresolvableError } from './errors';
  * error with one `instanceof` check" contract holds on this path too.
  *
  * @param record The indexer record, carrying the raw `protocolVersion`.
- * @param seam The read-surface method resolving the era, for the error message.
+ * @param method The read-surface method resolving the era, for the error message.
  * @param recordRef The transaction id or contract address being read, so a
  *                  failure names which record it was. Optional only because
  *                  not every call site has one to hand.
  * @returns The era the record was written under.
- * @throws EraUnresolvableError if `protocolVersion` maps to no era at all — a
+ * @throws UnknownRecordEraError if `protocolVersion` maps to no era at all — a
  *         network outside the node 1.x/2.x range this framework supports, or a
  *         value that is not a non-negative integer.
  */
-export const resolveReadEra = (record: VersionedRecord, seam: ReadSeam, recordRef?: string): LedgerVersion => {
+export const resolveReadEra = (record: VersionedRecord, method: ReadMethod, recordRef?: string): LedgerVersion => {
   try {
     return versionOfRecord(record);
   } catch (error) {
@@ -57,7 +57,7 @@ export const resolveReadEra = (record: VersionedRecord, seam: ReadSeam, recordRe
     // consumers as an IndexerError like every other failure from this package.
     // The original is preserved on `cause`.
     if (error instanceof UnknownProtocolVersionError) {
-      throw new EraUnresolvableError(seam, record.protocolVersion, { cause: error }, recordRef);
+      throw new UnknownRecordEraError(method, record.protocolVersion, { cause: error }, recordRef);
     }
     throw error;
   }

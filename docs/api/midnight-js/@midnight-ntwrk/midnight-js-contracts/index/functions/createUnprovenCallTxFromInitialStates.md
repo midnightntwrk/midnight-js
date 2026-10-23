@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -28,6 +28,19 @@ Configuration.
 **crossContract**
 
 Enables cross-contract calls; required for circuits that make them.
+
+## Throws
+
+ConfigurationError If `options.config` is missing.
+
+## Throws
+
+InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+        whitespace.
+
+## Throws
+
+InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
 
 ## Remarks
 

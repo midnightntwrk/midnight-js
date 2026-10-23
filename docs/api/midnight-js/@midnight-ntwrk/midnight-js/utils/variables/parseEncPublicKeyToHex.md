@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -20,7 +20,7 @@ The input string, which can be a Bech32m-encoded encryption public key or a hex 
 
 ### zswapNetworkId
 
-[`NetworkId`](../../network-id/type-aliases/NetworkId.md)
+[`NetworkId`](../../types/type-aliases/NetworkId.md)
 
 The network ID used for decoding the Bech32m formatted string.
 

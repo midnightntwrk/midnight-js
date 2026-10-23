@@ -35,7 +35,7 @@ import {
 //
 // `./overloads.test-d.ts` pins this same table for the RETAINED era, on
 // `Ledger8DeployContractOptions*`. This file is the current-era twin of it: #1316 closed the hole
-// on the retained arm and left the current era alone, and #1321 is that hole here.
+// on the retained-era types and left the current era alone, and #1321 is that hole here.
 
 type Twin018PrivateState = { readonly round: bigint };
 type Twin018 = Twin018Contract<Twin018PrivateState>;
@@ -45,25 +45,25 @@ declare const twinPrivateState: Twin018PrivateState;
 declare const providers018: ContractProviders<Twin018>;
 
 describe('the current-era deploy options pair a private state id with a private state', () => {
-  it('names where the constructor private state is stored, on the private-state arm alone', () => {
+  it('names where the constructor private state is stored, on the private-state variant alone', () => {
     expectTypeOf<DeployContractOptionsWithPrivateState<Twin018>['privateStateId']>().toEqualTypeOf<PrivateStateId>();
     expectTypeOf<
       DeployContractOptionsWithPrivateState<Twin018>['initialPrivateState']
     >().toEqualTypeOf<Twin018PrivateState>();
-    // DECLARED on the no-private-state arm as `never`, not absent from it -- see the member's own
+    // DECLARED on the no-private-state variant as `never`, not absent from it -- see the member's own
     // TSDoc in `deploy-contract.ts` for why absence was the bug.
     expectTypeOf<DeployContractOptionsBase<Twin018>['privateStateId']>().toEqualTypeOf<undefined>();
     expectTypeOf<DeployContractOptionsBase<Twin018>['initialPrivateState']>().toEqualTypeOf<undefined>();
   });
 
-  it('keeps both arms in the published union', () => {
+  it('keeps both variants in the published union', () => {
     expectTypeOf<DeployContractOptionsBase<Twin018>>().toMatchTypeOf<DeployContractOptions<Twin018>>();
     expectTypeOf<DeployContractOptionsWithPrivateState<Twin018>>().toMatchTypeOf<DeployContractOptions<Twin018>>();
   });
 
-  // THE FOUR SHAPES, as a table. The two arms are SIBLINGS rather than base-and-derived: adding
-  // `privateStateId?: never` to a base the other arm INTERSECTS collapses that member to `never`
-  // and makes the private-state arm uninhabitable, which is why the shared members moved to a
+  // THE FOUR SHAPES, as a table. The two variants are SIBLINGS rather than base-and-derived: adding
+  // `privateStateId?: never` to a base the other variant INTERSECTS collapses that member to `never`
+  // and makes the private-state variant uninhabitable, which is why the shared members moved to a
   // separate unpublished type instead.
   it('admits the private-state PAIR, and refuses either half on its own', () => {
     expectTypeOf<{
@@ -116,8 +116,8 @@ describe('the current-era deploy options pair a private state id with a private 
   });
 
   // NOT a regression guard for the pairing rule, and it should not be read as one: both half-shapes
-  // were already refused here before the arms became siblings. An inline literal is FRESH, so
-  // ordinary excess-property checking bites against a single-arm overload parameter; the hole
+  // were already refused here before the variants became siblings. An inline literal is FRESH, so
+  // ordinary excess-property checking bites against a non-union overload parameter; the hole
   // #1321 describes needs the UNION as the target, which is the `it` above. On top of that,
   // `Twin018` declares a private state, so it cannot select the no-private-state overload at all,
   // and the id-alone shape cannot satisfy the private-state one, which requires

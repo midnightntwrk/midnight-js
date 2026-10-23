@@ -86,34 +86,34 @@ createZKIR(uint8Array: Uint8Array): ZKIR
 
 ### Version-tagged payloads
 
-During the ledger-fork window every transaction crossing a provider seam is
+During the ledger-fork window every transaction passed to a provider method is
 tagged with the ledger runtime it belongs to. The two runtimes are separate WASM
 instances, so a v8 object cannot be handed to the v9 runtime — `instanceof` does
 not cross the boundary and duck-typing cannot tell them apart. An explicit tag is
 the only mechanism available.
 
 ```typescript
-interface V8TxBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-interface V9Tx<T>   { readonly version: 'v9'; readonly tx: T; }
-type VersionedTx<T> = V8TxBytes | V9Tx<T>;
+interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
+interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
+type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
 ```
 
-There is deliberately no untagged arm, so a bare `Uint8Array` — bytes whose era
+There is deliberately no untagged variant, so a bare `Uint8Array` — bytes whose era
 nobody can tell — is never assignable. `proveTx`, `balanceTx` and `submitTx`
 carry these in both directions.
 
-Narrow with `unwrapV9`, which reports a coded error instead of letting a bare
+Narrow with `unwrapLedger9`, which reports a coded error instead of letting a bare
 `TypeError` surface from inside a WASM call:
 
 ```typescript
-import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
-const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
 ```
 
-Its `seam` parameter is a `ProviderSeam`, so it covers those three methods only.
+Its `method` parameter is a `TransactionMethod`, so it covers those three methods only.
 The read surface reports a *different* union, `VersionedFinalizedTxData`, whose
-v8 arm carries `tx` rather than `txBytes` — narrow that one with
+v8 variant carries `tx` rather than `txBytes` — narrow that one with
 `switch (record.version)`.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
@@ -132,9 +132,9 @@ const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction
 
 ### Declaring the eras a provider serves
 
-The three transaction seams each carry a required `supportedEras` list. It is
+The three transaction providers each carry a required `supportedEras` list. It is
 read BEFORE an operation starts, so a provider set that cannot carry a
-transaction end to end is refused with `SeamEraUnsupportedError` rather than
+transaction end to end is refused with `ProviderEraUnsupportedError` rather than
 after a proof has been paid for.
 
 ```typescript
@@ -158,23 +158,32 @@ import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-typ
 
 const proofProvider = createProofProviderFromHandlers({
   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
 });
 // proofProvider.supportedEras === ['v9', 'v8']
 ```
 
-The current era crosses the seam as a live ledger object; a retained era crosses
-as serialized bytes, in both directions. That is why the two handler signatures
+A current-era transaction is passed to the provider as a live ledger object; a retained-era
+transaction is passed as serialized bytes, in both directions. That is why the two handler signatures
 differ, and why `retainedEras` cannot name the current era — registering one
 there is a compile error.
 
+The factory checks the same things when the provider is built, for JavaScript
+callers the types do not reach: a handler that is not a function is refused with
+`UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`), and a `retainedEras`
+that is not a plain object keyed only by retained eras (a key for the current
+era is refused too) with `InvalidArgumentError`. The check is shape only: a
+handler built for the wrong era still passes. The provider serves from a copy of
+the handlers taken then, so replacing a handler on the object you passed in
+afterwards has no effect.
+
 `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same
-shape for the other two seams. Implementing a tagged interface directly is also
+shape for the other two providers. Implementing a tagged interface directly is also
 fine — a class, or a provider that routes internally — in which case you write
 `supportedEras` yourself.
 
-Nothing verifies the declaration. A seam still narrows its own payload and still
-reports `V8PayloadUnsupportedError` for an arm it cannot serve, so declaring an
+Nothing verifies the declaration. A provider still narrows its own payload and still
+reports `Ledger8PayloadUnsupportedError` for an era it cannot serve, so declaring an
 era you do not serve makes a failure later, not absent.
 
 ### TxStatus
@@ -245,7 +254,7 @@ type UnshieldedBalances = UnshieldedBalance[];
 
 ```typescript
 import {
-  V8PayloadUnsupportedError,
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
@@ -301,28 +310,28 @@ import {
   type BlockHash,
 
   // Version-tagged payloads for the ledger-fork window
-  type V8TxBytes,
-  type V9Tx,
-  type VersionedTx,
+  type Ledger8TransactionBytes,
+  type Ledger9Transaction,
+  type VersionedTransaction,
   type VersionedUnprovenTransaction,
   type VersionedUnboundTransaction,
   type VersionedFinalizedTransaction,
   type FinalizedTxRecord,
-  type FinalizedTxDataV8,
+  type Ledger8FinalizedTxData,
   type VersionedFinalizedTxData,
-  type ProviderSeam,
-  type ReadSeam,
-  type Seam,
-  unwrapV9,
+  type TransactionMethod,
+  type ReadMethod,
+  type ProviderMethod,
+  unwrapLedger9,
 
-  // Per-era arms, and the declaration built from them
-  type RetainedEraHandlers,
-  type EraArmRequest,
+  // Per-era handlers, era routing, and the declaration built from them
+  type RetainedEraEntries,
+  type EraRequest,
   erasServedBy,
-  narrowToEraArm,
+  narrowToEra,
   type EraDeclaringProvider,
-  type TransactionSeams,
-  assertSeamsSupportEra,
+  type TransactionProviders,
+  assertProvidersSupportEra,
 
   // Private state types
   type PrivateStateId,
@@ -331,9 +340,9 @@ import {
   LogLevel,
 
   // Errors
-  V8PayloadUnsupportedError,
+  Ledger8PayloadUnsupportedError,
   UntaggedPayloadError,
-  SeamEraUnsupportedError,
+  ProviderEraUnsupportedError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -343,20 +352,20 @@ import {
   ImportConflictError,
 
   // Factory functions
-  type V9WalletProvider,
+  type Ledger9WalletProvider,
   createWalletProvider,
   createMidnightProvider,
   createProofProvider,
-  createProofProviderForEras,
+  createProofProviderFromProvingProviders,
   type ProvingProvidersByEra,
   type ProofProviderHandlers,
   type WalletProviderHandlers,
   type MidnightProviderHandlers,
-  type CurrentEraProver,
+  type Ledger9Prover,
   type RetainedEraProver,
-  type CurrentEraBalancer,
+  type Ledger9Balancer,
   type RetainedEraBalancer,
-  type CurrentEraSubmitter,
+  type Ledger9Submitter,
   type RetainedEraSubmitter,
   createProofProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -376,8 +385,8 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a retained-era payload crosses a seam as bytes, the three things the `version` tag deliberately does not establish, and why ledger parameters travel with the state |
-| [Seam era declarations](./docs/seam-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
+| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a retained-era payload is passed to a provider as bytes, the three things the `version` tag deliberately does not establish, and why ledger parameters travel with the state |
+| [Provider era declarations](./docs/provider-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
 | [Reading the head era](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its

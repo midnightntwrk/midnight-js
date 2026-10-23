@@ -21,7 +21,7 @@ import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractNotFoundError, ContractTypeError, PrivateStateNotFoundError } from '../errors';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -29,7 +29,7 @@ import {
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
-  createMockFinalizedTxDataV8,
+  createMockLedger8FinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
@@ -63,8 +63,11 @@ describe('findDeployedContract', () => {
 
   const setupCommonMocks = () => {
     vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
+      version: 'v9',
+      state: contractState
+    });
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({ version: 'v9', state: contractState });
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
@@ -118,17 +121,52 @@ describe('findDeployedContract', () => {
 
       const rejection = await rejectionOf();
 
-      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      assert(rejection instanceof UntaggedPayloadError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect((rejection as UntaggedPayloadError).seam).toBe('watchForDeployTxData');
+      expect(rejection.method).toBe('watchForDeployTxData');
+    });
+  });
+
+  describe('a v9 deploy record whose deploy state is served from the other era', () => {
+    it('refuses the attach rather than reporting a v8 state as the v9 initial state', async () => {
+      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
+        version: 'v8',
+        stateBytes: new Uint8Array([1, 2, 3])
+      });
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof EraInvariantViolationError);
+      expect(rejection.method).toBe('queryDeployContractState');
+      expect(rejection.expected).toBe('v9');
+      expect(rejection.received).toBe('v8');
+      expect(rejection.contractAddress).toBe(contractAddress);
+      expect(rejection.message).toContain(contractAddress);
+    });
+  });
+
+  describe('a v9 deploy record whose deploy state carries no era tag', () => {
+    it('rejects the untagged deploy state as an untagged payload, not as the other era', async () => {
+      providers.publicDataProvider.queryDeployContractState = vi.fn().mockResolvedValue(contractState);
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof UntaggedPayloadError);
+      expect(rejection.method).toBe('queryDeployContractState');
     });
   });
 
   describe('a contract deployed before the ledger fork, found with recompiled artifacts', () => {
-    const v8DeployRecord = createMockFinalizedTxDataV8();
+    const ledger8DeployRecord = createMockLedger8FinalizedTxData();
 
     beforeEach(() => {
-      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(v8DeployRecord);
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(ledger8DeployRecord);
       vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
       vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
     });
@@ -139,7 +177,7 @@ describe('findDeployedContract', () => {
       expect(result.contractAddress).toBe(contractAddress);
       expect(result.deployTxData.public.version).toBe('v8');
       expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
-      expect(result.deployTxData.public.txId).toBe(v8DeployRecord.txId);
+      expect(result.deployTxData.public.txId).toBe(ledger8DeployRecord.txId);
       expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
       expect(result.callTx).toBeDefined();
       expect(result.circuitMaintenanceTx).toBeDefined();
@@ -212,6 +250,22 @@ describe('findDeployedContract', () => {
       expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({
+        version: 'v8',
+        stateBytes: new Uint8Array([1])
+      });
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 
     it('still refuses an address with no current contract state', async () => {

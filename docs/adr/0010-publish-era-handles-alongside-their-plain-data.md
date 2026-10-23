@@ -315,3 +315,36 @@ a live handle in particular -- fails the build.
 `initialContractStateBytes` and the constructor's handle are the same state:
 given the verifier keys the deploy registers, the bytes the deploy derives the
 address from are byte-identical to the handle serialized.
+
+## Amendment — the retained deploy record moves under `public` (2026-10-16)
+
+Issue #1508. `Ledger8FoundContract.deployTxData` is `{ public: VersionedFinalizedTxData }`,
+not the flat record. The deploy record now sits at `deployTxData.public` in both eras, so
+`deployTxData.public.txId` and `deployTxData.public.version` read the same on every found or
+deployed handle, and `AnyEraFoundContract` / `AnyEraDeployedContract` can be read without
+branching on `era` for the record.
+
+Only the record moves. The rest of the note above stands: the retained handle keeps
+`signingKey`, `initialPrivateState`, `initialZswapState` and the initial contract state at the
+top level, because a found handle's `deployTxData` still has no private half.
+
+## Amendment — the deployer's data moves under `deployTxData` (2026-10-16)
+
+Issue #1514. This supersedes "The layout stays as it is" above and the last paragraph of the
+#1508 amendment. Both rested on one fact: a found handle's `deployTxData` had no private half to
+nest a key in. It now has one. `Ledger8FoundContract.deployTxData` is
+`{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey,
+initialPrivateState } }`, where `initialPrivateState` is `undefined` for an attach that named no
+private-state id, and `Ledger8DeployedContract.deployTxData` adds `initialContractState`
+and `initialContractStateBytes` to `public` and `initialZswapState` to `private`. The top-level
+members are removed.
+
+`deployTxData` therefore has the same shape on every found or deployed handle in both eras, so
+`deployTxData.private.signingKey` reads without branching on `era`. The retained key is published
+as the current era's `SigningKey`, `{ tag: 'schnorr', value }`, which is the shape the store
+already holds it in; the bare hex string the retained runtime signs with stays off the `contracts`
+surface. A deployed handle's record is typed as the ledger 8 one, because a retained-era deploy runs
+only on a pre-fork head.
+
+The handle-and-bytes rule above is unchanged: `initialContractState` and
+`initialContractStateBytes` both stay, now under `deployTxData.public`.

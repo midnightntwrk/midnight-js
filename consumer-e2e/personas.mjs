@@ -47,7 +47,7 @@ const E2E_COMPILED = 'testkit-js/testkit-js-e2e/src/contract/compiled';
  * in this repository, `counter-016`; retained-era twins of these are built on
  * demand instead -- see {@link RETAINED_TWINS}. Each list has one key the other
  * lacks: `events` has no retained twin that can exist, and `private-counter` has
- * no current-era arm worth running.
+ * no current-era leg worth running.
  *
  * What this current-era set covers is the other half of the same question:
  * whether the framework's full contract surface works on a chain that carries
@@ -184,8 +184,8 @@ export const CONTRACT_PACKAGES = {
  * EACH HALF IS AN INTERSECTION, not the whole request, and the two asymmetries
  * are real rather than defensive: `events` is a legitimate key with no retained
  * twin that can exist, and `private-counter` is a legitimate key with no
- * current-era arm worth running. Asking for either must narrow the other half to
- * nothing without failing, so that a one-contract shard runs exactly the arms
+ * current-era leg worth running. Asking for either must narrow the other half to
+ * nothing without failing, so that a one-contract shard runs exactly the legs
  * that contract has.
  *
  * A key is known if EITHER matrix claims it. Validating against the current-era

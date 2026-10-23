@@ -29,6 +29,7 @@ import {
   Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
+  MaintenanceAuthorityMismatchError,
   MerkleNotRehashedError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError,
@@ -37,6 +38,7 @@ import {
   PROTOCOL_ERROR_CODES,
   StateDecodeFailedError,
   StateInconsistentError,
+  TRANSACTION_TAG_PREFIX,
   UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
@@ -115,7 +117,8 @@ describe('protocol error classes', () => {
     ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
     ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
     ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
-    ['ContractExecutionError', new ContractExecutionError('x')]
+    ['ContractExecutionError', new ContractExecutionError('x')],
+    ['MaintenanceAuthorityMismatchError', new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member')]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
@@ -141,6 +144,22 @@ describe('protocol error classes', () => {
     expect(error.category).toBe(categoryOf(error.code));
   });
 
+  it.each(instances)('%s message never speaks of seams', (_name, error) => {
+    expect(error.message).not.toMatch(/seam/i);
+  });
+
+  it('PayloadNotATransactionError names the transaction tag and the sanctioned source of the bytes', () => {
+    // Act
+    const error = PayloadNotATransactionError.wrongTag(5);
+
+    // Assert
+    expect(error.message).toEqual(
+      `Refusing to prove a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
+        'ledger transaction. Pass the bytes of a transaction produced by a sanctioned composition function; a contract ' +
+        'state, a Zswap offer or a proof preimage is not a transaction and cannot be proved.'
+    );
+  });
+
   it('reads the category of a dynamically coded error from the table', () => {
     // Act
     const error = new UnknownProtocolVersionError(99, 'read', 'unknown');
@@ -159,7 +178,8 @@ describe('protocol error classes', () => {
 
   it.each([
     [new ContractExecutionError('circuit failed', { cause: new Error('assert') }), 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED', 'REJECTED'],
-    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY']
+    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY'],
+    [new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member'), 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH', 'USAGE']
   ] as const)('new protocol class %# carries code and category', (error, code, category) => {
     expect([error.code, error.category, error.message.length > 0]).toEqual([code, category, true]);
   });

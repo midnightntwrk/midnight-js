@@ -16,6 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
+import { HEALTH_CHECK_TIMEOUT_MS } from '../configuration';
 import { buildUrlWithPath, redactUrl } from '../utils';
 
 export class IndexerClient {
@@ -39,7 +40,7 @@ export class IndexerClient {
    */
   async health() {
     const url = buildUrlWithPath(this.indexerUrl, '/ready');
-    const response = await axios.get(url, { timeout: 1000 });
+    const response = await axios.get(url, { timeout: HEALTH_CHECK_TIMEOUT_MS });
     this.logger.info(`Connected to indexer ${redactUrl(url)}: ${JSON.stringify(response.data)}`);
     return response;
   }

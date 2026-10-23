@@ -17,7 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as codec from '../codec';
-import { EraUnresolvableError } from '../errors';
+import { UnknownRecordEraError } from '../errors';
 import type { RegularTransaction } from '../gen/schema-types';
 import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 
@@ -29,19 +29,19 @@ import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 // Declared via `vi.hoisted` because `vi.mock`'s factory is hoisted above the
 // imports, so a plain `const` here would be in the temporal dead zone when the
 // factory runs.
-const { decodeVersionedTransaction } = vi.hoisted(() => ({
-  decodeVersionedTransaction: vi.fn(() => Promise.resolve({ version: 'v9', tx: 'decoded-tx' }))
+const { decodeRecordTransaction } = vi.hoisted(() => ({
+  decodeRecordTransaction: vi.fn(() => Promise.resolve({ version: 'v9', tx: 'decoded-tx' }))
 }));
 
 vi.mock('../codec', async (importOriginal) => ({
   ...(await importOriginal<typeof codec>()),
-  decodeVersionedTransaction
+  decodeRecordTransaction
 }));
 
 // Node major 2 -> the v9 ledger era; node major 1 -> v8; 22_xxx is a 0.x
 // network, which this framework deliberately does not map.
-const V9_PROTOCOL_VERSION = 2_000_000;
-const V8_PROTOCOL_VERSION = 1_000_000;
+const LEDGER9_PROTOCOL_VERSION = 2_000_000;
+const LEDGER8_PROTOCOL_VERSION = 1_000_000;
 const UNMAPPED_PROTOCOL_VERSION = 22_001;
 
 const CONTRACT_ADDRESS = '0200deadbeef' as ContractAddress;
@@ -67,7 +67,7 @@ const transactionAt = (protocolVersion: number): RegularTransaction & { hash: st
   }) as unknown as RegularTransaction & { hash: string; identifiers: string[] };
 
 beforeEach(() => {
-  decodeVersionedTransaction.mockClear();
+  decodeRecordTransaction.mockClear();
 });
 
 // `resolveReadEra` is tested in isolation in era.test.ts, and the decoders in
@@ -78,38 +78,38 @@ beforeEach(() => {
 // derived discriminant exists to prevent.
 describe('finalized-record era wiring', () => {
   it.each([
-    ['v9', V9_PROTOCOL_VERSION],
-    ['v8', V8_PROTOCOL_VERSION]
+    ['v9', LEDGER9_PROTOCOL_VERSION],
+    ['v8', LEDGER8_PROTOCOL_VERSION]
   ])('dispatches the decode on the %s era the record itself reports', async (era, protocolVersion) => {
     await toFinalizedTxData(TX_ID, transactionAt(protocolVersion));
 
-    expect(decodeVersionedTransaction).toHaveBeenCalledTimes(1);
-    expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, era, {
-      seam: 'watchForTxData',
+    expect(decodeRecordTransaction).toHaveBeenCalledTimes(1);
+    expect(decodeRecordTransaction).toHaveBeenCalledWith(RAW, era, {
+      method: 'watchForTxData',
       protocolVersion,
       recordRef: `txId ${TX_ID}`
     });
   });
 
-  it('names the deploy seam and the contract address on the deploy path', async () => {
-    await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(V8_PROTOCOL_VERSION));
+  it('names the deploy method and the contract address on the deploy path', async () => {
+    await toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(LEDGER8_PROTOCOL_VERSION));
 
-    expect(decodeVersionedTransaction).toHaveBeenCalledWith(RAW, 'v8', {
-      seam: 'watchForDeployTxData',
-      protocolVersion: V8_PROTOCOL_VERSION,
+    expect(decodeRecordTransaction).toHaveBeenCalledWith(RAW, 'v8', {
+      method: 'watchForDeployTxData',
+      protocolVersion: LEDGER8_PROTOCOL_VERSION,
       recordRef: `contractAddress ${CONTRACT_ADDRESS}`
     });
   });
 
   it('carries the decoded transaction and its era straight onto the record', async () => {
-    const record = await toFinalizedTxData(TX_ID, transactionAt(V9_PROTOCOL_VERSION));
+    const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER9_PROTOCOL_VERSION));
 
     // `tx` is what the decoder returned, unwrapped and untouched — the stub's
     // sentinel is how that shows. Without this the test name promised more
     // than it checked, and a record-builder that dropped `tx` would pass.
     expect(record.tx).toBe('decoded-tx');
     expect(record.version).toBe('v9');
-    expect(record.protocolVersion).toBe(V9_PROTOCOL_VERSION);
+    expect(record.protocolVersion).toBe(LEDGER9_PROTOCOL_VERSION);
   });
 
   // The guarantee the whole design rests on: which runtime reads the bytes is
@@ -118,9 +118,9 @@ describe('finalized-record era wiring', () => {
   it.each([
     ['watchForTxData', () => toFinalizedTxData(TX_ID, transactionAt(UNMAPPED_PROTOCOL_VERSION))],
     ['watchForDeployTxData', () => toFinalizedDeployTxData(CONTRACT_ADDRESS, transactionAt(UNMAPPED_PROTOCOL_VERSION))]
-  ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_seam, read) => {
-    await expect(read()).rejects.toThrow(EraUnresolvableError);
+  ])('refuses an unmapped protocolVersion on %s before any decoder runs', async (_method, read) => {
+    await expect(read()).rejects.toThrow(UnknownRecordEraError);
 
-    expect(decodeVersionedTransaction).not.toHaveBeenCalled();
+    expect(decodeRecordTransaction).not.toHaveBeenCalled();
   });
 });

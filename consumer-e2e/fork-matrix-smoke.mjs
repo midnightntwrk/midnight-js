@@ -95,8 +95,8 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
   new Promise((resolve, reject) => {
     const config = {
       environment,
-      proofServerV8: environment.preForkProofServer,
-      proofServerV9: environment.postForkProofServer,
+      ledger8ProofServer: environment.preForkProofServer,
+      ledger9ProofServer: environment.postForkProofServer,
       walletSeed: WALLET_SEED,
       retainedZkConfigPath: contractDir,
       // The ZK artifacts each matrix contract proves against. Handed over as
@@ -168,7 +168,7 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
  * An error with its cause chain, which is the only form worth printing here.
  *
  * A `execFileSync` failure says `Command failed with exit code 1` and puts the
- * command on `cause`; a seam failure says a provider refused and puts the
+ * command on `cause`; a provider failure says a provider refused and puts the
  * provider's own error there. Printing `error.message` alone loses the half that
  * names what went wrong.
  *

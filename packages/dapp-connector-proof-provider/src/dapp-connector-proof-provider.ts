@@ -13,16 +13,49 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveV8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
+  type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
+import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
+
+type Assert<T extends true> = T;
+type Identical<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
+
+// The typecheck fails here once the wallet proving surface changes shape; forward a timeout then
+// and drop refuseTimeout. See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/97
+type _WalletProvingProviderUnchanged = Assert<
+  Identical<
+    ProvingProvider,
+    {
+      check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]>;
+      prove(serializedPreimage: Uint8Array, keyLocation: string, overwriteBindingInput?: bigint): Promise<Uint8Array>;
+    }
+  >
+>;
+type _GetProvingProviderUnchanged = Assert<
+  Identical<
+    DAppConnectorProvingAPI,
+    { getProvingProvider(keyMaterialProvider: KeyMaterialProvider): Promise<ProvingProvider> }
+  >
+>;
+
+const refuseTimeout = (config: ProveTxConfig | undefined): void => {
+  if (config?.timeout !== undefined) {
+    throw new InvalidArgumentError(
+      'proveTxConfig.timeout is not supported by dappConnectorProofProvider: the wallet proving API takes no timeout. ' +
+        'See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/97'
+    );
+  }
+};
 
 /**
  * Creates a {@link ProofProvider} that delegates proving to a DApp Connector wallet.
@@ -47,6 +80,8 @@ import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './da
  * only correct pairing, so an override is not offered at all rather than offered and quietly
  * ignored.
  * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
+ * @throws InvalidArgumentError raised by `proveTx`, before any proving starts, if
+ * `proveTxConfig.timeout` is set (including `0`): the wallet proving API takes no timeout.
  */
 export const dappConnectorProofProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
@@ -55,9 +90,17 @@ export const dappConnectorProofProvider = async <K extends string>(
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
   return createProofProviderFromHandlers({
-    currentEra: (tx) => tx.prove(provingProvider, costModel),
-    // Bytes in, bytes out: a retained-era transaction cannot cross this seam as a live object. See
-    // the `costModel` parameter above for why this arm does not take one.
-    retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+    currentEra: (tx, config) => {
+      refuseTimeout(config);
+      return tx.prove(provingProvider, costModel);
+    },
+    // Bytes in, bytes out: a retained-era transaction cannot reach this method as a live object. See
+    // the `costModel` parameter above for why this handler does not take one.
+    retainedEras: {
+      v8: (txBytes, config) => {
+        refuseTimeout(config);
+        return proveLedger8Transaction(txBytes, provingProvider);
+      }
+    }
   });
 };

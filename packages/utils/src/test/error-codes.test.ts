@@ -59,6 +59,19 @@ describe('MIDNIGHT_JS_ERROR_CODES', () => {
   it('gives every registered code the framework prefix the foreign guard screens on', () => {
     expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => !code.startsWith('MIDNIGHT_JS_'))).toEqual([]);
   });
+
+  it('names eras LEDGER8 / LEDGER9 and never says SEAM or ARM', () => {
+    expect(MIDNIGHT_JS_ERROR_CODES.filter((code) => /SEAM|(^|_)ARMS?(_|$)|V[89]/.test(code))).toEqual([]);
+  });
+
+  it('keys every code by its own name, so the key a consumer types says what the code says', () => {
+    const groups = [COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES, PROVIDER_ERROR_CODES, CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES];
+    const mismatched = groups.flatMap((group) =>
+      Object.entries(group).filter(([key, code]) => !code.endsWith(`_${key}`))
+    );
+
+    expect(mismatched).toEqual([]);
+  });
 });
 
 describe('every error-code group', () => {
@@ -91,22 +104,22 @@ describe('every error-code group', () => {
 
 describe('hasErrorCode', () => {
   it('returns true and narrows when the error carries the exact requested code', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED });
 
-    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
-    if (hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)) {
-      expect(error.code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    if (hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)) {
+      expect(error.code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
     }
   });
 
   it('returns false when the code does not match the requested one', () => {
     const error: unknown = Object.assign(new Error('boom'), { code: 'SOME_OTHER_CODE' });
 
-    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
   });
 
   it('rejects a typo of a real code at compile time', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED });
 
     // The `@ts-expect-error` IS the assertion: it fails the build if the typo
     // ever starts compiling. A runtime `toBe(false)` cannot catch this, because
@@ -117,7 +130,7 @@ describe('hasErrorCode', () => {
     // Covering the assertion too would let this test stay green through a change
     // that removed the with-code overload outright.
     // @ts-expect-error -- not a member of MidnightJsErrorCode
-    const matched: boolean = hasErrorCode(error, 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTD');
+    const matched: boolean = hasErrorCode(error, 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTD');
 
     expect(matched).toBe(false);
   });
@@ -129,7 +142,7 @@ describe('hasErrorCode', () => {
   it('returns false for non-Error values', () => {
     expect(hasErrorCode('not an error')).toBe(false);
     expect(hasErrorCode(undefined)).toBe(false);
-    expect(hasErrorCode({ code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED })).toBe(false);
+    expect(hasErrorCode({ code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED })).toBe(false);
   });
 
   it('returns false when the code property is not a string', () => {
@@ -165,7 +178,7 @@ describe('hasErrorCode', () => {
     it('returns false for a real error instance matched against a different registered code', () => {
       const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
 
-      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(false);
+      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED)).toBe(false);
     });
   });
 });
@@ -222,7 +235,7 @@ describe('hasForeignErrorCode', () => {
     // in `hasErrorCode` undone by its own escape hatch. The directive covers
     // the call alone, and it fails the build if the call ever compiles.
     // @ts-expect-error -- a member of MidnightJsErrorCode belongs in hasErrorCode
-    const call = () => hasForeignErrorCode(econnrefused(), PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
+    const call = () => hasForeignErrorCode(econnrefused(), PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
 
     // The runtime half. A JavaScript caller reaches this guard with no compiler
     // in the way at all, so the constraint alone would leave them unserved.
@@ -268,6 +281,7 @@ describe('error categories', () => {
   it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
     expect(codesIn('UNCERTAIN')).toEqual([
       'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
+      'MIDNIGHT_JS_C_LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED',
       'MIDNIGHT_JS_C_STALE_HEAD',
       'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
     ]);

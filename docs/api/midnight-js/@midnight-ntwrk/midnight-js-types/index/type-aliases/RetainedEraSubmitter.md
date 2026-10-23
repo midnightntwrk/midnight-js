@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.3**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@
 Submits a RETAINED-era transaction, which crosses this seam as serialized
 bytes.
 
-Unlike the other two seams this arm answers untagged, because a transaction
+Unlike the other two seams this one answers untagged, because a transaction
 identifier is era-independent — the eras differ only in what they are handed.
 
 ## Parameters
