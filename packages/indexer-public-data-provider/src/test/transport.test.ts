@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import * as http from 'node:http';
+import type { AddressInfo } from 'node:net';
+
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
@@ -78,6 +81,73 @@ describe('createApolloClient — handle shape', () => {
     expect(passed).not.toBe(CustomWS);
     // Wrapper is a subclass of the user-supplied class:
     expect(Object.getPrototypeOf(passed)).toBe(CustomWS);
+  });
+
+  test('creates client with custom fetch function if provided and routes queries through it', async () => {
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const { HEAD_PROTOCOL_VERSION_QUERY } = await import('../query-definitions');
+    const customFetch = vi.fn<typeof fetch>(async () =>
+      new Response(JSON.stringify({ data: { block: { protocolVersion: '1.0' } } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
+    const validated = validateConfig({
+      queryURL: 'http://localhost:4000/graphql',
+      subscriptionURL: 'ws://localhost:4000/graphql/ws',
+      fetch: customFetch
+    });
+
+    const handle = createApolloClient(validated);
+    try {
+      expect(handle.client).toBeDefined();
+      await handle.client.query({ query: HEAD_PROTOCOL_VERSION_QUERY });
+      expect(customFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      await handle.dispose();
+    }
+  });
+
+  test('negotiates gzip compression via Accept-Encoding header by default', async () => {
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const { HEAD_PROTOCOL_VERSION_QUERY } = await import('../query-definitions');
+
+    let receivedAcceptEncoding: string | string[] | undefined;
+    const server = http.createServer((req, res) => {
+      receivedAcceptEncoding = req.headers['accept-encoding'];
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ data: { block: { protocolVersion: '1.0' } } }));
+    });
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, '127.0.0.1', () => {
+        resolve();
+      });
+    });
+    const address = server.address() as AddressInfo;
+    const queryURL = `http://127.0.0.1:${address.port}/graphql`;
+
+    const validated = validateConfig({
+      queryURL,
+      subscriptionURL: 'ws://127.0.0.1:4000/graphql/ws'
+    });
+    const handle = createApolloClient(validated);
+
+    try {
+      await handle.client.query({ query: HEAD_PROTOCOL_VERSION_QUERY });
+      expect(receivedAcceptEncoding).toBeDefined();
+      const encodingStr = typeof receivedAcceptEncoding === 'string' ? receivedAcceptEncoding : '';
+      expect(encodingStr).toContain('gzip');
+    } finally {
+      await handle.dispose();
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          resolve();
+        });
+      });
+    }
   });
 });
 
