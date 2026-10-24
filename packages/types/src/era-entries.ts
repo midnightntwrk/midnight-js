@@ -21,7 +21,12 @@ import {
   type RetainedLedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { Ledger8PayloadUnsupportedError,type TransactionMethod, UntaggedPayloadError } from './errors';
+import {
+  Ledger8PayloadUnsupportedError,
+  RetainedPayloadUnsupportedError,
+  type TransactionMethod,
+  UntaggedPayloadError
+} from './errors';
 import type { VersionedTransaction } from './versioned';
 
 /**
@@ -108,32 +113,30 @@ export const narrowToEra = <T, H>(
   if (typeof payload !== 'object' || payload === null) {
     throw new UntaggedPayloadError(method, payload);
   }
-  switch (payload.version) {
-    case CURRENT_LEDGER_VERSION:
-      return { era: CURRENT_LEDGER_VERSION, tx: payload.tx };
-    case 'v8': {
-      // Looked up through the payload's own tag rather than a second `'v8'`
-      // literal, so the era that ran and the era that was requested cannot
-      // disagree.
-      const handler = retainedEras?.[payload.version];
-      if (handler === undefined) {
-        // The same error a v9-only provider raises, for the same reason: this
-        // method does not serve the era that arrived. `txBytes` is required by
-        // the type, so the instance check is for the JavaScript caller the
-        // object guard above exists for.
-        throw new Ledger8PayloadUnsupportedError(
-          method,
-          payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
-        );
-      }
-      return { era: payload.version, handler, txBytes: payload.txBytes };
-    }
-    default: {
-      // Keeps the switch exhaustive: if an era is added to `VersionedTransaction`
-      // without a case here, `payload` stops being `never` and this assignment
-      // fails to compile.
-      const unhandled: never = payload;
-      throw new UntaggedPayloadError(method, unhandled);
-    }
+  if (payload.version === CURRENT_LEDGER_VERSION) {
+    return { era: CURRENT_LEDGER_VERSION, tx: payload.tx };
   }
+
+  const isRetainedPayload = (
+    p: VersionedTransaction<T>
+  ): p is Extract<VersionedTransaction<T>, { version: RetainedLedgerVersion }> =>
+    (RETAINED_LEDGER_VERSIONS as readonly string[]).includes(p.version);
+
+  if (isRetainedPayload(payload)) {
+    const era = payload.version;
+    const handler = retainedEras?.[era];
+    if (handler === undefined) {
+      throw new RetainedPayloadUnsupportedError(
+        method,
+        era,
+        erasServedBy(retainedEras),
+        payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
+      );
+    }
+    return { era, handler, txBytes: payload.txBytes };
+  }
+
+  const unhandled: never = payload;
+  throw new UntaggedPayloadError(method, unhandled);
 };
+
