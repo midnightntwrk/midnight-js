@@ -24,7 +24,13 @@ import type {
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, type TransactionMethod, UntaggedPayloadError } from '../errors';
+import {
+  Ledger8PayloadUnsupportedError,
+  PROVIDER_ERROR_CODES,
+  RetainedPayloadUnsupportedError,
+  type TransactionMethod,
+  UntaggedPayloadError
+} from '../errors';
 import {
   createMidnightProviderFromHandlers,
   type MidnightProviderHandlers
@@ -146,9 +152,13 @@ describe('createProofProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(RetainedPayloadUnsupportedError);
     expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
+    expect((rejection as RetainedPayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED);
+    expect((rejection as RetainedPayloadUnsupportedError).method).toBe('proveTx');
+    expect((rejection as RetainedPayloadUnsupportedError).era).toBe('v8');
+    expect((rejection as RetainedPayloadUnsupportedError).servedEras).toEqual(['v9']);
+    expect((rejection as RetainedPayloadUnsupportedError).message).toContain('v8');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -239,9 +249,13 @@ describe('createWalletProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(RetainedPayloadUnsupportedError);
     expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('balanceTx');
+    expect((rejection as RetainedPayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED);
+    expect((rejection as RetainedPayloadUnsupportedError).method).toBe('balanceTx');
+    expect((rejection as RetainedPayloadUnsupportedError).era).toBe('v8');
+    expect((rejection as RetainedPayloadUnsupportedError).servedEras).toEqual(['v9']);
+    expect((rejection as RetainedPayloadUnsupportedError).message).toContain('v8');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -374,9 +388,13 @@ describe('createMidnightProviderFromHandlers', () => {
       (error: unknown) => error
     );
 
+    expect(rejection).toBeInstanceOf(RetainedPayloadUnsupportedError);
     expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('submitTx');
+    expect((rejection as RetainedPayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED);
+    expect((rejection as RetainedPayloadUnsupportedError).method).toBe('submitTx');
+    expect((rejection as RetainedPayloadUnsupportedError).era).toBe('v8');
+    expect((rejection as RetainedPayloadUnsupportedError).servedEras).toEqual(['v9']);
+    expect((rejection as RetainedPayloadUnsupportedError).message).toContain('v8');
     expect(currentEra).not.toHaveBeenCalled();
   });
 
@@ -468,7 +486,7 @@ describe('era entry validation at construction', () => {
 
       expect([...provider.supportedEras].sort()).toEqual(['v9']);
       await expect(provider.sendLedger8()).rejects.toThrow(
-        expect.objectContaining({ name: 'Ledger8PayloadUnsupportedError', code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED })
+        expect.objectContaining({ name: 'RetainedPayloadUnsupportedError', code: PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED })
       );
     });
 
@@ -654,6 +672,45 @@ describe('era entry validation at construction', () => {
       }
 
       expect(declared.map((eras) => [...eras])).toEqual([['v9'], ['v9']]);
+    });
+  });
+
+  describe('RetainedPayloadUnsupportedError and Ledger8PayloadUnsupportedError compatibility', () => {
+    it('populates RetainedPayloadUnsupportedError fields correctly', () => {
+      const err = new RetainedPayloadUnsupportedError('balanceTx', 'v8', ['v9'], 128);
+
+      expect(err.name).toBe('RetainedPayloadUnsupportedError');
+      expect(err.code).toBe(PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED);
+      expect(err.method).toBe('balanceTx');
+      expect(err.era).toBe('v8');
+      expect(err.requestedEra).toBe('v8');
+      expect(err.servedEras).toEqual(['v9']);
+      expect(err.declared).toEqual(['v9']);
+      expect(err.byteLength).toBe(128);
+      expect(err.message).toContain('balanceTx received a v8-era transaction payload');
+      expect(err.message).toContain('This provider serves: v9');
+    });
+
+    it('treats v8 RetainedPayloadUnsupportedError as an instance of Ledger8PayloadUnsupportedError via Symbol.hasInstance', () => {
+      const v8Err = new RetainedPayloadUnsupportedError('proveTx', 'v8', ['v9']);
+      const otherErr = new RetainedPayloadUnsupportedError('proveTx', 'v10', ['v9']);
+
+      expect(v8Err).toBeInstanceOf(RetainedPayloadUnsupportedError);
+      expect(v8Err).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+
+      expect(otherErr).toBeInstanceOf(RetainedPayloadUnsupportedError);
+      expect(otherErr).not.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    });
+
+    it('creates Ledger8PayloadUnsupportedError as an instance of RetainedPayloadUnsupportedError', () => {
+      const legacyErr = new Ledger8PayloadUnsupportedError('submitTx', 64);
+
+      expect(legacyErr).toBeInstanceOf(RetainedPayloadUnsupportedError);
+      expect(legacyErr).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+      expect(legacyErr.name).toBe('Ledger8PayloadUnsupportedError');
+      expect(legacyErr.era).toBe('v8');
+      expect(legacyErr.servedEras).toEqual(['v9']);
+      expect(legacyErr.byteLength).toBe(64);
     });
   });
 });

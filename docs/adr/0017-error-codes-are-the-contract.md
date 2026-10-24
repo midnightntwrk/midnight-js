@@ -73,67 +73,67 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 
 **New codes** (`*` = new class):
 
-| Group | Code (suffix) | Category | Class |
-|---|---|---|---|
-| G | `INVALID_ARGUMENT` | USAGE | `InvalidArgumentError`* |
-| G | `CONFIGURATION_MISSING` | USAGE | `ConfigurationError`* |
-| G | `ENVIRONMENT_UNSUPPORTED` | ENVIRONMENT | `EnvironmentUnsupportedError`* |
-| G | `INVARIANT_VIOLATED` | INTERNAL | `InvariantViolationError`* |
-| P | `CONTRACT_EXECUTION_FAILED` | REJECTED | `ContractExecutionError`* |
-| P | `MAINTENANCE_AUTHORITY_MISMATCH` | USAGE | `MaintenanceAuthorityMismatchError`* |
-| PR | `INVALID_PROTOCOL_SCHEME` | USAGE | `InvalidProtocolSchemeError` |
-| PR | `ARTIFACT_RUNTIME_VERSION_UNAVAILABLE` | ENVIRONMENT | `ArtifactRuntimeVersionUnavailableError` |
-| PR | `ZK_ARTIFACT_NOT_FOUND` | ENVIRONMENT | `ZKArtifactNotFoundError` |
-| PR | `ZK_ARTIFACT_FETCH_FAILED` | TRANSIENT | `ZkArtifactFetchError`* (network failure, HTTP 408, 429 or ≥ 500) |
-| PR | `ZK_ARTIFACT_NOT_SERVED` | ENVIRONMENT | `ZkArtifactFetchError`* (other HTTP < 500 or HTML fallback) |
-| PR | `PROOF_SERVER_UNAVAILABLE` | TRANSIENT | `ProofServerError`* (network failure, HTTP 408, 429 or ≥ 500) |
-| PR | `PROOF_SERVER_REFUSED` | ENVIRONMENT | `ProofServerError`* (other HTTP < 500) |
-| PR | `PRIVATE_STATE_EXPORT_FAILED` | USAGE | `PrivateStateExportError` |
-| PR | `SIGNING_KEY_EXPORT_FAILED` | USAGE | `SigningKeyExportError` |
-| PR | `PRIVATE_STATE_IMPORT_FAILED` | INTEGRITY | `PrivateStateImportError` |
-| PR | `EXPORT_DECRYPTION_FAILED` | INTEGRITY | `ExportDecryptionError` |
-| PR | `INVALID_EXPORT_FORMAT` | INTEGRITY | `InvalidExportFormatError` |
-| PR | `IMPORT_CONFLICT` | USAGE | `ImportConflictError` |
-| PR | `PRIVATE_STATE_DECRYPTION_FAILED` | INTEGRITY | `PrivateStateDecryptionError`* |
-| PR | `PRIVATE_STATE_STORAGE_FAILED` | ENVIRONMENT | `PrivateStateStorageError`* |
-| PR | `PRIVATE_STATE_LIMIT_EXCEEDED` | USAGE | `PrivateStateLimitExceededError`* |
-| PR | `INDEXER_GRAPHQL_FAILED` | ENVIRONMENT | `IndexerFormattedError` |
-| PR | `INDEXER_QUERY_FAILED` | TRANSIENT | `IndexerQueryError` |
-| PR | `INDEXER_DATA_INVALID` | INTEGRITY | `IndexerDataError` |
-| PR | `INDEXER_SUBSCRIPTION_DATA_INVALID` | INTEGRITY | `IndexerSubscriptionDataError` |
-| PR | `INDEXER_CONFIG_INVALID` | USAGE | `IndexerProviderConfigError` |
-| PR | `INDEXER_INVARIANT_VIOLATED` | INTERNAL | `IndexerInvariantError` |
-| PR | `INDEXER_PAYLOAD_TOO_LARGE` | INTEGRITY | `IndexerPayloadTooLargeError`* |
-| PR | `UNUSABLE_ERA_ENTRY` | USAGE | `UnusableEraEntryError`* |
-| PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
-| C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
-| C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |
-| C | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteDeployContractPrivateStateConfig` |
-| C | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteFindContractPrivateStateConfig` |
-| C | `SCOPED_TRANSACTION_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
-| C | `LEDGER8_DEPLOY_UNCONFIRMED` | UNCERTAIN | `Ledger8DeployUnconfirmedError` |
-| C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | INTEGRITY | `Ledger8AmbiguousEntryPointError` |
-| C | `LEDGER8_RECIPIENT_UNMAPPABLE` | USAGE | `Ledger8RecipientUnmappableError` |
-| C | `LEDGER8_DEPLOY_NOT_STORED` | ENVIRONMENT | `Ledger8DeployNotStoredError` |
-| C | `LEDGER8_SIGNING_KEY_UNUSABLE` | USAGE | `Ledger8SigningKeyUnusableError` |
-| C | `LEDGER8_MAINTENANCE_ON_LEDGER9` | USAGE | `Ledger8MaintenanceOnLedger9Error`* |
-| C | `LEDGER8_SIGNING_KEY_UNAVAILABLE` | USAGE | `Ledger8SigningKeyUnavailableError`* |
-| C | `LEDGER8_SIGNING_KEY_NOT_STORED` | ENVIRONMENT | `Ledger8SigningKeyNotStoredError`* |
-| C | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` | UNCERTAIN | `Ledger8ReplaceAuthorityUnconfirmedError`* |
-| C | `HEAD_READ_FAILED` | TRANSIENT | `HeadReadFailedError`* |
-| C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError`* |
-| C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError`* |
-| C | `PRIVATE_STATE_NOT_FOUND` | USAGE | `PrivateStateNotFoundError`* |
-| U | `ZK_ARTIFACT_INTEGRITY_FAILED` | INTEGRITY | `ZkArtifactIntegrityError` |
-| U | `ZK_ARTIFACT_CONTRACT_INFO_INVALID` | INTEGRITY | `ZkArtifactContractInfoError` |
-| U | `PASSWORD_INVALID` | USAGE | `PasswordValidationError` |
-| U | `DESERIALIZATION_FAILED` | INTEGRITY | `DeserializationError` |
+| Group | Code (suffix)                             | Category    | Class                                                             |
+| ----- | ----------------------------------------- | ----------- | ----------------------------------------------------------------- |
+| G     | `INVALID_ARGUMENT`                        | USAGE       | `InvalidArgumentError`*                                           |
+| G     | `CONFIGURATION_MISSING`                   | USAGE       | `ConfigurationError`*                                             |
+| G     | `ENVIRONMENT_UNSUPPORTED`                 | ENVIRONMENT | `EnvironmentUnsupportedError`*                                    |
+| G     | `INVARIANT_VIOLATED`                      | INTERNAL    | `InvariantViolationError`*                                        |
+| P     | `CONTRACT_EXECUTION_FAILED`               | REJECTED    | `ContractExecutionError`*                                         |
+| P     | `MAINTENANCE_AUTHORITY_MISMATCH`          | USAGE       | `MaintenanceAuthorityMismatchError`*                              |
+| PR    | `INVALID_PROTOCOL_SCHEME`                 | USAGE       | `InvalidProtocolSchemeError`                                      |
+| PR    | `ARTIFACT_RUNTIME_VERSION_UNAVAILABLE`    | ENVIRONMENT | `ArtifactRuntimeVersionUnavailableError`                          |
+| PR    | `ZK_ARTIFACT_NOT_FOUND`                   | ENVIRONMENT | `ZKArtifactNotFoundError`                                         |
+| PR    | `ZK_ARTIFACT_FETCH_FAILED`                | TRANSIENT   | `ZkArtifactFetchError`* (network failure, HTTP 408, 429 or ≥ 500) |
+| PR    | `ZK_ARTIFACT_NOT_SERVED`                  | ENVIRONMENT | `ZkArtifactFetchError`* (other HTTP < 500 or HTML fallback)       |
+| PR    | `PROOF_SERVER_UNAVAILABLE`                | TRANSIENT   | `ProofServerError`* (network failure, HTTP 408, 429 or ≥ 500)     |
+| PR    | `PROOF_SERVER_REFUSED`                    | ENVIRONMENT | `ProofServerError`* (other HTTP < 500)                            |
+| PR    | `PRIVATE_STATE_EXPORT_FAILED`             | USAGE       | `PrivateStateExportError`                                         |
+| PR    | `SIGNING_KEY_EXPORT_FAILED`               | USAGE       | `SigningKeyExportError`                                           |
+| PR    | `PRIVATE_STATE_IMPORT_FAILED`             | INTEGRITY   | `PrivateStateImportError`                                         |
+| PR    | `EXPORT_DECRYPTION_FAILED`                | INTEGRITY   | `ExportDecryptionError`                                           |
+| PR    | `INVALID_EXPORT_FORMAT`                   | INTEGRITY   | `InvalidExportFormatError`                                        |
+| PR    | `IMPORT_CONFLICT`                         | USAGE       | `ImportConflictError`                                             |
+| PR    | `PRIVATE_STATE_DECRYPTION_FAILED`         | INTEGRITY   | `PrivateStateDecryptionError`*                                    |
+| PR    | `PRIVATE_STATE_STORAGE_FAILED`            | ENVIRONMENT | `PrivateStateStorageError`*                                       |
+| PR    | `PRIVATE_STATE_LIMIT_EXCEEDED`            | USAGE       | `PrivateStateLimitExceededError`*                                 |
+| PR    | `INDEXER_GRAPHQL_FAILED`                  | ENVIRONMENT | `IndexerFormattedError`                                           |
+| PR    | `INDEXER_QUERY_FAILED`                    | TRANSIENT   | `IndexerQueryError`                                               |
+| PR    | `INDEXER_DATA_INVALID`                    | INTEGRITY   | `IndexerDataError`                                                |
+| PR    | `INDEXER_SUBSCRIPTION_DATA_INVALID`       | INTEGRITY   | `IndexerSubscriptionDataError`                                    |
+| PR    | `INDEXER_CONFIG_INVALID`                  | USAGE       | `IndexerProviderConfigError`                                      |
+| PR    | `INDEXER_INVARIANT_VIOLATED`              | INTERNAL    | `IndexerInvariantError`                                           |
+| PR    | `INDEXER_PAYLOAD_TOO_LARGE`               | INTEGRITY   | `IndexerPayloadTooLargeError`*                                    |
+| PR    | `UNUSABLE_ERA_ENTRY`                      | USAGE       | `UnusableEraEntryError`*                                          |
+| PR    | `STORED_SIGNING_KEY_INVALID`              | INTEGRITY   | `StoredSigningKeyFormatError`                                     |
+| C     | `CONTRACT_TYPE_MISMATCH`                  | USAGE       | `ContractTypeError`                                               |
+| C     | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE       | `IncompleteCallTxPrivateStateConfig`                              |
+| C     | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG`  | USAGE       | `IncompleteDeployContractPrivateStateConfig`                      |
+| C     | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG`    | USAGE       | `IncompleteFindContractPrivateStateConfig`                        |
+| C     | `SCOPED_TRANSACTION_IDENTITY_MISMATCH`    | USAGE       | `ScopedTransactionIdentityMismatchError`                          |
+| C     | `LEDGER8_DEPLOY_UNCONFIRMED`              | UNCERTAIN   | `Ledger8DeployUnconfirmedError`                                   |
+| C     | `LEDGER8_AMBIGUOUS_ENTRY_POINT`           | INTEGRITY   | `Ledger8AmbiguousEntryPointError`                                 |
+| C     | `LEDGER8_RECIPIENT_UNMAPPABLE`            | USAGE       | `Ledger8RecipientUnmappableError`                                 |
+| C     | `LEDGER8_DEPLOY_NOT_STORED`               | ENVIRONMENT | `Ledger8DeployNotStoredError`                                     |
+| C     | `LEDGER8_SIGNING_KEY_UNUSABLE`            | USAGE       | `Ledger8SigningKeyUnusableError`                                  |
+| C     | `LEDGER8_MAINTENANCE_ON_LEDGER9`          | USAGE       | `Ledger8MaintenanceOnLedger9Error`*                               |
+| C     | `LEDGER8_SIGNING_KEY_UNAVAILABLE`         | USAGE       | `Ledger8SigningKeyUnavailableError`*                              |
+| C     | `LEDGER8_SIGNING_KEY_NOT_STORED`          | ENVIRONMENT | `Ledger8SigningKeyNotStoredError`*                                |
+| C     | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED`   | UNCERTAIN   | `Ledger8ReplaceAuthorityUnconfirmedError`*                        |
+| C     | `HEAD_READ_FAILED`                        | TRANSIENT   | `HeadReadFailedError`*                                            |
+| C     | `ZSWAP_OUTPUT_UNRESOLVED`                 | USAGE       | `ZswapOutputResolutionError`*                                     |
+| C     | `CONTRACT_NOT_FOUND`                      | USAGE       | `ContractNotFoundError`*                                          |
+| C     | `PRIVATE_STATE_NOT_FOUND`                 | USAGE       | `PrivateStateNotFoundError`*                                      |
+| U     | `ZK_ARTIFACT_INTEGRITY_FAILED`            | INTEGRITY   | `ZkArtifactIntegrityError`                                        |
+| U     | `ZK_ARTIFACT_CONTRACT_INFO_INVALID`       | INTEGRITY   | `ZkArtifactContractInfoError`                                     |
+| U     | `PASSWORD_INVALID`                        | USAGE       | `PasswordValidationError`                                         |
+| U     | `DESERIALIZATION_FAILED`                  | INTEGRITY   | `DeserializationError`                                            |
 
 **Existing codes, category only:**
 
-| Group | Code (suffix) → Category |
-|---|---|
-| P | `UNKNOWN_PROTOCOL_VERSION_READ`, `UNKNOWN_PROTOCOL_VERSION_CONSTRUCT`, `LEDGER8_INSTANCE_MISMATCH`, `LEDGER8_RUNTIME_MISSING`, `UNKNOWN_LEDGER_VERSION`, `LEDGER8_RUNTIME_INVALID` → ENVIRONMENT · `DOWN_CONVERT_FAILED`, `STATE_DECODE_FAILED`, `STATE_INCONSISTENT` → INTEGRITY · `COMPOSE_FAILED`, `COMPOSE_OPTION_INVALID`, `PAYLOAD_NOT_A_TRANSACTION` → USAGE · `MERKLE_NOT_REHASHED`, `UNKNOWN_LEDGER8_AXIS` → INTERNAL |
-| PR | `LEDGER8_PAYLOAD_UNSUPPORTED`, `UNTAGGED_PAYLOAD`, `PROVIDER_ERA_UNSUPPORTED`, `PRIVATE_STATE_NOT_SERIALIZABLE` → USAGE · `DECODER_ERA_UNSUPPORTED`, `UNKNOWN_RECORD_ERA` → ENVIRONMENT |
-| C | `TX_FAILED` → REJECTED · `HEAD_STATE_ERA_MISMATCH` → TRANSIENT · `STALE_HEAD`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `PROVIDER_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_ARTIFACT_MISMATCH`, `UNKNOWN_RESULT_ERA`, `LEDGER8_DEPLOY_ON_LEDGER9`, `LEDGER8_ARTIFACT_ON_LEDGER9_STATE`, `LEDGER8_CONTRACT_STATE_UNSUPPORTED`, `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `SCOPED_TRANSACTION_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
-| U | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL · `LEDGER8_VALUE_UNSUPPORTED` → USAGE · `UNRECOGNISED_ERA_TAG` → USAGE |
+| Group | Code (suffix) → Category                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P     | `UNKNOWN_PROTOCOL_VERSION_READ`, `UNKNOWN_PROTOCOL_VERSION_CONSTRUCT`, `LEDGER8_INSTANCE_MISMATCH`, `LEDGER8_RUNTIME_MISSING`, `UNKNOWN_LEDGER_VERSION`, `LEDGER8_RUNTIME_INVALID` → ENVIRONMENT · `DOWN_CONVERT_FAILED`, `STATE_DECODE_FAILED`, `STATE_INCONSISTENT` → INTEGRITY · `COMPOSE_FAILED`, `COMPOSE_OPTION_INVALID`, `PAYLOAD_NOT_A_TRANSACTION` → USAGE · `MERKLE_NOT_REHASHED`, `UNKNOWN_LEDGER8_AXIS` → INTERNAL                                                                                                                                                            |
+| PR    | `RETAINED_PAYLOAD_UNSUPPORTED`, `LEDGER8_PAYLOAD_UNSUPPORTED`, `UNTAGGED_PAYLOAD`, `PROVIDER_ERA_UNSUPPORTED`, `PRIVATE_STATE_NOT_SERIALIZABLE` → USAGE · `DECODER_ERA_UNSUPPORTED`, `UNKNOWN_RECORD_ERA` → ENVIRONMENT                                                                                                                                                                                                                                                                                                                                                                   |
+| C     | `TX_FAILED` → REJECTED · `HEAD_STATE_ERA_MISMATCH` → TRANSIENT · `STALE_HEAD`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `PROVIDER_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_ARTIFACT_MISMATCH`, `UNKNOWN_RESULT_ERA`, `LEDGER8_DEPLOY_ON_LEDGER9`, `LEDGER8_ARTIFACT_ON_LEDGER9_STATE`, `LEDGER8_CONTRACT_STATE_UNSUPPORTED`, `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `SCOPED_TRANSACTION_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
+| U     | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL · `LEDGER8_VALUE_UNSUPPORTED` → USAGE · `UNRECOGNISED_ERA_TAG` → USAGE                                                                                                                                                                                                                                                                                                                                                                                                                                               |

@@ -69,6 +69,7 @@ export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
+  RETAINED_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_RETAINED_PAYLOAD_UNSUPPORTED',
   LEDGER8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED',
   UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
   DECODER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED',
@@ -111,6 +112,7 @@ export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVI
 const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
+  [PROVIDER_ERROR_CODES.RETAINED_PAYLOAD_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
   [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
   [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
@@ -145,6 +147,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
 });
 
 const {
+  RETAINED_PAYLOAD_UNSUPPORTED,
   LEDGER8_PAYLOAD_UNSUPPORTED,
   UNTAGGED_PAYLOAD,
   PROVIDER_ERA_UNSUPPORTED,
@@ -168,47 +171,70 @@ const {
 } = PROVIDER_ERROR_CODES;
 
 /**
+ * Thrown when a versioned transaction payload reaches a provider method that
+ * does not serve the payload's retained era.
+ */
+export class RetainedPayloadUnsupportedError extends MidnightJsError {
+  readonly code = RETAINED_PAYLOAD_UNSUPPORTED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[RETAINED_PAYLOAD_UNSUPPORTED];
+
+  /** What era was requested. */
+  readonly era: string;
+  /** The eras this provider actually serves at this method. */
+  readonly servedEras: readonly string[];
+
+  /**
+   * @param method The provider method that received the payload.
+   * @param era The retained ledger era the payload carried.
+   * @param servedEras The eras this provider actually serves.
+   * @param byteLength Size of the rejected payload if known.
+   */
+  constructor(
+    readonly method: TransactionMethod,
+    era: string,
+    servedEras: readonly string[] = [],
+    readonly byteLength?: number
+  ) {
+    const servedDesc = servedEras.length === 0 ? 'no eras at all' : servedEras.join(', ');
+    super(
+      `${method} received a ${era}-era transaction payload (serialized bytes${
+        byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
+      }), which this provider does not serve. ` +
+        `This provider serves: ${servedDesc}. ` +
+        `Send a current-era payload to this method, or use an implementation that serves ${era}.`
+    );
+    this.name = 'RetainedPayloadUnsupportedError';
+    this.era = era;
+    this.servedEras = Object.freeze([...servedEras]);
+  }
+
+  get requestedEra(): string {
+    return this.era;
+  }
+
+  get declared(): readonly string[] {
+    return this.servedEras;
+  }
+}
+
+/**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
  * handed a v8 payload — serialized, tag-prefixed bytes instead of a live v9
  * transaction object.
  *
- * Catching this does NOT mean "the framework cannot do it yet". It means the
- * specific implementation behind that method does not serve v8 payloads — permanently
- * for the lifting adapters, contingently for a concrete provider.
- *
- * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
- *
- * @see {@link ProviderEraDeclarations} for which providers raise it and why, and for
- * how it differs from {@link ProviderEraUnsupportedError}.
+ * @deprecated Use {@link RetainedPayloadUnsupportedError}.
  */
-export class Ledger8PayloadUnsupportedError extends MidnightJsError {
-  readonly code = LEDGER8_PAYLOAD_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER8_PAYLOAD_UNSUPPORTED];
-
-  /**
-   * @param method The provider method that received the payload.
-   * @param byteLength Size of the rejected payload, recorded so a report of
-   *                   this error says something about what arrived. `undefined`
-   *                   when the payload's `txBytes` was missing or not a
-   *                   `Uint8Array` — which the message states, because that
-   *                   caller has a second problem worth knowing about.
-   */
-  constructor(
-    readonly method: TransactionMethod,
-    readonly byteLength?: number
-  ) {
-    super(
-      `${method} received a v8-era transaction payload (serialized bytes${
-        byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
-      }), which this provider does not serve. ` +
-        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ` +
-        `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
-        `Send a v9 payload ({ version: 'v9', tx }) to this method, or use an implementation that serves ` +
-        `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
-        `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
-    );
+export class Ledger8PayloadUnsupportedError extends RetainedPayloadUnsupportedError {
+  constructor(method: TransactionMethod, byteLength?: number) {
+    super(method, 'v8', ['v9'], byteLength);
     this.name = 'Ledger8PayloadUnsupportedError';
+  }
+
+  static [Symbol.hasInstance](instance: unknown): boolean {
+    return (
+      instance instanceof RetainedPayloadUnsupportedError &&
+      (instance.era === 'v8' || (instance.code as string) === LEDGER8_PAYLOAD_UNSUPPORTED)
+    );
   }
 }
 
