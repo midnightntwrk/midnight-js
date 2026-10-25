@@ -25,7 +25,6 @@ import {
   createShieldedCoinInfo,
   nativeToken,
   type PartitionedTranscript,
-  type QualifiedShieldedCoinInfo,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
@@ -53,7 +52,6 @@ import {
   type EncryptionPublicKeyResolver,
   encryptionPublicKeyResolverForZswapState,
   serializeCoinInfo,
-  serializeQualifiedShieldedCoinInfo,
   SHIELDED_BURN_COIN_PUBLIC_KEY,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS,
   zswapCallsToNewCoins,
@@ -90,13 +88,6 @@ const arbitraryPositiveCoinInfo = fc
   .tuple(arbitraryTokenType, arbitraryPositiveValue)
   .map(([tokenType, value]) => createShieldedCoinInfo(tokenType, value));
 
-const arbitraryQualifiedShieldedCoinInfo = fc.record({
-  mt_index: arbitraryValue,
-  type: arbitraryTokenType,
-  nonce: arbitraryHex,
-  value: arbitraryValue
-});
-
 const arbitraryContractRecipient = fc.record({
   is_left: fc.constant(false),
   left: arbitraryCoinPublicKey,
@@ -121,26 +112,19 @@ const randomOutputData = () =>
     })
   );
 
-const randomQualifiedShieldedCoinInfo = () => sampleOne(arbitraryQualifiedShieldedCoinInfo);
+const randomCoinInfo = () => sampleOne(arbitraryCoinInfo);
 
 const randomEncryptionPublicKey = () => sampleOne(arbitraryHex);
 
 const randomCoinPublicKey = () => sampleOne(arbitraryCoinPublicKey);
 
-const dropMtIndex = ({ mt_index: _, ...coin }: QualifiedShieldedCoinInfo) => coin;
+const toOutputData = (recipient: Recipient, coinInfos: ShieldedCoinInfo[]) =>
+  coinInfos.map((coinInfo) => ({ recipient, coinInfo }));
 
-const toOutputData = (recipient: Recipient, coinInfos: (QualifiedShieldedCoinInfo | ShieldedCoinInfo)[]) =>
-  coinInfos.map((coinInfo) =>
-    'mt_index' in coinInfo ? { recipient, coinInfo: dropMtIndex(coinInfo) } : { recipient, coinInfo }
-  );
-
-const distinctFrom = (coinInfos: (ShieldedCoinInfo | QualifiedShieldedCoinInfo)[]) => {
+const distinctFrom = (coinInfos: ShieldedCoinInfo[]) => {
   const set = new Set(coinInfos.map(({ nonce }) => nonce));
   return (coinInfo: ShieldedCoinInfo) => !set.has(coinInfo.nonce);
 };
-
-const withZeroMtIndex = (coinInfos: ShieldedCoinInfo[]): QualifiedShieldedCoinInfo[] =>
-  coinInfos.map((coin) => ({ ...coin, mt_index: 0n }));
 
 const NETWORK_ID = 'testnet';
 
@@ -193,31 +177,12 @@ describe('Zswap utilities', () => {
       })
     ));
 
-  test("should produce the original value without 'mt_index' when serializing 'QualifiedShieldedCoinInfo' then deserializing 'CoinInfo'", () =>
-    fc.assert(
-      fc.property(arbitraryQualifiedShieldedCoinInfo, (qualifiedCoinInfo) => {
-        expect(deserializeCoinInfo(serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo))).toEqual(
-          dropMtIndex(qualifiedCoinInfo)
-        );
-      })
-    ));
-
-  test("should have equal serialized strings for 'QualifiedShieldedCoinInfo' and extracted 'CoinInfo'", () =>
-    fc.assert(
-      fc.property(arbitraryQualifiedShieldedCoinInfo, (qualifiedCoinInfo) => {
-        expect(serializeCoinInfo(dropMtIndex(qualifiedCoinInfo))).toEqual(
-          serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo)
-        );
-      })
-    ));
-
   test("should throw error when calling 'zswapStateToOffer' with no chain state and inputs", () =>
     expect(() =>
       zswapStateToOffer(
         {
-          currentIndex: 0n,
           coinPublicKey: randomCoinPublicKey(),
-          inputs: [randomQualifiedShieldedCoinInfo()],
+          inputs: [randomCoinInfo()],
           outputs: [randomOutputData()]
         },
         randomEncryptionPublicKey()
@@ -233,7 +198,7 @@ describe('Zswap utilities', () => {
     }, 0n);
 
   const zswapChainStateWithNonMatchingInputs = (recipient: Recipient, values: bigint[]) => {
-    const nonMatchingInputs: QualifiedShieldedCoinInfo[] = [];
+    const nonMatchingInputs: ShieldedCoinInfo[] = [];
     const zswapChainState = values.reduce((prevZSwapChainState, value) => {
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, value);
       const constantResolver: EncryptionPublicKeyResolver = () => randomEncryptionPublicKey();
@@ -243,8 +208,8 @@ describe('Zswap utilities', () => {
         ZswapOffer.fromOutput(output, nativeToken().raw, value)
       ).eraseProofs().guaranteedOffer;
       if (proofErasedOffer) {
-        const [newZswapChainState, mtIndices] = prevZSwapChainState.tryApply(proofErasedOffer);
-        nonMatchingInputs.push({ ...coinInfo, mt_index: mtIndices.get(output.commitment)! });
+        const [newZswapChainState] = prevZSwapChainState.tryApply(proofErasedOffer);
+        nonMatchingInputs.push(coinInfo);
         return newZswapChainState;
       }
       return prevZSwapChainState;
@@ -255,12 +220,12 @@ describe('Zswap utilities', () => {
 
   const arbitraryMatchingInputOutputPairs = (
     recipient: Recipient,
-    preExistingCoins: (QualifiedShieldedCoinInfo | ShieldedCoinInfo)[]
-  ): fc.Arbitrary<[QualifiedShieldedCoinInfo[], { recipient: Recipient; coinInfo: ShieldedCoinInfo }[]]> =>
+    preExistingCoins: ShieldedCoinInfo[]
+  ): fc.Arbitrary<[ShieldedCoinInfo[], { recipient: Recipient; coinInfo: ShieldedCoinInfo }[]]> =>
     fc
       .array(arbitraryPositiveNativeCoinInfo.filter(distinctFrom(preExistingCoins)), { minLength: 0 })
       .map((matchingOutputsNoRecipient) => [
-        withZeroMtIndex(matchingOutputsNoRecipient), // matching inputs
+        matchingOutputsNoRecipient, // matching inputs
         toOutputData(recipient, matchingOutputsNoRecipient) // matching outputs
       ]);
 
@@ -273,9 +238,8 @@ describe('Zswap utilities', () => {
     expectedOutputsSum: bigint;
     expectedTransientCount: number;
     zswapState: {
-      currentIndex: bigint;
       coinPublicKey: CoinPublicKey;
-      inputs: QualifiedShieldedCoinInfo[];
+      inputs: ShieldedCoinInfo[];
       outputs: { recipient: Recipient; coinInfo: ShieldedCoinInfo }[];
     };
     addressAndChainStateTuple?: {
@@ -288,11 +252,11 @@ describe('Zswap utilities', () => {
     recipient: Recipient,
     values: bigint[],
     nonMatchingOutputsNoRecipient: ShieldedCoinInfo[],
-    matchingInputs: QualifiedShieldedCoinInfo[],
+    matchingInputs: ShieldedCoinInfo[],
     matchingOutputs: { recipient: Recipient; coinInfo: ShieldedCoinInfo }[],
     useAddressAndChainStateTuple: boolean,
     zswapChainState: ZswapChainState,
-    nonMatchingInputs: QualifiedShieldedCoinInfo[]
+    nonMatchingInputs: ShieldedCoinInfo[]
   ): ZswapScenarioData => {
     const nonMatchingOutputs = toOutputData(recipient, nonMatchingOutputsNoRecipient);
 
@@ -304,7 +268,6 @@ describe('Zswap utilities', () => {
       expectedOutputsSum: sum(nonMatchingOutputs),
       expectedTransientCount: matchingOutputs.length,
       zswapState: {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: useAddressAndChainStateTuple ? nonMatchingInputs.concat(matchingInputs) : matchingInputs,
         outputs: nonMatchingOutputs.concat(matchingOutputs)
@@ -420,7 +383,6 @@ describe('Zswap utilities', () => {
     fc.assert(
       fc.property(arbitraryScenario, (data) => {
         const zswapState = {
-          currentIndex: 0n,
           coinPublicKey: data.walletCoinPublicKey,
           inputs: [],
           outputs: [...data.outputsForWallet, ...data.outputsNotForWallet]
@@ -452,7 +414,6 @@ describe('Zswap utilities', () => {
     };
 
     const newCoins = zswapStateToNewCoins(walletCoinPublicKey, {
-      currentIndex: 0n,
       coinPublicKey: walletCoinPublicKey,
       inputs: [],
       outputs: [contractOwned]
@@ -475,7 +436,6 @@ describe('Zswap utilities', () => {
     };
 
     const newCoins = zswapStateToNewCoins(walletCoinPublicKey, {
-      currentIndex: 0n,
       coinPublicKey: walletCoinPublicKey,
       inputs: [],
       outputs: [userOwned]
@@ -487,7 +447,6 @@ describe('Zswap utilities', () => {
   describe('Edge cases for inputs, outputs, and transients', () => {
     test('should return undefined offer for empty zswap state - changed in ledger 6', () => {
       const emptyZswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: [],
         outputs: []
@@ -500,7 +459,6 @@ describe('Zswap utilities', () => {
     test('should create correct number of outputs when no inputs', () => {
       const outputData = randomOutputData();
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: sampleCoinPublicKey(),
         inputs: [],
         outputs: [outputData]
@@ -518,7 +476,6 @@ describe('Zswap utilities', () => {
       const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [100n]);
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: nonMatchingInputs,
         outputs: []
@@ -545,13 +502,11 @@ describe('Zswap utilities', () => {
         NETWORK_ID,
         ZswapOffer.fromOutput(output, nativeToken().raw, 100n)
       ).eraseProofs().guaranteedOffer!;
-      const [chainStateNoRehash, mtIndices] = new ZswapChainState().tryApply(proofErasedOffer);
-      const qualifiedCoin = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
+      const [chainStateNoRehash] = new ZswapChainState().tryApply(proofErasedOffer);
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [qualifiedCoin],
+        inputs: [coinInfo],
         outputs: []
       };
 
@@ -569,12 +524,10 @@ describe('Zswap utilities', () => {
 
       const outputCoinInfo = sampleOne(arbitraryNativeCoinInfo);
       const transientCoinInfo = sampleOne(arbitraryNativeCoinInfo);
-      const qualifiedTransientCoinInfo = { ...transientCoinInfo, mt_index: 1n };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [...nonMatchingInputs, qualifiedTransientCoinInfo],
+        inputs: [...nonMatchingInputs, transientCoinInfo],
         outputs: [
           { recipient, coinInfo: outputCoinInfo },
           { recipient, coinInfo: transientCoinInfo }
@@ -599,12 +552,10 @@ describe('Zswap utilities', () => {
 
       const outputCoinInfo = sampleOne(arbitraryNativeCoinInfo);
       const transientCoinInfo = sampleOne(arbitraryNativeCoinInfo);
-      const qualifiedTransientCoinInfo = { ...transientCoinInfo, mt_index: 1n };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [...nonMatchingInputs, qualifiedTransientCoinInfo],
+        inputs: [...nonMatchingInputs, transientCoinInfo],
         outputs: [
           { recipient, coinInfo: outputCoinInfo },
           { recipient, coinInfo: transientCoinInfo }
@@ -630,7 +581,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: [],
         outputs: [zeroValueOutput]
@@ -647,10 +597,9 @@ describe('Zswap utilities', () => {
     test('should handle zero value inputs with addressAndChainStateTuple correctly', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const { zswapChainState } = zswapChainStateWithNonMatchingInputs(recipient, [0n]);
-      const zeroValueInput = { ...createShieldedCoinInfo(nativeToken().raw, 0n), mt_index: 0n };
+      const zeroValueInput = createShieldedCoinInfo(nativeToken().raw, 0n);
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: [zeroValueInput],
         outputs: []
@@ -672,13 +621,11 @@ describe('Zswap utilities', () => {
     test('should create transient for single matching input-output pair', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
-      const qualifiedInput = { ...coinInfo, mt_index: 0n };
       const output = { recipient, coinInfo };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [qualifiedInput],
+        inputs: [coinInfo],
         outputs: [output]
       };
 
@@ -693,13 +640,11 @@ describe('Zswap utilities', () => {
     test('should create transient with zero delta for zero value matching pair', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 0n);
-      const qualifiedInput = { ...coinInfo, mt_index: 0n };
       const output = { recipient, coinInfo };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [qualifiedInput],
+        inputs: [coinInfo],
         outputs: [output]
       };
 
@@ -718,7 +663,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: [],
         outputs: [output]
@@ -737,7 +681,6 @@ describe('Zswap utilities', () => {
       const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [75n]);
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: nonMatchingInputs,
         outputs: []
@@ -767,7 +710,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
         inputs: nonMatchingInputs,
         outputs: [output]
@@ -908,7 +850,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [walletOutput, burnOutput]
@@ -922,7 +863,6 @@ describe('Zswap utilities', () => {
     test('should maintain backward compatibility with plain EncPublicKey string', () => {
       const output = randomOutputData();
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: sampleCoinPublicKey(),
         inputs: [],
         outputs: [output]
@@ -939,7 +879,6 @@ describe('Zswap utilities', () => {
       const walletCpk = sampleCoinPublicKey();
       const walletEpk = sampleEncryptionPublicKey();
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: []
@@ -955,7 +894,6 @@ describe('Zswap utilities', () => {
       const walletEpk = sampleEncryptionPublicKey();
       const differentCpk = sampleCoinPublicKey();
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: differentCpk,
         inputs: [],
         outputs: []
@@ -1034,12 +972,11 @@ describe('Zswap utilities', () => {
         NETWORK_ID,
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
-      const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+      const [chainState] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
       const rehashedChainState = chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS);
-      const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
       // Act
-      const nullifierSeg0 = ZswapInput.newContractOwned(qualifiedCoin, 0, contractRecipient.right, rehashedChainState).nullifier;
-      const nullifierSeg1 = ZswapInput.newContractOwned(qualifiedCoin, 1, contractRecipient.right, rehashedChainState).nullifier;
+      const nullifierSeg0 = ZswapInput.newContractOwned(coinInfo, 0, contractRecipient.right, rehashedChainState).nullifier;
+      const nullifierSeg1 = ZswapInput.newContractOwned(coinInfo, 1, contractRecipient.right, rehashedChainState).nullifier;
       // Assert
       expect(nullifierSeg0).toBe(nullifierSeg1);
     });
@@ -1069,7 +1006,7 @@ describe('Zswap utilities', () => {
     it('returns { guaranteed: undefined, fallible: undefined } for an empty zswap state', () => {
       // Arrange
       const cpk = sampleCoinPublicKey();
-      const zswapState = { currentIndex: 0n, coinPublicKey: cpk, inputs: [], outputs: [] };
+      const zswapState = { coinPublicKey: cpk, inputs: [], outputs: [] };
       const partitioned: PartitionedTranscript = [undefined, undefined];
       // Act
       const result = zswapStateToSegmentedOffer(zswapState, randomEncryptionPublicKey(), undefined, partitioned);
@@ -1089,7 +1026,6 @@ describe('Zswap utilities', () => {
         makeTranscript([commitment], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
@@ -1115,7 +1051,6 @@ describe('Zswap utilities', () => {
         makeTranscript([], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
@@ -1143,7 +1078,6 @@ describe('Zswap utilities', () => {
         makeTranscript([fCommitment], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [
@@ -1168,7 +1102,6 @@ describe('Zswap utilities', () => {
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
       const partitioned: PartitionedTranscript = [makeTranscript([], []), makeTranscript([], [])];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
@@ -1183,9 +1116,8 @@ describe('Zswap utilities', () => {
     it('refuses an input that pairs with several outputs when no spending contract is named', () => {
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [{ ...coinInfo, mt_index: 0n }],
+        inputs: [coinInfo],
         outputs: [
           { recipient: sampleOne(arbitraryContractRecipient), coinInfo },
           { recipient: sampleOne(arbitraryContractRecipient), coinInfo }
@@ -1203,9 +1135,8 @@ describe('Zswap utilities', () => {
 
     it('refuses a settled input when no spending contract is named', () => {
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: [{ ...createShieldedCoinInfo(nativeToken().raw, 100n), mt_index: 0n }],
+        inputs: [createShieldedCoinInfo(nativeToken().raw, 100n)],
         outputs: []
       };
 
@@ -1236,7 +1167,6 @@ describe('Zswap utilities', () => {
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
       const partitioned: PartitionedTranscript = [undefined, undefined];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
@@ -1262,7 +1192,6 @@ describe('Zswap utilities', () => {
         makeTranscript([probeCommitment], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: false, left: sampleCoinPublicKey(), right: contractAddress } }]
@@ -1279,25 +1208,24 @@ describe('Zswap utilities', () => {
     const seedChainStateWithCoin = (
       coinInfo: ShieldedCoinInfo,
       contractRecipient: Recipient
-    ): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
+    ): ZswapChainState => {
       const constantResolver: EncryptionPublicKeyResolver = () => randomEncryptionPublicKey();
       const output = createZswapOutput({ coinInfo, recipient: contractRecipient }, constantResolver);
       const seedTx = Transaction.fromParts(
         NETWORK_ID,
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
-      const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
-      const qualifiedCoin = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
-      return { chainState, qualifiedCoin };
+      const [chainState] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+      return chainState;
     };
 
     const probeNullifier = (
-      qualifiedCoin: QualifiedShieldedCoinInfo,
+      coinInfo: ShieldedCoinInfo,
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
       ZswapInput.newContractOwned(
-        qualifiedCoin,
+        coinInfo,
         0,
         contractAddress,
         chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
@@ -1308,16 +1236,15 @@ describe('Zswap utilities', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractRecipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
-      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
-      const nullifier = probeNullifier(qualifiedCoin, chainState, contractRecipient.right);
+      const chainState = seedChainStateWithCoin(coinInfo, contractRecipient);
+      const nullifier = probeNullifier(coinInfo, chainState, contractRecipient.right);
       const partitioned: PartitionedTranscript = [
         makeTranscript([], [], []),
         makeTranscript([], [], [nullifier])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
-        inputs: [qualifiedCoin],
+        inputs: [coinInfo],
         outputs: []
       };
       // Act
@@ -1339,16 +1266,15 @@ describe('Zswap utilities', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractRecipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
-      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
-      const nullifier = probeNullifier(qualifiedCoin, chainState, contractRecipient.right);
+      const chainState = seedChainStateWithCoin(coinInfo, contractRecipient);
+      const nullifier = probeNullifier(coinInfo, chainState, contractRecipient.right);
       const partitioned: PartitionedTranscript = [
         makeTranscript([], [], [nullifier]),
         makeTranscript([], [], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
-        inputs: [qualifiedCoin],
+        inputs: [coinInfo],
         outputs: []
       };
       // Act
@@ -1370,12 +1296,11 @@ describe('Zswap utilities', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractRecipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
-      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
+      const chainState = seedChainStateWithCoin(coinInfo, contractRecipient);
       const partitioned: PartitionedTranscript = [makeTranscript([], [], []), makeTranscript([], [], [])];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
-        inputs: [qualifiedCoin],
+        inputs: [coinInfo],
         outputs: []
       };
       // Act + Assert
@@ -1402,7 +1327,6 @@ describe('Zswap utilities', () => {
         makeTranscript([], [commitment], [])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
@@ -1420,17 +1344,16 @@ describe('Zswap utilities', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractRecipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 750n);
-      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
-      const nullifier = probeNullifier(qualifiedCoin, chainState, contractRecipient.right);
+      const chainState = seedChainStateWithCoin(coinInfo, contractRecipient);
+      const nullifier = probeNullifier(coinInfo, chainState, contractRecipient.right);
       const outputCommitment = ZswapOutput.newContractOwned(coinInfo, 0, contractRecipient.right).commitment;
       const partitioned: PartitionedTranscript = [
         makeTranscript([], [], []),
         makeTranscript([outputCommitment], [], [nullifier])
       ];
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
-        inputs: [qualifiedCoin],
+        inputs: [coinInfo],
         outputs: [{ coinInfo, recipient: { is_left: false, left: sampleCoinPublicKey(), right: contractRecipient.right } }]
       };
       // Act
@@ -1471,7 +1394,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [walletOutput, burnOutput, contractOutput]
@@ -1514,7 +1436,6 @@ describe('Zswap utilities', () => {
       };
 
       const zswapState = {
-        currentIndex: 0n,
         coinPublicKey: walletCpk,
         inputs: [],
         outputs: [walletOutput, unknownOutput]
@@ -1578,13 +1499,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
       [
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         },
         {
           contractAddress: root,
-          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([])
         }
@@ -1611,13 +1532,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
       [
         {
           contractAddress: recipient,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         },
         {
           contractAddress: sender,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         }
@@ -1643,13 +1564,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
       [
         {
           contractAddress: first,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(first) }] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(first) }] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([firstCommitment])
         },
         {
           contractAddress: second,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(second) }] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(second) }] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([secondCommitment])
         }
@@ -1670,19 +1591,18 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     const callee = sampleContractAddress();
     const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
     const commitment = contractCommitment(coin, callee);
-    const qualified: QualifiedShieldedCoinInfo = { ...coin, mt_index: 0n };
 
     const result = zswapCallsToSegmentedOffer(
       [
         {
           contractAddress: caller,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         },
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [coin], outputs: [] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         }
@@ -1709,34 +1629,27 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
 
     // The coin has to actually be in the tree before an input can be built against it: settle an
-    // output addressed to the callee, then take the index the ledger assigned it. Handing
-    // newContractOwned an mt_index with no leaf behind it fails with "invalid index into sparse
-    // merkle tree" long before any nullifier is derived.
+    // output addressed to the callee. newContractOwned finds the leaf by the commitment of the
+    // coin with the named spender, so the same coin attributed to the root names a commitment the
+    // tree does not hold and is refused -- the misattribution the builder guards against is an
+    // error at the ledger seam, not a well-formed input with a nullifier nobody claims.
     const settled = ZswapOutput.newContractOwned(coin, 0, callee);
     const settledOffer = Transaction.fromParts(
       NETWORK_ID,
       ZswapOffer.fromOutput(settled, nativeToken().raw, coin.value)
     ).eraseProofs().guaranteedOffer;
     expect(settledOffer).toBeDefined();
-    const [applied, mtIndices] = new ZswapChainState().tryApply(settledOffer!);
-    const mtIndex = mtIndices.get(settled.commitment);
-    expect(mtIndex).toBeDefined();
+    const [applied] = new ZswapChainState().tryApply(settledOffer!);
     const chainState = applied.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS);
-    const qualified: QualifiedShieldedCoinInfo = { ...coin, mt_index: mtIndex! };
 
-    // newContractOwned does not check that the leaf it opens was addressed to `contract`; it just
-    // proves a path and hashes the coin with whoever is named as the spender. That is precisely
-    // why attributing a callee's spend to the root is silently wrong rather than an error: it
-    // produces a well-formed input carrying a nullifier the callee's claim can never match.
-    const calleeNullifier = ZswapInput.newContractOwned(qualified, 0, callee, chainState).nullifier;
-    const rootNullifier = ZswapInput.newContractOwned(qualified, 0, root, chainState).nullifier;
-    expect(calleeNullifier).not.toBe(rootNullifier);
+    const calleeNullifier = ZswapInput.newContractOwned(coin, 0, callee, chainState).nullifier;
+    expect(() => ZswapInput.newContractOwned(coin, 0, root, chainState)).toThrow(/not in the coin commitment tree/);
 
     const result = zswapCallsToSegmentedOffer(
       [
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [coin], outputs: [] },
           zswapChainState: chainState,
           partitionedTranscript: guaranteedOnly([], [calleeNullifier])
         }
@@ -1761,9 +1674,8 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
           {
             contractAddress: callee,
             zswapLocalState: {
-              currentIndex: 0n,
               coinPublicKey: sampleCoinPublicKey(),
-              inputs: [{ ...coin, mt_index: 0n }],
+              inputs: [coin],
               outputs: []
             },
             zswapChainState: undefined,
@@ -1790,13 +1702,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
         [
           {
             contractAddress: sender,
-            zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+            zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
             zswapChainState: undefined,
             partitionedTranscript: [makeTranscript([commitment], [commitment]), makeTranscript([], [])]
           },
           {
             contractAddress: recipient,
-            zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+            zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
             zswapChainState: undefined,
             partitionedTranscript: [makeTranscript([], []), makeTranscript([commitment], [commitment])]
           }
@@ -1820,13 +1732,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
       [
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([commitment])
         },
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
           zswapChainState: undefined,
           partitionedTranscript: [makeTranscript([], []), makeTranscript([], [])]
         }
@@ -1852,13 +1764,13 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
       [
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
           zswapChainState: undefined,
           partitionedTranscript: [makeTranscript([], []), makeTranscript([commitment], [commitment])]
         },
         {
           contractAddress: callee,
-          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapLocalState: { coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
           zswapChainState: undefined,
           partitionedTranscript: guaranteedOnly([])
         }
@@ -1882,9 +1794,8 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
     const commitment = contractCommitment(coin, callee);
     const state = {
-      currentIndex: 1n,
       coinPublicKey: sampleCoinPublicKey(),
-      inputs: [{ ...coin, mt_index: 0n }],
+      inputs: [coin],
       outputs: [{ coinInfo: coin, recipient: toContract(callee) }]
     };
 
@@ -1925,7 +1836,6 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     const fromCallee = createShieldedCoinInfo(nativeToken().raw, 7n);
     const fromRoot = createShieldedCoinInfo(nativeToken().raw, 11n);
     const state = (outputs: ReturnType<typeof toWallet>[]) => ({
-      currentIndex: 0n,
       coinPublicKey: cpk,
       inputs: [],
       outputs
@@ -1942,41 +1852,9 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
     const cpk = sampleCoinPublicKey();
     const coinInfo = createShieldedCoinInfo(nativeToken().raw, 7n);
     const carried = { coinInfo, recipient: { is_left: true, left: cpk, right: sampleContractAddress() } };
-    const state = { currentIndex: 0n, coinPublicKey: cpk, inputs: [], outputs: [carried] };
+    const state = { coinPublicKey: cpk, inputs: [], outputs: [carried] };
 
     expect(zswapCallsToNewCoins(cpk, [state, state])).toEqual([coinInfo]);
-  });
-
-  it('pairs a coin into a transient whatever index it reports, since that tree has one leaf', () => {
-    // `mt_index` is a position among the transaction's commitments — the coordinate the settled
-    // path proves against. A transient's tree carries exactly one leaf, this coin's own output, so
-    // the input half is proved at 0 no matter what the runtime reported. Passing the reported index
-    // through instead builds a path the sparse tree allows and the proof cannot satisfy.
-    const callee = sampleContractAddress();
-    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
-    const commitment = contractCommitment(coin, callee);
-
-    const result = zswapCallsToSegmentedOffer(
-      [
-        {
-          contractAddress: callee,
-          zswapLocalState: {
-            currentIndex: 1n,
-            coinPublicKey: sampleCoinPublicKey(),
-            inputs: [{ ...coin, mt_index: 7n }],
-            outputs: [{ coinInfo: coin, recipient: toContract(callee) }]
-          },
-          zswapChainState: undefined,
-          partitionedTranscript: guaranteedOnly([commitment])
-        }
-      ],
-      randomEncryptionPublicKey()
-    );
-
-    expect(transientsOf(result.guaranteed)).toHaveLength(1);
-    expect(transientsOf(result.guaranteed)[0].commitment).toBe(commitment);
-    expect(outputsOf(result.guaranteed)).toHaveLength(0);
-    expect(result.guaranteed!.deltas.get(nativeToken().raw)).toBeUndefined();
   });
 });
 

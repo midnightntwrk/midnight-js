@@ -36,7 +36,7 @@ const builders: [string, () => Promise<UnprovenTransaction>][] = [
     async () =>
       createUnprovenLedgerDeployTx(
         new ContractState(),
-        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey() },
         sampleEncryptionPublicKey(),
         CONFIG
       )[2]

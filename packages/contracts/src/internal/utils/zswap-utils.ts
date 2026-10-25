@@ -24,7 +24,6 @@ import {
   type EncPublicKey,
   type Nullifier,
   type PartitionedTranscript,
-  type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type Transcript,
   type UnprovenInput,
@@ -113,11 +112,6 @@ export const serializeCoinInfo = (coinInfo: ShieldedCoinInfo): string => {
     ...coinInfo,
     value: { __big_int_val__: coinInfo.value.toString() }
   });
-};
-
-export const serializeQualifiedShieldedCoinInfo = (coinInfo: QualifiedShieldedCoinInfo): string => {
-  const { mt_index: _, ...rest } = coinInfo;
-  return serializeCoinInfo(rest);
 };
 
 export const deserializeCoinInfo = (coinInfo: string): ShieldedCoinInfo => {
@@ -362,9 +356,10 @@ export type ZswapCallContribution = {
    */
   readonly zswapLocalState: ZswapLocalState;
   /**
-   * This contract's Zswap chain state. Only required if the call spends a coin that is already
-   * settled on chain; a call that merely creates coins, or that spends one created in this same
-   * transaction (which becomes a transient), needs none.
+   * This contract's Zswap chain state, filtered to the coins addressed to it. Only required if the
+   * call spends a coin that is already settled on chain; a call that merely creates coins, or that
+   * spends one created in this same transaction (which becomes a transient), needs none. A spent
+   * coin is found in it by commitment, so a view missing this contract's leaves cannot spend them.
    */
   readonly zswapChainState: ZswapChainState | undefined;
   /**
@@ -433,8 +428,11 @@ type OwnerActivity = {
   readonly transcripts: readonly PartitionedTranscript[];
 };
 
-/** Identity of an input: the coin, plus where it sits in the tree. */
-const inputKey = ({ mt_index, ...coinInfo }: ShieldedInput): string => `${serializeCoinInfo(coinInfo)}|${mt_index}`;
+/**
+ * Identity of an input: the coin itself. Inputs are folded per owner, and a contract-owned coin's
+ * commitment is `H(coin ‖ owner)`, so within one owner equal coin contents are one leaf.
+ */
+const inputKey = (coinInfo: ShieldedInput): string => serializeCoinInfo(coinInfo);
 
 /**
  * Folds per-call contributions into one activity per owner.
@@ -586,9 +584,7 @@ export const zswapCallsToSegmentedOffer = (
     // it is done once per owner and only if a settled coin actually asks for it.
     let rehashedChainState: ZswapChainState | undefined;
 
-    for (const qualifiedCoinInfo of inputs) {
-      const { mt_index: _mtIndex, ...coinInfo } = qualifiedCoinInfo;
-
+    for (const coinInfo of inputs) {
       // A contract's own coin: commitment and nullifier both bind this contract's address, so the
       // pairing below cannot cross owners by accident. An unattributed state has no address to bind
       // — and an input that pairs into a transient never needs one, since the ledger takes the
@@ -605,19 +601,11 @@ export const zswapCallsToSegmentedOffer = (
         // output: an absence is a real invariant violation, not a repeat.
         const candidate = buckets[transientSegment].outputs.get(ownCommitment);
         assertDefined(candidate, `bucketed output for transient commitment ${ownCommitment}`);
-        // The input half is proved against a tree holding exactly one leaf — this coin's own
-        // output, at index 0 (`zswap/src/construct.rs:394-397` -> `:197`, where the leaf asserted
-        // is the coin's own commitment). `mt_index` as reported is a position among the
-        // transaction's commitments, which is what the settled path proves against and the wrong
-        // coordinate here: a coin pairing into a transient always sits at 0 of that tree. Passing
-        // the reported index through claims membership where the leaf is not, which the sparse
-        // tree will build a path for and the proof will not satisfy.
+        // The input half is proved against a tree the ledger builds from the output alone — one
+        // leaf, this coin's own commitment (`zswap/src/construct.rs`, `Transient::new_from_contract_owned_output`)
+        // — so no position is needed from here.
         buckets[transientSegment].transients.set(ownCommitment, {
-          unproven: ZswapTransient.newFromContractOwnedOutput(
-            { ...qualifiedCoinInfo, mt_index: 0n },
-            transientSegment,
-            candidate.unproven
-          ),
+          unproven: ZswapTransient.newFromContractOwnedOutput(coinInfo, transientSegment, candidate.unproven),
           type: coinInfo.type,
           value: coinInfo.value
         });
@@ -627,7 +615,10 @@ export const zswapCallsToSegmentedOffer = (
 
       // Settled coin: it has to be proved against the commitment tree, which needs both the
       // contract that owns it (the nullifier binds the spender) and that contract's own view of
-      // the tree — the root's view has every other contract's leaves collapsed out of it.
+      // the tree. The ledger locates the leaf by the coin's commitment, so the view has to hold
+      // this contract's leaves rather than a path to one — the root's view has every other
+      // contract's leaves collapsed out of it, and a coin this contract never received is refused
+      // as not in the tree.
       if (owner.kind !== 'contract') {
         throw new ZswapOutputResolutionError(
           `A call that spends a settled shielded coin must name the contract that spent it, since ` +
@@ -644,19 +635,14 @@ export const zswapCallsToSegmentedOffer = (
 
       // Probe segment 0 — nullifier is segment-independent (pinned by invariant test).
       // Probe doubles as the final input when routing settles on guaranteed.
-      const probeInput = ZswapInput.newContractOwned(
-        qualifiedCoinInfo,
-        GUARANTEED_SEGMENT_NUMBER,
-        address,
-        rehashedChainState
-      );
+      const probeInput = ZswapInput.newContractOwned(coinInfo, GUARANTEED_SEGMENT_NUMBER, address, rehashedChainState);
       const segment = segmentForNullifier(probeInput.nullifier, transcripts);
 
       buckets[segment].inputs.set(probeInput.nullifier, {
         unproven:
           segment === GUARANTEED_SEGMENT_NUMBER
             ? probeInput
-            : ZswapInput.newContractOwned(qualifiedCoinInfo, segment, address, rehashedChainState),
+            : ZswapInput.newContractOwned(coinInfo, segment, address, rehashedChainState),
         type: coinInfo.type,
         value: coinInfo.value
       });

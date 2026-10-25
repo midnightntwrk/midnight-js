@@ -121,7 +121,6 @@ export const createMockContractState = (signingKey?: SigningKey): ContractState 
 });
 
 export const createMockZswapLocalState = (): ZswapLocalState => ({
-  currentIndex: 0n,
   coinPublicKey: createMockCoinPublicKey(),
   outputs: [],
   inputs: []

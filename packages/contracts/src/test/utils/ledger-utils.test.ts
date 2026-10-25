@@ -38,7 +38,6 @@ import {
   nativeToken,
   type PartitionedTranscript,
   type PublicAddress,
-  type QualifiedShieldedCoinInfo,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
@@ -207,8 +206,7 @@ describe('ledger-utils', () => {
     const nextZswapLocalState = {
       outputs: [],
       inputs: [],
-      coinPublicKey: sampleCoinPublicKey(),
-      currentIndex: 0n
+      coinPublicKey: sampleCoinPublicKey()
     };
 
     const tx = callTxWithSingleState(
@@ -259,8 +257,7 @@ describe('ledger-utils', () => {
         {
           outputs: [],
           inputs: [],
-          coinPublicKey: sampleCoinPublicKey(),
-          currentIndex: 0n
+          coinPublicKey: sampleCoinPublicKey()
         },
         dummyEncPublicKey
       )
@@ -295,8 +292,7 @@ describe('ledger-utils', () => {
         {
           outputs: [],
           inputs: [],
-          coinPublicKey: sampleCoinPublicKey(),
-          currentIndex: 0n
+          coinPublicKey: sampleCoinPublicKey()
         },
         dummyEncPublicKey
       )
@@ -328,7 +324,7 @@ describe('ledger-utils', () => {
         ],
         () => contractState,
         new ZswapChainState(),
-        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey() },
         dummyEncPublicKey,
         config
       );
@@ -338,7 +334,7 @@ describe('ledger-utils', () => {
       const before = Date.now();
       const [, , tx] = createUnprovenLedgerDeployTx(
         new CompactContractState(),
-        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey() },
         dummyEncPublicKey,
         { networkId: 'preview', ttlSeconds: 120 }
       );
@@ -390,7 +386,7 @@ describe('ledger-utils', () => {
     beforeAll(async () => {
       const mod = await import('../resources/compiled/shielded-map/contract/index.js');
       shieldedContract = new mod.Contract({ dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []] });
-      const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [], currentIndex: 0n };
+      const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [] };
       const initResult = await shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
       shieldedInitialState = initResult.currentContractState;
       const depositOperation = shieldedInitialState.operation('deposit')!;
@@ -529,7 +525,7 @@ describe('ledger-utils', () => {
     const seedContractCoin = (
       coinInfo: ShieldedCoinInfo,
       contractAddress: ContractAddress
-    ): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
+    ): ZswapChainState => {
       const recipient: Recipient = { is_left: false, left: sampleCoinPublicKey(), right: contractAddress };
       const constantResolver: EncryptionPublicKeyResolver = () => sampleEncryptionPublicKey();
       const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
@@ -537,18 +533,13 @@ describe('ledger-utils', () => {
         MOCK_CONFIG.networkId,
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
-      const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
-      const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
-      return { chainState, qualifiedCoin };
+      const [chainState] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+      return chainState;
     };
 
-    const probeNullifier = (
-      qualifiedCoin: QualifiedShieldedCoinInfo,
-      chainState: ZswapChainState,
-      contractAddress: ContractAddress
-    ): string =>
+    const probeNullifier = (coinInfo: ShieldedCoinInfo, chainState: ZswapChainState, contractAddress: ContractAddress): string =>
       ZswapInput.newContractOwned(
-        qualifiedCoin,
+        coinInfo,
         0,
         contractAddress,
         chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
@@ -584,7 +575,6 @@ describe('ledger-utils', () => {
         () => contractState,
         new ZswapChainState(),
         {
-          currentIndex: 0n,
           coinPublicKey: walletCpk,
           inputs: [],
           outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
@@ -630,7 +620,6 @@ describe('ledger-utils', () => {
         () => contractState,
         new ZswapChainState(),
         {
-          currentIndex: 0n,
           coinPublicKey: walletCpk,
           inputs: [],
           outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
@@ -652,8 +641,8 @@ describe('ledger-utils', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractAddress = sampleContractAddress();
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
-      const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, contractAddress);
-      const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
+      const chainState = seedContractCoin(coinInfo, contractAddress);
+      const nullifier = probeNullifier(coinInfo, chainState, contractAddress);
       const partitioned: PartitionedTranscript = [
         makeTranscript([], [], []),
         makeTranscript([], [], [nullifier])
@@ -675,9 +664,8 @@ describe('ledger-utils', () => {
         () => contractState,
         chainState,
         {
-          currentIndex: 0n,
           coinPublicKey: walletCpk,
-          inputs: [qualifiedCoin],
+          inputs: [coinInfo],
           outputs: []
         },
         sampleEncryptionPublicKey()
@@ -724,7 +712,6 @@ describe('ledger-utils', () => {
         () => contractState,
         new ZswapChainState(),
         {
-          currentIndex: 0n,
           coinPublicKey: walletCpk,
           inputs: [],
           outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
@@ -749,8 +736,8 @@ describe('ledger-utils', () => {
       const walletCpk = sampleCoinPublicKey();
       const contractAddress = sampleContractAddress();
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 1000n);
-      const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, contractAddress);
-      const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
+      const chainState = seedContractCoin(coinInfo, contractAddress);
+      const nullifier = probeNullifier(coinInfo, chainState, contractAddress);
       const outputCommitment = ZswapOutput.newContractOwned(coinInfo, 0, contractAddress).commitment;
       const partitioned: PartitionedTranscript = [
         makeTranscript([], [], []),
@@ -773,9 +760,8 @@ describe('ledger-utils', () => {
         () => contractState,
         chainState,
         {
-          currentIndex: 0n,
           coinPublicKey: walletCpk,
-          inputs: [qualifiedCoin],
+          inputs: [coinInfo],
           outputs: [{ coinInfo, recipient: { is_left: false, left: sampleCoinPublicKey(), right: contractAddress } }]
         },
         sampleEncryptionPublicKey()
@@ -927,8 +913,7 @@ describe('ledger-utils', () => {
     const nextZswapLocalState = {
       outputs: [],
       inputs: [],
-      coinPublicKey: sampleCoinPublicKey(),
-      currentIndex: 0n
+      coinPublicKey: sampleCoinPublicKey()
     };
 
     const callTxWithTranscripts = (
@@ -1128,7 +1113,7 @@ describe('ledger-utils', () => {
         calls,
         contractStateFor,
         new ZswapChainState(),
-        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey(), currentIndex: 0n },
+        { outputs: [], inputs: [], coinPublicKey: sampleCoinPublicKey() },
         sampleEncryptionPublicKey()
       );
 
@@ -1313,8 +1298,7 @@ describe('createUnprovenLedgerCallTx multi-call assembly', () => {
   const emptyZswapLocalState = {
     outputs: [],
     inputs: [],
-    coinPublicKey: sampleCoinPublicKey(),
-    currentIndex: 0n
+    coinPublicKey: sampleCoinPublicKey()
   };
 
   type AssembledCall = { address: string; entryPoint: string | Uint8Array; communicationCommitment: string };

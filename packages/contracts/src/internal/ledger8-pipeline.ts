@@ -62,7 +62,6 @@ import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
   serializeCoinInfo,
-  serializeQualifiedShieldedCoinInfo,
   zswapStateToNewCoins,
   zswapStateToOffer,
   zswapStateToSegmentedOffer
@@ -402,12 +401,30 @@ export const assertSnapshotVerifierKey = (
 };
 
 /**
+ * The retained runtime's Zswap local state in the current runtime's shape.
+ *
+ * A retained input still carries the tree position (`mt_index`) the current
+ * runtime no longer records, and the offer builder serializes a coin by exactly
+ * its three fields, so the position is dropped here, at the one place a retained
+ * state crosses into current-era code, rather than tolerated there.
+ */
+const toCurrentZswapLocalState = ({
+  coinPublicKey,
+  inputs,
+  outputs
+}: Ledger8Transcript['zswapLocalState']): ZswapLocalState => ({
+  coinPublicKey,
+  inputs: inputs.map(({ mt_index: _, ...coinInfo }) => coinInfo),
+  outputs
+});
+
+/**
  * Whether a call spends a shielded coin the contract already HELD, as opposed
  * to one the same call produced.
  *
  * The distinction decides whether the offer can be built at all: a held coin
  * has to be located in the chain's Merkle tree, and this pipeline reads no
- * Zswap chain state. This shares the offer builder's own SERIALIZERS, so the
+ * Zswap chain state. This shares the offer builder's own SERIALIZER, so the
  * two agree on coin identity; the pairing itself is not shared — the builder
  * consumes a matched candidate and this does not, so two inputs serializing
  * identically would pass here and reach the builder's own assertion.
@@ -416,11 +433,9 @@ export const assertSnapshotVerifierKey = (
  * @returns `true` if any input needs a chain state to be spent.
  * @see {@link KeepStatePipeline} for the transient-versus-held distinction.
  */
-const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): boolean => {
+const spendsHeldCoin = (zswapLocalState: ZswapLocalState): boolean => {
   const producedByThisCall = new Set(zswapLocalState.outputs.map((output) => serializeCoinInfo(output.coinInfo)));
-  return zswapLocalState.inputs.some(
-    (input) => !producedByThisCall.has(serializeQualifiedShieldedCoinInfo(input))
-  );
+  return zswapLocalState.inputs.some((input) => !producedByThisCall.has(serializeCoinInfo(input)));
 };
 
 /**
@@ -442,7 +457,7 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  * @throws Ledger8RecipientUnmappableError for the first unresolvable recipient.
  */
 const assertRecipientsResolvable = (
-  zswapLocalState: Ledger8Transcript['zswapLocalState'],
+  zswapLocalState: ZswapLocalState,
   resolve: EncryptionPublicKeyResolver,
   circuitId: string
 ): void => {
@@ -538,9 +553,10 @@ export interface Ledger8CallPipelineResult<TState> {
    */
   readonly partitionedTranscript: PartitionedTranscript;
   /**
-   * The post-call Zswap local state, DECODED. Plain data in both runtimes --
-   * the two `ZswapLocalState` interfaces are member-for-member identical -- so
-   * this member survives a clone. Not to be confused with
+   * The post-call Zswap local state, DECODED: the retained runtime's own object,
+   * forwarded rather than rebuilt, so it still carries that runtime's tree
+   * positions on its inputs beyond what the type names. Plain data, so this
+   * member survives a clone. Not to be confused with
    * `Ledger8CircuitContext.currentZswapLocalState`, which is the runtime's
    * byte-encoded form.
    */
@@ -639,6 +655,7 @@ export const runLedger8CallPipeline = async <TState>(
     coinPk: request.coinPublicKey,
     privateState: request.privateState
   });
+  const zswapLocalState = toCurrentZswapLocalState(transcript.zswapLocalState);
 
   // Refused BEFORE the offer is built, and before anything is composed: this
   // pipeline reads no Zswap chain state, so a coin the contract already held
@@ -647,14 +664,14 @@ export const runLedger8CallPipeline = async <TState>(
   // neither the era nor the circuit. Supplying the retained path with a chain
   // state is the real fix and is tracked separately; until then this refuses in
   // the caller's own test run rather than in production.
-  if (spendsHeldCoin(transcript.zswapLocalState)) {
+  if (spendsHeldCoin(zswapLocalState)) {
     throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
   }
 
   // Also before the offer is built, and for the same reason: a recipient this
   // path cannot resolve is refused by name here rather than by a bare assertion
   // inside the offer builder.
-  assertRecipientsResolvable(transcript.zswapLocalState, request.encryptionPublicKey, circuitId);
+  assertRecipientsResolvable(zswapLocalState, request.encryptionPublicKey, circuitId);
 
   // WHICH BYTES THE COMPOSER GETS, and why it is not always the chain's own.
   //
@@ -723,12 +740,7 @@ export const runLedger8CallPipeline = async <TState>(
         `The ledger era composed circuit '${circuitId}' without a transcript partition to route its ` +
           'Zswap offer against.'
       );
-      const offers = zswapStateToSegmentedOffer(
-        transcript.zswapLocalState,
-        request.encryptionPublicKey,
-        undefined,
-        partition
-      );
+      const offers = zswapStateToSegmentedOffer(zswapLocalState, request.encryptionPublicKey, undefined, partition);
       // Captured so the result can report WHICH segment each movement was
       // routed into; these are the report of the routing, not its input.
       routed = { guaranteedBytes: offers.guaranteed?.serialize(), fallibleBytes: offers.fallible?.serialize() };
@@ -796,7 +808,7 @@ export const runLedger8CallPipeline = async <TState>(
       }
     ],
     nextZswapLocalState: transcript.zswapLocalState,
-    newCoins: zswapStateToNewCoins(request.coinPublicKey, transcript.zswapLocalState),
+    newCoins: zswapStateToNewCoins(request.coinPublicKey, zswapLocalState),
     guaranteedZswapOfferBytes: routed.guaranteedBytes,
     fallibleZswapOfferBytes: routed.fallibleBytes
   };
