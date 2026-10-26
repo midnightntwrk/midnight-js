@@ -549,8 +549,8 @@ export interface SubmittedOperation {
   /**
    * The era the network head was on when this operation started.
    *
-   * One field, two uses, and they are the same fact: it decides which payload
-   * variant the transaction carried across the provider methods, and it is the `startEra` a
+   * One field, two uses, and they are the same fact: it is the era of the
+   * transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;

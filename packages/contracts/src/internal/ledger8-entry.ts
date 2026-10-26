@@ -261,7 +261,8 @@ export const acquireLedger8Runtime = async (
  * it is a call or a deploy, and the identifiers a fork-crossing refusal has to
  * name.
  * @returns The transaction id the network assigned.
- * @throws EraInvariantViolationError if a provider answers in the other era.
+ * @throws EraInvariantViolationError if `unprovenTx` is not in the head's era,
+ * before any provider is called, or if a provider answers in the other era.
  * @throws InvalidTransactionHandleError if a provider answers with something
  * other than a handle at the next stage.
  * @throws ProviderFailedError if a provider rejects, with its own failure
@@ -280,7 +281,10 @@ export const submitLedger8Tx = async (
   unprovenTx: UnprovenTx,
   operation: SubmittedOperation
 ): Promise<string> => {
-  const { circuitId } = operation;
+  const { circuitId, head } = operation;
+  if (unprovenTx.era !== head) {
+    throw new EraInvariantViolationError('proveTx', circuitId, head, unprovenTx.era, operation.contractAddress);
+  }
   // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
   // up with different failure handling. `atProviderMethod` still does the sanitizing --
   // what this adds is the fork-crossing diagnosis on top of its result.

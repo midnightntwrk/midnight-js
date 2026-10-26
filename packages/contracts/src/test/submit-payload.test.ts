@@ -25,12 +25,14 @@ import {
   type UnprovenTx,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraInvariantViolationError } from '../errors';
+import { submitLedger8Tx } from '../internal/ledger8-entry';
 import { type PayloadSubmitProviders, proveBalanceSubmit } from '../internal/submit-payload';
 import { handles } from './ledger-transaction-fixtures';
-import { createMockCoinPublicKey, createMockEncryptionPublicKey, MOCK_CONFIG } from './test-mocks';
+import { createMockCoinPublicKey, createMockEncryptionPublicKey, createMockProviders, MOCK_CONFIG } from './test-mocks';
 
 const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
   promise.then(
@@ -117,6 +119,8 @@ describe('proveBalanceSubmit', () => {
       );
 
       expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+
+      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
       expect(rejection).toMatchObject({ method: 'proveTx', expected: 'v9', received: 'v8', circuitId: 'testCircuit' });
       expect((rejection as Error).message).toContain('proveTx');
       expect(balanceTx).not.toHaveBeenCalled();
@@ -133,6 +137,8 @@ describe('proveBalanceSubmit', () => {
       const rejection = await rejectionOf(proveBalanceSubmit({ ...providers, walletProvider }, unprovenTx, 'testCircuit'));
 
       expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+
+      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
       expect(rejection).toMatchObject({ method: 'balanceTx', expected: 'v8', received: 'v9' });
       expect(seen.submitTx).toEqual([]);
     });
@@ -152,6 +158,8 @@ describe('proveBalanceSubmit', () => {
       );
 
       expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
       expect(rejection).toMatchObject({ method: 'proveTx', reason: 'wrong-stage' });
       expect(seen.balanceTx).toEqual([]);
     });
@@ -174,6 +182,8 @@ describe('proveBalanceSubmit', () => {
       );
 
       expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
       expect(rejection).toMatchObject({ method: 'proveTx', reason: 'not-a-handle' });
       expect(seen.balanceTx).toEqual([]);
     });
@@ -191,8 +201,38 @@ describe('proveBalanceSubmit', () => {
       );
 
       expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
       expect(rejection).toMatchObject({ method: 'balanceTx', reason: 'wrong-stage' });
       expect(seen.submitTx).toEqual([]);
     });
   });
+});
+
+describe('submitLedger8Tx', () => {
+  it.each([
+    ['v8', 'v9'],
+    ['v9', 'v8']
+  ] as const)(
+    'refuses a %s handle on a %s head with EraInvariantViolationError, before any provider is called',
+    async (era, head) => {
+      const { providers, seen } = recordingProviders();
+      const { publicDataProvider } = createMockProviders();
+      const unprovenTx = await unprovenOf(era);
+
+      const rejection = await rejectionOf(
+        submitLedger8Tx({ ...providers, publicDataProvider }, unprovenTx, {
+          head,
+          kind: 'call',
+          circuitId: 'testCircuit',
+          contractAddress: 'contract-address'
+        })
+      );
+
+      expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+      expect(rejection).toMatchObject({ expected: head, received: era, circuitId: 'testCircuit' });
+      expect(seen).toEqual({ proveTx: [], balanceTx: [], submitTx: [] });
+    }
+  );
 });

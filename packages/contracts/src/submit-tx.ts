@@ -71,12 +71,16 @@ export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
  * @internal Proves, balances and submits a v9 transaction handle, for the pipelines that built a
  * v9 transaction. Reads no head.
  *
+ * @throws InvalidTransactionHandleError if `unprovenTx` is not a transaction handle.
  * @throws TransactionEraMismatchError if the handle is not a v9 one.
  */
 export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
+  if (!LedgerTransaction.is(options.unprovenTx)) {
+    throw new InvalidTransactionHandleError('submitTx', 'not-a-handle', describeNonHandle(options.unprovenTx));
+  }
   if (options.unprovenTx.era !== 'v9') {
     throw new TransactionEraMismatchError('v9', options.unprovenTx.era);
   }

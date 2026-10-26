@@ -31,7 +31,7 @@ import {
   TransactionEraMismatchError,
   type UnboundTx
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraArtifactMismatchError, EraInvariantViolationError, ProviderFailedError } from '../errors';
@@ -194,6 +194,7 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submitTxAsync(mockProviders, { unprovenTx }));
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
         expect(rejection).toMatchObject({ method: 'balanceTx', expected: 'v9', received: 'v8' });
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
@@ -230,6 +231,8 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submitTxAsync(mockProviders, { unprovenTx }));
 
         expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
         expect(rejection).toMatchObject({ method: 'proveTx', reason: 'not-a-handle' });
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
@@ -240,6 +243,8 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submitTxAsync(mockProviders, { unprovenTx }));
 
         expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
         expect(rejection).toMatchObject({ method: 'proveTx', reason: 'wrong-stage' });
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
@@ -251,6 +256,8 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submitTxAsync(mockProviders, { unprovenTx }));
 
         expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
         expect(rejection).toMatchObject({ method: 'balanceTx', reason: 'not-a-handle' });
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
@@ -279,6 +286,7 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submitTx(mockProviders, { unprovenTx }));
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
         expect(rejection).toMatchObject({ method: 'watchForTxData' });
       });
 
@@ -347,10 +355,13 @@ describe('submit-tx', () => {
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
-    it('refuses a v9 handle on a v8 head before proving it', async () => {
+    it.each([
+      ['submitTx', submitTx],
+      ['submitTxAsync', submitTxAsync]
+    ] as const)('%s refuses a v9 handle on a v8 head before proving it', async (_name, submit) => {
       onHead(LEDGER8_HEAD);
 
-      const rejection = await rejectionOf(submitTx(mockProviders, { unprovenTx: createMockUnprovenTx() }));
+      const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: createMockUnprovenTx() }));
 
       expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
       expect(rejection).toMatchObject({ reason: 'ledger9-transaction-on-ledger8-head' });
@@ -372,6 +383,8 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: value() }));
 
         expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
         expect(rejection).toMatchObject({ method: 'submitTx', reason: 'not-a-handle' });
         expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
         expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
@@ -384,6 +397,8 @@ describe('submit-tx', () => {
         const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: await handles.v9.Finalized() }));
 
         expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
         expect(rejection).toMatchObject({ method: 'submitTx', reason: 'wrong-stage' });
         expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
       });
@@ -533,7 +548,21 @@ describe('submit-tx', () => {
       const rejection = await rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: await handles.v8.Unproven() }));
 
       expect(rejection).toBeInstanceOf(TransactionEraMismatchError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH)).toBe(true);
       expect(rejection).toMatchObject({ expected: 'v9', actual: 'v8' });
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the pre-handle { version, tx } record', () => ({ version: 'v9', tx: LedgerTransaction.unwrap(createMockUnprovenTx(), 'v9') })],
+      ['null', () => null]
+    ])('refuses %s with InvalidTransactionHandleError before proving it', async (_label, value) => {
+      // @ts-expect-error neither value is an UnprovenTx
+      const rejection = await rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: value() }));
+
+      expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
+      expect(rejection).toMatchObject({ method: 'submitTx', reason: 'not-a-handle' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 

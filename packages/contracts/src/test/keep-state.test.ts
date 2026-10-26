@@ -132,6 +132,10 @@ interface SeenPayloads {
   proveTx?: UnprovenTx;
   balanceTx?: UnboundTx;
   submitTx?: FinalizedTx;
+  /** What `proveTx` answered with, so the next stage can be checked against it. */
+  proven?: UnboundTx;
+  /** What `balanceTx` answered with. */
+  balanced?: FinalizedTx;
 }
 
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
@@ -204,13 +208,15 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       .mockResolvedValue(rawState(envelope, POST_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: UnprovenTx) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation(async (tx: UnprovenTx) => {
       seen.proveTx = tx;
-      return unboundLike(tx);
+      seen.proven = await unboundLike(tx);
+      return seen.proven;
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: UnboundTx) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation(async (tx: UnboundTx) => {
       seen.balanceTx = tx;
-      return finalizedLike(tx);
+      seen.balanced = await finalizedLike(tx);
+      return seen.balanced;
     });
     providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
@@ -448,11 +454,15 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // ordinary current-era transaction that happens to carry a retained-era
     // call, so it crosses as a v9 handle. Sealing it `'v8'` would claim the
     // retained runtime built it, which is false.
-    for (const handle of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(LedgerTransaction.is(handle)).toBe(true);
-      expect(handle?.era).toBe('v9');
-    }
+    expect(LedgerTransaction.is(providers.seen.proveTx)).toBe(true);
+    expect(providers.seen.proveTx?.era).toBe('v9');
     expect(providers.seen.proveTx?.stage).toBe('Unproven');
+    // THE CHAIN: `balanceTx` must receive exactly what `proveTx` answered, and
+    // `submitTx` exactly what `balanceTx` answered. The stand-in answers are in
+    // the era they were handed, so an era assertion on them would hold by
+    // construction.
+    expect(providers.seen.balanceTx).toBe(providers.seen.proven);
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 
   it('refuses a provider that answers this current-era flow in the retained era', async () => {
