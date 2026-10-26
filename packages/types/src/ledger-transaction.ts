@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
+import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   isFrameworkLedgerTransaction,
   type LedgerTransactionTypes,
   type TransactionStage
 } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { ForeignLedgerTransactionError, InvalidTransactionHandleError, TransactionEraMismatchError } from './errors';
 import { describeArgument } from './internal/read-era-entries';
@@ -98,6 +99,7 @@ export class LedgerTransaction<S extends TransactionStage> {
    * @returns The object that was sealed.
    * @throws InvalidTransactionHandleError If `handle` is not a handle of this
    *   copy of the package.
+   * @throws UnknownLedgerVersionError If `era` is not a ledger version.
    * @throws TransactionEraMismatchError If the handle carries another era.
    */
   static unwrap<E extends LedgerVersion, S extends TransactionStage>(
@@ -107,7 +109,11 @@ export class LedgerTransaction<S extends TransactionStage> {
     if (!LedgerTransaction.is(handle)) {
       throw new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', describeArgument(handle));
     }
-    const tx = handle.#slot[era];
+    if (!LEDGER_VERSIONS.includes(era)) {
+      throw new UnknownLedgerVersionError(String(era));
+    }
+    const slot = handle.#slot;
+    const tx = Object.hasOwn(slot, era) ? slot[era] : undefined;
     if (tx === undefined) {
       throw new TransactionEraMismatchError(era, handle.era);
     }
