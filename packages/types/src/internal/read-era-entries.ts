@@ -179,7 +179,7 @@ const missingEras = (method: TransactionMethod, entries: object): readonly Ledge
  * @param shape What every entry other than `undefined` must be.
  * @returns A frozen copy of the entries.
  * @throws InvalidArgumentError if `entries` is not an object, cannot be read,
- *         or has no key for a ledger era.
+ *         has no key for a ledger era, or serves no era.
  * @throws UnusableEraEntryError if an entry is neither `undefined` nor `shape`.
  */
 export const readEraEntries = <T extends Readonly<Record<LedgerVersion, unknown>>>(
@@ -205,6 +205,11 @@ export const readEraEntries = <T extends Readonly<Record<LedgerVersion, unknown>
     if (entry !== undefined) {
       assertUsable(method, era, entry, shape);
     }
+  }
+  if (LEDGER_VERSIONS.every((era) => copy[era] === undefined)) {
+    throw new InvalidArgumentError(
+      `${method}: at least one era handler is required, but every era entry (${LEDGER_VERSIONS.join(', ')}) is undefined.`
+    );
   }
   return copy;
 };

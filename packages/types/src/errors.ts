@@ -209,8 +209,11 @@ export class ProviderEraUnsupportedError extends MidnightJsError {
     super(
       `This operation runs on the ${era} ledger era, but the provider wired to ${method} declares that it serves ` +
         `${declared.length === 0 ? 'no era at all' : declared.join(', ')}. ` +
-        `Refused before any proof was requested, because a transaction this set cannot carry end to end is not ` +
-        `worth proving. Wire a provider that serves ${era} for ${method}, or run this operation on an era the ` +
+        (method === 'proveTx'
+          ? `Refused before any proof was requested, because a transaction this set cannot carry end to end is not ` +
+            `worth proving. `
+          : `Refused before ${method} did any work. `) +
+        `Wire a provider that serves ${era} for ${method}, or run this operation on an era the ` +
         `whole set serves.`
     );
     this.name = 'ProviderEraUnsupportedError';

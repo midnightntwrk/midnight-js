@@ -319,6 +319,18 @@ describe('createProofProviderFromProvingProviders', () => {
       );
     });
 
+    it('refuses proving providers that serve no era', () => {
+      const act = () => createProofProviderFromProvingProviders({ v8: undefined, v9: undefined });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: expect.stringMatching(/^proveTx: at least one era handler is required/)
+        })
+      );
+    });
+
     it.each([
       ['undefined', undefined],
       ['null', null]

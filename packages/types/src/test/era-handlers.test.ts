@@ -246,8 +246,7 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
         method,
         reason: 'wrong-stage'
       });
-      expect(String(rejection)).toContain(wrongStage);
-      expect(String(rejection)).toContain(inputStage);
+      expect(String(rejection)).toContain(`${wrongStage} handle, where ${method} takes ${inputStage} handles`);
       expect(v9).not.toHaveBeenCalled();
     });
 
@@ -369,6 +368,18 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
           name: 'InvalidArgumentError',
           code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
           message: expect.stringContaining(detail)
+        })
+      );
+    });
+
+    it('refuses handlers that serve no era', () => {
+      const act = () => build({ v8: undefined, v9: undefined });
+
+      expect(act).toThrow(
+        expect.objectContaining({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+          message: expect.stringMatching(new RegExp(`^${method}: at least one era handler is required`))
         })
       );
     });

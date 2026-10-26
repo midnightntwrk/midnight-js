@@ -47,13 +47,16 @@ const serve = async <E extends LedgerVersion, S extends TransactionStage, A exte
   handle: LedgerTransaction<S>,
   args: A
 ): Promise<T> => {
-  // Must stay generic in E: handler, transaction and answer then index one era, with no cast.
+  // Generic in E so the handler call is checked against era E's types; answer(era, ...) is not tied to E by the types.
   const handler = route.handlers[era];
   if (handler === undefined) {
     throw new ProviderEraUnsupportedError(route.method, era, route.supportedEras);
   }
   const tx = LedgerTransaction.unwrap(handle, era);
-  const result = await Reflect.apply(handler, route.receiver, [tx, ...args]);
+  const result = await Reflect.apply<object, [LedgerTransactionTypes[E][S], ...A], Promise<R[E]>>(handler, route.receiver, [
+    tx,
+    ...args
+  ]);
   return route.answer(era, result);
 };
 
@@ -77,7 +80,7 @@ export const dispatch = async <S extends TransactionStage, A extends readonly un
     throw new InvalidTransactionHandleError(
       route.method,
       'wrong-stage',
-      `a ${handle.stage} handle, where ${route.method} takes a ${route.stage} one`
+      `${handle.stage} handle, where ${route.method} takes ${route.stage} handles`
     );
   }
   return serve(route, handle.era, handle, args);

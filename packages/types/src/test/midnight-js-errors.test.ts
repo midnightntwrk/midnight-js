@@ -115,11 +115,25 @@ describe('types error classes', () => {
 
   it.each([
     [
-      'a provider that does not declare the era',
-      new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']),
-      'This operation runs on the v8 ledger era, but the provider wired to submitTx declares that it serves v9. ' +
+      'a proof provider that does not serve the era',
+      new ProviderEraUnsupportedError('proveTx', 'v8', ['v9']),
+      'This operation runs on the v8 ledger era, but the provider wired to proveTx declares that it serves v9. ' +
         'Refused before any proof was requested, because a transaction this set cannot carry end to end is not ' +
-        'worth proving. Wire a provider that serves v8 for submitTx, or run this operation on an era the whole set serves.'
+        'worth proving. Wire a provider that serves v8 for proveTx, or run this operation on an era the whole set serves.'
+    ],
+    [
+      'a wallet provider that does not serve the era',
+      new ProviderEraUnsupportedError('balanceTx', 'v8', ['v9']),
+      'This operation runs on the v8 ledger era, but the provider wired to balanceTx declares that it serves v9. ' +
+        'Refused before balanceTx did any work. ' +
+        'Wire a provider that serves v8 for balanceTx, or run this operation on an era the whole set serves.'
+    ],
+    [
+      'a midnight provider that does not serve the era',
+      new ProviderEraUnsupportedError('submitTx', 'v8', []),
+      'This operation runs on the v8 ledger era, but the provider wired to submitTx declares that it serves no era at all. ' +
+        'Refused before submitTx did any work. ' +
+        'Wire a provider that serves v8 for submitTx, or run this operation on an era the whole set serves.'
     ]
   ] as const)('pins the message for %s', (_case, error, message) => {
     expect(error.message).toEqual(message);
