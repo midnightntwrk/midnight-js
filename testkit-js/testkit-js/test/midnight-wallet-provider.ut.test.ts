@@ -52,6 +52,9 @@ import { loadWalletLedger8 } from '../src/wallet/wallet-transaction';
 const RETAINED_VERSION = ProtocolVersion.ProtocolVersion(1_000_000n);
 const CURRENT_VERSION = FORK_SCHEDULE.v9;
 const NETWORK_ID = 'undeployed';
+// The wallet's finalized transaction is built for another network, so its bytes
+// can never equal the caller's input.
+const WALLET_NETWORK_ID = 'wallet-network';
 
 const inertProvingProvider: ProvingProvider = {
   check: () => Promise.resolve([]),
@@ -59,11 +62,14 @@ const inertProvingProvider: ProvingProvider = {
   lookupKey: () => Promise.resolve(undefined)
 };
 
-const ledger9Unbound = (): Promise<LedgerTransactionTypes['v9']['Unbound']> =>
-  Transaction.fromParts(NETWORK_ID).prove(inertProvingProvider, CostModel.initialCostModel());
+const ledger9Unbound = (networkId = NETWORK_ID): Promise<LedgerTransactionTypes['v9']['Unbound']> =>
+  Transaction.fromParts(networkId).prove(inertProvingProvider, CostModel.initialCostModel());
 
-const ledger8Unbound = async (v8: Ledger8Protocol): Promise<LedgerTransactionTypes['v8']['Unbound']> =>
-  v8.Transaction.fromParts(NETWORK_ID).prove(inertProvingProvider, v8.CostModel.initialCostModel());
+const ledger8Unbound = async (
+  v8: Ledger8Protocol,
+  networkId = NETWORK_ID
+): Promise<LedgerTransactionTypes['v8']['Unbound']> =>
+  v8.Transaction.fromParts(networkId).prove(inertProvingProvider, v8.CostModel.initialCostModel());
 
 interface EraFixture {
   readonly era: 'v8' | 'v9';
@@ -72,6 +78,7 @@ interface EraFixture {
   readonly finalized: () => Promise<FinalizedTx>;
   readonly walletFinalizedBytes: () => Promise<Uint8Array>;
   readonly walletTransactionClass: () => Promise<unknown>;
+  readonly walletCopy: string;
   readonly frameworkTransactionClass: () => Promise<unknown>;
 }
 
@@ -81,8 +88,9 @@ const eras: readonly EraFixture[] = [
     activeVersion: CURRENT_VERSION,
     unbound: async () => LedgerTransaction.seal('v9', 'Unbound', await ledger9Unbound()),
     finalized: async () => LedgerTransaction.seal('v9', 'Finalized', (await ledger9Unbound()).bind()),
-    walletFinalizedBytes: async () => (await ledger9Unbound()).bind().serialize(),
+    walletFinalizedBytes: async () => (await ledger9Unbound(WALLET_NETWORK_ID)).bind().serialize(),
     walletTransactionClass: () => Promise.resolve(walletSdkLedger9.Transaction),
+    walletCopy: 'a separate object decoded from the bytes (the v9 ledger module is shared today, so not a separate instance)',
     frameworkTransactionClass: () => Promise.resolve(Transaction)
   },
   {
@@ -91,8 +99,10 @@ const eras: readonly EraFixture[] = [
     unbound: async () => LedgerTransaction.seal('v8', 'Unbound', await ledger8Unbound(await loadLedger8Protocol())),
     finalized: async () =>
       LedgerTransaction.seal('v8', 'Finalized', (await ledger8Unbound(await loadLedger8Protocol())).bind()),
-    walletFinalizedBytes: async () => (await ledger8Unbound(await loadLedger8Protocol())).bind().serialize(),
+    walletFinalizedBytes: async () =>
+      (await ledger8Unbound(await loadLedger8Protocol(), WALLET_NETWORK_ID)).bind().serialize(),
     walletTransactionClass: () => Promise.resolve(walletSdkLedger8.Transaction),
+    walletCopy: "an object of the wallet SDK's own v8 ledger instance",
     frameworkTransactionClass: async () => (await loadLedger8Protocol()).Transaction
   }
 ];
@@ -186,7 +196,7 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe.each(eras)('balanceTx with a $era handle', (fixture) => {
-    it("hands the wallet a copy of the transaction decoded with the wallet's own ledger, at the active version", async () => {
+    it(`hands the wallet ${fixture.walletCopy}, at the active version`, async () => {
       const { wallet } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
       const unbound = await fixture.unbound();
@@ -208,7 +218,9 @@ describe('MidnightWalletProvider', () => {
       const { wallet, recipe, signedRecipe, walletFinalized } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
 
-      const balanced = await provider.balanceTx(await fixture.unbound());
+      const unbound = await fixture.unbound();
+
+      const balanced = await provider.balanceTx(unbound);
 
       expect(vi.mocked(wallet.signRecipe).mock.calls[0][0]).toBe(recipe);
       expect(vi.mocked(wallet.finalizeRecipe).mock.calls[0][0]).toBe(signedRecipe);
@@ -218,6 +230,7 @@ describe('MidnightWalletProvider', () => {
       expect(unwrapped).toBeInstanceOf(await fixture.frameworkTransactionClass());
       expect(unwrapped).not.toBe(walletFinalized);
       expect(balanced.serialize()).toEqual(await fixture.walletFinalizedBytes());
+      expect(balanced.serialize()).not.toEqual(unbound.serialize());
     });
   });
 
@@ -259,7 +272,7 @@ describe('MidnightWalletProvider', () => {
   });
 
   describe.each(eras)('submitTx with a $era handle', (fixture) => {
-    it("hands the wallet a copy decoded with the wallet's own ledger and returns its transaction id", async () => {
+    it(`hands the wallet ${fixture.walletCopy} and returns its transaction id`, async () => {
       const { wallet } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
       const finalized = await fixture.finalized();
