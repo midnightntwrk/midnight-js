@@ -105,6 +105,9 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `INDEXER_INVARIANT_VIOLATED` | INTERNAL | `IndexerInvariantError` |
 | PR | `INDEXER_PAYLOAD_TOO_LARGE` | INTEGRITY | `IndexerPayloadTooLargeError`* |
 | PR | `UNUSABLE_ERA_ENTRY` | USAGE | `UnusableEraEntryError`* |
+| PR | `FOREIGN_LEDGER_TRANSACTION` | ENVIRONMENT | `ForeignLedgerTransactionError`* |
+| PR | `INVALID_TRANSACTION_HANDLE` | USAGE | `InvalidTransactionHandleError`* |
+| PR | `TRANSACTION_ERA_MISMATCH` | USAGE | `TransactionEraMismatchError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |

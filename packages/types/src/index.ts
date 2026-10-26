@@ -18,6 +18,7 @@ export * from './contract';
 export * from './era-entries';
 export * from './era-support';
 export * from './errors';
+export * from './ledger-transaction';
 export * from './logger-provider';
 export * from './midnight-config';
 export * from './midnight-provider';

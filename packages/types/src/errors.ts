@@ -103,7 +103,10 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INDEXER_CONFIG_INVALID: 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID',
   INDEXER_INVARIANT_VIOLATED: 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED',
   INDEXER_PAYLOAD_TOO_LARGE: 'MIDNIGHT_JS_PR_INDEXER_PAYLOAD_TOO_LARGE',
-  UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY'
+  UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY',
+  FOREIGN_LEDGER_TRANSACTION: 'MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION',
+  INVALID_TRANSACTION_HANDLE: 'MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE',
+  TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -141,7 +144,10 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INDEXER_CONFIG_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.INDEXER_INVARIANT_VIOLATED]: INTERNAL,
   [PROVIDER_ERROR_CODES.INDEXER_PAYLOAD_TOO_LARGE]: INTEGRITY,
-  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE
+  [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE,
+  [PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION]: ENVIRONMENT,
+  [PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE]: USAGE,
+  [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE
 });
 
 const {
@@ -164,7 +170,10 @@ const {
   ZK_ARTIFACT_NOT_SERVED,
   PROOF_SERVER_UNAVAILABLE,
   PROOF_SERVER_REFUSED,
-  UNUSABLE_ERA_ENTRY
+  UNUSABLE_ERA_ENTRY,
+  FOREIGN_LEDGER_TRANSACTION,
+  INVALID_TRANSACTION_HANDLE,
+  TRANSACTION_ERA_MISMATCH
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -420,6 +429,120 @@ export class UnusableEraEntryError extends MidnightJsError {
           : `Pass ${shape} as ${field}, or leave the entry out (or set it to undefined) if this era is not served.`)
     );
     this.name = 'UnusableEraEntryError';
+  }
+}
+
+/**
+ * Why `LedgerTransaction.seal` refused a transaction object: it belongs to
+ * another WASM instance of the ledger package, or the framework has not loaded
+ * its v8 ledger yet, so no v8 object can be judged.
+ */
+export type ForeignLedgerTransactionReason = 'foreign-instance' | 'ledger8-not-loaded';
+
+const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerVersion) => string>> = {
+  'foreign-instance': (era) =>
+    `The ${era} transaction is not an object of the ledger copy this framework loaded: it was built by a ` +
+    `duplicate install of the ledger package (another WASM instance), or it is not a ledger transaction at all. ` +
+    `Build it with the ledger module the framework uses, and make sure only one copy of that ledger package is installed.`,
+  'ledger8-not-loaded': (era) =>
+    `A ${era} transaction cannot be checked before the framework has loaded its v8 ledger. ` +
+    `Call and await loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol first, and build the ` +
+    `transaction with the module it returns.`
+};
+
+/**
+ * Thrown by `LedgerTransaction.seal` when the transaction object is not one of
+ * the ledger copy this framework loaded for its era.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class ForeignLedgerTransactionError extends MidnightJsError {
+  readonly code = FOREIGN_LEDGER_TRANSACTION;
+  readonly category = PROVIDER_ERROR_CATEGORIES[FOREIGN_LEDGER_TRANSACTION];
+
+  /**
+   * @param era The era the object was sealed as.
+   * @param reason Why the object was refused.
+   */
+  constructor(
+    readonly era: LedgerVersion,
+    readonly reason: ForeignLedgerTransactionReason
+  ) {
+    super(`Cannot seal a ${era} transaction. ${FOREIGN_LEDGER_TRANSACTION_REMEDIES[reason](era)}`);
+    this.name = 'ForeignLedgerTransactionError';
+  }
+}
+
+/**
+ * Why a value was refused as a transaction handle: it is not a handle, it is a
+ * handle at another stage, or the stage it was to be sealed at is not one.
+ */
+export type InvalidTransactionHandleReason = 'not-a-handle' | 'wrong-stage' | 'invalid-stage';
+
+const INVALID_TRANSACTION_HANDLE_REMEDIES: Readonly<Record<InvalidTransactionHandleReason, string>> = {
+  'not-a-handle':
+    'Pass a handle made by LedgerTransaction.seal. A value with the handle\'s shape (era, stage, serialize) that ' +
+    'is still refused was most likely sealed by a duplicate midnight-js-types install: make sure only one copy of ' +
+    '@midnight-ntwrk/midnight-js-types is installed.',
+  'wrong-stage': 'Pass the handle at the stage this method takes.',
+  'invalid-stage': 'Use one of the transaction stages: Unproven, Unbound, Finalized.'
+};
+
+/**
+ * Thrown when a value reaching a method that takes a transaction handle is not
+ * a usable one.
+ *
+ * The types rule these values out, so it is reachable only from JavaScript,
+ * across an untyped boundary, or from a second copy of this package.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class InvalidTransactionHandleError extends MidnightJsError {
+  readonly code = INVALID_TRANSACTION_HANDLE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_TRANSACTION_HANDLE];
+
+  /**
+   * @param method The method the value reached.
+   * @param reason Why the value was refused.
+   * @param detail What arrived, for the message only, for example `'null'` or
+   *               `'an object'`. Never the value's contents.
+   */
+  constructor(
+    readonly method: string,
+    readonly reason: InvalidTransactionHandleReason,
+    readonly detail: string
+  ) {
+    super(`${method} cannot use the transaction handle it received (${reason}: ${detail}). ${INVALID_TRANSACTION_HANDLE_REMEDIES[reason]}`);
+    this.name = 'InvalidTransactionHandleError';
+  }
+}
+
+/**
+ * Thrown by `LedgerTransaction.unwrap` when the handle carries a transaction of
+ * another era than the one asked for.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from
+ * `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class TransactionEraMismatchError extends MidnightJsError {
+  readonly code = TRANSACTION_ERA_MISMATCH;
+  readonly category = PROVIDER_ERROR_CATEGORIES[TRANSACTION_ERA_MISMATCH];
+
+  /**
+   * @param expected The era the caller asked for.
+   * @param actual The era the handle carries.
+   */
+  constructor(
+    readonly expected: LedgerVersion,
+    readonly actual: LedgerVersion
+  ) {
+    super(
+      `Expected a ${expected} transaction, but the handle carries a ${actual} one. ` +
+        `Read the handle's era before unwrapping it, and route it to the code that serves that era.`
+    );
+    this.name = 'TransactionEraMismatchError';
   }
 }
 

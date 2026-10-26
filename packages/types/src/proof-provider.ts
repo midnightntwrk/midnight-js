@@ -24,6 +24,7 @@ import {
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CURRENT_LEDGER_VERSION,
@@ -241,7 +242,8 @@ const PROVE_BY_RETAINED_ERA: Readonly<
     (txBytes: Uint8Array, provingProvider: Ledger8ProvingProvider) => Promise<Uint8Array>
   >
 > = {
-  v8: proveLedger8Transaction
+  v8: async (txBytes, provingProvider) =>
+    (await proveLedger8Transaction(await deserializeTransactionAtStage('v8', 'Unproven', txBytes), provingProvider)).serialize()
 };
 
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {

@@ -19,9 +19,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ArtifactRuntimeVersionUnavailableError,
   ExportDecryptionError,
+  ForeignLedgerTransactionError,
   ImportConflictError,
   InvalidExportFormatError,
   InvalidProtocolSchemeError,
+  InvalidTransactionHandleError,
   Ledger8PayloadUnsupportedError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
@@ -34,6 +36,7 @@ import {
   PROVIDER_ERROR_CODES,
   ProviderEraUnsupportedError,
   SigningKeyExportError,
+  TransactionEraMismatchError,
   UntaggedPayloadError,
   UnusableEraEntryError,
   ZkArtifactFetchError
@@ -66,7 +69,10 @@ describe('types error classes', () => {
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
-    ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)]
+    ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)],
+    ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
+    ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
+    ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
