@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -61,9 +61,12 @@ const fromWalletHex = (hex: string): Uint8Array => {
   return Uint8Array.from({ length: hex.length / 2 }, (_, index) => parseInt(hex.slice(index * 2, index * 2 + 2), 16));
 };
 
-const decodeWalletAnswer = <T>(era: string, decode: () => T): T => {
+const decodeWalletAnswer = async <E extends LedgerVersion>(
+  era: E,
+  balanced: Uint8Array
+): Promise<LedgerTransactionTypes[E]['Finalized']> => {
   try {
-    return decode();
+    return await deserializeTransactionAtStage(era, 'Finalized', balanced);
   } catch (error) {
     throw new InvalidArgumentError(`The wallet returned bytes that are not a balanced ledger ${era} transaction.`, {
       cause: error
@@ -101,41 +104,26 @@ export const dappConnectorWalletProviders = async (
   api: DAppConnectorWalletAPI
 ): Promise<{ walletProvider: WalletProvider; midnightProvider: MidnightProvider }> => {
   const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } = await api.getShieldedAddresses();
-  const balance = async (txBytes: Uint8Array): Promise<Uint8Array> =>
-    fromWalletHex((await api.balanceUnsealedTransaction(toHex(txBytes))).tx);
+  const balance = async <E extends LedgerVersion>(
+    era: E,
+    tx: LedgerTransactionTypes[E]['Unbound']
+  ): Promise<LedgerTransactionTypes[E]['Finalized']> =>
+    decodeWalletAnswer(era, fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
+
+  const submit = async (tx: LedgerTransactionTypes[LedgerVersion]['Finalized']): Promise<string> => {
+    const txId = firstIdentifier(tx.identifiers());
+    await api.submitTransaction(toHex(tx.serialize()));
+    return txId;
+  };
 
   const walletProvider = createWalletProviderFromHandlers({
     getCoinPublicKey: () => shieldedCoinPublicKey,
     getEncryptionPublicKey: () => shieldedEncryptionPublicKey,
-    currentEra: async (tx) => {
-      const balanced = await balance(tx.serialize());
-      return decodeWalletAnswer('9', () => Transaction.deserialize('signature', 'proof', 'binding', balanced));
-    },
-    retainedEras: {
-      v8: async (txBytes) => {
-        const balanced = await balance(txBytes);
-        const v8 = await loadLedger8Protocol();
-        decodeWalletAnswer('8', () => v8.Transaction.deserialize('signature', 'proof', 'binding', balanced));
-        return balanced;
-      }
-    }
+    v8: (tx) => balance('v8', tx),
+    v9: (tx) => balance('v9', tx)
   });
 
-  const midnightProvider = createMidnightProviderFromHandlers({
-    currentEra: async (tx) => {
-      const txId = firstIdentifier(tx.identifiers());
-      await api.submitTransaction(toHex(tx.serialize()));
-      return txId;
-    },
-    retainedEras: {
-      v8: async (txBytes) => {
-        const v8 = await loadLedger8Protocol();
-        const txId = firstIdentifier(v8.Transaction.deserialize('signature', 'proof', 'binding', txBytes).identifiers());
-        await api.submitTransaction(toHex(txBytes));
-        return txId;
-      }
-    }
-  });
+  const midnightProvider = createMidnightProviderFromHandlers({ v8: submit, v9: submit });
 
   return { walletProvider, midnightProvider };
 };

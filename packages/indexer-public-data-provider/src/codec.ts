@@ -22,14 +22,10 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
-  type Binding,
   type ContractAddress,
   type IntentHash,
   type LedgerParameters,
-  type Proof,
   type RawTokenType,
-  type SignatureEnabled,
-  type Transaction as LedgerTransaction,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 // Type-only, so nothing here links the v8 chunk: the runtime is acquired
@@ -37,6 +33,7 @@ import {
 // precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
 import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type {
+  FinalizedTx,
   RawContractState,
   ReadMethod,
   VersionedContractState,
@@ -46,6 +43,7 @@ import type {
 import {
   FailEntirely,
   FailFallible,
+  LedgerTransaction,
   SegmentFail,
   type SegmentStatus,
   SegmentSuccess,
@@ -115,10 +113,7 @@ const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 export const parseHexZswapState = (s: string): ZswapChainState =>
   deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:parseHexZswapState` });
 
-export const parseHexTransaction = (
-  s: string,
-  details?: ReadDetails
-): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
+export const parseHexTransaction = (s: string, details?: ReadDetails): FinalizedTx =>
   deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
 const parametersBytesAndEnvelopeVersion = (
@@ -184,7 +179,9 @@ const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Pro
  * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
  *
  * `DistributivePick` rather than a bare `Pick`: distributed over the union it
- * yields one variant per era, so a v8 tag can never be paired with a v9 object.
+ * yields one variant per era. Both variants carry a `FinalizedTx`, so the types
+ * no longer tie `tx` to `version`: each decoder seals `tx` in its own era,
+ * which keeps `tx.era === version`.
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
@@ -210,7 +207,7 @@ type TransactionDecoders = {
 const transactionDecoders = {
   v8: async (hexTransaction: string, details: ReadDetails) => ({
     version: 'v8' as const,
-    tx: await parseLedger8HexTransaction(hexTransaction, details)
+    tx: LedgerTransaction.seal('v8', 'Finalized', await parseLedger8HexTransaction(hexTransaction, details))
   }),
   // Wrapped in a resolved promise rather than decoded eagerly: both decoders have
   // to be awaited the same way, and the v9 read stays the same synchronous

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import { isDeserializationError } from '../deserialization';
@@ -118,3 +120,15 @@ describe('typed wrappers — source attribution', () => {
   });
 });
 
+
+describe('deserializeLedgerTransaction', () => {
+  it('returns a finalized v9 handle around the decoded transaction', () => {
+    const bytes = Transaction.fromParts('undeployed').mockProve().serialize();
+
+    const handle = deserializeLedgerTransaction(bytes, { caller });
+
+    expect(LedgerTransaction.is(handle)).toBe(true);
+    expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
+    expect(handle.serialize()).toEqual(bytes);
+  });
+});

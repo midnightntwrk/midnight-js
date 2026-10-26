@@ -15,16 +15,14 @@
 
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
-  type Binding,
   ContractState as LedgerContractState,
   type EncodedStateValue,
   LedgerParameters,
-  type Proof,
-  type SignatureEnabled,
   StateValue as LedgerStateValue,
-  Transaction as LedgerTransaction,
+  Transaction,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type FinalizedTx, LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 
 import { withDeserializationContext } from './with-deserialization-context';
 
@@ -115,7 +113,8 @@ export const deserializeZswapChainState = (
   );
 
 /**
- * Deserialize a ledger {@link LedgerTransaction} from raw bytes.
+ * Deserialize a finalized ledger 9 transaction from raw bytes and seal it in a
+ * {@link FinalizedTx} handle.
  * The proof / signature / binding markers are hidden — all current callers
  * use `('signature', 'proof', 'binding', ...)`. Add a new wrapper if a
  * different combination is needed.
@@ -123,18 +122,19 @@ export const deserializeZswapChainState = (
  * @throws {DeserializationError} On any underlying ledger deserialization
  *   failure.
  */
-export const deserializeLedgerTransaction = (
-  bytes: Uint8Array,
-  ctx: CallSiteContext
-): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
-  withDeserializationContext(
-    {
-      dataType: 'LedgerTransaction',
-      source: 'ledger',
-      caller: ctx.caller,
-      details: ctx.details
-    },
-    () => LedgerTransaction.deserialize('signature', 'proof', 'binding', bytes)
+export const deserializeLedgerTransaction = (bytes: Uint8Array, ctx: CallSiteContext): FinalizedTx =>
+  LedgerTransaction.seal(
+    'v9',
+    'Finalized',
+    withDeserializationContext(
+      {
+        dataType: 'LedgerTransaction',
+        source: 'ledger',
+        caller: ctx.caller,
+        details: ctx.details
+      },
+      () => Transaction.deserialize('signature', 'proof', 'binding', bytes)
+    )
   );
 
 /**

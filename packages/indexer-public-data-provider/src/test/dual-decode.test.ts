@@ -21,7 +21,12 @@ import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { type ReadMethod, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import {
+  LedgerTransaction,
+  type ReadMethod,
+  SucceedEntirely,
+  type VersionedFinalizedTxData
+} from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -154,6 +159,17 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
 
     expect(record.version).toBe('v8');
     expect(toHex(record.tx.serialize())).toBe(ledger8TransactionHex);
+  });
+
+  it.each([
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]
+  ])('seals a %s record transaction in a finalized handle of the era the record is tagged with', async (era, protocolVersion, raw) => {
+    const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw()));
+
+    expect(LedgerTransaction.is(record.tx)).toBe(true);
+    expect(record.version).toBe(era);
+    expect([record.tx.era, record.tx.stage]).toEqual([record.version, 'Finalized']);
   });
 
   it('decodes a v8 deploy record on watchForDeployTxData too', async () => {
