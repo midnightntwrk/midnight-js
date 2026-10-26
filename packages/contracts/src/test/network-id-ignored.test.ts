@@ -22,7 +22,7 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction, type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { afterEach, expect, it } from 'vitest';
 
 import { unprovenTxFromContractUpdates } from '../governance/unproven-tx';
@@ -43,7 +43,14 @@ const builders: [string, () => Promise<UnprovenTransaction>][] = [
   ],
   [
     'governance',
-    () => unprovenTxFromContractUpdates(() => Promise.resolve(new MaintenanceUpdate(sampleContractAddress(), [], 1n)), CONFIG)
+    async () =>
+      LedgerTransaction.unwrap(
+        await unprovenTxFromContractUpdates(
+          () => Promise.resolve(new MaintenanceUpdate(sampleContractAddress(), [], 1n)),
+          CONFIG
+        ),
+        'v9'
+      )
   ]
 ];
 

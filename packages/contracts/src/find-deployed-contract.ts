@@ -20,13 +20,12 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
-  UntaggedPayloadError,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -107,7 +106,7 @@ const queryFoundDeployTxPublicData = async (
           return { ...deployRecord, contractAddress, initialContractState: deployState.state };
         default: {
           const unhandled: never = deployState;
-          throw new UntaggedPayloadError('queryDeployContractState', unhandled);
+          throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
         }
       }
     }
@@ -506,7 +505,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
- * @throws UntaggedPayloadError The deploy record or the deploy state carries no readable era tag.
+ * @throws UnknownLedgerVersionError The deploy record or the deploy state carries no readable era tag.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or
@@ -597,10 +596,7 @@ export async function findDeployedContract<C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const deployRecord = requireTaggedRecord(
-    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
-    'watchForDeployTxData'
-  );
+  const deployRecord = requireTaggedRecord(await providers.publicDataProvider.watchForDeployTxData(contractAddress));
   const deployPublicData = await queryFoundDeployTxPublicData(
     providers.publicDataProvider,
     deployRecord,

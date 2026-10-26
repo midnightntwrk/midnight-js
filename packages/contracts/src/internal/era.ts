@@ -24,13 +24,14 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
+  InvalidTransactionHandleError,
+  LedgerTransaction,
   type PublicDataProvider,
   type RawContractState,
   type ReadMethod,
   type TransactionMethod,
-  UntaggedPayloadError,
+  type TransactionStage,
   type VersionedFinalizedTxData,
-  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -53,84 +54,58 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
-/**
- * Unwraps the v9 variant of a versioned payload a provider returned. The flows in
- * this package only ever send v9 payloads, so a v8 response cannot be handled.
- *
- * @see {@link EraDispatch} for why a v8 answer here is a broken provider rather
- *      than an unsupported request.
- *
- * @param payload The payload a provider returned.
- * @param method The provider method that returned it.
- * @param circuitId The circuit, or circuits, this flow is running, for the error message.
- * @returns The live v9 ledger transaction.
- * @throws EraInvariantViolationError if the payload carries the v8 variant.
- * @throws UntaggedPayloadError if `version` is missing or unrecognised.
- */
-export function unwrapLedger9ProviderResult<T>(
-  payload: VersionedTransaction<T>,
-  method: TransactionMethod,
-  circuitId?: string | readonly string[]
-): T {
-  if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(method, payload);
+/** Names what arrived where a transaction handle was expected, without its contents. */
+export const describeNonHandle = (value: unknown): string => {
+  if (value === null) {
+    return 'null';
   }
-  switch (payload.version) {
-    case 'v9':
-      return payload.tx;
-    case 'v8':
-      throw new EraInvariantViolationError(method, circuitId, 'v9', 'v8');
-    default: {
-      const unhandled: never = payload;
-      throw new UntaggedPayloadError(method, unhandled);
-    }
-  }
-}
+  return typeof value === 'object' ? 'an object that is not a transaction handle' : typeof value;
+};
+
+const isAtStage = <S extends TransactionStage>(
+  handle: LedgerTransaction<TransactionStage>,
+  stage: S
+): handle is LedgerTransaction<S> => handle.stage === stage;
 
 /**
- * Unwraps the RETAINED variant of a versioned payload a provider returned, on a
- * flow that submitted the retained variant.
+ * Checks the transaction handle a provider method answered with: a handle of this
+ * package, at the stage the method produces, in the era the flow sent.
  *
- * The mirror of {@link unwrapLedger9ProviderResult}, and it exists for the same reason: the provider
- * method types do not tie a provider's output era to its input era, so a flow that
- * submitted retained-era bytes has to check that retained-era bytes came back.
+ * The provider method types do not tie the era of the answer to the era of the
+ * request, so a third-party provider can answer in the other era; the flow has
+ * to check that its own era came back.
  *
- * Note which refusal is NOT this function's. A provider that does not handle
- * the retained variant at all rejects it on the way IN, with
- * `Ledger8PayloadUnsupportedError` from `unwrapLedger9` in
- * `@midnight-ntwrk/midnight-js-types` — that is the inbound guard a
- * current-era-only provider implementation runs, and it is deliberately left
- * where it is so a retained-era submit against a provider that has not been
- * widened fails with one coherent typed refusal in the method it entered, rather
- * than part-way through a submit with a transaction already composed. This
- * function only catches the other case: a provider that ACCEPTED the retained
- * payload and answered in the current era.
- *
- * @param payload The payload a provider returned.
- * @param method The provider method that returned it.
+ * @param result What the provider method resolved with.
+ * @param expectedEra The era of the handle the flow sent.
+ * @param stage The stage the method produces.
+ * @param method The provider method that answered.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
- * @returns The serialized retained-era transaction bytes.
- * @throws EraInvariantViolationError if the payload carries the current-era variant.
- * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ * @returns The handle, narrowed to `stage`.
+ * @throws InvalidTransactionHandleError if the answer is not a handle of this
+ *         package (`not-a-handle`) or is at another stage (`wrong-stage`).
+ * @throws EraInvariantViolationError if the handle carries the other era.
  */
-export function unwrapLedger8ProviderResult<T>(
-  payload: VersionedTransaction<T>,
+export function requireProviderResult<S extends TransactionStage>(
+  result: unknown,
+  expectedEra: LedgerVersion,
+  stage: S,
   method: TransactionMethod,
   circuitId?: string | readonly string[]
-): Uint8Array {
-  if (typeof payload !== 'object' || payload === null) {
-    throw new UntaggedPayloadError(method, payload);
+): LedgerTransaction<S> {
+  if (!LedgerTransaction.is(result)) {
+    throw new InvalidTransactionHandleError(method, 'not-a-handle', describeNonHandle(result));
   }
-  switch (payload.version) {
-    case 'v8':
-      return payload.txBytes;
-    case 'v9':
-      throw new EraInvariantViolationError(method, circuitId, 'v8', 'v9');
-    default: {
-      const unhandled: never = payload;
-      throw new UntaggedPayloadError(method, unhandled);
-    }
+  if (!isAtStage(result, stage)) {
+    throw new InvalidTransactionHandleError(
+      method,
+      'wrong-stage',
+      `${result.stage} handle, where ${method} answers with ${stage} handles`
+    );
   }
+  if (result.era !== expectedEra) {
+    throw new EraInvariantViolationError(method, circuitId, expectedEra, result.era);
+  }
+  return result;
 }
 
 const isLedger9State = <T extends { readonly version: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
@@ -177,13 +152,12 @@ export const requireLedger9ContractState = <T extends { readonly version: Ledger
  * attribute.
  *
  * @param record The record the read surface returned.
- * @param method The read-surface method that returned it.
  * @returns The record, tagged with a recognised era.
- * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ * @throws UnknownLedgerVersionError if `version` is missing or unrecognised.
  */
-export function requireTaggedRecord(record: VersionedFinalizedTxData, method: ReadMethod): VersionedFinalizedTxData {
+export function requireTaggedRecord(record: VersionedFinalizedTxData): VersionedFinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UntaggedPayloadError(method, record);
+    throw new UnknownLedgerVersionError(String(record));
   }
   switch (record.version) {
     case 'v8':
@@ -191,7 +165,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Re
       return record;
     default: {
       const unhandled: never = record;
-      throw new UntaggedPayloadError(method, unhandled);
+      throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
     }
   }
 }
@@ -207,7 +181,7 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData, method: Re
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The v9 finalized-transaction record.
  * @throws EraInvariantViolationError if the record carries the v8 variant.
- * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+ * @throws UnknownLedgerVersionError if `version` is missing or unrecognised.
  */
 export function requireLedger9Record(
   record: VersionedFinalizedTxData,
@@ -215,7 +189,7 @@ export function requireLedger9Record(
   circuitId?: string | readonly string[]
 ): FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UntaggedPayloadError(method, record);
+    throw new UnknownLedgerVersionError(String(record));
   }
   switch (record.version) {
     case 'v9':
@@ -224,7 +198,7 @@ export function requireLedger9Record(
       throw new EraInvariantViolationError(method, circuitId);
     default: {
       const unhandled: never = record;
-      throw new UntaggedPayloadError(method, unhandled);
+      throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
     }
   }
 }

@@ -20,9 +20,9 @@ import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleSigningKey,
-  Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -33,11 +33,13 @@ import {
 } from '../../governance/unproven-tx';
 import { createMockCompiledContract, createMockZKConfigProvider, MOCK_CONFIG } from '../test-mocks';
 
-const networkIdOfTx = (tx: UnprovenTransaction): string | undefined =>
-  /network_id: "([^"]*)"/.exec(tx.toString(false))?.[1];
+const ledgerTxOf = (handle: UnprovenTx): UnprovenTransaction => LedgerTransaction.unwrap(handle, 'v9');
 
-const ttlOfTx = (tx: UnprovenTransaction): Date => {
-  const [intent, ...others] = tx.intents?.values() ?? [];
+const networkIdOfTx = (handle: UnprovenTx): string | undefined =>
+  /network_id: "([^"]*)"/.exec(ledgerTxOf(handle).toString(false))?.[1];
+
+const ttlOfTx = (handle: UnprovenTx): Date => {
+  const [intent, ...others] = ledgerTxOf(handle).intents?.values() ?? [];
   assertDefined(intent, 'Expected the transaction to carry an intent');
   expect(others).toEqual([]);
   return intent.ttl;
@@ -54,12 +56,13 @@ describe('governance/unproven-tx', () => {
   const dummyContractAddress = sampleContractAddress();
   const dummyCPK = sampleCoinPublicKey();
 
-  it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
+  it('unprovenTxFromContractUpdates returns an unproven v9 handle', async () => {
     const tx = await unprovenTxFromContractUpdates(
       () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)),
       MOCK_CONFIG
     );
-    expect(tx).toBeInstanceOf(Transaction);
+    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 
   it('builds a maintenance update for the configured network with the configured TTL', async () => {
@@ -82,7 +85,7 @@ describe('governance/unproven-tx', () => {
     expect(updateAndSign).not.toHaveBeenCalled();
   });
 
-  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
+  it('createUnprovenReplaceAuthorityTx returns an unproven v9 handle', async () => {
     const tx = await createUnprovenReplaceAuthorityTx(
       mockZKProvider,
       mockCompiledContract,
@@ -93,10 +96,11 @@ describe('governance/unproven-tx', () => {
       dummyCPK,
       MOCK_CONFIG
     );
-    expect(tx).toBeInstanceOf(Transaction);
+    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 
-  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
+  it('createUnprovenRemoveVerifierKeyTx returns an unproven v9 handle', async () => {
     const tx = await createUnprovenRemoveVerifierKeyTx(
       mockZKProvider,
       mockCompiledContract,
@@ -107,6 +111,7 @@ describe('governance/unproven-tx', () => {
       dummyCPK,
       MOCK_CONFIG
     );
-    expect(tx).toBeInstanceOf(Transaction);
+    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 });

@@ -42,14 +42,16 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  Ledger8PayloadUnsupportedError,
+  type FinalizedTx,
+  LedgerTransaction,
+  ProviderEraUnsupportedError,
   type RawContractState,
-  type VersionedFinalizedTransaction,
-  type VersionedTransaction,
+  type UnboundTx,
+  type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ProviderFailedError,
@@ -60,6 +62,7 @@ import { runLedger8Deploy } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { finalizedLike, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
@@ -117,9 +120,9 @@ const headSource = (...protocolVersions: readonly number[]): { queryLatestProtoc
 
 /** What a provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTransaction<unknown>;
-  balanceTx?: VersionedTransaction<unknown>;
-  submitTx?: VersionedFinalizedTransaction;
+  proveTx?: UnprovenTx;
+  balanceTx?: UnboundTx;
+  submitTx?: FinalizedTx;
 }
 
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
@@ -156,7 +159,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
  * rather than a refusal raised before anything was composed.
  */
 const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
-  vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+  vi.fn().mockImplementation((tx: FinalizedTx) => {
     seen.submitTx = tx;
     return Promise.reject(rejection);
   });
@@ -400,11 +403,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   });
 
   it("keeps this framework's own coded refusals unwrapped, and makes no head read for one", async () => {
-    // A provider that does not serve the pre-fork variant refuses on the way IN.
+    // A provider that does not serve the pre-fork era refuses on the way IN.
     // That is not fork evidence, a caller narrowing on it must keep seeing it,
     // and asking the network about it would be a round trip for nothing.
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
-    const refusal = new Ledger8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
+    const refusal = new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']);
 
     await expect(handleSubmitRejection(pdp, callOperation(), refusal)).rejects.toBe(refusal);
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -541,15 +544,15 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: UnprovenTx) => {
       seen.proveTx = tx;
-      return Promise.resolve(tx);
+      return unboundLike(tx);
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: UnboundTx) => {
       seen.balanceTx = tx;
-      return Promise.resolve(tx);
+      return finalizedLike(tx);
     });
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
       return Promise.resolve('retained-era-tx-id');
     });
@@ -599,7 +602,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
     // The transaction really did reach `submitTx` -- this is a submit-time
     // failure, not a refusal before anything was composed.
-    expect(providers.seen.submitTx?.version).toBe('v8');
+    expect(providers.seen.submitTx?.era).toBe('v8');
   });
 
   it('SANITIZES the rejection it carries: no transaction or witness material survives onto the error', async () => {
@@ -690,10 +693,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     // The transaction the pre-fork attempt built was composed by the RETAINED
     // ledger, which is what makes the second attempt a different composition
     // rather than a retry of the same bytes.
-    const preForkPayload = providers.seen.submitTx;
-    expect(preForkPayload?.version).toBe('v8');
-    const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
-    expect(txTagPrefix(preForkBytes!, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
+    const preForkComposed = providers.seen.proveTx;
+    assert(preForkComposed !== undefined);
+    expect(preForkComposed.era).toBe('v8');
+    expect(txTagPrefix(preForkComposed.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
 
     // THE RE-RUN. Nothing has called this contract since the fork, and an indexer older than
     // 4.4.0-rc.6 serves such a contract untranslated (midnight-indexer #1605) -- so `raw` is still
@@ -709,7 +712,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     providers.publicDataProvider.queryRawContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, POST_FORK_PROTOCOL_VERSION));
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       providers.seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');
     });
@@ -719,9 +722,9 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     // The keep-state path: an ORDINARY current-era transaction carrying a
-    // retained-era call, so it is passed to the providers as a live handle rather than
-    // as retained-era bytes.
-    expect(providers.seen.submitTx?.version).toBe('v9');
-    expect(providers.seen.submitTx).not.toHaveProperty('txBytes');
+    // retained-era call, so it is passed to the providers as a v9 handle.
+    expect(providers.seen.proveTx?.era).toBe('v9');
+    expect(LedgerTransaction.is(providers.seen.submitTx)).toBe(true);
+    expect(providers.seen.submitTx?.era).toBe('v9');
   });
 });

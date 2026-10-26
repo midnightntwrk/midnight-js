@@ -29,8 +29,6 @@ import {
   type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
-  type Binding,
-  type Bindingish,
   type CoinPublicKey,
   type CoinSecretKey,
   type DustSecretKey,
@@ -38,17 +36,12 @@ import {
   type EncryptionSecretKey,
   LedgerParameters,
   type PartitionedTranscript,
-  type Proof,
-  type Proofish,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleDustSecretKey,
   sampleEncryptionPublicKey,
   type ShieldedCoinInfo,
-  type SignatureEnabled,
-  type Signaturish,
   type TokenType,
-  type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
@@ -58,14 +51,15 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
+  type FinalizedTx,
   type FinalizedTxData,
   type Ledger8FinalizedTxData,
   type MidnightConfig,
   type PrivateStateId,
   type ProverKey,
   SucceedEntirely,
-  type Transaction,
   type TxStatus,
+  type UnprovenTx,
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
@@ -77,6 +71,7 @@ import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { handles } from './ledger-transaction-fixtures';
 
 export const createMockContractAddress = () => sampleContractAddress();
 
@@ -199,55 +194,11 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
   ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-export const createMockUnprovenTx = (): UnprovenTransaction => ({
-  addCalls: vi.fn(),
-  addZswapOffer: vi.fn(),
-  addIntent: vi.fn(),
-  eraseProofs: vi.fn(),
-  identifiers: vi.fn(),
-  merge: vi.fn(),
-  serialize: vi.fn(),
-  imbalances: vi.fn(),
-  bind: vi.fn(),
-  wellFormed: vi.fn(),
-  transactionHash: vi.fn(),
-  fees: vi.fn(),
-  intents: undefined,
-  fallibleOffer: undefined,
-  guaranteedOffer: undefined,
-  bindingRandomness: 0n,
-  rewards: undefined,
-  mockProve: vi.fn(),
-  prove: vi.fn(),
-  eraseSignatures: vi.fn(),
-  cost: vi.fn(),
-  feesWithMargin: vi.fn()
-});
+export const createMockUnprovenTx = (): UnprovenTx => handles.v9.Unproven();
 
-export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
-  addCalls: vi.fn(),
-  addZswapOffer: vi.fn(),
-  addIntent: vi.fn(),
-  eraseProofs: vi.fn(),
-  identifiers: vi.fn().mockReturnValue(['test-tx-id']),
-  merge: vi.fn(),
-  serialize: vi.fn(),
-  imbalances: vi.fn(),
-  bind: vi.fn().mockReturnValue(new Uint8Array(0)),
-  wellFormed: vi.fn(),
-  transactionHash: vi.fn(),
-  fees: vi.fn(),
-  intents: undefined,
-  fallibleOffer: undefined,
-  guaranteedOffer: undefined,
-  bindingRandomness: 0n,
-  rewards: undefined,
-  eraseSignatures: vi.fn(),
-  cost: vi.fn(),
-  feesWithMargin: vi.fn(),
-  mockProve: vi.fn(),
-  prove: vi.fn()
-});
+const MOCK_FINALIZED_TX: FinalizedTx = await handles.v9.Finalized();
+
+const MOCK_LEDGER8_FINALIZED_TX: FinalizedTx = await handles.v8.Finalized();
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   type: 'shielded',
@@ -346,7 +297,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],
   blockHeight: 100,
-  tx: {} as Transaction<SignatureEnabled, Proof, Binding>,
+  tx: MOCK_FINALIZED_TX,
   txHash: 'hash',
   blockHash: 'hash',
   segmentStatusMap: undefined,
@@ -370,7 +321,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
   version: 'v8',
-  tx: {} as Ledger8FinalizedTxData['tx'],
+  tx: MOCK_LEDGER8_FINALIZED_TX,
   // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
   protocolVersion: 1_000_000
 });

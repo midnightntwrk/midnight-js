@@ -67,9 +67,10 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * the record has to agree with.
  *
  * {@link EraInvariantViolationError.received} names the era that actually came
- * back, when the payload carried a readable one. A payload whose tag is
- * missing or unrecognised is a different fault and raises
- * {@link UntaggedPayloadError} instead.
+ * back. An answer that is not a transaction handle at all is a different
+ * fault and raises `InvalidTransactionHandleError` instead; a read-surface
+ * record whose `version` is missing or unrecognised raises
+ * `UnknownLedgerVersionError`.
  */
 export class EraInvariantViolationError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -131,7 +132,7 @@ export type EraArtifactMismatchReason =
   | 'ledger9-artifact-on-ledger8-head'
   /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
   | 'ledger9-transaction-on-ledger8-head'
-  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
+  /** A v8 transaction handed to `submitTx`, on a network head that has crossed the fork. */
   | 'ledger8-transaction-on-ledger9-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
@@ -160,12 +161,12 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'ledger 8 (pre-fork) Compact toolchain until the network head has crossed the fork.',
   'ledger9-transaction-on-ledger8-head':
     'A v9 transaction was handed to submitTx, but the network head is still on ledger 8, ' +
-    'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
-    'until the network head has crossed the fork.',
+    'which cannot accept it. Nothing was proved. Submit a v8 transaction until the network head has ' +
+    'crossed the fork.',
   'ledger8-transaction-on-ledger9-head':
-    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
-    'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
-    'v9 ledger and submit it as { version: \'v9\', tx }.',
+    'A v8 transaction was handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'ledger era, which cannot read it. Nothing was proved. Compose the transaction again against the ' +
+    'v9 ledger and submit the v9 transaction.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':
@@ -495,8 +496,8 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  * no own properties, and no further `cause` chain.
  *
  * This package's own coded errors are NOT wrapped: they carry no external
- * payload, and a caller narrowing on `Ledger8PayloadUnsupportedError` or
- * {@link EraInvariantViolationError} must keep seeing them.
+ * payload, and a caller narrowing on `ProviderEraUnsupportedError`,
+ * `InvalidTransactionHandleError` or {@link EraInvariantViolationError} must keep seeing them.
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
@@ -921,8 +922,9 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
   /**
    * The finalized record the chain reported, version-tagged.
    *
-   * @remarks Narrow on `record.version` before reading `record.tx`: the handle
-   * belongs to the ledger runtime the tag names.
+   * @remarks `record.tx` is a `FinalizedTx` in the era `record.version` names.
+   * Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
+   * narrowing on `record.version`.
    */
   abstract readonly record: VersionedFinalizedTxData;
 }

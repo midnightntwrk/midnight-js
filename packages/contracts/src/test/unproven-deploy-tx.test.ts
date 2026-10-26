@@ -14,6 +14,7 @@
  */
 
 import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
@@ -32,15 +33,19 @@ vi.mock('../call-constructor', () => ({
   callContractConstructor: vi.fn()
 }));
 
-vi.mock('../internal/utils', () => ({
-  createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
-    'mock-contract-address',
-    { test: 'initial-contract-state' },
-    { test: 'unproven-tx' }
-  ]),
-  createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
-  zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
-}));
+const BUILT_DEPLOY_TX = vi.hoisted(async () => {
+  const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+  return Transaction.fromParts('undeployed');
+});
+
+vi.mock('../internal/utils', async () => {
+  const builtDeployTx = await BUILT_DEPLOY_TX;
+  return {
+    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', { test: 'initial-contract-state' }, builtDeployTx]),
+    createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
+  };
+});
 
 const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
 const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY_HEX = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
@@ -70,7 +75,9 @@ describe('unproven-deploy-tx', () => {
       expect(result.public.contractAddress).toBe('mock-contract-address');
       expect(result.public.initialContractState).toEqual({ test: 'initial-contract-state' });
       expect(result.private.signingKey).toEqual(options.signingKey);
-      expect(result.private.unprovenTx).toEqual({ test: 'unproven-tx' });
+      expect(LedgerTransaction.is(result.private.unprovenTx)).toBe(true);
+      expect(result.private.unprovenTx.era).toBe('v9');
+      expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(await BUILT_DEPLOY_TX);
     });
 
     it('should create unproven deploy tx from verifier keys with private state', async () => {

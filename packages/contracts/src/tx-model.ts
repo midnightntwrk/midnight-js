@@ -15,12 +15,12 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   FinalizedTxData,
   Ledger8FinalizedTxData,
   SubmittedCallTxBase,
+  UnprovenTx,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -31,7 +31,7 @@ import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
  *
  * @remarks
  * **Privacy-sensitive type.** Every field on this type is private: the
- * `unprovenTx` field carries the `UnprovenTransaction` that the underlying
+ * `unprovenTx` field carries the unproven transaction that the underlying
  * zero-knowledge proofs were designed to keep confidential, and `newCoins`
  * includes shielded coin material that must not leak.
  *
@@ -44,9 +44,10 @@ import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
  */
 export interface UnsubmittedTxData extends UnsubmittedTxDataBase {
   /**
-   * The unproven ledger transaction produced.
+   * The unproven transaction produced, as a v9 handle. Read it with
+   * `LedgerTransaction.unwrap(unprovenTx, 'v9')`.
    */
-  readonly unprovenTx: UnprovenTransaction;
+  readonly unprovenTx: UnprovenTx;
 }
 
 /**
@@ -124,7 +125,7 @@ export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
  * @remarks
  * **Privacy-sensitive type.** Extends {@link UnsubmittedDeployTxDataBase} and
  * further embeds {@link UnsubmittedTxData} (carrying the
- * `UnprovenTransaction`) plus the contract constructor's
+ * unproven transaction) plus the contract constructor's
  * `initialZswapState` under the `private` field. When logging, serializing,
  * or transmitting, read only the `public` field or destructure specific
  * non-sensitive fields — never spread or stringify the whole object.
@@ -247,7 +248,7 @@ export interface FoundDeployTxData<C extends Contract.Any> {
  *
  * @remarks
  * **Privacy-sensitive type.** Inherits {@link UnsubmittedDeployTxData}'s
- * `private` field, which transitively carries the `UnprovenTransaction`,
+ * `private` field, which transitively carries the unproven transaction,
  * `newCoins`, signing key, initial private state, and `initialZswapState`.
  * Treat as confidential when logging, serializing, or transmitting —
  * destructure only the non-sensitive fields (`public.txId`,
@@ -273,7 +274,7 @@ export interface FinalizedDeployTxData<C extends Contract.Any> extends Unsubmitt
  * **Privacy-sensitive type.** Intersects {@link CallResult} (whose `private`
  * field exposes ZK inputs/outputs, the private transcript outputs, and the
  * next private state) with an additional {@link UnsubmittedTxData} under
- * `private` (carrying the `UnprovenTransaction` and new shielded
+ * `private` (carrying the unproven transaction and new shielded
  * coins). Treat as confidential when logging, serializing, or transmitting —
  * destructure specific non-sensitive fields rather than spreading or
  * stringifying the whole object.
@@ -300,7 +301,7 @@ export interface UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contr
  *
  * @remarks
  * **Privacy-sensitive type.** Inherits {@link UnsubmittedCallTxData}'s
- * `private` field, which transitively carries the `UnprovenTransaction`,
+ * `private` field, which transitively carries the unproven transaction,
  * new shielded coins, ZK inputs/outputs, the private transcript outputs, and
  * the next private state. Treat as confidential when logging, serializing, or
  * transmitting — destructure only the non-sensitive fields (`public.txId`,
@@ -365,7 +366,7 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  *
  * @remarks
  * **Privacy-sensitive type.** The `callTxData` field carries
- * {@link UnsubmittedCallTxData} and transitively the `UnprovenTransaction`
+ * {@link UnsubmittedCallTxData} and transitively the unproven transaction
  * and the call's private state. Treat as confidential when logging,
  * serializing, or transmitting — read only `txId` or destructure specific
  * non-sensitive fields rather than spreading or stringifying the whole
