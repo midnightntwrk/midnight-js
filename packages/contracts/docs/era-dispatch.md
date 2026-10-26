@@ -402,7 +402,11 @@ It refuses:
 On the read side, `requireLedger9Record` narrows a finalized record to its v9
 variant on the flows that only ever send v9 transactions. `PublicDataProvider`
 reports both eras, and the v9-only flows reject a v8-era record here rather
-than widening their own public return types.
+than widening their own public return types. Both record checks, it and
+`requireTaggedRecord`, also refuse a record whose `tx` is not a handle
+(`InvalidTransactionHandleError`) or is a handle of another era than `version`
+(`EraInvariantViolationError`), naming the read method, so a third-party
+provider's mistake surfaces at the read and not in the caller's own `unwrap`.
 
 ## Refusing a provider set before it costs anything
 

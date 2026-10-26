@@ -257,7 +257,11 @@ move a ledger transaction in and out of a handle:
 
 - `LedgerTransaction.seal(era, stage, tx)` makes a handle. It refuses an object
   of another copy of the ledger package with `ForeignLedgerTransactionError`
-  (`MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION`).
+  (`MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION`). A v8 object is also refused
+  (reason `ledger8-not-loaded`) until `loadLedger8Protocol()` has resolved; call
+  it from the same copy of `@midnight-ntwrk/midnight-js-protocol` that
+  `@midnight-ntwrk/midnight-js-types` depends on, because a separately installed
+  version has its own load flag.
 - `LedgerTransaction.unwrap(handle, era)` gives the ledger object back. It
   refuses a handle of the other era with `TransactionEraMismatchError`
   (`MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH`).

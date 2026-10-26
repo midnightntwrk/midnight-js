@@ -288,7 +288,9 @@ const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransact
   'ledger8-not-loaded': (era) =>
     `A ${era} transaction cannot be checked before the framework has loaded its v8 ledger. ` +
     `Call and await loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol first, and build the ` +
-    `transaction with the module it returns.`
+    `transaction with the module it returns. Import it from the same copy of @midnight-ntwrk/midnight-js-protocol ` +
+    `that @midnight-ntwrk/midnight-js-types depends on: a separately installed version has its own load flag, so ` +
+    `loading it does not load the framework's v8 ledger.`
 };
 
 /**

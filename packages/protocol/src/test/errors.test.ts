@@ -257,6 +257,14 @@ describe('UnknownLedgerVersionError', () => {
     expect(error.requestedVersion).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
   });
+
+  it('names the call that read the version when one is given', () => {
+    const error = new UnknownLedgerVersionError('undefined', 'watchForTxData');
+
+    expect(error.context).toBe('watchForTxData');
+    expect(error.message).toContain('watchForTxData');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+  });
 });
 
 describe('ComposeFailedError', () => {

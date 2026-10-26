@@ -68,7 +68,10 @@ export class LedgerTransaction<S extends TransactionStage> {
    * Wraps a ledger transaction object in a handle.
    *
    * @param era The era of the object.
-   * @param stage The stage the object is at.
+   * @param stage The stage the object is at. It is not checked against the
+   *   object at run time, because one ledger class serves several stages: pass
+   *   the stage the object really is at, or `unwrap` hands back an object of
+   *   the wrong stage.
    * @param tx The transaction, an object of the ledger copy this framework
    *   loaded for `era`.
    * @throws InvalidTransactionHandleError If `stage` is not a transaction stage.

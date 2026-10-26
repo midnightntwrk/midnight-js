@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { COMMON_ERROR_CODES, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
@@ -214,7 +215,7 @@ describe('submitLedger8Tx', () => {
     ['v8', 'v9'],
     ['v9', 'v8']
   ] as const)(
-    'refuses a %s handle on a %s head with EraInvariantViolationError, before any provider is called',
+    'refuses a %s handle on a %s head with InvariantViolationError, before any provider is called',
     async (era, head) => {
       const { providers, seen } = recordingProviders();
       const { publicDataProvider } = createMockProviders();
@@ -229,9 +230,12 @@ describe('submitLedger8Tx', () => {
         })
       );
 
-      expect(rejection).toBeInstanceOf(EraInvariantViolationError);
-      expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
-      expect(rejection).toMatchObject({ expected: head, received: era, circuitId: 'testCircuit' });
+      expect(rejection).toBeInstanceOf(InvariantViolationError);
+      expect(hasErrorCode(rejection, COMMON_ERROR_CODES.INVARIANT_VIOLATED)).toBe(true);
+      expect(String(rejection)).not.toContain('proveTx');
+      expect(String(rejection)).toContain(`'${era}'`);
+      expect(String(rejection)).toContain(`'${head}'`);
+      expect(String(rejection)).toContain('testCircuit');
       expect(seen).toEqual({ proveTx: [], balanceTx: [], submitTx: [] });
     }
   );

@@ -43,7 +43,7 @@ import {
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertProvidersSupportEra,
@@ -261,8 +261,9 @@ export const acquireLedger8Runtime = async (
  * it is a call or a deploy, and the identifiers a fork-crossing refusal has to
  * name.
  * @returns The transaction id the network assigned.
- * @throws EraInvariantViolationError if `unprovenTx` is not in the head's era,
- * before any provider is called, or if a provider answers in the other era.
+ * @throws InvariantViolationError if `unprovenTx` is not in the head's era,
+ * before any provider is called.
+ * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws InvalidTransactionHandleError if a provider answers with something
  * other than a handle at the next stage.
  * @throws ProviderFailedError if a provider rejects, with its own failure
@@ -283,7 +284,10 @@ export const submitLedger8Tx = async (
 ): Promise<string> => {
   const { circuitId, head } = operation;
   if (unprovenTx.era !== head) {
-    throw new EraInvariantViolationError('proveTx', circuitId, head, unprovenTx.era, operation.contractAddress);
+    throw new InvariantViolationError(
+      `The ledger 8 pipeline built a '${unprovenTx.era}' transaction on a '${head}' head for circuit ` +
+        `'${circuitId}' of contract '${operation.contractAddress}', before any provider was called`
+    );
   }
   // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
   // up with different failure handling. `atProviderMethod` still does the sanitizing --
@@ -624,7 +628,10 @@ export const findLedger8Contract = async (
   // here and there is no era to compare against. The current era's path narrows
   // to v9 at this same read because v9 is its only legitimate answer.
   return {
-    deployTxData: requireTaggedRecord(await providers.publicDataProvider.watchForDeployTxData(request.contractAddress))
+    deployTxData: requireTaggedRecord(
+      await providers.publicDataProvider.watchForDeployTxData(request.contractAddress),
+      'watchForDeployTxData'
+    )
   };
 };
 
@@ -710,7 +717,7 @@ const assertLedger8RecordEra = (
   // caller whose provider emitted no tag to check that nothing "re-tags" the
   // payload points them away from the fault. This is the same split the
   // current era's `requireLedger9Record` makes in its own default branch.
-  const tagged = requireTaggedRecord(record);
+  const tagged = requireTaggedRecord(record, method, circuitId);
   if (tagged.version === head) {
     return;
   }
@@ -730,7 +737,7 @@ const requireLedger8Record = (
   circuitId: string,
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
-  const tagged = requireTaggedRecord(record);
+  const tagged = requireTaggedRecord(record, method, circuitId);
   if (tagged.version !== 'v8') {
     throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
   }

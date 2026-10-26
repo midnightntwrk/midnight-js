@@ -205,7 +205,11 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
   options: SubmitTxOptions<PCK>
 ): Promise<VersionedFinalizedTxData> => {
   const { txId, head } = await submitOnHead(providers, options);
-  const record = requireTaggedRecord(await providers.publicDataProvider.watchForTxData(txId));
+  const record = requireTaggedRecord(
+    await providers.publicDataProvider.watchForTxData(txId),
+    'watchForTxData',
+    options.circuitId
+  );
   if (record.version !== head) {
     throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.version, undefined, txId);
   }

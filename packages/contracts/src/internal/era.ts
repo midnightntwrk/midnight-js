@@ -138,34 +138,59 @@ export const requireLedger9ContractState = <T extends { readonly version: Ledger
   throw new UnrecognisedEraTagError(operation, value);
 };
 
+const readVersionTag = (record: unknown): string =>
+  typeof record === 'object' && record !== null ? String(Reflect.get(record, 'version')) : 'undefined';
+
+const requireRecordHandle = <R extends VersionedFinalizedTxData>(
+  record: R,
+  method: ReadMethod,
+  circuitId: string | readonly string[] | undefined
+): R => {
+  if (!LedgerTransaction.is(record.tx)) {
+    throw new InvalidTransactionHandleError(method, 'not-a-handle', describeNonHandle(record.tx));
+  }
+  if (record.tx.era !== record.version) {
+    throw new EraInvariantViolationError(method, circuitId, record.version, record.tx.era);
+  }
+  return record;
+};
+
 /**
- * Refuses a finalized-transaction record that carries no readable era tag,
- * accepting either variant.
+ * Refuses a finalized-transaction record that carries no readable era tag, or
+ * whose `tx` is not a handle of that era, accepting either variant.
  *
  * The counterpart to {@link requireLedger9Record}, for the paths where BOTH tags
  * are legitimate answers and there is therefore no era to refuse: the retained
  * path, and the current-era attach, which must accept a contract deployed before
  * the fork. A contract found on chain was deployed in whichever era was current
  * then, so its deploy record is genuinely either variant. What is still refusable
- * is a tag that names no era at all: `version` selects the runtime of the live
- * `tx` handle beside it, so an unreadable tag hands a caller a handle it cannot
- * attribute.
+ * is a tag that names no era at all, and a `tx` that does not match it: `version`
+ * names the era of the `tx` handle beside it, so either fault hands a caller a
+ * handle it cannot attribute.
  *
  * @param record The record the read surface returned.
+ * @param method The read-surface method that returned it.
+ * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The record, tagged with a recognised era.
  * @throws UnknownLedgerVersionError if `version` is missing or unrecognised.
+ * @throws InvalidTransactionHandleError if `tx` is not a transaction handle.
+ * @throws EraInvariantViolationError if `tx` is a handle of the other era.
  */
-export function requireTaggedRecord(record: VersionedFinalizedTxData): VersionedFinalizedTxData {
+export function requireTaggedRecord(
+  record: VersionedFinalizedTxData,
+  method: ReadMethod,
+  circuitId?: string | readonly string[]
+): VersionedFinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UnknownLedgerVersionError(String(record));
+    throw new UnknownLedgerVersionError(readVersionTag(record), method);
   }
   switch (record.version) {
     case 'v8':
     case 'v9':
-      return record;
+      return requireRecordHandle(record, method, circuitId);
     default: {
       const unhandled: never = record;
-      throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
+      throw new UnknownLedgerVersionError(readVersionTag(unhandled), method);
     }
   }
 }
@@ -180,8 +205,10 @@ export function requireTaggedRecord(record: VersionedFinalizedTxData): Versioned
  * @param method The read-surface method that returned it.
  * @param circuitId The circuit, or circuits, this flow is running, for the error message.
  * @returns The v9 finalized-transaction record.
- * @throws EraInvariantViolationError if the record carries the v8 variant.
+ * @throws EraInvariantViolationError if the record carries the v8 variant, or its
+ *         `tx` is a v8 handle.
  * @throws UnknownLedgerVersionError if `version` is missing or unrecognised.
+ * @throws InvalidTransactionHandleError if `tx` is not a transaction handle.
  */
 export function requireLedger9Record(
   record: VersionedFinalizedTxData,
@@ -189,16 +216,16 @@ export function requireLedger9Record(
   circuitId?: string | readonly string[]
 ): FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UnknownLedgerVersionError(String(record));
+    throw new UnknownLedgerVersionError(readVersionTag(record), method);
   }
   switch (record.version) {
     case 'v9':
-      return record;
+      return requireRecordHandle(record, method, circuitId);
     case 'v8':
       throw new EraInvariantViolationError(method, circuitId);
     default: {
       const unhandled: never = record;
-      throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
+      throw new UnknownLedgerVersionError(readVersionTag(unhandled), method);
     }
   }
 }

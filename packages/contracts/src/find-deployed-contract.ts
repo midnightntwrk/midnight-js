@@ -596,7 +596,10 @@ export async function findDeployedContract<C extends Contract.Any>(
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
 
-  const deployRecord = requireTaggedRecord(await providers.publicDataProvider.watchForDeployTxData(contractAddress));
+  const deployRecord = requireTaggedRecord(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
   const deployPublicData = await queryFoundDeployTxPublicData(
     providers.publicDataProvider,
     deployRecord,

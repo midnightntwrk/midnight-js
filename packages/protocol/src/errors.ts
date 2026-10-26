@@ -956,6 +956,9 @@ export class UnknownLedger8AxisError extends MidnightJsError {
  *
  * @param requestedVersion The offending value that was passed. Carried for
  *   programmatic use only; it is deliberately kept out of the message.
+ * @param context The call that read the version off a value it was handed,
+ *   for example the provider method that returned a record. Named in the
+ *   message, so a caller can tell which provider produced the value.
  * @see {@link SharedTableDiscipline}
  * @see {@link FailClosedDecoding}
  */
@@ -963,9 +966,13 @@ export class UnknownLedgerVersionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
 
-  constructor(readonly requestedVersion: string) {
+  constructor(
+    readonly requestedVersion: string,
+    readonly context?: string
+  ) {
     super(
-      'Unknown ledger version requested. Supported eras are v8 (node 1.x) and ' +
+      `${context === undefined ? 'Unknown ledger version requested.' : `${context} returned a value with an unknown ledger version.`} ` +
+        'Supported eras are v8 (node 1.x) and ' +
         'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. Derive it with ' +
         'protocolVersionToLedger rather than constructing the string by hand.'
     );

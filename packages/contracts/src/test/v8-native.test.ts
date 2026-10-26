@@ -284,16 +284,10 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
  * produced -- and the finalizing path now refuses exactly that. Every pre-fork
  * expectation in this file has to start from a record the head could have
  * recorded, or it asserts against a record the framework rightly rejects.
- *
- * `tx` is `undefined` for the same reason the read-surface retained variant is
- * supplied by hand below: no provider builds that variant yet, and a v9 handle is
- * not assignable to it.
  */
 const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
-  ...createMockFinalizedTxData(status),
-  version: 'v8',
-  protocolVersion: PRE_FORK_PROTOCOL_VERSION,
-  tx: undefined as never
+  ...createMockLedger8FinalizedTxData(status),
+  protocolVersion: PRE_FORK_PROTOCOL_VERSION
 });
 
 /**
@@ -3577,11 +3571,12 @@ describe('attaching to a retained-era contract already on chain', () => {
   });
 
   it('still accepts BOTH legitimate tags, which is what makes the refusal above about the shape', async () => {
-    for (const version of ['v8', 'v9'] as const) {
+    for (const [version, record] of [
+      ['v8', createMockLedger8FinalizedTxData()],
+      ['v9', createMockFinalizedTxData()]
+    ] as const) {
       const providers = attachProviders(v6Envelope);
-      providers.publicDataProvider.watchForDeployTxData = vi
-        .fn()
-        .mockResolvedValue({ ...createMockFinalizedTxData(), version });
+      providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(record);
 
       const found = await findDeployedContract(providers, attachOptions());
 
