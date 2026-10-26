@@ -52,10 +52,11 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * different ledger era from the one the flow submitted.
  *
  * The transaction methods and the read methods both carry two eras, but any ONE
- * flow through this package tags every outgoing payload with a single era and
- * cannot submit or report anything else. An answer in the other era therefore
- * means the provider re-tagged or converted the payload it was handed, or that
- * the flow is pointed at a network whose records belong to the other era.
+ * flow through this package hands every provider a transaction handle of a
+ * single era and cannot submit or report anything else. An answer in the other
+ * era therefore means the provider answered with a handle of an era it was not
+ * handed, or that the flow is pointed at a network whose records belong to the
+ * other era.
  *
  * {@link EraInvariantViolationError.expected} names the only era this flow can
  * accept back, and so which direction the violation went. For the current
@@ -103,12 +104,12 @@ export class EraInvariantViolationError extends MidnightJsError {
     readonly txId?: string
   ) {
     super(
-      `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+      `${method} returned a transaction from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
         `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}` +
         `${txId === undefined ? '' : ` (transaction '${txId}', already submitted)`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
-        `provider implementation re-tags the payload it was handed.`
+        `provider implementation answers in another era than the handle it was handed.`
     );
     this.name = 'EraInvariantViolationError';
   }

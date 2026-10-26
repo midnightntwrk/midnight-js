@@ -16,7 +16,7 @@
 import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { FinalizedTx } from '../ledger-transaction';
+import type { LedgerTransaction } from '../ledger-transaction';
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
 import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
 
@@ -34,7 +34,7 @@ import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versio
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
 type Ledger9FinalizedTxDataFixture = {
   readonly version: 'v9';
-  readonly tx: FinalizedTx;
+  readonly tx: LedgerTransaction<'Finalized', 'v9'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -54,7 +54,7 @@ type Ledger9FinalizedTxDataFixture = {
 // covered only by the discriminant check.
 type Ledger8FinalizedTxDataFixture = {
   readonly version: 'v8';
-  readonly tx: FinalizedTx;
+  readonly tx: LedgerTransaction<'Finalized', 'v8'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];

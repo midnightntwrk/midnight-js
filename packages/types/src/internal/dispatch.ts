@@ -16,9 +16,8 @@
 import type { LedgerTransactionTypes, TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { InvalidTransactionHandleError, ProviderEraUnsupportedError, type TransactionMethod } from '../errors';
+import { ProviderEraUnsupportedError, type TransactionMethod } from '../errors';
 import { LedgerTransaction } from '../ledger-transaction';
-import { describeArgument } from './read-era-entries';
 
 /** What each era's handler answers with, keyed by era. */
 export type EraAnswers = Readonly<Record<LedgerVersion, unknown>>;
@@ -73,15 +72,6 @@ export const dispatch = async <S extends TransactionStage, A extends readonly un
   handle: LedgerTransaction<S>,
   args: A
 ): Promise<T> => {
-  if (!LedgerTransaction.is(handle)) {
-    throw new InvalidTransactionHandleError(route.method, 'not-a-handle', describeArgument(handle));
-  }
-  if (handle.stage !== route.stage) {
-    throw new InvalidTransactionHandleError(
-      route.method,
-      'wrong-stage',
-      `${handle.stage} handle, where ${route.method} takes ${route.stage} handles`
-    );
-  }
-  return serve(route, handle.era, handle, args);
+  const checked = LedgerTransaction.require(handle, route.stage, route.method);
+  return serve(route, checked.era, checked, args);
 };

@@ -38,6 +38,9 @@ describe('LedgerTransaction stages', () => {
     expectTypeOf(unboundTx).not.toExtend<FinalizedTx>();
     expectTypeOf(finalizedTx).not.toExtend<UnboundTx>();
     expectTypeOf(unprovenTx).not.toExtend<UnboundTx>();
+    expectTypeOf(unprovenTx).not.toExtend<FinalizedTx>();
+    expectTypeOf(finalizedTx).not.toExtend<UnprovenTx>();
+    expectTypeOf(unboundTx).not.toExtend<UnprovenTx>();
   });
 
   it('accepts a handle at its own stage', () => {
@@ -50,8 +53,17 @@ describe('LedgerTransaction stages', () => {
 });
 
 describe('LedgerTransaction.seal', () => {
-  it('returns the handle at the stage it was given', () => {
-    expectTypeOf(LedgerTransaction.seal('v9', 'Unproven', ledger9Unproven)).toEqualTypeOf<UnprovenTx>();
+  it('returns the handle at the stage and era it was given', () => {
+    expectTypeOf(LedgerTransaction.seal('v9', 'Unproven', ledger9Unproven)).toEqualTypeOf<LedgerTransaction<'Unproven', 'v9'>>();
+  });
+
+  it('returns a handle that is a handle of its stage in any era', () => {
+    expectTypeOf(LedgerTransaction.seal('v9', 'Unproven', ledger9Unproven)).toExtend<UnprovenTx>();
+  });
+
+  it('refuses an object of the same era at another stage', () => {
+    // @ts-expect-error an unproven transaction cannot be sealed as finalized
+    LedgerTransaction.seal('v9', 'Finalized', ledger9Unproven);
   });
 
   it('refuses an object of the other era', () => {
@@ -68,9 +80,16 @@ describe('LedgerTransaction.unwrap', () => {
 });
 
 describe('finalized transaction records', () => {
-  it('carry the transaction as a finalized handle in both eras', () => {
-    expectTypeOf<FinalizedTxData['tx']>().toEqualTypeOf<FinalizedTx>();
-    expectTypeOf<Ledger8FinalizedTxData['tx']>().toEqualTypeOf<FinalizedTx>();
+  it('carry the transaction as a finalized handle of the record era', () => {
+    expectTypeOf<FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v9'>>();
+    expectTypeOf<Ledger8FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v8'>>();
+    expectTypeOf<VersionedFinalizedTxData['tx']>().toExtend<FinalizedTx>();
+  });
+
+  it('narrow the era of tx when narrowing on version', () => {
+    const txEraOf = (record: VersionedFinalizedTxData) => (record.version === 'v8' ? record.tx.era : undefined);
+
+    expectTypeOf(txEraOf).returns.toEqualTypeOf<'v8' | undefined>();
   });
 
   it('still narrow on version', () => {

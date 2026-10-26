@@ -61,19 +61,6 @@ const fromWalletHex = (hex: string): Uint8Array => {
   return Uint8Array.from({ length: hex.length / 2 }, (_, index) => parseInt(hex.slice(index * 2, index * 2 + 2), 16));
 };
 
-const decodeWalletAnswer = async <E extends LedgerVersion>(
-  era: E,
-  balanced: Uint8Array
-): Promise<LedgerTransactionTypes[E]['Finalized']> => {
-  try {
-    return await deserializeTransactionAtStage(era, 'Finalized', balanced);
-  } catch (error) {
-    throw new InvalidArgumentError(`The wallet returned bytes that are not a balanced ledger ${era} transaction.`, {
-      cause: error
-    });
-  }
-};
-
 const firstIdentifier = (identifiers: string[]): string => {
   const [txId] = identifiers;
   if (txId === undefined) {
@@ -92,13 +79,16 @@ const firstIdentifier = (identifiers: string[]): string => {
  * forwarded and the wallet picks the expiry. See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102
  *
  * A rejection from the wallet leaves these providers unchanged, with the connector's own `code`.
- * `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the `code`.
+ * `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the
+ * connector's `code`; it keeps only this framework's own codes.
  *
  * @param api - The DApp Connector's `ConnectedAPI`, or any object with the methods in {@link DAppConnectorWalletAPI}.
  * @returns The wallet provider and the midnight provider, both serving `v8` and `v9`.
  * @throws InvalidArgumentError raised by `balanceTx` if the wallet answer is not even-length hex without a `0x`
- * prefix, or is not a balanced transaction of the requested ledger. Raised by `submitTx`, before anything is
- * submitted, if the transaction has no identifier.
+ * prefix, and by `submitTx`, before anything is submitted, if the transaction has no identifier.
+ * @throws PayloadNotATransactionError raised by `balanceTx` if the wallet answer is not a balanced transaction of
+ * the requested ledger.
+ * @throws Ledger8RuntimeMissingError raised by `balanceTx` on a ledger 8 request if the v8 runtime cannot be loaded.
  */
 export const dappConnectorWalletProviders = async (
   api: DAppConnectorWalletAPI
@@ -108,7 +98,7 @@ export const dappConnectorWalletProviders = async (
     era: E,
     tx: LedgerTransactionTypes[E]['Unbound']
   ): Promise<LedgerTransactionTypes[E]['Finalized']> =>
-    decodeWalletAnswer(era, fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
+    deserializeTransactionAtStage(era, 'Finalized', fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
 
   const submit = async (tx: LedgerTransactionTypes[LedgerVersion]['Finalized']): Promise<string> => {
     const txId = firstIdentifier(tx.identifiers());

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
@@ -81,18 +83,18 @@ describe('typed wrappers — source attribution', () => {
     );
   });
 
-  it('deserializeLedgerTransaction attributes to ledger; dataType becomes "Transaction" via D9 regex override', () => {
-    // The wrapper hardcodes `dataType: 'LedgerTransaction'` (the TS import alias),
-    // but the WASM error reports "Unable to deserialize Transaction. Error: ..." —
-    // classifier extracts `what: 'Transaction'` and overrides per D9.
-    expectThrowsDeserializationError(
-      () => deserializeLedgerTransaction(garbage, { caller }),
-      {
-        dataType: 'Transaction',
-        source: 'ledger'
-      }
-    );
-  });
+  it.each(['v8', 'v9'] as const)(
+    'deserializeLedgerTransaction attributes a %s failure to ledger; dataType becomes "Transaction" via D9 regex override',
+    async (era) => {
+      // The wrapper hardcodes `dataType: 'LedgerTransaction'` (the TS import alias),
+      // but the WASM error reports "Unable to deserialize Transaction. Error: ..." —
+      // classifier extracts `what: 'Transaction'` and overrides per D9.
+      const caught = await deserializeLedgerTransaction(era, garbage, { caller }).catch((e: unknown) => e);
+
+      expect(isDeserializationError(caught)).toBe(true);
+      expect(caught).toMatchObject({ context: { dataType: 'Transaction', source: 'ledger', caller } });
+    }
+  );
 
   it('deserializeLedgerParameters attributes to ledger', () => {
     expectThrowsDeserializationError(
@@ -122,13 +124,39 @@ describe('typed wrappers — source attribution', () => {
 
 
 describe('deserializeLedgerTransaction', () => {
-  it('returns a finalized v9 handle around the decoded transaction', () => {
+  it('returns a finalized v9 handle around the decoded transaction', async () => {
     const bytes = Transaction.fromParts('undeployed').mockProve().serialize();
 
-    const handle = deserializeLedgerTransaction(bytes, { caller });
+    const handle = await deserializeLedgerTransaction('v9', bytes, { caller });
 
     expect(LedgerTransaction.is(handle)).toBe(true);
     expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
     expect(handle.serialize()).toEqual(bytes);
+  });
+
+  it('returns a finalized v8 handle around an object of the framework v8 ledger', async () => {
+    const v8 = await loadLedger8Protocol();
+    const bytes = v8.Transaction.fromParts('undeployed').mockProve().serialize();
+
+    const handle = await deserializeLedgerTransaction('v8', bytes, { caller });
+
+    expect([handle.era, handle.stage]).toEqual(['v8', 'Finalized']);
+    expect(LedgerTransaction.unwrap(handle, 'v8')).toBeInstanceOf(v8.Transaction);
+    expect(handle.serialize()).toEqual(bytes);
+  });
+
+  it('reads the bytes in the era it is given, refusing a transaction of the other era', async () => {
+    const ledger9Bytes = Transaction.fromParts('undeployed').mockProve().serialize();
+
+    const caught = await deserializeLedgerTransaction('v8', ledger9Bytes, { caller }).catch((e: unknown) => e);
+
+    expect(isDeserializationError(caught)).toBe(true);
+  });
+
+  it('refuses an era that is not a ledger version', async () => {
+    // @ts-expect-error 'v7' is not a ledger version
+    const caught = await deserializeLedgerTransaction('v7', garbage, { caller }).catch((e: unknown) => e);
+
+    expect(caught).toBeInstanceOf(UnknownLedgerVersionError);
   });
 });

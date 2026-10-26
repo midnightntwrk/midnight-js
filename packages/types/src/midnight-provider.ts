@@ -72,8 +72,9 @@ export type MidnightProviderHandlers = {
  * @returns A {@link MidnightProvider} routing each handle to its era's handler.
  * @throws UnusableEraEntryError if an era entry is neither `undefined` nor a
  *         function. Raised at construction.
- * @throws InvalidArgumentError if `handlers` is not an object or has no key for
- *         a ledger era. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, has no key for
+ *         a ledger era, or serves no era (every entry `undefined`). Raised at
+ *         construction.
  */
 export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
   const served = readEraEntries('submitTx', handlers, 'handler');
@@ -105,7 +106,7 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  *
  * @example
  * ```typescript
- * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+ * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
  * ```
  */
 export const createMidnightProvider = (

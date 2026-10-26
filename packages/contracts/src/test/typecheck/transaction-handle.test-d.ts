@@ -14,7 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { AnyProvableCircuitId, FinalizedTx, UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import type { AnyProvableCircuitId, FinalizedTx, LedgerTransaction, UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
@@ -44,9 +44,13 @@ describe('every transaction the contracts barrel publishes is a handle', () => {
     expectTypeOf<Ledger8.CallResultPrivate<Ledger8.Contract, AnyLedger8CircuitId>>().not.toHaveProperty('txBytes');
   });
 
-  it('carries the finalized record as a FinalizedTx', () => {
-    expectTypeOf<FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>['public']['tx']>().toEqualTypeOf<FinalizedTx>();
-    expectTypeOf<FinalizedDeployTxData<Contract.Any>['public']['tx']>().toEqualTypeOf<FinalizedTx>();
-    expectTypeOf<Ledger8.FinalizedCallTxData<Ledger8.Contract, AnyLedger8CircuitId>['public']['tx']>().toEqualTypeOf<FinalizedTx>();
+  it('carries the finalized record as a FinalizedTx of the record era', () => {
+    expectTypeOf<FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>['public']['tx']>().toEqualTypeOf<
+      LedgerTransaction<'Finalized', 'v9'>
+    >();
+    expectTypeOf<FinalizedDeployTxData<Contract.Any>['public']['tx']>().toExtend<FinalizedTx>();
+    expectTypeOf<Ledger8.FinalizedCallTxData<Ledger8.Contract, AnyLedger8CircuitId>['public']['tx']>().toEqualTypeOf<
+      LedgerTransaction<'Finalized', 'v8'> | LedgerTransaction<'Finalized', 'v9'>
+    >();
   });
 });

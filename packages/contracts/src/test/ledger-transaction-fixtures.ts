@@ -49,7 +49,7 @@ export const handles = {
         'Unbound',
         await Transaction.fromParts(NETWORK_ID).prove(inertProvingProvider, CostModel.initialCostModel())
       ),
-    Finalized: async (): Promise<FinalizedTx> =>
+    Finalized: async (): Promise<LedgerTransaction<'Finalized', 'v9'>> =>
       LedgerTransaction.seal(
         'v9',
         'Finalized',
@@ -67,7 +67,7 @@ export const handles = {
         await v8.Transaction.fromParts(NETWORK_ID).prove(inertLedger8ProvingProvider, v8.CostModel.initialCostModel())
       );
     },
-    Finalized: async (): Promise<FinalizedTx> => {
+    Finalized: async (): Promise<LedgerTransaction<'Finalized', 'v8'>> => {
       const v8 = await loadLedger8Protocol();
       const unbound = await v8.Transaction.fromParts(NETWORK_ID).prove(
         inertLedger8ProvingProvider,

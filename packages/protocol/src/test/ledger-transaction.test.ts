@@ -26,7 +26,11 @@ import {
   UnknownLedgerVersionError
 } from '../errors';
 import { loadLedger8Protocol } from '../lib/v8/load';
-import { deserializeTransactionAtStage, isFrameworkLedgerTransaction, type TransactionStage } from '../transaction';
+import {
+  deserializeTransactionAtStage,
+  isFrameworkLedgerTransaction,
+  type TransactionStage,
+  transactionStageOf} from '../transaction';
 import { LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -233,6 +237,18 @@ describe('isFrameworkLedgerTransaction', () => {
     expect(() => isFrameworkLedgerTransaction('v7', {})).toThrow(UnknownLedgerVersionError);
   });
 
+  it.each([
+    ['serialized bytes', new Uint8Array([1, 2, 3])],
+    ['undefined', undefined],
+    ['null', null],
+    ['a plain object', {}]
+  ])('reports %s as not a transaction, in either era', (_label, value) => {
+    expect([isFrameworkLedgerTransaction('v9', value), isFrameworkLedgerTransaction('v8', value)]).toEqual([
+      'not-a-transaction',
+      'not-a-transaction'
+    ]);
+  });
+
   describe('for v8, in a fresh module graph', () => {
     let freshIsFrameworkLedgerTransaction: typeof isFrameworkLedgerTransaction;
     let freshLoadLedger8Protocol: typeof loadLedger8Protocol;
@@ -261,5 +277,34 @@ describe('isFrameworkLedgerTransaction', () => {
 
       expect(freshIsFrameworkLedgerTransaction('v8', tx)).toBe('foreign-instance');
     });
+  });
+});
+
+describe('transactionStageOf', () => {
+  it.each(['Unproven', 'Unbound', 'Finalized'] as const)('reads the stage of a v9 %s transaction', async (stage) => {
+    const unproven = Transaction.fromParts(NETWORK_ID);
+    const unbound = await unproven.prove(inertProvingProvider, CostModel.initialCostModel());
+    const transactions = { Unproven: unproven, Unbound: unbound, Finalized: unbound.bind() };
+
+    expect(transactionStageOf(transactions[stage])).toBe(stage);
+  });
+
+  it.each(['Unproven', 'Unbound', 'Finalized'] as const)('reads the stage of a v8 %s transaction', async (stage) => {
+    const v8 = await loadLedger8Protocol();
+    const unproven = v8.Transaction.fromParts(NETWORK_ID);
+    const unbound = await unproven.prove(inertProvingProvider, v8.CostModel.initialCostModel());
+    const transactions = { Unproven: unproven, Unbound: unbound, Finalized: unbound.bind() };
+
+    expect(transactionStageOf(transactions[stage])).toBe(stage);
+  });
+
+  it('answers undefined for a transaction at no pipeline stage', () => {
+    const unprovenButBound = Transaction.fromParts(NETWORK_ID).bind();
+
+    expect(transactionStageOf(unprovenButBound)).toBeUndefined();
+  });
+
+  it('answers undefined for bytes that carry no transaction tag', () => {
+    expect(transactionStageOf({ serialize: () => new Uint8Array([1, 2, 3]) })).toBeUndefined();
   });
 });

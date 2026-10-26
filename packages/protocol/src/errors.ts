@@ -269,12 +269,9 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
  *
  * `'onchain-runtime-v3'` is the only member this framework version names.
  *
- * NOTHING IN THIS PACKAGE CHECKS THIS AXIS ANY MORE. The construction-time
- * guard that did (`lib/v8/instance-guard.ts`) was removed with the
- * hand-maintained execution layer, and the error it raised was removed after
- * it. The invariant is held at install time instead, by
- * `src/test/single-instance.test.ts`. The type stays because
- * {@link UnknownLedger8AxisError} is defined against it.
+ * Nothing in this package checks this axis at run time; the invariant is held
+ * at install time, by `src/test/single-instance.test.ts`. The type stays
+ * because {@link UnknownLedger8AxisError} is defined against it.
  *
  * @see {@link DualInstantiationGuard}
  */

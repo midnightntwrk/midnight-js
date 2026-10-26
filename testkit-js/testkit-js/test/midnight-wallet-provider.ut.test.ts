@@ -195,6 +195,21 @@ describe('MidnightWalletProvider', () => {
     });
   });
 
+  describe('a wallet that finalizes in another epoch than the chain is in', () => {
+    it('is refused with the wallet SDK error, and no handle is sealed', async () => {
+      const { wallet } = await createBalancingWallet(eras[0]);
+      const atRetainedEpoch = { ...wallet, state: walletAt(RETAINED_VERSION).state } as WalletFacade;
+      const provider = await createProvider(atRetainedEpoch);
+      const unbound = await eras[0].unbound();
+      const seal = vi.spyOn(LedgerTransaction, 'seal');
+
+      const rejection = await rejectionOf(provider.balanceTx(unbound));
+
+      expect(String(rejection)).toContain('ProtocolVersionMismatchError');
+      expect(seal).not.toHaveBeenCalled();
+    });
+  });
+
   describe.each(eras)('balanceTx with a $era handle', (fixture) => {
     it(`hands the wallet ${fixture.walletCopy}, at the active version`, async () => {
       const { wallet } = await createBalancingWallet(fixture);

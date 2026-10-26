@@ -135,15 +135,15 @@ describe('dappConnectorWalletProviders', () => {
       ['ledger 8', 'an empty answer', () => ledger8Unbound, () => ''],
       ['ledger 8', 'a ledger 9 transaction', () => ledger8Unbound, () => toHex(finalized.serialize())],
       ['ledger 9', 'an empty answer', () => unbound, () => ''],
-      ['ledger 9', 'a ledger 8 transaction', () => unbound, () => toHex(ledger8Finalized.serialize())]
-    ])('rejects a %s wallet answer that is %s', async (_era, _label, request, answer) => {
+      ['ledger 9', 'a ledger 8 transaction', () => unbound, () => toHex(ledger8Finalized.serialize())],
+      ['ledger 9', 'the unbound transaction it was sent', () => unbound, () => toHex(unbound.serialize())]
+    ])('rejects a %s wallet answer that is %s as not a transaction, keeping the code', async (_era, _label, request, answer) => {
       const balanceUnsealedTransaction = vi.fn().mockResolvedValue({ tx: answer() });
       const { walletProvider } = await dappConnectorWalletProviders(createApi({ balanceUnsealedTransaction }));
 
       const failure = await walletProvider.balanceTx(request()).catch((e: unknown) => e);
 
-      expect(hasErrorCode(failure, COMMON_ERROR_CODES.INVALID_ARGUMENT)).toBe(true);
-      expect(failure).toHaveProperty('cause.code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
+      expect(hasErrorCode(failure, PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION)).toBe(true);
     });
 
     it.each([

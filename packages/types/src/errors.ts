@@ -18,6 +18,7 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
@@ -278,7 +279,7 @@ export class UnusableEraEntryError extends MidnightJsError {
  * another WASM instance of the ledger package, or the framework has not loaded
  * its v8 ledger yet, so no v8 object can be judged.
  */
-export type ForeignLedgerTransactionReason = 'foreign-instance' | 'ledger8-not-loaded';
+export type ForeignLedgerTransactionReason = Exclude<FrameworkInstanceCheck, 'own' | 'not-a-transaction'>;
 
 const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerVersion) => string>> = {
   'foreign-instance': (era) =>
@@ -307,34 +308,60 @@ export class ForeignLedgerTransactionError extends MidnightJsError {
   /**
    * @param era The era the object was sealed as.
    * @param reason Why the object was refused.
+   * @param method The provider method whose answer was sealed, or
+   *               `LedgerTransaction.seal` when it was sealed directly.
    */
   constructor(
     readonly era: LedgerVersion,
-    readonly reason: ForeignLedgerTransactionReason
+    readonly reason: ForeignLedgerTransactionReason,
+    readonly method: TransactionHandleMethod = 'LedgerTransaction.seal'
   ) {
-    super(`Cannot seal a ${era} transaction. ${FOREIGN_LEDGER_TRANSACTION_REMEDIES[reason](era)}`);
+    super(`${method} cannot seal a ${era} transaction. ${FOREIGN_LEDGER_TRANSACTION_REMEDIES[reason](era)}`);
     this.name = 'ForeignLedgerTransactionError';
   }
 }
 
 /**
- * Why a value was refused as a transaction handle: it is not a handle, it is a
- * handle at another stage, or the stage it was to be sealed at is not one.
+ * Why a value was refused as a transaction handle, or as the object to seal
+ * into one:
+ *
+ * - `'not-a-handle'`: the value is not a handle made by `LedgerTransaction.seal`.
+ * - `'wrong-stage'`: the handle is at another stage than the method takes.
+ * - `'invalid-stage'`: the stage to seal at is not a transaction stage.
+ * - `'not-a-transaction'`: the value to seal is not a ledger transaction object.
+ * - `'stage-mismatch'`: the object to seal is at another stage than the one it
+ *   is sealed as.
  */
-export type InvalidTransactionHandleReason = 'not-a-handle' | 'wrong-stage' | 'invalid-stage';
+export type InvalidTransactionHandleReason =
+  | 'not-a-handle'
+  | 'wrong-stage'
+  | 'invalid-stage'
+  | 'not-a-transaction'
+  | 'stage-mismatch';
+
+/** The methods that check transaction handles, named in a refusal. */
+export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
 
 const INVALID_TRANSACTION_HANDLE_REMEDIES: Readonly<Record<InvalidTransactionHandleReason, string>> = {
   'not-a-handle':
-    'Pass a handle made by LedgerTransaction.seal. A value with the handle\'s shape (era, stage, serialize) that ' +
-    'is still refused was most likely sealed by a duplicate midnight-js-types install: make sure only one copy of ' +
+    'Pass the handle made by LedgerTransaction.seal itself. A copy is not a handle: structuredClone, ' +
+    'postMessage, JSON and object spread all drop it, so pass the original, or pass handle.serialize() and seal ' +
+    'the bytes again after deserializeTransactionAtStage. A handle that is passed on unchanged and still refused ' +
+    'was most likely sealed by a duplicate midnight-js-types install: make sure only one copy of ' +
     '@midnight-ntwrk/midnight-js-types is installed.',
   'wrong-stage': 'Pass the handle at the stage this method takes.',
-  'invalid-stage': 'Use one of the transaction stages: Unproven, Unbound, Finalized.'
+  'invalid-stage': 'Use one of the transaction stages: Unproven, Unbound, Finalized.',
+  'not-a-transaction':
+    'Pass a ledger transaction object. Serialized bytes are not one: decode them with deserializeTransactionAtStage ' +
+    'from @midnight-ntwrk/midnight-js-protocol/transaction, taking the era and stage from the request.',
+  'stage-mismatch':
+    'Seal the object at the stage it is at: a proveTx answer is Unbound, and only bind() makes it Finalized.'
 };
 
 /**
  * Thrown when a value reaching a method that takes a transaction handle is not
- * a usable one.
+ * a usable one, or when `LedgerTransaction.seal` is given a value it cannot
+ * seal at the stage it is asked for.
  *
  * The types rule these values out, so it is reachable only from JavaScript,
  * across an untyped boundary, or from a second copy of this package.
@@ -353,11 +380,11 @@ export class InvalidTransactionHandleError extends MidnightJsError {
    *               `'an object'`. Never the value's contents.
    */
   constructor(
-    readonly method: string,
+    readonly method: TransactionHandleMethod,
     readonly reason: InvalidTransactionHandleReason,
     readonly detail: string
   ) {
-    super(`${method} cannot use the transaction handle it received (${reason}: ${detail}). ${INVALID_TRANSACTION_HANDLE_REMEDIES[reason]}`);
+    super(`${method} refused a transaction (${reason}: ${detail}). ${INVALID_TRANSACTION_HANDLE_REMEDIES[reason]}`);
     this.name = 'InvalidTransactionHandleError';
   }
 }

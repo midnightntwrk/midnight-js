@@ -714,8 +714,8 @@ const assertLedger8RecordEra = (
 ): void => {
   // Shape before era: a tag that names no era is a DIFFERENT fault from one
   // naming the wrong era, and it wants a different remediation. Telling a
-  // caller whose provider emitted no tag to check that nothing "re-tags" the
-  // payload points them away from the fault. This is the same split the
+  // caller whose provider emitted no tag to check the era its provider answers
+  // in points them away from the fault. This is the same split the
   // current era's `requireLedger9Record` makes in its own default branch.
   const tagged = requireTaggedRecord(record, method, circuitId);
   if (tagged.version === head) {

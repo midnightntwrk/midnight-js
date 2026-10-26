@@ -17,11 +17,16 @@ import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/
 import {
   isFrameworkLedgerTransaction,
   type LedgerTransactionTypes,
-  type TransactionStage
-} from '@midnight-ntwrk/midnight-js-protocol/transaction';
+  type TransactionStage,
+  transactionStageOf} from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { ForeignLedgerTransactionError, InvalidTransactionHandleError, TransactionEraMismatchError } from './errors';
+import {
+  ForeignLedgerTransactionError,
+  InvalidTransactionHandleError,
+  TransactionEraMismatchError,
+  type TransactionHandleMethod
+} from './errors';
 import { describeArgument } from './internal/read-era-entries';
 
 export type { LedgerTransactionTypes, TransactionStage };
@@ -37,23 +42,42 @@ const slotOf: {
 
 const TRANSACTION_STAGES: readonly TransactionStage[] = Object.freeze(['Unproven', 'Unbound', 'Finalized']);
 
+const isAtStage = <S extends TransactionStage>(
+  handle: LedgerTransaction<TransactionStage>,
+  stage: S
+): handle is LedgerTransaction<S> => handle.stage === stage;
+
+const SEALING: unique symbol = Symbol('LedgerTransaction.seal');
+
 /**
  * An opaque ledger transaction of one era at one {@link TransactionStage}.
  *
  * Made only by {@link LedgerTransaction.seal}, which refuses an object of any
- * ledger copy other than the one this framework loaded, and read only by
- * {@link LedgerTransaction.unwrap}, which refuses the wrong era.
+ * ledger copy other than the one this framework loaded, or one at another
+ * stage, and read only by {@link LedgerTransaction.unwrap}, which refuses the
+ * wrong era.
+ *
+ * @typeParam S The stage the transaction is at.
+ * @typeParam E The era the transaction belongs to; any era when not known.
  */
-export class LedgerTransaction<S extends TransactionStage> {
+export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersion = LedgerVersion> {
   readonly #slot: EraSlot<S>;
   readonly #serialize: () => Uint8Array;
 
   private constructor(
-    readonly era: LedgerVersion,
+    sealing: typeof SEALING,
+    readonly era: E,
     readonly stage: S,
     slot: EraSlot<S>,
     serialize: () => Uint8Array
   ) {
+    if (sealing !== SEALING) {
+      throw new InvalidTransactionHandleError(
+        'LedgerTransaction.seal',
+        'not-a-handle',
+        'a handle constructed without LedgerTransaction.seal'
+      );
+    }
     this.#slot = slot;
     this.#serialize = serialize;
     Object.freeze(this);
@@ -68,30 +92,43 @@ export class LedgerTransaction<S extends TransactionStage> {
    * Wraps a ledger transaction object in a handle.
    *
    * @param era The era of the object.
-   * @param stage The stage the object is at. It is not checked against the
-   *   object at run time, because one ledger class serves several stages: pass
-   *   the stage the object really is at, or `unwrap` hands back an object of
-   *   the wrong stage.
+   * @param stage The stage the object is at.
    * @param tx The transaction, an object of the ledger copy this framework
    *   loaded for `era`.
-   * @throws InvalidTransactionHandleError If `stage` is not a transaction stage.
-   * @throws ForeignLedgerTransactionError If `tx` is not an object of that
+   * @param method The provider method whose answer is sealed, named in a
+   *   refusal; `LedgerTransaction.seal` when omitted.
+   * @throws InvalidTransactionHandleError If `stage` is not a transaction stage
+   *   (`invalid-stage`), `tx` is not a ledger transaction object
+   *   (`not-a-transaction`), or `tx` is at another stage (`stage-mismatch`).
+   * @throws ForeignLedgerTransactionError If `tx` is an object of another
    *   ledger copy, or `era` is v8 and the v8 ledger is not loaded yet.
    * @throws UnknownLedgerVersionError If `era` is not a ledger version.
    */
   static seal<E extends LedgerVersion, S extends TransactionStage>(
     era: E,
     stage: S,
-    tx: LedgerTransactionTypes[E][S]
-  ): LedgerTransaction<S> {
+    tx: LedgerTransactionTypes[E][S],
+    method: TransactionHandleMethod = 'LedgerTransaction.seal'
+  ): LedgerTransaction<S, E> {
     if (!TRANSACTION_STAGES.includes(stage)) {
-      throw new InvalidTransactionHandleError('LedgerTransaction.seal', 'invalid-stage', describeArgument(stage));
+      throw new InvalidTransactionHandleError(method, 'invalid-stage', describeArgument(stage));
     }
     const check = isFrameworkLedgerTransaction(era, tx);
-    if (check !== 'own') {
-      throw new ForeignLedgerTransactionError(era, check);
+    if (check === 'not-a-transaction') {
+      throw new InvalidTransactionHandleError(method, 'not-a-transaction', describeArgument(tx));
     }
-    return new LedgerTransaction(era, stage, slotOf[era](tx), () => tx.serialize());
+    if (check !== 'own') {
+      throw new ForeignLedgerTransactionError(era, check, method);
+    }
+    const actual = transactionStageOf(tx);
+    if (actual !== stage) {
+      throw new InvalidTransactionHandleError(
+        method,
+        'stage-mismatch',
+        `${actual ?? 'an unstaged'} transaction sealed as ${stage}`
+      );
+    }
+    return new LedgerTransaction(SEALING, era, stage, slotOf[era](tx), () => tx.serialize());
   }
 
   /**
@@ -121,6 +158,35 @@ export class LedgerTransaction<S extends TransactionStage> {
       throw new TransactionEraMismatchError(era, handle.era);
     }
     return tx;
+  }
+
+  /**
+   * Checks that a value is a handle of this copy of the package at the stage a
+   * method takes.
+   *
+   * @param value The value the method received.
+   * @param stage The stage the method takes.
+   * @param method The method, named in a refusal.
+   * @returns The handle, narrowed to `stage`.
+   * @throws InvalidTransactionHandleError If `value` is not a handle
+   *   (`not-a-handle`) or is at another stage (`wrong-stage`).
+   */
+  static require<S extends TransactionStage>(
+    value: unknown,
+    stage: S,
+    method: TransactionHandleMethod
+  ): LedgerTransaction<S> {
+    if (!LedgerTransaction.is(value)) {
+      throw new InvalidTransactionHandleError(method, 'not-a-handle', describeArgument(value));
+    }
+    if (!isAtStage(value, stage)) {
+      throw new InvalidTransactionHandleError(
+        method,
+        'wrong-stage',
+        `${value.stage} handle, where ${method} takes ${stage} handles`
+      );
+    }
+    return value;
   }
 
   /** Whether `value` is a handle made by this copy of the package. */

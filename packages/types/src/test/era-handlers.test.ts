@@ -144,6 +144,12 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
       expect(provider.supportedEras).toEqual(['v9']);
     });
 
+    it('declares only v8 when the v9 handler is undefined', () => {
+      const provider = build({ v8: handlerFor('v8'), v9: undefined });
+
+      expect(provider.supportedEras).toEqual(['v8']);
+    });
+
     it('declares both eras when both handlers are given', () => {
       const provider = build({ v8: handlerFor('v8'), v9: handlerFor('v9') });
 
@@ -407,21 +413,48 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
 
 describe.each(factories.filter(({ answerStage }) => answerStage !== undefined))(
   '$method sealing the answer',
-  ({ answer, otherHandlers, create }) => {
+  ({ method, inputStage, answer, otherHandlers, create }) => {
     it.each([
-      ['a structural lookalike', () => Promise.resolve({ serialize: () => new Uint8Array() })],
-      ['an object of the other era', () => answer('v8')]
-    ])('refuses %s returned by a handler as a foreign transaction', async (_label, returned) => {
-      const provider = create({ ...otherHandlers, v8: undefined, v9: returned });
+      ['a structural lookalike', 'v9', () => Promise.resolve({ serialize: () => new Uint8Array() })],
+      ['a v8 object from the v9 handler', 'v9', () => answer('v8')],
+      ['a v9 object from the v8 handler', 'v8', () => answer('v9')]
+    ] as const)('refuses %s as a foreign transaction, naming the method', async (_label, era, returned) => {
+      const handlers = era === 'v9' ? { v8: undefined, v9: returned } : { v8: returned, v9: undefined };
+      const provider = create({ ...otherHandlers, ...handlers });
 
-      const rejection = await rejectionOf(provider.send('v9'));
+      const rejection = await rejectionOf(provider.send(era));
 
       expect(rejection).toBeInstanceOf(ForeignLedgerTransactionError);
       expect(rejection).toMatchObject({
         code: PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION,
-        era: 'v9',
-        reason: 'foreign-instance'
+        era,
+        reason: 'foreign-instance',
+        method
       });
+    });
+
+    it.each([
+      ['serialized bytes', () => Promise.resolve(new Uint8Array([1, 2, 3]))],
+      ['undefined', () => Promise.resolve(undefined)]
+    ])('refuses %s returned by a handler as not a transaction, naming the method', async (_label, returned) => {
+      const provider = create({ ...otherHandlers, v8: undefined, v9: returned });
+
+      const rejection = await rejectionOf(provider.send('v9'));
+
+      expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+      expect(rejection).toMatchObject({ method, reason: 'not-a-transaction' });
+    });
+
+    it.each(['v8', 'v9'] as const)('refuses a %s handler that returns its input unchanged as a stage mismatch', async (era) => {
+      const returnInput = (tx: unknown) => Promise.resolve(tx);
+      const handlers = era === 'v9' ? { v8: undefined, v9: returnInput } : { v8: returnInput, v9: undefined };
+      const provider = create({ ...otherHandlers, ...handlers });
+
+      const rejection = await rejectionOf(provider.send(era));
+
+      expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+      expect(rejection).toMatchObject({ method, reason: 'stage-mismatch' });
+      expect(String(rejection)).toContain(`${inputStage} transaction sealed as`);
     });
   }
 );

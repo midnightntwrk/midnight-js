@@ -550,10 +550,10 @@ describe('deserialization adapter wiring (issue-816)', () => {
     }
   });
 
-  test('parseHexTransaction returns a finalized v9 handle around the decoded transaction', () => {
+  test('parseHexTransaction returns a finalized handle of the era it is given', async () => {
     const hex = mintLedger9TransactionHex();
 
-    const handle = parseHexTransaction(hex);
+    const handle = await parseHexTransaction('v9', hex);
 
     expect(LedgerTransaction.is(handle)).toBe(true);
     expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
@@ -563,12 +563,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
-    let caught: unknown;
-    try {
-      parseHexTransaction(garbageHex);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await parseHexTransaction('v9', garbageHex).catch((e: unknown) => e);
 
     expect(isDeserializationError(caught)).toBe(true);
     if (isDeserializationError(caught)) {

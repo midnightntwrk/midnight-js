@@ -441,6 +441,33 @@ describe('submit-tx', () => {
       );
     });
 
+    it('keeps the code of a coded provider rejection on the sanitized cause, redacting its message', async () => {
+      const decodeFailure = Object.assign(new Error(`wallet answered 0x${'cd'.repeat(32)}`), {
+        code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE,
+        cause: new Error('runtime refusal')
+      });
+      mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v9.Unbound());
+      mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(decodeFailure);
+
+      const rejection = await rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() }));
+
+      expect(rejection).toBeInstanceOf(ProviderFailedError);
+      expect(rejection).toMatchObject({ method: 'balanceTx', cause: { message: 'Error: wallet answered 0x[redacted]' } });
+      expect(hasErrorCode(Reflect.get(Object(rejection), 'cause'), PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
+    });
+
+    it('drops a code that is not one of this framework\'s from the sanitized cause', async () => {
+      mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v9.Unbound());
+      mockProviders.walletProvider.balanceTx = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('refused'), { code: 'SECRET_0xabcdef' }));
+
+      const rejection = await rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() }));
+
+      expect(rejection).toBeInstanceOf(ProviderFailedError);
+      expect(Reflect.get(Object(Reflect.get(Object(rejection), 'cause')), 'code')).toBeUndefined();
+    });
+
     it('wraps a provider rejection on the pipelines\' v9 path the same way', async () => {
       mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('proof server down'));
 
@@ -550,6 +577,17 @@ describe('submit-tx', () => {
       expect(rejection).toBeInstanceOf(TransactionEraMismatchError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH)).toBe(true);
       expect(rejection).toMatchObject({ expected: 'v9', actual: 'v8' });
+      expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('refuses a handle at another stage with wrong-stage before proving it', async () => {
+      const unbound = await handles.v9.Unbound();
+
+      // @ts-expect-error an unbound handle is not an unproven one
+      const rejection = await rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: unbound }));
+
+      expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+      expect(rejection).toMatchObject({ method: 'submitTx', reason: 'wrong-stage' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 

@@ -13,8 +13,13 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '../../errors';
 import type { ProvingProvider } from '../../v8.js';
-import type { LedgerTransactionTypes } from '../shared/ledger-transaction';
+import {
+  isFrameworkLedgerTransaction,
+  type LedgerTransactionTypes,
+  transactionStageOf
+} from '../shared/ledger-transaction';
 import { loadLedger8Protocol } from './load';
 
 /**
@@ -36,6 +41,8 @@ import { loadLedger8Protocol } from './load';
  *   this parameter and needs no adapter.
  * @returns The proven, unbound transaction.
  * @throws Ledger8RuntimeMissingError If the retained runtime cannot be loaded.
+ * @throws InvalidArgumentError If `tx` is not an unproven transaction of the
+ *   v8 ledger copy this framework loaded.
  *
  * @remarks Intended for `ProofProvider` implementations. Application code
  * should call `proveTx` on a provider rather than this directly.
@@ -45,5 +52,18 @@ export const proveLedger8Transaction = async (
   provingProvider: ProvingProvider
 ): Promise<LedgerTransactionTypes['v8']['Unbound']> => {
   const v8 = await loadLedger8Protocol();
+  const check = isFrameworkLedgerTransaction('v8', tx);
+  if (check !== 'own') {
+    throw new InvalidArgumentError(
+      `proveLedger8Transaction takes a v8 transaction of the ledger copy this framework loaded (${check}). ` +
+        `Read one with deserializeTransactionAtStage('v8', 'Unproven', bytes).`
+    );
+  }
+  const stage = transactionStageOf(tx);
+  if (stage !== 'Unproven') {
+    throw new InvalidArgumentError(
+      `proveLedger8Transaction takes an Unproven transaction, but the transaction is ${stage ?? 'at no pipeline stage'}.`
+    );
+  }
   return tx.prove(provingProvider, v8.CostModel.initialCostModel());
 };

@@ -102,7 +102,11 @@ describe('protocol export surface', () => {
     expect([...new Set(exported)].sort()).toEqual(sourceEntryNames().sort());
   });
 
-  it('publishes exactly the deserializer and the instance check from ./transaction', () => {
-    expect(Object.keys(transaction).sort()).toEqual(['deserializeTransactionAtStage', 'isFrameworkLedgerTransaction']);
+  it('publishes exactly the deserializer, the instance check and the stage reader from ./transaction', () => {
+    expect(Object.keys(transaction).sort()).toEqual([
+      'deserializeTransactionAtStage',
+      'isFrameworkLedgerTransaction',
+      'transactionStageOf'
+    ]);
   });
 });

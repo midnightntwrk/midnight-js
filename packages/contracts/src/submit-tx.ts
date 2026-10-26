@@ -19,7 +19,6 @@ import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
   type FinalizedTxData,
-  InvalidTransactionHandleError,
   LedgerTransaction,
   TransactionEraMismatchError,
   type UnprovenTx,
@@ -29,7 +28,7 @@ import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
 import { EraArtifactMismatchError, type EraArtifactMismatchReason, EraInvariantViolationError } from './errors';
-import { describeNonHandle, readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
 import { proveBalanceSubmit } from './internal/submit-payload';
 
 /**
@@ -71,24 +70,22 @@ export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
  * @internal Proves, balances and submits a v9 transaction handle, for the pipelines that built a
  * v9 transaction. Reads no head.
  *
- * @throws InvalidTransactionHandleError if `unprovenTx` is not a transaction handle.
+ * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package.
  * @throws TransactionEraMismatchError if the handle is not a v9 one.
  */
 export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
-  if (!LedgerTransaction.is(options.unprovenTx)) {
-    throw new InvalidTransactionHandleError('submitTx', 'not-a-handle', describeNonHandle(options.unprovenTx));
-  }
-  if (options.unprovenTx.era !== 'v9') {
-    throw new TransactionEraMismatchError('v9', options.unprovenTx.era);
+  const unprovenTx = LedgerTransaction.require(options.unprovenTx, 'Unproven', 'submitTx');
+  if (unprovenTx.era !== 'v9') {
+    throw new TransactionEraMismatchError('v9', unprovenTx.era);
   }
   // Before the first provider call: a provider set that cannot carry a v9 transaction has to be
   // refused before a proof is paid for, not at `balanceTx`.
   assertProvidersSupportEra('v9', providers);
   assertValidMidnightConfig(providers.config);
-  return proveBalanceSubmit(providers, options.unprovenTx, options.circuitId);
+  return proveBalanceSubmit(providers, unprovenTx, options.circuitId);
 };
 
 /** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */
@@ -104,19 +101,8 @@ export const submitLedger9Payload = async <C extends Contract.Any, PCK extends C
   );
 };
 
-const transactionEra = (unprovenTx: UnprovenTx): LedgerVersion => {
-  if (!LedgerTransaction.is(unprovenTx)) {
-    throw new InvalidTransactionHandleError('submitTx', 'not-a-handle', describeNonHandle(unprovenTx));
-  }
-  if (unprovenTx.stage !== 'Unproven') {
-    throw new InvalidTransactionHandleError(
-      'submitTx',
-      'wrong-stage',
-      `${unprovenTx.stage} handle, where submitTx takes Unproven handles`
-    );
-  }
-  return unprovenTx.era;
-};
+const transactionEra = (unprovenTx: UnprovenTx): LedgerVersion =>
+  LedgerTransaction.require(unprovenTx, 'Unproven', 'submitTx').era;
 
 const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
   v8: 'ledger8-transaction-on-ledger9-head',

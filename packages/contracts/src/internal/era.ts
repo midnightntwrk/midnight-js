@@ -24,7 +24,6 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   ArtifactRuntimeVersionUnavailableError,
   type FinalizedTxData,
-  InvalidTransactionHandleError,
   LedgerTransaction,
   type PublicDataProvider,
   type RawContractState,
@@ -54,19 +53,6 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
-/** Names what arrived where a transaction handle was expected, without its contents. */
-export const describeNonHandle = (value: unknown): string => {
-  if (value === null) {
-    return 'null';
-  }
-  return typeof value === 'object' ? 'an object that is not a transaction handle' : typeof value;
-};
-
-const isAtStage = <S extends TransactionStage>(
-  handle: LedgerTransaction<TransactionStage>,
-  stage: S
-): handle is LedgerTransaction<S> => handle.stage === stage;
-
 /**
  * Checks the transaction handle a provider method answered with: a handle of this
  * package, at the stage the method produces, in the era the flow sent.
@@ -92,20 +78,11 @@ export function requireProviderResult<S extends TransactionStage>(
   method: TransactionMethod,
   circuitId?: string | readonly string[]
 ): LedgerTransaction<S> {
-  if (!LedgerTransaction.is(result)) {
-    throw new InvalidTransactionHandleError(method, 'not-a-handle', describeNonHandle(result));
+  const handle = LedgerTransaction.require(result, stage, method);
+  if (handle.era !== expectedEra) {
+    throw new EraInvariantViolationError(method, circuitId, expectedEra, handle.era);
   }
-  if (!isAtStage(result, stage)) {
-    throw new InvalidTransactionHandleError(
-      method,
-      'wrong-stage',
-      `${result.stage} handle, where ${method} answers with ${stage} handles`
-    );
-  }
-  if (result.era !== expectedEra) {
-    throw new EraInvariantViolationError(method, circuitId, expectedEra, result.era);
-  }
-  return result;
+  return handle;
 }
 
 const isLedger9State = <T extends { readonly version: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
@@ -146,11 +123,9 @@ const requireRecordHandle = <R extends VersionedFinalizedTxData>(
   method: ReadMethod,
   circuitId: string | readonly string[] | undefined
 ): R => {
-  if (!LedgerTransaction.is(record.tx)) {
-    throw new InvalidTransactionHandleError(method, 'not-a-handle', describeNonHandle(record.tx));
-  }
-  if (record.tx.era !== record.version) {
-    throw new EraInvariantViolationError(method, circuitId, record.version, record.tx.era);
+  const tx = LedgerTransaction.require(record.tx, 'Finalized', method);
+  if (tx.era !== record.version) {
+    throw new EraInvariantViolationError(method, circuitId, record.version, tx.era);
   }
   return record;
 };

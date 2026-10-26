@@ -54,12 +54,13 @@ export interface LedgerTransactionTypes {
 
 /**
  * Whether a value is a transaction of the ledger copy this framework loaded:
- * `'own'` when it is, `'foreign-instance'` when it is not (another WASM
- * instance of the same package, or not a transaction at all), and
+ * `'own'` when it is, `'foreign-instance'` when it is a transaction object of
+ * another WASM instance of the same package, `'not-a-transaction'` when it is
+ * not a transaction object at all (bytes, `undefined`, a plain object), and
  * `'ledger8-not-loaded'` when the v8 ledger has not been loaded yet, so no
  * answer is possible.
  */
-export type FrameworkInstanceCheck = 'own' | 'foreign-instance' | 'ledger8-not-loaded';
+export type FrameworkInstanceCheck = 'own' | 'foreign-instance' | 'not-a-transaction' | 'ledger8-not-loaded';
 
 type Assert<T extends true> = T;
 type _EveryEraHasTransactionTypes = Assert<
@@ -127,6 +128,9 @@ const assertSerializedTransaction = (bytes: unknown): void => {
   }
 };
 
+const isTransactionShaped = (value: unknown): value is { serialize(): Uint8Array } =>
+  typeof value === 'object' && value !== null && typeof Reflect.get(value, 'serialize') === 'function';
+
 const assertKnownEra = (era: string): void => {
   if (!LEDGER_VERSIONS.some((version) => version === era)) {
     throw new UnknownLedgerVersionError(String(era));
@@ -182,6 +186,10 @@ export const deserializeTransactionAtStage = async <E extends LedgerVersion, S e
  * @throws UnknownLedgerVersionError If `era` is not a ledger version.
  */
 export const isFrameworkLedgerTransaction = (era: LedgerVersion, value: unknown): FrameworkInstanceCheck => {
+  assertKnownEra(era);
+  if (!isTransactionShaped(value)) {
+    return 'not-a-transaction';
+  }
   switch (era) {
     case 'v9':
       return value instanceof Ledger9Transaction ? 'own' : 'foreign-instance';
@@ -192,9 +200,29 @@ export const isFrameworkLedgerTransaction = (era: LedgerVersion, value: unknown)
       }
       return value instanceof v8.Transaction ? 'own' : 'foreign-instance';
     }
-    default: {
-      const unhandled: never = era;
-      throw new UnknownLedgerVersionError(String(unhandled));
-    }
   }
+};
+
+const STAGE_OF_MARKERS: Readonly<Record<string, TransactionStage>> = Object.freeze({
+  'proof-preimage,embedded-fr': 'Unproven',
+  'proof,embedded-fr': 'Unbound',
+  'proof,pedersen-schnorr': 'Finalized'
+});
+
+const TAG_MARKERS = /^midnight:transaction\[v\d+\]\([^,()]+,([a-z-]+)(?:\[v\d+\])?,([a-z-]+)(?:\[v\d+\])?\):/;
+
+const TAG_READ_LENGTH = 128;
+
+/**
+ * Reads the stage a transaction object is at from the proof and binding
+ * markers in its serialized tag.
+ *
+ * @param tx The transaction object, of either era.
+ * @returns The stage, or `undefined` when the markers name no
+ *   {@link TransactionStage} (for example a bound transaction with no proofs).
+ */
+export const transactionStageOf = (tx: { serialize(): Uint8Array }): TransactionStage | undefined => {
+  const head = String.fromCharCode(...tx.serialize().subarray(0, TAG_READ_LENGTH));
+  const markers = TAG_MARKERS.exec(head);
+  return markers === null ? undefined : STAGE_OF_MARKERS[`${markers[1]},${markers[2]}`];
 };

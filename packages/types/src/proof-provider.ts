@@ -84,6 +84,8 @@ export interface ProofProvider {
    *         `dappConnectorProofProvider` serve both eras.
    * @throws ForeignLedgerTransactionError if the proven transaction is not an object of the
    *         ledger copy this framework loaded for its era.
+   * @throws InvalidTransactionHandleError if the proven transaction is not a ledger transaction
+   *         object (`not-a-transaction`) or is not at the Unbound stage (`stage-mismatch`).
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
    *         apply it. {@link createProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
@@ -124,8 +126,9 @@ export type ProofProviderHandlers = {
  * @returns A {@link ProofProvider} routing each handle to its era's handler.
  * @throws UnusableEraEntryError if an era entry is neither `undefined` nor a
  *         function. Raised at construction.
- * @throws InvalidArgumentError if `handlers` is not an object or has no key for
- *         a ledger era. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, has no key for
+ *         a ledger era, or serves no era (every entry `undefined`). Raised at
+ *         construction.
  *
  * @example
  * ```typescript
@@ -145,7 +148,7 @@ export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers)
     handlers: served,
     receiver: handlers,
     supportedEras,
-    answer: (era, proven) => LedgerTransaction.seal(era, 'Unbound', proven)
+    answer: (era, proven) => LedgerTransaction.seal(era, 'Unbound', proven, 'proveTx')
   };
   return {
     supportedEras,
@@ -197,8 +200,8 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
  * @throws UnusableEraEntryError if an era entry is neither `undefined` nor an
  *         object with callable `check` and `prove`. Raised at construction.
  * @throws InvalidArgumentError if `provingProviders` is not an object, has no key
- *         for a ledger era, or `costModel` is given but is not an object. Raised at
- *         construction.
+ *         for a ledger era, serves no era (every entry `undefined`), or `costModel`
+ *         is given but is not an object. Raised at construction.
  * @throws InvalidArgumentError raised by `proveTx`, before any proving starts,
  *         if `proveTxConfig.timeout` is set (including `0`): a `ProvingProvider`
  *         takes no per-request configuration. To bound proving time, use

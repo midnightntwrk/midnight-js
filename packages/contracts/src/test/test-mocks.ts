@@ -51,7 +51,6 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
-  type FinalizedTx,
   type FinalizedTxData,
   type Ledger8FinalizedTxData,
   type MidnightConfig,
@@ -196,9 +195,9 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
 
 export const createMockUnprovenTx = (): UnprovenTx => handles.v9.Unproven();
 
-const MOCK_FINALIZED_TX: FinalizedTx = await handles.v9.Finalized();
+const MOCK_FINALIZED_TX = await handles.v9.Finalized();
 
-const MOCK_LEDGER8_FINALIZED_TX: FinalizedTx = await handles.v8.Finalized();
+const MOCK_LEDGER8_FINALIZED_TX = await handles.v8.Finalized();
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   type: 'shielded',

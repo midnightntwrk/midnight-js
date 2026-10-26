@@ -48,6 +48,8 @@ export interface WalletProvider {
    * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
    * @throws ForeignLedgerTransactionError if the balanced transaction is not an object of the
    *         ledger copy this framework loaded for its era.
+   * @throws InvalidTransactionHandleError if the balanced transaction is not a ledger transaction
+   *         object (`not-a-transaction`) or is not at the Finalized stage (`stage-mismatch`).
    */
   balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
 
@@ -94,7 +96,8 @@ export type WalletProviderHandlers = {
  * @throws UnusableEraEntryError if an era entry is neither `undefined` nor a
  *         function. Raised at construction.
  * @throws InvalidArgumentError if `handlers` is not an object, has no key for a
- *         ledger era, or a key reader is not a function. Raised at construction.
+ *         ledger era, serves no era (every entry `undefined`), or a key reader is
+ *         not a function. Raised at construction.
  */
 export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => {
   const served = readEraEntries('balanceTx', handlers, 'handler');
@@ -108,7 +111,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
     handlers: served,
     receiver: handlers,
     supportedEras,
-    answer: (era, balanced) => LedgerTransaction.seal(era, 'Finalized', balanced)
+    answer: (era, balanced) => LedgerTransaction.seal(era, 'Finalized', balanced, 'balanceTx')
   };
   return {
     supportedEras,
@@ -141,8 +144,10 @@ export interface Ledger9WalletProvider {
  *
  * @example
  * ```typescript
+ * // The wallet runs its own copy of the ledger, so the transaction crosses as bytes.
  * const walletProvider = createWalletProvider({
- *   balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+ *   balanceTx: async (tx, ttl) =>
+ *     deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
  *   getCoinPublicKey: () => wallet.coinPublicKey,
  *   getEncryptionPublicKey: () => wallet.encryptionPublicKey
  * });

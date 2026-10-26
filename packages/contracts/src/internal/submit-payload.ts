@@ -157,7 +157,9 @@ const redact = (text: string): string => {
  * name, a redacted message, a redacted stack and a redacted `cause` chain.
  *
  * The provider's ENUMERABLE PROPERTIES are the one thing DROPPED. Everything
- * else — class name, message, stack and `cause` chain — is kept REDACTED.
+ * else — class name, message, stack and `cause` chain — is kept REDACTED. The
+ * `code` of this framework's own coded errors is kept as it is: it is a
+ * published constant, and a caller matches on it with `hasErrorCode`.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
@@ -177,6 +179,9 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
   );
   if (isErrorLike(cause) && typeof cause.stack === 'string') {
     rebuilt.stack = redact(cause.stack);
+  }
+  if (hasErrorCode(cause)) {
+    Object.defineProperty(rebuilt, 'code', { value: cause.code, enumerable: true });
   }
   // `AggregateError.errors` is where `fetch` reports the per-address failures
   // behind a connection error, and it is an own property, so it does not travel

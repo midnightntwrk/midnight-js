@@ -67,6 +67,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
   it.each(['watchForTxData', 'watchForDeployTxData'] as const)(
     'refuses a v9 record whose tx is a v8 handle, naming %s',
     (method) => {
+      // @ts-expect-error the types tie tx to version; an untyped provider can still mismatch them
       const record: VersionedFinalizedTxData = { ...createMockFinalizedTxData(), tx: createMockLedger8FinalizedTxData().tx };
 
       const error = thrownBy(() => read(record, method));
@@ -104,6 +105,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
 
 describe('requireTaggedRecord', () => {
   it('refuses a v8 record whose tx is a v9 handle', () => {
+    // @ts-expect-error the types tie tx to version; an untyped provider can still mismatch them
     const record: VersionedFinalizedTxData = { ...createMockLedger8FinalizedTxData(), tx: createMockFinalizedTxData().tx };
 
     const error = thrownBy(() => requireTaggedRecord(record, 'watchForDeployTxData'));

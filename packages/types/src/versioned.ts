@@ -17,7 +17,7 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { FinalizedTx } from './ledger-transaction';
+import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
@@ -95,16 +95,15 @@ export type VersionedPublicStates = Ledger8PublicStates | Ledger9PublicStates;
  */
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
   readonly version: 'v8';
-  /** The finalized transaction, as a handle of the same era as `version`. */
-  readonly tx: FinalizedTx;
+  /** The finalized transaction, as a v8 handle. */
+  readonly tx: LedgerTransaction<'Finalized', 'v8'>;
 }
 
 /**
  * A finalized transaction record, discriminated by which ledger runtime
  * produced it. Both variants carry identical metadata and a {@link FinalizedTx}
- * handle; only the `version` discriminant differs, and it always equals
- * `record.tx.era`. Read the transaction with
- * `LedgerTransaction.unwrap(record.tx, record.version)`.
+ * handle of their own era, so narrowing on `version` narrows `tx.era` with it.
+ * Read the transaction with `LedgerTransaction.unwrap(record.tx, record.version)`.
  *
  * The providers in this framework resolve `version` from the record's own
  * `protocolVersion` at the one construction point per provider, and throw

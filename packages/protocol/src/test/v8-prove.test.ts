@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnightntwrk/ledger-v9';
-import { beforeAll, describe, expect, it } from 'vitest';
+import * as foreignLedger8 from '@midnight-ntwrk/ledger-v8';
+import { type ProvingProvider, Transaction as Ledger9Transaction } from '@midnightntwrk/ledger-v9';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { COMMON_ERROR_CODES } from '../errors';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import { proveLedger8Transaction } from '../lib/v8/prove';
 import type { LedgerTransactionTypes } from '../transaction';
@@ -88,6 +90,35 @@ describe('proveLedger8Transaction', () => {
     expect(provenTag).not.toBe(LEDGER8_UNPROVEN_TX_TAG);
     expect(proven).toBeInstanceOf(ledger8Module.Transaction);
     expect(asLatin1(proven.serialize(), provenTag.length)).toBe(provenTag);
+  });
+
+  describe('an argument that is not an unproven v8 transaction of the framework copy', () => {
+    it.each([
+      ['serialized bytes', () => new Uint8Array([1, 2, 3]), 'not-a-transaction'],
+      ['a v9 transaction', () => Ledger9Transaction.fromParts(NETWORK_ID), 'foreign-instance'],
+      ['a v8 transaction of the other npm copy', () => foreignLedger8.Transaction.fromParts(NETWORK_ID), 'foreign-instance'],
+      ['a finalized v8 transaction', () => ledger8Module.Transaction.fromParts(NETWORK_ID).mockProve(), 'Finalized'],
+      ['a bound but unproven v8 transaction', () => ledger8Module.Transaction.fromParts(NETWORK_ID).bind(), 'at no pipeline stage']
+    ])('refuses %s with a coded error before proving anything', async (_label, value, named) => {
+      const provingProvider = { check: vi.fn(), prove: vi.fn() };
+
+      // @ts-expect-error the cases pass values the parameter type rules out
+      const rejection = await proveLedger8Transaction(value(), provingProvider).catch((error: unknown) => error);
+
+      expect(rejection).toMatchObject({ code: COMMON_ERROR_CODES.INVALID_ARGUMENT });
+      expect(String(rejection)).toContain(named);
+      expect([provingProvider.check, provingProvider.prove].map((fn) => fn.mock.calls.length)).toEqual([0, 0]);
+    });
+
+    it('refuses an unbound v8 transaction as already proven', async () => {
+      const unbound = await proveLedger8Transaction(retainedEraTx, inertProvingProvider);
+
+      // @ts-expect-error an unbound transaction is not an unproven one
+      const rejection = await proveLedger8Transaction(unbound, inertProvingProvider).catch((error: unknown) => error);
+
+      expect(rejection).toMatchObject({ code: COMMON_ERROR_CODES.INVALID_ARGUMENT });
+      expect(String(rejection)).toContain('Unbound');
+    });
   });
 
   describe('a failing proving provider', () => {

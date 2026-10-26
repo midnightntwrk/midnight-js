@@ -342,12 +342,13 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
   // use for.
   const LAZY_ACCESSORS = ['loadLedger8Protocol', 'loadLedger8Engine'] as const;
 
-  it('reaches the v8 era through loadLedger8Protocol and through no other accessor', () => {
+  it('reaches the v8 era only through utils.deserializeLedgerTransaction, naming no protocol accessor', () => {
     const referenced = LAZY_ACCESSORS.filter((accessor) =>
       sources().some(({ text }) => new RegExp(`\\b${accessor}\\b`).test(text))
     );
 
-    expect([...referenced].sort()).toEqual(['loadLedger8Protocol']);
+    expect(referenced).toEqual([]);
+    expect(sources().some(({ text }) => /\bdeserializeLedgerTransaction\b/.test(text))).toBe(true);
   });
 
   // Every way a module specifier can be LINKED at runtime. `[^;]*?` spans the
