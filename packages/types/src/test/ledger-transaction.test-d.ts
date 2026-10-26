@@ -24,6 +24,8 @@ import {
   type UnboundTx,
   type UnprovenTx
 } from '../ledger-transaction';
+import type { FinalizedTxData } from '../midnight-types';
+import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
 
 declare const unprovenTx: UnprovenTx;
 declare const unboundTx: UnboundTx;
@@ -62,5 +64,29 @@ describe('LedgerTransaction.unwrap', () => {
   it('returns the ledger class of the requested era at the handle stage', () => {
     expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v8')).toEqualTypeOf<Ledger8UnprovenTransaction>();
     expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v9')).toEqualTypeOf<Ledger9UnprovenTransaction>();
+  });
+});
+
+describe('finalized transaction records', () => {
+  it('carry the transaction as a finalized handle in both eras', () => {
+    expectTypeOf<FinalizedTxData['tx']>().toEqualTypeOf<FinalizedTx>();
+    expectTypeOf<Ledger8FinalizedTxData['tx']>().toEqualTypeOf<FinalizedTx>();
+  });
+
+  it('still narrow on version', () => {
+    const eraOf = (record: VersionedFinalizedTxData) => {
+      switch (record.version) {
+        case 'v8':
+          return record.version;
+        case 'v9':
+          return record.version;
+        default: {
+          const unhandled: never = record;
+          return unhandled;
+        }
+      }
+    };
+
+    expectTypeOf(eraOf).returns.toEqualTypeOf<'v8' | 'v9'>();
   });
 });

@@ -24,7 +24,6 @@ import {
   InvalidExportFormatError,
   InvalidProtocolSchemeError,
   InvalidTransactionHandleError,
-  Ledger8PayloadUnsupportedError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
   PrivateStateImportError,
@@ -37,7 +36,6 @@ import {
   ProviderEraUnsupportedError,
   SigningKeyExportError,
   TransactionEraMismatchError,
-  UntaggedPayloadError,
   UnusableEraEntryError,
   ZkArtifactFetchError
 } from '../errors';
@@ -51,8 +49,6 @@ describe('types error classes', () => {
   );
   const keyLocation = { contractAddress: 'aa'.repeat(32), circuitId: 'increment', verifierKeyHash: 'bb'.repeat(32) };
   const instances: readonly [string, MidnightJsError][] = [
-    ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('proveTx', 3)],
-    ['UntaggedPayloadError', new UntaggedPayloadError('proveTx', undefined)],
     ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('proveTx', 'v8', ['v9'])],
     ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null')],
     ['InvalidProtocolSchemeError', new InvalidProtocolSchemeError('ftp', ['http', 'https'])],
@@ -92,22 +88,22 @@ describe('types error classes', () => {
 
   it.each([
     [
-      'a retained era handler',
+      'a v8 handler',
       new UnusableEraEntryError('balanceTx', 'v8', 'handler', 'null'),
-      "Cannot use retainedEras.v8 passed for balanceTx: expected a function, got null. " +
-        'Pass a function as retainedEras.v8, or leave the entry out (or set it to undefined) if this era is not served.'
+      'Cannot use the v8 entry passed for balanceTx: expected a function, got null. ' +
+        'Pass a function as v8, or set v8 to undefined if this provider does not serve that era.'
     ],
     [
-      'a retained era proving provider',
+      'a v8 proving provider',
       new UnusableEraEntryError('proveTx', 'v8', 'proving-provider', 'a function'),
-      "Cannot use retainedEras.v8 passed for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
-        "Pass a ProvingProvider with callable 'check' and 'prove' as retainedEras.v8, or leave the entry out (or set it to undefined) if this era is not served."
+      "Cannot use the v8 entry passed for proveTx: expected a ProvingProvider with callable 'check' and 'prove', got a function. " +
+        "Pass a ProvingProvider with callable 'check' and 'prove' as v8, or set v8 to undefined if this provider does not serve that era."
     ],
     [
-      'the current era handler',
-      new UnusableEraEntryError('submitTx', 'v9', 'handler', 'undefined'),
-      'Cannot use currentEra passed for submitTx: expected a function, got undefined. ' +
-        'Pass a function as currentEra: every provider serves the current era.'
+      'a v9 handler',
+      new UnusableEraEntryError('submitTx', 'v9', 'handler', 'a string'),
+      'Cannot use the v9 entry passed for submitTx: expected a function, got a string. ' +
+        'Pass a function as v9, or set v9 to undefined if this provider does not serve that era.'
     ]
   ] as const)('UnusableEraEntryError names its class and the remedy for %s', (_case, error, message) => {
     expect([error.name, error.message]).toEqual(['UnusableEraEntryError', message]);
@@ -119,30 +115,6 @@ describe('types error classes', () => {
 
   it.each([
     [
-      'a v8 payload sent to a v9-only provider',
-      new Ledger8PayloadUnsupportedError('balanceTx', 3),
-      'balanceTx received a v8-era transaction payload (serialized bytes, 3 bytes), which this provider does not serve. ' +
-        'The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ' +
-        'each lifts a v9-only implementation, so this is by design rather than a gap. ' +
-        "Send a v9 payload ({ version: 'v9', tx }) to this method, or use an implementation that serves " +
-        'v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ' +
-        'need a WalletProvider or MidnightProvider written against the version-tagged interface directly.'
-    ],
-    [
-      'an untagged payload passed to or returned from a transaction method',
-      new UntaggedPayloadError('proveTx', {}),
-      "proveTx: a transaction payload has no recognised 'version' discriminant (got: no version field). " +
-        'Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ' +
-        "transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }."
-    ],
-    [
-      'an untagged record returned from a read method',
-      new UntaggedPayloadError('watchForTxData', {}),
-      "watchForTxData: a finalized transaction record has no recognised 'version' discriminant (got: no version " +
-        "field). Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger " +
-        "transaction, and { version: 'v8', tx } a v8 one."
-    ],
-    [
       'a provider that does not declare the era',
       new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']),
       'This operation runs on the v8 ledger era, but the provider wired to submitTx declares that it serves v9. ' +
@@ -153,31 +125,7 @@ describe('types error classes', () => {
     expect(error.message).toEqual(message);
   });
 
-  it.each(['watchForTxData', 'watchForDeployTxData'] as const)(
-    'reports an untagged value from %s as a record, whose v8 variant carries tx',
-    (method) => {
-      const { message } = new UntaggedPayloadError(method, {});
-
-      expect([message.startsWith(`${method}: a finalized transaction record`), message.includes('txBytes')]).toEqual([
-        true,
-        false
-      ]);
-    }
-  );
-
-  it('reports an untagged value from queryDeployContractState as a contract state, whose v8 variant carries stateBytes', () => {
-    const { message } = new UntaggedPayloadError('queryDeployContractState', {});
-
-    expect([
-      message.startsWith('queryDeployContractState: a contract state'),
-      message.includes('stateBytes'),
-      message.includes('txBytes')
-    ]).toEqual([true, true, false]);
-  });
-
   it.each([
-    ['Ledger8PayloadUnsupportedError', new Ledger8PayloadUnsupportedError('balanceTx', 3), 'balanceTx'],
-    ['UntaggedPayloadError', new UntaggedPayloadError('watchForTxData', undefined), 'watchForTxData'],
     ['ProviderEraUnsupportedError', new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']), 'submitTx'],
     ['UnusableEraEntryError', new UnusableEraEntryError('proveTx', 'v8', 'handler', 'null'), 'proveTx']
   ] as const)('%s reports the provider method it was raised for as `method`', (_name, error, method) => {
@@ -192,12 +140,6 @@ describe('types error classes', () => {
       'MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED',
       'USAGE'
     ]);
-  });
-
-  it('the v8 payload refusal carries the Ledger8 name and code', () => {
-    const error = new Ledger8PayloadUnsupportedError('proveTx', 3);
-
-    expect([error.name, error.code]).toEqual(['Ledger8PayloadUnsupportedError', 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED']);
   });
 
   it('category table covers every provider code exactly', () => {

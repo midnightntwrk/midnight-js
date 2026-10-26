@@ -14,14 +14,8 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import {
-  CURRENT_LEDGER_VERSION,
-  type LedgerVersion,
-  RETAINED_LEDGER_VERSIONS,
-  type RetainedLedgerVersion
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { RetainedEraEntries } from '../era-entries';
 import { type EraEntryShape, type TransactionMethod, UnusableEraEntryError } from '../errors';
 
 const PROVING_PROVIDER_METHODS = ['check', 'prove'] as const;
@@ -136,8 +130,6 @@ const describeEntry = (entry: unknown, shape: EraEntryShape): string => {
 /** Whether `value` is a non-null object; a function does not count. */
 export const isObject = (value: unknown): boolean => typeof value === 'object' && value !== null;
 
-const isRetainedEra = (key: string | symbol): boolean => RETAINED_LEDGER_VERSIONS.some((era) => era === key);
-
 const assertUsable = (method: TransactionMethod, era: LedgerVersion, entry: unknown, shape: EraEntryShape): void => {
   if (!IS_USABLE[shape](entry)) {
     throw new UnusableEraEntryError(method, era, shape, describeEntry(entry, shape));
@@ -153,58 +145,66 @@ export const assertFunction = (method: TransactionMethod, name: string, value: u
   }
 };
 
-/** The era entries a provider factory serves from, read once at construction. */
-export interface EraEntries<C, H> {
-  readonly currentEra: C;
-  readonly retainedEras: RetainedEraEntries<H>;
-}
+/** One entry per ledger era, `undefined` for an era that is not served. */
+export type EraEntries<T extends Readonly<Record<LedgerVersion, unknown>>> = { readonly [E in LedgerVersion]: T[E] };
 
-/**
- * Reads and checks the entries handed to a provider factory, once.
- *
- * The provider serves from the returned copy, never from the caller's object,
- * so `supportedEras` and routing always see the same entries. Only own properties
- * of `retainedEras` are read, and the copy has no prototype, so an era
- * inherited from `Object.prototype` is never served.
- *
- * @param method The provider method the entries serve, used in errors.
- * @param entries The current-era entry and the optional retained-era map.
- * @param shape What every entry must be.
- * @returns The current-era entry and a frozen copy of the retained entries supplied.
- * @throws InvalidArgumentError if `entries` is not an object, or `retainedEras` is
- *         given but is not a plain object whose own keys are all retained eras.
- * @throws UnusableEraEntryError if the current-era entry, or a retained-era entry
- *         other than `undefined`, is not `shape`.
- */
-export const readEraEntries = <C, H>(
-  method: TransactionMethod,
-  entries: { readonly currentEra: C; readonly retainedEras?: RetainedEraEntries<H> },
-  shape: EraEntryShape
-): EraEntries<C, H> => {
-  if (!isObject(entries)) {
-    throw new InvalidArgumentError(`${method}: expected an object with currentEra and an optional retainedEras, got ${describeArgument(entries)}.`);
-  }
-  const { currentEra, retainedEras } = entries;
-  assertUsable(method, CURRENT_LEDGER_VERSION, currentEra, shape);
-  if (retainedEras !== undefined && !isPlainObject(retainedEras)) {
-    throw new InvalidArgumentError(
-      `${method}: retainedEras must be a plain object keyed by retained era (${RETAINED_LEDGER_VERSIONS.join(', ')}), got ${describeArgument(retainedEras)}.`
-    );
-  }
-  const unknownKeys = retainedEras === undefined ? [] : Reflect.ownKeys(retainedEras).filter((key) => !isRetainedEra(key));
-  if (unknownKeys.length > 0) {
-    throw new InvalidArgumentError(
-      `${method}: retainedEras has keys that are not retained eras: ${unknownKeys.map(String).join(', ')}. ` +
-        `Expected only ${RETAINED_LEDGER_VERSIONS.join(', ')}.`
-    );
-  }
-  const copy = Object.create(null) as Partial<Record<RetainedLedgerVersion, H>>;
-  for (const era of RETAINED_LEDGER_VERSIONS) {
-    const entry = retainedEras !== undefined && Object.hasOwn(retainedEras, era) ? retainedEras[era] : undefined;
-    if (entry !== undefined) {
-      assertUsable(method, era, entry, shape);
-      copy[era] = entry;
+// An era counts as given when it is found on the object or on a prototype of
+// its own, such as a class. An era reached only through `Object.prototype` is
+// not given: it was not written by the caller.
+const isGiven = (entries: object, era: LedgerVersion): boolean => {
+  for (let owner: object | null = entries; owner !== null; owner = Reflect.getPrototypeOf(owner)) {
+    if (Object.hasOwn(owner, era)) {
+      return owner === entries || Reflect.getPrototypeOf(owner) !== null;
     }
   }
-  return { currentEra, retainedEras: Object.freeze(copy) };
+  return false;
+};
+
+const missingEras = (method: TransactionMethod, entries: object): readonly LedgerVersion[] => {
+  try {
+    return LEDGER_VERSIONS.filter((era) => !isGiven(entries, era));
+  } catch (error: unknown) {
+    throw new InvalidArgumentError(`${method}: the era entries could not be read.`, { cause: error });
+  }
+};
+
+/**
+ * Reads and checks the per-era entries handed to a provider factory, once.
+ *
+ * The provider serves from the returned copy, never from the caller's object,
+ * so `supportedEras` and routing always see the same entries.
+ *
+ * @param method The provider method the entries serve, used in errors.
+ * @param entries One entry per ledger era.
+ * @param shape What every entry other than `undefined` must be.
+ * @returns A frozen copy of the entries.
+ * @throws InvalidArgumentError if `entries` is not an object, cannot be read,
+ *         or has no key for a ledger era.
+ * @throws UnusableEraEntryError if an entry is neither `undefined` nor `shape`.
+ */
+export const readEraEntries = <T extends Readonly<Record<LedgerVersion, unknown>>>(
+  method: TransactionMethod,
+  entries: T,
+  shape: EraEntryShape
+): EraEntries<T> => {
+  if (!isObject(entries)) {
+    throw new InvalidArgumentError(
+      `${method}: expected an object with an entry for every ledger era (${LEDGER_VERSIONS.join(', ')}), got ${describeArgument(entries)}.`
+    );
+  }
+  const missing = missingEras(method, entries);
+  if (missing.length > 0) {
+    throw new InvalidArgumentError(
+      `${method}: the era entries are missing ${missing.join(', ')}. ` +
+        `Give every ledger era (${LEDGER_VERSIONS.join(', ')}) an entry, and set an era this provider does not serve to undefined.`
+    );
+  }
+  const copy: EraEntries<T> = Object.freeze({ v8: entries.v8, v9: entries.v9 });
+  for (const era of LEDGER_VERSIONS) {
+    const entry = copy[era];
+    if (entry !== undefined) {
+      assertUsable(method, era, entry, shape);
+    }
+  }
+  return copy;
 };

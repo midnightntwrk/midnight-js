@@ -18,10 +18,10 @@ import {
   MidnightJsError,
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
- * The provider methods that carry a version-tagged transaction payload.
+ * The provider methods that carry a transaction handle.
  *
  * Closed rather than a bare `string` so a caught error can be switched on
  * exhaustively, and so a typo in a throw site is a compile error.
@@ -61,22 +61,20 @@ export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
  * does not: it belongs to the private-state provider, and is here because this is
  * the one provider-scoped group there is.
  *
- * Declared in this package because this is where the payload union the provider codes
- * refuse is defined, and where the classes for three of them live; two others
+ * Declared in this package because this is where the provider interfaces and the
+ * transaction handle are defined, and where most of the classes live; two others
  * come from
  * `@midnight-ntwrk/midnight-js-indexer-public-data-provider`, which depends on
  * this package. `@midnight-ntwrk/midnight-js-utils` re-exports the group and
  * folds it into the registry `hasErrorCode` consults.
  */
 export const PROVIDER_ERROR_CODES = Object.freeze({
-  LEDGER8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED',
-  UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
   DECODER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED',
   UNKNOWN_RECORD_ERA: 'MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA',
   // Distinct from DECODER_ERA_UNSUPPORTED above, which belongs to the READ surface:
   // that one means "this record cannot be decoded", raised while decoding. This
-  // one means "this provider states it does not serve that era", raised from a
-  // declaration before any payload exists.
+  // one means "this provider does not serve that era", raised from its declaration
+  // or from its method before any work.
   PROVIDER_ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED',
   PRIVATE_STATE_NOT_SERIALIZABLE: 'MIDNIGHT_JS_PR_PRIVATE_STATE_NOT_SERIALIZABLE',
   INVALID_PROTOCOL_SCHEME: 'MIDNIGHT_JS_PR_INVALID_PROTOCOL_SCHEME',
@@ -114,8 +112,6 @@ export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVI
 const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
-  [PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED]: USAGE,
-  [PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD]: USAGE,
   [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED]: USAGE,
@@ -151,8 +147,6 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
 });
 
 const {
-  LEDGER8_PAYLOAD_UNSUPPORTED,
-  UNTAGGED_PAYLOAD,
   PROVIDER_ERA_UNSUPPORTED,
   PRIVATE_STATE_NOT_SERIALIZABLE,
   INVALID_PROTOCOL_SCHEME,
@@ -177,170 +171,18 @@ const {
 } = PROVIDER_ERROR_CODES;
 
 /**
- * Thrown by a provider that only speaks the v9 ledger runtime when it is
- * handed a v8 payload — serialized, tag-prefixed bytes instead of a live v9
- * transaction object.
+ * Thrown when the provider behind one of the three transaction methods does
+ * not serve the ledger era a transaction needs.
  *
- * Catching this does NOT mean "the framework cannot do it yet". It means the
- * specific implementation behind that method does not serve v8 payloads — permanently
- * for the lifting adapters, contingently for a concrete provider.
+ * Raised in two places, with the same remedy — wire a provider that serves the
+ * era:
  *
- * Catch it via its stable `code`, using `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
- *
- * @see {@link ProviderEraDeclarations} for which providers raise it and why, and for
- * how it differs from {@link ProviderEraUnsupportedError}.
- */
-export class Ledger8PayloadUnsupportedError extends MidnightJsError {
-  readonly code = LEDGER8_PAYLOAD_UNSUPPORTED;
-  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER8_PAYLOAD_UNSUPPORTED];
-
-  /**
-   * @param method The provider method that received the payload.
-   * @param byteLength Size of the rejected payload, recorded so a report of
-   *                   this error says something about what arrived. `undefined`
-   *                   when the payload's `txBytes` was missing or not a
-   *                   `Uint8Array` — which the message states, because that
-   *                   caller has a second problem worth knowing about.
-   */
-  constructor(
-    readonly method: TransactionMethod,
-    readonly byteLength?: number
-  ) {
-    super(
-      `${method} received a v8-era transaction payload (serialized bytes${
-        byteLength === undefined ? ', size unknown: txBytes was missing or not a Uint8Array' : `, ${byteLength} bytes`
-      }), which this provider does not serve. ` +
-        `The createProofProvider, createWalletProvider and createMidnightProvider adapters never serve a v8 payload: ` +
-        `each lifts a v9-only implementation, so this is by design rather than a gap. ` +
-        `Send a v9 payload ({ version: 'v9', tx }) to this method, or use an implementation that serves ` +
-        `v8 — httpClientProofProvider and dappConnectorProofProvider do so for proveTx, while balanceTx and submitTx ` +
-        `need a WalletProvider or MidnightProvider written against the version-tagged interface directly.`
-    );
-    this.name = 'Ledger8PayloadUnsupportedError';
-  }
-}
-
-// The longest `version` string echoed back into an error message. A caller
-// reaching this path is passing an arbitrary value, and the message lands in
-// `error.stack` and from there in every log sink — so an unbounded string is
-// copied into all of them.
-const MAX_DESCRIBED_VERSION_LENGTH = 32;
-
-// Renders whatever arrived in `version` for the untagged-payload message.
-// Deliberately never JSON.stringify()s the payload: that throws on BigInt and
-// on circular references, and would serialize a transaction's contents into an
-// error message and from there into logs.
-const describeVersion = (payload: unknown): string => {
-  if (payload === null) {
-    // Reported before the `typeof` fallback below, which would call this
-    // 'object' and tell the reader their payload was an object with a bad
-    // `version` — the opposite of what happened.
-    return 'null';
-  }
-  if (typeof payload !== 'object') {
-    return typeof payload;
-  }
-  if (!('version' in payload)) {
-    return 'no version field';
-  }
-  const version: unknown = payload.version;
-  if (typeof version !== 'string') {
-    return typeof version;
-  }
-  return version.length > MAX_DESCRIBED_VERSION_LENGTH
-    ? `'${version.slice(0, MAX_DESCRIBED_VERSION_LENGTH)}'… (${version.length} chars)`
-    : `'${version}'`;
-};
-
-const UNTAGGED_SUBJECT = {
-  proveTx: 'payload',
-  balanceTx: 'payload',
-  submitTx: 'payload',
-  watchForTxData: 'record',
-  watchForDeployTxData: 'record',
-  queryDeployContractState: 'state'
-} as const satisfies Record<ProviderMethod, 'payload' | 'record' | 'state'>;
-
-const describeUntagged = (method: ProviderMethod, received: string): string => {
-  switch (UNTAGGED_SUBJECT[method]) {
-    case 'record':
-      return (
-        `${method}: a finalized transaction record has no recognised 'version' discriminant (got: ${received}). ` +
-        `Records returned from read methods are version-tagged: { version: 'v9', tx } carries a v9 ledger ` +
-        `transaction, and { version: 'v8', tx } a v8 one.`
-      );
-    case 'state':
-      return (
-        `${method}: a contract state has no recognised 'version' discriminant (got: ${received}). ` +
-        `Contract states are version-tagged: { version: 'v9', state } carries a decoded v9 state, and ` +
-        `{ version: 'v8', stateBytes } the stored bytes of a v8 one.`
-      );
-    case 'payload':
-      return (
-        `${method}: a transaction payload has no recognised 'version' discriminant (got: ${received}). ` +
-        `Payloads passed to and returned from transaction methods are version-tagged: a live v9 ledger ` +
-        `transaction is { version: 'v9', tx }, and v8-era serialized bytes are { version: 'v8', txBytes }.`
-      );
-  }
-};
-
-/**
- * Thrown when a payload passed to, or returned from, a provider method carries
- * no recognised `version` discriminant — most often a transaction passed
- * untagged, the shape these methods took before 5.0.0. A read method's record
- * is reported as a record, because its v8 variant carries `tx`, not `txBytes`.
- *
- * The method signatures make this unrepresentable in TypeScript, so it is reachable
- * only from JavaScript, from a consumer compiled against a pre-5.0.0
- * `midnight-js-types`, or from a payload that crossed an untyped boundary.
- * It carries a `code` so a caller can tell this apart from an arbitrary crash.
- */
-export class UntaggedPayloadError extends MidnightJsError {
-  readonly code = UNTAGGED_PAYLOAD;
-  readonly category = PROVIDER_ERROR_CATEGORIES[UNTAGGED_PAYLOAD];
-
-  /** What the payload's `version` field actually held. */
-  readonly received: string;
-
-  /**
-   * @param method The method the payload was passed to or returned from. Typed as the full
-   *               {@link ProviderMethod} vocabulary because this error is thrown
-   *               from both the transaction methods and the read methods.
-   * @param payload The offending payload. Only its `version` field is read;
-   *                the payload's contents never reach the message.
-   */
-  constructor(
-    readonly method: ProviderMethod,
-    payload: unknown
-  ) {
-    const received = describeVersion(payload);
-    super(describeUntagged(method, received));
-    this.name = 'UntaggedPayloadError';
-    this.received = received;
-  }
-}
-
-/**
- * Thrown BEFORE an operation starts, when the provider behind one of the three
- * transaction methods declares that it does not serve the ledger era that operation needs.
- *
- * This is a pre-flight refusal, not a payload rejection. It is raised by
- * `assertProvidersSupportEra` from the provider set alone — no payload has been
- * built, no proof has been requested — and it exists so that an operation whose
- * wallet cannot balance the result is refused before its proof is paid for,
- * rather than after.
- *
- * Distinct from {@link Ledger8PayloadUnsupportedError} on purpose, and the two are
- * not interchangeable:
- *
- * - This error means the provider SAID SO, in `supportedEras`, before it was
- *   asked to do anything. The remedy is to wire a different provider.
- * - `Ledger8PayloadUnsupportedError` means a payload reached a method that will not
- *   take it. That remains the defence in depth: a declaration is a claim by the
- *   implementation, and nothing verifies it, so the narrowing in each method still
- *   runs and still reports its own error when a declaration turns out to be
- *   wrong.
+ * - by `assertProvidersSupportEra`, from the providers' `supportedEras` alone,
+ *   before an operation starts, so a transaction the set cannot carry end to
+ *   end is refused before its proof is paid for;
+ * - by a provider built with a `create*FromHandlers` factory, when a handle
+ *   arrives in an era it has no handler for. A declaration is a claim nothing
+ *   verifies, so the method refuses again before doing any work.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
@@ -376,8 +218,8 @@ export class ProviderEraUnsupportedError extends MidnightJsError {
 }
 
 /**
- * The shape a provider factory needs for each era entry — the value passed as
- * `currentEra` or under `retainedEras`: a `handler` function
+ * The shape a provider factory needs for each era entry — the value passed
+ * under an era key such as `v8`: a `handler` function
  * for the `…FromHandlers` factories, a `proving-provider` with callable
  * `check` and `prove` for `createProofProviderFromProvingProviders`.
  */
@@ -389,9 +231,8 @@ const ERA_ENTRY_SHAPE_DESCRIPTIONS: Readonly<Record<EraEntryShape, string>> = {
 };
 
 /**
- * Thrown by a provider factory given an era entry it cannot use: a `currentEra`
- * that is not the {@link EraEntryShape} the factory needs, or a retained-era
- * entry that is neither `undefined` nor that shape. Raised at construction, so
+ * Thrown by a provider factory given an era entry that is neither `undefined`
+ * nor the {@link EraEntryShape} the factory needs. Raised at construction, so
  * `supportedEras` never claims an era no entry can serve.
  *
  * The types rule these entries out, so it is reachable only from JavaScript or
@@ -421,12 +262,9 @@ export class UnusableEraEntryError extends MidnightJsError {
     readonly received: string
   ) {
     const shape = ERA_ENTRY_SHAPE_DESCRIPTIONS[expected];
-    const field = era === CURRENT_LEDGER_VERSION ? 'currentEra' : `retainedEras.${era}`;
     super(
-      `Cannot use ${field} passed for ${method}: expected ${shape}, got ${received}. ` +
-        (era === CURRENT_LEDGER_VERSION
-          ? `Pass ${shape} as ${field}: every provider serves the current era.`
-          : `Pass ${shape} as ${field}, or leave the entry out (or set it to undefined) if this era is not served.`)
+      `Cannot use the ${era} entry passed for ${method}: expected ${shape}, got ${received}. ` +
+        `Pass ${shape} as ${era}, or set ${era} to undefined if this provider does not serve that era.`
     );
     this.name = 'UnusableEraEntryError';
   }

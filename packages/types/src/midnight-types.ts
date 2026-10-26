@@ -14,17 +14,15 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import {
-  type Binding,
-  type ContractAddress,
-  type IntentHash,
-  type Proof,
-  type RawTokenType,
-  type SignatureEnabled,
-  type Transaction,
-  type TransactionHash,
-  type TransactionId,
+import type {
+  ContractAddress,
+  IntentHash,
+  RawTokenType,
+  TransactionHash,
+  TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+
+import type { FinalizedTx } from './ledger-transaction';
 
 export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 
@@ -309,9 +307,10 @@ export interface FinalizedTxData extends FinalizedTxRecord {
    */
   readonly version: 'v9';
   /**
-   * The transaction that was finalized.
+   * The transaction that was finalized, as a handle of the same era as
+   * `version`: `record.tx.era === record.version`.
    */
-  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+  readonly tx: FinalizedTx;
 }
 
 /**

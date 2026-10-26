@@ -15,7 +15,6 @@
 
 export * from './call-result-base';
 export * from './contract';
-export * from './era-entries';
 export * from './era-support';
 export * from './errors';
 export * from './ledger-transaction';
@@ -28,7 +27,6 @@ export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
 export * from './raw-contract-state';
-export * from './unwrap-ledger9';
 export * from './versioned';
 export * from './wallet-provider';
 export * from './zk-config-provider';

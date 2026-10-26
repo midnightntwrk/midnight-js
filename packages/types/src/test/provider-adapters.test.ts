@@ -13,157 +13,123 @@
  * limitations under the License.
  */
 
-import type {
-  CoinPublicKey,
-  EncPublicKey,
-  FinalizedTransaction,
-  TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
+import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
+import { LedgerTransaction } from '../ledger-transaction';
 import { createMidnightProvider } from '../midnight-provider';
-import type { UnboundTransaction, VersionedUnboundTransaction } from '../proof-provider';
-import { createWalletProvider, type VersionedFinalizedTransaction } from '../wallet-provider';
+import { createWalletProvider } from '../wallet-provider';
+import { handles, ledgerTransactions } from './ledger-transaction-fixtures';
 
-const coinPublicKey = 'coin-pk' as CoinPublicKey;
-const encryptionPublicKey = 'enc-pk' as EncPublicKey;
+const coinPublicKey = 'coin-pk';
+const encryptionPublicKey = 'enc-pk';
 
-const ledger8Payload = { version: 'v8', txBytes: new Uint8Array([1, 2, 3]) } as const;
-
-const stubUnbound = (): UnboundTransaction => ({}) as UnboundTransaction;
-const stubFinalized = (): FinalizedTransaction => ({}) as FinalizedTransaction;
+const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => error
+  );
 
 describe('createWalletProvider', () => {
-  const buildImpl = (balanced: FinalizedTransaction) => ({
+  const buildImpl = (balanced: LedgerTransactionTypes['v9']['Finalized']) => ({
     balanceTx: vi.fn(async () => balanced),
     getCoinPublicKey: () => coinPublicKey,
     getEncryptionPublicKey: () => encryptionPublicKey
   });
 
-  it('tags the implementation result as the v9 variant', async () => {
-    const balanced = stubFinalized();
+  it('answers a finalized v9 handle around the implementation result', async () => {
+    const balanced = await ledgerTransactions.v9.Finalized();
     const provider = createWalletProvider(buildImpl(balanced));
 
-    const result = await provider.balanceTx({ version: 'v9', tx: stubUnbound() });
+    const result = await provider.balanceTx(await handles.v9.Unbound());
 
-    expect(result.version).toBe('v9');
-    // Identity, not structural equality: ledger objects from different WASM
-    // instances must never be conflated, and `toEqual` passes for any object.
-    expect(result.version === 'v9' && result.tx).toBe(balanced);
+    expect([result.era, result.stage]).toEqual(['v9', 'Finalized']);
+    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(balanced);
   });
 
-  it('hands the implementation the bare ledger object, never the tagged wrapper', async () => {
-    const unbound = stubUnbound();
-    const impl = buildImpl(stubFinalized());
-    const provider = createWalletProvider(impl);
-
-    await provider.balanceTx({ version: 'v9', tx: unbound });
-
-    expect(impl.balanceTx).toHaveBeenCalledWith(unbound, undefined);
-  });
-
-  it('forwards the ttl the caller supplied', async () => {
+  it('hands the implementation the unwrapped ledger object and the ttl', async () => {
+    const handle = await handles.v9.Unbound();
     const ttl = new Date(0);
-    const impl = buildImpl(stubFinalized());
+    const impl = buildImpl(await ledgerTransactions.v9.Finalized());
     const provider = createWalletProvider(impl);
 
-    await provider.balanceTx({ version: 'v9', tx: stubUnbound() }, ttl);
+    await provider.balanceTx(handle, ttl);
 
-    expect(impl.balanceTx).toHaveBeenCalledWith(expect.anything(), ttl);
+    expect(impl.balanceTx).toHaveBeenCalledWith(LedgerTransaction.unwrap(handle, 'v9'), ttl);
   });
 
-  it('rejects a v8 payload with its stable code, and never calls the implementation', async () => {
-    const impl = buildImpl(stubFinalized());
+  it('refuses a v8 handle as an unserved era, and never calls the implementation', async () => {
+    const impl = buildImpl(await ledgerTransactions.v9.Finalized());
     const provider = createWalletProvider(impl);
 
-    const rejection = await provider.balanceTx(ledger8Payload).then(
-      () => undefined,
-      (error: unknown) => error
-    );
+    const rejection = await rejectionOf(provider.balanceTx(await handles.v8.Unbound()));
 
-    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('balanceTx');
+    expect(rejection).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect(rejection).toMatchObject({ code: PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED, method: 'balanceTx', era: 'v8' });
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
-  it('rejects an untagged payload — the shape a pre-5.0.0 caller passes', async () => {
-    const impl = buildImpl(stubFinalized());
+  it('refuses the pre-handle version-tagged payload, and never calls the implementation', async () => {
+    const impl = buildImpl(await ledgerTransactions.v9.Finalized());
     const provider = createWalletProvider(impl);
 
-    const rejection = await provider
-      .balanceTx(stubUnbound() as unknown as VersionedUnboundTransaction)
-      .then(
-        () => undefined,
-        (error: unknown) => error
-      );
+    // @ts-expect-error the version-tagged payload is not a transaction handle
+    const rejection = await rejectionOf(provider.balanceTx({ version: 'v9', tx: await ledgerTransactions.v9.Unbound() }));
 
-    expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-    expect((rejection as UntaggedPayloadError).method).toBe('balanceTx');
+    expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+    expect(rejection).toMatchObject({ method: 'balanceTx', reason: 'not-a-handle' });
     expect(impl.balanceTx).not.toHaveBeenCalled();
   });
 
-  it('passes the key readers through unchanged', () => {
-    const provider = createWalletProvider(buildImpl(stubFinalized()));
+  it('passes the key readers through unchanged', async () => {
+    const provider = createWalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
 
-    expect(provider.getCoinPublicKey()).toBe(coinPublicKey);
-    expect(provider.getEncryptionPublicKey()).toBe(encryptionPublicKey);
+    expect([provider.getCoinPublicKey(), provider.getEncryptionPublicKey()]).toEqual([coinPublicKey, encryptionPublicKey]);
   });
 
-  // Compared by set equality rather than `toContain`: this adapter lifts a
-  // v9-only implementation, so declaring anything more than the current era
-  // would be a promise it cannot keep — and `toContain` would pass for it.
-  it('declares exactly the current era, matching what it refuses above', () => {
-    expect([...createWalletProvider(buildImpl(stubFinalized())).supportedEras].sort()).toEqual(['v9']);
+  it('declares exactly v9', async () => {
+    const provider = createWalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
+
+    expect(provider.supportedEras).toEqual(['v9']);
   });
 });
 
 describe('createMidnightProvider', () => {
-  it('hands the implementation the bare ledger object and returns its transaction id', async () => {
-    const finalized = stubFinalized();
-    const submit = vi.fn(async () => 'tx-id' as TransactionId);
+  it('hands the implementation the unwrapped ledger object and returns its transaction id', async () => {
+    const handle = await handles.v9.Finalized();
+    const submit = vi.fn(async () => 'tx-id');
     const provider = createMidnightProvider(submit);
 
-    const txId = await provider.submitTx({ version: 'v9', tx: finalized });
+    const txId = await provider.submitTx(handle);
 
-    expect(submit).toHaveBeenCalledWith(finalized);
+    expect(submit).toHaveBeenCalledWith(LedgerTransaction.unwrap(handle, 'v9'));
     expect(txId).toBe('tx-id');
   });
 
-  it('rejects a v8 payload with its stable code, and never submits', async () => {
-    const submit = vi.fn(async () => 'tx-id' as TransactionId);
+  it('refuses a v8 handle as an unserved era, and never submits', async () => {
+    const submit = vi.fn(async () => 'tx-id');
     const provider = createMidnightProvider(submit);
 
-    const rejection = await provider.submitTx(ledger8Payload).then(
-      () => undefined,
-      (error: unknown) => error
-    );
+    const rejection = await rejectionOf(provider.submitTx(await handles.v8.Finalized()));
 
-    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-    expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('submitTx');
+    expect(rejection).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect(rejection).toMatchObject({ method: 'submitTx', era: 'v8', declared: ['v9'] });
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('rejects an untagged payload and never submits', async () => {
-    const submit = vi.fn(async () => 'tx-id' as TransactionId);
+  it('refuses a raw ledger transaction, and never submits', async () => {
+    const submit = vi.fn(async () => 'tx-id');
     const provider = createMidnightProvider(submit);
 
-    const rejection = await provider
-      .submitTx(stubFinalized() as unknown as VersionedFinalizedTransaction)
-      .then(
-        () => undefined,
-        (error: unknown) => error
-      );
+    // @ts-expect-error a raw ledger transaction is not a transaction handle
+    const rejection = await rejectionOf(provider.submitTx(await ledgerTransactions.v9.Finalized()));
 
-    expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+    expect(rejection).toMatchObject({ name: 'InvalidTransactionHandleError', method: 'submitTx', reason: 'not-a-handle' });
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('declares exactly the current era, matching what it refuses above', () => {
-    const provider = createMidnightProvider(vi.fn(async () => 'tx-id' as TransactionId));
-
-    expect([...provider.supportedEras].sort()).toEqual(['v9']);
+  it('declares exactly v9', () => {
+    expect(createMidnightProvider(vi.fn(async () => 'tx-id')).supportedEras).toEqual(['v9']);
   });
 });
