@@ -35,6 +35,7 @@ import {
 import { createProverKey,
   createVerifierKey,
   createZKIR,
+  LedgerTransaction,
   type ProverKey,
   type VerifierKey,
   ZKConfigProvider,
@@ -148,5 +149,5 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     encryptionPublicKey
   );
 
-  return result.private.unprovenTx;
+  return LedgerTransaction.unwrap(result.private.unprovenTx, 'v9');
 };

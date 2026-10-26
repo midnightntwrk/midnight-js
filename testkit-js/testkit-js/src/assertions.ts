@@ -27,6 +27,7 @@ import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-ru
 import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
+  LedgerTransaction,
   type MidnightProviders,
   type PrivateStateId,
   SucceedEntirely
@@ -65,7 +66,9 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
   expect(deployTxData.public.txHash).toEqual(found.txHash);
   expect(deployTxData.public.identifiers).toEqual(found.identifiers);
   expect(deployTxData.public.status).toEqual(found.status);
-  expect(txsEqual(deployTxData.public.tx, found.tx)).toBeTruthy();
+  expect(
+    txsEqual(LedgerTransaction.unwrap(deployTxData.public.tx, 'v9'), LedgerTransaction.unwrap(found.tx, 'v9'))
+  ).toBeTruthy();
 };
 
 export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>(
