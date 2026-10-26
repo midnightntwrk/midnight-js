@@ -112,8 +112,8 @@ describe('proveLedger8Transaction', () => {
       expect(text).toContain('Service Unavailable');
 
       // Nothing of the transaction may ride along. Checked in BOTH encodings:
-      // the header-mismatch case above shows the runtime echoes payload bytes
-      // as latin1, so a hex-only check could never fail.
+      // the header-mismatch case in ledger-transaction.test.ts shows the runtime
+      // echoes payload bytes as latin1, so a hex-only check could never fail.
       const circuitDrivingTxBytes = circuitDrivingTx.serialize();
       const bodySlice = circuitDrivingTxBytes.subarray(LEDGER8_UNPROVEN_TX_TAG.length + 16, LEDGER8_UNPROVEN_TX_TAG.length + 32);
       expect(text).not.toContain(Buffer.from(bodySlice).toString('latin1'));

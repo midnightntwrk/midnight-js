@@ -129,6 +129,18 @@ describe('deserializeTransactionAtStage', () => {
         }
       }),
       described: 'object'
+    },
+    {
+      label: 'an exotic object whose property trap throws',
+      payload: new Proxy(
+        {},
+        {
+          get: () => {
+            throw new Error('proxy trap exploded');
+          }
+        }
+      ),
+      described: 'object'
     }
   ];
 
@@ -158,7 +170,11 @@ describe('deserializeTransactionAtStage', () => {
     const rejection = await rejectionOf(deserializeTransactionAtStage('v9', 'Finalized', ledger9Bytes.Unproven));
 
     expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-    expect((rejection as Error).message).toContain('Finalized');
+    expect((rejection as Error).message).toBe(
+      `Refusing a ${ledger9Bytes.Unproven.byteLength}-byte payload that the ledger v9 runtime cannot read as a ` +
+        'Finalized transaction. Check that the bytes were written by the ledger v9 runtime and serialized at the ' +
+        'Finalized stage. Read the wrapped cause for the runtime refusal.'
+    );
     expect((rejection as Error).cause).toBeInstanceOf(Error);
   });
 

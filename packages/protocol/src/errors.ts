@@ -1033,6 +1033,10 @@ const describeType = (value: unknown): string => {
   return TYPE_NAME_PATTERN.test(bounded) ? bounded : 'object';
 };
 
+const SANCTIONED_SOURCE_HINT =
+  'Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a Zswap ' +
+  'offer or a proof preimage is not a transaction.';
+
 /**
  * Thrown when a payload handed to `deserializeTransactionAtStage` is not a
  * serialized transaction of the requested era and stage.
@@ -1050,12 +1054,8 @@ export class PayloadNotATransactionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION];
 
-  private constructor(detail: string, options?: ErrorOptions) {
-    super(
-      `${detail} Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a ` +
-        'Zswap offer or a proof preimage is not a transaction.',
-      options
-    );
+  private constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'PayloadNotATransactionError';
   }
 
@@ -1066,7 +1066,8 @@ export class PayloadNotATransactionError extends MidnightJsError {
    */
   static notBytes(received: unknown): PayloadNotATransactionError {
     return new PayloadNotATransactionError(
-      `Refusing to read a transaction from a payload that is ${describeType(received)} rather than a Uint8Array.`
+      `Refusing to read a transaction from a payload that is ${describeType(received)} rather than a Uint8Array. ` +
+        SANCTIONED_SOURCE_HINT
     );
   }
 
@@ -1074,7 +1075,7 @@ export class PayloadNotATransactionError extends MidnightJsError {
   static wrongTag(byteLength: number): PayloadNotATransactionError {
     return new PayloadNotATransactionError(
       `Refusing to read a ${byteLength}-byte payload that does not begin with the ` +
-        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
+        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction. ${SANCTIONED_SOURCE_HINT}`
     );
   }
 
@@ -1087,7 +1088,8 @@ export class PayloadNotATransactionError extends MidnightJsError {
   ): PayloadNotATransactionError {
     return new PayloadNotATransactionError(
       `Refusing a ${byteLength}-byte payload that the ledger ${version} runtime cannot read as a ${stage} ` +
-        'transaction. Read the wrapped cause for the runtime refusal.',
+        `transaction. Check that the bytes were written by the ledger ${version} runtime and serialized at the ` +
+        `${stage} stage. Read the wrapped cause for the runtime refusal.`,
       { cause }
     );
   }
