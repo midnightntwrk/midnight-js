@@ -99,7 +99,7 @@ export interface ProofProvider {
  *
  * A handler takes and returns objects of the ledger copy this framework
  * loaded for its era. A handler that hands the transaction to another ledger
- * copy — a proof server, a wallet SDK, a second install of the ledger package —
+ * copy — a wallet SDK, a second install of the ledger package —
  * serializes it on the way out and decodes the answer into the framework's copy
  * on the way in, with `deserializeTransactionAtStage` from
  * `@midnight-ntwrk/midnight-js-protocol/transaction`.

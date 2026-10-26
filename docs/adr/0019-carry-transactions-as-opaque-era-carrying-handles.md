@@ -85,11 +85,20 @@ The rules:
    reason `ledger8-not-loaded`, and the message names `loadLedger8Protocol()` as the fix. The check
    never loads the v8 WASM itself.
 4. **Boundary rule: serialize on the way out, decode into the framework's copy on the way in.** A
-   provider that hands a transaction to another ledger copy (wallet-sdk, a proof server, a DApp
-   Connector wallet) passes it bytes, and reads the answer with
-   `deserializeTransactionAtStage(era, stage, bytes)` from
-   `@midnight-ntwrk/midnight-js-protocol/transaction`, which decodes with the framework's own copy.
-   A live object never crosses to another copy.
+   provider that hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
+   passes it bytes, and reads the answer with `deserializeTransactionAtStage(era, stage, bytes)`
+   from `@midnight-ntwrk/midnight-js-protocol/transaction`, which decodes with the framework's own
+   copy. A live object never crosses to another copy. The proof providers are not such a boundary:
+   `httpClientProofProvider` and `dappConnectorProofProvider` prove the live object in this process,
+   and only circuit preimages cross the wire.
+
+   The testkit's wallet provider applies the rule in both directions. On the way out it decodes the
+   bytes into wallet-sdk's OWN ledger copy — `@midnightntwrk/wallet-sdk/ledger/v9` for v9, and the
+   module the wallet's v8 loader (`@midnightntwrk/wallet-sdk/ledger/v8`) returns for v8 — before
+   adopting them; on the way in it decodes wallet-sdk's answer into the framework's copy. For v8 the
+   two copies are separate WASM instances today. For v9 they resolve to one module today, so the v9
+   tests prove only that a separate object is handed over, not a separate instance; the v8 tests
+   carry the instance check.
 5. **At an inbound boundary, the era comes from the request, never from the bytes.** A wallet's
    answer to a v9 request is decoded as v9. Guessing the era from the bytes would let a wrong answer
    choose its own decoder.
@@ -130,11 +139,16 @@ The rules:
     `record.tx.era === record.version`. Read it with
     `LedgerTransaction.unwrap(record.tx, record.version)`. Contract states and public states are not
     transactions and stay as ADR 0006 left them.
-12. **A decode failure is the caller's error, and a read keeps its own classification.**
-    `deserializeTransactionAtStage` refuses bytes that are not a transaction of the requested era
-    and stage with `PayloadNotATransactionError` (`MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION`,
-    category USAGE). A read from the chain or the indexer keeps its own read-error classification
-    and carries that error as `cause`.
+12. **A decode failure at a boundary is the caller's error.** `deserializeTransactionAtStage`
+    refuses bytes that are not a transaction of the requested era and stage with
+    `PayloadNotATransactionError` (`MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION`, category USAGE),
+    including bytes that carry the tag but do not decode (`undecodable`, with the runtime's refusal
+    on `cause`). It is raised where composed or wallet bytes become a handle: `contracts` reading a
+    composed transaction (`sealComposed`), the DApp Connector wallet provider reading the wallet's
+    answer (which wraps it in `InvalidArgumentError`, with it on `cause`), and the testkit wallet
+    reading wallet-sdk's answer. The read side does not use it: `utils.deserializeLedgerTransaction`
+    and the indexer's ledger 8 decode read the bytes directly and fail with `DeserializationError`,
+    as before.
 
 Out of scope: wallet-sdk's JSON wire envelope (`{ wireFormat, protocolVersion, stage, transaction }`)
 for crossing a process boundary. No provider in the framework uses it today; it is #1543.

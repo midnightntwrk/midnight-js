@@ -286,19 +286,19 @@ Three things to know before wiring a retained-era flow:
 
   ```typescript
   const proofProvider = createProofProviderFromHandlers({
-    v8: (tx) => proveLedger8Transaction(tx, provingProvider),
+    v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
     v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
   });
   ```
 
-  A handler that hands the transaction to another ledger copy (a wallet SDK, a proof server)
+  A handler that hands the transaction to another ledger copy (a wallet SDK, a DApp Connector wallet)
   serializes it on the way out and decodes the answer with
   `deserializeTransactionAtStage(era, stage, bytes)` from
   `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. The era comes from the
   request, never from the bytes.
 
-  One proving provider serves both eras above because a server-backed client — the proof server,
-  the DApp Connector — frames each request with the ledger version that produced the transaction
+  `ledger8ProvingProvider` and `provingProvider` can be the same object when it is a server-backed
+  client — the proof server, the DApp Connector — because such a client frames each request with the ledger version that produced the transaction
   and resolves key material per request. An IN-PROCESS prover frames nothing: the era it proves for
   is fixed when it is built, by the key material it was given. From
   `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is per era, and a node

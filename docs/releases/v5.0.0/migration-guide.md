@@ -277,8 +277,8 @@ already the handle the next one expects:
   const txId = await midnightProvider.submitTx(balanced);
 ```
 
-Passing a handle at the wrong stage (an `UnprovenTx` to `submitTx`, say) is a
-compile error.
+Passing a handle at the wrong stage (an `UnprovenTx` to
+`MidnightProvider.submitTx`, say) is a compile error.
 
 ### `submitTx` in `contracts`
 
@@ -472,7 +472,7 @@ const buildProofProvider = (): types.ProofProvider =>
 
 `proveOnLedger8` and `proveOnLedger9` stand in for your own proving code. A
 handler that hands the transaction to another copy of the ledger (a wallet SDK,
-a proof server) serializes it on the way out and decodes the answer with
+a DApp Connector wallet) serializes it on the way out and decodes the answer with
 `deserializeTransactionAtStage(era, stage, bytes)` from
 `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. Take the era
 from the request, never from the bytes.

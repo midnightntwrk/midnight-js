@@ -102,11 +102,11 @@ the same way, and one does not classify it at all:
 - `packages/protocol/src/lib/shared/contract-state.ts` — wraps a `deserialize` failure in
   `StateDecodeFailedError` and any later failure in `StateInconsistentError`, not
   `ComposeOptionError`; takes the era's module slice as an argument
-- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveLedger8Transaction` runs
-  `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with
-  nothing around it, so a raw decoder failure escapes unclassified. The era is still the path's own,
-  so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
-  failure does not name the provider method.
+- `packages/protocol/src/lib/shared/ledger-transaction.ts` — `deserializeTransactionAtStage`. The
+  era and the stage come from the caller, never from the bytes. Bytes without a transaction tag, and
+  bytes the era's runtime refuses at that stage (`undecodable`, the refusal on `cause`), fail as
+  `PayloadNotATransactionError`. `proveLedger8Transaction` no longer decodes: it takes a live v8
+  object and only proves it.
 
 ### Decoders that are correct because the era comes from the request
 

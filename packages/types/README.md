@@ -14,6 +14,7 @@ yarn add @midnight-ntwrk/midnight-js-types
 import {
   type MidnightProviders,
   type FinalizedTxData,
+  type FinalizedTxRecord,
   type TxStatus,
   SucceedEntirely,
   FailFallible,
@@ -104,8 +105,8 @@ walletProvider.balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
 midnightProvider.submitTx(tx: FinalizedTx): Promise<TransactionId>;
 ```
 
-Passing a handle at the wrong stage — an unproven handle to `submitTx`, for
-example — is a compile error.
+Passing a handle at the wrong stage — an unproven handle to
+`MidnightProvider.submitTx`, for example — is a compile error.
 
 There are two ways in and out of a handle:
 
@@ -193,8 +194,8 @@ const proofProvider = createProofProviderFromHandlers({
 ```
 
 Every handler gets a live ledger object of its own era and returns one. A
-handler that hands the transaction to another ledger copy — a proof server, a
-wallet SDK — serializes it on the way out and decodes the answer with
+handler that hands the transaction to another ledger copy — a wallet SDK, a
+DApp Connector wallet — serializes it on the way out and decodes the answer with
 `deserializeTransactionAtStage(era, stage, bytes)` from
 `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. Take the era
 from the request, never from the answer's bytes.

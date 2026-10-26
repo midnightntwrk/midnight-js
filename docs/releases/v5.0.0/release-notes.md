@@ -14,7 +14,7 @@ Every transaction crossing `proveTx`, `balanceTx` and `submitTx`, and every
 transaction a `contracts` function takes or returns, is now an opaque handle:
 `UnprovenTx`, `UnboundTx` or `FinalizedTx`. The handle carries its ledger era
 (`'v8'` or `'v9'`) as data, and the stage is part of the type, so passing an
-unproven transaction to `submitTx` is a compile error. Make a handle with
+unproven transaction to `MidnightProvider.submitTx` is a compile error. Make a handle with
 `LedgerTransaction.seal(era, stage, tx)` and read it with
 `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
 copy of the ledger package, so a duplicate install fails with a coded error

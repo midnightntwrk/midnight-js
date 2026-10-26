@@ -415,12 +415,13 @@ reads `supportedEras` off `proofProvider`, `walletProvider` and
 `midnightProvider`, in that order, and refuses with `ProviderEraUnsupportedError`
 naming the first that does not list `era`.
 
-This package calls it in exactly two places, one per pipeline:
+This package calls it in three places:
 
-| pipeline | call site | era checked |
-| -------- | --------- | ----------- |
+| path | call site | era checked |
+| ---- | --------- | ----------- |
 | retained | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
-| current | `submitTx` / `submitTxAsync`, before the head is read | the era of the `unprovenTx` handle |
+| current | `submitLedger9PayloadAsync`, before the first provider call; used by `submitCallTx`, `submitDeployTx` and the maintenance transactions | `'v9'` |
+| generic | `submitOnHead` (behind `submitTx` / `submitTxAsync`), before the head is read | the era of the `unprovenTx` handle |
 
 Two things about that table are easy to get wrong.
 
@@ -436,7 +437,7 @@ wallet serves only the current era, which is the ordinary post-fork wallet.
 current-era-only providers is ADMITTED, and the same head with a provider serving
 neither is refused naming `'v9'`.
 
-One call site per pipeline, not one per entry point. `acquireLedger8Runtime` is
+One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
 the single funnel every retained-era operation passes through — `runLedger8Call`
 and `runLedger8Deploy` both — so the check sits there rather than being spread
 across its callers, where a third caller would eventually forget it. That is also

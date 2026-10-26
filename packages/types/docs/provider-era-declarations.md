@@ -49,8 +49,10 @@ raised:
   handler for. This can happen after proving, at `balanceTx` or `submitTx`, when
   a declaration was wrong.
 
-Both have the same remedy: wire a provider that serves the era. The message says
-which method refused, and whether a proof had been requested.
+Both have the same remedy: wire a provider that serves the era. The message names
+the method that refused. For `proveTx` it says the refusal came before any proof
+was requested; for `balanceTx` and `submitTx` it says only that the method did no
+work, because a proof may already have been paid for.
 
 The READ side has its own refusal, `DecoderEraUnsupportedError`
 (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`). It means "this record cannot be
@@ -118,10 +120,13 @@ What the factory gives is one place where the pairing is written down, instead
 of every consumer assembling the handlers by hand.
 
 **Contingently, from a concrete provider.** `httpClientProofProvider` and
-`dappConnectorProofProvider` both DO serve v8. Each serializes the transaction
-for the proof server or the wallet, and decodes the answer back into the
-framework's ledger copy. Other implementations that have not been widened still
-refuse it.
+`dappConnectorProofProvider` both DO serve v8. Each proves the live ledger object
+in this process — `proveLedger8Transaction(tx, …)` for v8, `tx.prove(…)` for v9 —
+and only circuit preimages cross the wire to the proof server or the wallet.
+Serializing the transaction and decoding the answer is what
+`dappConnectorWalletProviders` and the testkit wallet do, because they hand the
+whole transaction to a wallet with its own ledger copy. Other implementations
+that have not been widened still refuse v8.
 
 ## Why the lifting adapters exist at all
 

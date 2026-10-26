@@ -122,7 +122,8 @@ hand-maintained execution layer, and `packages/protocol/src/errors.ts` says so
 on the class. It stays published because a consumer may still switch on the
 code. `UNKNOWN_LEDGER8_AXIS` is in the same position. `LEDGER8_INSTANCE_MISMATCH`
 and its class were removed: nothing raised them, and the WASM-instance fault
-they described is now reported by `isFrameworkLedgerTransaction`.
+they described is now reported by `ForeignLedgerTransactionError`, raised by
+`LedgerTransaction.seal` in `types`.
 
 ## The error base and the general errors
 

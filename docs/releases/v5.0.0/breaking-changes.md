@@ -350,8 +350,9 @@ const walletProvider = createWalletProvider({
 const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
 ```
 
-Both unwrap the inbound handle and seal the outbound transaction, so the handle
-never appears in your code.
+Both unwrap the inbound handle, and the wallet adapter also seals its answer, so
+the handle never appears in your code. The midnight adapter seals nothing: it
+returns a `TransactionId`.
 
 ### 8f. The three providers gained a required `supportedEras` field (#1004)
 
@@ -399,7 +400,7 @@ for one you do not. Each handler receives a live ledger object of its own era
 and returns one. The factory unwraps each handle for its era's handler, seals
 the answer in that same era, and raises `ProviderEraUnsupportedError` for an
 era you did not supply a handler for. A handler that hands the transaction to
-another ledger copy (a wallet SDK, a proof server) serializes it on the way out
+another ledger copy (a wallet SDK, a DApp Connector wallet) serializes it on the way out
 and decodes the answer with `deserializeTransactionAtStage` from
 `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in, with the era
 of the request.
@@ -945,8 +946,8 @@ bytes:
 ```diff
   createProofProviderFromHandlers({
 -   currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
--   retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
-+   v8: (tx) => proveLedger8Transaction(tx, provingProvider),
+-   retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, ledger8ProvingProvider) }
++   v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
 +   v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
   });
 ```

@@ -51,14 +51,14 @@ ledger object sits in a private field. There is one way in and one way out:
 The era is data on the handle, so the handle has the same shape in every era.
 When a new ledger becomes current, a ledger 9 handle does not change shape.
 
-The stage is part of the type, so passing an unproven handle to `submitTx` is a
-compile error. `seal` cannot check the stage at run time: a ledger uses one
+The stage is part of the type, so passing an unproven handle to
+`MidnightProvider.submitTx` is a compile error. `seal` cannot check the stage at run time: a ledger uses one
 class for all three stages. The provider methods check `handle.stage` instead,
 and refuse a handle at the wrong stage with `InvalidTransactionHandleError`,
 reason `wrong-stage`.
 
-When a provider hands a transaction to another ledger copy (a proof server, a
-wallet SDK), it serializes the transaction on the way out and decodes the
+When a provider hands a transaction to another ledger copy (a wallet SDK, a
+DApp Connector wallet), it serializes the transaction on the way out and decodes the
 answer into the framework's copy on the way in, with
 `deserializeTransactionAtStage` from
 `@midnight-ntwrk/midnight-js-protocol/transaction`. The era for that decode

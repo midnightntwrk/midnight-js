@@ -83,7 +83,7 @@ The factory unwraps each handle for its era's handler, seals the answer in the
 same era and derives `supportedEras`. All three providers carry a required
 `supportedEras`, read before an operation starts so a set that cannot carry a
 transaction end to end is refused before the proof is paid for. A handler that
-hands a transaction to another ledger copy (wallet-sdk, a proof server)
+hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
 serializes it on the way out and decodes the answer with
 `deserializeTransactionAtStage` from `protocol` on the way in, taking the era
 from the request. See
