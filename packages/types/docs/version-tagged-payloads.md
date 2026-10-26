@@ -2,54 +2,86 @@
 title: VersionTaggedPayloads
 ---
 
-# Why payloads carry an era tag, and what the tag does not promise
+# Why transactions are handles, read results carry an era tag, and what the tag does not promise
 
 During the ledger-fork window this framework talks to two ledger runtimes at
 once. They are separate WASM instances, so an object built by one cannot be
 handed to the other — not "should not", cannot: the receiving instance does not
-recognise the handle.
+recognise the object. The same is true of two installs of ONE ledger package:
+`@midnight-ntwrk/ledger-v8` and `@midnightntwrk/ledger-v8` are two WASM
+instances, and a type checker cannot tell their objects apart.
 
-Everything in this package that carries a `version` discriminant follows from
-that one fact. This document records what the tag lets a caller do, and — more
-importantly — the three things it deliberately does not establish.
+This package handles that fact in two ways:
 
-Two families of names, and the word that tells them apart. A name that spells
-out `Transaction` is a transaction itself: the payload a provider method takes or
-returns (`VersionedTransaction`, `Ledger9Transaction`, `Ledger8TransactionBytes`,
-`VersionedFinalizedTransaction`), whose v8 variant carries `txBytes`. A name with
-`Tx` is data about a transaction, kept from 4.x: the record a read method returns
-(`FinalizedTxData`, `Ledger8FinalizedTxData`, `VersionedFinalizedTxData`), whose
-v8 variant carries a live `tx`.
+- A transaction passed to a provider method is a **handle**
+  (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle carries its era as data
+  and checks the WASM instance when it is made.
+- A value the read side returns (`VersionedFinalizedTxData`,
+  `VersionedContractState`, `VersionedPublicStates`) carries a `version`
+  discriminant.
+
+Two families of names, and the word that tells them apart. A `*Tx` name with no
+`Data` is a transaction handle (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). A
+`*TxData` name is data about a transaction, kept from 4.x: the record a read
+method returns (`FinalizedTxData`, `Ledger8FinalizedTxData`,
+`VersionedFinalizedTxData`). Its `tx` field is a `FinalizedTx`.
 
 What each provider declares about the eras it serves is covered in
 [ProviderEraDeclarations](./provider-era-declarations.md). The
-decision this implements is
-`docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
+decisions this implements are
+`docs/adr/0006-version-tagged-payloads-at-provider-seams.md` and
+`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`.
 
-## The retained variant crosses as bytes, the current variant as an object
+## A transaction crosses a provider method as a handle
 
-`Ledger8TransactionBytes` is the retained variant of every transaction payload passed to a provider
-method — `proveTx`, `balanceTx`, `submitTx` — in both directions. It carries
-serialized, tag-prefixed bytes rather than a live ledger object, because a live
-object cannot survive the crossing.
+`LedgerTransaction<S>` holds one live ledger transaction, its era (`'v8'` or
+`'v9'`) and its stage `S` (`'Unproven'`, `'Unbound'` or `'Finalized'`). The
+ledger object sits in a private field. There is one way in and one way out:
 
-The `version` discriminant says which runtime produced those bytes. It is the
-only thing that does: nothing downstream can work it out from the bytes alone
-without first choosing a decoder, which is the very question the tag answers.
+- `LedgerTransaction.seal(era, stage, tx)` makes a handle. Before it does, it
+  checks that `tx` is an object of the ledger copy this framework loaded for
+  `era`. An object of another copy is refused with
+  `ForeignLedgerTransactionError`, reason `foreign-instance`. A v8 object
+  sealed before the framework loaded its v8 ledger is refused with reason
+  `ledger8-not-loaded`: until `loadLedger8Protocol()` has resolved, there is no
+  framework v8 class to compare with.
+- `LedgerTransaction.unwrap(handle, era)` reads the object back. A handle of
+  another era is refused with `TransactionEraMismatchError`.
 
-`RawContractState` reads the same way on the read path. A contract's state comes
-back as serialized bytes still in their envelope, with nothing deserialized, plus
-the era that wrote them, read off that envelope. That lets a caller pick a runtime
-BEFORE it deserializes anything, instead of guessing and failing deep inside a decoder.
+The era is data on the handle, so the handle has the same shape in every era.
+When a new ledger becomes current, a ledger 9 handle does not change shape.
+
+The stage is part of the type, so passing an unproven handle to `submitTx` is a
+compile error. `seal` cannot check the stage at run time: a ledger uses one
+class for all three stages. The provider methods check `handle.stage` instead,
+and refuse a handle at the wrong stage with `InvalidTransactionHandleError`,
+reason `wrong-stage`.
+
+When a provider hands a transaction to another ledger copy (a proof server, a
+wallet SDK), it serializes the transaction on the way out and decodes the
+answer into the framework's copy on the way in, with
+`deserializeTransactionAtStage` from
+`@midnight-ntwrk/midnight-js-protocol/transaction`. The era for that decode
+comes from the request, never from the bytes.
+
+## A read result carries `version`
+
+`RawContractState` reads the same way as before. A contract's state comes back
+as serialized bytes still in their envelope, with nothing deserialized, plus the
+era that wrote them, read off that envelope. That lets a caller pick a runtime
+BEFORE it deserializes anything, instead of guessing and failing deep inside a
+decoder.
+
+A finalized-transaction record keeps `version` too, and its `tx` is a
+`FinalizedTx` of that same era: `record.tx.era === record.version`. Read it with
+`LedgerTransaction.unwrap(record.tx, record.version)`.
 
 ## Three things the tag does not establish
 
-**It does not validate the bytes.** Any `Uint8Array` satisfies `txBytes`, and
-nothing in this package checks for the tag prefix.
+**It does not validate stored bytes.** Any `Uint8Array` satisfies `stateBytes`,
+and nothing in this package checks the tag prefix of a contract state.
 
-**It does not say which pipeline stage a transaction has reached.** The retained
-variant is identical for all three methods. On that path, stage is the caller's
-responsibility — the type carries no statement about it.
+**It is only as true as the provider that set it.** See the next section.
 
 **On a read, the type cannot check it.** Nothing in this package reads the
 envelope inside `raw`; that is the provider's job. A decoder that refuses those
@@ -79,14 +111,15 @@ treat the tag as a claim.
 
 ## Narrowing is not optional
 
-A provider that decodes per era returns the retained variant as an ordinary value for
+A provider that decodes per era returns the v8 variant as an ordinary value for
 any record whose `protocolVersion` places it in that era. It is not an error
 path, and it is not rare.
 
-So a `VersionedFinalizedTxData` must be narrowed on `version` before `tx` is
-touched. Close the `switch` with `assertNever` from
+So narrow a `VersionedFinalizedTxData` on `version` when your code treats the
+eras differently, and close the `switch` with `assertNever` from
 `@midnight-ntwrk/midnight-js-utils`, so a further era becomes a compile error
-rather than a fall-through.
+rather than a fall-through. To read the transaction itself, pass
+`record.version` to `LedgerTransaction.unwrap`.
 
 ## Ledger parameters travel with the state
 

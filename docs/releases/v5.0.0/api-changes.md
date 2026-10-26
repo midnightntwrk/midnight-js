@@ -126,7 +126,7 @@ export const parseContractKeyLocation: (s: string) => ContractKeyLocation | unde
 export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 ```
 
-### Version-tagged provider methods (#1204)
+### Transaction handles at the provider methods (#1204, #1533)
 
 ```ts
 // Method names — closed, so a caught error's `method` can be switched on.
@@ -134,35 +134,56 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
-// Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
-export interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-export interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
-export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
-export type VersionedUnprovenTransaction  = VersionedTransaction<UnprovenTransaction>;
-export type VersionedUnboundTransaction   = VersionedTransaction<UnboundTransaction>;
-export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
+// One opaque handle per stage. The era is data on the handle; the stage is in the type.
+export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
+export class LedgerTransaction<S extends TransactionStage> {
+  readonly era: LedgerVersion;
+  readonly stage: S;
+  serialize(): Uint8Array;
+  static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S]): LedgerTransaction<S>;
+  static unwrap<E extends LedgerVersion, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
+  static is(value: unknown): value is LedgerTransaction<TransactionStage>;
+}
+export type UnprovenTx = LedgerTransaction<'Unproven'>;
+export type UnboundTx = LedgerTransaction<'Unbound'>;
+export type FinalizedTx = LedgerTransaction<'Finalized'>;
 
-// Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
+interface ProofProvider    { readonly supportedEras: readonly LedgerVersion[]; proveTx(tx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>; }
+interface WalletProvider   { readonly supportedEras: readonly LedgerVersion[]; balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>; /* key readers */ }
+interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; submitTx(tx: FinalizedTx): Promise<TransactionId>; }
+
+// Read surface: version-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8FinalizedTransaction; }
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: FinalizedTx; }
 export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
-// Narrowing. Accepts the three transaction methods only — not the read surface.
-export const unwrapLedger9: <T>(payload: VersionedTransaction<T>, method: TransactionMethod) => T;
-export class Ledger8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
-export class UntaggedPayloadError extends Error { readonly code; readonly method: ProviderMethod; readonly received: string; }
+// Refusals.
+export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; }
+export class InvalidTransactionHandleError extends MidnightJsError { readonly method: string; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage'; readonly detail: string; }
+export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerVersion; readonly actual: LedgerVersion; }
 
-// Adapters: lift a v9-only implementation into the tagged interfaces.
-export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
+// Adapters: lift a v9-only implementation into the handle interfaces.
+export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, on v9 ledger objects */ }
 export const createWalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
 export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+
+// Per-era factories: one handler per ledger era, `undefined` for an era not served.
+export const createProofProviderFromHandlers: (handlers: ProofProviderHandlers) => ProofProvider;
+export const createWalletProviderFromHandlers: (handlers: WalletProviderHandlers) => WalletProvider;
+export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHandlers) => MidnightProvider;
 ```
 
-`FinalizedTxData` gained a required `version: 'v9'`. `ProofProvider.proveTx`,
-`WalletProvider.balanceTx` and `MidnightProvider.submitTx` take and return the
-tagged unions; `submitTx` still resolves a bare `TransactionId`.
-`PublicDataProvider.watchForTxData` / `watchForDeployTxData` now resolve
-`VersionedFinalizedTxData`.
+`FinalizedTxData` gained a required `version: 'v9'`, and its `tx` is a
+`FinalizedTx`. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
+`MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
+a bare `TransactionId`. `PublicDataProvider.watchForTxData` /
+`watchForDeployTxData` now resolve `VersionedFinalizedTxData`; read its
+transaction with `LedgerTransaction.unwrap(record.tx, record.version)`.
+
+`@midnight-ntwrk/midnight-js-protocol/transaction` (new subpath) publishes
+`deserializeTransactionAtStage(era, stage, bytes)`, which reads bytes into the
+framework's own ledger copy, and `isFrameworkLedgerTransaction(era, value)`,
+the check `seal` runs.
 
 ### Positioned stream records (#1399)
 
@@ -236,8 +257,8 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 // cannot accept. `expected` is the era it can accept -- for the current era's
 // flows that is 'v9'; the retained era's finalizing path passes the network
 // head, because a retained-era call is recorded by whichever ledger the head is
-// on. `received` is the era that actually came back. A payload whose tag is
-// missing or unrecognised raises UntaggedPayloadError instead.
+// on. `received` is the era that actually came back. A value that is not a
+// handle raises InvalidTransactionHandleError instead.
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
   readonly method: ProviderMethod; // from midnight-js-types

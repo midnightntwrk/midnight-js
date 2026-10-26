@@ -243,32 +243,33 @@ untouched. Nothing errors at any stage.
 
 ## Passing the transaction to the providers
 
-The `version` tag on a provider payload names the ledger runtime that produced
-the bytes — NOT the toolchain that produced the contract. A retained-era
+The era of a transaction handle names the ledger runtime that produced the
+transaction — NOT the toolchain that produced the contract. A retained-era
 contract's call is composed against whichever era the network head is on, so the
 two heads hand the providers genuinely different things:
 
-| head | composed by | crosses as | unwrapped with |
-| ---- | ----------- | ---------- | ------------- |
-| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `unwrapLedger8ProviderResult` |
-| `v9` | the current ledger | `{ version: 'v9', tx }` | `unwrapLedger9ProviderResult` |
+| head | composed by | sealed as | provider answers checked with |
+| ---- | ----------- | --------- | ----------------------------- |
+| `v8` | the retained ledger | a `v8` `UnprovenTx` | `requireProviderResult(…, 'v8', …)` |
+| `v9` | the current ledger | a `v9` `UnprovenTx` | `requireProviderResult(…, 'v9', …)` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
 happens to carry a retained-era call, so it is passed to the providers exactly as every
-current-era transaction is — as a live handle, because the framework and the
-providers share the current runtime. Tagging it `'v8'` would say the retained runtime
-produced it, which is false, and would send a current-era-only provider looking
-for a runtime it does not need.
+current-era transaction is — as a v9 handle. Sealing it as `'v8'` would say the
+retained runtime produced it, which is false, and would send a current-era-only
+provider looking for a runtime it does not need.
 
-The composition returns bytes either way, so the post-fork path reads them back
-into a live transaction. That is not a re-encode across eras: they are this
-package's OWN era's bytes, produced moments earlier by the same runtime that
-reads them. The three deserialization markers — signature-enabled, unproven,
-unbound — are exactly what `composeCallTx` documents its output as.
+The composition returns bytes either way. `sealComposed` reads them back with
+`deserializeTransactionAtStage(era, 'Unproven', txBytes)` from
+`@midnight-ntwrk/midnight-js-protocol/transaction` and seals the result in that
+same era. That is not a re-encode across eras: they are the composing era's OWN
+bytes, produced moments earlier by the same runtime that reads them. The era
+comes from the head the composition ran on, never from the bytes.
 
-A provider that does not serve the pre-fork payload variant refuses it on the way IN, at the
-first provider method, with `Ledger8PayloadUnsupportedError` — before anything is proven, which
-is the point of leaving that guard in `types` rather than lifting it here.
+A provider that does not serve the v8 era refuses a v8 handle on the way IN, at
+the first provider method, with `ProviderEraUnsupportedError` — before anything
+is proven. The pipeline also checks the declarations with
+`assertProvidersSupportEra` before it composes anything.
 
 ### Sanitizing a provider's own failure
 
@@ -278,7 +279,7 @@ provider call of every submit path in the package, not only this pipeline's.
 
 This framework's OWN coded errors pass through UNCHANGED when they carry no
 `cause`. They then hold no external payload, and a caller narrowing on
-`Ledger8PayloadUnsupportedError` — the refusal a current-era-only provider raises on
+`ProviderEraUnsupportedError` — the refusal a current-era-only provider raises on
 the way in — or on `EraInvariantViolationError` has to keep seeing them. A coded
 error that carries a `cause` — `ProofServerError` wrapping a transport failure,
 say — holds external material on that cause, so it is sanitized like any other
@@ -606,7 +607,7 @@ the artifact's era like `deployContract` and `submitCallTx`. The retained path i
    authority can be signed for the way compact-js signs: one signature, by its first
    committee member (`MaintenanceAuthorityMismatchError` otherwise). See
    `packages/protocol/docs/retained-era-execution.md`.
-6. Prove, balance and submit as a `{ version: 'v8', txBytes }` payload, with
+6. Prove, balance and submit as a v8 `UnprovenTx` handle, with
    `kind: 'maintenance'` for the fork-crossing diagnosis.
 7. Refuse a record from any era but ledger 8, then a non-success status with
    `Ledger8InsertVerifierKeyTxFailedError`, `Ledger8RemoveVerifierKeyTxFailedError`

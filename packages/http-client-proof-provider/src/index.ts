@@ -24,53 +24,45 @@
  *
  * ```typescript
  * import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
- * import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
+ * import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
  *
  * const proofProvider = httpClientProofProvider(
  *   'http://localhost:6300',
  *   zkConfigProvider
  * );
- * // Transaction payloads are passed to a provider version-tagged: tag on the way
- * // in, narrow on `version` on the way out. There is no untagged form.
- * // `unwrapLedger9` throws Ledger8PayloadUnsupportedError or UntaggedPayloadError, both
- * // carrying a stable `code` you can match with `hasErrorCode`. That applies to
- * // the provider's own refusals — the ones raised before proving starts. A failure
- * // from inside proof generation is whatever the ledger runtime raises, on
- * // either era, and carries no midnight-js code.
- * const provenTx = unwrapLedger9(
- *   await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
- *   'proveTx'
- * );
+ * // A transaction is passed to a provider as a handle that carries its era, and the
+ * // proven handle comes back in the same era. The provider's own refusals carry a
+ * // stable `code` you can match with `hasErrorCode`. A failure from inside proof
+ * // generation is whatever the ledger runtime raises, on either era, and carries no
+ * // midnight-js code.
+ * const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+ * const provenTx = await proofProvider.proveTx(unprovenTx);
+ * const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
  * ```
  *
  * ### Both ledger eras
- * This provider serves the retained (`v8`) era as well as the current one. A retained-era
- * transaction is passed as serialized bytes in both directions, and comes back in the
- * same variant it was sent in:
+ * This provider serves the v8 era as well as v9, so its `supportedEras` is
+ * `['v8', 'v9']`. A v8 handle is proved the same way and comes back as a v8 handle:
  *
  * ```typescript
- * const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
- * if (proven.version === 'v8') {
- *   // `proven.txBytes` is the serialized, proven transaction.
- * }
+ * const proven = await proofProvider.proveTx(ledger8UnprovenTx);
+ * // proven.era is 'v8'
  * ```
  *
- * The era is carried by the `version` tag, never inferred from the payload. Note that
- * `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the retained era — it
- * adapts a current-era-only `ProvingProvider` — so reach for this provider, not that helper, when
+ * Note that `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the v8 era —
+ * it adapts a v9-only `ProvingProvider` — so reach for this provider, not that helper, when
  * you need both eras.
  *
  * #### Proving is only the first step
- * Read this before wiring a retained-era flow. `createWalletProvider` and
- * `createMidnightProvider` both refuse the retained era. Through the framework's own
- * entry points (`submitCallTx` and `deployContract`), `assertProvidersSupportEra` detects this
- * upfront and raises `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work
- * is done. However, for a flow that calls the three transaction methods by hand, the transaction
- * **proves successfully and is then refused at `balanceTx` with `Ledger8PayloadUnsupportedError`** —
- * after a full proving cycle, not at the first step. To run one end to end, implement
- * `WalletProvider` and `MidnightProvider` against the version-tagged interfaces directly.
- * Why the adapters refuse permanently is recorded in
- * `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`.
+ * Read this before wiring a v8 flow. `createWalletProvider` and `createMidnightProvider` both
+ * refuse the v8 era. Through the framework's own entry points (`submitCallTx` and
+ * `deployContract`), `assertProvidersSupportEra` detects this upfront and raises
+ * `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work is done. However,
+ * for a flow that calls the three transaction methods by hand, the transaction **proves
+ * successfully and is then refused at `balanceTx` with `ProviderEraUnsupportedError`** — after a
+ * full proving cycle, not at the first step. To run one end to end, build the wallet and
+ * midnight providers with `createWalletProviderFromHandlers` and
+ * `createMidnightProviderFromHandlers`, with a `v8` handler each.
  *
  * ## Low-Level: Circuit Proving (ProvingProvider)
  * Use `httpClientProvingProvider` for advanced scenarios where you need fine-grained

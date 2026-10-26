@@ -1435,7 +1435,7 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  * checked first.
  *
  * Branch on `cause` for the underlying failure — an unreachable indexer, a
- * timeout, an untagged payload, an era violation. It is wrapped rather than
+ * timeout, a value that is not a transaction handle, an era violation. It is wrapped rather than
  * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
  * registered code all stay reachable.
  *

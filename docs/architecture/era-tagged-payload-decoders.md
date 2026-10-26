@@ -8,7 +8,9 @@ runtime, and states which era each of those decoders is allowed to be.
 `version: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
 envelope; `protocolVersion` is the era of the block that dated the read. A value whose shape depends
 on the era is a `Versioned*` union whose v8 variant carries the stored bytes and whose v9 variant
-carries the decoded object. A consumer narrows it with `switch (value.version)` closed by
+carries the decoded object. The exception is a finalized-transaction record: both of its variants
+carry a `FinalizedTx` handle of the record's era, `record.tx.era === record.version` (ADR 0019). A
+consumer narrows it with `switch (value.version)` closed by
 `assertNever`, or with `requireLedger9` when only v9 is handled. `era` appears only on `contracts`
 pipeline results. See ADR 0006, amendment of 2026-10-16.
 
@@ -106,13 +108,17 @@ the same way, and one does not classify it at all:
   so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
   failure does not name the provider method.
 
-### Decoders that are correct because the payload is version-tagged at the provider method
+### Decoders that are correct because the era comes from the request
 
-The provider methods carry `{ version, tx | txBytes }`, so the era is on the payload rather than
-inferred (ADR 0006).
+The provider methods carry transaction handles, and each handle carries its era, so a decoder at
+a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0019).
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`
-- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt functions
+- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`, chosen by
+  the record's own era
+- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet` and
+  `finalizedFromWallet`, chosen by the era of the handle the wallet provider received
+- `packages/dapp-connector-proof-provider/src/dapp-connector-wallet-providers.ts` —
+  `decodeWalletAnswer`, chosen by the era of the handle passed to `balanceTx`
 
 ### Decoders that never see chain bytes
 
@@ -150,12 +156,12 @@ these methods sees all of it.
 **`DAppConnectorWalletAdapter`** (`testkit-js/testkit-js/src/wallet/dapp-connector-wallet-adapter.ts`)
 decodes DApp-supplied transaction hex with the current era's `LedgerTransaction` at three points
 (`balanceAndProveTransaction`, and both submit paths). Unlike its sibling
-`wallet/wallet-transaction.ts`, these do not receive a version-tagged payload — the adapter
+`wallet/wallet-transaction.ts`, these do not receive a transaction handle — the adapter
 implements the connector API, whose shape is fixed by the connector rather than by us, so the era
-cannot be carried on the payload without changing that API. Testkit only, and the bytes originate
+cannot be carried with the transaction without changing that API. Testkit only, and the bytes originate
 from a wallet this process just handed a transaction to, so the era is in practice the composing
-era. Recorded rather than changed because the fix is an ADR-0006-shaped method change to a
-third-party-facing interface, not a local guard.
+era. Recorded rather than changed because the fix is a method change to a third-party-facing
+interface, not a local guard.
 
 **The fork window between the head read and the state read.** A retained-era operation resolves the
 head era first (`acquireLedger8Runtime`) and reads the contract state after it

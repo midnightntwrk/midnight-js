@@ -16,8 +16,8 @@ hand-maintained execution layer
 (`docs/adr/0015-retained-era-execution-on-compact-js.md`): compact-js owns both
 acquisitions now, so the check had no second path left to compare and no
 subject. What replaced it is an install-time check, narrower on both axes —
-see *What checks this today* below. Its error class,
-`Ledger8InstanceMismatchError`, and that error's code have been removed too.
+see *What checks this today* below. Its error class and
+that error's code have been removed too.
 For transactions, the check is back at run time as `isFrameworkLedgerTransaction`
 — see *The transaction guard* below.
 
@@ -76,8 +76,10 @@ transaction object belongs to the ledger copy this framework loaded. It is an
   synchronous and must not load the v8 WASM.
 
 It guards both positions described above: a foreign object is refused before it
-can be an argument or a receiver. `types` turns a non-`'own'` answer into a
-coded error when it seals a transaction.
+can be an argument or a receiver. `LedgerTransaction.seal` in `types` turns a
+non-`'own'` answer into `ForeignLedgerTransactionError`, with the answer as its
+`reason`. Every handle is made by `seal`, so no transaction handle can hold a
+foreign object (`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`).
 
 ## What checks this today
 

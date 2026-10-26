@@ -8,24 +8,27 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 ## Breaking Changes
 
-### Version-tagged payloads at the provider methods and on the read surface (#1204)
+### Transaction handles at the provider methods, version-tagged records on the read surface (#1204, #1533)
 
-Every transaction crossing `proveTx`, `balanceTx` and `submitTx` now carries a
-`version` discriminant in both directions — `{ version: 'v9', tx }` for a live
-v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes —
-and `watchForTxData` / `watchForDeployTxData` report a `version`-discriminated
-record. There is deliberately no untagged form, so a bare ledger object or a
-naked `Uint8Array` no longer type-checks at these methods.
+Every transaction crossing `proveTx`, `balanceTx` and `submitTx`, and every
+transaction a `contracts` function takes or returns, is now an opaque handle:
+`UnprovenTx`, `UnboundTx` or `FinalizedTx`. The handle carries its ledger era
+(`'v8'` or `'v9'`) as data, and the stage is part of the type, so passing an
+unproven transaction to `submitTx` is a compile error. Make a handle with
+`LedgerTransaction.seal(era, stage, tx)` and read it with
+`LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
+copy of the ledger package, so a duplicate install fails with a coded error
+instead of corrupting a WASM call.
 
-`unwrapLedger9(payload, method)` in `midnight-js-types` is the one narrowing helper for
-the three transaction methods. The read surface is a separate union and is
-narrowed with a plain `switch (record.version)`.
+`watchForTxData` / `watchForDeployTxData` report a `version`-discriminated
+record whose `tx` is a `FinalizedTx` of the same era. Read it with
+`LedgerTransaction.unwrap(record.tx, record.version)`, or narrow with a plain
+`switch (record.version)` when the eras need different code.
 
-Implementations of `WalletProvider` and `MidnightProvider` must be updated:
-return types are covariant, so one still resolving an untagged transaction no
-longer satisfies the interface. `createWalletProvider` and
-`createMidnightProvider` wrap a v9-only implementation so the tag never enters
-your code.
+Implementations of `ProofProvider`, `WalletProvider` and `MidnightProvider`
+must be updated. `createWalletProvider` and `createMidnightProvider` wrap a
+v9-only implementation, and the `create*FromHandlers` factories build one from
+a handler per era, so the handle never enters your code.
 
 The discriminant on a read record is *derived* from the record's own
 `protocolVersion`, never asserted, and that same answer picks the ledger runtime

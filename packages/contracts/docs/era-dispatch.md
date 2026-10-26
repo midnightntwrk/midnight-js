@@ -263,13 +263,13 @@ same head is not. A current-era call against a pre-fork head therefore fails
 LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
-transaction rather than an artifact, so it cannot know the era in advance, and
-it pays for one head read and accepts only a transaction of the head's era. The
-other era is refused there, before proving, as `EraArtifactMismatchError`: a v9
-transaction on a pre-fork head with reason `'ledger9-transaction-on-ledger8-head'`,
-v8 bytes on a post-fork head with reason `'ledger8-transaction-on-ledger9-head'`.
-The v9 ledger cannot read v8 transaction bytes, so there is nothing to route the
-second case to. The call and deploy pipelines do
+transaction handle rather than an artifact. It reads the handle's `era`, pays for
+one head read, and accepts only a transaction of the head's era. The other era
+is refused there, before proving, as `EraArtifactMismatchError`: a v9 handle on
+a pre-fork head with reason `'ledger9-transaction-on-ledger8-head'`, a v8 handle
+on a post-fork head with reason `'ledger8-transaction-on-ledger9-head'`. The v9
+ledger cannot read a v8 transaction, so there is nothing to route the second
+case to. The call and deploy pipelines do
 not go through that read: they submit through an internal current-era path.
 
 Do not read the table as a guarantee that all four cells fail fast. Lifting that
@@ -385,21 +385,24 @@ A transport failure on the step-3 re-read is not swallowed — it propagates on
 under investigation, which is the most diagnostic fact available in the fork
 window. So it is rethrown wrapped, naming both eras that disagreed.
 
-## Refusing a v8 answer on a v9-only flow
+## Refusing an answer in the other era
 
-`unwrapLedger9ProviderResult` and `requireLedger9Record` narrow a provider's versioned payload to its
-v9 variant. The flows in this package only ever send v9 payloads, so a v8 response
-cannot be handled.
+The provider method types do not tie a provider's output era to its input era: a
+third-party provider can answer a v9 handle with a v8 one. So every flow in this
+package checks the answer of each provider method with `requireProviderResult`.
+It refuses:
 
-Both are distinct from `unwrapLedger9` in `@midnight-ntwrk/midnight-js-types`, which
-guards the INBOUND direction of a v9-only provider. These guard the outbound
-direction: a v8 answer here is a broken provider, not an unsupported request, so
-it reports `EraInvariantViolationError` rather than `Ledger8PayloadUnsupportedError`.
+- a value that is not a handle of this package, with
+  `InvalidTransactionHandleError` (reason `not-a-handle`);
+- a handle at the wrong stage, with `InvalidTransactionHandleError` (reason
+  `wrong-stage`);
+- a handle in the other era, with `EraInvariantViolationError`. An answer in the
+  other era is a broken provider, not an unsupported request.
 
-The provider method types do not tie a provider's output era to its input era, so this
-runtime check is what upholds that invariant for these flows. `PublicDataProvider`
-reports both eras, and the v9-only flows reject a v8-era record here rather than
-widening their own public return types.
+On the read side, `requireLedger9Record` narrows a finalized record to its v9
+variant on the flows that only ever send v9 transactions. `PublicDataProvider`
+reports both eras, and the v9-only flows reject a v8-era record here rather
+than widening their own public return types.
 
 ## Refusing a provider set before it costs anything
 
@@ -417,16 +420,16 @@ This package calls it in exactly two places, one per pipeline:
 | pipeline | call site | era checked |
 | -------- | --------- | ----------- |
 | retained | `acquireLedger8Runtime`, immediately after `assertEraCompatible` | `resolved.head` |
-| current | `submitTxCore`, before the first provider call | `CURRENT_LEDGER_VERSION` |
+| current | `submitTx` / `submitTxAsync`, before the head is read | the era of the `unprovenTx` handle |
 
 Two things about that table are easy to get wrong.
 
 The era checked on the retained pipeline is the HEAD era, not the artifact's.
-That is not a shortcut — it is what `submitLedger8Tx` switches on to pick the
-payload variant. A pre-fork head crosses as `{ version: 'v8', txBytes }`; a post-fork
-head is keep-state, which composes on the CURRENT era and crosses as
-`{ version: 'v9', tx }`, because the tag names the runtime that produced the
-bytes and never the toolchain that produced the contract. Checking the artifact's
+That is not a shortcut — it is the era the transaction handle is sealed in. A
+pre-fork head composes a v8 handle; a post-fork head is keep-state, which
+composes on the CURRENT era and seals a v9 handle, because the handle's era
+names the runtime that produced the transaction and never the toolchain that
+produced the contract. Checking the artifact's
 era — `'v8'` — would refuse every keep-state operation whose
 wallet serves only the current era, which is the ordinary post-fork wallet.
 `provider-era-support.test.ts` pins both directions of that: keep-state with
@@ -442,15 +445,14 @@ just the read surface. That type is deliberately narrow: the head source plus th
 three declarations, and nothing else, so a reader can see that acquisition reads
 no more than it says.
 
-### Why the pre-flight check does not replace the per-method narrowing
+### Why the pre-flight check does not replace the per-method check
 
 `supportedEras` is a CLAIM by an implementation, and nothing verifies it. A
-provider that lists an era it cannot serve still fails in the method, with
-`Ledger8PayloadUnsupportedError` — the narrowing in each method is unchanged and is what
-actually upholds the claim. The two errors stay distinct because their remedies
-differ: `ProviderEraUnsupportedError` means wire a different provider,
-`Ledger8PayloadUnsupportedError` means the provider you wired does not do what it
-said.
+provider built from handlers checks again when a handle arrives, and refuses an
+era it has no handler for with the same `ProviderEraUnsupportedError` — this
+time from inside the method, possibly after proving. That check is what actually
+upholds the claim; a provider that implements the interface directly does its
+own.
 
 What the check buys is WHERE the refusal lands. Proving is the expensive step
 and the first of the three transaction methods, so a wallet that cannot balance a retained-era
@@ -461,10 +463,11 @@ called.
 
 ## Dating a finalized record against the head
 
-`version` on a finalized record SELECTS the runtime of the live `tx` handle
-beside it. A mislabelled record therefore does not fail loudly: a caller that
-narrows on it reaches into the other ledger module and is handed a plausible
-wrong value.
+`version` on a finalized record names the era of the `tx` handle beside it:
+`record.tx.era === record.version`. The framework's providers build both from
+one decision, so they agree. A record whose `version` is wrong for the block it
+came from still misleads a caller that narrows on it, so the era is checked
+against the head.
 
 The current era refuses the mirror of this on its call paths, through
 `requireLedger9Record`. Its attach accepts either tag, because a contract it finds may

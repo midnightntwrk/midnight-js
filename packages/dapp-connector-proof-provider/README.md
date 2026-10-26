@@ -17,7 +17,7 @@ yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -25,15 +25,11 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-// Transaction payloads are passed to a provider version-tagged: tag on the way
-// in, narrow on `version` on the way out. There is no untagged form.
-// `unwrapLedger9` is the framework's narrowing helper — it throws
-// Ledger8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
-// `code` you can match with `hasErrorCode`.
-const provenTx = unwrapLedger9(
-  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
-  'proveTx'
-);
+// A transaction is passed to a provider as a handle that carries its era.
+// The proven handle comes back in the same era.
+const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+const provenTx = await proofProvider.proveTx(unprovenTx);
+const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
 ```
 
 ### Wallet and midnight providers
@@ -45,6 +41,8 @@ const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(
 ```
 
 `walletConnectedAPI` is the `ConnectedAPI` the wallet returned from `connect`. The factory reads the shielded keys once, from `getShieldedAddresses`. `balanceTx` calls `balanceUnsealedTransaction` and `submitTx` calls `submitTransaction`.
+
+The wallet runs its own copy of the ledger, so the transaction crosses as bytes: each handler serializes the transaction for the wallet, and `balanceTx` decodes the wallet's answer into the framework's ledger copy with `deserializeTransactionAtStage`. The era for that decode is the era of the handle you passed in, never a guess from the bytes.
 
 **Known limit: no TTL.** The connector takes no TTL, so the `ttl` argument of `balanceTx` is not forwarded. The wallet picks the expiry, and `config.ttlSeconds` has no effect on the intents it adds. See [midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102).
 
@@ -82,7 +80,6 @@ Use `dappConnectorProofProvider` for most use cases. It wraps the wallet's provi
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -90,10 +87,7 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = unwrapLedger9(
-  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
-  'proveTx'
-);
+const provenTx = await proofProvider.proveTx(unprovenTx);
 ```
 
 ### Low-Level: Circuit Proving

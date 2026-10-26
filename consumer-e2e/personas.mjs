@@ -365,7 +365,7 @@ export const personaManifest = (name, persona, manifest, packageManager, tarball
   // The retained runtime has to be pinned, not just installed. `compact-runtime@0.16`
   // asks for `onchain-runtime-v3@^3.0.0` while `protocol` pins one exact version, so
   // without this a resolver satisfies both with two different copies -- and objects
-  // minted by one are rejected by the other's classes (Ledger8InstanceMismatchError).
+  // minted by one are rejected by the other's classes (`expected instance of`).
   // This repository pins it in `resolutions` for exactly that reason; a consumer
   // installing the framework alongside a retained contract has to do the same.
   for (const [name, version] of Object.entries(PINNED_RETAINED_RUNTIME)) {
