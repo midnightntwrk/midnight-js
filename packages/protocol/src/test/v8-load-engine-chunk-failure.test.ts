@@ -15,7 +15,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
+import { Ledger8RuntimeMissingError } from '../errors';
 
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
 // matching only lib/v8/load-engine.ts. Resolved from this file, it names
@@ -51,27 +51,6 @@ describe('loadLedger8Engine failure path', () => {
     const second = loadLedger8Engine();
     expect(second).not.toBe(first);
     await expect(second).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
-  });
-
-  it('passes a Ledger8InstanceMismatchError from engine construction through unwrapped, and clears the memo for retry', async () => {
-    const mismatch = new Ledger8InstanceMismatchError('onchain-runtime-v3');
-    vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
-      createLedger8Engine: () => Promise.reject(mismatch)
-    }));
-    const { loadLedger8Engine } = await import('../lib/v8/load-engine');
-
-    const first = loadLedger8Engine();
-    const error = await first.then(
-      () => {
-        throw new Error('expected loadLedger8Engine to reject');
-      },
-      (rejection: unknown) => rejection
-    );
-    expect(error).toBe(mismatch);
-
-    const second = loadLedger8Engine();
-    expect(second).not.toBe(first);
-    await expect(second).rejects.toBe(mismatch);
   });
 
   it('does not double-wrap when the engine chunk itself already rejects with Ledger8RuntimeMissingError', async () => {

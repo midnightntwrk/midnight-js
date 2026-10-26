@@ -14,12 +14,11 @@
  */
 
 import type { ProvingProvider } from '@midnightntwrk/ledger-v9';
-import { Transaction } from '@midnightntwrk/ledger-v9';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { PayloadNotATransactionError, PROTOCOL_ERROR_CODES, TRANSACTION_TAG_PREFIX } from '../errors';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import { proveLedger8Transaction } from '../lib/v8/prove';
+import type { LedgerTransactionTypes } from '../transaction';
 import { LEDGER8_UNPROVEN_TX_TAG } from './fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -55,14 +54,14 @@ const errorChainText = (error: unknown): string => {
 };
 
 describe('proveLedger8Transaction', () => {
-  let retainedEraTxBytes: Uint8Array;
-  let circuitDrivingTxBytes: Uint8Array;
+  let retainedEraTx: LedgerTransactionTypes['v8']['Unproven'];
+  let circuitDrivingTx: LedgerTransactionTypes['v8']['Unproven'];
   let ledger8Module: Awaited<ReturnType<typeof loadLedger8Protocol>>;
 
   beforeAll(async () => {
     const v8 = await loadLedger8Protocol();
     ledger8Module = v8;
-    retainedEraTxBytes = v8.Transaction.fromParts(NETWORK_ID).serialize();
+    retainedEraTx = v8.Transaction.fromParts(NETWORK_ID);
 
     // A transaction carrying one Zswap output. Unlike the empty one above it
     // has something to prove, so `prove()` actually drives the proving
@@ -74,211 +73,21 @@ describe('proveLedger8Transaction', () => {
       v8.sampleCoinPublicKey(),
       v8.sampleEncryptionPublicKey()
     );
-    circuitDrivingTxBytes = v8.Transaction.fromParts(
-      NETWORK_ID,
-      v8.ZswapOffer.fromOutput(output, rawTokenType, 100n)
-    ).serialize();
+    circuitDrivingTx = v8.Transaction.fromParts(NETWORK_ID, v8.ZswapOffer.fromOutput(output, rawTokenType, 100n));
   });
 
-  it('returns bytes the retained runtime reads back as a PROVEN transaction', async () => {
-    // The cost model is the substance of this assertion, and it is why the test
-    // drives the real runtime rather than a stub. The retained ledger ships its
-    // OWN `CostModel` class and its `prove()` type-checks the argument against
-    // that class across the WASM boundary: handing it the current era's cost
-    // model throws `expected instance of CostModel`. So this test passing IS
-    // the check that the retained cost model is used.
-    const provenBytes = await proveLedger8Transaction(retainedEraTxBytes, inertProvingProvider);
+  it('returns an Unbound transaction object of the framework v8 module', async () => {
+    // The retained ledger ships its OWN `CostModel` class and its `prove()`
+    // type-checks the argument across the WASM boundary, so this passing is the
+    // check that the retained cost model is used.
+    const proven = await proveLedger8Transaction(retainedEraTx, inertProvingProvider);
 
-    // The stage marker in the tag is the observable difference between input
-    // and output: an unproven transaction serializes as `proof-preimage`, a
-    // proven one as `proof`. Asserting the flip is what distinguishes "the
-    // transaction was proved" from "some bytes came back".
+    // An unproven transaction serializes as `proof-preimage`, a proven one as
+    // `proof`: the flip is what distinguishes "proved" from "something came back".
     const provenTag = LEDGER8_UNPROVEN_TX_TAG.replace('proof-preimage', 'proof');
     expect(provenTag).not.toBe(LEDGER8_UNPROVEN_TX_TAG);
-    expect(asLatin1(retainedEraTxBytes, LEDGER8_UNPROVEN_TX_TAG.length)).toBe(LEDGER8_UNPROVEN_TX_TAG);
-    expect(asLatin1(provenBytes, provenTag.length)).toBe(provenTag);
-
-    expect(() => ledger8Module.Transaction.deserialize('signature', 'proof', 'pre-binding', provenBytes)).not.toThrow();
-  });
-
-  describe('the payload tag assertion', () => {
-    it('refuses a payload that is not a serialized transaction, before the runtime sees it', async () => {
-      const rejection = await proveLedger8Transaction(new Uint8Array([1, 2, 3, 4]), inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      // Our own coded refusal, not a runtime decode failure: the caller gets an
-      // actionable error instead of an opaque WASM message.
-      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
-    });
-
-    it.each([
-      { label: 'a missing txBytes field', payload: undefined, described: 'undefined' },
-      { label: 'a null txBytes field', payload: null, described: 'null' },
-      { label: 'a plain Array of byte values', payload: [1, 2, 3], described: 'Array' },
-      // A null-prototype object has no `constructor` to name. This repo builds
-      // them deliberately, so it is a shape that can genuinely arrive here.
-      { label: 'a null-prototype object', payload: Object.create(null), described: 'object' },
-      // A constructor name is CALLER DATA on a plain object. These two pin the
-      // alphabet and the bound that stop it becoming a log-injection channel.
-      {
-        label: 'an object whose constructor name carries punctuation',
-        payload: { constructor: { name: 'SECRET-\n[fake log line]' } },
-        described: 'object'
-      },
-      {
-        label: 'an object whose constructor name is over-long',
-        payload: { constructor: { name: 'A'.repeat(200) } },
-        described: 'A'.repeat(32)
-      },
-      // Reading the constructor is itself a property access on caller data, so
-      // it can fail. Naming the value is best-effort diagnostics on something
-      // already refused, so neither may turn the coded refusal into a raw throw.
-      {
-        label: 'an object whose constructor accessor throws',
-        payload: Object.defineProperty({}, 'constructor', {
-          get: () => {
-            throw new Error('constructor accessor exploded');
-          }
-        }),
-        described: 'object'
-      },
-      {
-        label: 'an exotic object whose property trap throws',
-        payload: new Proxy(
-          {},
-          {
-            get: () => {
-              throw new Error('proxy trap exploded');
-            }
-          }
-        ),
-        described: 'object'
-      }
-    ])('refuses $label with the registered code, not a TypeError', async ({ payload, described }) => {
-      // Reachable exactly as an untagged payload is: from JavaScript, from a
-      // consumer built against a pre-5.0.0 `midnight-js-types`, or across an
-      // untyped boundary.
-      const rejection = await proveLedger8Transaction(payload as unknown as Uint8Array, inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-      expect(rejection).toHaveProperty('code', PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION);
-      const { message } = rejection as Error;
-      // Asserted with the surrounding words, not as a bare substring: the
-      // message tail reads "rather than a Uint8Array", so `toContain('Array')`
-      // alone would pass for every value this table describes differently.
-      expect(message).toContain(`'txBytes' is ${described} rather than a Uint8Array`);
-      // The garbled 'undefined-byte payload' message is what reading
-      // `.byteLength` off a non-array produced before this guard existed.
-      expect(message).not.toContain('undefined-byte');
-      // Nothing caller-supplied may arrive unbounded or unfiltered: no newline
-      // to forge a log line, and no run past the 32-character cap.
-      expect(message).not.toContain('\n');
-      expect(message).not.toContain('fake log line');
-      expect(message).not.toContain('A'.repeat(33));
-    });
-
-    it('refuses a payload shorter than the tag prefix', async () => {
-      const rejection = await proveLedger8Transaction(new Uint8Array(), inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-    });
-
-    it('does not echo the payload back in the refusal', async () => {
-      // The bytes are attacker-controlled here. Reporting the length is
-      // fine and useful; reproducing any of the content is not.
-      const marker = 'DEADBEEF';
-      const payload = new Uint8Array(Buffer.from(`${marker}${'x'.repeat(64)}`, 'latin1'));
-
-      const rejection = await proveLedger8Transaction(payload, inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(PayloadNotATransactionError);
-      expect((rejection as Error).message).not.toContain(marker);
-      expect((rejection as Error).message).toContain(String(payload.byteLength));
-    });
-
-    it('establishes that a payload is a transaction, NOT which era wrote it', async () => {
-      // Both eras' tags open `midnight:transaction[`, so a current-era payload
-      // passes this check and is then refused by the retained runtime itself.
-      // That is the intended division of labour: the tag is a defence-in-depth
-      // discriminant on the KIND of payload, while the era is carried by the
-      // payload's `version` field.
-      const currentEraTxBytes = Transaction.fromParts(NETWORK_ID).serialize();
-
-      const rejection = await proveLedger8Transaction(currentEraTxBytes, inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(Error);
-      expect(rejection).not.toBeInstanceOf(PayloadNotATransactionError);
-
-      // The runtime names the tag it expected, which is what makes this refusal
-      // diagnostic rather than merely negative.
-      expect(errorChainText(rejection)).toContain('expected header tag');
-    });
-
-    it('leaves a real tag with a truncated body to the runtime, not the tag check', async () => {
-      // The realistic corruption case for bytes that crossed a network or a
-      // storage boundary: the tag survives, the body does not. It passes the
-      // tag check by construction, so what it pins is that the check does not
-      // over-claim -- a damaged transaction is the runtime's refusal to make.
-      const truncated = retainedEraTxBytes.subarray(0, LEDGER8_UNPROVEN_TX_TAG.length + 4);
-      expect(asLatin1(truncated, LEDGER8_UNPROVEN_TX_TAG.length)).toBe(LEDGER8_UNPROVEN_TX_TAG);
-
-      const rejection = await proveLedger8Transaction(truncated, inertProvingProvider).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(Error);
-      expect(rejection).not.toBeInstanceOf(PayloadNotATransactionError);
-    });
-
-    it('bounds the vendor refusal echo to the opening tag region, never the body', () => {
-      // MEASURED, and recorded because it is the opposite of what one would
-      // assume: the retained runtime's header-tag mismatch DOES echo the
-      // payload back in its message -- verbatim, as latin1 text, from offset 0.
-      //
-      // What bounds the echo is the length of the tag the runtime EXPECTED, so
-      // it covers the tag region and stops. A real transaction's body lies past
-      // that and never reaches the message, which is the property worth holding.
-      const tagRegion = 'A'.repeat(60);
-      const bodyMarker = 'BODY-MARKER-MUST-NOT-BE-ECHOED';
-      const payload = new Uint8Array(Buffer.from(`${TRANSACTION_TAG_PREFIX}${tagRegion}${bodyMarker}`, 'latin1'));
-      const bodyOffset = TRANSACTION_TAG_PREFIX.length + tagRegion.length;
-      expect(bodyOffset).toBeGreaterThan(LEDGER8_UNPROVEN_TX_TAG.length);
-
-      // The runtime's own refusal, read directly: routing it through
-      // `proveLedger8Transaction` would only add indirection to the same throw. The
-      // read is kept out of the `try` so nothing swallows an assertion failure.
-      let rejection: unknown;
-      try {
-        ledger8Module.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', payload);
-      } catch (error: unknown) {
-        rejection = error;
-      }
-
-      expect(rejection).toBeInstanceOf(Error);
-      const text = errorChainText(rejection);
-      // The echo is real, and reaches into the caller's own bytes past the prefix.
-      expect(text).toContain(tagRegion.slice(0, 40));
-      // And it stops before the body: `bodyMarker` starts past the expected
-      // tag's length, so its absence is the bound holding rather than a
-      // coincidence of encoding or offset.
-      expect(text).not.toContain(bodyMarker);
-    });
+    expect(proven).toBeInstanceOf(ledger8Module.Transaction);
+    expect(asLatin1(proven.serialize(), provenTag.length)).toBe(provenTag);
   });
 
   describe('a failing proving provider', () => {
@@ -292,7 +101,7 @@ describe('proveLedger8Transaction', () => {
     };
 
     it('propagates the failure without echoing the preimage or the payload into it', async () => {
-      const rejection = await proveLedger8Transaction(circuitDrivingTxBytes, rejectingProvingProvider).then(
+      const rejection = await proveLedger8Transaction(circuitDrivingTx, rejectingProvingProvider).then(
         () => undefined,
         (error: unknown) => error
       );
@@ -305,6 +114,7 @@ describe('proveLedger8Transaction', () => {
       // Nothing of the transaction may ride along. Checked in BOTH encodings:
       // the header-mismatch case above shows the runtime echoes payload bytes
       // as latin1, so a hex-only check could never fail.
+      const circuitDrivingTxBytes = circuitDrivingTx.serialize();
       const bodySlice = circuitDrivingTxBytes.subarray(LEDGER8_UNPROVEN_TX_TAG.length + 16, LEDGER8_UNPROVEN_TX_TAG.length + 32);
       expect(text).not.toContain(Buffer.from(bodySlice).toString('latin1'));
       expect(text).not.toContain(Buffer.from(bodySlice).toString('hex'));
@@ -329,7 +139,7 @@ describe('proveLedger8Transaction', () => {
         lookupKey: () => Promise.resolve(undefined)
       };
 
-      const rejection = await proveLedger8Transaction(circuitDrivingTxBytes, recording).then(
+      const rejection = await proveLedger8Transaction(circuitDrivingTx, recording).then(
         () => undefined,
         (error: unknown) => error
       );

@@ -36,11 +36,6 @@ Both era objects handed out by `loadLedgerEra`
 reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
 
-The same construction — `Object.freeze` over an `Object.assign` onto
-`Object.create(null)` — is used for `AXIS_BARE_PACKAGE_NAMES` in
-`packages/protocol/src/errors.ts`, and `PUBLISHED_SCOPES` in the same module is
-frozen as a plain array for the reason `LEDGER_VERSIONS` is.
-
 ## Null-prototype lookup tables
 
 A table that is *indexed by a value* gets a null prototype as well as a freeze.
@@ -60,14 +55,6 @@ neither of them fails:
 Both are typed as an `EncodedStateValue`, and neither throws. That is the whole
 argument: the failure mode of a plain object literal here is not an exception,
 it is a plausible-looking value flowing on as if a decode had happened.
-
-`AXIS_BARE_PACKAGE_NAMES` in `packages/protocol/src/errors.ts` is
-null-prototype and frozen for the reason `ENVELOPE_DECODERS` is: the value
-indexing it is only type-checked for TypeScript callers, and a plain object
-literal would resolve an `Object.prototype` member into the package name a
-remediation hint tells the reader to trace. `KNOWN_AXES` in the retired
-`lib/v8/instance-guard.ts` was the sibling case; the table it guarded is gone
-with the runtime probe, but the error that reads this one still ships.
 
 The same exposure is why `UnknownLedgerVersionError`
 (`packages/protocol/src/errors.ts`) exists at all. TypeScript callers cannot
@@ -126,11 +113,6 @@ union any more — `structurallyEqual` compares the ENCODED algebra structurally
 rather than switching on a variant tag — so a vendor bump that adds a variant no
 longer fails a build here. Why that walk did not come back is in
 [RetainedEraExecution](./retained-era-execution.md).
-
-`KNOWN_AXES` and `AXIS_BARE_PACKAGE_NAMES` reach the same property through
-`satisfies` rather than an assignment: the duplication of the one axis literal
-is checked, not trusted — `satisfies` fails to compile if `Ledger8InstanceAxis`
-gains a member the table does not name.
 
 ## Why the runtime guard is not redundant with it
 

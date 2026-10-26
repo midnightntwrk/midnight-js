@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../../errors';
+import { Ledger8RuntimeMissingError } from '../../errors';
 import type * as Engine from './engine.js';
 
 // Type-only: a value re-export here would link the engine chunk into the root
@@ -40,26 +40,17 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  * `@midnight-ntwrk/onchain-runtime-v3` WASM load only on the first call — never
  * as a side effect of importing the package root.
  *
- * A failed load is not memoised: the next call retries the import. Exactly two
- * rejections propagate unchanged — {@link Ledger8RuntimeMissingError} from the
- * retained-runtime acquisition, and {@link Ledger8InstanceMismatchError} —
- * keeping their class, code and discriminants intact for callers. Every other
- * failure is wrapped in {@link Ledger8RuntimeMissingError}, including the coded
+ * A failed load is not memoised: the next call retries the import. A
+ * {@link Ledger8RuntimeMissingError} from the retained-runtime acquisition
+ * propagates unchanged. Every other failure is wrapped in
+ * {@link Ledger8RuntimeMissingError}, including the coded
  * `Ledger8RuntimeInvalidError` the envelope decoder raises for an incomplete
  * runtime, and a raw module-resolution error on the engine chunk itself.
- *
- * Nothing in this package raises {@link Ledger8InstanceMismatchError} any more:
- * the construction-time guard that did was retired with the hand-maintained
- * execution layer. The passthrough stays so that a lower layer which ever
- * raises one reaches the caller with its class intact, rather than wrapped.
  *
  * @returns The engine's public surface, memoised after the first successful
  *   load.
  * @throws Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
  *   chunk itself, cannot be acquired.
- * @throws Ledger8InstanceMismatchError Never raised here; passed through
- *   unwrapped if a lower layer ever reports `onchain-runtime-v3` resolved to
- *   two physically distinct copies.
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraBoundary}
  */
@@ -68,7 +59,5 @@ export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
     .then((engineModule) => engineModule.createLedger8Engine())
     .catch((error: unknown) => {
       enginePromise = undefined;
-      throw error instanceof Ledger8RuntimeMissingError || error instanceof Ledger8InstanceMismatchError
-        ? error
-        : new Ledger8RuntimeMissingError('/engine', error);
+      throw error instanceof Ledger8RuntimeMissingError ? error : new Ledger8RuntimeMissingError('/engine', error);
     }));
