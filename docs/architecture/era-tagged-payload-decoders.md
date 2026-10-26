@@ -113,12 +113,13 @@ the same way, and one does not classify it at all:
 The provider methods carry transaction handles, and each handle carries its era, so a decoder at
 a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0019).
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`, chosen by
+- `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransaction(era, …)`, chosen by
   the record's own era
 - `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet` and
   `finalizedFromWallet`, chosen by the era of the handle the wallet provider received
 - `packages/dapp-connector-proof-provider/src/dapp-connector-wallet-providers.ts` —
-  `decodeWalletAnswer`, chosen by the era of the handle passed to `balanceTx`
+  `deserializeTransactionAtStage(era, 'Finalized', …)`, chosen by the era of the handle passed to
+  `balanceTx`
 
 ### Decoders that never see chain bytes
 
@@ -129,9 +130,10 @@ a boundary is chosen from the era of the request rather than inferred from the b
 
 ### The typed wrappers themselves
 
-`packages/utils/src/deserialization/typed-wrappers.ts` holds five fixed-era decoders
+`packages/utils/src/deserialization/typed-wrappers.ts` holds four fixed-era decoders
 (`deserializeLedgerContractState`, `deserializeCompactContractState`, `deserializeZswapChainState`,
-`deserializeLedgerTransaction`, `deserializeLedgerParameters`). They are era-fixed by construction
+`deserializeLedgerParameters`) and one that takes the era as an argument,
+`deserializeLedgerTransaction(era, bytes, ctx)`. The four are era-fixed by construction
 and deliberately so: each is the *current* era's decoder plus a `caller` marker, and every verdict
 above about a call site is a verdict about which wrapper that site picks and what it checks first.
 They are correct as a layer — a wrapper cannot date bytes it is not told the era of — so the
@@ -154,8 +156,9 @@ are two lines to fix and do not touch the era branch; they are listed here so th
 these methods sees all of it.
 
 **`DAppConnectorWalletAdapter`** (`testkit-js/testkit-js/src/wallet/dapp-connector-wallet-adapter.ts`)
-decodes DApp-supplied transaction hex with the current era's `LedgerTransaction` at three points
-(`balanceAndProveTransaction`, and both submit paths). Unlike its sibling
+decodes nothing with a ledger itself: at three points (`balanceAndProveTransaction`, and both
+submit paths) it hands the DApp-supplied hex to the wallet SDK as bytes, with
+`wallet.adoptTransaction(fromHex(tx), stage)`, and the wallet picks the era. Unlike its sibling
 `wallet/wallet-transaction.ts`, these do not receive a transaction handle — the adapter
 implements the connector API, whose shape is fixed by the connector rather than by us, so the era
 cannot be carried with the transaction without changing that API. Testkit only, and the bytes originate

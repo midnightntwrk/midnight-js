@@ -61,7 +61,8 @@ Every transaction passed to those three methods is a transaction handle,
 `'v9'`) as data; the stage is in the type. Make one with
 `LedgerTransaction.seal(era, stage, tx)` and read it with
 `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
-ledger WASM copy (`ForeignLedgerTransactionError`). Layer rule: `protocol` speaks
+ledger WASM copy (`ForeignLedgerTransactionError`), and a value that is not a
+transaction or is at another stage (`InvalidTransactionHandleError`). Layer rule: `protocol` speaks
 raw ledger objects; every package from `types` up speaks only handles in its
 public API.
 
@@ -79,10 +80,11 @@ sealing by hand.
 Serving more than one era? Use `createProofProviderFromHandlers` /
 `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one
 handler per era, keyed `v8` / `v9` (`undefined` for an era you do not serve).
-The factory unwraps each handle for its era's handler, seals the answer in the
-same era and derives `supportedEras`. All three providers carry a required
-`supportedEras`, read before an operation starts so a set that cannot carry a
-transaction end to end is refused before the proof is paid for. A handler that
+The factory unwraps each handle for its era's handler, seals a transaction
+answer (`proveTx`, `balanceTx`) in the same era and derives `supportedEras`.
+All three providers carry a required `supportedEras`, read before an operation
+starts so a set that cannot carry a transaction end to end is refused before the
+proof is paid for. A handler that
 hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
 serializes it on the way out and decodes the answer with
 `deserializeTransactionAtStage` from `protocol` on the way in, taking the era

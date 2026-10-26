@@ -134,14 +134,17 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
-// One opaque handle per stage. The era is data on the handle; the stage is in the type.
+// One opaque handle per stage. The stage is in the type; the era is data on the handle, and in
+// the type too when it is known (`E` defaults to any era).
 export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
-export class LedgerTransaction<S extends TransactionStage> {
-  readonly era: LedgerVersion;
+export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
+export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersion = LedgerVersion> {
+  readonly era: E;
   readonly stage: S;
   serialize(): Uint8Array;
-  static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S]): LedgerTransaction<S>;
+  static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
   static unwrap<E extends LedgerVersion, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
+  static require<S extends TransactionStage>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
   static is(value: unknown): value is LedgerTransaction<TransactionStage>;
 }
 export type UnprovenTx = LedgerTransaction<'Unproven'>;
@@ -154,12 +157,12 @@ interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; s
 
 // Read surface: version-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: FinalizedTx; }
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: LedgerTransaction<'Finalized', 'v8'>; }
 export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Refusals.
-export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; }
-export class InvalidTransactionHandleError extends MidnightJsError { readonly method: string; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage'; readonly detail: string; }
+export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
+export class InvalidTransactionHandleError extends MidnightJsError { readonly method: TransactionHandleMethod; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage' | 'not-a-transaction' | 'stage-mismatch'; readonly detail: string; }
 export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerVersion; readonly actual: LedgerVersion; }
 
 // Adapters: lift a v9-only implementation into the handle interfaces.
@@ -174,7 +177,8 @@ export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHand
 ```
 
 `FinalizedTxData` gained a required `version: 'v9'`, and its `tx` is a
-`FinalizedTx`. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
+`LedgerTransaction<'Finalized', 'v9'>`, so narrowing a record on `version`
+narrows `tx.era` with it. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
 `MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
 a bare `TransactionId`. `PublicDataProvider.watchForTxData` /
 `watchForDeployTxData` now resolve `VersionedFinalizedTxData`; read its
@@ -182,8 +186,14 @@ transaction with `LedgerTransaction.unwrap(record.tx, record.version)`.
 
 `@midnight-ntwrk/midnight-js-protocol/transaction` (new subpath) publishes
 `deserializeTransactionAtStage(era, stage, bytes)`, which reads bytes into the
-framework's own ledger copy, and `isFrameworkLedgerTransaction(era, value)`,
-the check `seal` runs.
+framework's own ledger copy, and the two checks `seal` runs:
+`isFrameworkLedgerTransaction(era, value)` and `transactionStageOf(tx)`, which
+reads a transaction's stage from its serialized tag.
+
+`utils.deserializeLedgerTransaction(era, bytes, ctx)` and the indexer's
+`parseHexTransaction(era, hex, details?)` take the era to read in and resolve a
+`LedgerTransaction<'Finalized', E>`; both are now async, because a v8 read loads
+the v8 runtime first.
 
 ### Positioned stream records (#1399)
 
@@ -459,10 +469,12 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }>;
 // Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
 // `./errors` leaf subpath; re-exported here, so either import works.
+// The era and transaction-handle codes; the other provider codes are omitted here.
 export const PROVIDER_ERROR_CODES: Readonly<{
-  LEDGER8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
   DECODER_ERA_UNSUPPORTED: string; UNKNOWN_RECORD_ERA: string;
-  PROVIDER_ERA_UNSUPPORTED: string;
+  PROVIDER_ERA_UNSUPPORTED: string; UNUSABLE_ERA_ENTRY: string;
+  FOREIGN_LEDGER_TRANSACTION: string; INVALID_TRANSACTION_HANDLE: string;
+  TRANSACTION_ERA_MISMATCH: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;

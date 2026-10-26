@@ -317,7 +317,8 @@ them (points 2, 3, 5, 7, 8 and 10 stand). What changed:
   `currentEra` / `retainedEras` are gone, and so are `RetainedEraEntries`, `erasServedBy`,
   `narrowToEra`, `EraRequest` and the `Ledger9*` / `RetainedEra*` handler types (point 4 no longer
   applies). Every handler receives a live ledger object of its own era.
-- The factory unwraps the handle for its era's handler and seals the answer in the same era. A
+- The factory unwraps the handle for its era's handler and seals a transaction answer (`proveTx`,
+  `balanceTx`) in the same era; `submitTx`'s `TransactionId` passes through. A
   handle of an era with no handler is refused by the method with `ProviderEraUnsupportedError`;
   `Ledger8PayloadUnsupportedError` and `unwrapLedger9` are removed (point 9).
 - A provider with no handler at all is refused when it is built.

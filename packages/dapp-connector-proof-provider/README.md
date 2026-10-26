@@ -46,13 +46,13 @@ The wallet runs its own copy of the ledger, so the transaction crosses as bytes:
 
 **Known limit: no TTL.** The connector takes no TTL, so the `ttl` argument of `balanceTx` is not forwarded. The wallet picks the expiry, and `config.ttlSeconds` has no effect on the intents it adds. See [midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102).
 
-A wallet rejection (for example, the user declined) leaves `balanceTx` and `submitTx` unchanged, with the connector's own `code`. `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the `code`.
+A wallet rejection (for example, the user declined) leaves `balanceTx` and `submitTx` unchanged, with the connector's own `code`. `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the connector's `code`; it keeps only this framework's own codes.
 
-Three cases are refused with `InvalidArgumentError`:
+These cases are refused:
 
-- the wallet answer is not even-length hex without a `0x` prefix;
-- the wallet answer is not a balanced transaction of the requested ledger;
-- `submitTx` gets a transaction without an identifier. This is checked before anything is submitted.
+- the wallet answer is not even-length hex without a `0x` prefix: `InvalidArgumentError`;
+- the wallet answer is not a balanced transaction of the requested ledger: `PayloadNotATransactionError` (`MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION`);
+- `submitTx` gets a transaction without an identifier: `InvalidArgumentError`. This is checked before anything is submitted.
 
 ## Configuration
 

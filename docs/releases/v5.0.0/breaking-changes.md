@@ -339,15 +339,19 @@ rather than the missing `seal` — it is still this change.
 Rather than sealing by hand, wrap a v9-only implementation:
 
 ```typescript
+import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
 
+// The wallet runs its own copy of the ledger, so transactions cross as bytes.
+
 const walletProvider = createWalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  balanceTx: async (tx, ttl) =>
+    deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
   getCoinPublicKey: () => wallet.coinPublicKey,
   getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });
 
-const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
 ```
 
 Both unwrap the inbound handle, and the wallet adapter also seals its answer, so
@@ -418,7 +422,7 @@ as amended by [ADR 0019](../../adr/0019-carry-transactions-as-opaque-era-carryin
 `UnprovenTx`, `UnboundTx`, `FinalizedTx`, `TransactionStage`,
 `LedgerTransactionTypes`, `ForeignLedgerTransactionError`,
 `ForeignLedgerTransactionReason`, `InvalidTransactionHandleError`,
-`InvalidTransactionHandleReason`, `TransactionEraMismatchError`,
+`InvalidTransactionHandleReason`, `TransactionHandleMethod`, `TransactionEraMismatchError`,
 `FinalizedTxRecord`, `Ledger8FinalizedTxData`, `VersionedFinalizedTxData`,
 `TransactionMethod`, `ReadMethod`, `ProviderMethod`, `Ledger9WalletProvider`,
 `createWalletProvider`, `createMidnightProvider`, `ProviderEraUnsupportedError`,
@@ -428,7 +432,7 @@ as amended by [ADR 0019](../../adr/0019-carry-transactions-as-opaque-era-carryin
 `createProofProviderFromProvingProviders`, `ProvingProvidersByEra`,
 `ProofProviderHandlers`, `WalletProviderHandlers`, `MidnightProviderHandlers`.
 Changed: `FinalizedTxData` gained `version: 'v9'` and its `tx` is a
-`FinalizedTx`; `ProofProvider`, `WalletProvider` and `MidnightProvider` take and
+`LedgerTransaction<'Finalized', 'v9'>` (a `FinalizedTx`); `ProofProvider`, `WalletProvider` and `MidnightProvider` take and
 return handles and each gained a required `supportedEras`.
 
 **`@midnight-ntwrk/midnight-js-contracts`** — changed: every function that
@@ -439,14 +443,26 @@ functions give an `UnprovenTx` instead of an `UnprovenTransaction`;
 `SubmitTxOptions.unprovenTx` takes one ([14a](#14a-changed-signatures)).
 
 **`@midnight-ntwrk/midnight-js-utils`** — changed: `deserializeLedgerTransaction`
-returns a `FinalizedTx` handle instead of a `Transaction`.
+takes the era first, `deserializeLedgerTransaction(era, bytes, ctx)`, and is
+async: it resolves a finalized handle of that era instead of returning a
+`Transaction`. A v8 read loads the v8 runtime first.
+
+```diff
+- const tx = deserializeLedgerTransaction(bytes, { caller });
++ const tx = await deserializeLedgerTransaction('v9', bytes, { caller });
+```
 
 **`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — changed:
-`parseHexTransaction` returns a `FinalizedTx` handle instead of a `Transaction`.
+`parseHexTransaction` takes the era first, `parseHexTransaction(era, hex,
+details?)`, and is async: it resolves a finalized handle of that era instead of
+returning a `Transaction`.
 
 **`@midnight-ntwrk/midnight-js-protocol`** — added on the `./transaction`
 subpath: `deserializeTransactionAtStage`, `isFrameworkLedgerTransaction`,
-`TransactionStage`, `LedgerTransactionTypes`, `FrameworkInstanceCheck`.
+`transactionStageOf`, `TransactionStage`, `LedgerTransactionTypes`,
+`FrameworkInstanceCheck`. `proveLedger8Transaction` (`./prove`) now refuses,
+with `InvalidArgumentError`, an argument that is not an unproven v8 transaction
+of the framework's ledger copy.
 
 **`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
 `CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on

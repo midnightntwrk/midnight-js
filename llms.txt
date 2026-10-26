@@ -564,7 +564,13 @@ facade above — must be on a matching version. If you implement these interface
 yourself, wrap a v9-only implementation with `createWalletProvider` /
 `createMidnightProvider`, or build one per era with
 `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`. The
-factories unwrap the incoming handle and seal what you return.
+factories unwrap the incoming handle, and the wallet factories seal the
+transaction you return. A wallet that runs its own copy of the ledger (a wallet
+SDK, a DApp Connector wallet) must not be handed the framework's object or
+return its own: serialize the transaction on the way out, and decode the answer
+with `deserializeTransactionAtStage(era, 'Finalized', bytes)` from
+`@midnight-ntwrk/midnight-js-protocol/transaction`, taking the era from the
+request.
 
 ## Testing
 

@@ -144,17 +144,22 @@ const tx = LedgerTransaction.unwrap(record.tx, record.version);
 ```
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
-implementation; the adapter unwraps each handle and seals the answer for you:
+implementation. Both adapters unwrap each handle for you, and the wallet adapter
+also seals its answer:
 
 ```typescript
+import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
 
+// The wallet runs its own copy of the ledger, so transactions cross as bytes.
+
 const walletProvider = createWalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  balanceTx: async (tx, ttl) =>
+    deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
   getCoinPublicKey: () => wallet.coinPublicKey,
   getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });
-const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
 ```
 
 ### Declaring the eras a provider serves
@@ -178,8 +183,8 @@ you.
 **Serving more than one era?** Write one handler per era and let the factory
 assemble the provider. There is one key per ledger era: a handler for an era
 you serve, `undefined` for one you do not. The factory unwraps each handle for
-the handler of its era, seals the answer in that same era, and refuses an era
-you did not supply. `supportedEras` is computed from the handlers, so it cannot
+the handler of its era, seals a transaction answer (`proveTx`, `balanceTx`) in
+that same era, and refuses an era you did not supply. `supportedEras` is computed from the handlers, so it cannot
 disagree with what the provider does:
 
 ```typescript

@@ -73,12 +73,16 @@ guard in `seal` closes the one hazard a live object has: an object from another 
 The rules:
 
 1. **`seal` and `unwrap` are the only ways in and out.** The ledger object sits in a private field.
-   A raw ledger object exists only between `unwrap` and `seal` inside one function.
+   A raw ledger object exists only between `unwrap` and `seal` inside one function. The
+   constructor takes a module-private token that only `seal` holds, so a handle cannot be built
+   around `seal` from JavaScript either (`new`, `Reflect.construct`, a subclass).
 2. **The guard runs in `seal`.** `seal` asks `isFrameworkLedgerTransaction(era, tx)` from
    `@midnight-ntwrk/midnight-js-protocol/transaction` whether `tx` is an object of the ledger copy
-   this framework loaded. Anything else is refused with `ForeignLedgerTransactionError`
-   (`MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION`). Every handle is made by `seal`, so no handle holds
-   a foreign object. This covers what `contracts` builds and what every provider handler returns,
+   this framework loaded. An object of another copy is refused with `ForeignLedgerTransactionError`
+   (`MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION`); a value that is not a transaction object at all
+   (bytes, `undefined`) with `InvalidTransactionHandleError`, reason `not-a-transaction`, whose
+   message points at `deserializeTransactionAtStage`. Every handle is made by `seal`, so no handle
+   holds a foreign object. This covers what `contracts` builds and what every provider handler returns,
    and it replaces `Ledger8InstanceMismatchError`.
 3. **`seal` is synchronous.** A v8 object cannot be judged before `loadLedger8Protocol()` has
    resolved, because the framework's v8 class does not exist yet. Such an object is refused with
@@ -102,14 +106,17 @@ The rules:
 5. **At an inbound boundary, the era comes from the request, never from the bytes.** A wallet's
    answer to a v9 request is decoded as v9. Guessing the era from the bytes would let a wrong answer
    choose its own decoder.
-6. **`stage` is a run-time check at the methods, not in `seal`.** A ledger uses one class for all
-   three stages, so `seal` cannot see the stage of the object it gets. The stage is a compile-time
-   property of the handle type, and the ledger types already separate the stages for the handlers.
-   At run time each provider method and each `contracts` entry point compares `handle.stage` with
-   the stage it takes and refuses another with `InvalidTransactionHandleError`
-   (`MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE`, reason `wrong-stage`). A value that is not a
-   handle of this copy of `types` is refused the same way, reason `not-a-handle`; its message names
-   a duplicate `midnight-js-types` install as the likely cause.
+6. **`stage` is checked at run time, in `seal` and at the methods.** A ledger uses one class for
+   all three stages, so `seal` reads the stage from the proof and binding markers in the object's
+   serialized tag (`transactionStageOf` from `@midnight-ntwrk/midnight-js-protocol/transaction`) and
+   refuses an object at another stage with `InvalidTransactionHandleError`
+   (`MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE`, reason `stage-mismatch`). That costs one
+   `serialize()` per `seal`. The stage is also a compile-time property of the handle type. Each
+   provider method and each `contracts` entry point checks the handle it receives with
+   `LedgerTransaction.require(value, stage, method)`, which refuses a handle at another stage
+   (reason `wrong-stage`) and a value that is not a handle of this copy of `types` (reason
+   `not-a-handle`); that message names a copied handle and a duplicate `midnight-js-types` install
+   as the likely causes.
 7. **Layer rule.** `protocol` sits below `types` and cannot know the handle, so it speaks raw ledger
    objects. Every package from `types` upward speaks only handles in its public API: the three
    provider methods, every `contracts` function and result that takes or returns a transaction
@@ -121,8 +128,9 @@ The rules:
    `createProofProviderFromHandlers({ v8, v9 })`, and the same for the wallet and midnight
    providers; `undefined` for an era not served. The `currentEra` / `retainedEras` split is gone,
    because the shape no longer depends on which era is current. A handler for one era receives that
-   era's ledger object and returns one; the factory unwraps the handle for it and seals the answer
-   in the same era. A provider with no handler at all is refused when it is built
+   era's ledger object; the factory unwraps the handle for it and, for `proveTx` and `balanceTx`,
+   seals the answer in the same era, naming the method in a refusal. `submitTx` answers with a
+   `TransactionId`, which is passed through. A provider with no handler at all is refused when it is built
    (`InvalidArgumentError`). Adding an era to `LEDGER_VERSIONS` without a handler key is a compile
    error.
 9. **The generic `E` dispatch signature must be kept.** The factories route through a function
@@ -130,13 +138,16 @@ The rules:
    handler is checked against era `E`'s ledger types without an `as` cast. Replacing it with a
    `switch` over the era, or widening `E` to the union, needs a cast and loses that check.
 10. **A handler's answer is checked at run time.** The types do not tie a handler's answer to era
-    `E` without a cast, so `seal` checks it: an object of another ledger copy is refused. For the
+    `E` without a cast, so `seal` checks it: an object of another ledger copy, a value that is not
+    a transaction, and an object at another stage are refused. For the
     same reason `contracts` checks every provider's answer: a handle in the other era is refused
     with `EraInvariantViolationError`, at the wrong stage with `InvalidTransactionHandleError`.
 11. **The read side keeps its `version` tag.** `VersionedFinalizedTxData` stays a
     `version`-discriminated union, because `contracts` narrows its result types on it. Only its
-    `tx` changes, to `FinalizedTx` in both variants, with the invariant
-    `record.tx.era === record.version`. Read it with
+    `tx` changes, to a finalized handle of the variant's own era (`LedgerTransaction<'Finalized',
+    'v9'>` and `<'Finalized', 'v8'>`, both a `FinalizedTx`), so `record.tx.era === record.version`
+    holds in the types and narrowing on `version` narrows `tx.era`. `contracts` also checks it at
+    run time, for a provider outside the type system. Read it with
     `LedgerTransaction.unwrap(record.tx, record.version)`. Contract states and public states are not
     transactions and stay as ADR 0006 left them.
 12. **A decode failure at a boundary is the caller's error.** `deserializeTransactionAtStage`
@@ -145,10 +156,11 @@ The rules:
     including bytes that carry the tag but do not decode (`undecodable`, with the runtime's refusal
     on `cause`). It is raised where composed or wallet bytes become a handle: `contracts` reading a
     composed transaction (`sealComposed`), the DApp Connector wallet provider reading the wallet's
-    answer (which wraps it in `InvalidArgumentError`, with it on `cause`), and the testkit wallet
-    reading wallet-sdk's answer. The read side does not use it: `utils.deserializeLedgerTransaction`
-    and the indexer's ledger 8 decode read the bytes directly and fail with `DeserializationError`,
-    as before.
+    answer, and the testkit wallet reading wallet-sdk's answer. The read side does not use it:
+    `utils.deserializeLedgerTransaction(era, bytes, ctx)`, which the indexer uses for both eras,
+    reads the bytes directly and fails with `DeserializationError`, as before. When a coded error
+    reaches `contracts` through a provider, `ProviderFailedError` keeps its `code` on the sanitized
+    `cause`.
 
 Out of scope: wallet-sdk's JSON wire envelope (`{ wireFormat, protocolVersion, stage, transaction }`)
 for crossing a process boundary. No provider in the framework uses it today; it is #1543.

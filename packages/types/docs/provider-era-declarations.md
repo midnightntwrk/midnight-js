@@ -6,8 +6,8 @@ title: ProviderEraDeclarations
 
 Three provider methods carry a transaction: `proveTx`, `balanceTx`, `submitTx`, in
 that order. The provider behind each declares a `supportedEras` set. This document records why the
-declaration is read up front, why it is not trusted, and why the two refusals
-that result are two rather than one.
+declaration is read up front, why it is not trusted, and which error refuses an
+era a provider does not serve.
 
 The transactions these methods carry are handles, described in
 [VersionTaggedPayloads](./version-tagged-payloads.md). The multi-era construction
@@ -34,9 +34,11 @@ The pre-flight check does not make the providers safe by itself, and is not mean
 So a provider built by a `…FromHandlers` factory checks again when a handle
 arrives: a handle of an era it has no handler for is refused with
 `ProviderEraUnsupportedError` before any work. That check is what actually
-holds. A provider that implements the interface directly does the same check
-itself, when it calls `LedgerTransaction.unwrap(handle, era)` for an era it does
-not serve (`TransactionEraMismatchError`), or with its own code.
+holds. A provider that implements the interface directly has no such check built
+in. If it calls `LedgerTransaction.unwrap(handle, era)` for an era it does not
+serve, it is refused with a different error, `TransactionEraMismatchError`
+(`MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH`); otherwise it refuses with its own
+code, or not at all.
 
 ## One error, raised in two places
 
@@ -88,6 +90,15 @@ proof provider there is a shorter route for the common case:
 and derives the handlers and the declaration from them. The section below says
 when you want it.
 
+**Contingently, from a concrete provider.** `httpClientProofProvider` and
+`dappConnectorProofProvider` both DO serve v8. Each proves the live ledger object
+in this process — `proveLedger8Transaction(tx, …)` for v8, `tx.prove(…)` for v9 —
+and only circuit preimages cross the wire to the proof server or the wallet.
+Serializing the transaction and decoding the answer is what
+`dappConnectorWalletProviders` and the testkit wallet do, because they hand the
+whole transaction to a wallet with its own ledger copy. Other implementations
+that have not been widened still refuse v8.
+
 ## Why an in-process prover needs one proving provider per era
 
 A server-backed proving client — the proof server, the DApp Connector — can
@@ -119,15 +130,6 @@ serves. It does not verify the pairing, and cannot:
 What the factory gives is one place where the pairing is written down, instead
 of every consumer assembling the handlers by hand.
 
-**Contingently, from a concrete provider.** `httpClientProofProvider` and
-`dappConnectorProofProvider` both DO serve v8. Each proves the live ledger object
-in this process — `proveLedger8Transaction(tx, …)` for v8, `tx.prove(…)` for v9 —
-and only circuit preimages cross the wire to the proof server or the wallet.
-Serializing the transaction and decoding the answer is what
-`dappConnectorWalletProviders` and the testkit wallet do, because they hand the
-whole transaction to a wallet with its own ledger copy. Other implementations
-that have not been widened still refuse v8.
-
 ## Why the lifting adapters exist at all
 
 They exist to keep the handle out of implementation code, and the reason is a
@@ -140,5 +142,5 @@ the handle does not have — rather than the missing `seal`, which is the actual
 problem. An implementer meeting that error has no path from it to the fix.
 
 Going through `createWalletProvider` or `createMidnightProvider` means the error
-never arises: the adapter unwraps each handle on the way in and seals the answer
-on the way out.
+never arises: both adapters unwrap each handle on the way in, and the wallet
+adapter seals its answer on the way out.

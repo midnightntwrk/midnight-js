@@ -261,13 +261,18 @@ move a ledger transaction in and out of a handle:
   (reason `ledger8-not-loaded`) until `loadLedger8Protocol()` has resolved; call
   it from the same copy of `@midnight-ntwrk/midnight-js-protocol` that
   `@midnight-ntwrk/midnight-js-types` depends on, because a separately installed
-  version has its own load flag.
+  version has its own load flag. A value that is not a transaction (bytes,
+  `undefined`), or an object at another stage than `stage`, is refused with
+  `InvalidTransactionHandleError` (reason `not-a-transaction` or
+  `stage-mismatch`).
 - `LedgerTransaction.unwrap(handle, era)` gives the ledger object back. It
   refuses a handle of the other era with `TransactionEraMismatchError`
   (`MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH`).
 
 A handle also has `era`, `stage` and `serialize()`, so you can route it or send
-its bytes without unwrapping it.
+its bytes without unwrapping it. A copy of a handle (`structuredClone`,
+`postMessage`, JSON, object spread) is not a handle: send `serialize()` and seal
+the bytes again on the other side.
 
 ### Calling the provider methods
 

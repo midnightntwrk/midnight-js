@@ -52,10 +52,12 @@ The era is data on the handle, so the handle has the same shape in every era.
 When a new ledger becomes current, a ledger 9 handle does not change shape.
 
 The stage is part of the type, so passing an unproven handle to
-`MidnightProvider.submitTx` is a compile error. `seal` cannot check the stage at run time: a ledger uses one
-class for all three stages. The provider methods check `handle.stage` instead,
-and refuse a handle at the wrong stage with `InvalidTransactionHandleError`,
-reason `wrong-stage`.
+`MidnightProvider.submitTx` is a compile error. At run time `seal` reads the
+stage from the object's serialized tag, because a ledger uses one class for all
+three stages, and refuses an object at another stage with
+`InvalidTransactionHandleError`, reason `stage-mismatch`. The provider methods
+check the handle they receive with `LedgerTransaction.require`, and refuse a
+handle at the wrong stage with reason `wrong-stage`.
 
 When a provider hands a transaction to another ledger copy (a wallet SDK, a
 DApp Connector wallet), it serializes the transaction on the way out and decodes the

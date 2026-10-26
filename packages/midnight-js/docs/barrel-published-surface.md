@@ -111,8 +111,9 @@ closes that.
 `PayloadNotATransactionError` is the one that does not come from the era
 pipeline: `deserializeTransactionAtStage` raises it when bytes are not a
 transaction of the requested era and stage. Its constructor is private and its
-only public member is `code`, so it is published purely so a consumer can
-`instanceof` it.
+public members are `code` and `category`, which `hasErrorCode` and
+`errorCategory` already read, so the class adds no field a consumer would
+otherwise miss. It is published so the barrel's class set matches its code set.
 
 The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
