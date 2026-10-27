@@ -382,7 +382,7 @@ serve:
 
 ```typescript
 const midnightProvider: MidnightProvider = {
-  supportedEras: ['v9'],
+  supportedEras: ['v9'], // submitTx below serves v9 only, so v8 is not listed
   submitTx: (tx) => wallet.submitTransaction(LedgerTransaction.unwrap(tx, 'v9'))
 };
 ```
