@@ -101,6 +101,16 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     expect(error).toBeInstanceOf(UnknownLedgerVersionError);
     expect(error).toMatchObject({ requestedVersion: 'undefined', context: 'watchForTxData' });
   });
+
+  it('refuses a version that cannot be turned into text with the coded error, not a TypeError', () => {
+    const record = { ...createMockFinalizedTxData(), version: { __proto__: null } };
+
+    // @ts-expect-error an RPC bridge can hand back a null-prototype object as the tag
+    const error = thrownBy(() => read(record, 'watchForTxData'));
+
+    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toMatchObject({ requestedVersion: 'object', context: 'watchForTxData' });
+  });
 });
 
 describe('requireTaggedRecord', () => {

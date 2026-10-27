@@ -44,7 +44,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
-import { isLedger8Request, requireLedger9ContractState,requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { isLedger8Request, readVersionTag, requireLedger9ContractState, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   fromStoredLedger8SigningKey,
@@ -106,7 +106,7 @@ const queryFoundDeployTxPublicData = async (
           return { ...deployRecord, contractAddress, initialContractState: deployState.state };
         default: {
           const unhandled: never = deployState;
-          throw new UnknownLedgerVersionError(String(Reflect.get(unhandled, 'version')));
+          throw new UnknownLedgerVersionError(readVersionTag(unhandled), 'queryDeployContractState');
         }
       }
     }

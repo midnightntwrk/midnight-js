@@ -115,8 +115,20 @@ export const requireLedger9ContractState = <T extends { readonly version: Ledger
   throw new UnrecognisedEraTagError(operation, value);
 };
 
-const readVersionTag = (record: unknown): string =>
-  typeof record === 'object' && record !== null ? String(Reflect.get(record, 'version')) : 'undefined';
+const describeVersionTag = (version: unknown): string =>
+  (typeof version === 'object' && version !== null) || typeof version === 'function'
+    ? typeof version
+    : String(version);
+
+/**
+ * Reads the era tag of a record for an error message, without being able to throw.
+ *
+ * @param record The value a provider answered with.
+ * @returns The tag as text, the type of a tag that is an object, or
+ *   `'undefined'` when `record` is not an object.
+ */
+export const readVersionTag = (record: unknown): string =>
+  typeof record === 'object' && record !== null ? describeVersionTag(Reflect.get(record, 'version')) : 'undefined';
 
 const requireRecordHandle = <R extends VersionedFinalizedTxData>(
   record: R,

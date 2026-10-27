@@ -158,6 +158,22 @@ describe('findDeployedContract', () => {
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(rejection.requestedVersion).toBe('undefined');
     });
+
+    it('rejects a deploy state that is not an object with the coded error naming the method, not a TypeError', async () => {
+      providers.publicDataProvider.queryDeployContractState = vi.fn().mockResolvedValue('v9');
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect({ requestedVersion: rejection.requestedVersion, context: rejection.context }).toEqual({
+        requestedVersion: 'undefined',
+        context: 'queryDeployContractState'
+      });
+    });
   });
 
   describe('a contract deployed before the ledger fork, found with recompiled artifacts', () => {
