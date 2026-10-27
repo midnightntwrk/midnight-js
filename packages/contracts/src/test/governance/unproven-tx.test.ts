@@ -31,12 +31,9 @@ import {
   createUnprovenReplaceAuthorityTx,
   unprovenTxFromContractUpdates
 } from '../../governance/unproven-tx';
-import { createMockCompiledContract, createMockZKConfigProvider, MOCK_CONFIG } from '../test-mocks';
+import { createMockCompiledContract, createMockZKConfigProvider, MOCK_CONFIG, networkIdOf } from '../test-mocks';
 
 const ledgerTxOf = (handle: UnprovenTx): UnprovenTransaction => LedgerTransaction.unwrap(handle, 'v9');
-
-const networkIdOfTx = (handle: UnprovenTx): string | undefined =>
-  /network_id: "([^"]*)"/.exec(ledgerTxOf(handle).toString(false))?.[1];
 
 const ttlOfTx = (handle: UnprovenTx): Date => {
   const [intent, ...others] = ledgerTxOf(handle).intents?.values() ?? [];
@@ -73,7 +70,7 @@ describe('governance/unproven-tx', () => {
     );
     const after = Date.now();
 
-    expect(networkIdOfTx(tx)).toBe('preview');
+    expect(networkIdOf(ledgerTxOf(tx))).toBe('preview');
     expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 300_000));
     expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 300_000);
   });

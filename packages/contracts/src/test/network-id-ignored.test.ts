@@ -27,6 +27,7 @@ import { afterEach, expect, it } from 'vitest';
 
 import { unprovenTxFromContractUpdates } from '../governance/unproven-tx';
 import { createUnprovenLedgerDeployTx } from '../internal/utils';
+import { networkIdOf } from './test-mocks';
 
 const CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 60 };
 
@@ -63,5 +64,5 @@ it.each(builders)('builds a %s transaction for config.networkId and ignores a le
 
   const tx = await build();
 
-  expect(/network_id: "([^"]*)"/.exec(tx.toString(false))?.[1]).toBe('undeployed');
+  expect(networkIdOf(tx)).toBe('undeployed');
 });

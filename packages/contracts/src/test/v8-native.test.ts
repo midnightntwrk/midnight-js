@@ -136,7 +136,7 @@ import {
   SAMPLED_SIGNING_KEY,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from './test-mocks';
+import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, networkIdOf } from './test-mocks';
 
 // The real generated artifact opens with `checkRuntimeVersion('0.16.0')`, which
 // the installed current runtime rejects, so the specifier is redirected to the
@@ -200,7 +200,7 @@ const retainedTxFacts = async (tx: UnprovenTx | undefined): Promise<{ networkId?
   const decoded = LedgerTransaction.unwrap(tx, 'v8');
   const [intent, ...others] = decoded.intents?.values() ?? [];
   expect(others).toEqual([]);
-  return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
+  return { networkId: networkIdOf(decoded), ttl: intent?.ttl };
 };
 
 /** The retained overload's provider set, plus what its methods were handed. */

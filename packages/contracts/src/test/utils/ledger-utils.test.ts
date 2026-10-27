@@ -76,7 +76,7 @@ import {
   toLedgerContractState,
   toLedgerQueryContext,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../internal/utils';
-import { MOCK_CONFIG } from '../test-mocks';
+import { MOCK_CONFIG, networkIdOf } from '../test-mocks';
 
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
@@ -113,9 +113,6 @@ const callTxWithSingleState = (
     encryptionPublicKey,
     config
   );
-
-const networkIdOfTx = (tx: UnprovenTransaction): string | undefined =>
-  /network_id: "([^"]*)"/.exec(tx.toString(false))?.[1];
 
 const ttlOfTx = (tx: UnprovenTransaction): Date => {
   const [intent, ...others] = tx.intents?.values() ?? [];
@@ -344,7 +341,7 @@ describe('ledger-utils', () => {
       );
       const after = Date.now();
 
-      expect(networkIdOfTx(tx)).toBe('preview');
+      expect(networkIdOf(tx)).toBe('preview');
       expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 120_000));
       expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 120_000);
     });
@@ -354,14 +351,14 @@ describe('ledger-utils', () => {
       const tx = buildCall({ networkId: 'preview', ttlSeconds: 90 });
       const after = Date.now();
 
-      expect(networkIdOfTx(tx)).toBe('preview');
+      expect(networkIdOf(tx)).toBe('preview');
       expect(ttlOfTx(tx).getTime()).toBeGreaterThanOrEqual(toWholeSecond(before + 90_000));
       expect(ttlOfTx(tx).getTime()).toBeLessThanOrEqual(after + 90_000);
     });
 
     it('serves two networks in one process', () => {
-      expect(networkIdOfTx(buildCall({ networkId: 'preview', ttlSeconds: 60 }))).toBe('preview');
-      expect(networkIdOfTx(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
+      expect(networkIdOf(buildCall({ networkId: 'preview', ttlSeconds: 60 }))).toBe('preview');
+      expect(networkIdOf(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
     });
 
     it('rejects an invalid TTL', () => {
@@ -372,7 +369,7 @@ describe('ledger-utils', () => {
       setNetworkId('preview');
 
       try {
-        expect(networkIdOfTx(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
+        expect(networkIdOf(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
       } finally {
         setNetworkId('undeployed');
       }

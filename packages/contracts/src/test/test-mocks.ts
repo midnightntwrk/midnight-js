@@ -219,6 +219,11 @@ const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
  */
 export const MOCK_CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 3600 };
 
+const NETWORK_ID_PATTERN = /network_id: "([^"]*)"/;
+
+export const networkIdOf = (tx: { toString(compact?: boolean): string }): string | undefined =>
+  NETWORK_ID_PATTERN.exec(tx.toString(false))?.[1];
+
 const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
 
 export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
