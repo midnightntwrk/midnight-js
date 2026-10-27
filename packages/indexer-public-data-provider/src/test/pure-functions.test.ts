@@ -555,7 +555,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
 
     const handle = await parseHexTransaction('v9', hex);
 
-    expect(LedgerTransaction.is(handle)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
     expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
     expect(toHex(handle.serialize())).toBe(hex);
   });

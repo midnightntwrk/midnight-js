@@ -167,7 +167,7 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   ])('seals a %s record transaction in a finalized handle of the era the record is tagged with', async (era, protocolVersion, raw) => {
     const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw()));
 
-    expect(LedgerTransaction.is(record.tx)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(record.tx)).toBe(true);
     expect(record.version).toBe(era);
     expect([record.tx.era, record.tx.stage]).toEqual([record.version, 'Finalized']);
   });

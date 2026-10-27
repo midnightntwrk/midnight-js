@@ -52,7 +52,9 @@ class LedgerTransaction<S extends TransactionStage> {
   serialize(): Uint8Array;
   static seal<E, S>(era: E, stage: S, tx: LedgerTransactionTypes[E][S]): LedgerTransaction<S>;
   static unwrap<E, S>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
-  static is(value: unknown): value is LedgerTransaction<TransactionStage>;
+  // true only for a handle made by this copy of `types`; a look-alike object or a handle
+  // from a second installed copy gives false
+  static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage>;
 }
 type UnprovenTx = LedgerTransaction<'Unproven'>;
 type UnboundTx = LedgerTransaction<'Unbound'>;

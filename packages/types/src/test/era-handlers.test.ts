@@ -188,9 +188,9 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
       if (answerStage === undefined) {
         expect(answered).toBe(result);
       } else {
-        expect(LedgerTransaction.is(answered)).toBe(true);
+        expect(LedgerTransaction.isLedgerTransaction(answered)).toBe(true);
         expect(answered).toMatchObject({ era, stage: answerStage });
-        expect(LedgerTransaction.is(answered) && LedgerTransaction.unwrap(answered, era)).toBe(result);
+        expect(LedgerTransaction.isLedgerTransaction(answered) && LedgerTransaction.unwrap(answered, era)).toBe(result);
       }
     });
 

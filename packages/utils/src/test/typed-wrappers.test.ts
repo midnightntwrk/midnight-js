@@ -129,7 +129,7 @@ describe('deserializeLedgerTransaction', () => {
 
     const handle = await deserializeLedgerTransaction('v9', bytes, { caller });
 
-    expect(LedgerTransaction.is(handle)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
     expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
     expect(handle.serialize()).toEqual(bytes);
   });

@@ -1156,7 +1156,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     await submitCallTx(providers, callOptions());
 
     for (const handle of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(LedgerTransaction.is(handle)).toBe(true);
+      expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
       expect(handle?.era).toBe('v8');
     }
     expect(txTagPrefix(providers.seen.proveTx!.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);

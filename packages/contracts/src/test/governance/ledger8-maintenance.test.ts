@@ -178,7 +178,7 @@ describe('contract maintenance through a retained-era artifact', () => {
         update: { kind: 'insert-verifier-key', circuitId: CIRCUIT_ID, verifierKey: NEW_VK }
       });
       const [proved] = vi.mocked(providers.proofProvider.proveTx).mock.calls[0] ?? [];
-      expect(LedgerTransaction.is(proved)).toBe(true);
+      expect(LedgerTransaction.isLedgerTransaction(proved)).toBe(true);
       expect(proved?.era).toBe('v8');
       expect(proved?.serialize()).toEqual(composed);
       expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('maintenance-tx-id');

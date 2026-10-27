@@ -454,7 +454,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // ordinary current-era transaction that happens to carry a retained-era
     // call, so it crosses as a v9 handle. Sealing it `'v8'` would claim the
     // retained runtime built it, which is false.
-    expect(LedgerTransaction.is(providers.seen.proveTx)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(providers.seen.proveTx)).toBe(true);
     expect(providers.seen.proveTx?.era).toBe('v9');
     expect(providers.seen.proveTx?.stage).toBe('Unproven');
     // THE CHAIN: `balanceTx` must receive exactly what `proveTx` answered, and

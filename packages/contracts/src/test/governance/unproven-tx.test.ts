@@ -61,7 +61,7 @@ describe('governance/unproven-tx', () => {
       () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n)),
       MOCK_CONFIG
     );
-    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(tx)).toBe(true);
     expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 
@@ -96,7 +96,7 @@ describe('governance/unproven-tx', () => {
       dummyCPK,
       MOCK_CONFIG
     );
-    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(tx)).toBe(true);
     expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 
@@ -111,7 +111,7 @@ describe('governance/unproven-tx', () => {
       dummyCPK,
       MOCK_CONFIG
     );
-    expect(LedgerTransaction.is(tx)).toBe(true);
+    expect(LedgerTransaction.isLedgerTransaction(tx)).toBe(true);
     expect({ era: tx.era, stage: tx.stage }).toEqual({ era: 'v9', stage: 'Unproven' });
   });
 });

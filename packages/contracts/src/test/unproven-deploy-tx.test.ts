@@ -75,7 +75,7 @@ describe('unproven-deploy-tx', () => {
       expect(result.public.contractAddress).toBe('mock-contract-address');
       expect(result.public.initialContractState).toEqual({ test: 'initial-contract-state' });
       expect(result.private.signingKey).toEqual(options.signingKey);
-      expect(LedgerTransaction.is(result.private.unprovenTx)).toBe(true);
+      expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
       expect(result.private.unprovenTx.era).toBe('v9');
       expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(await BUILT_DEPLOY_TX);
     });

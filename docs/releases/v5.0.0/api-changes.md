@@ -145,7 +145,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
   static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
   static unwrap<E extends LedgerVersion, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
   static require<S extends TransactionStage>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
-  static is(value: unknown): value is LedgerTransaction<TransactionStage>;
+  static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage>;
 }
 export type UnprovenTx = LedgerTransaction<'Unproven'>;
 export type UnboundTx = LedgerTransaction<'Unbound'>;

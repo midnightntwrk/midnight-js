@@ -146,7 +146,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
     handle: LedgerTransaction<S>,
     era: E
   ): LedgerTransactionTypes[E][S] {
-    if (!LedgerTransaction.is(handle)) {
+    if (!LedgerTransaction.isLedgerTransaction(handle)) {
       throw new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', describeArgument(handle));
     }
     if (!LEDGER_VERSIONS.includes(era)) {
@@ -176,7 +176,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
     stage: S,
     method: TransactionHandleMethod
   ): LedgerTransaction<S> {
-    if (!LedgerTransaction.is(value)) {
+    if (!LedgerTransaction.isLedgerTransaction(value)) {
       throw new InvalidTransactionHandleError(method, 'not-a-handle', describeArgument(value));
     }
     if (!isAtStage(value, stage)) {
@@ -189,8 +189,11 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
     return value;
   }
 
-  /** Whether `value` is a handle made by this copy of the package. */
-  static is(value: unknown): value is LedgerTransaction<TransactionStage> {
+  /**
+   * Whether `value` is a handle made by this copy of the package. A look-alike object, or a
+   * handle made by a second installed copy of the package, gives `false`.
+   */
+  static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage> {
     return typeof value === 'object' && value !== null && #slot in value;
   }
 }

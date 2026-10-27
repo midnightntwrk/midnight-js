@@ -44,7 +44,7 @@ describe('LedgerTransaction.seal', () => {
 
     const handle = LedgerTransaction.seal('v9', 'Unproven', tx);
 
-    expect([LedgerTransaction.is(handle), handle.era, handle.stage]).toEqual([true, 'v9', 'Unproven']);
+    expect([LedgerTransaction.isLedgerTransaction(handle), handle.era, handle.stage]).toEqual([true, 'v9', 'Unproven']);
     expect(handle.serialize()).toEqual(tx.serialize());
   });
 
@@ -223,7 +223,7 @@ describe('LedgerTransaction.unwrap', () => {
 
     const error = thrownBy(() => LedgerTransaction.unwrap(foreignHandle, 'v9'));
 
-    expect([LedgerTransaction.is(foreignHandle), secondCopy.LedgerTransaction.is(foreignHandle)]).toEqual([false, true]);
+    expect([LedgerTransaction.isLedgerTransaction(foreignHandle), secondCopy.LedgerTransaction.isLedgerTransaction(foreignHandle)]).toEqual([false, true]);
     expect(error).toMatchObject({ name: 'InvalidTransactionHandleError', reason: 'not-a-handle' });
     expect(String(error)).toContain('midnight-js-types');
   });
@@ -299,7 +299,7 @@ describe('LedgerTransaction handle', () => {
   });
 
   it.each([['a plain object', {}], ['null', null], ['a string', 'v9']])('is() is false for %s', (_label, value) => {
-    expect(LedgerTransaction.is(value)).toBe(false);
+    expect(LedgerTransaction.isLedgerTransaction(value)).toBe(false);
   });
 });
 

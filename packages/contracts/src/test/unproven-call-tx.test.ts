@@ -120,7 +120,7 @@ describe('unproven-call-tx', () => {
         createMockEncryptionPublicKey()
       );
 
-      expect(LedgerTransaction.is(result.private.unprovenTx)).toBe(true);
+      expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
       expect({ era: result.private.unprovenTx.era, stage: result.private.unprovenTx.stage }).toEqual({
         era: 'v9',
         stage: 'Unproven'
@@ -448,7 +448,7 @@ describe('unproven-call-tx', () => {
 
       const result = await createUnprovenCallTx(providers, options);
 
-      expect(LedgerTransaction.is(result.private.unprovenTx)).toBe(true);
+      expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
       expect(result.private.unprovenTx.era).toBe('v9');
       expect(mockGetPublicStates).toHaveBeenCalledWith(
         providers.publicDataProvider,
