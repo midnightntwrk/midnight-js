@@ -375,7 +375,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-head');
+      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-network');
     }
   });
 
@@ -608,7 +608,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
       expect(error).toBeInstanceOf(NetworkVersionStateMismatchError);
-      expect((error as NetworkVersionStateMismatchError).head).toBe<LedgerVersion>('v8');
+      expect((error as NetworkVersionStateMismatchError).networkVersion).toBe<LedgerVersion>('v8');
       expect((error as NetworkVersionStateMismatchError).stateEra).toBe<LedgerVersion>('v9');
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH)).toBe(true);
       expect((error as NetworkVersionStateMismatchError).message).toMatch(/re-read|re-run/i);

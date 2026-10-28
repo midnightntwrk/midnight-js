@@ -180,7 +180,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then(maybeThrowQueryError)
       .then((queryResult) => queryResult.data?.block ?? null);
     if (block === null) {
-      throw IndexerDataError.missingHeadBlock();
+      throw IndexerDataError.missingLatestBlock();
     }
     return block.protocolVersion;
   }

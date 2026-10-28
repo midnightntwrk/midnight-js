@@ -255,7 +255,7 @@ describe('per-scope era resolution', () => {
     // The CODE, not only the class: a consumer that cannot import this
     // package's classes branches on `code`.
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
-    expect((caught as ScopedTransactionEraUnsupportedError).head).toBe('v8');
+    expect((caught as ScopedTransactionEraUnsupportedError).networkVersion).toBe('v8');
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();

@@ -845,7 +845,7 @@ const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
 await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
 ```
 
-Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
+Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.versionTag` to
 `version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
 any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
 match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in

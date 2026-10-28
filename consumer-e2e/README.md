@@ -270,7 +270,7 @@ the three that decide which remediation wording it carries -- and also
 `circuitId` and `contractAddress`, which are what that remediation's first step
 sends an operator to go and read; without those two the leg would pass on an
 error naming a different operation. The other two read `reason` off the
-`SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
+`SubmitRejectionUndiagnosedError`. The `network-version-read-failed` one also asserts that
 the error carries **both** failures, in order, and that the second of them is the
 injected one, since carrying only one is the defect its `errors` list (rejection first)
 exists to rule out; and that the injected reading was consulted exactly once, so

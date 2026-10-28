@@ -253,7 +253,7 @@ stored. See `consumer-e2e/README.md`.
 Only the two RETAINED rows are enforced in production. Every call site passes
 the literal `'v8'`, so the current-era rows are reachable from tests alone,
 and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
-`'ledger9-artifact-on-ledger8-head'` — is not raised by any shipped path.
+`'ledger9-artifact-on-ledger8-network'` — is not raised by any shipped path.
 
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
@@ -266,8 +266,8 @@ The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction rather than an artifact, so it cannot know the era in advance, and
 it pays for one head read and accepts only a transaction of the head's era. The
 other era is refused there, before proving, as `EraArtifactMismatchError`: a v9
-transaction on a pre-fork head with reason `'ledger9-transaction-on-ledger8-head'`,
-v8 bytes on a post-fork head with reason `'ledger8-transaction-on-ledger9-head'`.
+transaction on a pre-fork head with reason `'ledger9-transaction-on-ledger8-network'`,
+v8 bytes on a post-fork head with reason `'ledger8-transaction-on-ledger9-network'`.
 The v9 ledger cannot read v8 transaction bytes, so there is nothing to route the
 second case to. The call and deploy pipelines do
 not go through that read: they submit through an internal current-era path.

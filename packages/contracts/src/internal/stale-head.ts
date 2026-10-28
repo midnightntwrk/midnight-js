@@ -84,7 +84,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * era, or if the read itself rejects — so neither failure is lost while the
  * question is unresolved, and both arrive carrying a registered code. A head
  * integer that cannot be placed on the era timeline arrives here too, on the
- * `'head-read-failed'` case, carried on `headReadFailure`.
+ * `'network-version-read-failed'` case, carried on `networkVersionReadFailure`.
  * @throws the rejection unchanged in every other case.
  * @see {@link StaleHeadRemediation} for the four outcomes and the remediation
  *      each one carries.
@@ -111,12 +111,12 @@ export const handleSubmitRejection = async (
     // integer -- which is the value an operator acting on the verdict below
     // actually needs, and which the breadcrumb reports.
     freshReading = await readHeadEra(pdp);
-  } catch (headReadFailure) {
+  } catch (networkVersionReadFailure) {
     // Nothing is dropped: reporting only the transport failure hides what happened to the
     // transaction, and reporting only the rejection claims a diagnosis that was never made.
     throw new SubmitRejectionUndiagnosedError(operation, rejection, {
-      reason: 'head-read-failed',
-      headReadFailure
+      reason: 'network-version-read-failed',
+      networkVersionReadFailure
     });
   }
 
@@ -125,14 +125,14 @@ export const handleSubmitRejection = async (
   emitHeadResolution(logger, freshReading, 'post-rejection-re-read');
 
   const freshEra = freshReading.head;
-  const movement = eraPosition(freshEra) - eraPosition(operation.head);
+  const movement = eraPosition(freshEra) - eraPosition(operation.networkVersion);
   if (movement === 0) {
     // Not a fork. Re-thrown exactly as the provider-call wrapper built it.
     throw rejection;
   }
   if (movement < 0) {
     // The head went BACKWARDS, which no chain does. Undiagnosable, not a fork claim.
-    throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'head-moved-backwards', freshEra });
+    throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'network-version-went-backwards', freshEra });
   }
 
   throw new ForkCrossedDuringOperationError(operation, freshEra, rejection);

@@ -219,7 +219,7 @@ export interface Ledger8Runtime {
  * transaction providers' era declarations.
  * @param kind Whether this operation deploys a contract, calls one already
  * deployed, or maintains one — the cell where the era table differs.
- * @param breadcrumbs The optional logger the head-resolution and
+ * @param breadcrumbs The optional logger the network-version-read and
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
@@ -300,7 +300,7 @@ export const submitLedger8Tx = async (
   txBytes: Uint8Array,
   operation: SubmittedOperation
 ): Promise<string> => {
-  const { circuitId, head } = operation;
+  const { circuitId, networkVersion: head } = operation;
   // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
   // up with different failure handling. `atProviderMethod` still does the sanitizing --
   // what this adds is the fork-crossing diagnosis on top of its result.
@@ -441,7 +441,7 @@ export const runLedger8Call = async (
   });
 
   const txId = await submitLedger8Tx(providers, call.txBytes, {
-    head: resolved.head,
+    networkVersion: resolved.head,
     kind: 'call',
     circuitId: request.circuitId,
     contractAddress: request.contractAddress
@@ -549,7 +549,7 @@ export const runLedger8Deploy = async (
     // Only ever a pre-fork head here -- a retained-era deploy against a
     // post-fork head was refused above -- but the era is passed rather than
     // assumed, so the payload variant is chosen by the same rule everywhere.
-    head: resolved.head,
+    networkVersion: resolved.head,
     kind: 'deploy',
     // The deploy has no circuit of its own to name, so the constructor's own
     // vocabulary is used rather than inventing a circuit id.
@@ -1396,7 +1396,7 @@ export const submitLedger8MaintenanceTx = async (
   let txId: string;
   try {
     txId = await submitLedger8Tx(providers, txBytes, {
-      head: resolved.head,
+      networkVersion: resolved.head,
       kind: 'maintenance',
       circuitId,
       contractAddress

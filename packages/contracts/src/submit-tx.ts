@@ -111,8 +111,8 @@ const transactionEra = (unprovenTx: VersionedUnprovenTransaction): LedgerVersion
 };
 
 const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
-  v8: 'ledger8-transaction-on-ledger9-head',
-  v9: 'ledger9-transaction-on-ledger8-head'
+  v8: 'ledger8-transaction-on-ledger9-network',
+  v9: 'ledger9-transaction-on-ledger8-network'
 };
 
 const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(

@@ -119,7 +119,7 @@ This is the byte-level answer, read from the bytes themselves rather than from
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the
-re-read that follows is reported as its own head-resolution breadcrumb.
+re-read that follows is reported as its own network-version-read breadcrumb.
 
 ## Privacy
 

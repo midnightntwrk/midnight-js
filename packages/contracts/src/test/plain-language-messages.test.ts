@@ -37,17 +37,25 @@ const ADDRESS = '0600'.repeat(8);
 const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
 
 const operation = (kind: SubmittedOperation['kind']): SubmittedOperation => ({
-  head: 'v8',
+  networkVersion: 'v8',
   kind,
   circuitId: kind === 'maintenance' ? NO_CIRCUIT : 'increment',
   contractAddress: ADDRESS
 });
 
-describe('error messages a dApp developer reads', () => {
-  it.each<[string, Error]>([
-    ['ledger 9 artifact on a ledger 8 network', new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head')],
-    ['v9 transaction on a ledger 8 network', new EraArtifactMismatchError('ledger9-transaction-on-ledger8-head')],
-    ['v8 transaction on a ledger 9 network', new EraArtifactMismatchError('ledger8-transaction-on-ledger9-head')],
+const JARGON_IN_IDENTIFIERS = /envelope|head|axis|down-?convert/i;
+
+const publishedVocabulary = (value: object): string[] =>
+  Object.entries(value).flatMap(([key, field]: [string, unknown]) => [
+    key,
+    ...(typeof field === 'string' ? [field] : []),
+    ...(typeof field === 'object' && field !== null && !(field instanceof Error) ? publishedVocabulary(field) : [])
+  ]);
+
+const ERRORS_A_DAPP_DEVELOPER_READS: [string, Error][] = [
+    ['ledger 9 artifact on a ledger 8 network', new EraArtifactMismatchError('ledger9-artifact-on-ledger8-network')],
+    ['v9 transaction on a ledger 8 network', new EraArtifactMismatchError('ledger9-transaction-on-ledger8-network')],
+    ['v8 transaction on a ledger 9 network', new EraArtifactMismatchError('ledger8-transaction-on-ledger9-network')],
     ['ledger 8 deploy after the fork', new Ledger8DeployOnLedger9Error()],
     ['ledger 8 maintenance after the fork', new Ledger8MaintenanceOnLedger9Error()],
     ['network version and state disagree', new NetworkVersionStateMismatchError('v8', 'v9')],
@@ -61,14 +69,14 @@ describe('error messages a dApp developer reads', () => {
     [
       'network version could not be re-read',
       new SubmitRejectionUndiagnosedError(operation('call'), new Error('rejected'), {
-        reason: 'head-read-failed',
-        headReadFailure: new Error('unreachable')
+        reason: 'network-version-read-failed',
+        networkVersionReadFailure: new Error('unreachable')
       })
     ],
     [
       'network version moved backwards',
       new SubmitRejectionUndiagnosedError(operation('call'), new Error('rejected'), {
-        reason: 'head-moved-backwards',
+        reason: 'network-version-went-backwards',
         freshEra: 'v8'
       })
     ],
@@ -81,8 +89,15 @@ describe('error messages a dApp developer reads', () => {
         new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9')
       )
     ]
-  ])('uses no maintainer jargon: %s', (_, error) => {
+];
+
+describe('error messages a dApp developer reads', () => {
+  it.each(ERRORS_A_DAPP_DEVELOPER_READS)('uses no maintainer jargon: %s', (_, error) => {
     expect(error.message).not.toMatch(MAINTAINER_JARGON);
+  });
+
+  it.each(ERRORS_A_DAPP_DEVELOPER_READS)('names no field or reason in maintainer jargon: %s', (_, error) => {
+    expect(publishedVocabulary(error).filter((word) => JARGON_IN_IDENTIFIERS.test(word))).toEqual([]);
   });
 
   it('says the network crossed the fork while the operation ran', () => {

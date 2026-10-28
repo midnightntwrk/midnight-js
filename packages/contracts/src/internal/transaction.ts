@@ -115,7 +115,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  *
  * @internal
  * @param pdp The read surface, for the single head read.
- * @param logger The optional logger the head-resolution breadcrumb is written to.
+ * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The era facts the scope runs under.
  * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.

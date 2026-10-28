@@ -74,9 +74,9 @@ describe('the era and verification-path errors a caller has to catch are reachab
     const REMEDIATION: Readonly<Record<EraArtifactMismatchReason, string>> = {
       'unwrapped-ledger9-contract': 'wrap-it',
       'unrecognised-contract-shape': 'recompile',
-      'ledger9-artifact-on-ledger8-head': 'wait-for-fork',
-      'ledger9-transaction-on-ledger8-head': 'submit-v8-bytes',
-      'ledger8-transaction-on-ledger9-head': 'recompose-on-v9',
+      'ledger9-artifact-on-ledger8-network': 'wait-for-fork',
+      'ledger9-transaction-on-ledger8-network': 'submit-v8-bytes',
+      'ledger8-transaction-on-ledger9-network': 'recompose-on-v9',
       'artifact-era-undeclared': 'serve-contract-info',
       'provider-cannot-declare-era': 'implement-the-member',
       'unknown-artifact-runtime-version': 'upgrade-midnight-js'
@@ -84,11 +84,11 @@ describe('the era and verification-path errors a caller has to catch are reachab
 
     expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-ledger9-contract').reason]).toBe('wrap-it');
     expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head').reason]).toBe('wait-for-fork');
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-transaction-on-ledger8-head').reason]).toBe(
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-artifact-on-ledger8-network').reason]).toBe('wait-for-fork');
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-transaction-on-ledger8-network').reason]).toBe(
       'submit-v8-bytes'
     );
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger8-transaction-on-ledger9-head').reason]).toBe(
+    expect(REMEDIATION[new EraArtifactMismatchError('ledger8-transaction-on-ledger9-network').reason]).toBe(
       'recompose-on-v9'
     );
     expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
@@ -109,8 +109,8 @@ describe('the era and verification-path errors a caller has to catch are reachab
 
     // Asserted on BOTH classes and in a fixed order: both constructors take two same-typed
     // `LedgerVersion` parameters, so a swapped pair type-checks and would name the eras backwards.
-    expect([mismatch.head, mismatch.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
-    expect([inconsistency.head, inconsistency.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
+    expect([mismatch.networkVersion, mismatch.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
+    expect([inconsistency.networkVersion, inconsistency.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
   });
 
   it('names the refused entry point on both verifier-key failures', () => {

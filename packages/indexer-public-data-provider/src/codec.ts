@@ -123,7 +123,7 @@ export const parseHexTransaction = (
 
 const parametersBytesAndEnvelopeVersion = (
   hexParameters: string
-): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
+): { readonly raw: Uint8Array; readonly versionTag: LedgerVersion } => {
   // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
   // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
   // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
@@ -132,7 +132,7 @@ const parametersBytesAndEnvelopeVersion = (
     throw IndexerDataError.malformedParametersEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexParameters));
-  return { raw, envelopeVersion: ledgerVersionOfLedgerParameters(raw) };
+  return { raw, versionTag: ledgerVersionOfLedgerParameters(raw) };
 };
 
 /**
@@ -155,9 +155,9 @@ const parametersBytesAndEnvelopeVersion = (
  * @throws {DeserializationError} When the envelope is decodable but the body behind it is not.
  */
 export const parseHexLedgerParameters = (s: string): LedgerParameters => {
-  const { raw, envelopeVersion } = parametersBytesAndEnvelopeVersion(s);
-  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
-    throw IndexerDataError.unsupportedParametersEra(envelopeVersion);
+  const { raw, versionTag } = parametersBytesAndEnvelopeVersion(s);
+  if (versionTag !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedParametersEra(versionTag);
   }
   return deserializeLedgerParameters(raw, { caller: `${PKG}:parseHexLedgerParameters` });
 };
@@ -292,12 +292,12 @@ export const decodeRecordTransaction = async (
  */
 const stateBytesAndEnvelopeVersion = (
   hexState: string
-): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
+): { readonly raw: Uint8Array; readonly versionTag: LedgerVersion } => {
   if (!isHex(hexState)) {
     throw IndexerDataError.malformedStateEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexState));
-  return { raw, envelopeVersion: ledgerVersionOfContractState(raw) };
+  return { raw, versionTag: ledgerVersionOfContractState(raw) };
 };
 
 /**
@@ -354,7 +354,7 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
 export type UpperBoundCheck = 'check' | 'skip';
 
 const assertEnvelopeNotNewerThanBlock = (
-  envelopeVersion: LedgerVersion,
+  versionTag: LedgerVersion,
   protocolVersion: number,
   upperBound: UpperBoundCheck = 'check'
 ): void => {
@@ -362,8 +362,8 @@ const assertEnvelopeNotNewerThanBlock = (
     return;
   }
   const reportedVersion = reportedEra(protocolVersion);
-  if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
-    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+  if (reportedVersion !== undefined && isNewerEra(versionTag, reportedVersion)) {
+    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, versionTag);
   }
 };
 
@@ -419,10 +419,10 @@ export const parseHexContractState = (
   protocolVersion: number,
   options?: { readonly upperBound?: UpperBoundCheck }
 ): ContractState => {
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
-  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
-    throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);
+  const { raw, versionTag } = stateBytesAndEnvelopeVersion(hexState);
+  assertEnvelopeNotNewerThanBlock(versionTag, protocolVersion, options?.upperBound);
+  if (versionTag !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedDecodeEra(versionTag);
   }
   return deserializeCompactContractState(raw, { caller: `${PKG}:parseHexContractState` });
 };
@@ -447,14 +447,14 @@ export const toVersionedContractState = (
   protocolVersion: number,
   options?: { readonly upperBound?: UpperBoundCheck }
 ): VersionedContractState => {
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  switch (envelopeVersion) {
+  const { raw, versionTag } = stateBytesAndEnvelopeVersion(hexState);
+  switch (versionTag) {
     case 'v8':
       return { version: 'v8', stateBytes: raw };
     case 'v9':
       return { version: 'v9', state: parseHexContractState(hexState, protocolVersion, options) };
     default:
-      return assertNever(envelopeVersion, 'toVersionedContractState');
+      return assertNever(versionTag, 'toVersionedContractState');
   }
 };
 
@@ -482,8 +482,8 @@ export const toVersionedPublicStates = (
 ): VersionedPublicStates => {
   const contractState = toVersionedContractState(hexState, protocolVersion, options);
   const parameters = parametersBytesAndEnvelopeVersion(hexParameters);
-  if (parameters.envelopeVersion !== contractState.version) {
-    throw IndexerDataError.mixedEraPublicStates(contractState.version, parameters.envelopeVersion);
+  if (parameters.versionTag !== contractState.version) {
+    throw IndexerDataError.mixedEraPublicStates(contractState.version, parameters.versionTag);
   }
   const zswapChainState = parseHexZswapState(hexZswapState);
   switch (contractState.version) {
@@ -541,10 +541,10 @@ export const toRawContractState = (
   options?: { readonly upperBound?: UpperBoundCheck }
 ): RawContractState => {
   assertWellFormedProtocolVersion(protocolVersion);
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
+  const { raw, versionTag } = stateBytesAndEnvelopeVersion(hexState);
+  assertEnvelopeNotNewerThanBlock(versionTag, protocolVersion, options?.upperBound);
   return {
-    version: envelopeVersion,
+    version: versionTag,
     protocolVersion,
     raw,
     // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function

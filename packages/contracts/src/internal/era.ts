@@ -571,7 +571,7 @@ export const acquireHeadEra = async (reading: HeadEraReading): Promise<ResolvedO
  * @see {@link EraDispatch} for both rules and what they cost if broken.
  *
  * @param pdp The read surface to ask for the network head.
- * @param logger The optional logger the head-resolution breadcrumb is written to.
+ * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The head era, the integer it was resolved from, and the era facade bound to it.
  * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer
  * cannot be placed on the era timeline. A rejection from the provider propagates unchanged.
@@ -666,7 +666,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * @param kind Whether this operation deploys a contract, calls one already deployed, or maintains
  * one already deployed. Anything that is not a call or a maintenance update is treated as a deploy,
  * which is a refusing side.
- * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-head'` for a
+ * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws Ledger8MaintenanceOnLedger9Error for a retained-era maintenance update on a post-fork head.
@@ -721,7 +721,7 @@ export const assertEraCompatible = (
       }
       throw new Ledger8DeployOnLedger9Error();
     case 'artifact-newer-than-head':
-      throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head');
+      throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-network');
     default: {
       const unhandled: never = verdict;
       throw new UnknownLedgerVersionError(String(unhandled));

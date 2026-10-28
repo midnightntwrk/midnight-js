@@ -127,12 +127,12 @@ export type EraArtifactMismatchReason =
   | 'unwrapped-ledger9-contract'
   /** An object matching no era's shape at all. */
   | 'unrecognised-contract-shape'
-  /** A ledger 9 artifact, on a network head that is still on ledger 8. */
-  | 'ledger9-artifact-on-ledger8-head'
-  /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
-  | 'ledger9-transaction-on-ledger8-head'
-  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
-  | 'ledger8-transaction-on-ledger9-head'
+  /** A ledger 9 artifact, on a network that is still on ledger 8. */
+  | 'ledger9-artifact-on-ledger8-network'
+  /** A v9 transaction handed to `submitTx`, on a network that is still pre-fork. */
+  | 'ledger9-transaction-on-ledger8-network'
+  /** v8 transaction bytes handed to `submitTx`, on a network that has crossed the fork. */
+  | 'ledger8-transaction-on-ledger9-network'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
   /** A ZK config provider that cannot report a declared runtime version at all. */
@@ -154,15 +154,15 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     `${NEITHER_ERA_CONTRACT_MESSAGE} ` +
     'Pass either a CompiledContract container produced by the ledger 9 Compact toolchain, or the contract ' +
     'instance the ledger 8 (pre-fork) Compact toolchain generates.',
-  'ledger9-artifact-on-ledger8-head':
+  'ledger9-artifact-on-ledger8-network':
     'This contract was produced by the ledger 9 Compact toolchain, but the network is still on ' +
     'ledger 8, which cannot execute it. Run this operation against a contract produced by the ' +
     'ledger 8 (pre-fork) Compact toolchain until the network has crossed the fork.',
-  'ledger9-transaction-on-ledger8-head':
+  'ledger9-transaction-on-ledger8-network':
     'A v9 transaction was handed to submitTx, but the network is still on ledger 8, ' +
     'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
     'until the network has crossed the fork.',
-  'ledger8-transaction-on-ledger9-head':
+  'ledger8-transaction-on-ledger9-network':
     'v8 transaction bytes were handed to submitTx, but the network has crossed the fork to the v9 ' +
     'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
     'v9 ledger and submit it as { version: \'v9\', tx }.',
@@ -303,7 +303,7 @@ export class Ledger8ContractStateUnsupportedError extends MidnightJsError {
 
 /**
  * An error indicating that a contract produced by the retained Compact toolchain was submitted for
- * DEPLOYMENT to a network head that has already crossed the fork.
+ * DEPLOYMENT to a network that has already crossed the fork.
  *
  * The retained era is supported for calls against contracts already on chain, which is what keeps
  * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
@@ -326,7 +326,7 @@ export class Ledger8DeployOnLedger9Error extends MidnightJsError {
 
 /**
  * An error indicating that a contract MAINTENANCE update was given a contract produced by the
- * retained Compact toolchain while the network head has already crossed the fork.
+ * retained Compact toolchain while the network has already crossed the fork.
  *
  * The retained era maintains contracts only before the fork. After it, the same contract is
  * maintained through the same functions with the artifact recompiled by the current toolchain, and
@@ -348,7 +348,7 @@ export class Ledger8MaintenanceOnLedger9Error extends MidnightJsError {
 }
 
 /**
- * An error indicating that the network head this operation resolved is a different ledger era from
+ * An error indicating that the ledger version this operation read from the network is a different ledger era from
  * the one the contract state it fetched was written by, and that a fresh head read confirms the
  * head reading was the stale half.
  *
@@ -366,15 +366,15 @@ export class NetworkVersionStateMismatchError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH];
 
   /**
-   * @param head The era the operation resolved from the network head.
+   * @param networkVersion The ledger version the network reported when the operation started.
    * @param stateEra The era the fetched state's own envelope was written by.
    */
   constructor(
-    readonly head: LedgerVersion,
+    readonly networkVersion: LedgerVersion,
     readonly stateEra: LedgerVersion
   ) {
     super(
-      `This operation started while the network reported ledger '${head}', but the contract state it ` +
+      `This operation started while the network reported ledger '${networkVersion}', but the contract state it ` +
         `fetched carries a '${stateEra}' version tag, and reading the network's ledger version again returned ` +
         `'${stateEra}' as well. The ledger this operation started from is not the one the network now reports, ` +
         `which is what happens while the network crosses the ledger fork. Re-run the operation: it reads the ` +
@@ -385,7 +385,7 @@ export class NetworkVersionStateMismatchError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the read surface reported a network head and a contract state whose eras
+ * An error indicating that the read surface reported a network ledger version and a contract state whose eras
  * disagree, and that the disagreement survived a fresh head read.
  *
  * Distinct from {@link NetworkVersionStateMismatchError}, and the distinction is the point: there the head
@@ -400,15 +400,15 @@ export class IndexerInconsistencyError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY];
 
   /**
-   * @param head The era the network head reported, confirmed by a fresh read.
+   * @param networkVersion The ledger version the network reported, confirmed by a second read.
    * @param stateEra The era the fetched state's own envelope was written by.
    */
   constructor(
-    readonly head: LedgerVersion,
+    readonly networkVersion: LedgerVersion,
     readonly stateEra: LedgerVersion
   ) {
     super(
-      `The read surface reported that the network is on ledger '${head}' — confirmed by a second, fresh ` +
+      `The read surface reported that the network is on ledger '${networkVersion}' — confirmed by a second, fresh ` +
         `read — while serving a contract state that carries a '${stateEra}' version tag. Those two answers cannot both ` +
         `describe one chain, so this is an inconsistency in what was served rather than a stale reading this ` +
         `client can correct. Retry the operation, and if it persists check the health of the configured indexer.`
@@ -546,13 +546,13 @@ export type SubmittedOperationKind = 'call' | 'deploy' | 'maintenance';
  */
 export interface SubmittedOperation {
   /**
-   * The era the network head was on when this operation started.
+   * The ledger version the network was on when this operation started.
    *
    * One field, two uses, and they are the same fact: it decides which payload
    * variant the transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
-  readonly head: LedgerVersion;
+  readonly networkVersion: LedgerVersion;
   /** Whether this operation deploys a contract, calls one already deployed, or maintains one. */
   readonly kind: SubmittedOperationKind;
   /**
@@ -592,7 +592,7 @@ const FORK_CROSSED_MESSAGES: Readonly<
   Record<SubmittedOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
   call: (operation, freshEra) =>
-    `This call was built while the network was on ledger '${operation.head}' and the node rejected its ` +
+    `This call was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
     `transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger ` +
     `fork while the call was being built. Take two steps, in this order. First, verify the transaction did ` +
     `not finalize: a submission rejected while the fork was happening can still have been recorded, so read ` +
@@ -601,7 +601,7 @@ const FORK_CROSSED_MESSAGES: Readonly<
     `re-run the call unchanged - it reads the network's ledger version again and executes against the ` +
     `ledger the network now reports.`,
   deploy: (operation, freshEra) =>
-    `This deployment was built while the network was on ledger '${operation.head}' and the node rejected its ` +
+    `This deployment was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
     `transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger ` +
     `fork while the deployment was being built. Take two steps, in this order. First, verify the ` +
     `deployment did not finalize: a submission rejected while the fork was happening can still have been ` +
@@ -611,7 +611,7 @@ const FORK_CROSSED_MESSAGES: Readonly<
     `Compact toolchain and deploy that artifact instead - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
     `cannot be deployed to a network that has crossed the fork. See the runtime-deploy chapter of the migration guide.`,
   maintenance: (operation, freshEra) =>
-    `This maintenance update was built while the network was on ledger '${operation.head}' and the node rejected ` +
+    `This maintenance update was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
     `its transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger fork ` +
     `while the update was being built. Take two steps, in this order. First, verify the update did not ` +
     `finalize: a submission rejected while the fork was happening can still have been recorded, so read the ` +
@@ -671,7 +671,7 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
   ) {
     super(FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra), { cause });
     this.name = 'ForkCrossedDuringOperationError';
-    this.startEra = operation.head;
+    this.startEra = operation.networkVersion;
     this.kind = operation.kind;
     this.circuitId = operation.circuitId;
     this.contractAddress = operation.contractAddress;
@@ -688,14 +688,14 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
  * tells it which of the two happened.
  */
 export type SubmitRejectionUndiagnosedCause =
-  /** The fresh head read itself rejected, so no reading is available to compare. */
-  | { readonly reason: 'head-read-failed'; readonly headReadFailure: unknown }
+  /** Reading the network's ledger version again itself failed, so no reading is available to compare. */
+  | { readonly reason: 'network-version-read-failed'; readonly networkVersionReadFailure: unknown }
   /**
    * The fresh read reported an EARLIER era than the operation started against.
    * A ledger era only ever moves forward, so the two readings cannot both
    * describe one chain.
    */
-  | { readonly reason: 'head-moved-backwards'; readonly freshEra: LedgerVersion };
+  | { readonly reason: 'network-version-went-backwards'; readonly freshEra: LedgerVersion };
 
 // Neither text claims a fork is under way, and that restraint is the point:
 // nothing observed in either case establishes one, and telling a caller to wait
@@ -723,18 +723,18 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
       ? `contract '${operation.contractAddress}'`
       : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
   const opening =
-    `This ${subject} was built while the network was on ledger '${operation.head}' and the node rejected its ` +
+    `This ${subject} was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
     `transaction (${target}).`;
 
   switch (undiagnosed.reason) {
-    case 'head-read-failed':
+    case 'network-version-read-failed':
       return (
         `${opening} The network's ledger version could not be read again, so whether the network crossed the ` +
         `ledger fork while this ${subject} was being built is unresolved. Both failures are on 'errors': the ` +
         `submission rejection first, the failed read second. Check whether the transaction finalized, ` +
         `then retry once the read surface is reachable.`
       );
-    case 'head-moved-backwards':
+    case 'network-version-went-backwards':
       return (
         `${opening} The network now reports ledger '${undiagnosed.freshEra}', an EARLIER ledger era. An ` +
         `era only ever moves forward, so those two readings cannot both describe one chain and this ` +
@@ -751,7 +751,7 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
 };
 
 const undiagnosedErrors = (rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause): readonly unknown[] =>
-  undiagnosed.reason === 'head-read-failed' ? [rejection, undiagnosed.headReadFailure] : [rejection];
+  undiagnosed.reason === 'network-version-read-failed' ? [rejection, undiagnosed.networkVersionReadFailure] : [rejection];
 
 /**
  * An error indicating that a submission was rejected and that whether the
@@ -770,7 +770,7 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED];
 
-  /** The submission rejection first, then the head-read failure when there was one. */
+  /** The submission rejection first, then the failure to read the network's ledger version again, when there was one. */
   readonly errors: readonly unknown[];
   /** Which of the two undiagnosable conditions this is. */
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
@@ -788,12 +788,12 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
    */
   constructor(operation: SubmittedOperation, rejection: unknown, undiagnosed: SubmitRejectionUndiagnosedCause) {
     super(undiagnosedMessage(operation, undiagnosed), {
-      cause: undiagnosed.reason === 'head-read-failed' ? undiagnosed.headReadFailure : rejection
+      cause: undiagnosed.reason === 'network-version-read-failed' ? undiagnosed.networkVersionReadFailure : rejection
     });
     this.name = 'SubmitRejectionUndiagnosedError';
     this.errors = undiagnosedErrors(rejection, undiagnosed);
     this.reason = undiagnosed.reason;
-    this.startEra = operation.head;
+    this.startEra = operation.networkVersion;
     this.kind = operation.kind;
     this.circuitId = operation.circuitId;
     this.contractAddress = operation.contractAddress;
@@ -806,7 +806,7 @@ interface EffectContractError {
 }
 
 /**
- * The network head could not be read: either re-reading it while checking an era disagreement failed,
+ * The network's ledger version could not be read: either re-reading it while checking an era disagreement failed,
  * or the public data provider returned no latest block to pin a call to. Retry when the read surface is
  * reachable; a transport failure, when there is one, is on `cause`.
  */
@@ -1114,7 +1114,7 @@ export class ContractTypeError extends MidnightJsError {
 
 /**
  * An error indicating that a contract-scoped transaction was created while the
- * network head is on a ledger era that has no way to express one.
+ * network is on a ledger era that has no way to express one.
  *
  * The pre-fork era composes exactly one call per transaction, which leaves a
  * pre-fork scope nothing to batch into. The message names both ways forward,
@@ -1131,11 +1131,11 @@ export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED];
 
   /**
-   * @param head The era the network head is on, as the scope resolved it.
+   * @param networkVersion The ledger version the network is on, as the scope resolved it.
    */
-  constructor(readonly head: LedgerVersion) {
+  constructor(readonly networkVersion: LedgerVersion) {
     super(
-      `A contract-scoped transaction cannot be created while the network is on the '${head}' ledger ` +
+      `A contract-scoped transaction cannot be created while the network is on the '${networkVersion}' ledger ` +
         `era. A scope batches several circuit calls into one transaction, and this era composes exactly ` +
         `one call per transaction and refuses a longer list, so there is nothing for a scope to batch ` +
         `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +

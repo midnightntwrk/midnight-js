@@ -56,8 +56,8 @@ rather than a step in it, and a caller writes
 | ------------------------------ | ------ |
 | a LATER era than the operation started against | `ForkCrossedDuringOperationError`, with the two-step remediation |
 | the SAME era | the rejection, unchanged |
-| an EARLIER era | `SubmitRejectionUndiagnosedError`, reason `'head-moved-backwards'` |
-| nothing — the read itself rejects | `SubmitRejectionUndiagnosedError`, reason `'head-read-failed'` |
+| an EARLIER era | `SubmitRejectionUndiagnosedError`, reason `'network-version-went-backwards'` |
+| nothing — the read itself rejects | `SubmitRejectionUndiagnosedError`, reason `'network-version-read-failed'` |
 
 The fork verdict is FORWARD-ONLY. An era only ever moves forward on a real
 chain, so a reading that has gone backwards — an indexer rolled back to an
@@ -132,7 +132,7 @@ and the reason on `.reason` is why no diagnosis could be made. `cause` names the
 consumer walking only cause chains still lands somewhere useful.
 
 A head integer that cannot be placed on the era timeline arrives on the
-`'head-read-failed'` case, carried on `headReadFailure`: the read is what failed,
+`'network-version-read-failed'` case, carried on `networkVersionReadFailure`: the read is what failed,
 whether the transport or the mapping refused it.
 
 ## Contract-scoped transactions

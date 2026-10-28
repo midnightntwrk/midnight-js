@@ -504,7 +504,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     expect(caught).toBeInstanceOf(NetworkVersionStateMismatchError);
-    expect((caught as NetworkVersionStateMismatchError).head).toBe('v8');
+    expect((caught as NetworkVersionStateMismatchError).networkVersion).toBe('v8');
     expect((caught as NetworkVersionStateMismatchError).stateEra).toBe('v9');
     // The re-read is the second head read, and it happens ONLY on a
     // disagreement -- which is why the happy path above reads the head once.
@@ -527,7 +527,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     expect(caught).toBeInstanceOf(IndexerInconsistencyError);
-    expect((caught as IndexerInconsistencyError).head).toBe('v8');
+    expect((caught as IndexerInconsistencyError).networkVersion).toBe('v8');
     expect((caught as IndexerInconsistencyError).stateEra).toBe('v9');
   });
 

@@ -167,14 +167,14 @@ const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
 const OPERATION_CONTRACT_ADDRESS = '0200aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
 
 const callOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'call',
   circuitId: CIRCUIT_ID,
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
 const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'deploy',
   // A deploy has no circuit of its own and reports the constructor's own name.
   circuitId: 'initialState',
@@ -182,7 +182,7 @@ const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
 });
 
 const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'maintenance',
   circuitId,
   contractAddress: OPERATION_CONTRACT_ADDRESS
@@ -285,7 +285,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
     expect(caught).not.toBeInstanceOf(ForkCrossedDuringOperationError);
     expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-moved-backwards');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-went-backwards');
     expect((caught as Error).message).not.toMatch(/crossed the ledger fork/);
     // Same restraint as the indexer-inconsistency refusal: never assert a fork
     // nothing observed establishes, and point at the read surface instead.
@@ -359,11 +359,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
 
   it.each([
     [
-      'head-read-failed',
+      'network-version-read-failed',
       { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) },
       maintenanceOperation(NO_CIRCUIT)
     ],
-    ['head-moved-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
+    ['network-version-went-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
   ])('calls a MAINTENANCE update by its name when the rejection cannot be diagnosed (%s)', async (_reason, pdp, operation) => {
     // Act
     const caught = await handleSubmitRejection(pdp, operation, wrappedRejection()).catch(
@@ -446,12 +446,12 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // walks cause chains still learns why no diagnosis was made.
     expect((caught as { readonly cause?: unknown }).cause).toBe(transportFailure);
     expect((caught as Error).message).toContain('could not be read again');
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-read-failed');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-read-failed');
   });
 
   it('keeps the AggregateError shape after leaving AggregateError', async () => {
-    const headReadFailure = new Error('indexer unreachable');
-    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(headReadFailure) };
+    const networkVersionReadFailure = new Error('indexer unreachable');
+    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(networkVersionReadFailure) };
     const rejection = wrappedRejection();
 
     const error = await handleSubmitRejection(pdp, callOperation(), rejection).catch((e: unknown) => e);
@@ -459,8 +459,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(error).toBeInstanceOf(SubmitRejectionUndiagnosedError);
     expect(error).not.toBeInstanceOf(AggregateError);
     if (!(error instanceof SubmitRejectionUndiagnosedError)) throw error;
-    expect(error.errors).toEqual([rejection, headReadFailure]);
-    expect(error.cause).toBe(headReadFailure);
+    expect(error.errors).toEqual([rejection, networkVersionReadFailure]);
+    expect(error.cause).toBe(networkVersionReadFailure);
     expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'UNCERTAIN']);
   });
 

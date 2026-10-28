@@ -3245,8 +3245,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-read-failed' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
+    if (error.reason !== 'network-version-read-failed' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
     }
     // EXACTLY ONE injected read. The wrapper answers every head read taken after
     // the refusal, so a framework that took a second one somewhere else on this
@@ -3279,8 +3279,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-moved-backwards' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-moved-backwards' call; got '${error.reason}' as '${error.kind}'`, {
+    if (error.reason !== 'network-version-went-backwards' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-went-backwards' call; got '${error.reason}' as '${error.kind}'`, {
         cause: error
       });
     }

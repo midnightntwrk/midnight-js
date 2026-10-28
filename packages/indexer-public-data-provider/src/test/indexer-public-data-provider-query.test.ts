@@ -179,7 +179,7 @@ describe('IndexerPublicDataProvider query methods', () => {
         );
 
       expect(rejection).toBeInstanceOf(IndexerDataError);
-      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-latest-block' });
     });
 
     test('issues a request on every call, whatever era the head reports', async () => {

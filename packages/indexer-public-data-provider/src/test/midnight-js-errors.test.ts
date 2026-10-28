@@ -38,7 +38,7 @@ describe('indexer error classes', () => {
   const instances: readonly [string, IndexerError][] = [
     ['IndexerFormattedError', new IndexerFormattedError([{ message: 'bad' }])],
     ['IndexerQueryError', new IndexerQueryError('down')],
-    ['IndexerDataError', IndexerDataError.missingHeadBlock()],
+    ['IndexerDataError', IndexerDataError.missingLatestBlock()],
     ['IndexerSubscriptionDataError', new IndexerSubscriptionDataError('blocks')],
     ['IndexerProviderConfigError', new IndexerProviderConfigError('bad')],
     ['IndexerInvariantError', new IndexerInvariantError('bad')],
@@ -69,7 +69,7 @@ describe('indexer error classes', () => {
   it.each([
     [new IndexerFormattedError([{ message: 'bad' }]), 'MIDNIGHT_JS_PR_INDEXER_GRAPHQL_FAILED', 'ENVIRONMENT'],
     [new IndexerQueryError('down'), 'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED', 'TRANSIENT'],
-    [IndexerDataError.missingHeadBlock(), 'MIDNIGHT_JS_PR_INDEXER_DATA_INVALID', 'INTEGRITY'],
+    [IndexerDataError.missingLatestBlock(), 'MIDNIGHT_JS_PR_INDEXER_DATA_INVALID', 'INTEGRITY'],
     [new IndexerSubscriptionDataError('blocks'), 'MIDNIGHT_JS_PR_INDEXER_SUBSCRIPTION_DATA_INVALID', 'INTEGRITY'],
     [new IndexerProviderConfigError('bad'), 'MIDNIGHT_JS_PR_INDEXER_CONFIG_INVALID', 'USAGE'],
     [new IndexerInvariantError('bad'), 'MIDNIGHT_JS_PR_INDEXER_INVARIANT_VIOLATED', 'INTERNAL'],
@@ -96,10 +96,21 @@ describe('IndexerDataError messages a dApp developer reads', () => {
   const MAINTAINER_JARGON = /envelope|\bhead\b|\baxis\b|down-?convert|dual-instantiation|shared-instance/i;
 
   it.each([
-    ['missing-head-block', IndexerDataError.missingHeadBlock()],
+    ['missing-latest-block', IndexerDataError.missingLatestBlock()],
     ['era-disagreement', IndexerDataError.eraDisagreement(2_000_000, 'v8', 'v9')],
     ['mixed-era-public-states', IndexerDataError.mixedEraPublicStates('v8', 'v9')]
   ] as const)('uses no maintainer jargon: %s', (_kind, error) => {
     expect(error.message).not.toMatch(MAINTAINER_JARGON);
+  });
+
+  it.each([
+    ['missing-latest-block', IndexerDataError.missingLatestBlock()],
+    ['era-disagreement', IndexerDataError.eraDisagreement(2_000_000, 'v8', 'v9')]
+  ] as const)('names no context kind or field in maintainer jargon: %s', (_kind, error) => {
+    const vocabulary = Object.entries(error.context).flatMap(([key, value]: [string, unknown]) =>
+      typeof value === 'string' ? [key, value] : [key]
+    );
+
+    expect(vocabulary.filter((word) => /envelope|head/i.test(word))).toEqual([]);
   });
 });
