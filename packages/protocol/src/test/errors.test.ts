@@ -24,7 +24,6 @@ import {
   ComposeOptionError,
   type ComposeStage,
   DownConvertFailedError,
-  Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
   MerkleNotRehashedError,
@@ -41,20 +40,11 @@ import {
 const packageNamesIn = (message: string): string[] =>
   [...message.matchAll(/@[a-z0-9.-]+\/[a-z0-9.-]+/g)].map(([name]) => name).sort();
 
-// Which package managers the remediation covers. A published error must not
-// prescribe the one this repo happens to use, so this is asserted exhaustively:
-// dropping one, or narrowing back to a single tool, fails.
-const whyCommandsIn = (message: string): string[] =>
-  ['npm why', 'yarn why', 'pnpm why', 'bun pm why'].filter((command) =>
-    new RegExp(`\\b${command}\\b`).test(message)
-  );
-
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
     expect(PROTOCOL_ERROR_CODES).toEqual({
       UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
       UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
-      LEDGER8_INSTANCE_MISMATCH: 'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
@@ -88,12 +78,6 @@ describe('resilience to the dual-publish scope rewrite', () => {
 
   it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
     expect(source).not.toContain('@midnight-ntwrk/');
-  });
-
-  it('names two distinct scopes in the remediation hint, not one twice', () => {
-    const names = packageNamesIn(new Ledger8InstanceMismatchError('onchain-runtime-v3').message);
-
-    expect(new Set(names).size).toBe(names.length);
   });
 });
 
@@ -206,24 +190,6 @@ describe('instanceof', () => {
   });
 });
 
-describe('Ledger8InstanceMismatchError', () => {
-  it('carries the LEDGER8_INSTANCE_MISMATCH code, names the axis, and remediates tool-agnostically', () => {
-    const error = new Ledger8InstanceMismatchError('onchain-runtime-v3');
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8InstanceMismatchError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.axis).toBe('onchain-runtime-v3');
-    expect(error.message).toContain('onchain-runtime-v3');
-    expect(error.message).toContain('dual-instantiation');
-    expect(packageNamesIn(error.message)).toEqual([
-      '@midnight-ntwrk/onchain-runtime-v3',
-      '@midnightntwrk/onchain-runtime-v3'
-    ]);
-    expect(whyCommandsIn(error.message)).toEqual(['npm why', 'yarn why', 'pnpm why', 'bun pm why']);
-  });
-});
-
 describe('DownConvertFailedError', () => {
   it('carries the DOWN_CONVERT_FAILED code, preserves the cause, and names the failing stage', () => {
     const cause = new Error('tag v8 != v6');
@@ -290,6 +256,14 @@ describe('UnknownLedgerVersionError', () => {
 
     expect(error.requestedVersion).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
+  });
+
+  it('names the call that read the version when one is given', () => {
+    const error = new UnknownLedgerVersionError('undefined', 'watchForTxData');
+
+    expect(error.context).toBe('watchForTxData');
+    expect(error.message).toContain('watchForTxData');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
   });
 });
 
@@ -709,22 +683,4 @@ describe('the code every published class carries', () => {
       PROTOCOL_ERROR_CODES.STATE_INCONSISTENT
     ]);
   });
-});
-
-// The axis is interpolated into the remediation hint via a lookup table. A
-// plain object literal resolves `constructor` through Object.prototype and
-// renders `@scope/function Object() { [native code] }` as a package name to
-// trace. Reachable only past the guard's own axis validation, so this pins the
-// table itself rather than a live path.
-describe('the axis package-name table', () => {
-  it.each(['constructor', 'toString', '__proto__'])(
-    'does not resolve the prototype member %s into a package name',
-    (axis) => {
-      // @ts-expect-error - the table is indexed by a closed union; this is the untyped-JS case
-      const { message } = new Ledger8InstanceMismatchError(axis);
-
-      expect(message).not.toContain('native code');
-      expect(message).not.toContain('[object');
-    }
-  );
 });

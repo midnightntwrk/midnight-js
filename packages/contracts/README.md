@@ -77,19 +77,27 @@ await submitCallTx(providers, callOptions);
 // Submit a deploy transaction
 await submitDeployTx(providers, deployOptions);
 
-// Generic transaction submission. Tag the transaction with the era that wrote it;
-// submitTx reads the network head and accepts only a transaction of the head's era.
-await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
-await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
+// Generic transaction submission. Pass a transaction handle; it carries the era
+// that wrote the transaction. submitTx reads the network head and accepts only a
+// transaction of the head's era.
+const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+const record = await submitTx(providers, { unprovenTx });
+
+// The record's tx is a FinalizedTx handle of the record's era.
+const finalized = LedgerTransaction.unwrap(record.tx, record.version);
 ```
+
+`LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
+get from `createUnprovenCallTx` or `createUnprovenDeployTx`
+(`result.private.unprovenTx`) is already sealed, so you pass it on as it is.
 
 `submitTx` reads the network head once. The transaction's era must match it:
 
 | input | head | what happens |
 |---|---|---|
-| v9 | v9 | proved, balanced and submitted as v9 payloads |
-| v8 | v8 | proved, balanced and submitted as v8 payloads |
-| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
+| v9 | v9 | proved, balanced and submitted as v9 handles |
+| v8 | v8 | proved, balanced and submitted as v8 handles |
+| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
 It returns `VersionedFinalizedTxData`, tagged with the head's era.

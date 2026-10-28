@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -61,16 +61,6 @@ const fromWalletHex = (hex: string): Uint8Array => {
   return Uint8Array.from({ length: hex.length / 2 }, (_, index) => parseInt(hex.slice(index * 2, index * 2 + 2), 16));
 };
 
-const decodeWalletAnswer = <T>(era: string, decode: () => T): T => {
-  try {
-    return decode();
-  } catch (error) {
-    throw new InvalidArgumentError(`The wallet returned bytes that are not a balanced ledger ${era} transaction.`, {
-      cause: error
-    });
-  }
-};
-
 const firstIdentifier = (identifiers: string[]): string => {
   const [txId] = identifiers;
   if (txId === undefined) {
@@ -89,53 +79,41 @@ const firstIdentifier = (identifiers: string[]): string => {
  * forwarded and the wallet picks the expiry. See https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102
  *
  * A rejection from the wallet leaves these providers unchanged, with the connector's own `code`.
- * `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the `code`.
+ * `deployContract` and the `callTx` functions wrap it in `ProviderFailedError`, and that copy does not keep the
+ * connector's `code`; it keeps only this framework's own codes.
  *
  * @param api - The DApp Connector's `ConnectedAPI`, or any object with the methods in {@link DAppConnectorWalletAPI}.
  * @returns The wallet provider and the midnight provider, both serving `v8` and `v9`.
  * @throws InvalidArgumentError raised by `balanceTx` if the wallet answer is not even-length hex without a `0x`
- * prefix, or is not a balanced transaction of the requested ledger. Raised by `submitTx`, before anything is
- * submitted, if the transaction has no identifier.
+ * prefix, and by `submitTx`, before anything is submitted, if the transaction has no identifier.
+ * @throws PayloadNotATransactionError raised by `balanceTx` if the wallet answer is not a balanced transaction of
+ * the requested ledger.
+ * @throws Ledger8RuntimeMissingError raised by `balanceTx` on a ledger 8 request if the v8 runtime cannot be loaded.
  */
 export const dappConnectorWalletProviders = async (
   api: DAppConnectorWalletAPI
 ): Promise<{ walletProvider: WalletProvider; midnightProvider: MidnightProvider }> => {
   const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } = await api.getShieldedAddresses();
-  const balance = async (txBytes: Uint8Array): Promise<Uint8Array> =>
-    fromWalletHex((await api.balanceUnsealedTransaction(toHex(txBytes))).tx);
+  const balance = async <E extends LedgerVersion>(
+    era: E,
+    tx: LedgerTransactionTypes[E]['Unbound']
+  ): Promise<LedgerTransactionTypes[E]['Finalized']> =>
+    deserializeTransactionAtStage(era, 'Finalized', fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
+
+  const submit = async (tx: LedgerTransactionTypes[LedgerVersion]['Finalized']): Promise<string> => {
+    const txId = firstIdentifier(tx.identifiers());
+    await api.submitTransaction(toHex(tx.serialize()));
+    return txId;
+  };
 
   const walletProvider = createWalletProviderFromHandlers({
     getCoinPublicKey: () => shieldedCoinPublicKey,
     getEncryptionPublicKey: () => shieldedEncryptionPublicKey,
-    currentEra: async (tx) => {
-      const balanced = await balance(tx.serialize());
-      return decodeWalletAnswer('9', () => Transaction.deserialize('signature', 'proof', 'binding', balanced));
-    },
-    retainedEras: {
-      v8: async (txBytes) => {
-        const balanced = await balance(txBytes);
-        const v8 = await loadLedger8Protocol();
-        decodeWalletAnswer('8', () => v8.Transaction.deserialize('signature', 'proof', 'binding', balanced));
-        return balanced;
-      }
-    }
+    v8: (tx) => balance('v8', tx),
+    v9: (tx) => balance('v9', tx)
   });
 
-  const midnightProvider = createMidnightProviderFromHandlers({
-    currentEra: async (tx) => {
-      const txId = firstIdentifier(tx.identifiers());
-      await api.submitTransaction(toHex(tx.serialize()));
-      return txId;
-    },
-    retainedEras: {
-      v8: async (txBytes) => {
-        const v8 = await loadLedger8Protocol();
-        const txId = firstIdentifier(v8.Transaction.deserialize('signature', 'proof', 'binding', txBytes).identifiers());
-        await api.submitTransaction(toHex(txBytes));
-        return txId;
-      }
-    }
-  });
+  const midnightProvider = createMidnightProviderFromHandlers({ v8: submit, v9: submit });
 
   return { walletProvider, midnightProvider };
 };

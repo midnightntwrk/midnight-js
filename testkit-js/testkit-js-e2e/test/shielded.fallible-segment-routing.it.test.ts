@@ -15,6 +15,7 @@
 
 import { createUnprovenCallTx, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -109,12 +110,13 @@ describe('Shielded segment routing — regression #876', () => {
     const userKeyBytes = new Uint8Array(Buffer.from(userKeyHex, 'hex'));
     const mintNonce = new Uint8Array(32).fill(99);
 
-    const { public: { partitionedTranscript }, private: { unprovenTx } } = await createUnprovenCallTx(providers, {
+    const { public: { partitionedTranscript }, private: { unprovenTx: unprovenTxHandle } } = await createUnprovenCallTx(providers, {
       compiledContract: CompiledShieldedFallibleContract,
       contractAddress,
       circuitId: 'heavyCheckpointMintAndSend' as ShieldedFallibleContractCircuit,
       args: [DOMAIN_SEPARATOR, MINT_AMOUNT, mintNonce, { bytes: userKeyBytes }, MINT_AMOUNT]
     });
+    const unprovenTx = LedgerTransaction.unwrap(unprovenTxHandle, 'v9');
 
     // Sanity: the runtime put every shielded effect in the fallible half of
     // the transcript and produced no guaranteed transcript at all. This is

@@ -14,225 +14,102 @@
  */
 
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { describe, expect, it, vi } from 'vitest';
+import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Ledger8PayloadUnsupportedError,PROVIDER_ERROR_CODES, UntaggedPayloadError } from '../errors';
-import {
-  createProofProvider,
-  type UnboundTransaction,
-  type VersionedUnprovenTransaction
-} from '../proof-provider';
+import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
+import { LedgerTransaction } from '../ledger-transaction';
+import { createProofProvider } from '../proof-provider';
+import { handles, inertProvingProvider, ledgerTransactions } from './ledger-transaction-fixtures';
 
-const stubProvingProvider: ProvingProvider = {
-  check: vi.fn(),
-  prove: vi.fn(),
-  lookupKey: vi.fn()
-};
+const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => error
+  );
 
-// Each stub is built as a `Partial<T>` naming only the members this suite
-// exercises, then narrowed with a single assertion — the same pattern the
-// http-client proof-provider tests use for their transaction stub.
-const partialCostModel: Partial<CostModel> = { toString: () => 'stub-cost-model' };
-const stubCostModel = partialCostModel as CostModel;
-
-const createStubUnboundTx = (): UnboundTransaction => {
-  const partial: Partial<UnboundTransaction> = { bindingRandomness: 42n };
-  return partial as UnboundTransaction;
-};
-
-const createStubUnprovenTx = (provenAs: UnboundTransaction): UnprovenTransaction => {
-  const partial: Partial<UnprovenTransaction> = {
-    prove: vi.fn().mockResolvedValue(provenAs) as UnprovenTransaction['prove']
-  };
-  return partial as UnprovenTransaction;
-};
+const timeoutRefusal = expect.objectContaining({
+  name: 'InvalidArgumentError',
+  code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+  message: expect.stringContaining('proveTxConfig.timeout')
+});
 
 describe('createProofProvider', () => {
-  describe('v9 payload', () => {
-    it('proves the carried transaction and tags the result as v9', async () => {
-      const unboundTx = createStubUnboundTx();
-      const unprovenTx = createStubUnprovenTx(unboundTx);
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx });
+  it('proves an unproven v9 handle with its proving provider and cost model, answering an unbound v9 handle', async () => {
+    const prove = vi.spyOn(Transaction.prototype, 'prove');
+    const costModel = CostModel.initialCostModel();
+    const provider = createProofProvider(inertProvingProvider, costModel);
 
-      expect(unprovenTx.prove).toHaveBeenCalledWith(stubProvingProvider, stubCostModel);
-      // Identity, not structural equality — see the note in the dapp-connector
-      // suite: two structurally-equal ledger objects can come from different
-      // WASM instances, and conflating them is what this provider method exists to stop.
-      expect(result.version).toBe('v9');
-      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
-    });
+    const result = await provider.proveTx(handles.v9.Unproven());
+
+    expect(prove).toHaveBeenCalledWith(inertProvingProvider, costModel);
+    expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
+    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(await prove.mock.results[0]?.value);
+  });
+
+  it('declares exactly v9', () => {
+    expect(createProofProvider(inertProvingProvider).supportedEras).toEqual(['v9']);
+  });
+
+  it('refuses a v8 handle as an unserved era', async () => {
+    const provider = createProofProvider(inertProvingProvider);
+
+    const rejection = await rejectionOf(provider.proveTx(await handles.v8.Unproven()));
+
+    expect(rejection).toBeInstanceOf(ProviderEraUnsupportedError);
+    expect(rejection).toMatchObject({ code: PROVIDER_ERROR_CODES.PROVIDER_ERA_UNSUPPORTED, method: 'proveTx', era: 'v8' });
+  });
+
+  it.each([
+    ['the pre-handle version-tagged payload', () => ({ version: 'v9', tx: ledgerTransactions.v9.Unproven() })],
+    ['a raw ledger transaction', () => ledgerTransactions.v9.Unproven()],
+    ['null', () => null]
+  ])('refuses %s as not a handle', async (_label, value) => {
+    const prove = vi.spyOn(Transaction.prototype, 'prove');
+    const provider = createProofProvider(inertProvingProvider);
+
+    // @ts-expect-error the value is not a transaction handle
+    const rejection = await rejectionOf(provider.proveTx(value()));
+
+    expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
+    expect(rejection).toMatchObject({ method: 'proveTx', reason: 'not-a-handle' });
+    expect(prove).not.toHaveBeenCalled();
   });
 
   describe('proveTxConfig.timeout', () => {
-    const timeoutRefusal = expect.objectContaining({
-      name: 'InvalidArgumentError',
-      code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
-      message: expect.stringContaining('proveTxConfig.timeout')
-    });
-
     it.each([
       ['a timeout', 5_000],
       ['a zero timeout', 0]
-    ])('refuses a proof with %s before proving starts', async (_desc, timeout) => {
-      const unprovenTx = createStubUnprovenTx(createStubUnboundTx());
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+    ])('refuses a proof with %s before proving starts', async (_label, timeout) => {
+      const prove = vi.spyOn(Transaction.prototype, 'prove');
+      const provider = createProofProvider(inertProvingProvider);
 
-      await expect(provider.proveTx({ version: 'v9', tx: unprovenTx }, { timeout })).rejects.toThrow(timeoutRefusal);
-      expect(unprovenTx.prove).not.toHaveBeenCalled();
+      await expect(provider.proveTx(handles.v9.Unproven(), { timeout })).rejects.toThrow(timeoutRefusal);
+      expect(prove).not.toHaveBeenCalled();
     });
 
     it('names the refusing factory and the provider that honours a timeout', async () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+      const provider = createProofProvider(inertProvingProvider);
 
-      const rejection = await provider
-        .proveTx({ version: 'v9', tx: createStubUnprovenTx(createStubUnboundTx()) }, { timeout: 5_000 })
-        .then(
-          () => undefined,
-          (error: unknown) => error
-        );
+      const rejection = await rejectionOf(provider.proveTx(handles.v9.Unproven(), { timeout: 5_000 }));
 
-      const { message } = rejection as Error;
-      expect(message).toContain('createProofProvider');
-      expect(message).toContain('httpClientProofProvider');
+      expect(String(rejection)).toContain('createProofProvider');
+      expect(String(rejection)).toContain('httpClientProofProvider');
     });
 
     it.each([
       ['carries no timeout', {}],
       ['has the timeout key present but undefined', { timeout: undefined }]
-    ])('proves a transaction when the config %s', async (_desc, config) => {
-      const unboundTx = createStubUnboundTx();
-      const unprovenTx = createStubUnprovenTx(unboundTx);
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+    ])('proves a transaction when the config %s', async (_label, config) => {
+      const provider = createProofProvider(inertProvingProvider);
 
-      const result = await provider.proveTx({ version: 'v9', tx: unprovenTx }, config);
+      const result = await provider.proveTx(handles.v9.Unproven(), config);
 
-      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
-    });
-  });
-
-  describe('v8 payload', () => {
-    it('rejects with its stable unsupported-payload code instead of proving anything', async () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const rejection = await provider
-        .proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) })
-        .then(
-          () => undefined,
-          (error: unknown) => error
-        );
-
-      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-      expect((rejection as Ledger8PayloadUnsupportedError).code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
-    });
-
-    it('names the method that received the payload so the caller can tell which call failed', async () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array() }).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
-      expect((rejection as Ledger8PayloadUnsupportedError).method).toBe('proveTx');
-    });
-
-    it('says the refusal is by design and names what does serve a v8 payload', async () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      // This message is what a developer reads at the point of failure, so it
-      // has to distinguish "this adapter will never serve v8" from "the
-      // framework cannot do it yet". The adapters' refusal is permanent: each
-      // lifts a v9-only implementation. Asserting the remediation too, because
-      // a message that only says no leaves the reader with nowhere to go.
-      const { message } = rejection as Error;
-      expect(message).toContain('by design');
-      expect(message).not.toContain('not yet supported');
-      expect(message).toContain('httpClientProofProvider');
-      expect(message).toContain("{ version: 'v9', tx }");
-      expect(message).not.toMatch(/\barm\b/);
-    });
-
-    it('records the payload size so a report of the rejection says what arrived', async () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3, 4]) }).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-
-      expect((rejection as Ledger8PayloadUnsupportedError).byteLength).toBe(4);
-    });
-
-    // Set equality rather than `toContain`: this adapter lifts a v9-only
-    // `ProvingProvider`, so a declaration listing anything else is a promise
-    // the refusals above prove it cannot keep.
-    it('declares exactly the current era, which is why the refusals above are permanent', () => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-
-      expect([...provider.supportedEras].sort()).toEqual(['v9']);
-    });
-  });
-
-  // The provider method types make an untagged payload unrepresentable, so these drive it
-  // the only way a real caller can: from JavaScript, or from a consumer built
-  // against a pre-5.0.0 midnight-js-types. This is the most likely runtime
-  // failure the 5.0.0 provider method change creates, so it gets a coded error rather
-  // than a bare TypeError three frames away.
-  describe('payload with no recognised version discriminant', () => {
-    const proveUntagged = (payload: unknown): Promise<unknown> => {
-      const provider = createProofProvider(stubProvingProvider, stubCostModel);
-      return provider.proveTx(payload as VersionedUnprovenTransaction).then(
-        () => undefined,
-        (error: unknown) => error
-      );
-    };
-
-    it.each([
-      ['a bare transaction, the pre-5.0.0 shape', { prove: () => undefined }, 'no version field'],
-      ['an unrecognised era tag', { version: 'v10', tx: {} }, "'v10'"],
-      ['a non-string version', { version: 9, tx: {} }, 'number'],
-      ['undefined', undefined, 'undefined'],
-      // Reported as 'null', not the `typeof null` wart 'object' — telling a
-      // developer their payload was an object with a bad version is the
-      // opposite of what happened.
-      ['null', null, 'null'],
-      ['a version string longer than the cap', { version: 'v'.repeat(80), tx: {} }, `'${'v'.repeat(32)}'… (80 chars)`]
-    ])('rejects %s with its stable untagged-payload code', async (_label, payload, received) => {
-      const rejection = await proveUntagged(payload);
-
-      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
-      expect((rejection as UntaggedPayloadError).code).toBe(PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD);
-      expect((rejection as UntaggedPayloadError).method).toBe('proveTx');
-      expect((rejection as UntaggedPayloadError).received).toBe(received);
-    });
-
-    it('never invokes prove on the payload it was handed', async () => {
-      const prove = vi.fn();
-
-      // The spy goes on the payload, not on `stubProvingProvider`.
-      // `createProofProvider` calls `tx.prove(provingProvider, costModel)` on
-      // the *narrowed* payload and never calls `provingProvider.prove` itself,
-      // so asserting on the latter would hold even with the `unwrapLedger9` call
-      // deleted. This spy is what actually runs if the narrowing is skipped.
-      await proveUntagged({ prove });
-
-      expect(prove).not.toHaveBeenCalled();
-    });
-
-    it('does not put the payload contents in the message', async () => {
-      const rejection = await proveUntagged({ version: 'v10', secret: 'do-not-log-me' });
-
-      expect((rejection as Error).message).not.toContain('do-not-log-me');
-      expect((rejection as Error).message).not.toContain('secret');
+      expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
     });
   });
 });

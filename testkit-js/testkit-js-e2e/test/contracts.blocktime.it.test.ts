@@ -114,7 +114,7 @@ describe('Block Time Contract Tests 1', () => {
       await sleep(4000);
       // Should fail because node time > futureTime
       const finalizedCallTx = await submitTx(providers, {
-        unprovenTx: { version: 'v9', tx: unprovenCallTx.private.unprovenTx },
+        unprovenTx: unprovenCallTx.private.unprovenTx,
         circuitId: unprovenCallTxOptions.circuitId
       });
       expect(finalizedCallTx.status).toEqual(FailEntirely);
@@ -144,7 +144,7 @@ describe('Block Time Contract Tests 1', () => {
       await sleep(3000);
       // Should still succeed because node time is still >= pastTime
       const finalizedCallTx = await submitTx(providers, {
-        unprovenTx: { version: 'v9', tx: unprovenCallTx.private.unprovenTx },
+        unprovenTx: unprovenCallTx.private.unprovenTx,
         circuitId: unprovenCallTxOptions.circuitId
       });
       expect(finalizedCallTx.status).toEqual(SucceedEntirely);
@@ -185,7 +185,7 @@ describe('Block Time Contract Tests 1', () => {
       // Delay so node time exceeds futureTime
       await sleep(4000);
       const finalizedCallTx = await submitTx(providers, {
-        unprovenTx: { version: 'v9', tx: unprovenCallTx.private.unprovenTx },
+        unprovenTx: unprovenCallTx.private.unprovenTx,
         circuitId: unprovenCallTxOptions.circuitId
       });
       expect(finalizedCallTx.status).toEqual(FailEntirely);
@@ -215,7 +215,7 @@ describe('Block Time Contract Tests 1', () => {
           const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
           await sleep(3000);
           const finalizedCallTx = await submitTx(providers, {
-            unprovenTx: { version: 'v9', tx: unprovenCallTx.private.unprovenTx },
+            unprovenTx: unprovenCallTx.private.unprovenTx,
             circuitId: unprovenCallTxOptions.circuitId
           });
           expect(finalizedCallTx.status).toEqual(FailEntirely);

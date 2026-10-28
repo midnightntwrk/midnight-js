@@ -25,7 +25,6 @@ import { submitLedger9Payload } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import {
   createMockCompiledContract,
-  createMockContractAddress,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -38,11 +37,9 @@ import {
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
 vi.mock('@midnight-ntwrk/midnight-js-protocol/compact-runtime');
-vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger');
 
 describe('submit-deploy-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockPrivateStateId: PrivateStateId;
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -52,7 +49,6 @@ describe('submit-deploy-tx', () => {
     vi.clearAllMocks();
 
     mockCompiledContract = createMockCompiledContract();
-    mockContractAddress = createMockContractAddress();
     mockSigningKey = createMockSigningKey();
     mockPrivateStateId = createMockPrivateStateId();
     mockProviders = createMockProviders();
@@ -81,8 +77,8 @@ describe('submit-deploy-tx', () => {
           unprovenTx: mockUnprovenDeployTxData.private.unprovenTx
         });
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
-          mockContractAddress,
-          mockSigningKey
+          mockUnprovenDeployTxData.public.contractAddress,
+          mockUnprovenDeployTxData.private.signingKey
         );
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(result).toEqual({
@@ -125,8 +121,8 @@ describe('submit-deploy-tx', () => {
 
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, initialPrivateState);
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
-          mockContractAddress,
-          mockSigningKey
+          mockUnprovenDeployTxData.public.contractAddress,
+          mockUnprovenDeployTxData.private.signingKey
         );
         expect(result).toEqual({
           era: CURRENT_LEDGER_VERSION,

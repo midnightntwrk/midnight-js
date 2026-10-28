@@ -52,10 +52,11 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * different ledger era from the one the flow submitted.
  *
  * The transaction methods and the read methods both carry two eras, but any ONE
- * flow through this package tags every outgoing payload with a single era and
- * cannot submit or report anything else. An answer in the other era therefore
- * means the provider re-tagged or converted the payload it was handed, or that
- * the flow is pointed at a network whose records belong to the other era.
+ * flow through this package hands every provider a transaction handle of a
+ * single era and cannot submit or report anything else. An answer in the other
+ * era therefore means the provider answered with a handle of an era it was not
+ * handed, or that the flow is pointed at a network whose records belong to the
+ * other era.
  *
  * {@link EraInvariantViolationError.expected} names the only era this flow can
  * accept back, and so which direction the violation went. For the current
@@ -67,9 +68,10 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * the record has to agree with.
  *
  * {@link EraInvariantViolationError.received} names the era that actually came
- * back, when the payload carried a readable one. A payload whose tag is
- * missing or unrecognised is a different fault and raises
- * {@link UntaggedPayloadError} instead.
+ * back. An answer that is not a transaction handle at all is a different
+ * fault and raises `InvalidTransactionHandleError` instead; a read-surface
+ * record whose `version` is missing or unrecognised raises
+ * `UnknownLedgerVersionError`.
  */
 export class EraInvariantViolationError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -102,12 +104,12 @@ export class EraInvariantViolationError extends MidnightJsError {
     readonly txId?: string
   ) {
     super(
-      `${method} returned a payload from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
+      `${method} returned a transaction from the '${received ?? 'other'}' ledger era, on a flow that can only ` +
         `accept '${expected}'${formatCircuitClause(circuitId) ?? ''}` +
         `${contractAddress === undefined ? '' : ` (contract '${contractAddress}')`}` +
         `${txId === undefined ? '' : ` (transaction '${txId}', already submitted)`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
-        `provider implementation re-tags the payload it was handed.`
+        `provider implementation answers in another era than the handle it was handed.`
     );
     this.name = 'EraInvariantViolationError';
   }
@@ -131,7 +133,7 @@ export type EraArtifactMismatchReason =
   | 'ledger9-artifact-on-ledger8-head'
   /** A v9 transaction handed to `submitTx`, on a network head that is still pre-fork. */
   | 'ledger9-transaction-on-ledger8-head'
-  /** v8 transaction bytes handed to `submitTx`, on a network head that has crossed the fork. */
+  /** A v8 transaction handed to `submitTx`, on a network head that has crossed the fork. */
   | 'ledger8-transaction-on-ledger9-head'
   /** An artifact set that does not declare which `compact-runtime` produced it. */
   | 'artifact-era-undeclared'
@@ -160,12 +162,12 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'ledger 8 (pre-fork) Compact toolchain until the network head has crossed the fork.',
   'ledger9-transaction-on-ledger8-head':
     'A v9 transaction was handed to submitTx, but the network head is still on ledger 8, ' +
-    'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
-    'until the network head has crossed the fork.',
+    'which cannot accept it. Nothing was proved. Submit a v8 transaction until the network head has ' +
+    'crossed the fork.',
   'ledger8-transaction-on-ledger9-head':
-    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
-    'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
-    'v9 ledger and submit it as { version: \'v9\', tx }.',
+    'A v8 transaction was handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'ledger era, which cannot read it. Nothing was proved. Compose the transaction again against the ' +
+    'v9 ledger and submit the v9 transaction.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
   // already emitted, not to produce something new.
   'artifact-era-undeclared':
@@ -495,8 +497,8 @@ export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
  * no own properties, and no further `cause` chain.
  *
  * This package's own coded errors are NOT wrapped: they carry no external
- * payload, and a caller narrowing on `Ledger8PayloadUnsupportedError` or
- * {@link EraInvariantViolationError} must keep seeing them.
+ * payload, and a caller narrowing on `ProviderEraUnsupportedError`,
+ * `InvalidTransactionHandleError` or {@link EraInvariantViolationError} must keep seeing them.
  *
  * @see {@link KeepStatePipeline} for what redaction removes and what is dropped.
  */
@@ -548,8 +550,8 @@ export interface SubmittedOperation {
   /**
    * The era the network head was on when this operation started.
    *
-   * One field, two uses, and they are the same fact: it decides which payload
-   * variant the transaction carried across the provider methods, and it is the `startEra` a
+   * One field, two uses, and they are the same fact: it is the era of the
+   * transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
   readonly head: LedgerVersion;
@@ -921,8 +923,9 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
   /**
    * The finalized record the chain reported, version-tagged.
    *
-   * @remarks Narrow on `record.version` before reading `record.tx`: the handle
-   * belongs to the ledger runtime the tag names.
+   * @remarks `record.tx` is a `FinalizedTx` in the era `record.version` names.
+   * Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
+   * narrowing on `record.version`.
    */
   abstract readonly record: VersionedFinalizedTxData;
 }
@@ -1433,7 +1436,7 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
  * checked first.
  *
  * Branch on `cause` for the underlying failure — an unreachable indexer, a
- * timeout, an untagged payload, an era violation. It is wrapped rather than
+ * timeout, a value that is not a transaction handle, an era violation. It is wrapped rather than
  * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
  * registered code all stay reachable.
  *

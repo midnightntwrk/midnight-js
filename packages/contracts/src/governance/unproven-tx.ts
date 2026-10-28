@@ -21,17 +21,15 @@ import type {
   ContractState,
   SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  Intent,
-  type MaintenanceUpdate,
-  type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { Intent, type MaintenanceUpdate } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   asContractAddress,
   asEffectOption,
+  LedgerTransaction,
   makeContractExecutableRuntime,
   type MidnightConfig,
   Transaction,
+  type UnprovenTx,
   type VerifierKey,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
@@ -41,14 +39,13 @@ import { intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 export const unprovenTxFromContractUpdates = async (
   updateAndSignFn: () => Promise<MaintenanceUpdate>,
   config: MidnightConfig
-): Promise<UnprovenTransaction> => {
+): Promise<UnprovenTx> => {
   const ttl = intentTtl(config);
   const { networkId } = config;
-  return Transaction.fromParts(
-    networkId,
-    undefined,
-    undefined,
-    Intent.new(ttl).addMaintenanceUpdate(await updateAndSignFn())
+  return LedgerTransaction.seal(
+    'v9',
+    'Unproven',
+    Transaction.fromParts(networkId, undefined, undefined, Intent.new(ttl).addMaintenanceUpdate(await updateAndSignFn()))
   );
 };
 
@@ -61,7 +58,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
   config: MidnightConfig
-): Promise<UnprovenTransaction> => {
+): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
@@ -88,7 +85,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
   config: MidnightConfig
-): Promise<UnprovenTransaction> => {
+): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
@@ -116,7 +113,7 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
   currentAuthority: SigningKey,
   coinPublicKey: CoinPublicKey,
   config: MidnightConfig
-): Promise<UnprovenTransaction> => {
+): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,

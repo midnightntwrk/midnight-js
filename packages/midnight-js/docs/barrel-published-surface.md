@@ -98,30 +98,33 @@ protocol errors reach a barrel consumer directly:
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
-| `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
+| `PayloadNotATransactionError` | `deserializeTransactionAtStage` (`./transaction`) | none; caught, not constructed |
 | `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure; `errors` — every failure when several arrived together |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
-remediation — `Ledger8InstanceMismatchError` builds its whole "run `yarn why`
-on these packages" advice out of `axis`. Reading it would have required a cast,
+remediation — `Ledger8RuntimeMissingError` names the failed chunk only on
+`subpath`. Reading it would have required a cast,
 which this repo does not accept. Publishing each class next to its code is what
 closes that.
 
 `PayloadNotATransactionError` is the one that does not come from the era
-pipeline: a proof provider raises it from `proveLedger8Transaction`, and it reaches
-application code as a `proveTx` rejection out of `contracts.deployContract` or
-`submitCallTx`. Its constructor is private and its only public member is
-`code`, so it is published purely so a consumer can `instanceof` it.
+pipeline: `deserializeTransactionAtStage` raises it when bytes are not a
+transaction of the requested era and stage. Its constructor is private and its
+public members are `code` and `category`, which `hasErrorCode` and
+`errorCategory` already read, so the class adds no field a consumer would
+otherwise miss. It is published so the barrel's class set matches its code set.
 
 The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
 a state that does not decode or does not re-encode to its source.
-`LEDGER8_INSTANCE_MISMATCH` and `MERKLE_NOT_REHASHED` have none: the
-construction-time instance guard and the Merkle-rehash walk were retired with
-the hand-maintained execution layer, and `packages/protocol/src/errors.ts` says
-so on both classes. They stay published because a consumer may still switch on
-the code. `UNKNOWN_LEDGER8_AXIS` is in the same position.
+`MERKLE_NOT_REHASHED` has none: the Merkle-rehash walk was retired with the
+hand-maintained execution layer, and `packages/protocol/src/errors.ts` says so
+on the class. It stays published because a consumer may still switch on the
+code. `UNKNOWN_LEDGER8_AXIS` is in the same position. `LEDGER8_INSTANCE_MISMATCH`
+and its class were removed: nothing raised them, and the WASM-instance fault
+they described is now reported by `ForeignLedgerTransactionError`, raised by
+`LedgerTransaction.seal` in `types`.
 
 ## The error base and the general errors
 

@@ -26,7 +26,6 @@ import {
   EnvironmentUnsupportedError,
   InvalidArgumentError,
   InvariantViolationError,
-  Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
   MaintenanceAuthorityMismatchError,
@@ -106,7 +105,6 @@ describe('protocol error classes', () => {
     ['InvariantViolationError', new InvariantViolationError('x')],
     ['UnknownProtocolVersionError', new UnknownProtocolVersionError(99, 'read', 'unknown')],
     ['Ledger8RuntimeMissingError', new Ledger8RuntimeMissingError('/v8', underlying)],
-    ['Ledger8InstanceMismatchError', new Ledger8InstanceMismatchError('onchain-runtime-v3')],
     ['DownConvertFailedError', new DownConvertFailedError('state down-convert', underlying)],
     ['MerkleNotRehashedError', new MerkleNotRehashedError(underlying)],
     ['ComposeFailedError', new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', underlying)],
@@ -154,9 +152,9 @@ describe('protocol error classes', () => {
 
     // Assert
     expect(error.message).toEqual(
-      `Refusing to prove a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
+      `Refusing to read a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
         'ledger transaction. Pass the bytes of a transaction produced by a sanctioned composition function; a contract ' +
-        'state, a Zswap offer or a proof preimage is not a transaction and cannot be proved.'
+        'state, a Zswap offer or a proof preimage is not a transaction.'
     );
   });
 

@@ -21,6 +21,7 @@ import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   exitResultOrError,
+  LedgerTransaction,
   makeContractExecutableRuntime,
   type MidnightConfig,
   type PrivateStateId,
@@ -151,7 +152,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
       encryptionPublicKey,
       options.additionalCoinEncPublicKeyMappings
     );
-    const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
+    const [contractAddress, initialContractState, ledgerTx] = createUnprovenLedgerDeployTx(
       contractState,
       zswapLocalState,
       resolver,
@@ -170,7 +171,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         signingKey,
         initialPrivateState: privateState,
         initialZswapState: zswapLocalState,
-        unprovenTx,
+        unprovenTx: LedgerTransaction.seal('v9', 'Unproven', ledgerTx),
         newCoins: zswapStateToNewCoins(coinPublicKey, zswapLocalState)
       }
     };

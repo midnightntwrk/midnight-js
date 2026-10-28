@@ -17,6 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import {
   FailEntirely,
   FailFallible,
+  LedgerTransaction,
   SegmentFail,
   SegmentSuccess,
   SucceedEntirely
@@ -28,6 +29,7 @@ import {
   correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
+  parseHexTransaction,
   toSegmentStatus,
   toSegmentStatusMap,
   toTxStatus,
@@ -45,7 +47,12 @@ import {
 } from '../errors';
 import type { TransactionResult } from '../gen/schema-types';
 import { extractRegularDeployTransaction } from '../mapping';
-import { LEDGER9_ERA_PROTOCOL_VERSION,mintLedger9ContractStateHex, mintLedger9LedgerParametersBytes } from './state-fixtures';
+import {
+  LEDGER9_ERA_PROTOCOL_VERSION,
+  mintLedger9ContractStateHex,
+  mintLedger9LedgerParametersBytes,
+  mintLedger9TransactionHex
+} from './state-fixtures';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -543,16 +550,20 @@ describe('deserialization adapter wiring (issue-816)', () => {
     }
   });
 
+  test('parseHexTransaction returns a finalized handle of the era it is given', async () => {
+    const hex = mintLedger9TransactionHex();
+
+    const handle = await parseHexTransaction('v9', hex);
+
+    expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
+    expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
+    expect(toHex(handle.serialize())).toBe(hex);
+  });
+
   test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexTransaction } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
-    let caught: unknown;
-    try {
-      parseHexTransaction(garbageHex);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await parseHexTransaction('v9', garbageHex).catch((e: unknown) => e);
 
     expect(isDeserializationError(caught)).toBe(true);
     if (isDeserializationError(caught)) {

@@ -348,3 +348,11 @@ only on a pre-fork head.
 
 The handle-and-bytes rule above is unchanged: `initialContractState` and
 `initialContractStateBytes` both stay, now under `deployTxData.public`.
+
+## Amendment — the retained call result carries a transaction handle (2026-10-26)
+
+Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
+`Ledger8CallResultPrivate` no longer publishes the composed transaction as bytes. It carries
+`unprovenTx: UnprovenTx`, a transaction handle: a v8 handle before the fork, a v9 handle after it.
+Every package from `types` up now speaks transaction handles in its public API. The rule for
+`LedgerEra` is unchanged: it still returns plain data, including the composed transaction's bytes.

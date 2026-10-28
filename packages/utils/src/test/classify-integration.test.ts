@@ -150,12 +150,12 @@ describe('integration: ledger source — ZswapChainState', () => {
 });
 
 describe('integration: ledger source — LedgerTransaction', () => {
-  it('garbage bytes → DeserializationError thrown', () => {
-    const err = catchDeserError(() => deserializeLedgerTransaction(new Uint8Array([0]), { caller }));
+  it('garbage bytes → DeserializationError thrown', async () => {
+    const caught = await deserializeLedgerTransaction('v9', new Uint8Array([0]), { caller }).catch((e: unknown) => e);
 
-    expect(err.context.source).toBe('ledger');
+    expect(isDeserializationError(caught)).toBe(true);
     // dataType pulled from WASM-reported class name 'Transaction' (per D9 override)
-    expect(err.context.dataType).toBe('Transaction');
+    expect(caught).toMatchObject({ context: { source: 'ledger', dataType: 'Transaction' } });
   });
 });
 

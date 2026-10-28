@@ -14,11 +14,12 @@
  */
 
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
+import { dispatch, type Route } from './internal/dispatch';
 import { readEraEntries } from './internal/read-era-entries';
-import type { VersionedFinalizedTransaction } from './wallet-provider';
+import type { FinalizedTx } from './ledger-transaction';
 
 /**
  * Interface for Midnight transaction submission logic. It could be implemented, e.g., by a wallet,
@@ -36,96 +37,78 @@ export interface MidnightProvider {
   /**
    * Submit a transaction to the network to be consensed upon.
    *
-   * @param tx The version-tagged finalized transaction to submit: `{ version: 'v9', tx }` for a
-   *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
-   * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
-   *          transaction identifier is era-independent.
-   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
-   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+   * @param tx The finalized transaction handle to submit.
+   * @returns The transaction identifier of the submitted transaction. A transaction identifier is
+   *          era-independent.
+   * @throws InvalidTransactionHandleError if `tx` is not a finalized handle of this package.
+   * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
    */
-  submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
+  submitTx(tx: FinalizedTx): Promise<TransactionId>;
 }
-
-/**
- * Submits a ledger 9 transaction, which is passed to `submitTx` as a live ledger
- * object. It fills the `currentEra` slot while ledger 9 is the current era.
- */
-export type Ledger9Submitter = (tx: FinalizedTransaction) => Promise<TransactionId>;
-
-/**
- * Submits a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
- * ledger 8), which is passed to `submitTx` as serialized
- * bytes.
- *
- * Unlike the other two transaction methods this one answers untagged, because a transaction
- * identifier is era-independent — the eras differ only in what they are handed.
- */
-export type RetainedEraSubmitter = (txBytes: Uint8Array) => Promise<TransactionId>;
 
 /**
  * The per-era handlers {@link createMidnightProviderFromHandlers} assembles a
- * {@link MidnightProvider} from.
+ * {@link MidnightProvider} from: one key per ledger era, a handler for an era
+ * the provider submits and `undefined` for one it does not.
+ *
+ * A handler takes an object of the ledger copy this framework loaded for its
+ * era. A handler that hands the transaction to another ledger copy serializes
+ * it on the way out.
  */
-export interface MidnightProviderHandlers {
-  /** Required: every submitter serves the current era. */
-  readonly currentEra: Ledger9Submitter;
-  /** Optional, one entry per retained era this submitter serves. */
-  readonly retainedEras?: RetainedEraEntries<RetainedEraSubmitter>;
-}
+export type MidnightProviderHandlers = {
+  readonly [E in LedgerVersion]: ((tx: LedgerTransactionTypes[E]['Finalized']) => Promise<TransactionId>) | undefined;
+};
 
 /**
- * Assembles a {@link MidnightProvider} from one handler per ledger era it serves.
+ * Assembles a {@link MidnightProvider} from one handler per ledger era.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
- * `supportedEras` is computed from the handlers supplied, and the tag never appears
- * in implementation code.
+ * `supportedEras` is computed from the handlers given, and each handle is routed
+ * to its own era's handler.
  *
- * `currentEra` is called with `handlers` as `this`; a retained-era handler is
- * called with no `this`.
+ * Every handler is called with `handlers` as `this`.
  *
- * @param handlers The current-era handler, and one for each retained era served.
- * @returns A {@link MidnightProvider} routing each submission to its era's handler.
- * @throws UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
- *         than `undefined`, is not a function. Raised at construction.
- * @throws InvalidArgumentError if `handlers` is not an object, or `retainedEras`
- *         is not a plain object keyed only by retained eras. Raised at construction.
+ * @param handlers One entry per ledger era.
+ * @returns A {@link MidnightProvider} routing each handle to its era's handler.
+ * @throws UnusableEraEntryError if an era entry is neither `undefined` nor a
+ *         function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, has no key for
+ *         a ledger era, or serves no era (every entry `undefined`). Raised at
+ *         construction.
  */
 export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
-  const { currentEra, retainedEras } = readEraEntries('submitTx', handlers, 'handler');
+  const served = readEraEntries('submitTx', handlers, 'handler');
+  const supportedEras = Object.freeze(LEDGER_VERSIONS.filter((era) => served[era] !== undefined));
+  const route: Route<'Finalized', [], Readonly<Record<LedgerVersion, TransactionId>>, TransactionId> = {
+    method: 'submitTx',
+    stage: 'Finalized',
+    handlers: served,
+    receiver: handlers,
+    supportedEras,
+    answer: (_era, txId) => txId
+  };
   return {
-    supportedEras: erasServedBy(retainedEras),
-
-    async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
-      const request = narrowToEra(tx, 'submitTx', retainedEras);
-      return request.era === CURRENT_LEDGER_VERSION
-        ? Reflect.apply(currentEra, handlers, [request.tx])
-        : Reflect.apply(request.handler, undefined, [request.txBytes]);
-    }
+    supportedEras,
+    submitTx: (tx) => dispatch(route, tx, [])
   };
 };
 
 /**
- * Lifts a v9-only submission function into the version-tagged
- * {@link MidnightProvider} interface.
+ * Lifts a v9-only submission function into the {@link MidnightProvider}
+ * interface, unwrapping each handle on the way in.
  *
- * The counterpart to `createWalletProvider`, and worth using for the same
- * reason: it keeps the `version` tag out of implementation code.
- *
- * The returned provider serves v9 payloads only — `supportedEras` says so — and
- * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
- * `UntaggedPayloadError`. To serve a retained era as well, use
+ * The returned provider serves v9 only — `supportedEras` says so — and refuses
+ * a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use
  * {@link createMidnightProviderFromHandlers}.
  *
  * @param submitTx The v9-only submission function to wrap.
- * @returns A {@link MidnightProvider} that narrows inbound payloads.
- * @see {@link ProviderEraDeclarations} for the compiler error this avoids.
+ * @returns A {@link MidnightProvider} serving v9.
  *
  * @example
  * ```typescript
- * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+ * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
  * ```
  */
 export const createMidnightProvider = (
   submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>
-): MidnightProvider => createMidnightProviderFromHandlers({ currentEra: submitTx });
+): MidnightProvider => createMidnightProviderFromHandlers({ v8: undefined, v9: submitTx });

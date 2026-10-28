@@ -16,7 +16,6 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
@@ -32,7 +31,8 @@ import {
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
-  createMockSigningKey
+  createMockSigningKey,
+  createMockUnprovenTx
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({
@@ -71,7 +71,7 @@ describe('deployContract', () => {
       signingKey: createMockSigningKey(),
       initialPrivateState,
       initialZswapState: {} as ZswapLocalState,
-      unprovenTx: {} as UnprovenTransaction,
+      unprovenTx: createMockUnprovenTx(),
       newCoins: []
     }
   });

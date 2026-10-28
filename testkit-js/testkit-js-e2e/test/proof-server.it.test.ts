@@ -32,7 +32,12 @@ import {
   WellFormedStrictness,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type ProofProvider, type ProveTxConfig, type UnboundTransaction, unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
+import {
+  LedgerTransaction,
+  type ProofProvider,
+  type ProveTxConfig,
+  type UnboundTransaction
+} from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -61,14 +66,15 @@ describe('Proof server integration', () => {
   let unprovenCallTx: UnprovenTransaction;
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
-  // `proveTx` carries a version-tagged payload in both
-  // directions. This suite only ever sends v9 transactions, so it wraps the
-  // request and unwraps the v9 response once here, keeping every assertion
-  // below written against the plain ledger transaction. `unwrapLedger9` is the
-  // framework's own narrowing helper, so this reads the way a consumer's code
-  // should.
+  // `proveTx` carries a transaction handle in both directions. This suite only
+  // ever sends v9 transactions, so it seals the request and unwraps the v9
+  // response once here, keeping every assertion below written against the
+  // plain ledger transaction.
   const proveLedger9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<UnboundTransaction> =>
-    unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }, config), 'proveTx');
+    LedgerTransaction.unwrap(
+      await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config),
+      'v9'
+    );
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -92,8 +98,8 @@ describe('Proof server integration', () => {
       encryptionPublicKey,
       MIDNIGHT_CONFIG
     );
-    unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx!;
-    unprovenCallTx = (await createUnprovenCallTxFromInitialStates(
+    unprovenDeployTx = LedgerTransaction.unwrap(unprovenDeployTxResult.private.unprovenTx, 'v9');
+    const unprovenCallTxResult = await createUnprovenCallTxFromInitialStates(
       zkConfigProvider,
       {
         compiledContract: api.CompiledCounterContract,
@@ -107,7 +113,8 @@ describe('Proof server integration', () => {
         config: MIDNIGHT_CONFIG
       },
       encryptionPublicKey
-    )).private.unprovenTx;
+    );
+    unprovenCallTx = LedgerTransaction.unwrap(unprovenCallTxResult.private.unprovenTx, 'v9');
   });
 
   afterAll(async () => {

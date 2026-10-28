@@ -14,7 +14,7 @@
  */
 
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { deployContract } from '../deploy-contract';
@@ -28,7 +28,8 @@ import {
   createMockEncryptionPublicKey,
   createMockFinalizedTxData,
   createMockProviders,
-  createMockSigningKey
+  createMockSigningKey,
+  createMockUnprovenTx
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({ submitDeployTx: vi.fn() }));
@@ -56,7 +57,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
         signingKey: createMockSigningKey(),
         initialPrivateState: undefined,
         initialZswapState: {} as ZswapLocalState,
-        unprovenTx: {} as UnprovenTransaction,
+        unprovenTx: createMockUnprovenTx(),
         newCoins: []
       }
     };

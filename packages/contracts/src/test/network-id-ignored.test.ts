@@ -22,11 +22,12 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction, type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { afterEach, expect, it } from 'vitest';
 
 import { unprovenTxFromContractUpdates } from '../governance/unproven-tx';
 import { createUnprovenLedgerDeployTx } from '../internal/utils';
+import { networkIdOf } from './test-mocks';
 
 const CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 60 };
 
@@ -43,7 +44,14 @@ const builders: [string, () => Promise<UnprovenTransaction>][] = [
   ],
   [
     'governance',
-    () => unprovenTxFromContractUpdates(() => Promise.resolve(new MaintenanceUpdate(sampleContractAddress(), [], 1n)), CONFIG)
+    async () =>
+      LedgerTransaction.unwrap(
+        await unprovenTxFromContractUpdates(
+          () => Promise.resolve(new MaintenanceUpdate(sampleContractAddress(), [], 1n)),
+          CONFIG
+        ),
+        'v9'
+      )
   ]
 ];
 
@@ -56,5 +64,5 @@ it.each(builders)('builds a %s transaction for config.networkId and ignores a le
 
   const tx = await build();
 
-  expect(/network_id: "([^"]*)"/.exec(tx.toString(false))?.[1]).toBe('undeployed');
+  expect(networkIdOf(tx)).toBe('undeployed');
 });

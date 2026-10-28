@@ -17,7 +17,7 @@ import path from 'node:path';
 
 import { submitTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
@@ -62,15 +62,15 @@ describe('submitTx on a pre-fork (ledger v8) network', () => {
   }, VERY_SLOW_TEST_TIMEOUT);
 
   test(
-    'proves, balances and submits v8 transaction bytes, and reads back a v8 record',
+    'proves, balances and submits a v8 transaction, and reads back a v8 record',
     async () => {
       // Arrange.
       const providers = initializeMidnightProviders(wallet, environmentConfiguration, new NoCircuitConfiguration());
       const v8 = await loadLedger8Protocol();
-      const txBytes = v8.Transaction.fromParts(providers.config.networkId).serialize();
+      const unprovenTx = LedgerTransaction.seal('v8', 'Unproven', v8.Transaction.fromParts(providers.config.networkId));
 
       // Act.
-      const record = await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
+      const record = await submitTx(providers, { unprovenTx });
 
       // Assert.
       expect({ version: record.version, status: record.status }).toEqual({ version: 'v8', status: SucceedEntirely });
