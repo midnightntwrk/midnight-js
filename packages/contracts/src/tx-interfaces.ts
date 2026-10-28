@@ -47,7 +47,41 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
 };
 
 /**
- * Creates a {@link CallTxOptions} object from various data.
+ * Builds the retained-era call options for one circuit.
+ *
+ * `args` is omitted entirely for a circuit that takes none, because
+ * {@link Ledger8CallTxOptionsBase} declares no such member for it — the same
+ * shape the caller would hand `submitCallTx` directly.
+ */
+const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  compiledContract: C,
+  circuitId: K,
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined,
+  additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
+  args: Ledger8CircuitParameters<C, K>
+): Ledger8CallTxOptions<C, K> => {
+  const target = {
+    compiledContract,
+    contractAddress,
+    circuitId,
+    ...(additionalCoinEncPublicKeyMappings === undefined ? {} : { additionalCoinEncPublicKeyMappings }),
+    // Omitted rather than passed as `undefined`: a named id the provider holds
+    // nothing under is refused downstream, and that refusal has to keep telling
+    // a caller who named one apart from a caller who named none.
+    ...(privateStateId === undefined ? {} : { privateStateId })
+  };
+  return (args.length === 0 ? target : { ...target, args }) as Ledger8CallTxOptions<C, K>;
+};
+
+/**
+ * Creates the options `submitCallTx` takes to call one circuit: a {@link CallTxOptions} for a
+ * ledger 9 `CompiledContract`, or the retained era's `Ledger8.CallTxOptions` for a contract the
+ * retained Compact toolchain produced.
+ *
+ * Both eras take the same parameters in the same order. `args` is left out of the options for a
+ * circuit that takes no arguments, and `privateStateId` for a contract that carries no private
+ * state.
  *
  * `args` carries the circuit's real parameter tuple, indexed at `PCK` -- including the branded id
  * `getProvableCircuitIds()` hands back, which `Contract.CircuitParameters` unbrands itself.
@@ -56,15 +90,52 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
  * NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
  * id the contract does not declare; the brand plays no part in it, and a plain unbranded literal
  * is accepted here.
+ *
+ * @param compiledContract The contract the circuit belongs to.
+ * @param circuitId The circuit to call.
+ * @param contractAddress The ledger address of the contract.
+ * @param privateStateId Where to read and store the contract's private state,
+ * or `undefined` for a contract that carries none.
+ * @param additionalCoinEncPublicKeyMappings Encryption keys for shielded coins the circuit pays
+ * to a recipient other than the calling wallet, or `undefined` for none.
+ * @param args The circuit's own arguments.
+ * @throws EraArtifactMismatchError If `compiledContract` is neither a ledger 8 contract nor a
+ * ledger 9 `CompiledContract`, including a ledger 9 contract that is not wrapped in one.
  */
-export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+export function createCallTxOptions<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  compiledContract: C,
+  circuitId: K,
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined,
+  additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
+  args: Ledger8CircuitParameters<C, K>
+): Ledger8CallTxOptions<C, K>;
+export function createCallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
   args: Contract.CircuitParameters<C, PCK>
-): CallTxOptions<C, PCK> => {
+): CallTxOptions<C, PCK>;
+export function createCallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  circuitId: PCK,
+  contractAddress: ContractAddress,
+  privateStateId: PrivateStateId | undefined,
+  additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
+  args: Contract.CircuitParameters<C, PCK> | Ledger8CircuitParameters<Ledger8Contract, string>
+): CallTxOptions<C, PCK> | Ledger8CallTxOptions<Ledger8Contract, string> {
+  if (hasLedger8ContractShape(compiledContract)) {
+    return createLedger8CallTxOptions(
+      compiledContract,
+      circuitId,
+      contractAddress,
+      privateStateId,
+      additionalCoinEncPublicKeyMappings,
+      args as Ledger8CircuitParameters<Ledger8Contract, string>
+    );
+  }
   const callOptionsBase = {
     additionalCoinEncPublicKeyMappings,
     compiledContract,
@@ -74,33 +145,7 @@ export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract
   const callTxOptionsBase = args.length !== 0 ? { ...callOptionsBase, args } : callOptionsBase;
   const callTxOptions = privateStateId ? { ...callTxOptionsBase, privateStateId } : callTxOptionsBase;
   return callTxOptions as CallTxOptions<C, PCK>;
-};
-
-/**
- * Builds the retained-era call options for one circuit.
- *
- * `args` is omitted entirely for a circuit that takes none, because
- * {@link Ledger8CallTxOptionsBase} declares no such member for it — the same
- * shape the caller would hand `submitCallTx` directly.
- */
-const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
-  compiledContract: C,
-  contractAddress: ContractAddress,
-  circuitId: K,
-  args: Ledger8CircuitParameters<C, K>,
-  privateStateId: PrivateStateId | undefined
-): Ledger8CallTxOptions<C, K> => {
-  const target = {
-    compiledContract,
-    contractAddress,
-    circuitId,
-    // Omitted rather than passed as `undefined`: a named id the provider holds
-    // nothing under is refused downstream, and that refusal has to keep telling
-    // a caller who named one apart from a caller who named none.
-    ...(privateStateId === undefined ? {} : { privateStateId })
-  };
-  return (args.length === 0 ? target : { ...target, args }) as Ledger8CallTxOptions<C, K>;
-};
+}
 
 /**
  * Creates a circuit call transaction interface for a RETAINED-ERA contract.
@@ -131,7 +176,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
       [circuitId]: (...args: Ledger8CircuitParameters<C, typeof circuitId>) =>
         submitCallTx(
           providers,
-          createLedger8CallTxOptions(compiledContract, contractAddress, circuitId, args, privateStateId)
+          createLedger8CallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, undefined, args)
         )
     }),
     {}

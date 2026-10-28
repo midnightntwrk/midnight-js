@@ -21,6 +21,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type { CallOptionsWithArguments, CallResult } from '../../call';
 import type { ContractProviders } from '../../contract-providers';
+import type { Ledger8CallTxOptions } from '../../ledger8-contract';
 import { submitCallTx } from '../../submit-call-tx';
 import type { TransactionContext } from '../../transaction';
 import { type CircuitCallTxInterface, createCallTxOptions, createCircuitCallTxInterface } from '../../tx-interfaces';
@@ -94,21 +95,53 @@ declare const brandedCircuitId: ReceiveCoinBrandedId;
 // published entry point a consumer actually calls: were its `args` parameter to widen while the
 // return type kept the real tuple, it would accept any argument list and hand back a value
 // TypeScript believed was checked.
+//
+// `CoinReceiver016Contract` is a ledger 8 artifact type, so it also fits the ledger 8 overload.
+// `Parameters` reads the last overload, the ledger 9 one, and a call that matches no overload is
+// reported at the call itself, not at the argument that failed.
 describe('createCallTxOptions', () => {
   it('exposes the real tuple and rejects a wrongly-typed argument list for a branded id', () => {
-    expectTypeOf(createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>)
-      .parameter(5)
-      .toEqualTypeOf<[CoinReceiver016Coin]>();
+    expectTypeOf<
+      Parameters<typeof createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>>[5]
+    >().toEqualTypeOf<[CoinReceiver016Coin]>();
 
+    // @ts-expect-error -- a branded id must reject a wrongly-typed argument list, not accept unknown[]
     createCallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>(
       compiledContract,
       brandedCircuitId,
       contractAddress,
       undefined,
       undefined,
-      // @ts-expect-error -- a branded id must reject a wrongly-typed argument list, not accept unknown[]
       [1, 2, 3]
     );
+  });
+});
+
+declare const counter016Contract: Counter016Contract;
+declare const coinReceiver016Contract: CoinReceiver016Contract;
+declare const coin016: CoinReceiver016Coin;
+
+describe('createCallTxOptions for a ledger 8 contract', () => {
+  it('returns ledger 8 options for a circuit without arguments', () => {
+    expectTypeOf(
+      createCallTxOptions(counter016Contract, 'increment', contractAddress, undefined, undefined, [])
+    ).toEqualTypeOf<Ledger8CallTxOptions<Counter016Contract, 'increment'>>();
+  });
+
+  it("returns ledger 8 options carrying the circuit's real argument tuple", () => {
+    expectTypeOf(
+      createCallTxOptions(coinReceiver016Contract, 'receive_coin', contractAddress, undefined, undefined, [coin016])
+    ).toEqualTypeOf<Ledger8CallTxOptions<CoinReceiver016Contract, 'receive_coin'>>();
+  });
+
+  it('refuses a circuit id the ledger 8 contract does not declare', () => {
+    // @ts-expect-error - `decrement` is not a circuit of the counter contract
+    createCallTxOptions(counter016Contract, 'decrement', contractAddress, undefined, undefined, []);
+  });
+
+  it('refuses a wrongly-typed argument list', () => {
+    // @ts-expect-error - `receive_coin` takes one coin, not numbers
+    createCallTxOptions(coinReceiver016Contract, 'receive_coin', contractAddress, undefined, undefined, [1, 2, 3]);
   });
 });
 
