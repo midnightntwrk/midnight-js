@@ -265,10 +265,10 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 ```ts
 // Thrown when a provider or the read surface answers in a ledger era the flow
 // cannot accept. `expected` is the era it can accept -- for the current era's
-// flows that is 'v9'; the retained era's finalizing path passes the network
-// head, because a retained-era call is recorded by whichever ledger the head is
-// on. `received` is the era that actually came back. A value that is not a
-// handle raises InvalidTransactionHandleError instead.
+// flows that is 'v9'; the retained era's finalizing path passes the network's
+// current ledger version, because a retained-era call is recorded by whichever
+// ledger the network is on. `received` is the era that actually came back. A
+// value that is not a handle raises InvalidTransactionHandleError instead.
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
   readonly method: ProviderMethod; // from midnight-js-types
@@ -279,7 +279,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
+`submitTx` returns `VersionedFinalizedTxData`, tagged with the network's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 
@@ -383,7 +383,7 @@ export namespace Ledger8 {
 }
 ```
 
-`StaleHeadOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
+`SubmittedOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
 
 - `Ledger8Engine.composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>`, with
   the `Ledger8MaintenanceRequest` and `Ledger8MaintenanceUpdateRequest` types;

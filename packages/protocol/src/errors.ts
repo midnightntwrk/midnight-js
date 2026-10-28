@@ -28,15 +28,13 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
   UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
   LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
-  DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
-  MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
+  STATE_CONVERSION_FAILED: 'MIDNIGHT_JS_P_STATE_CONVERSION_FAILED',
   COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
   COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
   STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
-  UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
   PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
   CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
   MAINTENANCE_AUTHORITY_MISMATCH: 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH'
@@ -81,15 +79,13 @@ export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, Midni
   [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING]: ENVIRONMENT,
-  [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED]: INTEGRITY,
-  [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED]: INTERNAL,
+  [PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED]: INTEGRITY,
   [PROTOCOL_ERROR_CODES.COMPOSE_FAILED]: USAGE,
   [PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID]: USAGE,
   [PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED]: INTEGRITY,
   [PROTOCOL_ERROR_CODES.STATE_INCONSISTENT]: INTEGRITY,
   [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
-  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS]: INTERNAL,
   [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
   [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED,
   [PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH]: USAGE
@@ -158,7 +154,7 @@ export class InvariantViolationError extends MidnightJsError {
  * Which call path asked for a ledger version:
  * - `'read'` — the version was taken off an existing record.
  * - `'construct'` — the version was chosen to build something new against the
- *   network's current head.
+ *   network's latest block.
  */
 export type VersionResolutionPath = 'read' | 'construct';
 
@@ -173,7 +169,7 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
 
 /**
  * Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
- * `networkHeadVersion`) when a raw `protocolVersion` integer cannot be
+ * `latestNetworkLedgerVersion`) when a raw `protocolVersion` integer cannot be
  * resolved to a `LedgerVersion`. Those live in `./version`, which imports this
  * module -- the dependency stays one-way, so they are named here rather than
  * linked.
@@ -265,101 +261,47 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
 }
 
 /**
- * Which physical-copy axis a dual-instantiation was detected on.
+ * Which step a {@link StateConversionFailedError} came from. A closed union,
+ * so a consumer can `switch` on `stage` exhaustively.
  *
- * `'onchain-runtime-v3'` is the only member this framework version names.
- *
- * Nothing in this package checks this axis at run time; the invariant is held
- * at install time, by `src/test/single-instance.test.ts`. The type stays
- * because {@link UnknownLedger8AxisError} is defined against it.
- *
- * @see {@link DualInstantiationGuard}
- */
-export type Ledger8InstanceAxis = 'onchain-runtime-v3';
-
-/**
- * Which step of the down-convert pipeline a {@link DownConvertFailedError}
- * came from. A closed union, so a consumer can `switch` on `stage`
- * exhaustively.
- *
- * `'state down-convert'` is the structural round trip `lib/v8/executable.ts`
- * runs before a circuit executes; the other two are the envelope reads in
- * `lib/era/envelope.ts`.
+ * `'state conversion'` is the structural round trip `lib/v8/executable.ts`
+ * runs before a circuit executes; the other two decode a serialized contract state
+ * written by that ledger version, in `lib/era/envelope.ts`.
  *
  * @see {@link FailClosedDecoding}
  */
-export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
+export type StateConversionStage = 'v8 state read' | 'v9 state read' | 'state conversion';
 
 /**
- * Thrown when a raw contract-state envelope, or an already-extracted
- * `EncodedStateValue`, cannot be turned into an executable pre-fork state.
- * Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`) and by
- * `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a state
- * that decodes but does not re-encode to the bytes it came from.
+ * Thrown when a serialized contract state, or an already-extracted
+ * `EncodedStateValue`, cannot be turned into a state a circuit can execute
+ * against. Raised by `extractLedger9EncodedStateValue` (`lib/era/envelope.ts`)
+ * and by `decodeExecutableStateValue` (`lib/v8/executable.ts`), which refuses a
+ * state that decodes but does not re-encode to the bytes it came from.
  *
  * Renders no raw hex and no decoded state contents — only the stage name and
  * the wrapped `cause`.
  *
- * @param stage Which step failed — see {@link DownConvertStage}.
+ * @param stage Which step failed — see {@link StateConversionStage}.
  * @param cause The runtime's own failure, preserved unchanged. It is what
  *   distinguishes a tag mismatch from truncated, trailing, or empty input.
  * @see {@link FailClosedDecoding}
  */
-export class DownConvertFailedError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED];
+export class StateConversionFailedError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED];
 
   constructor(
-    readonly stage: DownConvertStage,
+    readonly stage: StateConversionStage,
     cause: unknown
   ) {
     super(
-      `Failed to down-convert a contract-state for execution during ${stage}. Read the wrapped cause for what ` +
-        'the runtime actually reported; it distinguishes a tag mismatch (an envelope tagged for a different ' +
-        'ledger version than the one requested) from truncated, trailing, or empty input bytes.',
+      `Failed to convert a contract state into one a circuit can execute against, during ${stage}. Read the ` +
+        'wrapped cause for what the runtime actually reported; it distinguishes a version tag for a different ' +
+        'ledger version than the one requested from truncated, trailing, or empty input bytes.',
       { cause }
     );
-    this.name = 'DownConvertFailedError';
-  }
-}
-
-/**
- * Raised when a bounded Merkle tree's root is read before the tree has been
- * rehashed.
- *
- * NOTHING RAISES THIS ANY MORE: the walk it served
- * (`assertMerkleTreesRehashed`, `lib/v8/down-convert.ts`) was removed with the
- * hand-maintained execution layer, and the condition it named cannot reach the
- * code that replaced it. Execution now takes an already-encoded
- * `EncodedStateValue`, and a tree's rehash state does not survive that
- * encoding: a never-rehashed tree and a rehashed one encode IDENTICALLY, and
- * decoding either yields the same root. Being un-rehashed is a property of a
- * live in-memory handle only, so there is nothing left for a guard on this
- * side to refuse. Measured against the pinned runtime, not inferred.
- *
- * Kept on the published surface, with its code, rather than removed from a
- * consumer's error taxonomy as a side effect of an internal refactor.
- *
- * The remediation was always the caller's: call `rehash()` on the tree before
- * executing against it. Nothing here repairs the tree.
- *
- * @param cause The runtime's own failure, when reading the root threw. Absent
- *   when `root()` returned nothing instead of throwing.
- * @see {@link FailClosedDecoding}
- * @see {@link RetainedEraExecution}
- */
-export class MerkleNotRehashedError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED];
-
-  constructor(cause?: unknown) {
-    super(
-      'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means the ' +
-        'tree was built or updated in memory and never rehashed — call rehash() on it before executing ' +
-        'against it.',
-      { cause }
-    );
-    this.name = 'MerkleNotRehashedError';
+    this.name = 'StateConversionFailedError';
   }
 }
 
@@ -614,7 +556,7 @@ export class ComposeFailedError extends MidnightJsError {
 /**
  * Which option handed to a composition leg was unusable:
  * - `'contractStateBytes'` — the state could not be bridged into the target
- *   ledger era (its serialized envelope was rejected by the era's decoder).
+ *   ledger era (the era's decoder rejected its bytes).
  * - `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
  *   rejected by the target era's decoder.
  * - `'ledgerParametersBytes'` — the supplied ledger parameters could not be
@@ -667,7 +609,7 @@ export type ComposeOption =
  *
  * These are the well-formedness checks the ledger itself does not make.
  *
- * Like {@link DownConvertFailedError}, this class renders no input contents of
+ * Like {@link StateConversionFailedError}, this class renders no input contents of
  * its own.
  *
  * @param version The ledger era the option was being used against.
@@ -697,8 +639,8 @@ export class ComposeOptionError extends MidnightJsError {
     contractStateBytes: (version) =>
       `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
-      'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
-      'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
+      'version tag for a different ledger era from truncated or empty input bytes. Pass the contract ' +
+      'state the era it targets produced, not one already converted to another era or otherwise re-tagged.',
     ledgerParametersBytes: (version) =>
       `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
       `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
@@ -810,14 +752,14 @@ export class MaintenanceAuthorityMismatchError extends MidnightJsError {
 }
 
 /**
- * Thrown when a raw, serialized contract-state envelope could not be read by
+ * Thrown when a raw, serialized contract state could not be read by
  * the ledger era it was requested for. Raised by both of the facade's read
  * paths, `extractState` and `decodeContractState`
  * (`lib/shared/contract-state.ts`), so a caller writes one handler for both.
  *
  * Renders no hex and no byte dump of its own.
  *
- * @param version The era whose decoder rejected the envelope.
+ * @param version The era whose decoder rejected the bytes.
  * @param cause The decoder's own diagnosis, preserved unchanged. It is what
  *   distinguishes a tag mismatch from truncated, trailing or empty input.
  * @see {@link FailClosedDecoding}
@@ -832,7 +774,7 @@ export class StateDecodeFailedError extends MidnightJsError {
   ) {
     super(
       `Failed to decode a contract state for the ${version} ledger era. Read the wrapped cause for what the ` +
-        'decoder reported; it distinguishes an envelope tagged for a different ledger era from truncated, ' +
+        'decoder reported; it distinguishes a version tag for a different ledger era from truncated, ' +
         'trailing, or empty input bytes. Resolve the era the state was written by — protocolVersionToLedger ' +
         'maps a raw protocolVersion integer onto it — and decode it as that era.',
       { cause }
@@ -843,7 +785,7 @@ export class StateDecodeFailedError extends MidnightJsError {
 
 /**
  * Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
- * era's decoder read the envelope but the state it produced is internally
+ * era's decoder read the bytes but the state it produced is internally
  * inconsistent: it declares an entry point it resolves no operation for, holds
  * a verifier key that will not hash, or resolves no usable balance.
  *
@@ -882,13 +824,13 @@ export class StateInconsistentError extends MidnightJsError {
  * binding the decoder needs is absent from it.
  *
  * `downConvertForExecution` and the shared-instance guard used to raise it too;
- * both are gone with the hand-maintained execution layer, so the envelope
+ * both are gone with the hand-maintained execution layer, so the contract-state
  * decoder is now its only source.
  *
  * Nothing is wrong with the caller's input here. Distinct from
  * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
- * load at all, and from {@link DownConvertFailedError}, which reports an
- * envelope or state that could not be turned into an executable pre-fork
+ * load at all, and from {@link StateConversionFailedError}, which reports a
+ * serialized state that could not be turned into an executable pre-fork
  * state.
  *
  * @param missingMember Which binding was absent. One of this module's own
@@ -902,40 +844,14 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
 
   constructor(readonly missingMember: string) {
     super(
-      'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
+      'The ledger 8 runtime passed in to decode a ledger 8 contract state cannot be used: the binding it ' +
+        'needs is missing. ' +
         'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
         'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +
         'loadLedger8Protocol() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
         'separate WASM instance. Read `missingMember` on this error for the absent member.'
     );
     this.name = 'Ledger8RuntimeInvalidError';
-  }
-}
-
-/**
- * Raised when a shared-instance guard is handed an `axis` that is not a member
- * of {@link Ledger8InstanceAxis}.
- *
- * NOTHING RAISES THIS ANY MORE: the guard it served
- * (`lib/v8/instance-guard.ts`) was removed with the hand-maintained execution
- * layer — see {@link Ledger8InstanceAxis}. It is kept on the published surface,
- * with its code, rather than removed from a consumer's error taxonomy as a side
- * effect of an internal refactor.
- *
- * @param requestedAxis The offending value that was passed. Carried for
- *   programmatic use only; it is deliberately kept out of the message.
- * @see {@link DualInstantiationGuard}
- */
-export class UnknownLedger8AxisError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS];
-
-  constructor(readonly requestedAxis: string) {
-    super(
-      'Unknown ledger-8 instance axis requested for the shared-instance guard. The only axis this framework ' +
-        'version checks is onchain-runtime-v3; read `requestedAxis` on this error for the value that was passed.'
-    );
-    this.name = 'UnknownLedger8AxisError';
   }
 }
 

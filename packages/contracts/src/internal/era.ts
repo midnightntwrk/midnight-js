@@ -34,8 +34,8 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  contractStateEnvelopeVersion,
   type Ledger9Variant,
+  ledgerVersionOfContractState,
   UnrecognisedEraTagError,
   ZkArtifactContractInfoError
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -43,13 +43,13 @@ import {
 import {
   EraArtifactMismatchError,
   EraInvariantViolationError,
-  HeadReadFailedError,
-  HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8ContractStateUnsupportedError,
   Ledger8DeployOnLedger9Error,
   Ledger8MaintenanceOnLedger9Error,
-  type StaleHeadOperationKind} from '../errors';
+  NetworkVersionReadFailedError,
+  NetworkVersionStateMismatchError,
+  type SubmittedOperationKind} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
@@ -559,7 +559,7 @@ export const acquireHeadEra = async (reading: HeadEraReading): Promise<ResolvedO
  * @see {@link EraDispatch} for both rules and what they cost if broken.
  *
  * @param pdp The read surface to ask for the network head.
- * @param logger The optional logger the head-resolution breadcrumb is written to.
+ * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The head era, the integer it was resolved from, and the era facade bound to it.
  * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer
  * cannot be placed on the era timeline. A rejection from the provider propagates unchanged.
@@ -654,7 +654,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
  * @param kind Whether this operation deploys a contract, calls one already deployed, or maintains
  * one already deployed. Anything that is not a call or a maintenance update is treated as a deploy,
  * which is a refusing side.
- * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-head'` for a
+ * @throws EraArtifactMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a
  * current-era artifact on a pre-fork head.
  * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
  * @throws Ledger8MaintenanceOnLedger9Error for a retained-era maintenance update on a post-fork head.
@@ -666,7 +666,7 @@ export const ERA_PAIRING: EraPairingTable = pairingTable({
 export const assertEraCompatible = (
   pipeline: LedgerVersion,
   head: LedgerVersion,
-  kind: StaleHeadOperationKind
+  kind: SubmittedOperationKind
 ): void => {
   // Defence in depth, not a live boundary: both call sites pass literals today
   // (`internal/ledger8-entry.ts`) and this module is not reachable from outside the package. The
@@ -709,7 +709,7 @@ export const assertEraCompatible = (
       }
       throw new Ledger8DeployOnLedger9Error();
     case 'artifact-newer-than-head':
-      throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-head');
+      throw new EraArtifactMismatchError('ledger9-artifact-on-ledger8-network');
     default: {
       const unhandled: never = verdict;
       throw new UnknownLedgerVersionError(String(unhandled));
@@ -744,7 +744,7 @@ export const assertEraCompatible = (
  * `RawContractState.version`: the decoder chosen below is chosen for these exact bytes, and a
  * provider outside this framework may tag a record wrongly.
  *
- * Do not declare the tag-to-era mapping here — it lives once, as `contractStateEnvelopeVersion` in
+ * Do not declare the tag-to-era mapping here — it lives once, as `ledgerVersionOfContractState` in
  * `@midnight-ntwrk/midnight-js-utils`.
  *
  * @see {@link EraDispatch} for what each step buys and what breaks if it moves.
@@ -760,9 +760,9 @@ export const assertEraCompatible = (
  * @returns The era whose decoder owns these bytes: `'v8'` for a retained envelope, `'v9'` for a
  * current-era one.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
- * @throws HeadReadFailedError, carrying the transport failure on `cause`, if the fresh head read rejects — so the
+ * @throws NetworkVersionReadFailedError, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
- * @throws HeadStateEraMismatchError if a fresh head read agrees with the state's era.
+ * @throws NetworkVersionStateMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
  */
 export const resolveContractStateEra = async (
@@ -771,13 +771,13 @@ export const resolveContractStateEra = async (
   pdp: HeadVersionSource,
   logger?: BreadcrumbSink
 ): Promise<LedgerVersion> => {
-  // NOT breadcrumbed when this THROWS. `contractStateEnvelopeVersion` refuses
+  // NOT breadcrumbed when this THROWS. `ledgerVersionOfContractState` refuses
   // an envelope it cannot parse, and the encoding breadcrumb's only field is
   // the era the tag declared -- so on that path there is no era to report and
   // no placeholder worth inventing for one. The `TagParseError` it raises
   // already names what the bytes carried instead, which is the more precise
   // signal, and the operation-start head reading is already in the log.
-  const stateEra = contractStateEnvelopeVersion(state.raw);
+  const stateEra = ledgerVersionOfContractState(state.raw);
   // Reported for the ACCEPTED case too, not only for a refusal: which era
   // decoded a state is the fact an operator needs when the state decodes but
   // the call behaves oddly, and only the accepted path reaches a decoder.
@@ -812,7 +812,7 @@ export const resolveContractStateEra = async (
   // cannot both describe one chain -- a fresh read is what separates the two.
   let freshReading: HeadEraReading;
   try {
-    // `readHeadEra` rather than `networkHeadVersion`: the same one round trip
+    // `readHeadEra` rather than `latestNetworkLedgerVersion`: the same one round trip
     // and the same `'construct'` era mapping, but it also yields the raw
     // integer, which is what the breadcrumb needs and what distinguishes a
     // same-era node bump from a real era move.
@@ -820,9 +820,9 @@ export const resolveContractStateEra = async (
   } catch (cause) {
     // Nothing is swallowed -- the transport failure propagates on `cause` -- but on its own it
     // carries no trace that an era disagreement was under investigation.
-    throw new HeadReadFailedError(
-      `Could not re-read the network head while checking a '${head}'-era head reading against a ` +
-        `'${stateEra}'-era contract state envelope. Whether those two disagree is still unresolved, so ` +
+    throw new NetworkVersionReadFailedError(
+      `Could not read the network's ledger version again while checking it ('${head}') against the ` +
+        `version tag of the contract state ('${stateEra}'). Whether those two disagree is still unresolved, so ` +
         `this operation is refused rather than run against a guess. Retry once the read surface is reachable.`,
       { cause }
     );
@@ -833,5 +833,5 @@ export const resolveContractStateEra = async (
   if (freshReading.head !== stateEra) {
     throw new IndexerInconsistencyError(freshReading.head, stateEra);
   }
-  throw new HeadStateEraMismatchError(head, stateEra);
+  throw new NetworkVersionStateMismatchError(head, stateEra);
 };

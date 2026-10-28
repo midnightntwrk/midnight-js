@@ -547,7 +547,7 @@ describe('the two ledger eras run the same scenario', () => {
   // code also has to be able to handle a refusal the same way on both eras, so
   // the coded refusals for a malformed envelope are pinned per era too.
   // Both read methods have to fail the same way. They did not: extractState
-  // raised DownConvertFailedError, which carries no `version` and names a
+  // raised StateConversionFailedError, which carries no `version` and names a
   // down-conversion stage the caller never asked for, while decodeContractState
   // raised StateDecodeFailedError. A caller could not write one handler.
   it.each(ERAS)('reports an unreadable envelope the same way from both read methods on %s', async (version) => {

@@ -45,13 +45,13 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  ForkCrossedDuringOperationError,
   Ledger8MaintenanceOnLedger9Error,
   Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
   Ledger8SigningKeyUnusableError,
   ProviderFailedError,
-  StaleHeadError,
   SubmitRejectionUndiagnosedError
 } from '../../errors';
 import {
@@ -390,7 +390,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
 
       // Act & Assert
-      await expectStranded(providers, StaleHeadError);
+      await expectStranded(providers, ForkCrossedDuringOperationError);
     });
 
     it('hands back the new key when the submission was rejected and the head could not be re-read', async () => {
@@ -452,7 +452,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       );
 
       // Assert
-      expect(failure).toBeInstanceOf(StaleHeadError);
+      expect(failure).toBeInstanceOf(ForkCrossedDuringOperationError);
       expect(failure).toMatchObject({ kind: 'maintenance', circuitId: CIRCUIT_ID, contractAddress: CONTRACT_ADDRESS });
     });
   });

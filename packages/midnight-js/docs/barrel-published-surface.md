@@ -65,7 +65,7 @@ Two deliberate exclusions:
   `'construct'`. A consumer holding a record's `protocolVersion` naturally
   writes `protocolVersionToLedger(record.protocolVersion)`, gets an error
   tagged `construct`, and a handler written for the `read` code silently does
-  not fire. `versionOfRecord` and `networkHeadVersion` cover both paths and tag
+  not fire. `versionOfRecord` and `latestNetworkLedgerVersion` cover both paths and tag
   each one automatically, so the raw resolver adds a footgun and no capability.
 - **`ProtocolErrorCode`.** Nothing on this surface names it. EVERY published
   class declares `code` as its own literal, so a `switch` over
@@ -115,16 +115,12 @@ public members are `code` and `category`, which `hasErrorCode` and
 `errorCategory` already read, so the class adds no field a consumer would
 otherwise miss. It is published so the barrel's class set matches its code set.
 
-The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
+The remaining codes in the table differ. `STATE_CONVERSION_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
 a state that does not decode or does not re-encode to its source.
-`MERKLE_NOT_REHASHED` has none: the Merkle-rehash walk was retired with the
-hand-maintained execution layer, and `packages/protocol/src/errors.ts` says so
-on the class. It stays published because a consumer may still switch on the
-code. `UNKNOWN_LEDGER8_AXIS` is in the same position. `LEDGER8_INSTANCE_MISMATCH`
-and its class were removed: nothing raised them, and the WASM-instance fault
-they described is now reported by `ForeignLedgerTransactionError`, raised by
-`LedgerTransaction.seal` in `types`.
+`LEDGER8_INSTANCE_MISMATCH` and its class were removed: nothing raised them,
+and the WASM-instance fault they described is now reported by
+`ForeignLedgerTransactionError`, raised by `LedgerTransaction.seal` in `types`.
 
 ## The error base and the general errors
 

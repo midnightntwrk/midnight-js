@@ -115,7 +115,6 @@ describe('Protocol type ACL', () => {
       // writing for without these.
       'CurrentLedgerVersion',
       'DeployResultPojo',
-      'DownConvertStage',
       'EncodedStateValue',
       'Ledger8CircuitOptions',
       'Ledger8ConstructorOptions',
@@ -124,7 +123,6 @@ describe('Protocol type ACL', () => {
       // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8EngineContract',
-      'Ledger8InstanceAxis',
       'Ledger8Protocol',
       // Named by `Ledger8ConstructorOptions.signingKey` and reported back
       // on `ConstructorResultPojo`. The retained era's signing key is a
@@ -144,6 +142,7 @@ describe('Protocol type ACL', () => {
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
       'RetainedLedgerVersion',
+      'StateConversionStage',
       'TranscriptPojo',
       'VerifierKeyReader',
       'VersionedRecord',

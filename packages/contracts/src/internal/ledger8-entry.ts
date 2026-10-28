@@ -71,6 +71,7 @@ import {
 
 import {
   EraInvariantViolationError,
+  ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
@@ -80,11 +81,9 @@ import {
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
   PrivateStateNotFoundError,
-  StaleHeadError,
-  type StaleHeadOperationKind,
   SubmitRejectionUndiagnosedError,
-  type SubmittedOperation
-} from '../errors';
+  type SubmittedOperation,
+  type SubmittedOperationKind} from '../errors';
 import {
   Ledger8InsertVerifierKeyTxFailedError,
   Ledger8RemoveVerifierKeyTxFailedError,
@@ -197,7 +196,7 @@ export interface Ledger8Runtime {
  * transaction providers' era declarations.
  * @param kind Whether this operation deploys a contract, calls one already
  * deployed, or maintains one — the cell where the era table differs.
- * @param breadcrumbs The optional logger the head-resolution and
+ * @param breadcrumbs The optional logger the network-version-read and
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
@@ -213,7 +212,7 @@ export interface Ledger8Runtime {
  */
 export const acquireLedger8Runtime = async (
   providers: Ledger8RuntimeProviders,
-  kind: StaleHeadOperationKind,
+  kind: SubmittedOperationKind,
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
   const [resolved, engine, retainedEra] = await Promise.all([
@@ -267,7 +266,7 @@ export const acquireLedger8Runtime = async (
  * other than a handle at the next stage.
  * @throws ProviderFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atProviderMethod}.
- * @throws StaleHeadError, SubmitRejectionUndiagnosedError if the submission was
+ * @throws ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError if the submission was
  * rejected and the head has moved, or cannot be compared — see
  * {@link handleSubmitRejection}.
  * @see {@link KeepStatePipeline} for the era table and why sealing the
@@ -281,11 +280,11 @@ export const submitLedger8Tx = async (
   unprovenTx: UnprovenTx,
   operation: SubmittedOperation
 ): Promise<string> => {
-  const { circuitId, head } = operation;
-  if (unprovenTx.era !== head) {
+  const { circuitId, networkVersion } = operation;
+  if (unprovenTx.era !== networkVersion) {
     throw new InvariantViolationError(
-      `The ledger 8 pipeline built a '${unprovenTx.era}' transaction on a '${head}' head for circuit ` +
-        `'${circuitId}' of contract '${operation.contractAddress}', before any provider was called`
+      `The ledger 8 pipeline built a '${unprovenTx.era}' transaction while the network was on '${networkVersion}' ` +
+        `for circuit '${circuitId}' of contract '${operation.contractAddress}', before any provider was called`
     );
   }
   // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
@@ -345,7 +344,7 @@ export interface Ledger8SubmittedCall {
  * private state to run against.
  * @returns The transaction id and what the call produced.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
@@ -415,7 +414,7 @@ export const runLedger8Call = async (
   });
 
   const txId = await submitLedger8Tx(providers, call.unprovenTx, {
-    head: resolved.head,
+    networkVersion: resolved.head,
     kind: 'call',
     circuitId: request.circuitId,
     contractAddress: request.contractAddress
@@ -521,8 +520,8 @@ export const runLedger8Deploy = async (
 
   const txId = await submitLedger8Tx(providers, deploy.unprovenTx, {
     // Only ever a pre-fork head here -- a retained-era deploy against a
-    // post-fork head was refused above.
-    head: resolved.head,
+    // network after the fork was refused above.
+    networkVersion: resolved.head,
     kind: 'deploy',
     // The deploy has no circuit of its own to name, so the constructor's own
     // vocabulary is used rather than inventing a circuit id.
@@ -564,7 +563,7 @@ export interface Ledger8FoundState {
  * @throws InvalidArgumentError if the artifact declares no callable circuits,
  * or if the address is malformed.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
@@ -1294,7 +1293,7 @@ const assertLedger8MaintenanceSucceeded = (
  * submission rejected while the head was moving, or one whose rejection could not be diagnosed.
  */
 const mayHaveLanded = (error: unknown): boolean =>
-  error instanceof StaleHeadError || error instanceof SubmitRejectionUndiagnosedError;
+  error instanceof ForkCrossedDuringOperationError || error instanceof SubmitRejectionUndiagnosedError;
 
 /**
  * Runs one retained-era maintenance update end to end and waits for the chain to record it: check
@@ -1369,7 +1368,7 @@ export const submitLedger8MaintenanceTx = async (
   let txId: string;
   try {
     txId = await submitLedger8Tx(providers, unprovenTx, {
-      head: resolved.head,
+      networkVersion: resolved.head,
       kind: 'maintenance',
       circuitId,
       contractAddress

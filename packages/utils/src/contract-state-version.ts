@@ -19,7 +19,7 @@ import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 
-// A serialized contract state carries a `midnight:contract-state[vN]:` envelope tag, where the
+// A serialized contract state carries a `midnight:contract-state[vN]:` version tag, where the
 // bracketed number is the STATE FORMAT version and NOT the ledger era: the v8 ledger writes `[v6]`
 // and the v9 ledger writes `[v8]`. The two numbers are unrelated, and the same payload family
 // carries a third, different `[vN]` for transactions -- so never derive an era from a `[vN]` by
@@ -46,7 +46,7 @@ const CONTRACT_STATE_TAG_BY_ERA = {
 } as const satisfies Record<LedgerVersion, string>;
 
 /**
- * Reads which ledger runtime wrote a serialized contract state, from the envelope tag in front of
+ * Reads which ledger runtime wrote a serialized contract state, from the version tag in front of
  * the state body — without deserializing the body.
  *
  * The tag is attacker-controlled input and is never the authority on the body; the node remains the
@@ -57,19 +57,19 @@ const CONTRACT_STATE_TAG_BY_ERA = {
  * Supported public API, deliberately: a caller reading raw contract state from an indexer needs to
  * know which era's decoder to hand the bytes to before it hands them over.
  *
- * @param raw The serialized contract-state envelope, as the network returned it.
+ * @param raw The serialized contract state, as the network returned it.
  * @returns The ledger era whose runtime wrote `raw`.
  * @throws TagParseError when there is no well-formed `namespace:version:` tag prefix in the first
- * 64 bytes, or when the tag is not one of the supported contract-state envelopes.
+ * 64 bytes, or when the tag is not one of the supported contract-state version tags.
  */
-export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => {
+export const ledgerVersionOfContractState = (raw: Uint8Array): LedgerVersion => {
   const { tag } = parseSerializedTag(raw);
   const ledgerVersion = LEDGER_VERSIONS.find((era) => CONTRACT_STATE_TAG_BY_ERA[era] === tag);
   if (ledgerVersion === undefined) {
     // Never echo the observed tag: it is attacker-controlled and validated only against a
     // character set, so embedding it verbatim puts arbitrary text into this message.
     throw new TagParseError(
-      'The serialized state does not carry a contract-state envelope from a supported ledger runtime. ' +
+      'The serialized state does not start with a contract-state version tag from a supported ledger runtime. ' +
         'Verify the payload came from a contract-state query and not from another serialized type.'
     );
   }

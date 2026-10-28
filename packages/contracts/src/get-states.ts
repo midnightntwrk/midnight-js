@@ -21,7 +21,7 @@ import type {
   PublicDataProvider,
   VersionedPublicStates
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, ledgerVersionOfContractState } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from './errors';
 
@@ -141,7 +141,7 @@ export interface AnyEraContractState extends ContractStatePojo {
  * stored bytes; this reads the era off the state's own envelope and decodes it with that era's
  * runtime, so a contract deployed before the fork and not yet written to still reads.
  *
- * The read is relative to the network head. There is no block selector, so a historical read goes
+ * The read is relative to the network's latest block. There is no block selector, so a historical read goes
  * through `queryRawContractState` directly.
  *
  * The retained-era runtime is acquired only when an envelope calls for it, and — once acquired
@@ -168,7 +168,7 @@ export const getAnyEraContractState = async (
   if (served === null) {
     return null;
   }
-  const version = contractStateEnvelopeVersion(served.raw);
+  const version = ledgerVersionOfContractState(served.raw);
   const era = await loadLedgerEra(version);
   // ONE decode, not an `extractState` beside a `decodeContractState`. Those two are kept separate
   // in the keep-state pipeline because there the extraction feeds execution and the decode feeds

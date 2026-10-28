@@ -401,7 +401,7 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends L
  *
  * The record stays {@link VersionedFinalizedTxData} rather than being narrowed
  * to the current era's `FinalizedTxData`. A retained-era call is recorded by
- * whichever era the network head is on, so `version` is a union here where the
+ * whichever era the network is on, so `version` is a union here where the
  * current era pins `'v9'` -- narrowing it would refuse the very records this
  * pipeline exists to produce.
  */
@@ -823,7 +823,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
 export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
   /**
    * The record of the deploy transaction, always a ledger 8 one: a retained-era
-   * deploy runs only on a pre-fork head.
+   * deploy runs only before the fork.
    */
   readonly public: Ledger8FoundDeployTxPublicData & {
     /**

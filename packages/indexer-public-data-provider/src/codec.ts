@@ -49,13 +49,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertNever,
-  contractStateEnvelopeVersion,
   deserializeCompactContractState,
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState,
   isHex,
-  ledgerParametersEnvelopeVersion,
+  ledgerVersionOfContractState,
+  ledgerVersionOfLedgerParameters,
   parseHex
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
@@ -113,10 +113,10 @@ export const parseHexTransaction = <E extends LedgerVersion>(
 ): Promise<LedgerTransaction<'Finalized', E>> =>
   deserializeLedgerTransaction(era, toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
-const parametersBytesAndEnvelopeVersion = (
+const parametersBytesAndLedgerVersion = (
   hexParameters: string
-): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
-  // Hex first, for the reason `stateBytesAndEnvelopeVersion` does it first: `toByteArray` keeps only
+): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerVersion } => {
+  // Hex first, for the reason `stateBytesAndLedgerVersion` does it first: `toByteArray` keeps only
   // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
   // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
   // string — and a truncated tag prefix would then be dated rather than refused.
@@ -124,7 +124,7 @@ const parametersBytesAndEnvelopeVersion = (
     throw IndexerDataError.malformedParametersEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexParameters));
-  return { raw, envelopeVersion: ledgerParametersEnvelopeVersion(raw) };
+  return { raw, ledgerVersion: ledgerVersionOfLedgerParameters(raw) };
 };
 
 /**
@@ -143,13 +143,13 @@ const parametersBytesAndEnvelopeVersion = (
  *
  * @param s The hex-encoded serialized ledger parameters, as the indexer serves them.
  * @throws {IndexerDataError} When the payload is not hex-encoded, or its era is not decodable here.
- * @throws {TagParseError} When the payload carries no supported ledger-parameters envelope.
- * @throws {DeserializationError} When the envelope is decodable but the body behind it is not.
+ * @throws {TagParseError} When the payload carries no supported ledger-parameters version tag.
+ * @throws {DeserializationError} When the version tag is decodable but the body behind it is not.
  */
 export const parseHexLedgerParameters = (s: string): LedgerParameters => {
-  const { raw, envelopeVersion } = parametersBytesAndEnvelopeVersion(s);
-  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
-    throw IndexerDataError.unsupportedParametersEra(envelopeVersion);
+  const { raw, ledgerVersion } = parametersBytesAndLedgerVersion(s);
+  if (ledgerVersion !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedParametersEra(ledgerVersion);
   }
   return deserializeLedgerParameters(raw, { caller: `${PKG}:parseHexLedgerParameters` });
 };
@@ -258,21 +258,21 @@ export const decodeRecordTransaction = async (
 
 /**
  * Decodes the indexer's hex-encoded contract state and reads the ledger era off
- * the envelope in front of the body, in that order.
+ * the version tag in front of the body, in that order.
  *
  * Hex first: `toByteArray` keeps only the leading run of whole hex bytes
  * `parseHex` finds and discards the rest, so an only-partly-hex payload would
  * otherwise be silently truncated into a shorter, still plausible-looking byte
  * string.
  */
-const stateBytesAndEnvelopeVersion = (
+const stateBytesAndLedgerVersion = (
   hexState: string
-): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
+): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerVersion } => {
   if (!isHex(hexState)) {
     throw IndexerDataError.malformedStateEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexState));
-  return { raw, envelopeVersion: contractStateEnvelopeVersion(raw) };
+  return { raw, ledgerVersion: ledgerVersionOfContractState(raw) };
 };
 
 /**
@@ -289,9 +289,9 @@ const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
  * when this client cannot place that integer on the era timeline at all.
  *
  * Unresolvable is a distinct answer from wrong, and the two must not be
- * conflated: the reported version is a cross-check on the envelope here, never
+ * conflated: the reported version is a cross-check on the version tag here, never
  * the authority on the bytes, so "I cannot place this integer" has to leave the
- * decode to the envelope rather than fail the caller's read. Only
+ * decode to the version tag rather than fail the caller's read. Only
  * {@link UnknownProtocolVersionError} is treated that way — anything else is a
  * real failure and propagates.
  */
@@ -308,37 +308,37 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
 
 /**
  * Whether the `protocolVersion` handed to {@link parseHexContractState} may be
- * trusted as an upper bound on the state's envelope.
+ * trusted as an upper bound on the ledger version in the state's version tag.
  *
- * `'enforced'` is the default and the case to reach for: the version is known
+ * `'check'` is the default and the case to reach for: the version is known
  * to describe the same block as the bytes, so bytes from a newer runtime are an
  * indexer fault. A call site earns it either by reading the version out of the
  * same resolution that produced the state — a `transaction` or `block` subtree
  * carrying the state itself — or by pinning both Query-root fields to one fixed
  * block offset.
  *
- * `'withheld'` is for the one shape that earns neither: `block` and `contract`
+ * `'skip'` is for the one shape that earns neither: `block` and `contract`
  * asked for as Query-root siblings on an *unpinned* read. The indexer resolves
  * those concurrently, from independent reads, and with no offset both follow
  * the chain tip — so a block indexed between the two puts them on either side
- * of a fork, giving a newer envelope under an older block with nothing wrong
- * anywhere. Only the comparison is dropped; the envelope still decides
+ * of a fork, giving a newer version tag under an older block with nothing wrong
+ * anywhere. Only the comparison is dropped; the version tag still decides
  * decodability, which is what actually keeps a wrong-era payload away from the
  * decoder.
  */
-export type EnvelopeUpperBound = 'enforced' | 'withheld';
+export type UpperBoundCheck = 'check' | 'skip';
 
-const assertEnvelopeNotNewerThanBlock = (
-  envelopeVersion: LedgerVersion,
+const assertStateNotNewerThanBlock = (
+  ledgerVersion: LedgerVersion,
   protocolVersion: number,
-  upperBound: EnvelopeUpperBound = 'enforced'
+  upperBound: UpperBoundCheck = 'check'
 ): void => {
-  if (upperBound === 'withheld') {
+  if (upperBound === 'skip') {
     return;
   }
   const reportedVersion = reportedEra(protocolVersion);
-  if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
-    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+  if (reportedVersion !== undefined && isNewerEra(ledgerVersion, reportedVersion)) {
+    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, ledgerVersion);
   }
 };
 
@@ -347,26 +347,26 @@ const assertEnvelopeNotNewerThanBlock = (
  * ledger runtime wrote it — and only if that runtime is one this path can
  * decode.
  *
- * The envelope is the authority on the bytes, and the version the indexer
+ * The version tag is the authority on the bytes, and the version the indexer
  * reported for the dating block is an upper bound on it. That asymmetry is the
  * whole rule, and it follows from how the two signals are obtained:
  *
- * - The envelope comes off the bytes themselves. It is attacker-controlled and
+ * - The version tag comes off the bytes themselves. It is attacker-controlled and
  *   proves nothing about the network, but it is the one thing the deserializer
- *   also reads: a mismatched envelope is rejected on the header tag before the
+ *   also reads: a mismatched version tag is rejected on the header tag before the
  *   body, so it cannot produce a wrong answer, only a failure.
  * - The reported version dates the *read*, not the bytes, so a state can
  *   legitimately be older than the block that dates it — a record of a
- *   pre-fork contract action keeps its pre-fork envelope when it is read under
+ *   pre-fork contract action keeps its pre-fork version tag when it is read under
  *   a post-fork block.
  *
- * So an older envelope under a newer block is normal and decided on the
- * envelope alone. The reverse — bytes written by a runtime the dating block
+ * So an older version tag under a newer block is normal and decided on the
+ * version tag alone. The reverse — bytes written by a runtime the dating block
  * had not forked to yet — cannot happen while both signals describe the same
  * block, and is the one direction reported as
  * {@link IndexerDataError.eraDisagreement}. Where they need not describe the
  * same block, the caller says so and the comparison is dropped instead of
- * being reported as a fault — see {@link EnvelopeUpperBound}.
+ * being reported as a fault — see {@link UpperBoundCheck}.
  *
  * Nothing reaches a deserializer until the era is settled.
  *
@@ -374,30 +374,30 @@ const assertEnvelopeNotNewerThanBlock = (
  *                 serves it.
  * @param protocolVersion The protocol-version integer of the block that dates
  *                        the read. An integer this client cannot resolve
- *                        withholds the upper-bound check and nothing else.
+ *                        skips the upper-bound check and nothing else.
  * @param options `upperBound` states whether `protocolVersion` certainly
  *                describes the same block as the bytes, and so whether it may
- *                bound the envelope. Defaults to `'enforced'`, so a call site
+ *                bound the version tag. Defaults to `'check'`, so a call site
  *                has to opt out of the check deliberately rather than lose it
- *                by omission. See {@link EnvelopeUpperBound}.
+ *                by omission. See {@link UpperBoundCheck}.
  *
  * @throws {IndexerDataError} When the state is not hex-encoded, when its
- *   envelope is newer than the block that dates it and that bound is enforced,
+ *   version tag is newer than the block that dates it and that bound is checked,
  *   or when its era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
- *   envelope.
- * @throws {DeserializationError} When the envelope is decodable but the state
+ *   version tag.
+ * @throws {DeserializationError} When the version tag is decodable but the state
  *   body behind it is not.
  */
 export const parseHexContractState = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): ContractState => {
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
-  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
-    throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);
+  const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
+  assertStateNotNewerThanBlock(ledgerVersion, protocolVersion, options?.upperBound);
+  if (ledgerVersion !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedDecodeEra(ledgerVersion);
   }
   return deserializeCompactContractState(raw, { caller: `${PKG}:parseHexContractState` });
 };
@@ -407,8 +407,8 @@ export const parseHexContractState = (
  * `queryContractState`, `watchForContractState`, `contractStateObservable` and
  * `queryDeployContractState`.
  *
- * The envelope picks the variant and `protocolVersion` bounds it, as in
- * {@link parseHexContractState}: a v9 envelope is decoded, a v8 envelope is
+ * The version tag picks the variant and `protocolVersion` bounds it, as in
+ * {@link parseHexContractState}: a v9 version tag is decoded, a v8 version tag is
  * handed on as the stored bytes, neither decoded nor translated.
  *
  * @param hexState The hex-encoded serialized contract state, as the indexer
@@ -420,16 +420,16 @@ export const parseHexContractState = (
 export const toVersionedContractState = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): VersionedContractState => {
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  switch (envelopeVersion) {
+  const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
+  switch (ledgerVersion) {
     case 'v8':
       return { version: 'v8', stateBytes: raw };
     case 'v9':
       return { version: 'v9', state: parseHexContractState(hexState, protocolVersion, options) };
     default:
-      return assertNever(envelopeVersion, 'toVersionedContractState');
+      return assertNever(ledgerVersion, 'toVersionedContractState');
   }
 };
 
@@ -453,12 +453,12 @@ export const toVersionedPublicStates = (
   hexState: string,
   hexParameters: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): VersionedPublicStates => {
   const contractState = toVersionedContractState(hexState, protocolVersion, options);
-  const parameters = parametersBytesAndEnvelopeVersion(hexParameters);
-  if (parameters.envelopeVersion !== contractState.version) {
-    throw IndexerDataError.mixedEraPublicStates(contractState.version, parameters.envelopeVersion);
+  const parameters = parametersBytesAndLedgerVersion(hexParameters);
+  if (parameters.ledgerVersion !== contractState.version) {
+    throw IndexerDataError.mixedEraPublicStates(contractState.version, parameters.ledgerVersion);
   }
   const zswapChainState = parseHexZswapState(hexZswapState);
   switch (contractState.version) {
@@ -498,9 +498,9 @@ const assertWellFormedProtocolVersion = (protocolVersion: number): void => {
  * Builds the raw (undeserialized) contract-state record served by
  * `PublicDataProvider.queryRawContractState` and `rawContractStateObservable`.
  *
- * `version` is the era that wrote the bytes, read off their envelope. `protocolVersion` dates the
- * block and bounds the envelope as in {@link parseHexContractState}: an envelope newer than an
- * enforced dating block is {@link IndexerDataError.eraDisagreement}. A `protocolVersion` that is not
+ * `version` is the era that wrote the bytes, read off their version tag. `protocolVersion` dates the
+ * block and bounds the version tag as in {@link parseHexContractState}: a version tag newer than an
+ * checked dating block is {@link IndexerDataError.eraDisagreement}. A `protocolVersion` that is not
  * a non-negative integer is {@link IndexerDataError.malformedProtocolVersion}, because it is copied
  * onto the record; one this build cannot place on the era timeline is kept.
  *
@@ -513,13 +513,13 @@ export const toRawContractState = (
   hexState: string,
   protocolVersion: number,
   hexLedgerParameters?: string,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): RawContractState => {
   assertWellFormedProtocolVersion(protocolVersion);
-  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
+  const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
+  assertStateNotNewerThanBlock(ledgerVersion, protocolVersion, options?.upperBound);
   return {
-    version: envelopeVersion,
+    version: ledgerVersion,
     protocolVersion,
     raw,
     // Passed through as bytes, undecoded and unexamined. They are era-tagged, and this function

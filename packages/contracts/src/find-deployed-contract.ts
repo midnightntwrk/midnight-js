@@ -438,8 +438,8 @@ export interface FoundContract<C extends Contract.Any> {
  * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
- * head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+ * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the
+ * network's ledger version, checks the fetched state's version tag against it, and byte-matches every local verifier
  * key against the slot the chain holds — the checks that make a later call against this contract
  * safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
  *

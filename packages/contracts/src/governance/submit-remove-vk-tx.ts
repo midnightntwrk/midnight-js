@@ -73,7 +73,7 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  * @throws {RemoveVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging. The retained-era overload
  *         raises `Ledger8RemoveVerifierKeyTxFailedError` instead.
- * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used on a post-fork head.
+ * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used after the fork.
  * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable key.
  * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
  *         the contract's maintenance authority. Raised before anything is proven.

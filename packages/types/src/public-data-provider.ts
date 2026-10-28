@@ -90,8 +90,8 @@ export type BlockInfo = {
    * `UnknownProtocolVersionError` for a version this build cannot place on the
    * era timeline.
    *
-   * Implementations MUST report the era of *this* block, never the network
-   * head's, so a block read from before a hard fork keeps reporting the era it
+   * Implementations MUST report the era of *this* block, never that of the
+   * network's latest block, so a block read from before a hard fork keeps reporting the era it
    * was produced in.
    *
    * Implementations carry the integer through as the network reported it, and
@@ -480,7 +480,7 @@ export interface PublicDataProvider {
    * THE STREAMING COUNTERPART OF {@link queryRawContractState}. Prefer it over
    * {@link contractStateObservable} when the caller decodes the bytes itself.
    *
-   * {@link RawContractState.version} is the era read off the envelope of
+   * {@link RawContractState.version} is the era read off the version tag of
    * {@link RawContractState.raw}; {@link RawContractState.protocolVersion}
    * dates the block that served it.
    *
@@ -574,7 +574,7 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the protocol-version integer reported by the network's current
-   * head block.
+   * latest block.
    *
    * Implementations MAY serve this from a cache, on ONE condition: the cached
    * answer must expire by itself, on a bound short relative to block time. A
@@ -590,9 +590,9 @@ export interface PublicDataProvider {
    * transaction built from it, never a guarantee. A caller that must be certain
    * confirms afterwards, from the `protocolVersion` on the finalized record.
    *
-   * @throws Implementation-specific error when the network reports no head
+   * @throws Implementation-specific error when the network reports no latest
    *   block at all.
-   * @see {@link ReadingTheHeadEra} for why the cache must expire by itself, and
+   * @see {@link ReadingTheNetworkLedgerVersion} for why the cache must expire by itself, and
    *   why this member takes no "give me a fresh one" option.
    */
   queryLatestProtocolVersion(): Promise<number>;
@@ -604,8 +604,8 @@ export interface PublicDataProvider {
    *
    * For callers that decode the bytes themselves: they narrow on
    * {@link RawContractState.version} and then hand the bytes to that era's
-   * deserializer. Both eras' envelopes are returned unchanged. The era is read
-   * off the envelope the bytes carry.
+   * deserializer. Both eras' bytes are returned unchanged. The era is read
+   * off the version tag the bytes carry.
    *
    * Immediately returns null if no matching data is found.
    *

@@ -223,7 +223,7 @@ describe('submitLedger8Tx', () => {
 
       const rejection = await rejectionOf(
         submitLedger8Tx({ ...providers, publicDataProvider }, unprovenTx, {
-          head,
+          networkVersion: head,
           kind: 'call',
           circuitId: 'testCircuit',
           contractAddress: 'contract-address'

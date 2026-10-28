@@ -76,12 +76,12 @@ MidnightProviders
 ### Ledger Eras and the Fork Window
 - **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
-- **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
+- **`latestNetworkLedgerVersion(source)`**: the era of the network's latest block, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
 - **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnight-ntwrk/midnight-js-types`. The handle carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.seal(era, stage, tx)`, read it with `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another ledger WASM copy with `ForeignLedgerTransactionError`; `unwrap` refuses another era with `TransactionEraMismatchError`.
 - **One era rule for every value**: `version: 'v8' | 'v9'` is the ledger era that WROTE a value; `protocolVersion` dates the block. Era-dependent reads (`queryContractState`, `watchForContractState`, `contractStateObservable`, `queryDeployContractState`, `queryZSwapAndContractState`, `getPublicStates`, `getStates`) return `Versioned*` unions: v8 = stored bytes, v9 = decoded. `queryRawContractState` returns `RawContractState`: raw bytes in both eras, `version` read off the envelope. Narrow with `switch (value.version)` + `assertNever`, or `requireLedger9(value, '<call site>')` from utils for v9-only code. The contracts `submitTx` takes `{ unprovenTx }`, an `UnprovenTx` handle, and accepts only a transaction of the network head's era.
 - **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. In both variants `tx` is a `FinalizedTx` of the record's era (`record.tx.era === record.version`); read it with `LedgerTransaction.unwrap(record.tx, record.version)`. To treat the eras differently, narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
 - **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
-- **Contract maintenance**: `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` (and `circuitMaintenanceTx` / `contractMaintenanceTx` on both handles) take either era's artifact and resolve `{ era, public }`; `AnyEraMaintenanceTxData` is the union. A ledger 8 artifact maintains only on a pre-fork head; after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error` — recompile and use the same function with the ledger 9 artifact.
+- **Contract maintenance**: `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` (and `circuitMaintenanceTx` / `contractMaintenanceTx` on both handles) take either era's artifact and resolve `{ era, public }`; `AnyEraMaintenanceTxData` is the union. A ledger 8 artifact maintains only before the fork; after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error` — recompile and use the same function with the ledger 9 artifact.
 - **Circuit call interface**: `createCircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId)` takes either era's artifact and builds that era's `callTx` interface; a ledger 8 call resolves `Ledger8.FinalizedCallTxData`, a ledger 9 call `FinalizedCallTxData`. An object of neither shape, including a ledger 9 contract not wrapped in `CompiledContract`, throws `EraArtifactMismatchError`.
 - Migration: [docs/releases/v5.0.0/migration-guide.md](docs/releases/v5.0.0/migration-guide.md). Error codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
 
@@ -167,7 +167,7 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 // or { version: 'v8', zswapChainState, stateBytes, ledgerParametersBytes }.
 // Narrow on `version`, or call requireLedger9(publicStates, '<call site>') from
 // `@midnight-ntwrk/midnight-js-utils` when only v9 is handled.
-// To decode a contract state of either era, read the era off the envelope:
+// To decode a contract state of either era, read the era off the version tag of the bytes:
 const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
 // read.version         — the era that wrote the bytes
 // read.state           — EncodedStateValue, for your own contract's runtime
@@ -418,14 +418,14 @@ in type position -- there is no `protocol.Contract` value to read at runtime.
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
 `@midnight-ntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
-era of an existing record; `networkHeadVersion` resolves the era a transaction
+era of an existing record; `latestNetworkLedgerVersion` resolves the era a transaction
 built now would land in.
 
 ```typescript
 import {
   LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
   type LedgerVersion, // 'v8' | 'v9'
-  networkHeadVersion,
+  latestNetworkLedgerVersion,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js';
 
@@ -433,14 +433,14 @@ import {
 // already read from the indexer.
 const era: LedgerVersion = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
 
-// The era at the network head, asked of a provider on every call.
-const head: LedgerVersion = await networkHeadVersion(providers.publicDataProvider);
+// The network's current ledger version, asked of a provider on every call.
+const networkVersion: LedgerVersion = await latestNetworkLedgerVersion(providers.publicDataProvider);
 ```
 
 Both resolvers refuse rather than guess: they raise `UnknownProtocolVersionError`
 when a `protocolVersion` is malformed (not a non-negative integer) or is
 well-formed but maps to no era this build knows. `versionOfRecord` throws;
-`networkHeadVersion` is `async` and rejects, passing a rejection from the
+`latestNetworkLedgerVersion` is `async` and rejects, passing a rejection from the
 source itself through unchanged. Handle it by class and rethrow anything else:
 
 ```typescript
@@ -525,7 +525,7 @@ try {
 }
 ```
 
-`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).

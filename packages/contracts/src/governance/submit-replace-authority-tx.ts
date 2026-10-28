@@ -74,7 +74,7 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging. The retained-era overload
  *         raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
- * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used on a post-fork head.
+ * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used after the fork.
  * @throws {Ledger8SigningKeyUnusableError} When the retained-era overload is given a new key that era
  *         cannot sign with. Raised before anything is composed.
  * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable current key.

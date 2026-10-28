@@ -351,7 +351,7 @@ describe('submit-tx', () => {
       const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: await handles.v8.Unproven() }));
 
       expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
-      expect(rejection).toMatchObject({ reason: 'ledger8-transaction-on-ledger9-head' });
+      expect(rejection).toMatchObject({ reason: 'ledger8-transaction-on-ledger9-network' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
@@ -364,7 +364,7 @@ describe('submit-tx', () => {
       const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: createMockUnprovenTx() }));
 
       expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
-      expect(rejection).toMatchObject({ reason: 'ledger9-transaction-on-ledger8-head' });
+      expect(rejection).toMatchObject({ reason: 'ledger9-transaction-on-ledger8-network' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
@@ -520,12 +520,12 @@ describe('submit-tx', () => {
     });
 
     it('propagates a failed head read before proving', async () => {
-      const headReadFailure = new Error('indexer unreachable');
-      mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockRejectedValue(headReadFailure);
+      const networkVersionReadFailure = new Error('indexer unreachable');
+      mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockRejectedValue(networkVersionReadFailure);
 
       const rejection = submitTx(mockProviders, { unprovenTx: createMockUnprovenTx() });
 
-      await expect(rejection).rejects.toBe(headReadFailure);
+      await expect(rejection).rejects.toBe(networkVersionReadFailure);
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 

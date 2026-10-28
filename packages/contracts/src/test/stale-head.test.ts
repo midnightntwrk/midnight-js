@@ -53,8 +53,8 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ForkCrossedDuringOperationError,
   ProviderFailedError,
-  StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
 import { runLedger8Deploy } from '../internal/ledger8-entry';
@@ -173,14 +173,14 @@ const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
 const OPERATION_CONTRACT_ADDRESS = '0200aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
 
 const callOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'call',
   circuitId: CIRCUIT_ID,
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
 const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'deploy',
   // A deploy has no circuit of its own and reports the constructor's own name.
   circuitId: 'initialState',
@@ -188,7 +188,7 @@ const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
 });
 
 const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'maintenance',
   circuitId,
   contractAddress: OPERATION_CONTRACT_ADDRESS
@@ -213,11 +213,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.STALE_HEAD)).toBe(true);
-    expect((caught as StaleHeadError).startEra).toBe('v8');
-    expect((caught as StaleHeadError).freshEra).toBe('v9');
-    expect((caught as StaleHeadError).kind).toBe('call');
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION)).toBe(true);
+    expect((caught as ForkCrossedDuringOperationError).startEra).toBe('v8');
+    expect((caught as ForkCrossedDuringOperationError).freshEra).toBe('v9');
+    expect((caught as ForkCrossedDuringOperationError).kind).toBe('call');
     // THE FRESH READ, asserted as a read and not merely as an outcome: the
     // whole decision is worthless if the handler compares the era the operation
     // started from against itself.
@@ -248,8 +248,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
-    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as ForkCrossedDuringOperationError).circuitId).toBe(CIRCUIT_ID);
     // On the error AND in the text: a caller reading a log rather than catching
     // the class has to be able to follow the same instruction.
     expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
@@ -266,7 +266,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
     expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
     // A deploy mints a fresh nonce, so "just deploy again" is how a caller ends
     // up with two contracts on chain. The text has to say so.
@@ -289,9 +289,9 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect(caught).not.toBeInstanceOf(StaleHeadError);
+    expect(caught).not.toBeInstanceOf(ForkCrossedDuringOperationError);
     expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-moved-backwards');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-went-backwards');
     expect((caught as Error).message).not.toMatch(/crossed the ledger fork/);
     // Same restraint as the indexer-inconsistency refusal: never assert a fork
     // nothing observed establishes, and point at the read surface instead.
@@ -316,8 +316,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caughtDeploy = error;
     }
 
-    expect(caughtDeploy).toBeInstanceOf(StaleHeadError);
-    expect((caughtDeploy as StaleHeadError).kind).toBe('deploy');
+    expect(caughtDeploy).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caughtDeploy as ForkCrossedDuringOperationError).kind).toBe('deploy');
     const deployMessage = (caughtDeploy as Error).message;
     // A deploy cannot be re-run at all once the head has crossed: the retained
     // era has no post-fork deployment. So the second step is a different step,
@@ -338,8 +338,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     );
 
     // Assert
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    if (!(caught instanceof StaleHeadError)) throw caught;
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    if (!(caught instanceof ForkCrossedDuringOperationError)) throw caught;
     expect(caught.kind).toBe('maintenance');
     expect(caught.message).toContain(OPERATION_CONTRACT_ADDRESS);
     expect(caught.message).toContain(`'${CIRCUIT_ID}'`);
@@ -358,18 +358,18 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     );
 
     // Assert
-    expect(caught).toBeInstanceOf(StaleHeadError);
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
     expect((caught as Error).message).not.toContain(NO_CIRCUIT);
     expect((caught as Error).message).toContain('maintenance authority');
   });
 
   it.each([
     [
-      'head-read-failed',
+      'network-version-read-failed',
       { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) },
       maintenanceOperation(NO_CIRCUIT)
     ],
-    ['head-moved-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
+    ['network-version-went-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
   ])('calls a MAINTENANCE update by its name when the rejection cannot be diagnosed (%s)', async (_reason, pdp, operation) => {
     // Act
     const caught = await handleSubmitRejection(pdp, operation, wrappedRejection()).catch(
@@ -451,13 +451,13 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // And the proximate failure is on `cause` too, so a consumer that only
     // walks cause chains still learns why no diagnosis was made.
     expect((caught as { readonly cause?: unknown }).cause).toBe(transportFailure);
-    expect((caught as Error).message).toContain('could not be re-read');
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-read-failed');
+    expect((caught as Error).message).toContain('could not be read again');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-read-failed');
   });
 
   it('keeps the AggregateError shape after leaving AggregateError', async () => {
-    const headReadFailure = new Error('indexer unreachable');
-    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(headReadFailure) };
+    const networkVersionReadFailure = new Error('indexer unreachable');
+    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(networkVersionReadFailure) };
     const rejection = wrappedRejection();
 
     const error = await handleSubmitRejection(pdp, callOperation(), rejection).catch((e: unknown) => e);
@@ -465,8 +465,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(error).toBeInstanceOf(SubmitRejectionUndiagnosedError);
     expect(error).not.toBeInstanceOf(AggregateError);
     if (!(error instanceof SubmitRejectionUndiagnosedError)) throw error;
-    expect(error.errors).toEqual([rejection, headReadFailure]);
-    expect(error.cause).toBe(headReadFailure);
+    expect(error.errors).toEqual([rejection, networkVersionReadFailure]);
+    expect(error.cause).toBe(networkVersionReadFailure);
     expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'UNCERTAIN']);
   });
 
@@ -593,13 +593,13 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect((caught as StaleHeadError).startEra).toBe('v8');
-    expect((caught as StaleHeadError).freshEra).toBe('v9');
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caught as ForkCrossedDuringOperationError).startEra).toBe('v8');
+    expect((caught as ForkCrossedDuringOperationError).freshEra).toBe('v9');
     // The identifiers come from the operation the ENTRY POINT actually ran,
     // which is what proves they are threaded rather than defaulted.
-    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
-    expect((caught as StaleHeadError).contractAddress).toBe(recording.contractAddress);
+    expect((caught as ForkCrossedDuringOperationError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(recording.contractAddress);
     expect((caught as Error).message).toContain(recording.contractAddress);
     expect((caught as Error).message).toMatch(/did not.*finalize|not finalize/);
     expect((caught as Error).message).toMatch(/re-run/);
@@ -635,7 +635,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
     // is what keeps the sanitization true across the extra wrapping layer the
@@ -669,14 +669,14 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect((caught as StaleHeadError).kind).toBe('deploy');
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caught as ForkCrossedDuringOperationError).kind).toBe('deploy');
     expect((caught as Error).message).toContain('runtime-deploy chapter');
     expect((caught as Error).message).not.toMatch(/re-run/);
     // The address the composition MINTED, read off the deploy record rather
     // than off anything the caller supplied -- a deploy supplies none.
-    expect((caught as StaleHeadError).contractAddress.length).toBeGreaterThan(0);
-    expect((caught as Error).message).toContain((caught as StaleHeadError).contractAddress);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress.length).toBeGreaterThan(0);
+    expect((caught as Error).message).toContain((caught as ForkCrossedDuringOperationError).contractAddress);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {
@@ -695,7 +695,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       new Error('node refused the transaction')
     );
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(StaleHeadError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(ForkCrossedDuringOperationError);
     // The transaction the pre-fork attempt built was composed by the RETAINED
     // ledger, which is what makes the second attempt a different composition
     // rather than a retry of the same bytes.

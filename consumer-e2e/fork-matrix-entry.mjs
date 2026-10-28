@@ -34,7 +34,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 // the published surface and nothing else, so reaching past it here would prove
 // the framework works through a door its users do not have.
 //
-// The entry points come off `contracts`, their own package. `networkHeadVersion`
+// The entry points come off `contracts`, their own package. `latestNetworkLedgerVersion`
 // and `CompiledContract` are published too, but on the BARREL -- `protocol`'s
 // root is not a consumer-facing import, and taking them off it made this file
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
@@ -44,13 +44,13 @@ import {
   findDeployedContract,
   getAnyEraContractState,
   Ledger8,
-  StaleHeadError,
+  ForkCrossedDuringOperationError,
   SubmitRejectionUndiagnosedError,
   submitCallTx,
   submitCallTxAsync,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
+import { latestNetworkLedgerVersion, protocol } from '@midnight-ntwrk/midnight-js';
 
 const { CompiledContract } = protocol;
 
@@ -482,7 +482,7 @@ const waitForContract = async (publicDataProvider, contractAddress, timeoutMs) =
 const waitForHead = async (publicDataProvider, era, timeoutMs) => {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const seen = await networkHeadVersion(publicDataProvider);
+    const seen = await latestNetworkLedgerVersion(publicDataProvider);
     if (seen === era) {
       return seen;
     }
@@ -1348,7 +1348,7 @@ const IN_FLIGHT_PROBE_TIMEOUT = IN_FLIGHT_DEADLINE + IN_FLIGHT_CALL_TIMEOUT + 60
  * documents what happens to a transaction built against the pre-fork ledger that
  * is still in flight when the fork applies: the chain rejects it, and
  * `handleSubmitRejection` re-reads the head, sees the era move forward, and
- * raises `StaleHeadError` with the two-step remediation rather than a decode
+ * raises `ForkCrossedDuringOperationError` with the two-step remediation rather than a decode
  * failure. Until now nothing observed that on a live chain -- it is covered by
  * unit tests against mocks, and `consumer-e2e/README.md` recorded the deploy
  * branch as unreachable from any entry point at all.
@@ -1409,7 +1409,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
       );
       attempts.push({ outcome: 'admitted', txId: submitted.public.txId, tookMs: Date.now() - startedAt });
     } catch (error) {
-      if (error instanceof StaleHeadError) {
+      if (error instanceof ForkCrossedDuringOperationError) {
         attempts.push({
           outcome: 'stale-head',
           kind: error.kind,
@@ -1439,10 +1439,10 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   // Losing the race is the expected outcome and must never fail the run -- that
   // is the whole reason this is a probe. But a run where the chain answered NONE
   // of the calls is not evidence about the boundary at all: it is a proof server
-  // down, a wallet that never settled, or a `StaleHeadError` that stopped being
+  // down, a wallet that never settled, or a `ForkCrossedDuringOperationError` that stopped being
   // raised and now arrives as an unrecognised refusal. Each of those produces a
   // row indistinguishable from a healthy miss, and this probe is the run's ONLY
-  // live coverage of `StaleHeadError`, so a silent one would be the regression
+  // live coverage of `ForkCrossedDuringOperationError`, so a silent one would be the regression
   // reaching a release unobserved.
   //
   // `admitted` is the floor deliberately: the probe is healthy the moment the
@@ -1493,7 +1493,7 @@ let deployment;
 
 // ── (a) pre-fork: operates on a ledger-8 head ─────────────────────────────────
 
-await leg('pre-fork head era', () => networkHeadVersion(session.providers.publicDataProvider));
+await leg('pre-fork head era', () => latestNetworkLedgerVersion(session.providers.publicDataProvider));
 
 // The contract every leg below the boundary is measured against, deployed
 // through `deployContract`'s retained-era path -- the entry point a consumer has, and
@@ -2085,7 +2085,7 @@ if (DRIVES_STALE_HEAD) {
     // after the boundary -- and then the integer below is a post-fork one, the
     // backwards-head leg replays it as though it were not, and two legs go red
     // for a timing fact neither of their messages would name.
-    const head = await networkHeadVersion(session.providers.publicDataProvider);
+    const head = await latestNetworkLedgerVersion(session.providers.publicDataProvider);
     if (head !== 'v8') {
       throw new Error(
         `the head already reports '${head}', so the fork landed before this leg could park a pre-fork call`
@@ -2171,8 +2171,8 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
-    if (!(refusal instanceof StaleHeadError)) {
-      throw new Error(`expected StaleHeadError; got ${describeError(refusal)}`, { cause: refusal });
+    if (!(refusal instanceof ForkCrossedDuringOperationError)) {
+      throw new Error(`expected ForkCrossedDuringOperationError; got ${describeError(refusal)}`, { cause: refusal });
     }
     // The two eras and `kind` decide which remediation wording the error
     // carries; `circuitId` and `contractAddress` are what its first step sends
@@ -2180,13 +2180,13 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     // that named a different operation.
     if (refusal.kind !== 'call' || refusal.startEra !== 'v8' || refusal.freshEra !== 'v9') {
       throw new Error(
-        `StaleHeadError reported kind '${refusal.kind}', startEra '${refusal.startEra}', freshEra '${refusal.freshEra}'`,
+        `ForkCrossedDuringOperationError reported kind '${refusal.kind}', startEra '${refusal.startEra}', freshEra '${refusal.freshEra}'`,
         { cause: refusal }
       );
     }
     if (refusal.circuitId !== CIRCUIT_ID || refusal.contractAddress !== deployment.contractAddress) {
       throw new Error(
-        `StaleHeadError named circuit '${refusal.circuitId}' at '${refusal.contractAddress}', which is not the parked call`,
+        `ForkCrossedDuringOperationError named circuit '${refusal.circuitId}' at '${refusal.contractAddress}', which is not the parked call`,
         { cause: refusal }
       );
     }
@@ -3245,8 +3245,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-read-failed' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
+    if (error.reason !== 'network-version-read-failed' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
     }
     // EXACTLY ONE injected read. The wrapper answers every head read taken after
     // the refusal, so a framework that took a second one somewhere else on this
@@ -3279,8 +3279,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-moved-backwards' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-moved-backwards' call; got '${error.reason}' as '${error.kind}'`, {
+    if (error.reason !== 'network-version-went-backwards' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-went-backwards' call; got '${error.reason}' as '${error.kind}'`, {
         cause: error
       });
     }

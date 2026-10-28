@@ -73,9 +73,9 @@ one file, and a declaration named `Ledger8X` is published as `Ledger8.X`.
 - **Negative:** a type-only consumer cannot use `import type { Ledger8 }` and
   then `instanceof Ledger8.CallTxFailedError` (TS1361). One import now serves
   both positions.
-- **Follow-ups:** the FORK-WINDOW group -- `StaleHeadError`,
+- **Follow-ups:** the FORK-WINDOW group -- `ForkCrossedDuringOperationError`,
   `SubmitRejectionUndiagnosedError` and their payload types,
-  `HeadStateEraMismatchError`, `EraArtifactMismatchError`,
+  `NetworkVersionStateMismatchError`, `EraArtifactMismatchError`,
   `ScopedTxEraUnsupportedError`, `MixedEraScopeError` -- also disappears when the
   window closes and stays flat here, because filing it under a name that says
   `Ledger8` would misname it. Its removal is a separate change, and whether it

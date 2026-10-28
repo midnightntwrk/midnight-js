@@ -76,7 +76,7 @@ tell them apart would read as one operation contradicting itself.
 decides between reporting a fork crossing with a re-run remediation and
 reporting a rejection nothing could diagnose, and it is the only reading taken
 after bytes were already on the wire. See
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## What each breadcrumb carries, and why
 
@@ -119,7 +119,7 @@ This is the byte-level answer, read from the bytes themselves rather than from
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the
-re-read that follows is reported as its own head-resolution breadcrumb.
+re-read that follows is reported as its own network-version-read breadcrumb.
 
 ## Privacy
 

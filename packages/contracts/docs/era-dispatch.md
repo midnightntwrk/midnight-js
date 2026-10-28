@@ -192,7 +192,7 @@ current-era pipeline to fail somewhere unrelated, `resolveArtifactEra` raises
 ## Reading the network's era: exactly one head read per operation
 
 `resolveOperationEra` makes EXACTLY ONE head read, and that is the whole point.
-Asking `networkHeadVersion` for the era and then asking the provider again for
+Asking `latestNetworkLedgerVersion` for the era and then asking the provider again for
 the raw integer is two network round trips, and during the fork window the
 second one can answer differently from the first — leaving one operation built
 half against each era. The era, the integer it was resolved from, and the era
@@ -253,7 +253,7 @@ stored. See `consumer-e2e/README.md`.
 Only the two RETAINED rows are enforced in production. Every call site passes
 the literal `'v8'`, so the current-era rows are reachable from tests alone,
 and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
-`'ledger9-artifact-on-ledger8-head'` — is not raised by any shipped path.
+`'ledger9-artifact-on-ledger8-network'` — is not raised by any shipped path.
 
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
@@ -264,12 +264,12 @@ LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction handle rather than an artifact. It reads the handle's `era`, pays for
-one head read, and accepts only a transaction of the head's era. The other era
-is refused there, before proving, as `EraArtifactMismatchError`: a v9 handle on
-a pre-fork head with reason `'ledger9-transaction-on-ledger8-head'`, a v8 handle
-on a post-fork head with reason `'ledger8-transaction-on-ledger9-head'`. The v9
-ledger cannot read a v8 transaction, so there is nothing to route the second
-case to. The call and deploy pipelines do
+one read of the network's ledger version, and accepts only a transaction of that
+era. The other era is refused there, before proving, as `EraArtifactMismatchError`:
+a v9 handle before the fork with reason `'ledger9-transaction-on-ledger8-network'`,
+a v8 handle after the fork with reason `'ledger8-transaction-on-ledger9-network'`.
+The v9 ledger cannot read a v8 transaction, so there is nothing to route the
+second case to. The call and deploy pipelines do
 not go through that read: they submit through an internal current-era path.
 
 Do not read the table as a guarantee that all four cells fail fast. Lifting that
@@ -364,7 +364,7 @@ The order is load-bearing:
    cannot be decoded at all is still dated and a decoder is never handed bytes
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
-   one place, as `contractStateEnvelopeVersion` in
+   one place, as `ledgerVersionOfContractState` in
    `@midnight-ntwrk/midnight-js-utils`, beside the tag parser it is built on
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
@@ -374,7 +374,7 @@ The order is load-bearing:
    request per call, so a re-read really is a second reading of the network
    (`docs/adr/0007-never-latch-the-network-head-version.md`).
 4. If the fresh head now agrees with the state, the first reading was merely
-   stale: the caller can fix it by re-running, so `HeadStateEraMismatchError`
+   stale: the caller can fix it by re-running, so `NetworkVersionStateMismatchError`
    says how.
 5. If the fresh head still disagrees, the head was not stale and the two served
    answers cannot both describe one chain: `IndexerInconsistencyError`, with

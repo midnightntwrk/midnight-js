@@ -15,7 +15,7 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PositionedRecord, RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion, fromHex, requireLedger9, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { fromHex, ledgerVersionOfContractState, requireLedger9, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
@@ -126,7 +126,7 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   );
 
 const envelopesOf = (records: readonly PositionedRecord<RawContractState>[]): string[] =>
-  records.map((record) => contractStateEnvelopeVersion(record.value.raw));
+  records.map((record) => ledgerVersionOfContractState(record.value.raw));
 
 const positionsOf = (records: readonly PositionedRecord<unknown>[]) =>
   records.map(({ blockHeight, blockHash }) => ({ blockHeight, blockHash }));
@@ -254,7 +254,7 @@ describe('rawContractStateObservable — latest', () => {
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
-      envelopeVersion: 'v9'
+      stateVersion: 'v9'
     });
   });
 
@@ -524,7 +524,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
   };
 
   const trace = (records: readonly PositionedRecord<RawContractState>[]) =>
-    records.map((record) => `${record.blockHeight}:${contractStateEnvelopeVersion(record.value.raw)}`);
+    records.map((record) => `${record.blockHeight}:${ledgerVersionOfContractState(record.value.raw)}`);
 
   const arrange = async () => {
     const v8 = await mintLedger8ContractStateHex();

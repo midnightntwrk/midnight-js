@@ -17,21 +17,21 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 
 /**
  * A contract's on-chain state exactly as the network returned it: the
- * serialized bytes, still in their envelope, with nothing deserialized yet.
+ * serialized bytes, still behind their version tag, with nothing deserialized yet.
  *
- * `version` is the ledger era that WROTE the bytes, read from the envelope
+ * `version` is the ledger era that WROTE the bytes, read from the version tag
  * inside `raw`. `protocolVersion` dates the block the record was read under,
  * which can be newer: a record keeps the encoding it was written in.
  *
- * Implementing this? Read `version` off the envelope of `raw`, never from
- * `protocolVersion`, and refuse an envelope newer than the block that dates it.
+ * Implementing this? Read `version` off the version tag of `raw`, never from
+ * `protocolVersion`, and refuse a version tag newer than the block that dates it.
  *
  * @see {@link VersionTaggedPayloads} for why the state crosses as bytes, and for
  * the three things the tag does not establish.
  */
 export interface RawContractState {
   /**
-   * The ledger era that wrote {@link raw}, read from its envelope.
+   * The ledger era that wrote {@link raw}, read from its version tag.
    */
   readonly version: LedgerVersion;
   /**
@@ -41,7 +41,7 @@ export interface RawContractState {
   readonly protocolVersion: number;
   /**
    * The serialized contract state, byte for byte as the network returned it,
-   * including the envelope that precedes the state body. Not deserialized,
+   * including the version tag that precedes the state body. Not deserialized,
    * and not narrowed by era — narrow on {@link version} first, then hand
    * these bytes to that era's deserializer.
    */
@@ -49,7 +49,7 @@ export interface RawContractState {
 
   /**
    * The ledger parameters the chain held at the block that dated this state, exactly as served —
-   * no envelope reading, no decode.
+   * no version tag reading, no decode.
    *
    * They must come from the SAME block as the state: they are dynamic and era-tagged. DO NOT
    * substitute the ledger's own `initialParameters()` — that is a cost model the chain does not

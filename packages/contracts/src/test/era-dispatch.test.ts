@@ -29,10 +29,9 @@ import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
   EraArtifactMismatchError,
-  HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8DeployOnLedger9Error,
-  Ledger8MaintenanceOnLedger9Error} from '../errors';
+  Ledger8MaintenanceOnLedger9Error,  NetworkVersionStateMismatchError} from '../errors';
 import {
   assertEraCompatible,
   ERA_PAIRING,
@@ -376,7 +375,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
       expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-head');
+      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-network');
     }
   });
 
@@ -504,7 +503,7 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
 
     const resolved = await resolveOperationEra(pdp);
 
-    // One read, not two: the naive shape asks `networkHeadVersion` for the era and then asks the
+    // One read, not two: the naive shape asks `latestNetworkLedgerVersion` for the era and then asks the
     // provider again for the integer, which is a second network round trip and, at the fork
     // boundary, a second and possibly DIFFERENT answer inside one operation.
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
@@ -608,14 +607,14 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
-      expect(error).toBeInstanceOf(HeadStateEraMismatchError);
-      expect((error as HeadStateEraMismatchError).head).toBe<LedgerVersion>('v8');
-      expect((error as HeadStateEraMismatchError).stateEra).toBe<LedgerVersion>('v9');
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH)).toBe(true);
-      expect((error as HeadStateEraMismatchError).message).toMatch(/re-read|re-run/i);
+      expect(error).toBeInstanceOf(NetworkVersionStateMismatchError);
+      expect((error as NetworkVersionStateMismatchError).networkVersion).toBe<LedgerVersion>('v8');
+      expect((error as NetworkVersionStateMismatchError).stateEra).toBe<LedgerVersion>('v9');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH)).toBe(true);
+      expect((error as NetworkVersionStateMismatchError).message).toMatch(/re-read|re-run/i);
       // Direction-neutral on purpose: the check establishes that the two readings disagree, not
       // which of them moved.
-      expect((error as HeadStateEraMismatchError).message).not.toMatch(/was behind|was ahead/i);
+      expect((error as NetworkVersionStateMismatchError).message).not.toMatch(/was behind|was ahead/i);
     }
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
@@ -651,7 +650,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       expect(error).toBeInstanceOf(Error);
       // The transport failure is propagated, never swallowed.
       expect((error as Error).cause).toBe(transportFailure);
-      expect((error as Error).message).toMatch(/re-read the network head/i);
+      expect((error as Error).message).toMatch(/read the network's ledger version again/i);
       // Both eras survive into the message, so the unresolved question is still legible.
       expect((error as Error).message).toContain("'v8'");
       expect((error as Error).message).toContain("'v9'");

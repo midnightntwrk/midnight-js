@@ -65,12 +65,6 @@ decision — and, where that decision is a lookup table rather than a `switch`,
 could resolve an inherited `Object.prototype` member and yield a
 plausible-looking non-era.
 
-There is a second closed union this package declares for the same reason, the
-ledger-8 instance axis. Nothing validates it at a boundary any more — the guard
-that did was retired — but the union and its error still ship, and the argument
-for why the axis was never only a label is recorded with them; see
-[DualInstantiationGuard](./dual-instantiation-guard.md).
-
 ## Own-property lookups where a null prototype is not available
 
 One place indexes an object this package did not build, so it cannot give it a
@@ -199,8 +193,8 @@ would cost.
 
 ## Related documents
 
-- [DualInstantiationGuard](./dual-instantiation-guard.md) — the ledger-8 instance axis, and why
-  `onchain-runtime-v3` is the only one asserted.
+- [DualInstantiationGuard](./dual-instantiation-guard.md) — the duplicate-install error, and why
+  `onchain-runtime-v3` is the only package it names.
 - [FailClosedDecoding](./fail-closed-decoding.md) — what the decode guarantees once a decoder has been
   selected, and how the failure classes divide the work between them.
 - [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_VERSIONS` lives in a leaf module,

@@ -19,7 +19,7 @@ For each name, we ask: is the code behind it bound to one ledger, or does it fol
 `CurrentLedgerVersion` / `RetainedLedgerVersion`?
 
 - Bound to one ledger: name it with the `Ledger8*` / `Ledger9*` prefix, as `Ledger8DeployOnLedger9Error`
-  already does. String values name the ledger too (`ledger9-artifact-on-ledger8-head`,
+  already does. String values name the ledger too (`ledger9-artifact-on-ledger8-network`,
   `unwrapped-ledger9-contract`). This applies even when the code fills an era-generic slot:
   `Ledger9Prover` fills `currentEra` and its signature uses ledger-v9 types. At the next fork the slot
   takes a new ledger-named type; `Ledger9Prover` keeps its meaning.

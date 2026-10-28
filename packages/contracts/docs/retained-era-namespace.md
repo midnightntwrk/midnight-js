@@ -114,8 +114,8 @@ in `@midnight-ntwrk/midnight-js-types`.
 ## The fork-window group, which is NOT in here
 
 A second group passes clause 1 and fails clause 2, and it is published flat:
-`StaleHeadError`, `SubmitRejectionUndiagnosedError` and their two payload types,
-`HeadStateEraMismatchError`, `EraArtifactMismatchError`,
+`ForkCrossedDuringOperationError`, `SubmitRejectionUndiagnosedError` and their two payload types,
+`NetworkVersionStateMismatchError`, `EraArtifactMismatchError`,
 `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`. These describe the FORK
 WINDOW -- a head that moved under an operation, an artifact whose era does not
 pair with the head, a scope the head era cannot compose -- and they will need

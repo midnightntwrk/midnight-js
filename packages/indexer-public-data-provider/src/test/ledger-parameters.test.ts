@@ -16,7 +16,7 @@
 import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   DeserializationError,
-  ledgerParametersEnvelopeVersion,
+  ledgerVersionOfLedgerParameters,
   parseSerializedTag,
   TagParseError,
   toHex
@@ -47,14 +47,14 @@ describe('the ledger parameters each runtime writes', () => {
     const bytes = await mintLedger8LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v5]');
-    expect(ledgerParametersEnvelopeVersion(bytes)).toBe('v8');
+    expect(ledgerVersionOfLedgerParameters(bytes)).toBe('v8');
   });
 
   test('the current era writes the envelope this client maps onto v9', () => {
     const bytes = mintLedger9LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v8]');
-    expect(ledgerParametersEnvelopeVersion(bytes)).toBe('v9');
+    expect(ledgerVersionOfLedgerParameters(bytes)).toBe('v9');
   });
 
   test('neither era can read the other era’s parameters', async () => {

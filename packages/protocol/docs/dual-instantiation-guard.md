@@ -15,7 +15,7 @@ different paths, and ran once inside `createLedger8Engine`. It retired with the
 hand-maintained execution layer
 (`docs/adr/0015-retained-era-execution-on-compact-js.md`): compact-js owns both
 acquisitions now, so the check had no second path left to compare and no
-subject. What replaced it is an install-time check, narrower on both axes —
+subject. What replaced it is an install-time check, narrower in two ways —
 see *What checks this today* below. Its error class and
 that error's code have been removed too.
 For transactions, the check is back at run time as `isFrameworkLedgerTransaction`
@@ -102,8 +102,7 @@ but that is an inference, not the `===` the probe performed.
 
 ## The retired probe's design
 
-Recorded because `UnknownLedger8AxisError` still ships and only makes sense
-against it.
+Recorded as history: the probe and its error are gone.
 
 Reference equality was the probe: two references to the same physical copy are
 always `===`, two from different copies never are, even at the same version.
@@ -123,17 +122,9 @@ have passed a fail-fast net by accident. That case reported
 two physical copies, and calling it one would send the reader to `npm why`
 after a duplicate that is not there.
 
-`axis` was validated against the closed union before either probe was read, for
-the same reason `extractEncodedStateValue` validates `version`: it is only
-type-checked for TypeScript callers, and it selected the package names the
-remediation hint told the reader to trace. That is what
-`UnknownLedger8AxisError` exists for; `requestedAxis` carries the offending
-value and is kept out of the message, because caller-supplied text is the one
-thing these errors never render.
-
-`'onchain-runtime-v3'` was the only member of `Ledger8InstanceAxis`, because it
-was the only retained pre-fork package this one both depended on directly and
-could receive from a consumer's own resolution. No other WASM package the engine
+`onchain-runtime-v3` was the only package the guard checked, because it was the
+only retained pre-fork package this one both depended on directly and could
+receive from a consumer's own resolution. No other WASM package the engine
 acquired had a comparable second acquisition path.
 
 ## Where the mixing still happens

@@ -49,11 +49,10 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   ContractExecutionError,
-  DownConvertFailedError,
   findCodedCause,
   InvalidArgumentError,
-  InvariantViolationError
-} from '../../errors';
+  InvariantViolationError,
+  StateConversionFailedError} from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
 import { type ContractStatePojo, describeValue, isContractBalance } from '../shared/contract-state';
@@ -509,7 +508,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  *
  * @param state The era-neutral encoded primary state.
  * @returns The decoded state value.
- * @throws DownConvertFailedError at stage `'state down-convert'` when the
+ * @throws StateConversionFailedError at stage `'state conversion'` when the
  *   decoded value does not re-encode to its source, with the mismatch on
  *   `cause`.
  * @see {@link RetainedEraExecution}
@@ -519,8 +518,8 @@ const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue =
   try {
     const decoded = glue.StateValue.decode(state);
     if (!structurallyEqual(decoded.encode(), state)) {
-      throw new DownConvertFailedError(
-        'state down-convert',
+      throw new StateConversionFailedError(
+        'state conversion',
         new Error(`decoded StateValue did not re-encode to its source (source tag '${state.tag}')`)
       );
     }
@@ -530,7 +529,7 @@ const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue =
     // field \`tag\``, `unknown variant \`x\`` -- carrying neither `code` nor
     // `stage`. Coding them here is what the retired `downConvertForExecution`
     // did, and what `fail-closed-decoding.md` still promises a caller.
-    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
+    throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 
@@ -566,8 +565,8 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   // @see FailClosedDecoding
   const { balance } = contractState;
   if (!isContractBalance(balance)) {
-    throw new DownConvertFailedError(
-      'state down-convert',
+    throw new StateConversionFailedError(
+      'state conversion',
       new Error(
         `a contract state carries no usable balance (received ${describeValue(balance)}), so it cannot be ` +
           'executed against. Read it from a contract-state snapshot rather than assembling one; a contract ' +
@@ -588,7 +587,7 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
     // colour `isContractBalance` admits by name but the runtime cannot read,
     // and `data` refuses a `ChargedState` from another physical copy. Neither
     // carries a `code` a caller can branch on.
-    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
+    throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 

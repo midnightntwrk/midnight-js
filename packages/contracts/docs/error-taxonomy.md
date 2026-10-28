@@ -12,7 +12,7 @@ place, so a docstring can state what an error means and leave why it is shaped
 that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
-for is a separate thread — see [StaleHeadRemediation](./stale-head-remediation.md).
+for is a separate thread — see [ForkCrossedRemediation](./stale-head-remediation.md).
 The order a retained-era operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
@@ -177,7 +177,7 @@ deployment or a replacement that landed.
 ## Why a failed deploy is not a failed call
 
 `Ledger8DeployTxFailedError` is separate from `Ledger8CallTxFailedError` because
-the remediation is — the same reason `StaleHeadError` writes a deploy's
+the remediation is — the same reason `ForkCrossedDuringOperationError` writes a deploy's
 remediation separately. A failed call can simply be run again. A failed deploy
 cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
 lands at a DIFFERENT address, and repeating one that in fact finalized leaves two
@@ -212,7 +212,7 @@ cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 
 The two undiagnosable conditions and what each asks of a caller are in
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## Related reading
 

@@ -16,10 +16,10 @@
 import { ledger, loadLedger8Protocol, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  contractStateEnvelopeVersion,
   DeserializationError,
   fromHex,
   hasErrorCode,
+  ledgerVersionOfContractState,
   parseSerializedTag,
   toHex,
   UTILS_ERROR_CODES
@@ -100,7 +100,7 @@ describe('contract-state envelope tags', () => {
   // instead of turning every state read into a rejected envelope.
   //
   // The table itself lives in `@midnight-ntwrk/midnight-js-utils`
-  // (`contractStateEnvelopeVersion`), beside the tag parser it is built on, because the contracts
+  // (`ledgerVersionOfContractState`), beside the tag parser it is built on, because the contracts
   // package's era dispatch reads it too and a second copy of a table that decides which era
   // decodes attacker-supplied bytes is a security-relevant divergence
   // (`packages/protocol/docs/shared-table-discipline.md`). These two assertions stay HERE because
@@ -108,11 +108,11 @@ describe('contract-state envelope tags', () => {
   // through `midnight-js-protocol` -- and they exercise the shared implementation through the
   // import above.
   test('maps the tag the v9 runtime writes onto the v9 ledger era', () => {
-    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(mintLedger9ContractStateHex())))).toBe('v9');
+    expect(ledgerVersionOfContractState(new Uint8Array(fromHex(mintLedger9ContractStateHex())))).toBe('v9');
   });
 
   test('maps the tag the v8 runtime writes onto the v8 ledger era', async () => {
-    expect(contractStateEnvelopeVersion(new Uint8Array(fromHex(await mintLedger8ContractStateHex())))).toBe('v8');
+    expect(ledgerVersionOfContractState(new Uint8Array(fromHex(await mintLedger8ContractStateHex())))).toBe('v8');
   });
 });
 
@@ -242,7 +242,7 @@ describe('queryRawContractState', () => {
         kind: 'era-disagreement',
         protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
         reportedVersion: 'v8',
-        envelopeVersion: 'v9'
+        stateVersion: 'v9'
       });
     });
 

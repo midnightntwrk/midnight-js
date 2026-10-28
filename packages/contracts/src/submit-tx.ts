@@ -105,8 +105,8 @@ const transactionEra = (unprovenTx: UnprovenTx): LedgerVersion =>
   LedgerTransaction.require(unprovenTx, 'Unproven', 'submitTx').era;
 
 const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
-  v8: 'ledger8-transaction-on-ledger9-head',
-  v9: 'ledger9-transaction-on-ledger8-head'
+  v8: 'ledger8-transaction-on-ledger9-network',
+  v9: 'ledger9-transaction-on-ledger8-network'
 };
 
 const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
@@ -131,9 +131,9 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  *
  * ## Which era it runs on
  *
- * It reads the network head once and runs on the head's era. The handle's `era` must match it:
+ * It reads the network's ledger version once and runs on that era. The handle's `era` must match it:
  *
- * | input | head | what happens |
+ * | input | network | what happens |
  * |---|---|---|
  * | v9 | v9 | proved, balanced and submitted as v9 handles |
  * | v8 | v8 | proved, balanced and submitted as v8 handles |
