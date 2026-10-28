@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -23,7 +23,7 @@ everything else.
 
 ### TState
 
-`TState` = `RetainedStateValue`
+`TState` = `Ledger8StateValue`
 
 The retained-era state type; the framework's own
 retained runtime fills it with compact-js's ledger-8 state handle.

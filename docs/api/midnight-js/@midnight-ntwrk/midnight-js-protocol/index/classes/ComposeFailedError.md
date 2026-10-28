@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -12,8 +12,8 @@ is missing, under-registered, or names a circuit the contract does not have.
 a closed union, so a consumer can `switch` on it exhaustively; `version`
 names the ledger era the composition was running against.
 
-Most stages carry no `cause`. The exceptions are the stages where the ledger
-itself rejected caller-supplied bytes, enumerated under `cause` below.
+Most stages carry no `cause`. The exceptions are the stages where a runtime
+library rejected what it was handed, enumerated under `cause` below.
 
 `circuitId` names the entry point, never its raw contents: this class renders
 no hex and no byte-array dump.
@@ -43,9 +43,10 @@ The entry-point name, already decoded. [NO\_CIRCUIT](../variables/NO_CIRCUIT.md)
 **cause**
 
 The runtime's own failure, present only for the stages where
-  the ledger itself rejected caller-supplied bytes: `'call-contract-state'`,
-  `'call-partition-context'`, `'call-partition'`, `'call-prototype'` and
-  `'deploy-verifier-key-blob'`.
+  the ledger rejected caller-supplied bytes — `'call-contract-state'`,
+  `'call-partition-context'`, `'call-partition'`, `'call-prototype'`,
+  `'deploy-verifier-key-blob'` — and for `'maintenance-update'`, where it is
+  the failure of platform-js, compact-js or the ledger, whichever refused.
 
 ## See
 

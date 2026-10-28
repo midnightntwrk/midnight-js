@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -21,4 +21,4 @@ retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
 
 Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
 `InvalidArgumentError` instead of ignoring it: [createProofProvider](../functions/createProofProvider.md),
-[createProofProviderForEras](../functions/createProofProviderForEras.md) and `dappConnectorProofProvider`.
+[createProofProviderFromProvingProviders](../functions/createProofProviderFromProvingProviders.md) and `dappConnectorProofProvider`.

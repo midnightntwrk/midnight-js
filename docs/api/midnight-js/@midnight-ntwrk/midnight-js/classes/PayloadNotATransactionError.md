@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -6,19 +6,18 @@
 
 # Class: PayloadNotATransactionError
 
-Thrown when a payload handed to a proving seam is not a serialized
-transaction at all.
+Thrown when a payload handed to `deserializeTransactionAtStage` is not a
+serialized transaction of the requested era and stage.
 
-Distinct from a decode failure inside the ledger runtime: this is raised
-before any runtime is asked to read the bytes, so it says the caller sent the
-wrong KIND of payload rather than a damaged one. It covers three ways that
-can happen — a `txBytes` field that is not a byte string, a byte string
-shorter than the tag prefix, and one that does not open with the prefix.
+It covers four ways that can happen: a value that is not a byte string, a
+byte string shorter than the tag prefix, one that does not open with the
+prefix, and one the era's runtime refuses to read at the requested stage.
+The first three are refused before any runtime reads the bytes. The last
+carries the runtime's refusal on `cause`.
 
 ## Remarks
 
-Raised by `proveV8Transaction`, so it reaches application code as a
-`proveTx` rejection. Match it with `hasErrorCode` against
+Match it with `hasErrorCode` against
 `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
 
 ## Extends
@@ -51,14 +50,43 @@ Raised by `proveV8Transaction`, so it reaches application code as a
 
 > `static` **notBytes**(`received`): `PayloadNotATransactionError`
 
-The `txBytes` field of a `v8` payload was not a `Uint8Array`. Reachable
-from JavaScript, from a consumer built against a pre-5.0.0
-`midnight-js-types`, or across an untyped boundary — so it is refused with
-a code rather than left to become a bare `TypeError`.
+The payload was not a `Uint8Array`. Reachable from JavaScript or across an
+untyped boundary, so it is refused with a code rather than left to become
+a bare `TypeError`.
 
 #### Parameters
 
 ##### received
+
+`unknown`
+
+#### Returns
+
+`PayloadNotATransactionError`
+
+***
+
+### undecodable()
+
+> `static` **undecodable**(`version`, `stage`, `byteLength`, `cause`): `PayloadNotATransactionError`
+
+The era's runtime refused to read the payload at the requested stage; its refusal is on `cause`.
+
+#### Parameters
+
+##### version
+
+`"v8"` \| `"v9"`
+
+##### stage
+
+`TransactionStage`
+
+##### byteLength
+
+`number`
+
+##### cause
 
 `unknown`
 

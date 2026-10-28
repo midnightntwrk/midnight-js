@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -8,17 +8,12 @@
 
 A retained-era contract deployed by the caller.
 
-It differs from [Ledger8FoundContract](FoundContract.md) in two ways. Its
-[Ledger8DeployedContract.signingKey](#signingkey) is REQUIRED where the found
-handle's may be `undefined`. The key itself is no longer something only a
-deployer has -- the deploy stores it, and an attach through the same provider
-reports it back -- so what a deploy guarantees is that there IS one, not that
-nobody else could hold it. And it carries what the constructor produced:
-the initial contract state, as a handle and as bytes, and the initial private
-and Zswap states.
+It differs from [Ledger8FoundContract](FoundContract.md) only in its
+[Ledger8DeployedContract.deployTxData](#deploytxdata), which carries what the
+constructor produced and a signing key that is always present.
 
 Published under the retained-era namespace so a caller that receives one by
-inference can also NAME it. This is what `deployContract`'s retained-era arm
+inference can also NAME it. This is what `deployContract`'s retained-era overload
 answers with.
 
 ## Extends
@@ -48,6 +43,18 @@ arguments.
 
 ***
 
+### circuitMaintenanceTx
+
+> `readonly` **circuitMaintenanceTx**: [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+
+One maintenance interface per circuit the artifact declares, bound to this address.
+
+#### Inherited from
+
+[`FoundContract`](FoundContract.md).[`circuitMaintenanceTx`](FoundContract.md#circuitmaintenancetx)
+
+***
+
 ### compiledContract
 
 > `readonly` **compiledContract**: `C`
@@ -72,22 +79,25 @@ The address on chain every call made through [Ledger8FoundContract.callTx](Found
 
 ***
 
-### deployTxData
+### contractMaintenanceTx
 
-> `readonly` **deployTxData**: [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **contractMaintenanceTx**: [`ContractMaintenanceTxInterface`](ContractMaintenanceTxInterface.md)
 
-The record of the transaction that DEPLOYED this contract, version-tagged
-because a retained-era contract was deployed in whichever era was current
-at the time — narrow it with `switch (deployTxData.version)`.
-
-SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-which is a `FoundDeployTxData` whose record sits under `.public` and is
-tagged on `.public.version`. Here the record is the read surface's own
-`VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
-members. Code written against one era does not read the other's record
-unchanged.
+The contract-wide maintenance interface, bound to this address.
 
 #### Inherited from
+
+[`FoundContract`](FoundContract.md).[`contractMaintenanceTx`](FoundContract.md#contractmaintenancetx)
+
+***
+
+### deployTxData
+
+> `readonly` **deployTxData**: [`DeployTxData`](DeployTxData.md)\<`C`\>
+
+See [Ledger8DeployTxData](DeployTxData.md).
+
+#### Overrides
 
 [`FoundContract`](FoundContract.md).[`deployTxData`](FoundContract.md#deploytxdata)
 
@@ -95,7 +105,7 @@ unchanged.
 
 ### era
 
-> `readonly` **era**: `"ledger8"`
+> `readonly` **era**: `"v8"`
 
 The pipeline that produced this result: always the retained era here, even
 when the transaction that recorded it is a keep-state transaction tagged
@@ -105,78 +115,3 @@ produced the objects below.
 #### Inherited from
 
 [`FoundContract`](FoundContract.md).[`era`](FoundContract.md#era)
-
-***
-
-### initialContractState
-
-> `readonly` **initialContractState**: `RetainedConstructedState`
-
-The state the contract was deployed with, as the LIVE handle the retained
-constructor built. See ADR-0010 for its lifetime, and prefer
-[Ledger8DeployedContract.initialContractStateBytes](#initialcontractstatebytes) for anything that has to
-outlive the runtime instance.
-
-***
-
-### initialContractStateBytes
-
-> `readonly` **initialContractStateBytes**: `Uint8Array`
-
-The same state, serialized — the bytes the contract address was derived
-from. A deploy mints a fresh nonce, so these bytes and that address belong
-to each other and to no other deployment.
-
-***
-
-### initialPrivateState
-
-> `readonly` **initialPrivateState**: [`PrivateState`](../type-aliases/PrivateState.md)\<`C`\>
-
-The private state the constructor produced.
-
-#### Remarks
-
-**Privacy-sensitive.**
-
-***
-
-### initialZswapState
-
-> `readonly` **initialZswapState**: [`ZswapLocalState`](https://github.com/LFDT-Minokawa/compact)
-
-The Zswap local state the constructor ended on, carrying any coin it
-minted. Empty for a constructor that minted none.
-
-#### Remarks
-
-**Privacy-sensitive.** Shielded coin material.
-
-***
-
-### signingKey
-
-> `readonly` **signingKey**: `string`
-
-The key the deployed contract's maintenance authority was built from: ONE
-verifying key at threshold 1, so this single key is the whole authority.
-
-SAMPLED here when the caller named none on the deploy options, and stored
-against [Ledger8FoundContract.contractAddress](FoundContract.md#contractaddress) in the private-state
-provider once the chain has recorded the deployment — the same storage and
-the same moment the current era's deploy writes its own key to. Attaching
-to the same address through the same provider reports it again on
-[Ledger8FoundContract.signingKey](FoundContract.md#signingkey).
-
-The provider is the ONLY copy besides this handle. It is not on chain and
-not derivable from anything that is, so a store that is lost, cleared or
-never persisted takes the authority with it: no verifier key can then be
-inserted, removed or replaced on that contract by anyone.
-
-#### Remarks
-
-**Privacy-sensitive.** Signing-key material.
-
-#### Overrides
-
-[`FoundContract`](FoundContract.md).[`signingKey`](FoundContract.md#signingkey)

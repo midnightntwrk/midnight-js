@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ place, so a docstring can state what an error means and leave why it is shaped
 that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
-for is a separate thread — see [StaleHeadRemediation](../../midnight-js/documents/StaleHeadRemediation.md).
+for is a separate thread — see [ForkCrossedRemediation](../../midnight-js/documents/ForkCrossedRemediation.md).
 The order a retained-era operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](../../midnight-js/documents/KeepStatePipeline.md).
 
@@ -28,7 +28,7 @@ It exists because the two eras cannot share a record TYPE. The current era
 submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
 call is recorded by whichever era the network head is on, so its record is the
 version-tagged union `VersionedFinalizedTxData` — which is not assignable to the
-v9 arm. Narrowing the current era's member to the union would change a type
+v9 variant. Narrowing the current era's member to the union would change a type
 consumers already read, so that was not available either. Hence a retained-era
 class of its own rather than an extension of `TxFailedError`, and a base that
 declares the union.
@@ -52,17 +52,24 @@ record already answer — not a finer code.
 ## Which errors carry a registered code, and which do not
 
 Every class here carries a registered code (ADR 0017). The retained era's
-recorded-failure classes — `Ledger8CallTxFailedError` and
-`Ledger8DeployTxFailedError` — carry none of their OWN: they inherit `TX_FAILED`.
-That arm's record type is expected to converge with the current era's, and a
+recorded-failure classes — `Ledger8CallTxFailedError`,
+`Ledger8DeployTxFailedError`, `Ledger8InsertVerifierKeyTxFailedError`,
+`Ledger8RemoveVerifierKeyTxFailedError` and
+`Ledger8ReplaceMaintenanceAuthorityTxFailedError` — carry none of their OWN:
+they inherit `TX_FAILED`. The three maintenance classes carry the narrower
+`Ledger8FinalizedTxData`, because a retained-era maintenance update runs only on
+a pre-fork head; the call and deploy classes carry `VersionedFinalizedTxData`.
+That era's record type is expected to converge with the current era's, and a
 finer code promised now would outlive the shape it describes. A caller branches
 on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
 message.
 
-The post-submission classes are different: `Ledger8DeployUnconfirmedError` and
-`Ledger8DeployNotStoredError` describe what the caller must do next, not the
-record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` is
-`UNCERTAIN`, because the deployment may still land.
+The post-submission classes are different: `Ledger8DeployUnconfirmedError`,
+`Ledger8DeployNotStoredError`, `Ledger8ReplaceAuthorityUnconfirmedError` and
+`Ledger8SigningKeyNotStoredError` describe what the caller must do next, not the
+record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` and
+`LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` are `UNCERTAIN`, because the deployment
+or the replacement may still land.
 
 `SubmitRejectionUndiagnosedError` is the exception that proves the rule: it has
 its own code, and **the code of the rejection it carries must not be copied onto
@@ -106,11 +113,11 @@ condition surfaced as a bare assertion inside the offer builder, naming neither
 the era nor the circuit, which told a caller nothing about why its call could not
 be composed.
 
-The fix is to supply the retained arm with a Zswap chain state, tracked
+The fix is to supply the retained-era path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
-### `ScopedTxEraUnsupportedError`
+### `ScopedTransactionEraUnsupportedError`
 
 The pre-fork era composes exactly one call per transaction and refuses a longer
 list, which leaves a pre-fork scope nothing to batch into.
@@ -143,7 +150,7 @@ the deployment is unconfirmed — an unreachable indexer, a timeout, an untagged
 payload, an era violation — is what a caller branches on, and this class adds the
 one fact that failure cannot carry, the key the submitted deployment was built
 with. An era violation reaching `cause` unchanged is what keeps
-`cause instanceof EraInvariantViolationError`, its seam and its registered code
+`cause instanceof EraInvariantViolationError`, its method and its registered code
 reachable.
 
 `Ledger8DeployNotStoredError` is the case where the answer arrived and it was
@@ -161,15 +168,18 @@ ahead of it is raised with no key having been sampled.
 
 ### The key is named, never rendered
 
-`Ledger8DeployTxFailedError.signingKey` and `Ledger8DeployNotStoredError.signingKey`
-are referenced in their classes' documentation but never interpolated into a
-message. An error message reaches logs and issue trackers, and this is the only
-copy of the authority over a deployment that landed.
+`Ledger8DeployTxFailedError.signingKey`, `Ledger8DeployNotStoredError.signingKey`,
+`Ledger8ReplaceMaintenanceAuthorityTxFailedError.signingKey`,
+`Ledger8ReplaceAuthorityUnconfirmedError.signingKey` and
+`Ledger8SigningKeyNotStoredError.signingKey` are referenced in their classes'
+documentation but never interpolated into a message. An error message reaches
+logs and issue trackers, and each may be the only copy of the authority over a
+deployment or a replacement that landed.
 
 ## Why a failed deploy is not a failed call
 
 `Ledger8DeployTxFailedError` is separate from `Ledger8CallTxFailedError` because
-the remediation is — the same reason `StaleHeadError` writes a deploy's
+the remediation is — the same reason `ForkCrossedDuringOperationError` writes a deploy's
 remediation separately. A failed call can simply be run again. A failed deploy
 cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
 lands at a DIFFERENT address, and repeating one that in fact finalized leaves two
@@ -204,7 +214,7 @@ cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 
 The two undiagnosable conditions and what each asks of a caller are in
-[StaleHeadRemediation](../../midnight-js/documents/StaleHeadRemediation.md).
+[ForkCrossedRemediation](../../midnight-js/documents/ForkCrossedRemediation.md).
 
 ## Related reading
 

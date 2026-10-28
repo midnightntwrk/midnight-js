@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -163,9 +163,9 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
+> `readonly` **tx**: [`LedgerTransaction`](../../types/classes/LedgerTransaction.md)\<`"Finalized"`, `"v9"`\>
 
-The transaction that was finalized.
+The transaction that was finalized, as a v9 handle.
 
 #### Inherited from
 

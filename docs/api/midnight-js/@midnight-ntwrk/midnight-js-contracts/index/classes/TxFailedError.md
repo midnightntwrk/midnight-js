@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 An error indicating that a transaction submitted to a consensus node failed.
 
-The current era's arm of [AnyEraTxFailedError](AnyEraTxFailedError.md): its record is always
+The current era's subclass of [AnyEraTxFailedError](AnyEraTxFailedError.md): its record is always
 the v9 one. Catch the base to catch both eras.
 
 ## Extends
@@ -109,7 +109,7 @@ The finalization data of the transaction that failed.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 arm on this class.
+See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 variant on this class.
 
 ##### Returns
 
@@ -119,8 +119,9 @@ The finalized record the chain reported, version-tagged.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.version` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
+narrowing on `record.version`.
 
 #### Overrides
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -8,8 +8,7 @@
 
 ## Classes
 
-- [EraUnresolvableError](classes/EraUnresolvableError.md)
-- [EraUnsupportedError](classes/EraUnsupportedError.md)
+- [DecoderEraUnsupportedError](classes/DecoderEraUnsupportedError.md)
 - [IndexerDataError](classes/IndexerDataError.md)
 - [IndexerError](classes/IndexerError.md)
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
@@ -19,14 +18,15 @@
 - [IndexerPublicDataProvider](classes/IndexerPublicDataProvider.md)
 - [IndexerQueryError](classes/IndexerQueryError.md)
 - [IndexerSubscriptionDataError](classes/IndexerSubscriptionDataError.md)
+- [UnknownRecordEraError](classes/UnknownRecordEraError.md)
 
 ## Type Aliases
 
-- [EnvelopeUpperBound](type-aliases/EnvelopeUpperBound.md)
 - [IndexerDataErrorContext](type-aliases/IndexerDataErrorContext.md)
 - [IndexerProviderConfig](type-aliases/IndexerProviderConfig.md)
 - [IndexerSubscriptionField](type-aliases/IndexerSubscriptionField.md)
 - [IndexerUtxo](type-aliases/IndexerUtxo.md)
+- [UpperBoundCheck](type-aliases/UpperBoundCheck.md)
 
 ## Variables
 
