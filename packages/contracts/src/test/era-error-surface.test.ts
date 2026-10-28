@@ -46,7 +46,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new BlankVerifierKeySlotError('increment'), code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT },
       { error: new VerifierKeyMismatchError('increment'), code: CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH },
       { error: new EraInvariantViolationError('submitTx'), code: CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION },
-      { error: new NetworkVersionReadFailedError('head read failed'), code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED },
+      { error: new NetworkVersionReadFailedError('network version read failed'), code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED },
       { error: new ZswapOutputResolutionError('unresolved'), code: CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED },
       { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
       { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },

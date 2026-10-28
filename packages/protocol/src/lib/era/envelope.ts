@@ -28,7 +28,7 @@ export type { EncodedStateValue };
 
 /**
  * The pre-fork `ContractState` statics {@link extractEncodedStateValue} needs
- * to read a `contract-state[v6]` envelope.
+ * to read a `contract-state[v6]`-tagged state.
  *
  * @see {@link InjectedVendorSlices} for why this slice is derived from the
  * vendor's own class and narrowed to `deserialize`.
@@ -42,15 +42,15 @@ type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractSt
 
 /**
  * Reads the primary {@link EncodedStateValue} out of a raw, serialized
- * post-fork `contract-state[v8]` envelope.
+ * post-fork contract state, tagged `contract-state[v8]`.
  *
  * Reachable without a pre-fork runtime, unlike {@link extractEncodedStateValue},
  * which requires one for every era.
  *
- * @param raw The serialized `contract-state[v8]` envelope.
- * @returns The primary state read out of the envelope.
- * @throws StateConversionFailedError at stage `'v9 version tag read'` if the
- * envelope is malformed, truncated, over-long, or tagged for the other era,
+ * @param raw The serialized `contract-state[v8]` state.
+ * @returns The primary state read out of the serialized state.
+ * @throws StateConversionFailedError at stage `'v9 state read'` if the
+ * state is malformed, truncated, over-long, or tagged for the other era,
  * carrying the runtime's own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
  */
@@ -58,16 +58,16 @@ export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateVa
   try {
     return Ledger9ContractState.deserialize(raw).data.state.encode();
   } catch (cause) {
-    throw new StateConversionFailedError('v9 version tag read', cause);
+    throw new StateConversionFailedError('v9 state read', cause);
   }
 };
 
 /**
  * One decoder per {@link LedgerVersion}:
  *
- * - `v9` — a post-fork `contract-state[v8]`-tagged envelope, read via
+ * - `v9` — a post-fork `contract-state[v8]`-tagged state, read via
  *   `@midnightntwrk/ledger-v9`.
- * - `v8` — a pre-fork `contract-state[v6]`-tagged envelope, read via
+ * - `v8` — a pre-fork `contract-state[v6]`-tagged state, read via
  *   onchain-runtime-v3, the same codec that produced it.
  *
  * A total `Record`, built on a null prototype and frozen -- see the
@@ -85,22 +85,22 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
 
 /**
  * Extracts the primary {@link EncodedStateValue} out of a raw, serialized
- * `ContractState` envelope, using the decoder that matches `version`.
+ * `ContractState`, using the decoder that matches `version`.
  *
- * @param raw The serialized envelope.
+ * @param raw The serialized contract state.
  * @param version The era whose decoder reads `raw`. Validated at runtime, not
  * merely type-checked.
  * @param ledger8ContractState The pre-fork `ContractState` statics. Required
  * for every `version`, not just `'v8'`, and checked before any decoding
  * happens.
- * @returns The primary state read out of the envelope — never a silently
+ * @returns The primary state read out of the serialized state — never a silently
  * empty or partial one.
  * @throws UnknownLedgerVersionError if `version` is not a member of
  * `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeInvalidError if `ledger8ContractState` does not carry
  * `deserialize`.
- * @throws StateConversionFailedError at stage `'v8 version tag read'` or
- * `'v9 version tag read'` if the envelope cannot be read, carrying the
+ * @throws StateConversionFailedError at stage `'v8 state read'` or
+ * `'v9 state read'` if the state cannot be decoded, carrying the
  * runtime's own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
  * @see {@link SharedTableDiscipline}
@@ -124,7 +124,7 @@ export const extractEncodedStateValue = (
     // THE STAGE IS CHECKED, not just the class: a decoder is injectable, so one
     // that wrapped at a different stage must not pass through -- see
     // FailClosedDecoding.
-    const stage: StateConversionStage = `${version} version tag read`;
+    const stage: StateConversionStage = `${version} state read`;
     throw cause instanceof StateConversionFailedError && cause.stage === stage
       ? cause
       : new StateConversionFailedError(stage, cause);

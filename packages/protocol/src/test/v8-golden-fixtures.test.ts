@@ -175,7 +175,7 @@ describe('extractLedger9EncodedStateValue', () => {
     expect(caught).toBeInstanceOf(StateConversionFailedError);
     const failure = caught as StateConversionFailedError;
     expect(failure.code).toBe(PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED);
-    expect(failure.stage).toBe('v9 version tag read');
+    expect(failure.stage).toBe('v9 state read');
   });
 
   // The dispatching entry delegates to this function rather than duplicating

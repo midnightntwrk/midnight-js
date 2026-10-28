@@ -155,7 +155,7 @@ export class InvariantViolationError extends MidnightJsError {
  * Which call path asked for a ledger version:
  * - `'read'` — the version was taken off an existing record.
  * - `'construct'` — the version was chosen to build something new against the
- *   network's current head.
+ *   network's latest block.
  */
 export type VersionResolutionPath = 'read' | 'construct';
 
@@ -314,12 +314,12 @@ export class Ledger8InstanceMismatchError extends MidnightJsError {
  * so a consumer can `switch` on `stage` exhaustively.
  *
  * `'state conversion'` is the structural round trip `lib/v8/executable.ts`
- * runs before a circuit executes; the other two read the version tag in front
- * of a serialized contract state, in `lib/era/envelope.ts`.
+ * runs before a circuit executes; the other two decode a serialized contract state
+ * written by that ledger version, in `lib/era/envelope.ts`.
  *
  * @see {@link FailClosedDecoding}
  */
-export type StateConversionStage = 'v8 version tag read' | 'v9 version tag read' | 'state conversion';
+export type StateConversionStage = 'v8 state read' | 'v9 state read' | 'state conversion';
 
 /**
  * Thrown when a serialized contract state, or an already-extracted
@@ -605,7 +605,7 @@ export class ComposeFailedError extends MidnightJsError {
 /**
  * Which option handed to a composition leg was unusable:
  * - `'contractStateBytes'` — the state could not be bridged into the target
- *   ledger era (its serialized envelope was rejected by the era's decoder).
+ *   ledger era (the era's decoder rejected its bytes).
  * - `'guaranteedZswapOfferBytes'` — the offer bytes supplied to a deploy were
  *   rejected by the target era's decoder.
  * - `'ledgerParametersBytes'` — the supplied ledger parameters could not be
@@ -801,14 +801,14 @@ export class MaintenanceAuthorityMismatchError extends MidnightJsError {
 }
 
 /**
- * Thrown when a raw, serialized contract-state envelope could not be read by
+ * Thrown when a raw, serialized contract state could not be read by
  * the ledger era it was requested for. Raised by both of the facade's read
  * paths, `extractState` and `decodeContractState`
  * (`lib/shared/contract-state.ts`), so a caller writes one handler for both.
  *
  * Renders no hex and no byte dump of its own.
  *
- * @param version The era whose decoder rejected the envelope.
+ * @param version The era whose decoder rejected the bytes.
  * @param cause The decoder's own diagnosis, preserved unchanged. It is what
  *   distinguishes a tag mismatch from truncated, trailing or empty input.
  * @see {@link FailClosedDecoding}
@@ -834,7 +834,7 @@ export class StateDecodeFailedError extends MidnightJsError {
 
 /**
  * Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
- * era's decoder read the envelope but the state it produced is internally
+ * era's decoder read the bytes but the state it produced is internally
  * inconsistent: it declares an entry point it resolves no operation for, holds
  * a verifier key that will not hash, or resolves no usable balance.
  *
@@ -873,13 +873,13 @@ export class StateInconsistentError extends MidnightJsError {
  * binding the decoder needs is absent from it.
  *
  * `downConvertForExecution` and the shared-instance guard used to raise it too;
- * both are gone with the hand-maintained execution layer, so the envelope
+ * both are gone with the hand-maintained execution layer, so the contract-state
  * decoder is now its only source.
  *
  * Nothing is wrong with the caller's input here. Distinct from
  * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
- * load at all, and from {@link StateConversionFailedError}, which reports an
- * envelope or state that could not be turned into an executable pre-fork
+ * load at all, and from {@link StateConversionFailedError}, which reports a
+ * serialized state that could not be turned into an executable pre-fork
  * state.
  *
  * @param missingMember Which binding was absent. One of this module's own
@@ -893,7 +893,7 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
 
   constructor(readonly missingMember: string) {
     super(
-      'The ledger-8 runtime handed to the engine that runs ledger 8 contracts cannot be used: the binding it ' +
+      'The ledger 8 runtime passed in to decode a ledger 8 contract state cannot be used: the binding it ' +
         'needs is missing. ' +
         'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
         'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +

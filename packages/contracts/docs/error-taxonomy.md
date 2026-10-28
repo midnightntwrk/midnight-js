@@ -12,7 +12,7 @@ place, so a docstring can state what an error means and leave why it is shaped
 that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
-for is a separate thread — see [StaleHeadRemediation](./stale-head-remediation.md).
+for is a separate thread — see [ForkCrossedRemediation](./stale-head-remediation.md).
 The order a retained-era operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
@@ -212,7 +212,7 @@ cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 
 The two undiagnosable conditions and what each asks of a caller are in
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## Related reading
 

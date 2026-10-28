@@ -156,10 +156,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
-   * Reads the protocol-version integer of the network's head block.
+   * Reads the protocol-version integer of the network's latest block.
    *
    * The indexer's `block` root field with no offset resolves to the latest
-   * indexed block, so this is the head version.
+   * indexed block, so this is the latest version.
    *
    * This implementation does not cache: every call issues a request. The
    * interface permits a cache bounded short of block time — see
@@ -169,7 +169,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * {@link queryRawContractState}, which costs no request at all.
    *
    * @throws {IndexerDataError} When the indexer has not indexed a block yet
-   *   and therefore reports no head block.
+   *   and therefore reports no latest block.
    */
   async queryLatestProtocolVersion(): Promise<number> {
     const block = await this.client
@@ -189,8 +189,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Reads the contract state at `address` as the bytes the indexer served,
    * without deserializing them, tagged with the ledger era that wrote them.
    *
-   * `version` is read off the envelope of the bytes. `protocolVersion` dates the
-   * block the read resolved; on a pinned read an envelope newer than that block
+   * `version` is read off the version tag of the bytes. `protocolVersion` dates the
+   * block the read resolved; on a pinned read a version tag newer than that block
    * is refused. The block and the state are asked for in a single document. That
    * saves a round trip; it does **not** make the two fields a consistent
    * snapshot — the indexer resolves Query-root siblings concurrently, from
@@ -199,10 +199,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * {@link queryLatestProtocolVersion}, which reads it.
    *
    * @throws {TagParseError} When the served state does not carry a
-   *   contract-state envelope from a supported ledger runtime.
+   *   contract-state version tag from a supported ledger runtime.
    * @throws {IndexerDataError} When the served state is not hex-encoded, when a
    *   state is served with no block to date it, or when a pinned read serves an
-   *   envelope newer than its block.
+   *   version tag newer than its block.
    */
   async queryRawContractState(
     address: ContractAddress,
@@ -292,7 +292,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     // unusable for building transactions; the queried block's tree is the one execution needs.
     // With `offset` pinned, both fields resolve at that one anchor with no race between them.
     // `getPublicStates` also reaches here with no offset, and then they do race — which is why the
-    // era bound on the contract state is withheld for exactly that case below.
+    // era bound on the contract state is skipped for exactly that case below.
     const offset = toBlockOffset(config);
     return this.client
       .query({
@@ -557,7 +557,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    *
    * The streaming twin of {@link queryRawContractState}: no state is
    * deserialized here, in either era. `version` on each record is the era read
-   * off its envelope.
+   * off its version tag.
    *
    * `ledgerParameters` IS ALWAYS ABSENT ON THIS STREAM. The subscription does
    * not ask for the parameters, which would cost one blob per contract action.
@@ -567,11 +567,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Every branch and every replay-suppression rule is exactly
    * {@link contractStateObservable}'s; only the element type differs.
    *
-   * WHAT IS WITHHELD, PRECISELY: the deserialization only. `version` is the era
-   * read off the envelope, and the envelope is checked against the record's
+   * WHAT IS SKIPPED, PRECISELY: the deserialization only. `version` is the era
+   * read off the version tag, and the version tag is checked against the record's
    * dating block exactly as {@link contractStateObservable} checks it, so a
-   * payload carrying no supported contract-state envelope still fails the stream
-   * as a `TagParseError`, and an envelope newer than its dating block as an
+   * payload carrying no supported contract-state version tag still fails the stream
+   * as a `TagParseError`, and a version tag newer than its dating block as an
    * `IndexerDataError`.
    *
    * @param contractAddress The address of the contract of interest.

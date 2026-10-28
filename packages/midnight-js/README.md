@@ -42,7 +42,7 @@ import {
   CURRENT_LEDGER_VERSION, // the current era, 'v9': the `era` of every current-era result
   type LedgerVersion, // 'v8' | 'v9'
   versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
-  latestNetworkLedgerVersion  // asks a source for the network head -> LedgerVersion
+  latestNetworkLedgerVersion  // asks a source for the network's current ledger version -> LedgerVersion
 } from '@midnight-ntwrk/midnight-js';
 ```
 
@@ -118,8 +118,8 @@ too, so you can catch them and read their payload without a cast:
 | `Ledger8RuntimeMissingError` | `subpath` | the retained runtime chunk could not be loaded at all |
 | `ComposeFailedError` | `version`, `stage`, `circuitId` | a circuit operation is missing or under-registered |
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
-| `StateDecodeFailedError` | `version` | a contract-state envelope could not be read as that era |
-| `StateInconsistentError` | `version` | a contract-state envelope was read as that era, but the state is internally inconsistent |
+| `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
+| `StateInconsistentError` | `version` | contract-state bytes were read as that era, but the state is internally inconsistent |
 | `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
 | `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 

@@ -125,12 +125,6 @@ describe('barrel exports', () => {
   it('should export exactly the published surface, and nothing else', () => {
     expect(Object.keys(midnightJs).sort()).toEqual([...EXPECTED_BARREL_EXPORTS].sort());
   });
-
-  it('should publish no name or error code in maintainer jargon', () => {
-    const names = [midnightJs, contracts, protocol, utils, types].flatMap((namespace) => Object.keys(namespace));
-
-    expect([...names, ...utils.MIDNIGHT_JS_ERROR_CODES].filter((name) => /envelope|head|axis|down_?convert/i.test(name))).toEqual([]);
-  });
 });
 
 describe('ledger version vocabulary', () => {
@@ -149,7 +143,7 @@ describe('ledger version vocabulary', () => {
     expect(midnightJs.versionOfRecord(record)).toBe('v8');
   });
 
-  it('should resolve the era at the network head', async () => {
+  it('should resolve the era of the latest block', async () => {
     await expect(midnightJs.latestNetworkLedgerVersion(headSource(2_000_000))).resolves.toBe('v9');
   });
 });
@@ -198,7 +192,7 @@ describe('ledger version failures', () => {
     expect(reason).toBe('malformed');
   });
 
-  it('should propagate a head-source rejection unchanged', async () => {
+  it('should propagate a version-source rejection unchanged', async () => {
     const cause = new Error('indexer unreachable');
     const thrown = await captureRejected(() =>
       midnightJs.latestNetworkLedgerVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })

@@ -78,21 +78,21 @@ await submitCallTx(providers, callOptions);
 await submitDeployTx(providers, deployOptions);
 
 // Generic transaction submission. Tag the transaction with the era that wrote it;
-// submitTx reads the network head and accepts only a transaction of the head's era.
+// submitTx reads the network's current ledger version and accepts only a transaction of that era.
 await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
 await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
 ```
 
-`submitTx` reads the network head once. The transaction's era must match it:
+`submitTx` reads the network's current ledger version once. The transaction's era must match it:
 
-| input | head | what happens |
+| input | network | what happens |
 |---|---|---|
 | v9 | v9 | proved, balanced and submitted as v9 payloads |
 | v8 | v8 | proved, balanced and submitted as v8 payloads |
 | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
-It returns `VersionedFinalizedTxData`, tagged with the head's era.
+It returns `VersionedFinalizedTxData`, tagged with the network's era.
 
 ### Maintenance Operations
 
@@ -113,7 +113,7 @@ await submitReplaceAuthorityTx(providers, compiledContract, contractAddress)(new
 ```
 
 All three take either era's artifact. A ledger 8 artifact maintains a contract
-only on a pre-fork head and answers `{ era: 'v8', public: Ledger8FinalizedTxData }`;
+only before the fork and answers `{ era: 'v8', public: Ledger8FinalizedTxData }`;
 after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error`, and the
 same function with the recompiled ledger 9 artifact maintains the migrated
 contract with the same stored key.
@@ -165,7 +165,7 @@ const read = await getAnyEraContractState(providers.publicDataProvider, contract
 
 if (read !== null) {
   // `read.version` is the era that WROTE the bytes, read off the
-  // envelope — not the era of the block that dated the read.
+  // version tag of the bytes — not the era of the block that dated the read.
   // `read.state` is encoded, so decode it with your own contract's runtime.
   const ledgerState = Counter.ledger(StateValue.decode(read.state));
 }
@@ -277,11 +277,11 @@ docstring resolves to it.
 | Document | What it explains |
 |---|---|
 | [Overload typing](./docs/overload-typing.md) | Why the retained-era contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
-| [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network head era are each established, why the artifact check is structural rather than branded, and which pairings may run |
+| [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network's ledger version are each established, why the artifact check is structural rather than branded, and which pairings may run |
 | [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
 | [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a retained-era deploy is refused |
-| [Stale-head remediation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
-| [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four head readings and their provenance, the privacy rule, and the one fault that is swallowed |
+| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
+| [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four network version readings and their provenance, the privacy rule, and the one fault that is swallowed |
 | [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, which errors register a code and which deliberately do not, the three refusals that fire before a caller pays, and the after-submission region the signing key rides through |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its

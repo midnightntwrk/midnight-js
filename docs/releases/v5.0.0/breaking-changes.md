@@ -253,8 +253,8 @@ switch (record.version) {
 ```
 
 `submitTx` in `midnight-js-contracts` resolves `VersionedFinalizedTxData`, tagged
-with the era of the network head it ran on (see
-[14c](#14c-submittx-routes-on-the-network-head)). A record from another era is
+with the era the network was on when it ran (see
+[14c](#14c-submittx-routes-on-the-networks-ledger-version)). A record from another era is
 reported as `EraInvariantViolationError`, which carries the `method`, the
 `circuitId` where the flow knows it, and the `txId` of the transaction it already
 submitted.
@@ -462,7 +462,7 @@ must set it. Code that only reads a `BlockInfo` is unaffected.
 
 Resolve it with `versionOfRecord(block)` from
 `@midnight-ntwrk/midnight-js-protocol`. Implementations must report the era of
-*that* block, never the network head's, so a block read from before a hard fork
+*that* block, never the latest block's, so a block read from before a hard fork
 keeps reporting the era it was produced in.
 
 `queryBlock` itself is new in 5.0.0, so a consumer who never implemented the
@@ -591,7 +591,7 @@ names.
 | `contracts` | `UnrecognisedResultEraError` (`MIDNIGHT_JS_C_UNRECOGNISED_RESULT_ERA`) | `UnknownResultEraError` (`MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA`) |
 | `contracts` | `ScopedTxEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TX_ERA_UNSUPPORTED`) | `ScopedTransactionEraUnsupportedError` (`MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED`) |
 | `contracts` | `ScopedTransactionIdentityMismatchError`'s code `MIDNIGHT_JS_C_SCOPED_TX_IDENTITY_MISMATCH` (the class is from 4.x; the code is new in 5.0) | `MIDNIGHT_JS_C_SCOPED_TRANSACTION_IDENTITY_MISMATCH` |
-| `indexer-public-data-provider` | `IndexerDataError` kind `'unresolvable-era'` | removed, with no replacement: the raw reads tag a record by its envelope ([14a](#14a-changed-signatures)) |
+| `indexer-public-data-provider` | `IndexerDataError` kind `'unresolvable-era'` | removed, with no replacement: the raw reads tag a record by its version tag ([14a](#14a-changed-signatures)) |
 
 The payload tag values `version: 'v8' | 'v9'` do not change: they mirror the
 `ledger-v8` / `ledger-v9` package names.
@@ -658,21 +658,21 @@ depends on the era is a `Versioned*` union; narrow it with `switch (value.versio
 | `PublicDataProvider.watchForContractState` | `Promise<ContractState>` | `Promise<VersionedContractState>` |
 | `PublicDataProvider.contractStateObservable` | `Observable<PositionedRecord<ContractState>>` | `Observable<PositionedRecord<VersionedContractState>>` |
 | `PublicDataProvider.queryZSwapAndContractState` | `Promise<[ZswapChainState, ContractState, LedgerParameters] \| null>` | `Promise<VersionedPublicStates \| null>` (an object, not a tuple) |
-| `RawContractState.version` | the era of `protocolVersion` | the era of the envelope of `raw` |
+| `RawContractState.version` | the era of `protocolVersion` | the ledger version of the bytes in `raw` |
 | `ContractEventBase.version` | payload schema version | renamed to `payloadVersion` |
 | `getPublicStates` (contracts) | `Promise<PublicContractStates>` | `Promise<VersionedPublicStates>` |
 | `getStates` (contracts) | `ContractStates<PS>` (an interface) | `ContractStates<PS> = VersionedPublicStates & { privateState }` |
 | `PublicContractStates` (contracts) | exported | removed; use `VersionedPublicStates` from types |
-| `AnyEraContractState.versionTag` | `versionTag` | renamed to `version` |
+| `AnyEraContractState.envelopeVersion` | `envelopeVersion` | renamed to `version` |
 | `Ledger8FoundContract.deployTxData` (and `Ledger8DeployedContract`) | the flat `VersionedFinalizedTxData` | `{ public: VersionedFinalizedTxData }` |
 | `SubmitTxOptions.unprovenTx` | `UnprovenTransaction` | `VersionedUnprovenTransaction` |
 | `submitTx` | `Promise<FinalizedTxData>` | `Promise<VersionedFinalizedTxData>` |
 | `TransactionContext.getCurrentStates` / `CacheStates` | `ContractStates<PS> \| PublicContractStates` | their v9 variants (`Ledger9Variant<ContractStates<PS>> \| Ledger9PublicStates`) |
-| `IndexerDataError` kind `unknown-record-era` | raised by the raw reads | removed; the raw reads tag by the envelope |
+| `IndexerDataError` kind `unknown-record-era` | raised by the raw reads | removed; the raw reads tag by the version tag of the bytes |
 | `IndexerDataError.unresolvableEra` | static factory | removed |
 | `IndexerDataErrorContext` | — | new kinds `mixed-era-public-states` and `malformed-protocol-version`; an exhaustive `switch` on `kind` must handle them |
-| `queryRawContractState`, `rawContractStateObservable` | never compared the envelope with the block | refuse an envelope newer than an enforced dating block (`era-disagreement`) and a malformed `protocolVersion` (`malformed-protocol-version`) |
-| `EraArtifactMismatchReason` | — | new members `ledger9-transaction-on-ledger8-network` and `ledger8-transaction-on-ledger9-network` ([14c](#14c-submittx-routes-on-the-network-head)) |
+| `queryRawContractState`, `rawContractStateObservable` | never compared the ledger version of the bytes with the block | refuse bytes of a newer ledger version than a checked dating block (`era-disagreement`) and a malformed `protocolVersion` (`malformed-protocol-version`) |
+| `EraArtifactMismatchReason` | — | new members `ledger9-transaction-on-ledger8-network` and `ledger8-transaction-on-ledger9-network` ([14c](#14c-submittx-routes-on-the-networks-ledger-version)) |
 
 ### 14b. What a pre-fork state does now
 
@@ -690,18 +690,18 @@ ledgerParametersBytes }` for a v8 block. A contract state and ledger parameters 
 eras are refused as `IndexerDataError` kind `mixed-era-public-states`. On the supported indexer
 (4.4.0-rc.6 or later, see migration step 17) a pinned read never meets this.
 
-### 14c. `submitTx` routes on the network head
+### 14c. `submitTx` routes on the network's ledger version
 
-`submitTx` / `submitTxAsync` read the head once and accept only a transaction of the head's era. A
-transaction of the other era is refused before proving, as `EraArtifactMismatchError`: a v9
-transaction on a pre-fork head with reason `ledger9-transaction-on-ledger8-network`, v8 bytes on a
-post-fork head with reason `ledger8-transaction-on-ledger9-network`. Both reasons are new members
+`submitTx` / `submitTxAsync` read the network's ledger version once and accept only a transaction
+of that era. A transaction of the other era is refused before proving, as `EraArtifactMismatchError`:
+a v9 transaction before the fork with reason `ledger9-transaction-on-ledger8-network`, v8 bytes after
+the fork with reason `ledger8-transaction-on-ledger9-network`. Both reasons are new members
 of `EraArtifactMismatchReason`, so an exhaustive `switch` on `reason` must handle them. An untagged
-transaction is refused as `UntaggedPayloadError` before the head is read.
+transaction is refused as `UntaggedPayloadError` before the network's ledger version is read.
 
-The head is read once, before proving. If the network crosses the fork while the transaction is
+The network's ledger version is read once, before proving. If the network crosses the fork while the transaction is
 being proved, the node refuses it and the refusal arrives as `ProviderFailedError` from `submitTx`
-([14e](#14e-every-submit-path-reports-a-provider-rejection-as-providerfailederror)). Read the head
+([14e](#14e-every-submit-path-reports-a-provider-rejection-as-providerfailederror)). Read the network's ledger version
 again and rebuild the transaction for the new era.
 
 ```ts
@@ -831,7 +831,7 @@ exactly 64 hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableEr
 
 ## 17. Contract maintenance in both eras, with results tagged by era (#1514)
 
-The maintenance functions take a retained-era artifact as well, on a pre-fork head, and every
+The maintenance functions take a retained-era artifact as well, before the fork, and every
 maintenance result is now nested like every other `contracts` result.
 
 | Where | Before | After |
@@ -857,7 +857,7 @@ maintenance result is now nested like every other `contracts` result.
 `SubmittedOperationKind`, `ComposeStage` and `ComposeOption` are closed unions: an exhaustive
 `switch` over one of them in consumer code stops compiling until it handles the new member.
 
-A retained-era maintenance update on a post-fork head is refused with
+A retained-era maintenance update after the fork is refused with
 `Ledger8.MaintenanceOnLedger9Error` (`LEDGER8_MAINTENANCE_ON_LEDGER9`). After the fork, recompile
 the contract with the ledger 9 Compact toolchain and call the same function with that artifact.
 
@@ -865,7 +865,7 @@ New refusals on the retained path:
 
 | Class | Code | When |
 |---|---|---|
-| `Ledger8.MaintenanceOnLedger9Error` | `LEDGER8_MAINTENANCE_ON_LEDGER9` (USAGE) | retained-era artifact on a post-fork head |
+| `Ledger8.MaintenanceOnLedger9Error` | `LEDGER8_MAINTENANCE_ON_LEDGER9` (USAGE) | retained-era artifact after the fork |
 | `Ledger8.SigningKeyUnavailableError` | `LEDGER8_SIGNING_KEY_UNAVAILABLE` (USAGE) | no usable key stored, or the store cannot be read (on `cause`) |
 | `Ledger8.SigningKeyNotStoredError` | `LEDGER8_SIGNING_KEY_NOT_STORED` (ENVIRONMENT) | a confirmed replacement whose new key the store refused; carries the key |
 | `Ledger8.ReplaceAuthorityUnconfirmedError` | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` (UNCERTAIN) | a submitted replacement whose outcome could not be confirmed; carries the new key, which was not stored |
@@ -897,14 +897,14 @@ now say what they mean. Each error code changes together with its class.
 | `contracts` | `HeadReadFailedError` (`MIDNIGHT_JS_C_HEAD_READ_FAILED`) | `NetworkVersionReadFailedError` (`MIDNIGHT_JS_C_NETWORK_VERSION_READ_FAILED`) |
 | `contracts` | `HeadStateEraMismatchError` (`MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH`) | `NetworkVersionStateMismatchError` (`MIDNIGHT_JS_C_NETWORK_VERSION_STATE_MISMATCH`) |
 | `protocol` | `DownConvertFailedError` (`MIDNIGHT_JS_P_DOWN_CONVERT_FAILED`) | `StateConversionFailedError` (`MIDNIGHT_JS_P_STATE_CONVERSION_FAILED`) |
-| `protocol` | `DownConvertStage` = `'v8 envelope extraction' \| 'v9 envelope extraction' \| 'state down-convert'` | `StateConversionStage` = `'v8 version tag read' \| 'v9 version tag read' \| 'state conversion'` |
+| `protocol` | `DownConvertStage` = `'v8 envelope extraction' \| 'v9 envelope extraction' \| 'state down-convert'` | `StateConversionStage` = `'v8 state read' \| 'v9 state read' \| 'state conversion'` |
 | `protocol` | `new Ledger8InstanceMismatchError(axis)` and its `axis` field | `new Ledger8InstanceMismatchError()`, no `axis` field: the message names `onchain-runtime-v3` |
 | `contracts` | `EraArtifactMismatchReason` values `'ledger9-artifact-on-ledger8-head'`, `'ledger9-transaction-on-ledger8-head'`, `'ledger8-transaction-on-ledger9-head'` | `'ledger9-artifact-on-ledger8-network'`, `'ledger9-transaction-on-ledger8-network'`, `'ledger8-transaction-on-ledger9-network'` |
 | `contracts` | `SubmitRejectionUndiagnosedCause` reason `'head-read-failed'` and its `headReadFailure` field | `'network-version-read-failed'` and `networkVersionReadFailure` |
 | `contracts` | `SubmitRejectionUndiagnosedCause` reason `'head-moved-backwards'` | `'network-version-went-backwards'` |
 | `contracts` | `head` field on `SubmittedOperation`, `NetworkVersionStateMismatchError`, `IndexerInconsistencyError` and `ScopedTransactionEraUnsupportedError` | `networkVersion` |
 | `indexer-public-data-provider` | `IndexerDataError.missingHeadBlock()` and context kind `'missing-head-block'` | `IndexerDataError.missingLatestBlock()` and `'missing-latest-block'` |
-| `indexer-public-data-provider` | `envelopeVersion` field on the `'era-disagreement'` context | `versionTag` |
+| `indexer-public-data-provider` | `envelopeVersion` field on the `'era-disagreement'` context | `stateVersion` (as on `'mixed-era-public-states'`) |
 | `contracts` (log breadcrumbs) | `decision: 'head-resolution'`, `source: 'contract-state-envelope-tag'` | `decision: 'network-version-read'`, `source: 'contract-state-version-tag'` |
 
 Removed, with no replacement, because nothing in the framework raised them:

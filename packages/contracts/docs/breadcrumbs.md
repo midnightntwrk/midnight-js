@@ -76,7 +76,7 @@ tell them apart would read as one operation contradicting itself.
 decides between reporting a fork crossing with a re-run remediation and
 reporting a rejection nothing could diagnose, and it is the only reading taken
 after bytes were already on the wire. See
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## What each breadcrumb carries, and why
 

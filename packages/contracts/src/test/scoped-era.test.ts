@@ -169,7 +169,7 @@ describe('per-scope era resolution', () => {
   it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
     // Arrange
     onPostForkHead();
-    const failure = new NetworkVersionReadFailedError('head read failed');
+    const failure = new NetworkVersionReadFailedError('network version read failed');
     vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
@@ -184,7 +184,7 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: NetworkVersionReadFailedError: head read failed");
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: NetworkVersionReadFailedError: network version read failed");
     expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 

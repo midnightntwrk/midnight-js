@@ -234,9 +234,9 @@ The single `events` list spans the whole call tree. Decode without a direct `com
 ```ts
 // Thrown when a provider or the read surface answers in a ledger era the flow
 // cannot accept. `expected` is the era it can accept -- for the current era's
-// flows that is 'v9'; the retained era's finalizing path passes the network
-// head, because a retained-era call is recorded by whichever ledger the head is
-// on. `received` is the era that actually came back. A payload whose tag is
+// flows that is 'v9'; the retained era's finalizing path passes the network's
+// current ledger version, because a retained-era call is recorded by whichever
+// ledger the network is on. `received` is the era that actually came back. A payload whose tag is
 // missing or unrecognised raises UntaggedPayloadError instead.
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
@@ -248,7 +248,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
+`submitTx` returns `VersionedFinalizedTxData`, tagged with the network's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 

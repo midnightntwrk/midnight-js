@@ -390,17 +390,17 @@ Around the fork, treat a transaction as done only once you have observed it
 **finalized**. Code that treats a successful `submitTx` as completion will
 report success for transactions that were dropped at the boundary.
 
-### The stale-head error and its two-step remediation
+### When the fork happens during an operation: the two-step remediation
 
 If an operation resolves the network era, builds against it, and the fork
 applies before it lands, the framework raises `ForkCrossedDuringOperationError`
 (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`) rather than a decode failure. The error carries
-`kind` — `'call'` or `'deploy'`, which is what you branch on to pick between the
-two remediations below — along with `startEra`, `freshEra`, `circuitId` and
+`kind` — `'call'`, `'deploy'` or `'maintenance'`, which is what you branch on to pick between the
+remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
 
-Both kinds are reachable. `kind: 'deploy'` comes from a retained-era deploy that
-was built on a pre-fork head and overtaken by the fork before it landed.
+All three kinds are reachable. `kind: 'deploy'` comes from a retained-era deploy that
+was built before the fork and overtaken by the fork before it landed.
 
 For a **call**, the remediation is two steps, in order:
 
@@ -425,6 +425,14 @@ For a **deploy** the remediation is different, and it is also two steps:
    call case, a plain re-run does not work: after the fork a contract produced by the
    ledger 8 (pre-fork) toolchain has no deployment path. See [the runtime-deploy chapter](#runtime-deploy-chapter-factory-patterns).
 
+For a **maintenance** update, the two steps match the deploy case:
+
+1. **Confirm no finalization.** Read the contract state at `error.contractAddress` and check
+   whether the verifier key for `error.circuitId`, or the maintenance authority, already
+   reflects the update.
+2. **Recompile with the ledger 9 Compact toolchain** and run the same maintenance function
+   with that artifact. A plain re-run does not work after the fork.
+
 > **Why step 1 is not optional.** The guidance above assumes in-flight pre-fork
 > transactions are hard-rejected at the boundary. If any grace window exists, a
 > bare re-run is precisely what causes double execution — both the original and
@@ -440,8 +448,8 @@ If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
 
 The retained era stays supported for **calls against contracts deployed before
-the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only on a
-pre-fork head**. On a post-fork head `deployContract` refuses one with
+the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only before
+the fork**. After the fork `deployContract` refuses one with
 `Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
 key is fetched.
 
@@ -501,7 +509,7 @@ either era.
   on `era` to decide which module an object came from, on `version` before
   touching `public.tx`.
 - **`public.version` is a union on the retained-era path.** A retained-era call is
-  recorded by whichever era the head is on, so narrow it. The current era's is
+  recorded by whichever era the network is on, so narrow it. The current era's is
   pinned `'v9'`.
 - **`public.nextContractState` is a different KIND of object per era.** The
   current era gives a `StateValue`; the retained era gives
@@ -632,7 +640,7 @@ refuses a missing, foreign-kind or unreadable entry with
 authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
 
 An authority replacement whose outcome cannot be confirmed - the submission was
-rejected while the head moved, or the record could not be read back - is raised
+rejected while the network crossed the fork, or the record could not be read back - is raised
 as `Ledger8.ReplaceAuthorityUnconfirmedError`. It carries the new key, which was
 NOT stored: keep it, and store it once a maintenance update with the old key is
 refused with `MaintenanceAuthorityMismatchError`.
@@ -662,7 +670,7 @@ contract never loads it. Bundlers can defeat that — an aggressive configuratio
 may inline the dynamic import back into the main chunk, or emit a
 `modulepreload` for it, and you silently pay for the retained runtime on every
 page load. There are two such chunks, not one — the retained ledger and the
-down-convert engine are loaded separately — plus further dynamic imports inside
+state conversion engine are loaded separately — plus further dynamic imports inside
 the engine chunk. Check your build output for each of them and confirm none is
 inlined or preloaded. Do not assume the dynamic imports survived your bundler's
 defaults.
@@ -845,7 +853,7 @@ const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
 await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
 ```
 
-Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.versionTag` to
+Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
 `version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
 any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
 match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in

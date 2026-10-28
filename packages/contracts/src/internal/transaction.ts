@@ -120,7 +120,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
- * @see {@link StaleHeadRemediation} for why both properties of this placement
+ * @see {@link ForkCrossedRemediation} for why both properties of this placement
  *      are load-bearing.
  */
 export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<ResolvedOperationEra> => {
@@ -335,7 +335,7 @@ export const isTransactionContext = <
  * anything at all here.
  * @throws MixedEraScopeError if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
- * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
+ * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
 export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionContext: unknown): void => {

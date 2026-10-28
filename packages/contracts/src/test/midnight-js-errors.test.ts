@@ -86,7 +86,7 @@ const cases: readonly Case[] = [
   ['Ledger8InsertVerifierKeyTxFailedError', new governance.Ledger8InsertVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['Ledger8RemoveVerifierKeyTxFailedError', new governance.Ledger8RemoveVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['Ledger8ReplaceMaintenanceAuthorityTxFailedError', new governance.Ledger8ReplaceMaintenanceAuthorityTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['NetworkVersionReadFailedError', new errors.NetworkVersionReadFailedError('head read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED, 'TRANSIENT'],
+  ['NetworkVersionReadFailedError', new errors.NetworkVersionReadFailedError('network version read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED, 'TRANSIENT'],
   ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
   ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],
   ['PrivateStateNotFoundError', new errors.PrivateStateNotFoundError('no private state'), CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND, 'USAGE']
@@ -152,6 +152,17 @@ describe('contracts error classes', () => {
     ]
   ] as const)('%s carries its name and code', (name, error, code) => {
     expect([error.name, error.code]).toEqual([name, code]);
+  });
+
+  it('ForkCrossedDuringOperationError says the network crossed the fork while the operation ran', () => {
+    const error = new errors.ForkCrossedDuringOperationError(
+      { networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS },
+      'v9',
+      CAUSE
+    );
+
+    expect(error.message).toContain("built while the network was on ledger 'v8'");
+    expect(error.message).toContain("the network now reports ledger 'v9'");
   });
 
   it('ContractTypeError is no longer a TypeError (accepted break)', () => {

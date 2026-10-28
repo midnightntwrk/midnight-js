@@ -11,19 +11,19 @@ that read honest: what the decoders treat as authoritative, why no read is
 allowed to return a plausible-looking empty answer, and why the four failures
 this read can raise are four distinct classes rather than one.
 
-## The envelope is the only authority over the bytes
+## The version tag is the only authority over the bytes
 
-There are two envelope shapes, and each era reads only its own:
+There are two version tags, and each era reads only its own:
 
-- `v9` — a post-fork `contract-state[v8]`-tagged envelope, read via
+- `v9` — a post-fork `contract-state[v8]`-tagged state, read via
   `@midnightntwrk/ledger-v9`.
-- `v8` — a pre-fork `contract-state[v6]`-tagged envelope, read via
+- `v8` — a pre-fork `contract-state[v6]`-tagged state, read via
   onchain-runtime-v3, the same codec that produced it.
 
 A reported protocol version selects which of those decoders is used; it does
-not establish what the bytes are. The same bytes are a valid state on one axis
+not establish what the bytes are. The same bytes are a valid state for one era
 and refuse to decode on the other, which is why the era whose decoder rejected
-an envelope is the first thing a reader of `StateDecodeFailedError` needs: an
+the bytes is the first thing a reader of `StateDecodeFailedError` needs: an
 era-less message would send a caller to audit bytes that are fine. Derive the
 era with `protocolVersionToLedger` (`packages/protocol/src/version.ts`) rather
 than constructing the string by hand, and let the decoder have the final word.
@@ -38,7 +38,7 @@ era dispatch is reachable today, belong with the package-wide table discipline
 
 `extractEncodedStateValue` never returns a silently empty or partial state: any
 deserialization failure (malformed bytes, a truncated or over-long payload, or
-an envelope tagged for the other ledger version) is wrapped in a
+bytes tagged for the other ledger version) is wrapped in a
 `StateConversionFailedError` with `{ cause }`, so failures propagate loudly instead
 of producing a misleading result. The wrapped cause carries the runtime's own
 diagnosis, which distinguishes a tag mismatch from truncated, trailing, or
@@ -73,11 +73,11 @@ every other failure after the bytes decoded.
 The same refusal to accept quietly governs the structural round trip further
 down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
 decodes the primary state a circuit runs against, re-encodes it, and refuses a
-value that did not come back — `StateConversionFailedError` at stage `'state
-down-convert'`. The comparison is cross-codec by construction: a contract the
-fork translated carries a current-era envelope, so its state is
-encoded by ledger-v9 and decoded by the retained runtime, and a retained
-envelope crosses between two physical copies of that runtime either way. A
+value that did not come back — `StateConversionFailedError` at stage
+`'state conversion'`. The comparison is cross-codec by construction: a contract the
+fork translated carries a current-era version tag, so its state is
+encoded by ledger-v9 and decoded by the retained runtime, and state with a retained
+version tag crosses between two physical copies of that runtime either way. A
 shape one side writes and the other merely tolerates would decode without
 complaint and execute against a state that is not the chain's.
 
@@ -88,27 +88,27 @@ would misdescribe the fix.
 
 | Error | Reports |
 |---|---|
-| `StateDecodeFailedError` | the envelope was never readable at all by the era it was requested for |
-| `StateInconsistentError` | the envelope was readable, but the state it decoded to is internally inconsistent |
-| `StateConversionFailedError` | a raw envelope, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
+| `StateDecodeFailedError` | the bytes were never readable at all by the era it was requested for |
+| `StateInconsistentError` | the bytes were readable, but the state it decoded to is internally inconsistent |
+| `StateConversionFailedError` | raw state bytes, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
 | `Ledger8RuntimeInvalidError` | the injected pre-fork runtime cannot be used — nothing is wrong with the input |
 
 `StateDecodeFailedError` is distinct from `StateConversionFailedError`, which
 reports a failure to bridge an already-extracted state into the pre-fork
-execution algebra: the first reports the envelope never having been readable at
+execution algebra: the first reports the bytes never having been readable at
 all. `version` names the era whose decoder rejected it.
 
 `StateInconsistentError` is distinct from `StateDecodeFailedError` because the
 remediation is opposite: the first says the bytes were this era's to read, the
 second says they may belong to the other era. A caller can tell the two apart
 by `code` alone. `STATE_DECODE_FAILED` is worth a retry only when the era was
-chosen from something other than the envelope, such as a reported protocol
-version. `getAnyEraContractState` already reads the era off the envelope, so
+chosen from something other than the version tag, such as a reported protocol
+version. `getAnyEraContractState` already reads the era off the version tag, so
 there a retry with the other era cannot help either.
 
 `Ledger8RuntimeInvalidError` is separate from `StateConversionFailedError` because
 the remediation is unrelated: nothing is wrong with the caller's input. Folding
-this into a down-convert failure would name an extraction stage and tell the
+this into a state conversion failure would name a read stage and tell the
 caller to read a cause describing tag mismatches and truncation, sending them
 to audit data that is perfectly good. It is also distinct from
 `Ledger8RuntimeMissingError`, which reports a *failed acquisition* of the v8
@@ -117,20 +117,20 @@ then handed over incomplete.
 
 Checking the injected runtime up front is what buys that distinction. It turns
 the omission into `Ledger8RuntimeInvalidError` instead of a `TypeError` wrapped
-as a `StateConversionFailedError` — which would name an extraction stage and point
+as a `StateConversionFailedError` — which would name a read stage and point
 the caller at input bytes that are not the problem.
 
-Down-convert is version-agnostic — it consumes an already-extracted
+State conversion is version-agnostic — it consumes an already-extracted
 `EncodedStateValue` whichever era it came from — so its stage carries no
-version, unlike the two extraction stages (`'v8 version tag read'` and
-`'v9 version tag read'`, against `'state conversion'`).
+version, unlike the two read stages (`'v8 state read'` and
+`'v9 state read'`, against `'state conversion'`).
 
 ## Why the facade's two read methods fail the same way
 
 `extractStateWith` (`packages/protocol/src/lib/shared/contract-state.ts`)
 exists so the facade's two read methods fail the SAME way. Underneath, the
-extractors raise `StateConversionFailedError` naming an extraction stage — a class
-with no `version` field, and a diagnosis phrased around down-converting a state
+extractors raise `StateConversionFailedError` naming a read stage — a class
+with no `version` field, and a diagnosis phrased around converting a state
 for execution, which is not what a caller asking to read a state was doing. A
 caller handed one era's bytes on the other era's object should learn that from
 `extractState` and `decodeContractState` alike, not have to know which of the
@@ -139,9 +139,9 @@ two it called. The extractor's own diagnosis stays on `cause`.
 ## Wrapped exactly once, and the stage is checked
 
 `extractLedger9EncodedStateValue` owns the same wrapping the dispatching entry
-applies: a rejected envelope (malformed, truncated, over-long, or tagged for
+applies: rejected bytes (malformed, truncated, over-long, or tagged for
 the other era) leaves as a `StateConversionFailedError` at stage
-`'v9 version tag read'`, carrying the runtime's own diagnosis on `cause`.
+`'v9 state read'`, carrying the runtime's own diagnosis on `cause`.
 The dispatching entry delegates here rather than decoding again, so a failure
 is wrapped exactly once. The `v9` slot of the decoder table is a reference to
 that standalone decoder, not a second copy of the same read: the two must not
@@ -162,7 +162,7 @@ not just `'v8'`. Requiring it unconditionally costs nobody a runtime they would
 not otherwise hold. This decoder is reached only from `createLedger8Era`
 (`lib/era/load-era.ts`), which has already awaited `loadLedger8Protocol()` and hands
 that module's `ContractState` in; the `'v9'` decoder is here so that the
-*bridge* can read a post-fork envelope before down-converting it, not to serve
+*bridge* can read post-fork state bytes before converting them, not to serve
 a caller who has no pre-fork runtime at all. Such a caller reads ledger-v9
 directly and never reaches this function. Note this is a statement about the
 call graph, not about bundling — the separate reason the pre-fork types are
@@ -215,7 +215,7 @@ is not worth having:
 - `UnknownLedgerVersionError` carries the offending era string on
   `requestedVersion` for programmatic use, deliberately kept out of the
   message: this is the one input to the read that comes straight from an
-  untrusted caller, and the down-convert errors' "never renders caller-supplied
+  untrusted caller, and the state conversion errors' "never renders caller-supplied
   text" property is only worth having if it holds here too. For the same reason
   that class names no `version` field — there is no valid era to name.
 - `Ledger8RuntimeInvalidError` exposes `missingMember`. Like
@@ -263,7 +263,7 @@ make `Map.prototype`'s members reject the receiver.
 **`balance` is read, and was not always.** It was excluded on the same reasoning
 until the retained-era execution path turned out to need it: the balances a
 circuit reads arrive through `CallContext.balance`, which the caller has to
-carry, and the down-converted state carries only `.data`. With the field absent
+carry, and the converted state carries only `.data`. With the field absent
 there was nothing for a caller to carry, so every retained-era circuit executed
 against an empty balance and read every balance back as zero — silently, until
 the node refused the transcript that produced it (#1345). It is plain data, so it

@@ -254,7 +254,7 @@ describe('rawContractStateObservable — latest', () => {
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
-      versionTag: 'v9'
+      stateVersion: 'v9'
     });
   });
 

@@ -1,5 +1,5 @@
 ---
-title: ReadingTheHeadEra
+title: ReadingTheNetworkLedgerVersion
 ---
 
 # Reading the network head's era

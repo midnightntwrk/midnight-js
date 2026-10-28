@@ -1,5 +1,5 @@
 ---
-title: StaleHeadRemediation
+title: ForkCrossedRemediation
 ---
 
 # When the network crosses the fork under an operation

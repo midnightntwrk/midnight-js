@@ -15,9 +15,9 @@ different paths, and ran once inside `createLedger8Engine`. It retired with the
 hand-maintained execution layer
 (`docs/adr/0015-retained-era-execution-on-compact-js.md`): compact-js owns both
 acquisitions now, so the check had no second path left to compare and no
-subject. What replaced it is an install-time check, narrower on both axes —
-see *What checks this today* below. Its error classes stay on the published
-surface with their codes.
+subject. What replaced it is an install-time check, narrower in two ways —
+see *What checks this today* below. Its error, `Ledger8InstanceMismatchError`,
+stays on the published surface with its code.
 
 ## What a duplicate install actually produces
 
@@ -76,10 +76,10 @@ versions rather than on physical instance identity, which is the thing that
 actually matters: two entries resolving to one version are usually one copy,
 but that is an inference, not the `===` the probe performed.
 
-## The retired probe's design, and why the errors keep their shape
+## The retired probe's design
 
-Recorded because the error classes still ship and their fields only make sense
-against it.
+Recorded because `Ledger8InstanceMismatchError` still ships, and its message
+only makes sense against it.
 
 Reference equality was the probe: two references to the same physical copy are
 always `===`, two from different copies never are, even at the same version.
@@ -109,9 +109,10 @@ acquired had a comparable second acquisition path.
 `Ledger8InstanceMismatchError` is thrown when `onchain-runtime-v3` is installed
 twice, so two separate copies of it are loaded into this process.
 
-Its message names that package under both npm scopes. This is a direct
-assertion failure (a reference-equality mismatch), not a wrapped lower-level
-exception, so unlike `StateConversionFailedError` there is no `cause` to carry.
+Its message names that package under both npm scopes. It has no other fields
+and takes no constructor arguments. It is a direct assertion failure, not a
+wrapped lower-level exception, so unlike `StateConversionFailedError` there is
+no `cause` to carry.
 
 The remediation names every mainstream package manager rather than the one this
 repo happens to use, because this package is consumed by dApps installed with

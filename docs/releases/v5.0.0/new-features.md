@@ -30,7 +30,7 @@ const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeigh
 // `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol`.
 // It is the era of *that* block, so a block read at an explicit offset from before a hard fork keeps
 // reporting the era it was produced in, unlike `queryLatestProtocolVersion()`, which always reports
-// the head. (For `queryBlock()` with no offset the two agree, by definition.)
+// the latest block. (For `queryBlock()` with no offset the two agree, by definition.)
 ```
 
 ---

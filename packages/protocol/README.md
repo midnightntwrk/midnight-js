@@ -75,14 +75,14 @@ docstring resolves to it.
 | Document | What it explains |
 |---|---|
 | [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
-| [Retained-era execution](./docs/retained-era-execution.md) | The down-conversion stages, the Merkle rehash requirement, the era pin, and what a `TranscriptPojo` carries |
+| [Retained-era execution](./docs/retained-era-execution.md) | The state a circuit runs against, why the Merkle walk was removed, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
-| [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the envelope is the only authority over the bytes, and the division of labour between the three decode failures |
+| [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the version tag is the only authority over the bytes, and the division of labour between the three decode failures |
 | [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era paths refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
 | [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
 | [Injected vendor slices](./docs/injected-vendor-slices.md) | How a function names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
-| [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a contract served with its retained-era envelope is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
+| [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a contract served with its retained-era version tag is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
 | [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
@@ -135,9 +135,9 @@ const transcript = await engine.executeCircuit({
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedLedger9ContractState });
 ```
 
-`executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate down-convert step: pass the decoded contract state straight in, and the engine builds the state the retained runtime executes against.
+`executeCircuit` and `executeConstructor` are **asynchronous** — `await` them. There is no separate state conversion step: pass the decoded contract state straight in, and the engine builds the state the retained runtime executes against.
 
-Read it with the era the state's own envelope names, not with a fixed one. A contract an earlier post-fork call has MIGRATED carries a current-era envelope while its artifacts stay the retained toolchain's, so `era` above is the head's era for that contract and the retained era for one that has not migrated. Handing the retained reader a current-era envelope is refused on the tag.
+Read it with the era the state's own version tag names, not with a fixed one. A contract an earlier post-fork call has MIGRATED carries a current-era version tag while its artifacts stay the retained toolchain's, so `era` above is the network's current era for that contract and the retained era for one that has not migrated. Handing the retained reader state with a current-era version tag is refused on the tag.
 
 `contractState` must carry a usable `balance`. It is required rather than defaulted, because an empty balance is a legitimate value — a contract holding nothing has one — and defaulting would make "holds nothing" indistinguishable from "the caller forgot", which is a circuit reading zero where the chain says otherwise. `decodeContractState` produces both halves for you; assembling the value by hand is what the refusal is there for.
 
@@ -180,8 +180,8 @@ const deploy = era.composeDeployTx({ contractStateBytes, verifierKeys, networkId
 | Method | What it does |
 | ------ | ------------ |
 | `version` | The era this object is bound to — the value that was passed in |
-| `extractState` | Reads the primary state out of a raw contract-state envelope |
-| `decodeContractState` | Reads an envelope into its state plus the entry points it declares, each with its verifier key and that key's hash |
+| `extractState` | Reads the primary state out of raw contract-state bytes |
+| `decodeContractState` | Reads contract-state bytes into its state plus the entry points it declares, each with its verifier key and that key's hash |
 | `composeCallTx` | Composes an UNPROVEN call transaction and answers with its bytes plus each call's guaranteed/fallible split |
 | `composeDeployTx` | Composes an UNPROVEN deploy and returns it with the address it will have and the initial state that address came from |
 
@@ -211,10 +211,10 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 
 | Error | Code | Raised when |
 | ----- | ---- | ----------- |
-| `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | A contract-state envelope could not be read by the era it was requested for — most often a state written by the other era |
-| `StateInconsistentError` | `MIDNIGHT_JS_P_STATE_INCONSISTENT` | A contract-state envelope was read, but the state is internally inconsistent: an entry point it cannot resolve, a verifier key that will not hash, or no usable balance. Retrying with the other era will not fix it |
+| `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | Contract-state bytes could not be read by the era it was requested for — most often a state written by the other era |
+| `StateInconsistentError` | `MIDNIGHT_JS_P_STATE_INCONSISTENT` | Contract-state bytes were read, but the state is internally inconsistent: an entry point it cannot resolve, a verifier key that will not hash, or no usable balance. Retrying with the other era will not fix it |
 | `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | Something about a CALL or a DEPLOY could not be composed: an operation that is missing, unkeyed, or names a circuit the contract does not declare; an empty call list; a pre-call state or a recorded query context the era cannot bridge; a supplied transcript with neither half; a public transcript or a set of call inputs the ledger itself rejected; or a claimed payout the transaction cannot settle (dust, or a shielded token type). `stage` is a closed union naming which of those it was — see its own docs for the full list; `version` names the era |
-| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose envelope the era rejected, an offer the era's decoder rejected, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field, `version` names the era |
+| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose version tag the era rejected, an offer the era's decoder rejected, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field, `version` names the era |
 | `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
 
 Each names the era it was raised for — `version` on the first four, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first four preserve the underlying runtime failure on `cause` where there was one.
@@ -249,7 +249,7 @@ import {
 import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 ```
 
-Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `latestNetworkLedgerVersion` for the network's current head version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
+Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `latestNetworkLedgerVersion` for the network's current ledger version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
 
 ## ESLint Enforcement
 

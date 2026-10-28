@@ -387,7 +387,7 @@ docstring resolves to it.
 |---|---|
 | [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a retained-era payload is passed to a provider as bytes, the three things the `version` tag deliberately does not establish, and why ledger parameters travel with the state |
 | [Provider era declarations](./docs/provider-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
-| [Reading the head era](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
+| [Reading the network's ledger version](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
 parameters, what it returns and what it throws. Anything that answers "why is

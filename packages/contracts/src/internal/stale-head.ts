@@ -25,7 +25,7 @@
  * {@link ProviderFailedError} by the provider-call wrapper in `./submit-payload.ts`;
  * do not add a second sanitizer here that could redact differently.
  *
- * @see {@link StaleHeadRemediation} for why a rejection is diagnosed at all,
+ * @see {@link ForkCrossedRemediation} for why a rejection is diagnosed at all,
  *      and why the re-read is a real second reading of the network.
  */
 
@@ -86,7 +86,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * integer that cannot be placed on the era timeline arrives here too, on the
  * `'network-version-read-failed'` case, carried on `networkVersionReadFailure`.
  * @throws the rejection unchanged in every other case.
- * @see {@link StaleHeadRemediation} for the four outcomes and the remediation
+ * @see {@link ForkCrossedRemediation} for the four outcomes and the remediation
  *      each one carries.
  */
 export const handleSubmitRejection = async (

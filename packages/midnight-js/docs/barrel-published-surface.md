@@ -103,8 +103,8 @@ protocol errors reach a barrel consumer directly:
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
-remediation — `Ledger8InstanceMismatchError` builds its whole "run `yarn why`
-on these packages" advice out of `axis`. Reading it would have required a cast,
+remediation — `ComposeOptionError` names the rejected option on `option`.
+Reading it would have required a cast,
 which this repo does not accept. Publishing each class next to its code is what
 closes that.
 

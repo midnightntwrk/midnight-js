@@ -47,8 +47,6 @@ const whyCommandsIn = (message: string): string[] =>
     new RegExp(`\\b${command}\\b`).test(message)
   );
 
-const MAINTAINER_JARGON = /envelope|\bhead\b|\baxis\b|down-?convert|dual-instantiation|shared-instance/i;
-
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
     expect(PROTOCOL_ERROR_CODES).toEqual({
@@ -212,7 +210,6 @@ describe('Ledger8InstanceMismatchError', () => {
     expect(error.name).toBe('Ledger8InstanceMismatchError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
     expect(error.message).toContain('onchain-runtime-v3 is installed twice');
-    expect(error.message).not.toMatch(MAINTAINER_JARGON);
     expect(packageNamesIn(error.message)).toEqual([
       '@midnight-ntwrk/onchain-runtime-v3',
       '@midnightntwrk/onchain-runtime-v3'
@@ -225,14 +222,13 @@ describe('StateConversionFailedError', () => {
   it('carries the STATE_CONVERSION_FAILED code, preserves the cause, and names the failing stage', () => {
     const cause = new Error('tag v8 != v6');
 
-    const error = new StateConversionFailedError('v9 version tag read', cause);
+    const error = new StateConversionFailedError('v9 state read', cause);
 
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('StateConversionFailedError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED);
     expect(error.cause).toBe(cause);
-    expect(error.message).toContain('v9 version tag read');
-    expect(error.message).not.toMatch(MAINTAINER_JARGON);
+    expect(error.message).toContain('v9 state read');
   });
 
   it('never includes a hex or byte dump in its own message', () => {

@@ -80,14 +80,14 @@ queryRawContractState(
   config?: BlockHeightConfig | BlockHashConfig
 ): Promise<RawContractState | null>
 
-// Query the protocol version of the network's current head block
+// Query the protocol version of the network's latest block
 queryLatestProtocolVersion(): Promise<number>
 ```
 
 ### Reading State Across the Ledger Fork
 
 `queryRawContractState` returns the serialized bytes exactly as the network
-sent them, still in their envelope, alongside the era that wrote them. Use it
+sent them, version tag included, alongside the era that wrote them. Use it
 when the deserializer you need depends on that era:
 
 ```typescript
@@ -105,15 +105,15 @@ if (state !== null) {
 }
 ```
 
-`state.version` is read from the envelope inside `state.raw`.
+`state.version` is read from the version tag at the front of `state.raw`.
 `state.protocolVersion` dates the block, which can be newer: a pre-fork record
-read under a post-fork block is `version: 'v8'`. An envelope newer than a pinned
+read under a post-fork block is `version: 'v8'`. A state whose version tag is newer than a pinned
 dating block is refused as an `IndexerDataError` of kind `era-disagreement`.
 
 The methods that deserialize for you — `queryContractState`,
 `queryDeployContractState`, `queryZSwapAndContractState`, `watchForContractState`
 and `contractStateObservable` — tag what they return with the ledger era that
-wrote it, read off the state's own envelope:
+wrote it, read off the state's own version tag:
 
 - a v9 state is decoded (`{ version: 'v9', state }`);
 - a v8 state is handed back as the stored bytes (`{ version: 'v8', stateBytes }`),
@@ -127,7 +127,7 @@ ledger parameters come from different eras, the call fails with an
 `IndexerDataError` of kind `mixed-era-public-states`. On indexer 4.4.0-rc.6 and
 later that happens only on an unpinned read that straddles the fork block; an
 older indexer also serves a contract untouched since the fork with its pre-fork
-envelope (midnight-indexer #1605).
+version tag (midnight-indexer #1605).
 
 Narrow on `version` before touching the value. Code that handles only v9 can use
 `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`:
@@ -153,11 +153,11 @@ switch (state.version) {
 const { state: contractState } = requireLedger9(state, 'readCounter');
 ```
 
-#### Which reads still meet a v8 envelope
+#### Which reads still meet a v8 state
 
 The node translates every contract's state to the v9 encoding in the fork
 block. An unpinned read serves that translated state, so a contract deployed
-before the fork and not called since reads normally. A v8 envelope is still
+before the fork and not called since reads normally. A v8 state is still
 served in two cases:
 
 - a read pinned to a block before the fork;
@@ -173,14 +173,14 @@ the fork block, and the first item is the translated state, which decodes.
 The `all` branch is the harsher case: it replays every contract action from the
 deploy onward, so for a contract deployed before the fork the replay always
 reaches its pre-fork deploy state. A `blockHeight` or `blockHash` start before
-the fork does the same. Those pre-fork records keep their v8 envelope, so
+the fork does the same. Those pre-fork records keep their v8 encoding, so
 `contractStateObservable` emits them as v8 values and keeps going; the records
 after the fork arrive as v9 values in the same stream.
 
 #### Reading a contract that may predate the fork
 
 Use `getAnyEraContractState` from
-`@midnight-ntwrk/midnight-js-contracts`. It reads the era off the envelope,
+`@midnight-ntwrk/midnight-js-contracts`. It reads the era off the version tag of the bytes,
 decodes with that era's runtime, and hands back plain data:
 
 ```typescript
@@ -213,24 +213,24 @@ Two things that look interchangeable and are not:
   receiving context.
 
 If you would rather decode the bytes yourself, `queryRawContractState` still
-serves them untouched. Its `version` is the era read off the envelope, the
+serves them untouched. Its `version` is the era read off the version tag, the
 same answer `ledgerVersionOfContractState` from `@midnight-ntwrk/midnight-js-utils`
 gives for those bytes. `rawContractStateObservable` serves the same record type
 as a stream (without `ledgerParameters`).
 
 A state older than the block that dates the read is normal, not a fault: a
-record of a pre-fork contract action keeps its v8 envelope when it is read
+record of a pre-fork contract action keeps its v8 encoding when it is read
 under a post-fork block. The protocol version the
-indexer reports is therefore an upper bound — only a state whose envelope is
+indexer reports is therefore an upper bound — only a state whose version tag is
 *newer* than its dating block is reported as an inconsistency, and only where
 the two are known to describe the same block.
 
 On an unpinned read they need not. `block` and `contract` are Query-root
 siblings the indexer resolves concurrently, from independent reads, and with no
 offset both follow the chain tip — so a block indexed between the two leaves
-them on either side of a fork, giving a newer envelope under an older block
-with nothing wrong anywhere. The bound is withheld for that case instead of
-being reported as a fault; the envelope still decides decodability, which is
+them on either side of a fork, giving a newer state under an older block
+with nothing wrong anywhere. The bound is skipped for that case instead of
+being reported as a fault; the version tag still decides decodability, which is
 what keeps a wrong-era payload away from the decoder either way.
 
 Contract events carry the same dating: every `ContractEvent` has a
@@ -244,7 +244,7 @@ import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 const era = versionOfRecord(event); // 'v8' | 'v9'
 ```
 
-`queryLatestProtocolVersion` reports the head block's protocol version. This
+`queryLatestProtocolVersion` reports the latest block's protocol version. This
 provider reads the network on every call and caches nothing. The interface
 allows an implementation to cache the answer as long as it expires by itself,
 on a bound short relative to block time; what it forbids is a reading held
@@ -432,12 +432,12 @@ provider
   });
 ```
 
-Withholding the deserialization does not withhold the fail-fast: only the
-deserialization is withheld. The envelope **tag** is still read, so a payload
-carrying no supported contract-state envelope still errors the stream, and the
-envelope is checked against its dating block as on `contractStateObservable`.
-A payload with no supported envelope surfaces as a `TagParseError`
-(`midnight-js-utils`); an envelope newer than its block as an `IndexerDataError`.
+Skipping the deserialization does not skip the fail-fast: only the
+deserialization is skipped. The version **tag** is still read, so a payload
+with no supported contract-state version tag still errors the stream, and the
+tag is checked against its dating block as on `contractStateObservable`.
+A payload with no supported version tag surfaces as a `TagParseError`
+(`midnight-js-utils`); a state newer than its block as an `IndexerDataError`.
 
 ### Observable Configuration
 

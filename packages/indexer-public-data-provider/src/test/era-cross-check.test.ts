@@ -96,7 +96,7 @@ describe('era cross-check on the contract-state decode path', () => {
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
-      versionTag: 'v9'
+      stateVersion: 'v9'
     });
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
@@ -320,7 +320,7 @@ describe('queryContractState dates the state it decodes', () => {
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
-      versionTag: 'v9'
+      stateVersion: 'v9'
     });
   });
 });
@@ -442,7 +442,7 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
       kind: 'era-disagreement',
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
-      versionTag: 'v9'
+      stateVersion: 'v9'
     });
   });
 });

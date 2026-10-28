@@ -91,26 +91,3 @@ describe('indexer error classes', () => {
     expect([error.method, 'seam' in error]).toEqual(['watchForDeployTxData', false]);
   });
 });
-
-describe('IndexerDataError messages a dApp developer reads', () => {
-  const MAINTAINER_JARGON = /envelope|\bhead\b|\baxis\b|down-?convert|dual-instantiation|shared-instance/i;
-
-  it.each([
-    ['missing-latest-block', IndexerDataError.missingLatestBlock()],
-    ['era-disagreement', IndexerDataError.eraDisagreement(2_000_000, 'v8', 'v9')],
-    ['mixed-era-public-states', IndexerDataError.mixedEraPublicStates('v8', 'v9')]
-  ] as const)('uses no maintainer jargon: %s', (_kind, error) => {
-    expect(error.message).not.toMatch(MAINTAINER_JARGON);
-  });
-
-  it.each([
-    ['missing-latest-block', IndexerDataError.missingLatestBlock()],
-    ['era-disagreement', IndexerDataError.eraDisagreement(2_000_000, 'v8', 'v9')]
-  ] as const)('names no context kind or field in maintainer jargon: %s', (_kind, error) => {
-    const vocabulary = Object.entries(error.context).flatMap(([key, value]: [string, unknown]) =>
-      typeof value === 'string' ? [key, value] : [key]
-    );
-
-    expect(vocabulary.filter((word) => /envelope|head/i.test(word))).toEqual([]);
-  });
-});

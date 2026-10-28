@@ -109,7 +109,7 @@ export type IndexerDataErrorContext =
       kind: 'era-disagreement';
       protocolVersion: number;
       reportedVersion: LedgerVersion;
-      versionTag: LedgerVersion;
+      stateVersion: LedgerVersion;
     }
   | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
@@ -195,9 +195,9 @@ export class IndexerDataError extends IndexerError {
   static eraDisagreement(
     protocolVersion: number,
     reportedVersion: LedgerVersion,
-    versionTag: LedgerVersion
+    stateVersion: LedgerVersion
   ): IndexerDataError {
-    return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, versionTag });
+    return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, stateVersion });
   }
 
   static unsupportedDecodeEra(version: LedgerVersion): IndexerDataError {
@@ -260,7 +260,7 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
       case 'era-disagreement':
         return (
-          `The indexer served a contract state whose version tag says it was written by ledger ${context.versionTag}, ` +
+          `The indexer served a contract state written by ledger ${context.stateVersion}, ` +
           `but dated it to protocol version ${context.protocolVersion} (ledger ${context.reportedVersion}) — a ` +
           'block from before that runtime existed. A state cannot predate the runtime that wrote it, so the two ' +
           'answers cannot both be right. Retry against a healthy indexer; if it persists, the indexer is serving ' +

@@ -36,10 +36,8 @@ Both era objects handed out by `loadLedgerEra`
 reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
 
-The same construction — `Object.freeze` over an `Object.assign` onto
-`Object.create(null)` — is used for `AXIS_BARE_PACKAGE_NAMES` in
-`packages/protocol/src/errors.ts`, and `PUBLISHED_SCOPES` in the same module is
-frozen as a plain array for the reason `LEDGER_VERSIONS` is.
+`PUBLISHED_SCOPES` in `packages/protocol/src/errors.ts` is frozen as a plain
+array for the reason `LEDGER_VERSIONS` is.
 
 ## Null-prototype lookup tables
 
@@ -61,14 +59,6 @@ Both are typed as an `EncodedStateValue`, and neither throws. That is the whole
 argument: the failure mode of a plain object literal here is not an exception,
 it is a plausible-looking value flowing on as if a decode had happened.
 
-`AXIS_BARE_PACKAGE_NAMES` in `packages/protocol/src/errors.ts` is
-null-prototype and frozen for the reason `ENVELOPE_DECODERS` is: the value
-indexing it is only type-checked for TypeScript callers, and a plain object
-literal would resolve an `Object.prototype` member into the package name a
-remediation hint tells the reader to trace. `KNOWN_AXES` in the retired
-`lib/v8/instance-guard.ts` was the sibling case; the table it guarded is gone
-with the runtime probe, but the error that reads this one still ships.
-
 The same exposure is why `UnknownLedgerVersionError`
 (`packages/protocol/src/errors.ts`) exists at all. TypeScript callers cannot
 produce it, because `version` is typed as `LedgerVersion`; it exists for the
@@ -77,12 +67,6 @@ string threaded from an indexer response would otherwise reach an era-keyed
 decision — and, where that decision is a lookup table rather than a `switch`,
 could resolve an inherited `Object.prototype` member and yield a
 plausible-looking non-era.
-
-There is a second closed union this package declares for the same reason, the
-ledger-8 instance axis. Nothing validates it at a boundary any more — the guard
-that did was retired — but the union and its error still ship, and the argument
-for why the axis was never only a label is recorded with them; see
-[DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## Own-property lookups where a null prototype is not available
 
@@ -212,8 +196,8 @@ would cost.
 
 ## Related documents
 
-- [DualInstantiationGuard](./dual-instantiation-guard.md) — the ledger-8 instance axis, and why
-  `onchain-runtime-v3` is the only one asserted.
+- [DualInstantiationGuard](./dual-instantiation-guard.md) — the duplicate-install error, and why
+  `onchain-runtime-v3` is the only package it names.
 - [FailClosedDecoding](./fail-closed-decoding.md) — what the decode guarantees once a decoder has been
   selected, and how the failure classes divide the work between them.
 - [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
