@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -11,4 +11,4 @@
 Which call path asked for a ledger version:
 - `'read'` — the version was taken off an existing record.
 - `'construct'` — the version was chosen to build something new against the
-  network's current head.
+  network's latest block.

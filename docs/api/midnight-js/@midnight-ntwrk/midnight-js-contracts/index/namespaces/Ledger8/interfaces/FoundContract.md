@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -12,9 +12,9 @@ Carries a [Ledger8CircuitCallTxInterface](../type-aliases/CircuitCallTxInterface
 current era's `FoundContract` carries one: a caller that has just supplied
 the contract and its address should not have to supply them again to call it.
 
-The maintenance interfaces the current era's `FoundContract` also carries are
-NOT here: the retained era has no governance arm at all, so there is nothing
-for them to reach.
+It carries the maintenance interfaces the current era's `FoundContract` carries,
+for the same reason. They work only before the fork; after it, the same contract
+is maintained through a handle built from the recompiled artifact.
 
 ## Extended by
 
@@ -39,6 +39,14 @@ arguments.
 
 ***
 
+### circuitMaintenanceTx
+
+> `readonly` **circuitMaintenanceTx**: [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+
+One maintenance interface per circuit the artifact declares, bound to this address.
+
+***
+
 ### compiledContract
 
 > `readonly` **compiledContract**: `C`
@@ -55,73 +63,29 @@ The address on chain every call made through [Ledger8FoundContract.callTx](#call
 
 ***
 
+### contractMaintenanceTx
+
+> `readonly` **contractMaintenanceTx**: [`ContractMaintenanceTxInterface`](ContractMaintenanceTxInterface.md)
+
+The contract-wide maintenance interface, bound to this address.
+
+***
+
 ### deployTxData
 
-> `readonly` **deployTxData**: [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **deployTxData**: [`FoundDeployTxData`](FoundDeployTxData.md)\<`C`\>
 
-The record of the transaction that DEPLOYED this contract, version-tagged
-because a retained-era contract was deployed in whichever era was current
-at the time — narrow it with `switch (deployTxData.version)`.
-
-SHAPED DIFFERENTLY from the current era's `FoundContract.deployTxData`,
-which is a `FoundDeployTxData` whose record sits under `.public` and is
-tagged on `.public.version`. Here the record is the read surface's own
-`VersionedFinalizedTxData`, so `txId`, `status` and the rest are top-level
-members. Code written against one era does not read the other's record
-unchanged.
+The deploy record under `public` and what this device holds for the
+contract under `private`, at the same paths as on the current era's
+`FoundContract.deployTxData`.
 
 ***
 
 ### era
 
-> `readonly` **era**: `"ledger8"`
+> `readonly` **era**: `"v8"`
 
 The pipeline that produced this result: always the retained era here, even
 when the transaction that recorded it is a keep-state transaction tagged
 `'v9'`. Those are different facts, and only this one says which module
 produced the objects below.
-
-***
-
-### signingKey
-
-> `readonly` **signingKey**: `string` \| `undefined`
-
-The key this framework holds for the contract's maintenance authority, or
-`undefined` when it holds none it can use.
-
-ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
-[Ledger8DeployedContract](DeployedContract.md): a deploy always has a key, because it built
-the authority; an attach has one only if a deploy on this machine stored it,
-or the caller supplied one through
-[Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey).
-
-`undefined` COLLAPSES THREE CASES, and a caller that needs to tell them
-apart has to look at the logger rather than at this field:
-
-1. nothing is stored for this address;
-2. something is stored that this framework did not write -- an entry naming
-   the other signature kind, which the CURRENT era legitimately stores
-   under the same address in the same provider, or one whose value is not
-   the shape a retained-era key has;
-3. the entry could not be READ at all, because `getSigningKey` rejected: a
-   wrong store password, a rotation-lock timeout, store I/O, or an entry the
-   provider refuses as not a signing key.
-
-Neither 2 nor 3 fails the attach. Both are reported to the logger provider
-as a DEBUG-level dispatch breadcrumb, which is the only place the three
-cases are distinguishable.
-
-The remedy for case 2, and for a refused entry in case 3, is the caller's either way: pass the retained-era key
-on [Ledger8FindDeployedContractOptions.signingKey](FindDeployedContractOptions.md#signingkey), which replaces the
-entry, or remove the entry with
-`privateStateProvider.removeSigningKey(address)` first.
-
-#### Remarks
-
-**Privacy-sensitive.** Signing-key material.
-
-#### See
-
-[KeepStatePipeline](../../../../documents/KeepStatePipeline.md) for why the member is not optional, and why
-an unreadable entry does not fail the attach.

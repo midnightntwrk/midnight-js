@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -39,8 +39,8 @@ When the payload is not hex-encoded, or its era is not decodable here.
 
 ## Throws
 
-When the payload carries no supported ledger-parameters envelope.
+When the payload carries no supported ledger-parameters version tag.
 
 ## Throws
 
-When the envelope is decodable but the body behind it is not.
+When the version tag is decodable but the body behind it is not.

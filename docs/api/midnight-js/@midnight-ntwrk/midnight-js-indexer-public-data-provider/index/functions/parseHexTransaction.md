@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,9 +6,19 @@
 
 # Function: parseHexTransaction()
 
-> **parseHexTransaction**(`s`, `details?`): [`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **parseHexTransaction**\<`E`\>(`era`, `s`, `details?`): `Promise`\<[`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Finalized"`, `E`\>\>
+
+## Type Parameters
+
+### E
+
+`E` *extends* `"v8"` \| `"v9"`
 
 ## Parameters
+
+### era
+
+`E`
 
 ### s
 
@@ -20,4 +30,4 @@
 
 ## Returns
 
-[`Transaction`](https://github.com/midnightntwrk/midnight-ledger)\<[`SignatureEnabled`](https://github.com/midnightntwrk/midnight-ledger), [`Proof`](https://github.com/midnightntwrk/midnight-ledger), [`Binding`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Promise`\<[`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Finalized"`, `E`\>\>

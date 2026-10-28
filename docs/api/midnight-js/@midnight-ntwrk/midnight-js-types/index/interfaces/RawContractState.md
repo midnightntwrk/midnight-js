@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -7,14 +7,14 @@
 # Interface: RawContractState
 
 A contract's on-chain state exactly as the network returned it: the
-serialized bytes, still in their envelope, with nothing deserialized yet.
+serialized bytes, still behind their version tag, with nothing deserialized yet.
 
-`version` is derived from `protocolVersion`. It is the network's DATING of the
-record, not a guarantee about the bytes: nothing here compares it against the
-envelope inside `raw`.
+`version` is the ledger era that WROTE the bytes, read from the version tag
+inside `raw`. `protocolVersion` dates the block the record was read under,
+which can be newer: a record keeps the encoding it was written in.
 
-Implementing this? Set `version` at exactly ONE construction point, from
-`protocolVersion`, never independently.
+Implementing this? Read `version` off the version tag of `raw`, never from
+`protocolVersion`, and refuse a version tag newer than the block that dates it.
 
 ## See
 
@@ -28,7 +28,7 @@ the three things the tag does not establish.
 > `readonly` `optional` **ledgerParameters?**: `Uint8Array`\<`ArrayBufferLike`\>
 
 The ledger parameters the chain held at the block that dated this state, exactly as served —
-no envelope reading, no decode.
+no version tag reading, no decode.
 
 They must come from the SAME block as the state: they are dynamic and era-tagged. DO NOT
 substitute the ledger's own `initialParameters()` — that is a cost model the chain does not
@@ -49,7 +49,8 @@ needs them has to say what it does without them.
 
 > `readonly` **protocolVersion**: `number`
 
-The raw protocol-version integer the network reported for the state.
+The raw protocol-version integer the network reported for the block that
+dates the state. Its era can be newer than [version](#version).
 
 ***
 
@@ -58,7 +59,7 @@ The raw protocol-version integer the network reported for the state.
 > `readonly` **raw**: `Uint8Array`
 
 The serialized contract state, byte for byte as the network returned it,
-including the envelope that precedes the state body. Not deserialized,
+including the version tag that precedes the state body. Not deserialized,
 and not narrowed by era — narrow on [version](#version) first, then hand
 these bytes to that era's deserializer.
 
@@ -68,10 +69,4 @@ these bytes to that era's deserializer.
 
 > `readonly` **version**: `"v8"` \| `"v9"`
 
-The ledger era this record is dated to, derived from
-[protocolVersion](#protocolversion) alone.
-
-This layer does not check that the era agrees with the envelope [raw](#raw)
-actually carries, so this is a statement about the record's
-`protocolVersion`, not a verified statement about the bytes. A caller that
-cannot tolerate the two disagreeing must inspect the envelope itself.
+The ledger era that wrote [raw](#raw), read from its version tag.

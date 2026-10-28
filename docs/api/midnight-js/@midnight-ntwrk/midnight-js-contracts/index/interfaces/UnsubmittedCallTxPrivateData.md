@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -113,9 +113,10 @@ The JS representation of the value the circuit returned.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
 
-The unproven ledger transaction produced.
+The unproven transaction produced, as a v9 handle. Read it with
+`LedgerTransaction.unwrap(unprovenTx, 'v9')`.
 
 #### Inherited from
 

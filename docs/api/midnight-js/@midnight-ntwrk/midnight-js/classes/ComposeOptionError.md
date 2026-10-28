@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ operation is missing or under-registered.
 
 These are the well-formedness checks the ledger itself does not make.
 
-Like DownConvertFailedError, this class renders no input contents of
+Like StateConversionFailedError, this class renders no input contents of
 its own.
 
 ## Param

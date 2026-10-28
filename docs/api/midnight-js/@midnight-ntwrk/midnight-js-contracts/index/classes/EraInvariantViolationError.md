@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -9,25 +9,27 @@
 An error indicating that a provider, or the read surface, answered in a
 different ledger era from the one the flow submitted.
 
-The provider seams and the read surface both carry two eras, but any ONE
-flow through this package tags every outgoing payload with a single era and
-cannot submit or report anything else. An answer in the other era therefore
-means the provider re-tagged or converted the payload it was handed, or that
-the flow is pointed at a network whose records belong to the other era.
+The transaction methods and the read methods both carry two eras, but any ONE
+flow through this package hands every provider a transaction handle of a
+single era and cannot submit or report anything else. An answer in the other
+era therefore means the provider answered with a handle of an era it was not
+handed, or that the flow is pointed at a network whose records belong to the
+other era.
 
 [EraInvariantViolationError.expected](#expected) names the only era this flow can
 accept back, and so which direction the violation went. For the current
 era's flows that is the era they submit, which is always `'v9'` — the
 default, so call sites that predate the retained-era pipelines read exactly
-as they did before it existed. The retained era's finalizing arm passes the
-network HEAD instead: it composes retained-era transactions but is recorded
-by whichever ledger the head is on, so the head, not the pipeline, is what
+as they did before it existed. The retained era's finalizing path passes the
+network's ledger version instead: it composes retained-era transactions but is
+recorded by whichever ledger the network is on, so the network, not the pipeline, is what
 the record has to agree with.
 
 [EraInvariantViolationError.received](#received) names the era that actually came
-back, when the payload carried a readable one. A payload whose tag is
-missing or unrecognised is a different fault and raises
-UntaggedPayloadError instead.
+back. An answer that is not a transaction handle at all is a different
+fault and raises `InvalidTransactionHandleError` instead; a read-surface
+record whose `version` is missing or unrecognised raises
+`UnknownLedgerVersionError`.
 
 ## Extends
 
@@ -37,13 +39,13 @@ UntaggedPayloadError instead.
 
 ### Constructor
 
-> **new EraInvariantViolationError**(`seam`, `circuitId?`, `expected?`, `received?`): `EraInvariantViolationError`
+> **new EraInvariantViolationError**(`method`, `circuitId?`, `expected?`, `received?`, `contractAddress?`, `txId?`): `EraInvariantViolationError`
 
 #### Parameters
 
-##### seam
+##### method
 
-[`Seam`](../../../midnight-js/types/type-aliases/Seam.md)
+[`ProviderMethod`](../../../midnight-js/types/type-aliases/ProviderMethod.md)
 
 The provider method that returned the payload.
 
@@ -57,20 +59,35 @@ The circuit, or circuits, whose flow this happened on,
 
 ##### expected?
 
-`"v8"` \| `"v9"`
+`"v9"` \| `"v8"`
 
 The only era this flow can accept back. Defaults to
                 `'v9'`. See the class comment for which fact this names
-                on each arm.
+                on each path.
 
 ##### received?
 
-`"v8"` \| `"v9"`
+`"v9"` \| `"v8"`
 
 The era the payload actually carried, when it carried a
                 readable one. Named in the message: a refusal that states
                 only what it wanted leaves the reader to find out what it
                 got.
+
+##### contractAddress?
+
+`string`
+
+The contract the payload was read for, when the
+                       flow reads one contract's records.
+
+##### txId?
+
+`string`
+
+The transaction the payload belongs to, when it is already on
+            chain. A caller needs it to reconcile a transaction it cannot
+            take back.
 
 #### Returns
 
@@ -112,19 +129,36 @@ The circuit, or circuits, whose flow this happened on,
 
 ***
 
+### contractAddress?
+
+> `readonly` `optional` **contractAddress?**: `string`
+
+The contract the payload was read for, when the
+                       flow reads one contract's records.
+
+***
+
 ### expected
 
-> `readonly` **expected**: `"v8"` \| `"v9"` = `'v9'`
+> `readonly` **expected**: `"v9"` \| `"v8"` = `'v9'`
 
 The only era this flow can accept back. Defaults to
                 `'v9'`. See the class comment for which fact this names
-                on each arm.
+                on each path.
+
+***
+
+### method
+
+> `readonly` **method**: [`ProviderMethod`](../../../midnight-js/types/type-aliases/ProviderMethod.md)
+
+The provider method that returned the payload.
 
 ***
 
 ### received?
 
-> `readonly` `optional` **received?**: `"v8"` \| `"v9"`
+> `readonly` `optional` **received?**: `"v9"` \| `"v8"`
 
 The era the payload actually carried, when it carried a
                 readable one. Named in the message: a refusal that states
@@ -133,8 +167,10 @@ The era the payload actually carried, when it carried a
 
 ***
 
-### seam
+### txId?
 
-> `readonly` **seam**: [`Seam`](../../../midnight-js/types/type-aliases/Seam.md)
+> `readonly` `optional` **txId?**: `string`
 
-The provider method that returned the payload.
+The transaction the payload belongs to, when it is already on
+            chain. A caller needs it to reconcile a transaction it cannot
+            take back.

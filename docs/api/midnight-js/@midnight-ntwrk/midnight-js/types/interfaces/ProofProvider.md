@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,12 +8,6 @@
 
 Interface for a proof server running in a trusted environment.
 
-## Type Param
-
-**K**
-
-The type of the circuit ID used by the provider.
-
 ## Properties
 
 ### supportedEras
@@ -22,7 +16,7 @@ The type of the circuit ID used by the provider.
 
 The ledger eras THIS INSTANCE serves.
 
-Read before an operation starts, by `assertSeamsSupportEra`, so a set of
+Read before an operation starts, by `assertProvidersSupportEra`, so a set of
 providers that cannot carry a transaction end to end is refused before its
 proof is paid for. A provider built by one of the `create*` factories has
 this computed from the handlers it was given; a provider implementing this
@@ -36,7 +30,7 @@ later and after more work.
 
 ### proveTx()
 
-> **proveTx**(`unprovenTx`, `proveTxConfig?`): `Promise`\<[`VersionedUnboundTransaction`](../type-aliases/VersionedUnboundTransaction.md)\>
+> **proveTx**(`unprovenTx`, `proveTxConfig?`): `Promise`\<[`UnboundTx`](../type-aliases/UnboundTx.md)\>
 
 Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
 must be balanced using the [WalletProvider](WalletProvider.md) interface.
@@ -45,11 +39,9 @@ must be balanced using the [WalletProvider](WalletProvider.md) interface.
 
 ##### unprovenTx
 
-[`VersionedUnprovenTransaction`](../type-aliases/VersionedUnprovenTransaction.md)
+[`UnprovenTx`](../type-aliases/UnprovenTx.md)
 
-The version-tagged unproven transaction: wrap a live v9 ledger object as
-                  `{ version: 'v9', tx }`, or v8-era serialized bytes as
-                  `{ version: 'v8', txBytes }`.
+The unproven transaction handle.
 
 ##### proveTxConfig?
 
@@ -60,34 +52,34 @@ The configuration for the proof request to the proof provider. Empty in case
 
 #### Returns
 
-`Promise`\<[`VersionedUnboundTransaction`](../type-aliases/VersionedUnboundTransaction.md)\>
+`Promise`\<[`UnboundTx`](../type-aliases/UnboundTx.md)\>
 
-The proven transaction, version-tagged, and always in the SAME era the request
-         carried. Narrow on `version` — or call `unwrapV9` — before reading the payload.
-
-#### Throws
-
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads. Which
-        implementations do is worth knowing before you send one: `httpClientProofProvider`
-        and `dappConnectorProofProvider` both serve it, taking and returning serialized
-        bytes. [createProofProvider](../variables/createProofProvider.md) does NOT — it adapts a v9-only `ProvingProvider`,
-        so it refuses a v8 payload on the way in, which is the honest answer for what it wraps.
+The proven transaction handle, in the SAME era as `unprovenTx`. Read it with
+         `LedgerTransaction.unwrap(proven, proven.era)`.
 
 #### Throws
 
-PayloadNotATransactionError if a v8 payload's `txBytes` is not a serialized transaction.
-        Raised by the providers that serve v8 and defined in
-        `@midnight-ntwrk/midnight-js-protocol/errors` (not a runtime dependency of this
-        package, so it is named here rather than imported); match it with `hasErrorCode`
-        against `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`.
+InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package.
 
 #### Throws
 
-UntaggedPayloadError if `version` is missing or unrecognised.
+ProviderEraUnsupportedError if the implementation does not serve the handle's era.
+        [createProofProvider](../variables/createProofProvider.md) serves v9 only; `httpClientProofProvider` and
+        `dappConnectorProofProvider` serve both eras.
+
+#### Throws
+
+ForeignLedgerTransactionError if the proven transaction is not an object of the
+        ledger copy this framework loaded for its era.
+
+#### Throws
+
+InvalidTransactionHandleError if the proven transaction is not a ledger transaction
+        object (`not-a-transaction`) or is not at the Unbound stage (`stage-mismatch`).
 
 #### Throws
 
 InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderForEras](../variables/createProofProviderForEras.md) and
+        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md) and
         `dappConnectorProofProvider` refuse it before any proving starts;
         `httpClientProofProvider` honours it.

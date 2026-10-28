@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -36,7 +36,7 @@ pre-fork contract cannot make a cross-contract call.
 
 ### era
 
-> `readonly` **era**: `"ledger8"`
+> `readonly` **era**: `"v8"`
 
 The pipeline that produced this result: always the retained era here, even
 when the transaction that recorded it is a keep-state transaction tagged

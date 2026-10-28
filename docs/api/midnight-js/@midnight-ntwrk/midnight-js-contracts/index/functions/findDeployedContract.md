@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -38,10 +38,17 @@ ContractNotFoundError No contract state could be found at `contractAddress`.
 
 ## Throws
 
-IndexerDataError The public data provider cannot decode the current contract state. The
-              indexer provider throws it for a contract deployed before the ledger fork that has
-              had no state-changing call since; that call can only be made with the pre-fork
-              artifacts.
+Ledger8ContractStateUnsupportedError The current contract state was written by the v8
+ledger, and these artifacts come from the current toolchain.
+
+## Throws
+
+EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
+                                   error names `contractAddress`.
+
+## Throws
+
+UnknownLedgerVersionError The deploy record or the deploy state carries no readable era tag.
 
 ## Throws
 
@@ -72,11 +79,11 @@ EraArtifactMismatchError If `options.compiledContract` belongs to neither Compac
 
 > **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../namespaces/Ledger8/interfaces/FoundContract.md)\<`C`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
-head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the
+network's ledger version, checks the fetched state's version tag against it, and byte-matches every local verifier
 key against the slot the chain holds — the checks that make a later call against this contract
 safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -6,8 +6,8 @@
 
 # Interface: ProtocolVersionSource
 
-Anything that can report the network's current head protocol version —
-typically an indexer or node client. Consumed by [networkHeadVersion](../variables/networkHeadVersion.md).
+Anything that can report the network's latest protocol version —
+typically an indexer or node client. Consumed by [latestNetworkLedgerVersion](../variables/latestNetworkLedgerVersion.md).
 
 ## Methods
 
@@ -19,4 +19,4 @@ typically an indexer or node client. Consumed by [networkHeadVersion](../variabl
 
 `Promise`\<`number`\>
 
-The network's current head `protocolVersion` integer.
+The network's latest `protocolVersion` integer.

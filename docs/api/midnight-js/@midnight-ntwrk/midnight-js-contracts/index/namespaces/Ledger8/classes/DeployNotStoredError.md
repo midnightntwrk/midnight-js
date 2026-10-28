@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -45,7 +45,7 @@ The address the confirmed deployment created.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key that deployment's maintenance authority was built
 from - sampled when the caller named none.
@@ -104,7 +104,7 @@ The address the confirmed deployment created.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key that deployment's maintenance authority was built
 from - sampled when the caller named none.

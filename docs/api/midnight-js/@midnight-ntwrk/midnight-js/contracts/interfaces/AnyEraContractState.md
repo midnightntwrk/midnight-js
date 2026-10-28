@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -46,21 +46,6 @@ circuit against an empty balance — see RetainedEraExecution.
 
 ***
 
-### envelopeVersion
-
-> `readonly` **envelopeVersion**: `"v8"` \| `"v9"`
-
-The ledger era that wrote these bytes, read from the envelope they carry.
-
-Not the `version` of the raw record, which is derived from `protocolVersion` and so describes
-the BLOCK. Two different things make the two disagree legitimately, and neither is a fault:
-a contract not written to since the fork keeps an OLDER envelope under a newer block, and an
-unpinned read resolves the state and the block as independent Query-root siblings that can
-land either side of the boundary. See `EnvelopeUpperBound` in
-`@midnight-ntwrk/midnight-js-indexer-public-data-provider`.
-
-***
-
 ### protocolVersion
 
 > `readonly` **protocolVersion**: `number`
@@ -93,3 +78,14 @@ are not carried here, so a caller needing them reads them separately rather than
 #### Inherited from
 
 `ContractStatePojo.state`
+
+***
+
+### version
+
+> `readonly` **version**: `"v8"` \| `"v9"`
+
+The ledger era that wrote these bytes, read from the envelope they carry.
+
+It can be older than the era of the block that dated the read (see [protocolVersion](#protocolversion)):
+a record keeps the encoding it was written in.

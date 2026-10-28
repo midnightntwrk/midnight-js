@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,9 +6,8 @@
 
 # Class: UnusableEraEntryError
 
-Thrown by a provider factory given an era entry it cannot use: a `currentEra`
-that is not the [EraEntryShape](../type-aliases/EraEntryShape.md) the factory needs, or a retained-era
-entry that is neither `undefined` nor that shape. Raised at construction, so
+Thrown by a provider factory given an era entry that is neither `undefined`
+nor the [EraEntryShape](../type-aliases/EraEntryShape.md) the factory needs. Raised at construction, so
 `supportedEras` never claims an era no entry can serve.
 
 The types rule these entries out, so it is reachable only from JavaScript or
@@ -27,13 +26,13 @@ Catch it via its stable `code`, using `hasErrorCode` from
 
 ### Constructor
 
-> **new UnusableEraEntryError**(`seam`, `era`, `expected`, `received`): `UnusableEraEntryError`
+> **new UnusableEraEntryError**(`method`, `era`, `expected`, `received`): `UnusableEraEntryError`
 
 #### Parameters
 
-##### seam
+##### method
 
-[`ProviderSeam`](../type-aliases/ProviderSeam.md)
+[`TransactionMethod`](../type-aliases/TransactionMethod.md)
 
 The provider method the rejected entry would have served.
 
@@ -99,12 +98,12 @@ What was passed instead, for the message only: for example
 
 ***
 
-### received
+### method
 
-> `readonly` **received**: `string`
+> `readonly` **method**: [`TransactionMethod`](../type-aliases/TransactionMethod.md)
 
 ***
 
-### seam
+### received
 
-> `readonly` **seam**: [`ProviderSeam`](../type-aliases/ProviderSeam.md)
+> `readonly` **received**: `string`

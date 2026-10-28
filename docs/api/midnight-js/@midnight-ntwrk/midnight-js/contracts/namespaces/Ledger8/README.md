@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ dropped inside, because the namespace already carries it -- so a declaration
 this reference calls `Ledger8X` is the member published as `Ledger8.X`.
 
 Membership is the retained era's own family: its contract and result types,
-its interface factory, and the refusals its pipeline raises. Names that serve
+and the refusals its pipeline raises. Names that serve
 BOTH eras stay on the flat surface, so a consumer that only receives results
 never imports the transitional half.
 
@@ -26,14 +26,22 @@ never imports the transitional half.
 ## Classes
 
 - [AmbiguousEntryPointError](classes/AmbiguousEntryPointError.md)
+- [ArtifactOnLedger9StateError](classes/ArtifactOnLedger9StateError.md)
 - [CallTxFailedError](classes/CallTxFailedError.md)
+- [ContractStateUnsupportedError](classes/ContractStateUnsupportedError.md)
 - [DeployNotStoredError](classes/DeployNotStoredError.md)
-- [DeployOnV9Error](classes/DeployOnV9Error.md)
+- [DeployOnLedger9Error](classes/DeployOnLedger9Error.md)
 - [DeployTxFailedError](classes/DeployTxFailedError.md)
 - [DeployUnconfirmedError](classes/DeployUnconfirmedError.md)
+- [InsertVerifierKeyTxFailedError](classes/InsertVerifierKeyTxFailedError.md)
+- [MaintenanceOnLedger9Error](classes/MaintenanceOnLedger9Error.md)
 - [RecipientUnmappableError](classes/RecipientUnmappableError.md)
-- [SeamFailedError](classes/SeamFailedError.md)
+- [RemoveVerifierKeyTxFailedError](classes/RemoveVerifierKeyTxFailedError.md)
+- [ReplaceAuthorityUnconfirmedError](classes/ReplaceAuthorityUnconfirmedError.md)
+- [ReplaceMaintenanceAuthorityTxFailedError](classes/ReplaceMaintenanceAuthorityTxFailedError.md)
 - [ShieldedSpendUnsupportedError](classes/ShieldedSpendUnsupportedError.md)
+- [SigningKeyNotStoredError](classes/SigningKeyNotStoredError.md)
+- [SigningKeyUnavailableError](classes/SigningKeyUnavailableError.md)
 - [SigningKeyUnusableError](classes/SigningKeyUnusableError.md)
 
 ## Interfaces
@@ -42,16 +50,21 @@ never imports the transitional half.
 - [CallResultPublic](interfaces/CallResultPublic.md)
 - [CallTxTarget](interfaces/CallTxTarget.md)
 - [CircuitContext](interfaces/CircuitContext.md)
+- [CircuitMaintenanceTxInterface](interfaces/CircuitMaintenanceTxInterface.md)
 - [CircuitResult](interfaces/CircuitResult.md)
 - [Contract](interfaces/Contract.md)
 - [ContractCall](interfaces/ContractCall.md)
 - [ContractCallPublic](interfaces/ContractCallPublic.md)
+- [ContractMaintenanceTxInterface](interfaces/ContractMaintenanceTxInterface.md)
 - [DeployContractOptionsBase](interfaces/DeployContractOptionsBase.md)
 - [DeployContractOptionsWithPrivateState](interfaces/DeployContractOptionsWithPrivateState.md)
 - [DeployedContract](interfaces/DeployedContract.md)
+- [DeployTxData](interfaces/DeployTxData.md)
 - [FinalizedCallTxData](interfaces/FinalizedCallTxData.md)
+- [FinalizedMaintenanceTxData](interfaces/FinalizedMaintenanceTxData.md)
 - [FindDeployedContractOptions](interfaces/FindDeployedContractOptions.md)
 - [FoundContract](interfaces/FoundContract.md)
+- [FoundDeployTxData](interfaces/FoundDeployTxData.md)
 - [InitialStateResult](interfaces/InitialStateResult.md)
 - [SubmittedCallTx](interfaces/SubmittedCallTx.md)
 - [UnsubmittedCallTxData](interfaces/UnsubmittedCallTxData.md)
@@ -64,6 +77,7 @@ never imports the transitional half.
 - [Circuit](type-aliases/Circuit.md)
 - [CircuitCallTxInterface](type-aliases/CircuitCallTxInterface.md)
 - [CircuitId](type-aliases/CircuitId.md)
+- [CircuitMaintenanceTxInterfaces](type-aliases/CircuitMaintenanceTxInterfaces.md)
 - [CircuitParameters](type-aliases/CircuitParameters.md)
 - [CircuitReturnType](type-aliases/CircuitReturnType.md)
 - [ConstructorParameters](type-aliases/ConstructorParameters.md)
@@ -72,7 +86,3 @@ never imports the transitional half.
 - [FinalizedCallTxPublicData](type-aliases/FinalizedCallTxPublicData.md)
 - [PrivateState](type-aliases/PrivateState.md)
 - [Witness](type-aliases/Witness.md)
-
-## Variables
-
-- [createCircuitCallTxInterface](variables/createCircuitCallTxInterface.md)

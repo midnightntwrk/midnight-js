@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,10 +8,10 @@
 
 > **DeployContractOptionsBase**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
 
-The [deployContract](../functions/deployContract.md) arm for a contract whose private state is stored
+The [deployContract](../functions/deployContract.md) options variant for a contract whose private state is stored
 NOWHERE: the constructor runs against `undefined` and nothing is written.
 
-The other arm is [DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
+The other variant is [DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
 
 ## Type Declaration
 
@@ -19,7 +19,7 @@ The other arm is [DeployContractOptionsWithPrivateState](DeployContractOptionsWi
 
 > `readonly` `optional` **initialPrivateState?**: `never`
 
-DECLARED on this arm, and only ever `undefined` — see
+DECLARED on this variant, and only ever `undefined` — see
 DeployContractOptionsBase.privateStateId for why the member is
 present rather than absent.
 
@@ -27,11 +27,11 @@ present rather than absent.
 
 > `readonly` `optional` **privateStateId?**: `never`
 
-DECLARED on this arm, and only ever `undefined`.
+DECLARED on this variant, and only ever `undefined`.
 
-Left off the arm entirely, `{ compiledContract, privateStateId: 'x' }`
+Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
 compiled: union excess-property checking admits a member declared on the
-SIBLING arm as long as one arm is satisfied, and `compiledContract` alone
+SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
 satisfies this one. The constructor then ran against `undefined`,
 `undefined` was stored under the caller's id, and
 `deployTxData.private.initialPrivateState` was typed non-optional while
