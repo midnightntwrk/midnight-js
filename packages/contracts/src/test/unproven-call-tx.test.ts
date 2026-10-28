@@ -21,7 +21,8 @@ import {
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -51,13 +52,11 @@ vi.mock('../get-states', () => ({
   getPublicStates: vi.fn()
 }));
 
-vi.mock('../internal/utils', () => ({
-    createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
-      'mock-contract-address',
-      StateValue.newNull(),
-      { test: 'unproven-tx' }
-    ]),
-    createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
+vi.mock('../internal/utils', async () => {
+  const ledger = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+  return {
+    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', StateValue.newNull(), ledger.Transaction.fromParts('undeployed')]),
+    createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
     // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
@@ -65,7 +64,8 @@ vi.mock('../internal/utils', () => ({
     zswapCallsToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     makeCalleeStateResolver: vi.fn()
-}));
+  };
+});
 
 const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
 
@@ -107,6 +107,25 @@ describe('unproven-call-tx', () => {
       expect(result.private).toBeDefined();
       expect(result.private.unprovenTx).toBeDefined();
       expect(result.private.newCoins).toBeDefined();
+    });
+
+    it('carries the transaction it built as an unproven v9 handle around that same transaction', async () => {
+      const built = Transaction.fromParts('undeployed');
+      vi.mocked(createUnprovenLedgerCallTx).mockReturnValueOnce(built);
+      const options = createMockCallOptions({ initialContractState: await getInitialContractState() });
+
+      const result = await createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      );
+
+      expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
+      expect({ era: result.private.unprovenTx.era, stage: result.private.unprovenTx.stage }).toEqual({
+        era: 'v9',
+        stage: 'Unproven'
+      });
+      expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(built);
     });
 
     it('should create unproven call tx from initial states with private state', async () => {
@@ -429,7 +448,8 @@ describe('unproven-call-tx', () => {
 
       const result = await createUnprovenCallTx(providers, options);
 
-      expect(result).toBeDefined();
+      expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
+      expect(result.private.unprovenTx.era).toBe('v9');
       expect(mockGetPublicStates).toHaveBeenCalledWith(
         providers.publicDataProvider,
         options.contractAddress,

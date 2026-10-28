@@ -25,7 +25,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { PrivateStateId, VerifierKey, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId, UnprovenTx, VerifierKey, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -70,6 +70,7 @@ import {
 } from '../../governance';
 import {
   type AnyLedger8CallTxOptions,
+  type Ledger8CallResultPrivate,
   type Ledger8CallTxOptionsBase,
   type Ledger8CallTxOptionsWithPrivateStateId,
   type Ledger8CallTxTarget,
@@ -376,11 +377,11 @@ describe('every result names the pipeline that produced it', () => {
   it('DISCRIMINATES: a union of the two eras narrows on `era` alone', () => {
     // The property under test. Declaring `era: LedgerVersion` on both variants would
     // satisfy every assertion above and narrow nothing.
-    const narrow = (result: EitherEraCall): Uint8Array | undefined =>
-      result.era === 'v8' ? result.private.txBytes : undefined;
+    const narrow = (result: EitherEraCall): Ledger8CallResultPrivate<Counter016Contract, 'increment'> | undefined =>
+      result.era === 'v8' ? result.private : undefined;
 
     expectTypeOf(narrow).parameter(0).toEqualTypeOf<EitherEraCall>();
-    expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
+    expectTypeOf(narrow).returns.toEqualTypeOf<Ledger8CallResultPrivate<Counter016Contract, 'increment'> | undefined>();
   });
 
   it('publishes a union per result surface, and a guard that narrows it', () => {
@@ -412,9 +413,9 @@ describe('every result names the pipeline that produced it', () => {
     // only on the published ones above. Stated against the NARROW union a
     // caller with concrete contract types would build, because that is the
     // case a widest-instantiation-only guard would fail to serve.
-    const narrow = (result: EitherEraCall): Uint8Array | undefined =>
-      isLedger8Result(result) ? result.private.txBytes : undefined;
-    expectTypeOf(narrow).returns.toEqualTypeOf<Uint8Array | undefined>();
+    const narrow = (result: EitherEraCall): Ledger8CallResultPrivate<Counter016Contract, 'increment'> | undefined =>
+      isLedger8Result(result) ? result.private : undefined;
+    expectTypeOf(narrow).returns.toEqualTypeOf<Ledger8CallResultPrivate<Counter016Contract, 'increment'> | undefined>();
 
     // And it narrows the OTHER way too: the else branch is the current era's
     // variant, so a member only that variant carries is reachable there.
@@ -709,16 +710,10 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // than about transport.
     'logEvents';
 
-  /**
-   * Private members the current era carries and the retained era does NOT.
+  /*
+   * NO era-only private members. Both eras carry the composed transaction as
+   * `unprovenTx`, a transaction handle in the era it was composed for.
    */
-  type CurrentEraOnlyPrivateMembers =
-    // The retained composer answers with bytes; `txBytes` below is the member
-    // that carries them. See ADR-0010 for why no live transaction is built.
-    'unprovenTx';
-
-  /** Private members the retained era adds. An era may add; it may not drop. */
-  type RetainedEraOnlyPrivateMembers = 'txBytes';
 
   /*
    * NO retained-era-only public members. `nextContractStateEncoded` was excused
@@ -747,7 +742,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // PARITY; it may not excuse it from EXISTING.
     expectTypeOf<CurrentEraResult['public']>().toHaveProperty('logEvents');
     expectTypeOf<CurrentEraResult['private']>().toHaveProperty('unprovenTx');
-    expectTypeOf<RetainedEraResult['private']>().toHaveProperty('txBytes');
+    expectTypeOf<RetainedEraResult['private']>().toHaveProperty('unprovenTx');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('contractStateEncoded');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractState');
     expectTypeOf<Ledger8ContractCall['public']>().toHaveProperty('preContractStateEncoded');
@@ -764,10 +759,8 @@ describe('both eras resolve a call to the SAME result structure', () => {
     >();
   });
 
-  it('carries the same private members in BOTH eras, apart from the one excused above', () => {
-    expectTypeOf<Exclude<keyof CurrentEraResult['private'], CurrentEraOnlyPrivateMembers>>().toEqualTypeOf<
-      Exclude<keyof RetainedEraResult['private'], RetainedEraOnlyPrivateMembers>
-    >();
+  it('carries the same private members in BOTH eras', () => {
+    expectTypeOf<keyof CurrentEraResult['private']>().toEqualTypeOf<keyof RetainedEraResult['private']>();
   });
 
   it('describes ONE call the same way in BOTH eras', () => {
@@ -892,18 +885,14 @@ describe('both eras resolve a call to the SAME result structure', () => {
     >();
   });
 
-  it('carries the post-state as a HANDLE, and the composed transaction as bytes', () => {
-    // ADR-0010: the retained post-state is published as the runtime's own
-    // handle rather than withheld. The composed transaction stays bytes --
-    // `txBytes` is what the retained composer answers with, and deserializing
-    // one eagerly would pay for an object most callers never read.
+  it('carries the post-state as a HANDLE, and the composed transaction as a transaction handle', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty(
       'nextContractState'
     );
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('txBytes');
     expectTypeOf<
-      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']
-    >().not.toHaveProperty('unprovenTx');
+      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']['unprovenTx']
+    >().toEqualTypeOf<UnprovenTx>();
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().not.toHaveProperty('txBytes');
   });
 
   it('keeps `nextPrivateState` reachable, on the private side as the current era does', () => {

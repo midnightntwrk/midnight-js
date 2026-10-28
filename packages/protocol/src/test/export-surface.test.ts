@@ -18,6 +18,8 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import * as transaction from '../transaction';
+
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 
 // Subpaths that address a file shipped as-is rather than a build entry.
@@ -98,5 +100,13 @@ describe('protocol export surface', () => {
     const exported = [...entryNamesBySubpath().values()].flat();
 
     expect([...new Set(exported)].sort()).toEqual(sourceEntryNames().sort());
+  });
+
+  it('publishes exactly the deserializer, the instance check and the stage reader from ./transaction', () => {
+    expect(Object.keys(transaction).sort()).toEqual([
+      'deserializeTransactionAtStage',
+      'isFrameworkLedgerTransaction',
+      'transactionStageOf'
+    ]);
   });
 });

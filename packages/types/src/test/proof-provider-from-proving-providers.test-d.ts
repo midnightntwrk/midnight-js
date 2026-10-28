@@ -20,50 +20,39 @@ import { describe, expectTypeOf, it } from 'vitest';
 import { createProofProviderFromProvingProviders, type ProofProvider } from '../proof-provider';
 
 // Compile-level tests: the property under test is that this file type-checks,
-// and for the `@ts-expect-error` case that it does NOT without the suppression.
+// and for the `@ts-expect-error` cases that it does NOT without the suppression.
 
-const currentEraProvingProvider: ProvingProvider = {
+const ledger9ProvingProvider: ProvingProvider = {
   check: async () => [],
   prove: async () => new Uint8Array(),
   lookupKey: async () => undefined
 };
 
 // What an in-process prover's `asV8ProvingProvider()` is declared to return.
-const retainedEraProvingProvider: Ledger8ProvingProvider = {
+const ledger8ProvingProvider: Ledger8ProvingProvider = {
   check: async () => [],
   prove: async () => new Uint8Array()
 };
 
 describe('createProofProviderFromProvingProviders', () => {
-  // The point of the retained slot's type: registering the provider an
-  // in-process prover hands over for that era must not need a cast.
-  it('accepts a retained-era provider, which declares no lookupKey', () => {
+  it('accepts a v8 proving provider, which declares no lookupKey', () => {
     expectTypeOf(
-      createProofProviderFromProvingProviders({
-        currentEra: currentEraProvingProvider,
-        retainedEras: { v8: retainedEraProvingProvider }
-      })
+      createProofProviderFromProvingProviders({ v8: ledger8ProvingProvider, v9: ledger9ProvingProvider })
     ).toExtend<ProofProvider>();
   });
 
-  // The asymmetry is worth pinning because it is the half the types DO catch:
-  // the current era's shape is a superset, so only this direction is an error.
-  // The reverse -- a current-era provider in the retained slot -- type-checks,
-  // which is why the pairing is documented rather than enforced.
-  it('refuses a retained-era provider for the current era', () => {
+  // The v9 shape is a superset of the v8 one, so only this direction is an
+  // error; the reverse type-checks, which is why the pairing is documented.
+  it('refuses a v8 proving provider for v9', () => {
     createProofProviderFromProvingProviders({
-      // @ts-expect-error the current era's ProvingProvider also declares
-      // lookupKey, which the retained era's shape does not.
-      currentEra: retainedEraProvingProvider
+      v8: undefined,
+      // @ts-expect-error the v9 ProvingProvider also declares lookupKey
+      v9: ledger8ProvingProvider
     });
   });
 
-  it('refuses a retained slot keyed by the current era', () => {
-    createProofProviderFromProvingProviders({
-      currentEra: currentEraProvingProvider,
-      // @ts-expect-error the current era is passed to proveTx as a live ledger
-      // object, so it is not registrable as a retained era.
-      retainedEras: { v9: retainedEraProvingProvider }
-    });
+  it('requires a key for every era', () => {
+    // @ts-expect-error the v8 key is missing; an unserved era is written as undefined
+    createProofProviderFromProvingProviders({ v9: ledger9ProvingProvider });
   });
 });

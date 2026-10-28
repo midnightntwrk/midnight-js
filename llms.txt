@@ -77,9 +77,9 @@ MidnightProviders
 - **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
 - **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
-- **Version-tagged payloads**: the `proveTx` / `balanceTx` / `submitTx` methods carry `VersionedTransaction<T>` = `{ version: 'v9', tx }` | `{ version: 'v8', txBytes }`. Narrow with `unwrapLedger9(payload, method)`.
-- **One era rule for every value**: `version: 'v8' | 'v9'` is the ledger era that WROTE a value; `protocolVersion` dates the block. Era-dependent reads (`queryContractState`, `watchForContractState`, `contractStateObservable`, `queryDeployContractState`, `queryZSwapAndContractState`, `getPublicStates`, `getStates`) return `Versioned*` unions: v8 = stored bytes, v9 = decoded. `queryRawContractState` returns `RawContractState`: raw bytes in both eras, `version` read off the envelope. Narrow with `switch (value.version)` + `assertNever`, or `requireLedger9(value, '<call site>')` from utils for v9-only code. The contracts `submitTx` takes `{ unprovenTx: { version, tx | txBytes } }` and accepts only a transaction of the network head's era.
-- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 variant carries `tx`, not `txBytes`, so `unwrapLedger9` does not apply — narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
+- **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnight-ntwrk/midnight-js-types`. The handle carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.seal(era, stage, tx)`, read it with `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another ledger WASM copy with `ForeignLedgerTransactionError`; `unwrap` refuses another era with `TransactionEraMismatchError`.
+- **One era rule for every value**: `version: 'v8' | 'v9'` is the ledger era that WROTE a value; `protocolVersion` dates the block. Era-dependent reads (`queryContractState`, `watchForContractState`, `contractStateObservable`, `queryDeployContractState`, `queryZSwapAndContractState`, `getPublicStates`, `getStates`) return `Versioned*` unions: v8 = stored bytes, v9 = decoded. `queryRawContractState` returns `RawContractState`: raw bytes in both eras, `version` read off the envelope. Narrow with `switch (value.version)` + `assertNever`, or `requireLedger9(value, '<call site>')` from utils for v9-only code. The contracts `submitTx` takes `{ unprovenTx }`, an `UnprovenTx` handle, and accepts only a transaction of the network head's era.
+- **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. In both variants `tx` is a `FinalizedTx` of the record's era (`record.tx.era === record.version`); read it with `LedgerTransaction.unwrap(record.tx, record.version)`. To treat the eras differently, narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
 - **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
 - **Contract maintenance**: `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` (and `circuitMaintenanceTx` / `contractMaintenanceTx` on both handles) take either era's artifact and resolve `{ era, public }`; `AnyEraMaintenanceTxData` is the union. A ledger 8 artifact maintains only on a pre-fork head; after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error` — recompile and use the same function with the ledger 9 artifact.
 - Migration: [docs/releases/v5.0.0/migration-guide.md](docs/releases/v5.0.0/migration-guide.md). Error codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).
@@ -99,14 +99,18 @@ MidnightProviders
 5. Wait for finalization via PublicDataProvider
 ```
 
-Payloads cross steps 2-4 version-tagged (`{ version: 'v9', tx }`); there is no
-untagged form. Narrow one with `unwrapLedger9(payload, method)`, whose `method` parameter
-accepts exactly those three methods. Step 4 returns a bare `TransactionId`,
-which is era-independent and needs no narrowing.
+Transactions cross steps 2-4 as handles: `UnprovenTx` into `proveTx`, `UnboundTx`
+into `balanceTx`, `FinalizedTx` into `submitTx`. Each handle carries its era, and
+each provider answers in the same era. Read the ledger object with
+`LedgerTransaction.unwrap(handle, handle.era)`. Step 4 returns a bare
+`TransactionId`, which is era-independent.
 
-Step 5 reports a version-tagged *record* (`VersionedFinalizedTxData`), a
-different union whose v8 variant carries `tx` rather than `txBytes`. `unwrapLedger9` does
-not accept it — narrow with `switch (record.version)`.
+Step 5 reports a version-tagged *record* (`VersionedFinalizedTxData`). Its `tx`
+is a `FinalizedTx` of the record's era; read it with
+`LedgerTransaction.unwrap(record.tx, record.version)`.
+
+Layer rule: `@midnight-ntwrk/midnight-js-protocol` speaks raw ledger objects; every
+package from `types` up speaks only handles in its public API.
 
 ## Main APIs
 
@@ -234,43 +238,40 @@ await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
 
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
   zkConfigProvider
 );
 
-// Transaction payloads reach a provider method version-tagged: tag on the way
-// in, narrow on `version` on the way out. There is no untagged form.
-// `unwrapLedger9` is the framework's narrowing helper — it throws
-// Ledger8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
-// `code` you can match with `hasErrorCode`.
-const provenTx = unwrapLedger9(
-  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
-  'proveTx'
-);
+// A transaction reaches a provider method as a handle that carries its era.
+// The proven handle comes back in the same era.
+const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+const provenTx = await proofProvider.proveTx(unprovenTx);
+const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
 ```
 
 ### Proving a Retained-Era (v8) Transaction
 
-`httpClientProofProvider` and `dappConnectorProofProvider` serve BOTH ledger eras. A retained-era
-transaction is passed to the provider as serialized bytes in each direction and comes back in the era it was
-sent in, so narrow on `version` rather than calling `unwrapLedger9` (which exists to reject anything that
-is not the current era):
+`httpClientProofProvider` and `dappConnectorProofProvider` serve BOTH ledger eras. A v8 transaction
+is a v8 handle, passed the same way as a v9 one, and comes back in the era it was sent in:
 
 ```typescript
-const proven = await proofProvider.proveTx({ version: 'v8', txBytes: unprovenTxBytes });
-if (proven.version === 'v8') {
-  // proven.txBytes — the serialized, proven transaction
-}
+const proven = await proofProvider.proveTx(ledger8UnprovenTx);
+// proven.era is 'v8'; read it with LedgerTransaction.unwrap(proven, 'v8')
 ```
+
+To seal a v8 transaction yourself, build it with the module that `await loadLedger8Protocol()` from
+`@midnight-ntwrk/midnight-js-protocol` returns. Do not import `ledger-v8` directly: an object of
+another copy is refused with `ForeignLedgerTransactionError`, and a v8 object sealed before
+`loadLedger8Protocol()` has resolved is refused with reason `ledger8-not-loaded`.
 
 Three things to know before wiring a retained-era flow:
 
 - `createProofProvider`, `createWalletProvider` and `createMidnightProvider` in
-  `@midnight-ntwrk/midnight-js-types` all refuse a retained-era payload with `Ledger8PayloadUnsupportedError`.
-  That is permanent and by design: each lifts a v9-only implementation into the version-tagged
+  `@midnight-ntwrk/midnight-js-types` all refuse a v8 handle with `ProviderEraUnsupportedError`.
+  That is permanent and by design: each lifts a v9-only implementation into the provider
   interface, so refusing is the adapter reporting what it wraps. Each declares `supportedEras:
   ['v9']` to say so up front.
 - The proof, wallet and midnight providers each carry a required `supportedEras`, and the framework reads all three BEFORE an
@@ -279,17 +280,25 @@ Three things to know before wiring a retained-era flow:
   `balanceTx`, before any proving happens — not, as previously, after a full proving cycle.
 - To run one end to end, serve both eras on all three providers. Use
   `createProofProviderFromHandlers` / `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`,
-  which take one handler per era and compute `supportedEras` from the handlers supplied:
+  which take one handler per era, keyed `v8` / `v9`, and compute `supportedEras` from the handlers
+  supplied. Each handler gets a live ledger object of its own era and returns one; the factory unwraps
+  and seals the handles:
 
   ```typescript
   const proofProvider = createProofProviderFromHandlers({
-    currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-    retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
+    v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
+    v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
   });
   ```
 
-  One proving provider serves both eras above because a server-backed client — the proof server,
-  the DApp Connector — frames each request with the ledger version that produced the transaction
+  A handler that hands the transaction to another ledger copy (a wallet SDK, a DApp Connector wallet)
+  serializes it on the way out and decodes the answer with
+  `deserializeTransactionAtStage(era, stage, bytes)` from
+  `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. The era comes from the
+  request, never from the bytes.
+
+  `ledger8ProvingProvider` and `provingProvider` can be the same object when it is a server-backed
+  client — the proof server, the DApp Connector — because such a client frames each request with the ledger version that produced the transaction
   and resolves key material per request. An IN-PROCESS prover frames nothing: the era it proves for
   is fixed when it is built, by the key material it was given. From
   `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is per era, and a node
@@ -299,23 +308,24 @@ Three things to know before wiring a retained-era flow:
 
   ```typescript
   const proofProvider = createProofProviderFromProvingProviders({
-    currentEra: currentEraProver.asProvingProvider(),
-    retainedEras: { v8: retainedEraProver.asV8ProvingProvider() }
+    v8: ledger8Prover.asV8ProvingProvider(),
+    v9: ledger9Prover.asProvingProvider()
   });
   ```
 
   All four factories check the handlers when the provider is built. A handler of the wrong shape —
   not a function, or for `createProofProviderFromProvingProviders` not an object with callable `check` and `prove` —
-  is refused with `UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`); a `retainedEras` that
-  is not a plain object keyed only by retained eras is refused with `InvalidArgumentError`. A
-  retained entry set to `undefined` leaves that era unserved. The check is shape only: it cannot
+  is refused with `UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`); an object with no key
+  for a ledger era, or with no era served at all, is refused with `InvalidArgumentError`. An entry set
+  to `undefined` leaves that era unserved. The check is shape only: it cannot
   tell a prover built for the wrong era.
 
-  Implementing a version-tagged interface directly still works — write `supportedEras` yourself.
+  Implementing a provider interface directly still works — write `supportedEras` yourself, and
+  unwrap and seal the handles yourself.
 
-A `v8` payload that is not a serialized transaction is refused with
-`PayloadNotATransactionError` (from `@midnight-ntwrk/midnight-js-protocol/errors`, code
-`PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`) before any proving is attempted.
+Bytes that are not a serialized transaction of the requested era and stage are refused by
+`deserializeTransactionAtStage` with `PayloadNotATransactionError` (from
+`@midnight-ntwrk/midnight-js-protocol/errors`, code `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`).
 
 The proving function itself is `proveLedger8Transaction`, published from the leaf subpath
 `@midnight-ntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
@@ -326,7 +336,6 @@ import inside `loadLedger8Protocol`.
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
 
 // High-level: transaction proving via DApp Connector wallet
 const proofProvider = await dappConnectorProofProvider(
@@ -335,10 +344,7 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = unwrapLedger9(
-  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
-  'proveTx'
-);
+const provenTx = await proofProvider.proveTx(unprovenTx);
 ```
 
 ```typescript
@@ -550,13 +556,21 @@ const providers = createMidnightProviders({
 });
 ```
 
-As of 5.0.0 `WalletProvider.balanceTx` and `MidnightProvider.submitTx` carry a
-version-tagged payload, and `balanceTx` returns one. Return types are
-covariant, so an implementation that still returns a bare
-`Promise<FinalizedTransaction>` no longer satisfies the interface: any external
-provider — including the wallet facade above — must be on a matching version.
-If you implement these interfaces yourself, narrow the incoming payload with
-`unwrapLedger9(tx, 'balanceTx')` and tag what you return as `{ version: 'v9', tx }`.
+As of 5.0.0 `WalletProvider.balanceTx` takes an `UnboundTx` handle and returns a
+`FinalizedTx` handle, and `MidnightProvider.submitTx` takes a `FinalizedTx`
+handle. An implementation that still takes or returns a bare ledger transaction
+no longer satisfies the interface: any external provider — including the wallet
+facade above — must be on a matching version. If you implement these interfaces
+yourself, wrap a v9-only implementation with `createWalletProvider` /
+`createMidnightProvider`, or build one per era with
+`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`. The
+factories unwrap the incoming handle, and the wallet factories seal the
+transaction you return. A wallet that runs its own copy of the ledger (a wallet
+SDK, a DApp Connector wallet) must not be handed the framework's object or
+return its own: serialize the transaction on the way out, and decode the answer
+with `deserializeTransactionAtStage(era, 'Finalized', bytes)` from
+`@midnight-ntwrk/midnight-js-protocol/transaction`, taking the era from the
+request.
 
 ## Testing
 

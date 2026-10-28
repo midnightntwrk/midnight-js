@@ -69,6 +69,7 @@ import type {
   MidnightProviders,
   PrivateStateId,
   SubmittedCallTxBase,
+  UnprovenTx,
   UnsubmittedTxDataBase,
   VerifierKey,
   VersionedFinalizedTxData
@@ -375,11 +376,8 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
  *
  * Carries {@link CallResultPrivateBase} and {@link UnsubmittedTxDataBase} — so
  * the execution members and the caller's new coins come from the same
- * declarations the current era uses — and adds `txBytes`, which stands in for
- * `unprovenTx`: the retained composer answers with serialized bytes, and
- * deserializing one into a live `UnprovenTransaction` eagerly would pay for an
- * object most callers never read. ADR-0010 records that as a cost decision;
- * build one from these bytes through the same public loader if you want it.
+ * declarations the current era uses — and adds `unprovenTx`, the transaction
+ * this call composed.
  *
  * @remarks **Privacy-sensitive.** Carries the ZK input and output, the private
  * transcript outputs, the next private state, the post-call Zswap local state
@@ -390,9 +388,11 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends L
   extends CallResultPrivateBase<Ledger8CircuitReturnType<C, K>, Ledger8PrivateState<C>>,
     UnsubmittedTxDataBase {
   /**
-   * The UNPROVEN transaction this call composed, serialized.
+   * The UNPROVEN transaction this call composed, in the era of the network
+   * head it was composed for: a v8 handle before the fork, a v9 handle after
+   * it. Read `unprovenTx.era` before unwrapping it.
    */
-  readonly txBytes: Uint8Array;
+  readonly unprovenTx: UnprovenTx;
 }
 
 /**

@@ -14,6 +14,7 @@
  */
 
 import { causeChain } from './lib/shared/cause-chain';
+import type { TransactionStage } from './lib/shared/ledger-transaction';
 import type { LedgerVersion } from './lib/shared/ledger-version';
 
 /**
@@ -26,7 +27,6 @@ import type { LedgerVersion } from './lib/shared/ledger-version';
 export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
   UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
-  LEDGER8_INSTANCE_MISMATCH: 'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
   LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
   DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
   MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
@@ -80,7 +80,6 @@ const { USAGE, ENVIRONMENT, REJECTED, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_
 export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT]: ENVIRONMENT,
-  [PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED]: INTEGRITY,
   [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED]: INTERNAL,
@@ -270,76 +269,13 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
  *
  * `'onchain-runtime-v3'` is the only member this framework version names.
  *
- * NOTHING IN THIS PACKAGE RAISES THIS ANY MORE. The construction-time guard
- * that did (`lib/v8/instance-guard.ts`) compared `onchain-runtime-v3` against
- * the retained glue. Both are still reachable — `lib/v8/executable.ts` imports
- * the glue directly and compact-js resolves the same specifier for itself — so
- * the axis remains; what was removed is the runtime check on it. The invariant
- * is held at install time instead, by `src/test/single-instance.test.ts`, which
- * pins one resolved copy of each. That answers on THIS repo's lockfile, not on
- * physical instance identity in a consumer's process, so it is a narrower check
- * than the one it replaced. The error and its code stay on the published
- * surface because a consumer may switch on them, and `loadLedger8Engine` still
- * passes one through unwrapped if a lower layer ever raises it.
+ * Nothing in this package checks this axis at run time; the invariant is held
+ * at install time, by `src/test/single-instance.test.ts`. The type stays
+ * because {@link UnknownLedger8AxisError} is defined against it.
  *
  * @see {@link DualInstantiationGuard}
  */
 export type Ledger8InstanceAxis = 'onchain-runtime-v3';
-
-/**
- * The npm scopes this package and its retained pre-fork runtimes are published
- * under, while the scope migration runs.
- *
- * Do not join a scope to the `/` in one literal -- the dual-publish rewrite
- * would collapse both names into one. See DualInstantiationGuard.
- */
-const PUBLISHED_SCOPES = Object.freeze(['@midnight-ntwrk', '@midnightntwrk'] as const);
-
-/**
- * The unscoped npm name of each axis; `axisPackageNames` joins every published
- * scope onto it. See DualInstantiationGuard.
- */
-const AXIS_BARE_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze(
-  Object.assign(Object.create(null) as Record<Ledger8InstanceAxis, string>, {
-    'onchain-runtime-v3': 'onchain-runtime-v3'
-  } satisfies Record<Ledger8InstanceAxis, string>)
-);
-
-const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
-  PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
-
-/**
- * Raised when the same-named WASM package resolves to two physically distinct
- * copies in this process (a dual-instantiation).
- *
- * See {@link Ledger8InstanceAxis} for why nothing in this package raises it any
- * more, and what holds the invariant instead.
- *
- * Carries no `cause`: this is a direct reference-equality assertion failure,
- * not a wrapped lower-level exception.
- *
- * @param axis Which physical-copy axis the check ran on — see
- *   {@link Ledger8InstanceAxis}. It also selects the package names the
- *   message tells the reader to trace.
- * @see {@link DualInstantiationGuard}
- */
-export class Ledger8InstanceMismatchError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH];
-
-  constructor(readonly axis: Ledger8InstanceAxis) {
-    const packageNames = axisPackageNames(axis).join(' and ');
-    super(
-      `Detected two physically distinct copies of ${axis} loaded into the same process (a dual-instantiation). ` +
-        "Objects created by one copy are rejected by the other copy's classes. This usually means a duplicate " +
-        'install; the package is published under two npm scopes while the scope migration is in progress, and ' +
-        'depending on both names is itself a duplicate that no resolver can dedupe. Trace ' +
-        `${packageNames} with your package manager's \`why\` command (npm why, yarn why, pnpm why, ` +
-        'bun pm why), then align every consumer on a single package name and version.'
-    );
-    this.name = 'Ledger8InstanceMismatchError';
-  }
-}
 
 /**
  * Which step of the down-convert pipeline a {@link DownConvertFailedError}
@@ -1017,6 +953,9 @@ export class UnknownLedger8AxisError extends MidnightJsError {
  *
  * @param requestedVersion The offending value that was passed. Carried for
  *   programmatic use only; it is deliberately kept out of the message.
+ * @param context The call that read the version off a value it was handed,
+ *   for example the provider method that returned a record. Named in the
+ *   message, so a caller can tell which provider produced the value.
  * @see {@link SharedTableDiscipline}
  * @see {@link FailClosedDecoding}
  */
@@ -1024,9 +963,13 @@ export class UnknownLedgerVersionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
 
-  constructor(readonly requestedVersion: string) {
+  constructor(
+    readonly requestedVersion: string,
+    readonly context?: string
+  ) {
     super(
-      'Unknown ledger version requested. Supported eras are v8 (node 1.x) and ' +
+      `${context === undefined ? 'Unknown ledger version requested.' : `${context} returned a value with an unknown ledger version.`} ` +
+        'Supported eras are v8 (node 1.x) and ' +
         'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. Derive it with ' +
         'protocolVersionToLedger rather than constructing the string by hand.'
     );
@@ -1094,49 +1037,64 @@ const describeType = (value: unknown): string => {
   return TYPE_NAME_PATTERN.test(bounded) ? bounded : 'object';
 };
 
+const SANCTIONED_SOURCE_HINT =
+  'Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a Zswap ' +
+  'offer or a proof preimage is not a transaction.';
+
 /**
- * Thrown when a payload handed to a proving function is not a serialized
- * transaction at all.
+ * Thrown when a payload handed to `deserializeTransactionAtStage` is not a
+ * serialized transaction of the requested era and stage.
  *
- * Distinct from a decode failure inside the ledger runtime: this is raised
- * before any runtime is asked to read the bytes, so it says the caller sent the
- * wrong KIND of payload rather than a damaged one. It covers three ways that
- * can happen — a `txBytes` field that is not a byte string, a byte string
- * shorter than the tag prefix, and one that does not open with the prefix.
+ * It covers four ways that can happen: a value that is not a byte string, a
+ * byte string shorter than the tag prefix, one that does not open with the
+ * prefix, and one the era's runtime refuses to read at the requested stage.
+ * The first three are refused before any runtime reads the bytes. The last
+ * carries the runtime's refusal on `cause`.
  *
- * @remarks Raised by `proveLedger8Transaction`, so it reaches application code as a
- * `proveTx` rejection. Match it with `hasErrorCode` against
+ * @remarks Match it with `hasErrorCode` against
  * `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION` rather than constructing it.
  */
 export class PayloadNotATransactionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION];
 
-  private constructor(detail: string) {
-    super(
-      `${detail} Pass the bytes of a transaction produced by a sanctioned composition function; a contract state, a ` +
-        'Zswap offer or a proof preimage is not a transaction and cannot be proved.'
-    );
+  private constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'PayloadNotATransactionError';
   }
 
   /**
-   * The `txBytes` field of a `v8` payload was not a `Uint8Array`. Reachable
-   * from JavaScript, from a consumer built against a pre-5.0.0
-   * `midnight-js-types`, or across an untyped boundary — so it is refused with
-   * a code rather than left to become a bare `TypeError`.
+   * The payload was not a `Uint8Array`. Reachable from JavaScript or across an
+   * untyped boundary, so it is refused with a code rather than left to become
+   * a bare `TypeError`.
    */
   static notBytes(received: unknown): PayloadNotATransactionError {
     return new PayloadNotATransactionError(
-      `Refusing to prove a v8 payload whose 'txBytes' is ${describeType(received)} rather than a Uint8Array.`
+      `Refusing to read a transaction from a payload that is ${describeType(received)} rather than a Uint8Array. ` +
+        SANCTIONED_SOURCE_HINT
     );
   }
 
   /** The payload is a byte string, but does not open with a transaction's tag. */
   static wrongTag(byteLength: number): PayloadNotATransactionError {
     return new PayloadNotATransactionError(
-      `Refusing to prove a ${byteLength}-byte payload that does not begin with the ` +
-        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction.`
+      `Refusing to read a ${byteLength}-byte payload that does not begin with the ` +
+        `'${TRANSACTION_TAG_PREFIX}' tag of a serialized ledger transaction. ${SANCTIONED_SOURCE_HINT}`
+    );
+  }
+
+  /** The era's runtime refused to read the payload at the requested stage; its refusal is on `cause`. */
+  static undecodable(
+    version: LedgerVersion,
+    stage: TransactionStage,
+    byteLength: number,
+    cause: unknown
+  ): PayloadNotATransactionError {
+    return new PayloadNotATransactionError(
+      `Refusing a ${byteLength}-byte payload that the ledger ${version} runtime cannot read as a ${stage} ` +
+        `transaction. Check that the bytes were written by the ledger ${version} runtime and serialized at the ` +
+        `${stage} stage. Read the wrapped cause for the runtime refusal.`,
+      { cause }
     );
   }
 }

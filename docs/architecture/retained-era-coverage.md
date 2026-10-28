@@ -134,9 +134,10 @@ other.
   !== (await import('@midnight-ntwrk/ledger-v8')).Transaction
 ```
 
-`adoptVersionedUnbound` and `adoptVersionedFinalized` inflate the retained payload's bytes and hand
-the result straight to the wallet SDK. Built with protocol's copy, that object dies inside the SDK's
-balancer:
+The testkit wallet provider hands every transaction to the wallet SDK through `adoptInWallet` and reads
+the finalized answer back through `finalizedFromWallet` (`testkit-js/testkit-js/src/wallet/wallet-transaction.ts`).
+Before they existed, the provider inflated the retained payload's bytes with protocol's copy and handed
+that object straight to the SDK, where it died inside the SDK's balancer:
 
 ```
 Ledger8ProviderFailedError: balanceTx rejected a retained-era transaction (circuit 'initialState')
@@ -153,11 +154,14 @@ counter-example: `consumer-e2e` personas install outside the repository under an
 where the same alias *does* collapse the two names. `consumer-e2e/personas.mjs` documents the alias
 and why it is needed; the isolated linker is what the lane actually runs under.
 
-The rule the fix follows: **an ADR-0006 provider method carries bytes so that the receiver inflates them
-with its own module.** Everything these two functions build is for the wallet SDK, so they load the SDK's
-copy, through the SDK's own `./ledger/v8` subpath — by definition whichever copy the installed SDK
-uses, so it cannot drift if the SDK finishes the scope migration. `packages/protocol`'s copy stays
-where it belongs: retained execution, which never hands a handle to the wallet SDK.
+The rule the fix follows: **a transaction crosses into another ledger copy as bytes, and the receiver
+inflates them with its own module** (ADR 0019). `adoptInWallet` serializes the framework's handle and
+decodes it with the SDK's copy, in both eras; `finalizedFromWallet` serializes the SDK's answer and
+decodes it with protocol's copy through `deserializeTransactionAtStage`, in the era the transaction was
+handed over in. The SDK's v8 copy is loaded through the SDK's own `./ledger/v8` subpath — by definition
+whichever copy the installed SDK uses, so it cannot drift if the SDK finishes the scope migration.
+`packages/protocol`'s copy stays where it belongs: retained execution, which never hands a ledger
+object to the wallet SDK.
 
 Repointing protocol's `v8` re-export at the SDK's copy took the retained e2e file from every deploy
 refused to fully green, which is what identified the cause; the shipped fix is the narrower one

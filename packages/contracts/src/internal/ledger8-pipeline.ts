@@ -40,7 +40,13 @@ import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider, RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import {
+  LedgerTransaction,
+  type PublicDataProvider,
+  type RawContractState,
+  type UnprovenTx
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
@@ -492,6 +498,17 @@ export interface Ledger8CallPipelineRequest<TState> {
 }
 
 /**
+ * Reads the bytes a composer answered with as the unproven transaction of the
+ * era it composed for, and seals it. The one place a composed transaction
+ * becomes a handle.
+ *
+ * @throws PayloadNotATransactionError if the bytes are not an unproven
+ *         transaction of that era.
+ */
+const sealComposed = async <E extends LedgerVersion>(era: E, txBytes: Uint8Array): Promise<UnprovenTx> =>
+  LedgerTransaction.seal(era, 'Unproven', await deserializeTransactionAtStage(era, 'Unproven', txBytes));
+
+/**
  * What one retained-era call produced.
  *
  * @typeParam TState - The retained-era state type the engine works in. The
@@ -500,17 +517,11 @@ export interface Ledger8CallPipelineRequest<TState> {
  */
 export interface Ledger8CallPipelineResult<TState> {
   /**
-   * The UNPROVEN transaction, serialized. Bytes rather than a handle because
-   * `LedgerEra.composeCallTx` answers with bytes — the era-agnostic facade
-   * trades plain data whatever ADR-0010 allows one layer up, so there is no
-   * handle here to hold in the first place.
-   *
-   * Which form it is passed to the PROVIDERS in is a separate question decided
-   * by the network head, not by this field — a post-fork head deserializes
-   * these bytes and crosses as a live current-era handle. See
-   * `submitLedger8Tx`.
+   * The UNPROVEN transaction, in the era of the network head it was composed
+   * for: a post-fork head composes a v9 transaction even for a retained-era
+   * contract.
    */
-  readonly txBytes: Uint8Array;
+  readonly unprovenTx: UnprovenTx;
   readonly circuitId: string;
   readonly nextPrivateState: unknown;
   /**
@@ -755,7 +766,7 @@ export const runLedger8CallPipeline = async <TState>(
   );
 
   return {
-    txBytes: composed.txBytes,
+    unprovenTx: await sealComposed(head, composed.txBytes),
     circuitId,
     nextPrivateState: transcript.privateStateAfter,
     result: transcript.result,
@@ -836,7 +847,8 @@ export interface Ledger8DeployPipelineRequest {
 
 /** What one retained-era deploy produced. */
 export interface Ledger8DeployPipelineResult {
-  readonly txBytes: Uint8Array;
+  /** The UNPROVEN transaction, in the era of the network head it was composed for. */
+  readonly unprovenTx: UnprovenTx;
   /**
    * READ OFF the composition record, never derived: a deploy mints a fresh
    * nonce, so the same initial state deploys to a different address every time.
@@ -884,7 +896,7 @@ export interface Ledger8DeployPipelineResult {
  * @param request The era and engine, the contract and its constructor
  * arguments, the verifier keys, the transaction envelope and the optional
  * signing key the maintenance authority is built from.
- * @returns The serialized unproven transaction, the address the deployment
+ * @returns The unproven transaction, the address the deployment
  * will have, the initial state, the private state the constructor produced,
  * and the signing key its maintenance authority was built from.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the deploy —
@@ -939,7 +951,7 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
   });
 
   return {
-    txBytes: deployed.txBytes,
+    unprovenTx: await sealComposed(request.era.version, deployed.txBytes),
     contractAddress: deployed.contractAddress,
     initialContractStateBytes: deployed.initialContractStateBytes,
     initialContractState: constructed.contractState,
@@ -1019,13 +1031,13 @@ const assertMaintenanceSlot = (
  * describe the same state.
  *
  * @param request The era facades, the engine, the read surface, the contract, the key and the update.
- * @returns The serialized UNPROVEN transaction.
+ * @returns The UNPROVEN transaction, in the head's era.
  * @throws Every error {@link readLedger8Snapshot} and {@link assertMaintenanceSlot} raise.
  * @throws MaintenanceAuthorityMismatchError if the key is not the one the contract's authority
  * was built from. Raised before anything is proven.
  * @throws ComposeOptionError, ComposeFailedError if the engine refuses the update.
  */
-export const runLedger8MaintenancePipeline = async (request: Ledger8MaintenancePipelineRequest): Promise<Uint8Array> => {
+export const runLedger8MaintenancePipeline = async (request: Ledger8MaintenancePipelineRequest): Promise<UnprovenTx> => {
   const snapshot = await readLedger8Snapshot(
     request.retainedEra,
     request.era,
@@ -1036,7 +1048,7 @@ export const runLedger8MaintenancePipeline = async (request: Ledger8MaintenanceP
   );
   assertMaintenanceSlot(snapshot, request.update, request.contractAddress);
 
-  return request.engine.composeMaintenanceTx({
+  const txBytes = await request.engine.composeMaintenanceTx({
     contract: request.contract,
     contractAddress: request.contractAddress,
     contractStateBytes: snapshot.state.raw,
@@ -1046,4 +1058,5 @@ export const runLedger8MaintenancePipeline = async (request: Ledger8MaintenanceP
     ttl: request.ttl,
     update: request.update
   });
+  return sealComposed(request.head, txBytes);
 };

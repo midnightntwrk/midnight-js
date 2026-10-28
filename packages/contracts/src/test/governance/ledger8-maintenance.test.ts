@@ -30,13 +30,14 @@ import {
   MaintenanceAuthorityMismatchError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   FailFallible,
+  LedgerTransaction,
   type RawContractState,
-  UntaggedPayloadError,
+  type UnboundTx,
+  type UnprovenTx,
   type VerifierKey,
-  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -66,6 +67,7 @@ import {
   createContractMaintenanceTxInterface
 } from '../../governance/tx-interfaces';
 import type { Ledger8ContractProviders } from '../../ledger8-contract';
+import { finalizedLike, handles, unboundLike } from '../ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from '../ledger8-fixture-types';
 import { hfFixturePath, readHfHexFixture } from '../ledger8-replay';
 import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from '../test-mocks';
@@ -89,7 +91,6 @@ const CIRCUIT_ID = 'receive_coin';
 const CONTRACT_ADDRESS = 'ab'.repeat(32);
 const PRE_FORK_PROTOCOL_VERSION = 1_000_000;
 const POST_FORK_PROTOCOL_VERSION = 2_000_000;
-const COMPOSED = Uint8Array.from([0x6d, 0x61, 0x69, 0x6e]);
 const COIN_PUBLIC_KEY = 'cd'.repeat(32);
 const STORED_KEY: SigningKey = { tag: 'schnorr', value: '11'.repeat(32) };
 const NEW_KEY: SigningKey = { tag: 'schnorr', value: '22'.repeat(32) };
@@ -106,6 +107,7 @@ describe('contract maintenance through a retained-era artifact', () => {
   let emptyState: Uint8Array;
   let retainedLedgerParameters: Uint8Array;
   let composeMaintenanceTx: ReturnType<typeof vi.fn>;
+  let composed: Uint8Array;
 
   const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): RawContractState => ({
     version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
@@ -131,8 +133,8 @@ describe('contract maintenance through a retained-era artifact', () => {
     providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(STORED_KEY);
     providers.walletProvider.getCoinPublicKey = (): string => COIN_PUBLIC_KEY;
     providers.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => Promise.resolve(tx));
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => Promise.resolve(tx));
+    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: UnprovenTx) => unboundLike(tx));
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: UnboundTx) => finalizedLike(tx));
     providers.midnightProvider.submitTx = vi.fn().mockResolvedValue('maintenance-tx-id');
     return providers;
   };
@@ -151,10 +153,11 @@ describe('contract maintenance through a retained-era artifact', () => {
     const empty = new v8.ContractState();
     empty.data = blank.data;
     emptyState = empty.serialize();
+    composed = (await handles.v8.Unproven()).serialize();
   });
 
   beforeEach(() => {
-    composeMaintenanceTx = vi.fn().mockResolvedValue(COMPOSED);
+    composeMaintenanceTx = vi.fn().mockResolvedValue(composed);
     engineSlot.engine = { composeMaintenanceTx };
   });
 
@@ -174,7 +177,10 @@ describe('contract maintenance through a retained-era artifact', () => {
         ttl: expect.anything(),
         update: { kind: 'insert-verifier-key', circuitId: CIRCUIT_ID, verifierKey: NEW_VK }
       });
-      expect(providers.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v8', txBytes: COMPOSED });
+      const [proved] = vi.mocked(providers.proofProvider.proveTx).mock.calls[0] ?? [];
+      expect(LedgerTransaction.isLedgerTransaction(proved)).toBe(true);
+      expect(proved?.era).toBe('v8');
+      expect(proved?.serialize()).toEqual(composed);
       expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('maintenance-tx-id');
       expect(result).toEqual({ era: 'v8', public: createMockLedger8FinalizedTxData() });
     });
@@ -362,7 +368,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       // Act & Assert
-      await expectStranded(providers, UntaggedPayloadError);
+      await expectStranded(providers, UnknownLedgerVersionError);
     });
 
     it('hands back the new key when the record comes back from the ledger 9 era', async () => {

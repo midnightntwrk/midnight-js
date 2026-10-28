@@ -21,6 +21,7 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import {
   type AnyProvableCircuitId,
   type Ledger9PublicStates,
+  LedgerTransaction,
   type LoggerProvider,
   type PrivateStateId,
   SucceedEntirely
@@ -90,7 +91,11 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
     ]);
 
   return {
-    unprovenTx: current.unprovenTx.merge(next.unprovenTx),
+    unprovenTx: LedgerTransaction.seal(
+      'v9',
+      'Unproven',
+      LedgerTransaction.unwrap(current.unprovenTx, 'v9').merge(LedgerTransaction.unwrap(next.unprovenTx, 'v9'))
+    ),
     circuitId: Array.from(circuitIds)
   };
 };

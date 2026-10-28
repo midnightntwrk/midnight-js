@@ -38,3 +38,10 @@ Error messages name the ledger ("the ledger 8 (pre-fork) Compact toolchain"), ne
   `docs/releases/v5.0.0/breaking-changes.md`.
 - "Current era" and "retained era" are defined in the README glossary and on `CURRENT_LEDGER_VERSION` /
   `RetainedLedgerVersion`.
+
+## Amendment — the era-generic handler names are gone (2026-10-26)
+
+Issue #1533. The examples above (`currentEra` / `retainedEras`, `RetainedEraEntries`,
+`RetainedEraProver`, and `Ledger9Prover` filling `currentEra`) no longer exist: the provider
+factories take one handler per ledger era, keyed `v8` / `v9`
+([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)). The rule itself stands.

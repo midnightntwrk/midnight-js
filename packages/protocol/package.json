@@ -21,6 +21,10 @@
       "types": "./dist/prove.d.ts",
       "default": "./dist/prove.js"
     },
+    "./transaction": {
+      "types": "./dist/transaction.d.ts",
+      "default": "./dist/transaction.js"
+    },
     "./ledger": {
       "types": "./dist/ledger.d.ts",
       "default": "./dist/ledger.js"
@@ -98,6 +102,7 @@
     "effect": "^3.22.1"
   },
   "devDependencies": {
+    "@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.2",
     "@rollup/plugin-typescript": "^12.3.0",
     "@vitest/coverage-v8": "^5.0.4",
     "eslint": "^10.12.0",

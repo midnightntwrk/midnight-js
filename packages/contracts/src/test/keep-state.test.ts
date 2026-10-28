@@ -44,11 +44,13 @@ import {
   type Ledger8EngineContract,
   type LedgerEra,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type FinalizedTx,
+  LedgerTransaction,
   type RawContractState,
-  type VersionedFinalizedTransaction,
-  type VersionedTransaction,
+  type UnboundTx,
+  type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -68,6 +70,7 @@ import {
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 
 /**
@@ -89,7 +92,7 @@ import {
   type ReplayState,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from './test-mocks';
 import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // See `./v8-native.test.ts` for both redirects: the artifact's own runtime
@@ -126,9 +129,13 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 );
 
 interface SeenPayloads {
-  proveTx?: VersionedTransaction<unknown>;
-  balanceTx?: VersionedTransaction<unknown>;
-  submitTx?: VersionedFinalizedTransaction;
+  proveTx?: UnprovenTx;
+  balanceTx?: UnboundTx;
+  submitTx?: FinalizedTx;
+  /** What `proveTx` answered with, so the next stage can be checked against it. */
+  proven?: UnboundTx;
+  /** What `balanceTx` answered with. */
+  balanced?: FinalizedTx;
 }
 
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
@@ -201,15 +208,17 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       .mockResolvedValue(rawState(envelope, POST_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation(async (tx: UnprovenTx) => {
       seen.proveTx = tx;
-      return Promise.resolve(tx);
+      seen.proven = await unboundLike(tx);
+      return seen.proven;
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation(async (tx: UnboundTx) => {
       seen.balanceTx = tx;
-      return Promise.resolve(tx);
+      seen.balanced = await finalizedLike(tx);
+      return seen.balanced;
     });
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');
     });
@@ -295,8 +304,9 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ContractState.deserialize(registry!).operation(CIRCUIT_ID)?.verifierKey).toEqual(chainKey);
 
     // The CURRENT era tagged this one, and the retained tag does not match it.
-    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
-    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
+    expect(result.unprovenTx.era).toBe('v9');
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment here too', async () => {
@@ -398,7 +408,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // What must agree is the record and the HEAD the operation resolved.
     providers.publicDataProvider.watchForTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8', tx: undefined as never });
+      .mockResolvedValue(createMockLedger8FinalizedTxData());
 
     const rejection = await submitCallTx(providers, callOptions()).then(
       () => undefined,
@@ -434,45 +444,33 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('hands every provider method the CURRENT-era variant, as a live ledger transaction', async () => {
+  it('hands every provider method a v9 handle', async () => {
     const providers = postForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
 
-    // The `version` tag names the LEDGER RUNTIME that produced the payload, not
+    // The handle's era names the LEDGER RUNTIME that produced the transaction, not
     // the toolchain that produced the contract. A keep-state transaction is an
     // ordinary current-era transaction that happens to carry a retained-era
-    // call, so it crosses as the current era's live handle -- the framework and the
-    // providers share that runtime. Tagging it `'v8'` would claim the retained
-    // runtime built it, which is false, and would send a current-era-only
-    // provider looking for a runtime it does not need.
-    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(payload).toBeDefined();
-      expect(payload?.version).toBe('v9');
-      // The WRITE surface's current-era variant carries `tx`, and carries no
-      // `txBytes` at all -- the two variants are genuinely different shapes.
-      expect(payload).not.toHaveProperty('txBytes');
-    }
-
-    // A LIVE HANDLE, not merely a `'v9'` tag over anything.
-    // `readLedger9Transaction` could be replaced with `() => undefined` and
-    // every assertion above would still pass, handing `undefined` down the
-    // whole chain: `{ version: 'v9', tx: undefined }` satisfies both the tag
-    // check and the absence of `txBytes`.
-    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(payload?.version === 'v9' ? payload.tx : undefined).toBeInstanceOf(Transaction);
-    }
+    // call, so it crosses as a v9 handle. Sealing it `'v8'` would claim the
+    // retained runtime built it, which is false.
+    expect(LedgerTransaction.isLedgerTransaction(providers.seen.proveTx)).toBe(true);
+    expect(providers.seen.proveTx?.era).toBe('v9');
+    expect(providers.seen.proveTx?.stage).toBe('Unproven');
+    // THE CHAIN: `balanceTx` must receive exactly what `proveTx` answered, and
+    // `submitTx` exactly what `balanceTx` answered. The stand-in answers are in
+    // the era they were handed, so an era assertion on them would hold by
+    // construction.
+    expect(providers.seen.balanceTx).toBe(providers.seen.proven);
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 
   it('refuses a provider that answers this current-era flow in the retained era', async () => {
     const providers = postForkProviders(v6Envelope);
-    // A broken or mis-pointed provider: it accepted a current-era payload and
-    // answered with retained-era bytes. Nothing in the provider method types ties a
-    // provider's output era to its input era, so this is checked rather than
-    // assumed.
-    providers.proofProvider.proveTx = vi
-      .fn()
-      .mockResolvedValue({ version: 'v8', txBytes: Uint8Array.from([1, 2, 3]) });
+    // A broken or mis-pointed provider: it accepted a v9 handle and answered
+    // with a v8 one. Nothing in the provider method types ties a provider's
+    // output era to its input era, so this is checked rather than assumed.
+    providers.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v8.Unbound());
 
     let caught: unknown;
     try {

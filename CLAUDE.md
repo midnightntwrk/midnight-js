@@ -51,33 +51,47 @@ IMPORTANT: `types/` defines all provider interfaces. Changing it breaks every pa
 Transaction flow:
 
 ```
-VersionedUnprovenTransaction → ProofProvider.proveTx() → VersionedUnboundTransaction
-  → WalletProvider.balanceTx() → VersionedFinalizedTransaction
+UnprovenTx → ProofProvider.proveTx() → UnboundTx
+  → WalletProvider.balanceTx() → FinalizedTx
   → MidnightProvider.submitTx() → TransactionId
 ```
 
-Every transaction passed to those three methods is version-tagged
-(`{ version: 'v9', tx }` / `{ version: 'v8', txBytes }`). Narrow one with
-`unwrapLedger9(payload, method)` from `types`; `method` is a `TransactionMethod`, so the
-helper covers those three methods only.
+Every transaction passed to those three methods is a transaction handle,
+`LedgerTransaction<Stage>` from `types`. The handle carries the era (`'v8'` /
+`'v9'`) as data; the stage is in the type. Make one with
+`LedgerTransaction.seal(era, stage, tx)` and read it with
+`LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
+ledger WASM copy (`ForeignLedgerTransactionError`), and a value that is not a
+transaction or is at another stage (`InvalidTransactionHandleError`). Layer rule: `protocol` speaks
+raw ledger objects; every package from `types` up speaks only handles in its
+public API.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
-version-tagged *record*, `VersionedFinalizedTxData`. That is a different union —
-its v8 variant carries `tx`, not `txBytes` — so `unwrapLedger9` does not apply. Narrow it
-with a `switch (record.version)` closed by `assertNever(record, '<call site>')`
-from `utils`.
+version-tagged *record*, `VersionedFinalizedTxData`. Its `tx` is a `FinalizedTx`
+of the same era (`record.tx.era === record.version`); read it with
+`LedgerTransaction.unwrap(record.tx, record.version)`. To treat the eras
+differently, narrow with a `switch (record.version)` closed by
+`assertNever(record, '<call site>')` from `utils`.
 
-Implementing `WalletProvider` or `MidnightProvider`? Use `createWalletProvider` /
-`createMidnightProvider` from `types` rather than tagging by hand. See
-[ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md).
+Implementing `WalletProvider` or `MidnightProvider` for v9 only? Use
+`createWalletProvider` / `createMidnightProvider` from `types` rather than
+sealing by hand.
 
 Serving more than one era? Use `createProofProviderFromHandlers` /
-`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one handler
-per era, with the routing, the tagging and the `supportedEras` declaration
-derived from the handlers. All three providers carry a required `supportedEras`, read
-before an operation starts so a set that cannot carry a transaction end to end is
-refused before the proof is paid for. See
-[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one
+handler per era, keyed `v8` / `v9` (`undefined` for an era you do not serve).
+The factory unwraps each handle for its era's handler, seals a transaction
+answer (`proveTx`, `balanceTx`) in the same era and derives `supportedEras`.
+All three providers carry a required `supportedEras`, read before an operation
+starts so a set that cannot carry a transaction end to end is refused before the
+proof is paid for. A handler that
+hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
+serializes it on the way out and decodes the answer with
+`deserializeTransactionAtStage` from `protocol` on the way in, taking the era
+from the request. See
+[ADR 0019](./docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md),
+which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
+and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## CI Pipeline & PR Gates
 

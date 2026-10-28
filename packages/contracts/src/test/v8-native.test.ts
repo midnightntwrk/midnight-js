@@ -41,7 +41,7 @@ import {
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type Recipient, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
@@ -54,15 +54,16 @@ import {
   createWalletProvider,
   FailEntirely,
   FailFallible,
-  Ledger8PayloadUnsupportedError,
+  type FinalizedTx,
+  InvalidTransactionHandleError,
+  LedgerTransaction,
   ProofServerError,
   ProviderEraUnsupportedError,
   type RawContractState,
   type TxStatus,
-  UntaggedPayloadError,
-  type VersionedFinalizedTransaction,
+  type UnboundTx,
+  type UnprovenTx,
   type VersionedFinalizedTxData,
-  type VersionedTransaction,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -111,6 +112,7 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type {
   CoinReceiver016Circuits,
   CoinReceiver016ConstructorResult,
@@ -134,7 +136,7 @@ import {
   SAMPLED_SIGNING_KEY,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, networkIdOf } from './test-mocks';
 
 // The real generated artifact opens with `checkRuntimeVersion('0.16.0')`, which
 // the installed current runtime rejects, so the specifier is redirected to the
@@ -182,18 +184,23 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 
 /** What each provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTransaction<unknown>;
-  balanceTx?: VersionedTransaction<unknown>;
-  submitTx?: VersionedFinalizedTransaction;
+  proveTx?: UnprovenTx;
+  balanceTx?: UnboundTx;
+  submitTx?: FinalizedTx;
+  /** What `proveTx` answered with, so the next stage can be checked against it. */
+  proven?: UnboundTx;
+  /** What `balanceTx` answered with. */
+  balanced?: FinalizedTx;
 }
 
 /** The network id and intent TTL of the retained-era transaction a provider method was handed. */
-const retainedTxFacts = async (tx: VersionedTransaction<unknown> | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
-  if (tx?.version !== 'v8') throw new Error(`Expected a v8 transaction, got ${String(tx?.version)}`);
-  const decoded = (await loadLedger8Protocol()).Transaction.deserialize('signature', 'pre-proof', 'pre-binding', tx.txBytes);
+const retainedTxFacts = async (tx: UnprovenTx | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
+  assertDefined(tx, 'Expected proveTx to have been handed a transaction');
+  await loadLedger8Protocol();
+  const decoded = LedgerTransaction.unwrap(tx, 'v8');
   const [intent, ...others] = decoded.intents?.values() ?? [];
   expect(others).toEqual([]);
-  return { networkId: /network_id: "([^"]*)"/.exec(decoded.toString(false))?.[1], ttl: intent?.ttl };
+  return { networkId: networkIdOf(decoded), ttl: intent?.ttl };
 };
 
 /** The retained overload's provider set, plus what its methods were handed. */
@@ -262,56 +269,6 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
 };
 
 /**
- * The per-stage markers each transaction method appends to the bytes it answers with.
- *
- * Distinct, and distinct from anything the era composes, so "these bytes came
- * out of proveTx" is a checkable claim rather than an assumption.
- */
-const PROVEN_MARKER = Uint8Array.from([0xf0, 0x0d, 0x01]);
-const BALANCED_MARKER = Uint8Array.from([0xf0, 0x0d, 0x02]);
-
-/**
- * The retained-era payload with a stage marker appended to its bytes.
- *
- * @param payload The payload the method was handed.
- * @param marker The marker for the stage that is answering.
- * @returns The same variant, carrying the input bytes plus the marker.
- */
-const withStageMarker = (payload: VersionedTransaction<unknown>, marker: Uint8Array): VersionedTransaction<unknown> => {
-  if (payload.version !== 'v8') {
-    return payload;
-  }
-  const marked = new Uint8Array(payload.txBytes.length + marker.length);
-  marked.set(payload.txBytes);
-  marked.set(marker, payload.txBytes.length);
-  return { version: 'v8', txBytes: marked };
-};
-
-/**
- * The bytes a retained-era payload carries, for a chaining assertion.
- *
- * @param payload The payload a method was handed.
- * @returns Its bytes, or `undefined` if it is not the retained variant.
- */
-const retainedBytes = (payload: VersionedTransaction<unknown> | undefined): Uint8Array | undefined =>
-  payload?.version === 'v8' ? payload.txBytes : undefined;
-
-/**
- * Whether `bytes` ends with every marker in `markers`, in order.
- *
- * @param bytes The bytes a method received.
- * @param markers The stage markers expected at the tail, earliest first.
- * @returns `true` if the tail matches.
- */
-const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8Array[]): boolean => {
-  if (bytes === undefined) {
-    return false;
-  }
-  const tail = markers.flatMap((marker) => [...marker]);
-  return [...bytes.slice(bytes.length - tail.length)].join(',') === tail.join(',');
-};
-
-/**
  * The provider set both retained-era describes start from: a pre-fork head,
  * the committed envelope, and a recorder on each of the three transaction methods.
  *
@@ -327,16 +284,10 @@ const endsWithMarkers = (bytes: Uint8Array | undefined, markers: readonly Uint8A
  * produced -- and the finalizing path now refuses exactly that. Every pre-fork
  * expectation in this file has to start from a record the head could have
  * recorded, or it asserts against a record the framework rightly rejects.
- *
- * `tx` is `undefined` for the same reason the read-surface retained variant is
- * supplied by hand below: no provider builds that variant yet, and a v9 handle is
- * not assignable to it.
  */
 const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
-  ...createMockFinalizedTxData(status),
-  version: 'v8',
-  protocolVersion: PRE_FORK_PROTOCOL_VERSION,
-  tx: undefined as never
+  ...createMockLedger8FinalizedTxData(status),
+  protocolVersion: PRE_FORK_PROTOCOL_VERSION
 });
 
 /**
@@ -390,27 +341,25 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // The recording was made against this coin public key, and the replay
   // engine refuses to replay for any other one.
   providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-  // The three transaction methods, implemented against the version-tagged interfaces
+  // The three transaction methods, implemented against the provider interfaces
   // directly rather than through `createWalletProvider`/`createMidnightProvider`:
-  // those adapters lift a CURRENT-ERA-ONLY implementation and refuse the
-  // retained variant by design, which is asserted as its own negative below.
+  // those adapters lift a CURRENT-ERA-ONLY implementation and refuse a v8
+  // handle by design, which is asserted as its own negative below.
   //
-  // Each transaction method answers with DISTINCT bytes -- its input with its own stage
-  // marker appended. Identity mocks (`(tx) => tx`) made every mis-chaining
-  // invisible: `balanceTx({ txBytes })` in place of
-  // `balanceTx({ txBytes: proven })` passed the whole suite while submitting an
-  // UNPROVEN transaction. Appending rather than replacing keeps the retained
-  // tag at the head of the bytes, so the tag assertions still mean what they
-  // say.
-  providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+  // Each transaction method answers with a DISTINCT handle in the era it was
+  // handed, and records it, so the chaining test can check that `balanceTx`
+  // got what `proveTx` answered and `submitTx` got what `balanceTx` answered.
+  providers.proofProvider.proveTx = vi.fn().mockImplementation(async (tx: UnprovenTx) => {
     seen.proveTx = tx;
-    return Promise.resolve(withStageMarker(tx, PROVEN_MARKER));
+    seen.proven = await unboundLike(tx);
+    return seen.proven;
   });
-  providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+  providers.walletProvider.balanceTx = vi.fn().mockImplementation(async (tx: UnboundTx) => {
     seen.balanceTx = tx;
-    return Promise.resolve(withStageMarker(tx, BALANCED_MARKER));
+    seen.balanced = await finalizedLike(tx);
+    return seen.balanced;
   });
-  providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+  providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
     seen.submitTx = tx;
     return Promise.resolve('retained-era-tx-id');
   });
@@ -498,7 +447,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       // does both on this path -- the log names the era so that stays checked.
       'era.v8.zswapOffer'
     ]);
-    expect(result.txBytes).toBeInstanceOf(Uint8Array);
+    expect(result.unprovenTx.era).toBe('v8');
     // Exactly ONE call: the retained era has no call tree to express, and a
     // pre-fork contract cannot emit a cross-contract call in the first place.
     expect(composed?.calls).toHaveLength(1);
@@ -644,12 +593,12 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
     // A raw PREFIX slice, never `parseSerializedTag`: that parser scans only
     // the first 64 bytes and both tags are longer than that.
-    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
     // Measured, and worth pinning: the two eras' tags are NOT the same string,
     // so the tag corroborates which ledger produced a transaction. Never read
     // an era off the bracketed version alone -- the retained tag says `[v9]`.
     expect(LEDGER9_TX_TAG).not.toBe(LEDGER8_TX_TAG);
-    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).not.toBe(LEDGER9_TX_TAG);
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER9_TX_TAG)).not.toBe(LEDGER9_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment, with the fallible segment empty', async () => {
@@ -1201,35 +1150,22 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(finalized.private.newCoins).toEqual([]);
   });
 
-  it('hands every provider method the RETAINED variant, as serialized bytes carrying the retained tag', async () => {
+  it('hands every provider method a v8 handle, the composed one carrying the retained tag', async () => {
     const providers = preForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
 
-    // The WRITE surface's retained variant carries `txBytes`, not `tx` -- these are
-    // genuinely different unions, and the read surface's retained variant carries
-    // `tx`. Each is asserted against the shape its own method declares.
-    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(payload).toBeDefined();
-      expect(payload?.version).toBe('v8');
-      const bytes = payload?.version === 'v8' ? payload.txBytes : undefined;
-      expect(bytes).toBeInstanceOf(Uint8Array);
-      expect(txTagPrefix(bytes!, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
+    for (const handle of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
+      expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
+      expect(handle?.era).toBe('v8');
     }
+    expect(txTagPrefix(providers.seen.proveTx!.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
 
-    // THE CHAIN, asserted stage by stage. The three assertions above are the
-    // same claim three times over -- each method got SOMETHING retained-tagged --
-    // and every one of them passes when the stages are wired in the wrong
-    // order. These are what fail then: `balanceTx` must receive what `proveTx`
-    // answered, and `submitTx` must receive what `balanceTx` answered.
-    expect(endsWithMarkers(retainedBytes(providers.seen.proveTx), [])).toBe(true);
-    expect(endsWithMarkers(retainedBytes(providers.seen.balanceTx), [PROVEN_MARKER])).toBe(true);
-    expect(endsWithMarkers(retainedBytes(providers.seen.submitTx), [PROVEN_MARKER, BALANCED_MARKER])).toBe(true);
-    // And the unproven bytes are NOT what reached the node: the marker tail
-    // above is only meaningful alongside this.
-    expect(retainedBytes(providers.seen.submitTx)?.length).toBeGreaterThan(
-      retainedBytes(providers.seen.proveTx)!.length
-    );
+    // THE CHAIN, asserted stage by stage: `balanceTx` must receive what `proveTx`
+    // answered, and `submitTx` must receive what `balanceTx` answered. The era
+    // assertions above all pass when the stages are wired in the wrong order.
+    expect(providers.seen.balanceTx).toBe(providers.seen.proven);
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 
   it('returns immediately from submitCallTxAsync, without watching for the record', async () => {
@@ -1252,7 +1188,20 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // which is already computed by the time the transaction is submitted and
     // is unrecoverable afterwards without composing a second one.
     expect(submitted.callTxData.private.result).toStrictEqual(recording.transcript.result);
-    expect(submitted.callTxData.private.txBytes).toBeInstanceOf(Uint8Array);
+    expect(submitted.callTxData.private.unprovenTx.era).toBe('v8');
+    expect(submitted.callTxData.private.unprovenTx).toBe(providers.seen.proveTx);
+    expect(Object.keys(submitted.callTxData.private).sort()).toEqual(
+      [
+        'input',
+        'newCoins',
+        'nextPrivateState',
+        'nextZswapLocalState',
+        'output',
+        'privateTranscriptOutputs',
+        'result',
+        'unprovenTx'
+      ].sort()
+    );
     expect(submitted.callTxData.private.nextZswapLocalState).toStrictEqual(recording.transcript.zswapLocalState);
     expect(submitted.callTxData.private.newCoins).toEqual([]);
     expect(submitted.callTxData.public.publicTranscript).toStrictEqual(recording.transcript.publicTranscript);
@@ -1276,8 +1225,8 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // nonce, so the same initial state deploys to a different address each time.
     expect(typeof deployed.deploy.contractAddress).toBe('string');
     expect(deployed.deploy.contractAddress.length).toBeGreaterThan(0);
-    expect(txTagPrefix(deployed.deploy.txBytes, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
-    expect(providers.seen.proveTx?.version).toBe('v8');
+    expect(txTagPrefix(deployed.deploy.unprovenTx.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
+    expect(providers.seen.proveTx).toBe(deployed.deploy.unprovenTx);
   });
 
   it('hands the constructor the caller own signing key, and reports the key the authority was built from', async () => {
@@ -1598,14 +1547,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
   it('returns the finalized record as the read surface reported it, retained variant included', async () => {
     const providers = preForkProviders(v6Envelope);
-    // The READ surface's retained variant is a DIFFERENT union from the write
-    // surface's: it carries `tx`, never `txBytes`. No provider produces this
-    // variant yet -- the read path decodes with the current-era deserializer -- so
-    // it is spelled out here rather than taken from `retainedEraRecord`, to
-    // prove this flow does not narrow it away against a literal this test owns.
+    // Spelled out here rather than taken from `retainedEraRecord`, to prove this
+    // flow does not narrow the v8 record away against a literal this test owns.
     // Refusing it would refuse exactly the records the retained pipelines exist
     // to produce, which is why the retained result type is version-tagged.
-    const retainedRecord = { ...createMockFinalizedTxData(), version: 'v8', tx: undefined as never };
+    const retainedRecord = { ...createMockLedger8FinalizedTxData(), txId: 'retained-record' };
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(retainedRecord);
 
     const finalized = await submitCallTx(providers, callOptions());
@@ -1614,13 +1560,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The record is handed back AS REPORTED, not rebuilt: asserting the shape
     // of the literal above would only restate the fixture.
     expect(finalized.public).toMatchObject(retainedRecord);
-    // And the two surfaces really are different unions -- the WRITE surface's
-    // retained variant, which this same flow produced, carries `txBytes` and no
-    // `tx`. Asserting the read record lacks `txBytes` would be tautological on
-    // a literal that never had one; asserting the contrast is not.
-    expect(providers.seen.submitTx).toHaveProperty('txBytes');
-    expect(providers.seen.submitTx).not.toHaveProperty('tx');
-    expect(finalized.public).toMatchObject(retainedRecord);
+    expect(finalized.public.tx).toBe(retainedRecord.tx);
   });
 
   it('REFUSES a finalized record from an era the head it composed on cannot have recorded', async () => {
@@ -1664,9 +1604,9 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // the result shapes rather than one, so a caller does not write
     // `=== 'v8'` against a string of its own spelling.
     expect(isLedger8Result(finalized)).toBe(true);
-    // Narrowing, not just a boolean: `txBytes` is reachable only on this variant.
+    // Narrowing, not just a boolean: the retained private half is reachable only on this variant.
     if (isLedger8Result(finalized)) {
-      expect(finalized.private.txBytes).toBeInstanceOf(Uint8Array);
+      expect(finalized.private.unprovenTx.era).toBe('v8');
     }
   });
 
@@ -1744,10 +1684,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const providers = preForkProviders(v6Envelope);
     // The mirror of the keep-state case: nothing in the provider method types ties a
     // provider's output era to its input era, so a provider that accepted
-    // retained-era bytes and answered with a current-era handle is checked
-    // rather than assumed. `expected` is what says WHICH direction was
-    // violated, and it is the whole reason the error carries the field.
-    providers.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: undefined });
+    // a v8 handle and answered with a v9 one is checked rather than assumed.
+    // `expected` is what says WHICH direction was violated, and it is the whole
+    // reason the error carries the field.
+    providers.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v9.Unbound());
 
     let caught: unknown;
     try {
@@ -1765,14 +1705,16 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect((caught as Error).message).toContain("'v8'");
   });
 
-  it('refuses an UNTAGGED payload from a provider on the pre-fork flow', async () => {
+  it('refuses a provider answer that is not a transaction handle on the pre-fork flow', async () => {
     const providers = preForkProviders(v6Envelope);
-    // A JavaScript caller's provider, or one built before the provider methods were
-    // version-tagged: it answers with no `version` at all. Reported as an
-    // untagged payload rather than assumed to be either era.
+    // A JavaScript caller's provider, or one built before the provider methods took
+    // handles: it answers with something that is not a handle at all.
     providers.proofProvider.proveTx = vi.fn().mockResolvedValue(undefined);
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
+    const rejection = submitCallTx(providers, callOptions());
+
+    await expect(rejection).rejects.toBeInstanceOf(InvalidTransactionHandleError);
+    await expect(rejection).rejects.toMatchObject({ method: 'proveTx', reason: 'not-a-handle' });
   });
 
   it("keeps this framework's own coded refusals unwrapped, so a caller can still narrow on them", async () => {
@@ -1780,9 +1722,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The sanitizing wrapper must not swallow the refusal a current-era-only
     // provider raises: a caller narrowing on it would otherwise see a generic
     // provider failure and lose the one diagnosis that says "widen your provider".
-    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(new Ledger8PayloadUnsupportedError('proveTx', 42));
+    const refusal = new ProviderEraUnsupportedError('proveTx', 'v8', ['v9']);
+    providers.proofProvider.proveTx = vi.fn().mockRejectedValue(refusal);
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBe(refusal);
   });
 
   it('sanitizes a coded provider error that carries an external failure on cause', async () => {
@@ -2533,9 +2476,9 @@ describe('deploying a retained-era contract through deployContract', () => {
     ]);
     expect(Object.keys(deployed.circuitMaintenanceTx)).toEqual([CIRCUIT_ID]);
     expect(Object.keys(deployed.callTx)).toEqual([CIRCUIT_ID]);
-    // The retained tag on the bytes that were passed to the transaction providers, which is what
-    // says the RETAINED ledger composed this deployment.
-    expect(providers.seen.proveTx?.version).toBe('v8');
+    // The era of the handle passed to the transaction providers, which is what says the RETAINED
+    // ledger composed this deployment.
+    expect(providers.seen.proveTx?.era).toBe('v8');
   });
 
   it('reports the caller own signing key when one is supplied, rather than sampling over it', async () => {
@@ -3133,7 +3076,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
     expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UntaggedPayloadError);
+    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UnknownLedgerVersionError);
   });
 
   it('persists the signing key against the address it minted, in the shape the store takes', async () => {
@@ -3612,10 +3555,10 @@ describe('attaching to a retained-era contract already on chain', () => {
       .fn()
       .mockResolvedValue({ ...createMockFinalizedTxData(), version });
 
-    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UntaggedPayloadError);
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UnknownLedgerVersionError);
   });
 
-  it('names the method and the tag it actually received when it refuses one', async () => {
+  it('names the tag it actually received when it refuses one', async () => {
     const providers = attachProviders(v6Envelope);
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
@@ -3623,17 +3566,17 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(UntaggedPayloadError);
-    expect((caught as UntaggedPayloadError).method).toBe('watchForDeployTxData');
-    expect((caught as UntaggedPayloadError).received).toContain('v10');
+    expect(caught).toBeInstanceOf(UnknownLedgerVersionError);
+    expect((caught as UnknownLedgerVersionError).requestedVersion).toBe('v10');
   });
 
   it('still accepts BOTH legitimate tags, which is what makes the refusal above about the shape', async () => {
-    for (const version of ['v8', 'v9'] as const) {
+    for (const [version, record] of [
+      ['v8', createMockLedger8FinalizedTxData()],
+      ['v9', createMockFinalizedTxData()]
+    ] as const) {
       const providers = attachProviders(v6Envelope);
-      providers.publicDataProvider.watchForDeployTxData = vi
-        .fn()
-        .mockResolvedValue({ ...createMockFinalizedTxData(), version });
+      providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(record);
 
       const found = await findDeployedContract(providers, attachOptions());
 

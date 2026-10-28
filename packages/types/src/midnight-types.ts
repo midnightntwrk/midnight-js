@@ -14,17 +14,15 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import {
-  type Binding,
-  type ContractAddress,
-  type IntentHash,
-  type Proof,
-  type RawTokenType,
-  type SignatureEnabled,
-  type Transaction,
-  type TransactionHash,
-  type TransactionId,
+import type {
+  ContractAddress,
+  IntentHash,
+  RawTokenType,
+  TransactionHash,
+  TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+
+import type { LedgerTransaction } from './ledger-transaction';
 
 export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 
@@ -229,9 +227,9 @@ export type BlockHash = string;
  * The era-independent metadata every finalized-transaction record carries,
  * whichever ledger runtime produced it.
  *
- * Both variants of {@link VersionedFinalizedTxData} extend this, so the two variants
- * differ in exactly two places — the `version` discriminant and the type of
- * `tx` — and cannot drift apart as fields are added here.
+ * Both variants of {@link VersionedFinalizedTxData} extend this, so the two
+ * variants differ only in their era, carried by `version` and by the era of the
+ * `tx` handle, and cannot drift apart as fields are added here.
  */
 export interface FinalizedTxRecord {
   /**
@@ -309,9 +307,9 @@ export interface FinalizedTxData extends FinalizedTxRecord {
    */
   readonly version: 'v9';
   /**
-   * The transaction that was finalized.
+   * The transaction that was finalized, as a v9 handle.
    */
-  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+  readonly tx: LedgerTransaction<'Finalized', 'v9'>;
 }
 
 /**

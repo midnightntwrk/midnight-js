@@ -19,32 +19,82 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES, type types, utils } from '../index';
+import { contracts, type protocol, PROTOCOL_ERROR_CODES, types, utils } from '../index';
 
-// The positive compile assertion for the migration guide's narrowing recipe. The
-// recipe below is real code reaching the framework only through this barrel, so
+// The positive compile assertions for the migration guide's recipes. Each recipe
+// below is real code reaching the framework only through this barrel, so
 // `yarn typecheck:tests` is what proves the guide's instructions compile for a
 // reader who follows them.
 //
-// The recipe is not executed: the `v8` variant's `tx` is a WASM class from
-// `protocol/v8`, which this package may reference in a type position but not
-// import at runtime.
+// The recipes are not executed: each is a declaration or a function nobody calls.
+// The v8 transaction class is a WASM class from `protocol/v8`, which this package
+// may reference in a type position but not import at runtime.
 
 // #region guide:narrowing-recipe
-declare const describeNative: (tx: types.FinalizedTxData['tx']) => string;
-declare const describeRetained: (tx: types.Ledger8FinalizedTxData['tx']) => string;
+declare const describeNative: (tx: types.LedgerTransactionTypes['v9']['Finalized']) => string;
+declare const describeRetained: (tx: types.LedgerTransactionTypes['v8']['Finalized']) => string;
 
 const summarize = (record: types.VersionedFinalizedTxData): string => {
   switch (record.version) {
     case 'v9':
-      return `native ${record.txId}: ${describeNative(record.tx)}`;
+      return `native ${record.txId}: ${describeNative(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
     case 'v8':
-      return `retained ${record.txId}: ${describeRetained(record.tx)}`;
+      return `retained ${record.txId}: ${describeRetained(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
     default:
       return utils.assertNever(record, 'summarize');
   }
 };
 // #endregion guide:narrowing-recipe
+
+// #region guide:read-record-tx
+declare const publicDataProvider: types.PublicDataProvider;
+
+const readIdentifiers = async (txId: string): Promise<string[]> => {
+  const record = await publicDataProvider.watchForTxData(txId);
+  const tx = types.LedgerTransaction.unwrap(record.tx, record.version);
+  return tx.identifiers();
+};
+// #endregion guide:read-record-tx
+
+// #region guide:submit-tx
+declare const providers: types.MidnightProviders;
+declare const ledgerUnprovenTx: types.LedgerTransactionTypes['v9']['Unproven'];
+
+const submitBuiltTransaction = async (): Promise<types.VersionedFinalizedTxData> => {
+  const unprovenTx = types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+  return contracts.submitTx(providers, { unprovenTx });
+};
+// #endregion guide:submit-tx
+
+// #region guide:private-unproven-tx
+type AnyContract = protocol.Contract.Any;
+declare const callTx: contracts.UnsubmittedCallTxData<AnyContract, protocol.Contract.ProvableCircuitId<AnyContract>>;
+declare const proofProvider: types.ProofProvider;
+declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;
+
+const proveCall = async (): Promise<types.UnboundTx> => {
+  const { unprovenTx } = callTx.private;
+  if (unprovenTx.era === 'v9') {
+    inspect(types.LedgerTransaction.unwrap(unprovenTx, 'v9'));
+  }
+  return proofProvider.proveTx(unprovenTx);
+};
+// #endregion guide:private-unproven-tx
+
+// #region guide:per-era-handlers
+declare const proveOnLedger8: (
+  tx: types.LedgerTransactionTypes['v8']['Unproven']
+) => Promise<types.LedgerTransactionTypes['v8']['Unbound']>;
+declare const proveOnLedger9: (
+  tx: types.LedgerTransactionTypes['v9']['Unproven']
+) => Promise<types.LedgerTransactionTypes['v9']['Unbound']>;
+
+const buildProofProvider = (): types.ProofProvider =>
+  types.createProofProviderFromHandlers({
+    v8: (tx) => proveOnLedger8(tx),
+    v9: (tx) => proveOnLedger9(tx)
+  });
+// #endregion guide:per-era-handlers
 
 const PACKAGE_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
 const REPOSITORY_ROOT = path.resolve(PACKAGE_ROOT, '..', '..');
@@ -76,31 +126,43 @@ const guideTypeScriptBlocks = (): string[] => {
   return [...guide.matchAll(/```ts\n([\s\S]*?)```/g)].map((match) => match[1].trimEnd());
 };
 
-describe('migration guide narrowing recipe', () => {
-  test('the recipe the guide prints is byte-identical to the recipe that compiles', () => {
+const RECIPES = [
+  { region: 'guide:narrowing-recipe', marker: 'const summarize', imports: 'types, utils' },
+  { region: 'guide:read-record-tx', marker: 'const readIdentifiers', imports: 'types' },
+  { region: 'guide:submit-tx', marker: 'const submitBuiltTransaction', imports: 'contracts, types' },
+  { region: 'guide:private-unproven-tx', marker: 'const proveCall', imports: 'contracts, type protocol, types' },
+  { region: 'guide:per-era-handlers', marker: 'const buildProofProvider', imports: 'types' }
+] as const;
+
+describe('migration guide recipes', () => {
+  test.each(RECIPES)('the guide prints $region byte-identical to the code that compiles', ({ region, marker, imports }) => {
     // Arrange: a package cannot import itself by name, so the fence is asserted to be
     // exactly that import, a blank line, then the region this file compiles.
-    const compiled = regionSource('guide:narrowing-recipe');
-    const importLine = `import { types, utils } from '${packageName()}';`;
+    const compiled = regionSource(region);
+    const importLine = `import { ${imports} } from '${packageName()}';`;
 
     // Act.
-    const printed = guideTypeScriptBlocks().filter((block) => block.includes('const summarize'));
+    const printed = guideTypeScriptBlocks().filter((block) => block.includes(marker));
 
     // Assert.
-    expect(printed).toHaveLength(1);
-    expect(printed[0]).toBe(`${importLine}\n\n${compiled}`);
+    expect(printed).toEqual([`${importLine}\n\n${compiled}`]);
   });
 
-  test('the compiled region is the whole recipe, not an emptied placeholder', () => {
+  test('the compiled regions are the whole recipes, not emptied placeholders', () => {
     // Arrange / Act: guards the equality above passing on '' if both were emptied.
-    const compiled = regionSource('guide:narrowing-recipe');
+    const narrowing = regionSource('guide:narrowing-recipe');
+    const recipes = [summarize, readIdentifiers, submitBuiltTransaction, proveCall, buildProofProvider];
 
-    // Assert: both variants present, each reading its own era's `tx`, and closed by the
-    // helper the chapter is about.
-    expect(compiled).toContain('describeNative(record.tx)');
-    expect(compiled).toContain('describeRetained(record.tx)');
-    expect(compiled).toContain("utils.assertNever(record, 'summarize')");
-    expect(typeof summarize).toBe('function');
+    // Assert: both variants present, each unwrapping its own era's `tx`, closed by the
+    // helper the chapter is about; and every other recipe reads or makes a handle.
+    expect(narrowing).toContain('describeNative(types.LedgerTransaction.unwrap(record.tx, record.version))');
+    expect(narrowing).toContain('describeRetained(types.LedgerTransaction.unwrap(record.tx, record.version))');
+    expect(narrowing).toContain("utils.assertNever(record, 'summarize')");
+    expect(regionSource('guide:read-record-tx')).toContain('types.LedgerTransaction.unwrap(record.tx, record.version)');
+    expect(regionSource('guide:submit-tx')).toContain("types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx)");
+    expect(regionSource('guide:private-unproven-tx')).toContain('callTx.private');
+    expect(regionSource('guide:per-era-handlers')).toContain('v8: (tx) => proveOnLedger8(tx)');
+    expect(recipes.map((recipe) => typeof recipe)).toEqual(recipes.map(() => 'function'));
   });
 
   test('the helper the recipe calls is reachable through the barrel at runtime', () => {

@@ -16,26 +16,17 @@
 import {
   LEDGER_VERSIONS,
   type LedgerVersion,
-  loadLedger8Protocol,
   protocolVersionToLedger,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
-  type Binding,
   type ContractAddress,
   type IntentHash,
   type LedgerParameters,
-  type Proof,
   type RawTokenType,
-  type SignatureEnabled,
-  type Transaction as LedgerTransaction,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-// Type-only, so nothing here links the v8 chunk: the runtime is acquired
-// through `loadLedger8Protocol()` and only when a v8-era record asks for it. Same
-// precedent as `Ledger8FinalizedTxData` in `@midnight-ntwrk/midnight-js-types`.
-import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import type {
   RawContractState,
   ReadMethod,
@@ -46,6 +37,7 @@ import type {
 import {
   FailEntirely,
   FailFallible,
+  type LedgerTransaction,
   SegmentFail,
   type SegmentStatus,
   SegmentSuccess,
@@ -64,8 +56,7 @@ import {
   deserializeZswapChainState,
   isHex,
   ledgerParametersEnvelopeVersion,
-  parseHex,
-  withDeserializationContext
+  parseHex
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
@@ -115,11 +106,12 @@ const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 export const parseHexZswapState = (s: string): ZswapChainState =>
   deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:parseHexZswapState` });
 
-export const parseHexTransaction = (
+export const parseHexTransaction = <E extends LedgerVersion>(
+  era: E,
   s: string,
   details?: ReadDetails
-): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
-  deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
+): Promise<LedgerTransaction<'Finalized', E>> =>
+  deserializeLedgerTransaction(era, toByteArray(s), { caller: `${PKG}:parseHexTransaction`, details });
 
 const parametersBytesAndEnvelopeVersion = (
   hexParameters: string
@@ -163,28 +155,12 @@ export const parseHexLedgerParameters = (s: string): LedgerParameters => {
 };
 
 /**
- * The v8-era sibling of {@link parseHexTransaction}. Acquires the v8 ledger
- * runtime through `loadLedger8Protocol()` — the only sanctioned path to it — and reads
- * the payload with the same marker convention the v9 wrapper uses.
- *
- * Routed through `withDeserializationContext` so a v8 failure arrives
- * classified exactly as a v9 failure does, including a binding that throws a
- * bare string rather than an `Error`.
- */
-const parseLedger8HexTransaction = async (s: string, details?: ReadDetails): Promise<Ledger8FinalizedTransaction> => {
-  const v8 = await loadLedger8Protocol();
-  return withDeserializationContext(
-    { dataType: 'LedgerTransaction', source: 'ledger', caller: `${PKG}:parseLedger8HexTransaction`, details },
-    () => v8.Transaction.deserialize('signature', 'proof', 'binding', toByteArray(s))
-  );
-};
-
-/**
  * A decoded finalized transaction paired with the era whose runtime produced
  * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
  *
  * `DistributivePick` rather than a bare `Pick`: distributed over the union it
- * yields one variant per era, so a v8 tag can never be paired with a v9 object.
+ * yields one variant per era, each pairing `version` with a `tx` handle of
+ * that same era.
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
@@ -210,13 +186,12 @@ type TransactionDecoders = {
 const transactionDecoders = {
   v8: async (hexTransaction: string, details: ReadDetails) => ({
     version: 'v8' as const,
-    tx: await parseLedger8HexTransaction(hexTransaction, details)
+    tx: await parseHexTransaction('v8', hexTransaction, details)
   }),
-  // Wrapped in a resolved promise rather than decoded eagerly: both decoders have
-  // to be awaited the same way, and the v9 read stays the same synchronous
-  // call `parseHexTransaction` already makes.
-  v9: (hexTransaction: string, details: ReadDetails) =>
-    Promise.resolve({ version: 'v9' as const, tx: parseHexTransaction(hexTransaction, details) })
+  v9: async (hexTransaction: string, details: ReadDetails) => ({
+    version: 'v9' as const,
+    tx: await parseHexTransaction('v9', hexTransaction, details)
+  })
 } satisfies TransactionDecoders;
 
 const TRANSACTION_DECODERS: TransactionDecoders = Object.freeze(

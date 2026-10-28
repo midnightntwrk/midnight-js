@@ -76,8 +76,8 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * @see {@link KeepStatePipeline} for the payload table, and for why a provider needs to handle the
- *      `'v8'` payload variant only while the network head is still pre-fork.
+ * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
+ *      handles only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
@@ -238,8 +238,8 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
  * the retained-era-native pipeline, a post-fork head the keep-state one.
  *
- * @see {@link KeepStatePipeline} for the payload table, and for why a provider needs to handle the
- *      `'v8'` payload variant only while the network head is still pre-fork.
+ * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
+ *      handles only while the network head is still pre-fork.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */

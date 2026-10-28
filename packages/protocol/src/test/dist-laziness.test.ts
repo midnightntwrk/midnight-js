@@ -26,6 +26,7 @@ import { readHexFixture } from './fixtures';
 // the dynamic import inside loadLedger8Protocol().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
+const DIST_TRANSACTION_PATH = 'dist/transaction.js';
 // The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
 // chunk reaches loadLedger8Protocol: the dynamic import of `../../v8.js` in
 // src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
@@ -158,6 +159,18 @@ describe('dist laziness gate', () => {
 
     expect(content).not.toMatch(new RegExp(`(?:from|^\\s*import)\\s*['"]${pattern}['"]`, 'm'));
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${pattern}['"]\\s*\\)`));
+  });
+
+  // The ./transaction entry is what every provider loads to read a transaction,
+  // so it must reach the v8 ledger only through loadLedger8Protocol().
+  it('nothing loaded eagerly by the ./transaction entry links ledger-v8 or the v8 chunk statically', () => {
+    const content = eagerContents(DIST_TRANSACTION_PATH);
+
+    expect(content).toContain('deserializeTransactionAtStage');
+    expect(content).not.toMatch(/from\s*['"][^'"]*ledger-v8['"]/);
+    expect(eagerClosureOf(DIST_TRANSACTION_PATH)).not.toContain(join('dist', 'v8.js'));
+    expect(content).not.toMatch(new RegExp(`(?:from|^\\s*import)\\s*['"]${LEDGER8_CHUNK_PATTERN}['"]`, 'm'));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${LEDGER8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
   // The static walk above says the v9 era CAN run without the retained chunks.
