@@ -145,6 +145,32 @@ describe('createCallTxOptions for a ledger 8 contract', () => {
   });
 });
 
+// Both fixtures declare one circuit each, so on them the chosen circuit and the union of all circuits
+// are the same type. This contract joins the two to tell them apart.
+type TwoCircuit016Contract = Omit<Counter016Contract, 'circuits' | 'impureCircuits' | 'provableCircuits'> & {
+  circuits: Counter016Contract['circuits'] & CoinReceiver016Contract['circuits'];
+  impureCircuits: Counter016Contract['impureCircuits'] & CoinReceiver016Contract['impureCircuits'];
+  provableCircuits: Counter016Contract['provableCircuits'] & CoinReceiver016Contract['provableCircuits'];
+};
+
+declare const twoCircuit016Contract: TwoCircuit016Contract;
+
+describe('createCallTxOptions for a ledger 8 contract with two circuits', () => {
+  it('returns options for the chosen circuit, not for every circuit', () => {
+    expectTypeOf(
+      createCallTxOptions(twoCircuit016Contract, 'increment', contractAddress, undefined, undefined, [])
+    ).toEqualTypeOf<Ledger8CallTxOptions<TwoCircuit016Contract, 'increment'>>();
+    expectTypeOf(
+      createCallTxOptions(twoCircuit016Contract, 'receive_coin', contractAddress, undefined, undefined, [coin016])
+    ).toEqualTypeOf<Ledger8CallTxOptions<TwoCircuit016Contract, 'receive_coin'>>();
+  });
+
+  it("refuses another circuit's argument list", () => {
+    // @ts-expect-error - `increment` takes no arguments; the coin belongs to `receive_coin`
+    createCallTxOptions(twoCircuit016Contract, 'increment', contractAddress, undefined, undefined, [coin016]);
+  });
+});
+
 declare const providers: ContractProviders<CoinReceiver016Contract>;
 declare const privateStateId: PrivateStateId;
 declare const coin: CoinReceiver016Coin;

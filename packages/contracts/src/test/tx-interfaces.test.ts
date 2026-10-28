@@ -120,6 +120,20 @@ describe('tx-interfaces', () => {
         args
       });
     });
+    it('should keep an empty private state ID for a ledger 9 contract, as for a ledger 8 one', () => {
+      const circuitId = 'testCircuit';
+
+      const options = createCallTxOptions(mockCompiledContract, circuitId, mockContractAddress, '', undefined, [] as never);
+
+      expect(options).toStrictEqual({
+        additionalCoinEncPublicKeyMappings: undefined,
+        compiledContract: mockCompiledContract,
+        circuitId,
+        contractAddress: mockContractAddress,
+        privateStateId: ''
+      });
+    });
+
     it('should create ledger 8 call tx options without args or private state ID', () => {
       const ledger8Contract = createLedger8Contract();
 
@@ -161,6 +175,21 @@ describe('tx-interfaces', () => {
 
       expect(act).toThrow(EraArtifactMismatchError);
       expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
+    });
+
+    it('should refuse a ledger 9 contract that is not wrapped in a CompiledContract', () => {
+      const unwrappedLedger9Contract = {
+        ...createLedger8Contract(),
+        initialState: async () => {
+          throw new Error('not called by this test');
+        }
+      };
+
+      const act = () =>
+        createCallTxOptions(unwrappedLedger9Contract as never, 'increment', mockContractAddress, undefined, undefined, [] as never);
+
+      expect(act).toThrow(EraArtifactMismatchError);
+      expect(act).toThrow(expect.objectContaining({ reason: 'unwrapped-ledger9-contract' }));
     });
   });
 
