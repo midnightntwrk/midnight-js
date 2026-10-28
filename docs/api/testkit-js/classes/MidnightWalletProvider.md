@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.4**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.5**](../README.md)
 
 ***
 
@@ -40,18 +40,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 > `readonly` **supportedEras**: readonly (`"v9"` \| `"v8"`)[]
 
-Both eras, declared once for both seams this class implements.
-
-Written out rather than assembled from per-era arms, which is the escape
-hatch the tagged interfaces deliberately keep open for a class. The two
-methods below genuinely run both eras through ONE call each — the wallet
-SDK adopts a transaction AT a protocol version, so the era is data flowing
-through rather than a branch — and splitting them into arms would duplicate
-the balance/sign/finalize sequence to no end.
-
-Read before an operation starts, by `assertSeamsSupportEra`. Frozen for the
-same reason the factories freeze their computed declaration: a widened
-declaration would let that check pass for an era this wallet cannot serve.
+Both eras, on both providers this class implements.
 
 #### Implementation of
 
@@ -79,7 +68,7 @@ declaration would let that check pass for an era this wallet cannot serve.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl?`): `Promise`\<`VersionedFinalizedTransaction`\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<`FinalizedTx`\>
 
 Balances and signs a transaction, readying it for submission.
 
@@ -87,14 +76,13 @@ Balances and signs a transaction, readying it for submission.
 
 ##### tx
 
-`VersionedUnboundTransaction`
+`UnboundTx`
 
-The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
-          ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+The unbound transaction handle to balance.
 
 ##### ttl?
 
-`Date` = `...`
+`Date`
 
 Expiry for the intent the wallet adds while balancing. The framework always passes
            a `Date` `providers.config.ttlSeconds` after balancing starts; honour it rather than a
@@ -103,18 +91,27 @@ Expiry for the intent the wallet adds while balancing. The framework always pass
 
 #### Returns
 
-`Promise`\<`VersionedFinalizedTransaction`\>
+`Promise`\<`FinalizedTx`\>
 
-The balanced, signed transaction, version-tagged. Narrow on `version` — or call
-         `unwrapV9` — before reading the payload.
-
-#### Throws
-
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+The balanced, signed transaction handle, in the SAME era as `tx`.
 
 #### Throws
 
-UntaggedPayloadError if `version` is missing or unrecognised.
+InvalidTransactionHandleError if `tx` is not an unbound handle of this package.
+
+#### Throws
+
+ProviderEraUnsupportedError if the implementation does not serve the handle's era.
+
+#### Throws
+
+ForeignLedgerTransactionError if the balanced transaction is not an object of the
+        ledger copy this framework loaded for its era.
+
+#### Throws
+
+InvalidTransactionHandleError if the balanced transaction is not a ledger transaction
+        object (`not-a-transaction`) or is not at the Finalized stage (`stage-mismatch`).
 
 #### Implementation of
 
@@ -186,25 +183,24 @@ Submit a transaction to the network to be consensed upon.
 
 ##### tx
 
-`VersionedFinalizedTransaction`
+`FinalizedTx`
 
-The version-tagged finalized transaction to submit: `{ version: 'v9', tx }` for a
-          live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+The finalized transaction handle to submit.
 
 #### Returns
 
 `Promise`\<`string`\>
 
-The transaction identifier of the submitted transaction. Not version-tagged — a
-         transaction identifier is era-independent.
+The transaction identifier of the submitted transaction. A transaction identifier is
+         era-independent.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+InvalidTransactionHandleError if `tx` is not a finalized handle of this package.
 
 #### Throws
 
-UntaggedPayloadError if `version` is missing or unrecognised.
+ProviderEraUnsupportedError if the implementation does not serve the handle's era.
 
 #### Implementation of
 

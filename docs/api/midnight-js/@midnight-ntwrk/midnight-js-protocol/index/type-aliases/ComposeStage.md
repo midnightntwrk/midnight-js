@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ComposeStage
 
-> **ComposeStage** = `"wrap-call"` \| `"call-empty"` \| `"call-transcript-empty"` \| `"call-partition-context"` \| `"call-partition"` \| `"call-prototype"` \| `"call-dust-payout"` \| `"call-unsupported-payout"` \| `"call-operation"` \| `"call-contract-state"` \| `"call-verifier-key"` \| `"deploy-verifier-key"` \| `"deploy-unknown-circuit"` \| `"deploy-ambiguous-circuit"` \| `"deploy-verifier-key-blob"`
+> **ComposeStage** = `"wrap-call"` \| `"call-empty"` \| `"call-transcript-empty"` \| `"call-partition-context"` \| `"call-partition"` \| `"call-prototype"` \| `"call-dust-payout"` \| `"call-unsupported-payout"` \| `"call-operation"` \| `"call-contract-state"` \| `"call-verifier-key"` \| `"deploy-verifier-key"` \| `"deploy-unknown-circuit"` \| `"deploy-ambiguous-circuit"` \| `"deploy-verifier-key-blob"` \| `"maintenance-update"`
 
 Which composition step [ComposeFailedError](../classes/ComposeFailedError.md) failed at.
 
@@ -55,13 +55,24 @@ Deploy stages:
 - `'deploy-verifier-key-blob'` — the ledger rejected the verifier-key bytes
   supplied for a circuit.
 
+Maintenance stage:
+- `'maintenance-update'` — the maintenance update could not be built,
+  signed, or wrapped into a transaction: platform-js refused the contract
+  address, compact-js refused one of its own steps (building the update,
+  creating it with the address and counter, reading the data to sign,
+  signing, attaching the signature), or the ledger refused the signed update
+  when it was wrapped into the transaction. Names the circuit for a
+  verifier-key update and [NO\_CIRCUIT](../variables/NO_CIRCUIT.md) for an authority replacement.
+  Carries the refusing library's own failure on `cause`.
+
 Keep-state stage:
 - `'wrap-call'` — the keep-state leg could not resolve a registered
   operation for the transcript's circuit on the given contract state.
 
 Which ledger era the failure happened on is carried separately, on the
-error's `version` field. Every stage but `'wrap-call'` is reachable on both
-eras; `'wrap-call'` is only ever raised for `'v9'`.
+error's `version` field. Every stage but `'wrap-call'` and
+`'maintenance-update'` is reachable on both eras; `'wrap-call'` is only ever
+raised for `'v9'`, and `'maintenance-update'` only for `'v8'`.
 
 ## See
 

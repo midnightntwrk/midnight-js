@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@ Everything wrapKeepStateCall needs to wrap one keep-state call.
 `contractState` is the migrated, post-fork v9 `ContractState` — read from
 chain, or otherwise carrying the contract's real registered operations —
 used only to look up the `ContractOperation` for `transcript.circuitId`
-(mirrors `ComposeV8CallOptions`'s `contractState` parameter in
+(mirrors `ComposeLedger8CallOptions`'s `contractState` parameter in
 `../v8/compose.ts`).
 
 ## Properties

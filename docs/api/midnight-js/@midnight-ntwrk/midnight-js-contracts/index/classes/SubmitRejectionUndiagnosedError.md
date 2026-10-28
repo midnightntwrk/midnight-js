@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
 ## See
 
  - [ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the two codes name different things.
- - [StaleHeadRemediation](../../documents/StaleHeadRemediation.md) for the two arms.
+ - [ForkCrossedRemediation](../../documents/ForkCrossedRemediation.md) for the two reasons.
 
 ## Extends
 
@@ -97,19 +97,19 @@ Why no diagnosis could be made.
 
 > `readonly` **errors**: readonly `unknown`[]
 
-The submission rejection first, then the head-read failure when there was one.
+The submission rejection first, then the failure to read the network's ledger version again, when there was one.
 
 ***
 
 ### kind
 
-> `readonly` **kind**: [`StaleHeadOperationKind`](../type-aliases/StaleHeadOperationKind.md)
+> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md)
 
 ***
 
 ### reason
 
-> `readonly` **reason**: `"head-read-failed"` \| `"head-moved-backwards"`
+> `readonly` **reason**: `"network-version-read-failed"` \| `"network-version-went-backwards"`
 
 Which of the two undiagnosable conditions this is.
 
@@ -117,6 +117,6 @@ Which of the two undiagnosable conditions this is.
 
 ### startEra
 
-> `readonly` **startEra**: `"v8"` \| `"v9"`
+> `readonly` **startEra**: `"v9"` \| `"v8"`
 
 The era the operation resolved when it started.

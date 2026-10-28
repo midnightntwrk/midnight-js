@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -12,27 +12,26 @@ Deserialize a contract state the indexer served, after establishing which
 ledger runtime wrote it — and only if that runtime is one this path can
 decode.
 
-The envelope is the authority on the bytes, and the version the indexer
+The version tag is the authority on the bytes, and the version the indexer
 reported for the dating block is an upper bound on it. That asymmetry is the
 whole rule, and it follows from how the two signals are obtained:
 
-- The envelope comes off the bytes themselves. It is attacker-controlled and
+- The version tag comes off the bytes themselves. It is attacker-controlled and
   proves nothing about the network, but it is the one thing the deserializer
-  also reads: a mismatched envelope is rejected on the header tag before the
+  also reads: a mismatched version tag is rejected on the header tag before the
   body, so it cannot produce a wrong answer, only a failure.
-- The reported version dates the *read*, not the bytes. The indexer serves
-  the latest contract action at or before the requested block, so a state can
-  legitimately be older than the block that dates it — after a fork, every
-  contract dormant across it is exactly that. Treating that ordinary case as
-  a contradiction would send callers hunting a fault that is not there.
+- The reported version dates the *read*, not the bytes, so a state can
+  legitimately be older than the block that dates it — a record of a
+  pre-fork contract action keeps its pre-fork version tag when it is read under
+  a post-fork block.
 
-So an older envelope under a newer block is normal and decided on the
-envelope alone. The reverse — bytes written by a runtime the dating block
+So an older version tag under a newer block is normal and decided on the
+version tag alone. The reverse — bytes written by a runtime the dating block
 had not forked to yet — cannot happen while both signals describe the same
 block, and is the one direction reported as
 [IndexerDataError.eraDisagreement](../classes/IndexerDataError.md#eradisagreement). Where they need not describe the
 same block, the caller says so and the comparison is dropped instead of
-being reported as a fault — see [EnvelopeUpperBound](../type-aliases/EnvelopeUpperBound.md).
+being reported as a fault — see [UpperBoundCheck](../type-aliases/UpperBoundCheck.md).
 
 Nothing reaches a deserializer until the era is settled.
 
@@ -51,19 +50,19 @@ The hex-encoded serialized contract state, as the indexer
 
 The protocol-version integer of the block that dates
                        the read. An integer this client cannot resolve
-                       withholds the upper-bound check and nothing else.
+                       skips the upper-bound check and nothing else.
 
 ### options?
 
 `upperBound` states whether `protocolVersion` certainly
                describes the same block as the bytes, and so whether it may
-               bound the envelope. Defaults to `'enforced'`, so a call site
+               bound the version tag. Defaults to `'check'`, so a call site
                has to opt out of the check deliberately rather than lose it
-               by omission. See [EnvelopeUpperBound](../type-aliases/EnvelopeUpperBound.md).
+               by omission. See [UpperBoundCheck](../type-aliases/UpperBoundCheck.md).
 
 #### upperBound?
 
-[`EnvelopeUpperBound`](../type-aliases/EnvelopeUpperBound.md)
+[`UpperBoundCheck`](../type-aliases/UpperBoundCheck.md)
 
 ## Returns
 
@@ -72,15 +71,15 @@ The protocol-version integer of the block that dates
 ## Throws
 
 When the state is not hex-encoded, when its
-  envelope is newer than the block that dates it and that bound is enforced,
+  version tag is newer than the block that dates it and that bound is checked,
   or when its era is not decodable here.
 
 ## Throws
 
 When the payload carries no supported contract-state
-  envelope.
+  version tag.
 
 ## Throws
 
-When the envelope is decodable but the state
+When the version tag is decodable but the state
   body behind it is not.

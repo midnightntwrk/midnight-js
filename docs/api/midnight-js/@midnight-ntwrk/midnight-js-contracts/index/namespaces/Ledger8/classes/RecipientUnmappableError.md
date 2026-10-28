@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ dropped inside, because the namespace already carries it -- so a declaration
 this reference calls `Ledger8X` is the member published as `Ledger8.X`.
 
 Membership is the retained era's own family: its contract and result types,
-its interface factory, and the refusals its pipeline raises. Names that serve
+and the refusals its pipeline raises. Names that serve
 BOTH eras stay on the flat surface, so a consumer that only receives results
 never imports the transitional half.
 

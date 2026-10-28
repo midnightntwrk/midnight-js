@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -51,7 +51,7 @@ The address this deployment composed.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key the deployment's maintenance authority was built
 from — sampled when the caller named none, and then this is its only copy.
@@ -104,7 +104,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 ***
 
@@ -120,7 +120,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 > **get** **record**(): [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
 
-See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either arm on this class.
+See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 
@@ -130,8 +130,9 @@ The finalized record the chain reported, version-tagged.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.version` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
+narrowing on `record.version`.
 
 #### Overrides
 

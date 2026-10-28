@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../README.md)
 
 ***
 
@@ -8,8 +8,8 @@
 
 ## Documents
 
-- [ReadingTheHeadEra](documents/ReadingTheHeadEra.md)
-- [SeamEraDeclarations](documents/SeamEraDeclarations.md)
+- [ProviderEraDeclarations](documents/ProviderEraDeclarations.md)
+- [ReadingTheNetworkLedgerVersion](documents/ReadingTheNetworkLedgerVersion.md)
 - [VersionTaggedPayloads](documents/VersionTaggedPayloads.md)
 
 ## Modules

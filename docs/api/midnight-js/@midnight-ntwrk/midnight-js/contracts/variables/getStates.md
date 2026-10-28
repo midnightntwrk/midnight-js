@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Variable: getStates
 
-> `const` **getStates**: \<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`, `blockHash?`) => `Promise`\<[`ContractStates`](../interfaces/ContractStates.md)\<`PS`\>\>
+> `const` **getStates**: \<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`, `blockHash?`) => `Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>
 
 Retrieves the Zswap, ledger, and private states of the contract corresponding
 to the given identifier using the given providers.
@@ -48,6 +48,8 @@ The identifier for the private state of the contract.
 
 `string`
 
+The block to read the public states at. If `undefined`, the latest states are read.
+
 ## Returns
 
-`Promise`\<[`ContractStates`](../interfaces/ContractStates.md)\<`PS`\>\>
+`Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>

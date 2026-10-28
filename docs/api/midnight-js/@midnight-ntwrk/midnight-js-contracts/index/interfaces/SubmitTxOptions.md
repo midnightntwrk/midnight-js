@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -32,6 +32,7 @@ context), this may be an array of circuit IDs.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
 
-The transaction to prove, balance, and submit.
+The transaction to prove, balance, and submit. The handle carries the ledger era that wrote
+it; make one with `LedgerTransaction.seal`.

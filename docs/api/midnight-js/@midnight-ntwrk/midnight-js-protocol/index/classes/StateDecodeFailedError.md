@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: StateDecodeFailedError
 
-Thrown when a raw, serialized contract-state envelope could not be read by
+Thrown when a raw, serialized contract state could not be read by
 the ledger era it was requested for. Raised by both of the facade's read
 paths, `extractState` and `decodeContractState`
 (`lib/shared/contract-state.ts`), so a caller writes one handler for both.
@@ -17,7 +17,7 @@ Renders no hex and no byte dump of its own.
 
 **version**
 
-The era whose decoder rejected the envelope.
+The era whose decoder rejected the bytes.
 
 ## Param
 

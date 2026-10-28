@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -19,11 +19,11 @@ themselves are is [EraDispatch](../../midnight-js/documents/EraDispatch.md).
 
 Four decisions get a breadcrumb: `HeadResolutionBreadcrumb`,
 `PipelineSelectionBreadcrumb`, `EncodingBreadcrumb` and
-`RetainedSigningKeyEntryBreadcrumb`.
+`Ledger8SigningKeyEntryBreadcrumb`.
 
 The fourth is there for the opposite reason to the other three. It is the one era
 discrimination in this package that neither refuses nor returns a value a caller
-can inspect: `Ledger8FoundContract.signingKey` is `undefined` either way, so
+can inspect: `deployTxData.private.signingKey` on the found handle is `undefined` either way, so
 without the breadcrumb "nothing was ever stored" and "an entry was there and this
 framework could not use it" are indistinguishable to an operator.
 
@@ -38,9 +38,9 @@ Several era decisions a reader might expect are REFUSALS rather than choices,
 and are not breadcrumbed a second time. Each already throws a registered,
 remediation-carrying error, which is a stronger signal than a debug line:
 
-- the retained-era deploy arm refuses a POST-FORK head;
+- the retained-era deploy path refuses a POST-FORK head;
 - a scoped transaction on a pre-fork head refuses;
-- a provider answering on the other era's arm refuses;
+- a provider answering with the other era's payload variant refuses;
 - a fetched state whose envelope disagrees with the head refuses.
 
 The head reading each of those refusals rests on IS breadcrumbed, because that
@@ -78,7 +78,7 @@ tell them apart would read as one operation contradicting itself.
 decides between reporting a fork crossing with a re-run remediation and
 reporting a rejection nothing could diagnose, and it is the only reading taken
 after bytes were already on the wire. See
-[StaleHeadRemediation](../../midnight-js/documents/StaleHeadRemediation.md).
+[ForkCrossedRemediation](../../midnight-js/documents/ForkCrossedRemediation.md).
 
 ## What each breadcrumb carries, and why
 
@@ -94,7 +94,7 @@ Emitted AFTER the era gate, never before: a breadcrumb written before the gate
 would claim a pipeline for an operation that was then refused.
 
 Which ROUTE the pairing runs is the `(path, version)` pair itself and is not
-restated as a third field — `path: 'ledger8'` with `version: 'v9'` is the
+restated as a third field — `path: 'v8'` with `version: 'v9'` is the
 keep-state route, with `version: 'v8'` the retained-native one. A derived route
 name could disagree with the pair it was derived from, which is the same reason
 the era gate itself returns nothing.
@@ -116,13 +116,12 @@ it out rather than present-and-undefined.
 
 ### Encoding
 
-This is the byte-level answer, and it is not the same claim as
-`RawContractState.version`, which is derived from the record's own
-`protocolVersion` and is explicitly not a verified statement about the envelope.
+This is the byte-level answer, read from the bytes themselves rather than from
+`RawContractState.version`, which a provider outside this framework may set wrongly.
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the
-re-read that follows is reported as its own head-resolution breadcrumb.
+re-read that follows is reported as its own network-version-read breadcrumb.
 
 ## Privacy
 
