@@ -18,14 +18,14 @@ import { type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version
 import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
-  type FinalizedTxData,
   type FinalizedTxRead,
+  type Ledger9FinalizedTxData,
   LedgerTransaction,
   TransactionEraMismatchError,
   type UnprovenTx} from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { EraArtifactMismatchError, type EraArtifactMismatchReason, EraInvariantViolationError } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
 import { proveBalanceSubmit } from './internal/submit-payload';
@@ -55,7 +55,7 @@ export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
  * manipulate private state, the private state provider can be omitted.
  */
 export type SubmitTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Omit<
-  ContractProviders<C, PCK>,
+  Ledger9ContractProviders<C, PCK>,
   'privateStateProvider'
 >;
 
@@ -91,7 +91,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
 export const submitLedger9Payload = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
-): Promise<FinalizedTxData> => {
+): Promise<Ledger9FinalizedTxData> => {
   const txId = await submitLedger9PayloadAsync(providers, options);
   return requireLedger9Record(
     await providers.publicDataProvider.watchForTxData(txId),

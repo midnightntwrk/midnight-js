@@ -29,8 +29,8 @@ describe('WalletProvider key readers', () => {
   });
 });
 
-// Reverting either signature to `Promise<FinalizedTxData>` still type-checks
-// everywhere, because `FinalizedTxData` is assignable to the union that
+// Reverting either signature to `Promise<Ledger9FinalizedTxData>` still type-checks
+// everywhere, because `Ledger9FinalizedTxData` is assignable to the union that
 // consumes it, so nothing else would notice.
 describe('read-surface provider members', () => {
   it('watchForTxData resolves a version-tagged finalized record', () => {

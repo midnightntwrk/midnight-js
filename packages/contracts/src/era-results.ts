@@ -35,9 +35,9 @@
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { DeployedContract } from './deploy-contract';
+import type { Ledger9DeployedContract } from './deploy-contract';
 import { UnknownResultEraError } from './errors';
-import type { FoundContract } from './find-deployed-contract';
+import type { Ledger9FoundContract } from './find-deployed-contract';
 import type {
   Ledger8CircuitId,
   Ledger8Contract,
@@ -47,7 +47,7 @@ import type {
   Ledger8FoundContract,
   Ledger8SubmittedCallTx
 } from './ledger8-contract';
-import type { FinalizedCallTxData, FinalizedMaintenanceTxData, SubmittedCallTx } from './tx-model';
+import type { Ledger9FinalizedCallTxData, Ledger9FinalizedMaintenanceTxData, Ledger9SubmittedCallTx } from './tx-model';
 
 /**
  * Restates the two members that would otherwise arrive as `any` on a widest
@@ -72,7 +72,7 @@ type WithOpaqueCircuitValues<T extends { readonly private: object }> = Omit<T, '
  * @see {@link isLedger8Result} to narrow it.
  */
 export type AnyEraFinalizedCallTxData =
-  | WithOpaqueCircuitValues<FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>>
+  | WithOpaqueCircuitValues<Ledger9FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>>
   | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 
 /**
@@ -82,9 +82,9 @@ export type AnyEraFinalizedCallTxData =
  * @see {@link isLedger8Result} to narrow it.
  */
 export type AnyEraSubmittedCallTx =
-  | (Omit<SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>, 'callTxData'> & {
+  | (Omit<Ledger9SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>, 'callTxData'> & {
       readonly callTxData: WithOpaqueCircuitValues<
-        SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>['callTxData']
+        Ledger9SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>['callTxData']
       >;
     })
   | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
@@ -100,7 +100,7 @@ export type AnyEraSubmittedCallTx =
  * @see {@link isLedger8Result} to narrow it.
  */
 export type AnyEraFoundContract<C extends Contract.Any, L8 extends Ledger8Contract> =
-  | FoundContract<C>
+  | Ledger9FoundContract<C>
   | Ledger8FoundContract<L8>;
 
 /**
@@ -111,7 +111,7 @@ export type AnyEraFoundContract<C extends Contract.Any, L8 extends Ledger8Contra
  * @see {@link isLedger8Result} to narrow it.
  */
 export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Contract> =
-  | DeployedContract<C>
+  | Ledger9DeployedContract<C>
   | Ledger8DeployedContract<L8>;
 
 /**
@@ -120,7 +120,7 @@ export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Con
  *
  * @see {@link isLedger8Result} to narrow it.
  */
-export type AnyEraMaintenanceTxData = FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
 /**
  * What the guard narrows a result to.

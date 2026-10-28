@@ -252,12 +252,12 @@ watchForUnshieldedBalances(
 // Wait for deploy transaction data
 watchForDeployTxData(
   contractAddress: ContractAddress
-): Promise<FinalizedTxData>
+): Promise<Ledger9FinalizedTxData>
 
 // Wait for any transaction data
 watchForTxData(
   txId: TransactionId
-): Promise<FinalizedTxData>
+): Promise<Ledger9FinalizedTxData>
 ```
 
 ### Observable Methods
@@ -460,7 +460,7 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 ## Transaction Data
 
 `IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
-`Promise<FinalizedTxRead>` — the closed union of `FinalizedTxData`
+`Promise<FinalizedTxRead>` — the closed union of `Ledger9FinalizedTxData`
 (v9) and `Ledger8FinalizedTxData` — exactly as the `PublicDataProvider` interface
 they satisfy does. Narrow on `era` before reading `tx`: the two variants carry
 transaction objects from different ledger runtimes, and neither runtime's
@@ -495,7 +495,7 @@ dependency tree.
 The v9 record includes:
 
 ```typescript
-type FinalizedTxData = {
+type Ledger9FinalizedTxData = {
   era: 'v9';                          // Ledger-era discriminant, derived
                                       // from protocolVersion
   tx: FinalizedTx;                    // Transaction handle of the same era

@@ -20,13 +20,13 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { CallOptionsWithArguments, CallResult } from '../../call';
-import type { ContractProviders } from '../../contract-providers';
+import type { Ledger9ContractProviders } from '../../contract-providers';
 import type { Ledger8CallTxOptions } from '../../ledger8-contract';
 import { submitCallTx } from '../../submit-call-tx';
 import type { TransactionContext } from '../../transaction';
-import { type CircuitCallTxInterface, createCallTxOptions, createCircuitCallTxInterface } from '../../tx-interfaces';
-import type { FinalizedCallTxData } from '../../tx-model';
-import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
+import { createCallTxOptions, createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
+import type { Ledger9FinalizedCallTxData } from '../../tx-model';
+import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
   CoinReceiver016Contract,
@@ -171,7 +171,7 @@ describe('createCallTxOptions for a ledger 8 contract with two circuits', () => 
   });
 });
 
-declare const providers: ContractProviders<CoinReceiver016Contract>;
+declare const providers: Ledger9ContractProviders<CoinReceiver016Contract>;
 declare const privateStateId: PrivateStateId;
 declare const coin: CoinReceiver016Coin;
 declare const transactionContext: TransactionContext<CoinReceiver016Contract, ReceiveCoinBrandedId>;
@@ -192,8 +192,8 @@ describe('createCircuitCallTxInterface', () => {
       [coin]
     );
 
-    expectTypeOf(callOptions).toEqualTypeOf<CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>>();
-    expectTypeOf<CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>['args']>().toEqualTypeOf<
+    expectTypeOf(callOptions).toEqualTypeOf<Ledger9CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>>();
+    expectTypeOf<Ledger9CallTxOptions<CoinReceiver016Contract, ReceiveCoinBrandedId>['args']>().toEqualTypeOf<
       [CoinReceiver016Coin]
     >();
   });
@@ -207,13 +207,13 @@ describe('createCircuitCallTxInterface', () => {
       undefined,
       [coin]
     );
-    const scopedOptions = callOptions as CallTxOptionsWithPrivateStateId<
+    const scopedOptions = callOptions as Ledger9CallTxOptionsWithPrivateStateId<
       CoinReceiver016Contract,
       ReceiveCoinBrandedId
     >;
 
     expectTypeOf(submitCallTx(providers, scopedOptions)).toEqualTypeOf<
-      Promise<FinalizedCallTxData<CoinReceiver016Contract, ReceiveCoinBrandedId>>
+      Promise<Ledger9FinalizedCallTxData<CoinReceiver016Contract, ReceiveCoinBrandedId>>
     >();
     expectTypeOf(submitCallTx(providers, scopedOptions, transactionContext)).toEqualTypeOf<
       Promise<CallResult<CoinReceiver016Contract, ReceiveCoinBrandedId>>
@@ -223,6 +223,6 @@ describe('createCircuitCallTxInterface', () => {
   it('exposes the interface type it claims, not a widened one', () => {
     expectTypeOf(
       createCircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId)
-    ).toEqualTypeOf<CircuitCallTxInterface<CoinReceiver016Contract>>();
+    ).toEqualTypeOf<Ledger9CircuitCallTxInterface<CoinReceiver016Contract>>();
   });
 });

@@ -23,7 +23,7 @@ transaction and the chain recorded it as something other than success", in
 either era.
 
 It exists because the two eras cannot share a record TYPE. The current era
-submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
+submits and accepts only v9, so its record is `Ledger9FinalizedTxData`. A retained-era
 call is recorded by whichever era the network head is on, so its record is the
 era-tagged union `FinalizedTxRead` — which is not assignable to the
 v9 variant. Narrowing the current era's member to the union would change a type

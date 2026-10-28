@@ -17,9 +17,9 @@ import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-r
 import {
   type All,
   type ContractStateRead,
-  type FinalizedTxData,
   type FinalizedTxRecord,
   type Latest,
+  type Ledger9FinalizedTxData,
   type PositionedRecord,
   type PublicDataProvider} from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -51,7 +51,7 @@ describe('Indexer API', () => {
   let testEnvironment: TestEnvironment;
 
   let deployedContractObserved: DeployedCounterContract;
-  let incrementFinalizedTxData: FinalizedTxData;
+  let incrementFinalizedTxData: Ledger9FinalizedTxData;
 
   const expectObservedContractStatesToEqual = async (
     observable$: Observable<PositionedRecord<ContractStateRead>>,

@@ -16,11 +16,11 @@
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
-import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
+import type { FinalizedTxRecord,Ledger9FinalizedTxData } from './midnight-types';
 
 /**
  * The v8 variant of {@link FinalizedTxRead}. Carries the same
- * finalized-transaction metadata as {@link FinalizedTxData} — both variants extend
+ * finalized-transaction metadata as {@link Ledger9FinalizedTxData} — both variants extend
  * {@link FinalizedTxRecord} — and the transaction as a {@link FinalizedTx}
  * handle whose era is v8: `record.tx.era === record.era`.
  *
@@ -51,7 +51,7 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
  * type system obliges a third-party `PublicDataProvider` to do the same, so the
  * discriminant is exactly as trustworthy as the provider that produced it.
  */
-export type FinalizedTxRead = Ledger8FinalizedTxData | FinalizedTxData;
+export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw

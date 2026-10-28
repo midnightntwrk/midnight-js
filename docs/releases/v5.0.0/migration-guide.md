@@ -215,7 +215,7 @@ If you make calls that span multiple deployed contracts, resolve proving artifac
 
 ## Step 11 — Read MIP-0002 log events from `CallResult` (optional)
 
-Local call results now surface their MIP-0002 log events on `CallResultPublic.events` (previously dropped). No change is required — the field is additive. To consume them, decode with the `ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
+Local call results now surface their MIP-0002 log events on `Ledger9CallResultPublic.events` (previously dropped). No change is required — the field is additive. To consume them, decode with the `ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
 
 ```ts
 import { contracts } from '@midnight-ntwrk/midnight-js';
@@ -1213,6 +1213,41 @@ import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
 as they are. `./compact-js/v8/effect` also stays.
 
 See [breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536).
+
+## Step 21 — Name the ledger in generic code and in types without a contract
+
+The ledger 9 result, option and interface types are now `Ledger9*` (#1536). The
+flat names stay for code that names a contract, and pick the era from it:
+
+```ts
+// No change: the flat name resolves to Ledger9FoundContract<typeof MyContract>
+const found: FoundContract<typeof MyContract> = await findDeployedContract(providers, options);
+```
+
+Generic code names the era:
+
+```ts
+// Before
+const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
+  data: FinalizedCallTxData<C, K>
+) => data.public;
+
+// After
+const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, K>
+) => data.public;
+```
+
+Rename the types that have no contract parameter: `FinalizedTxData` →
+`Ledger9FinalizedTxData`, `FinalizedMaintenanceTxData` →
+`Ledger9FinalizedMaintenanceTxData`, `FinalizedCallTxPublicData` →
+`Ledger9FinalizedCallTxPublicData`, `CallResultPublic` →
+`Ledger9CallResultPublic`, `CircuitMaintenanceTxInterface` →
+`Ledger9CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` →
+`Ledger9ContractMaintenanceTxInterface`. A third type argument to
+`ContractProviders` moves to `Ledger9ContractProviders<C, K, PS>`.
+
+See [breaking-changes.md](./breaking-changes.md#21-ledger-9-types-carry-the-ledger9-prefix-flat-names-pick-the-era-1536).
 
 ## Verification checklist
 

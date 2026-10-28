@@ -17,11 +17,11 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { DeployTxFailedError } from './errors';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitLedger9Payload } from './submit-tx';
-import type { FinalizedDeployTxData } from './tx-model';
+import type { Ledger9FinalizedDeployTxData } from './tx-model';
 import type { DeployTxOptionsBase, DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
 import { createUnprovenDeployTx } from './unproven-deploy-tx';
 
@@ -29,8 +29,8 @@ import { createUnprovenDeployTx } from './unproven-deploy-tx';
  * Providers necessary to submit a deployment transaction - all providers.
  */
 export type SubmitDeployTxProviders<C extends Contract.Any> =
-  | ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>
-  | ContractProviders<C>;
+  | Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>
+  | Ledger9ContractProviders<C>;
 
 /**
  * Configuration for creating deploy transactions.
@@ -38,14 +38,14 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitDeployTx<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
+  providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployTxOptionsBase<C>
-): Promise<FinalizedDeployTxData<C>>;
+): Promise<Ledger9FinalizedDeployTxData<C>>;
 
 export async function submitDeployTx<C extends Contract.Any>(
-  providers: ContractProviders<C>,
+  providers: Ledger9ContractProviders<C>,
   options: DeployTxOptionsWithPrivateStateId<C>
-): Promise<FinalizedDeployTxData<C>>;
+): Promise<Ledger9FinalizedDeployTxData<C>>;
 
 /**
  * Creates and submits a deploy transaction for the given contract.
@@ -88,7 +88,7 @@ export async function submitDeployTx<C extends Contract.Any>(
  *         is built or submitted, and ahead of the pairing refusal.
  *
  * @remarks
- * The returned {@link FinalizedDeployTxData} is privacy-sensitive and carries
+ * The returned {@link Ledger9FinalizedDeployTxData} is privacy-sensitive and carries
  * the unproven transaction, signing key, and initial private state. See that
  * type for handling guidance before logging, serializing, or transmitting the
  * result.
@@ -96,7 +96,7 @@ export async function submitDeployTx<C extends Contract.Any>(
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
   options: DeployTxOptions<C>
-): Promise<FinalizedDeployTxData<C>> {
+): Promise<Ledger9FinalizedDeployTxData<C>> {
   assertDeployPrivateStatePairing(options);
   const unprovenDeployTxData = await createUnprovenDeployTx(providers, options);
   const finalizedTxData = await submitLedger9Payload(providers, {

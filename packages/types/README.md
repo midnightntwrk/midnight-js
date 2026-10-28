@@ -13,7 +13,7 @@ yarn add @midnight-ntwrk/midnight-js-types
 ```typescript
 import {
   type MidnightProviders,
-  type FinalizedTxData,
+  type Ledger9FinalizedTxData,
   type FinalizedTxRecord,
   type TxStatus,
   SucceedEntirely,
@@ -264,10 +264,10 @@ const SegmentFail = 'SegmentFail';
 type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 ```
 
-### FinalizedTxData
+### Ledger9FinalizedTxData
 
 ```typescript
-interface FinalizedTxData {
+interface Ledger9FinalizedTxData {
   era: 'v9';
   tx: FinalizedTx;      // a handle of the same era: tx.era === era
   status: TxStatus;
@@ -356,7 +356,7 @@ import {
   zkConfigToProvingKeyMaterial,
 
   // Transaction types
-  type FinalizedTxData,
+  type Ledger9FinalizedTxData,
   type FinalizedTxRecord,
   type TxStatus,
   type SegmentStatus,

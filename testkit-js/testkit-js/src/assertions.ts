@@ -14,19 +14,19 @@
  */
 
 import type {
-  CallTxOptions,
-  DeployContractOptions,
   DeployTxOptions,
-  FinalizedCallTxData,
-  FinalizedDeployTxData,
   FinalizedDeployTxPublicData,
-  FoundDeployTxData
+  Ledger9CallTxOptions,
+  Ledger9DeployContractOptions,
+  Ledger9FinalizedCallTxData,
+  Ledger9FinalizedDeployTxData,
+  Ledger9FoundDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { ContractState, type StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
-  type FinalizedTxData,
+  type Ledger9FinalizedTxData,
   LedgerTransaction,
   type MidnightProviders,
   type PrivateStateId,
@@ -43,7 +43,7 @@ export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bi
 };
 
 const ledger9DeployPublicData = <C extends Contract.Any>(
-  foundDeployTxData: FoundDeployTxData<C>
+  foundDeployTxData: Ledger9FoundDeployTxData<C>
 ): FinalizedDeployTxPublicData => {
   const found = foundDeployTxData.public;
   if (found.era !== 'v9') {
@@ -53,8 +53,8 @@ const ledger9DeployPublicData = <C extends Contract.Any>(
 };
 
 export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
-  deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FoundDeployTxData<C>
+  deployTxData: Ledger9FinalizedDeployTxData<C>,
+  foundDeployTxData: Ledger9FoundDeployTxData<C>
 ): void => {
   const found = ledger9DeployPublicData(foundDeployTxData);
   expect(
@@ -72,8 +72,8 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
 };
 
 export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>(
-  deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FoundDeployTxData<C>
+  deployTxData: Ledger9FinalizedDeployTxData<C>,
+  foundDeployTxData: Ledger9FoundDeployTxData<C>
 ): void => {
   // For our purposes, we always find with the same private state that the contract is deployed with
   // so this comparison is justified.
@@ -81,8 +81,8 @@ export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>
 };
 
 export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
-  deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FoundDeployTxData<C>
+  deployTxData: Ledger9FinalizedDeployTxData<C>,
+  foundDeployTxData: Ledger9FoundDeployTxData<C>
 ): void => {
   expectFoundAndDeployedTxPublicDataEqual(deployTxData, foundDeployTxData);
   expectFoundAndDeployedTxPrivateDataEqual(deployTxData, foundDeployTxData);
@@ -90,8 +90,8 @@ export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
 
 export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
-  deployTxData: FinalizedDeployTxData<C>,
-  foundDeployTxData: FoundDeployTxData<C>,
+  deployTxData: Ledger9FinalizedDeployTxData<C>,
+  foundDeployTxData: Ledger9FoundDeployTxData<C>,
   privateStateId?: PrivateStateId,
   initialPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
@@ -111,7 +111,7 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   }
 };
 
-export const expectSuccessfulTxData = (finalizedTxData: FinalizedTxData): void => {
+export const expectSuccessfulTxData = (finalizedTxData: Ledger9FinalizedTxData): void => {
   expect(finalizedTxData.status).toEqual(SucceedEntirely);
   expect(finalizedTxData.tx).toBeTruthy();
   expect(finalizedTxData.txId).toBeTruthy();
@@ -122,8 +122,8 @@ export const expectSuccessfulTxData = (finalizedTxData: FinalizedTxData): void =
 
 export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
-  deployTxData: FinalizedDeployTxData<C>,
-  deployTxOptions?: DeployContractOptions<C> | DeployTxOptions<C>
+  deployTxData: Ledger9FinalizedDeployTxData<C>,
+  deployTxOptions?: Ledger9DeployContractOptions<C> | DeployTxOptions<C>
 ): Promise<void> => {
   expectSuccessfulTxData(deployTxData.public);
   expect(deployTxData.public.contractAddress).toBeTruthy();
@@ -161,8 +161,8 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
 
 export const expectSuccessfulCallTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
-  callTxData: FinalizedCallTxData<C, PCK>,
-  callTxOptions?: CallTxOptions<C, PCK>,
+  callTxData: Ledger9FinalizedCallTxData<C, PCK>,
+  callTxOptions?: Ledger9CallTxOptions<C, PCK>,
   nextPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
   expectSuccessfulTxData(callTxData.public);

@@ -30,8 +30,10 @@ try {
 ```
 
 The era prefix is dropped inside the namespace, because the namespace carries
-it. Where the current era publishes the same concept flat -- `FoundContract`,
-`CallTxOptions`, `FinalizedCallTxData` -- `Ledger8.X` is its retained twin. Not
+it. Where ledger 9 publishes the same concept as `Ledger9X` -- `Ledger9FoundContract`,
+`Ledger9CallTxOptions`, `Ledger9FinalizedCallTxData` -- `Ledger8.X` is its retained
+twin, and the flat `X` (`FoundContract<C>`) picks between the two by contract type
+(#1536). Not
 every member has such a twin: `Circuit`, `Witness`, `Contract`, `CircuitContext`
 and the six error classes have no same-spelled name on this package's flat
 surface, because the current era's equivalents live under `Contract.*` in
@@ -158,8 +160,9 @@ overloads on `submitCallTx`, `submitCallTxAsync`, `findDeployedContract`,
 `createContractMaintenanceTxInterface` go with them, which narrows those entry
 points' overload sets.
 
-No current-era NAME changes, and no consumer that never touched the retained era
-has an import to rewrite. That is the property the flat family did not have: it
+No ledger 9 NAME changes, and no consumer that never touched the retained era
+has an import to rewrite. When the namespace goes, the flat aliases lose their
+`Ledger8` branch. That is the property the flat family did not have: it
 would have removed 55 published names instead of one.
 
 ## What guards it

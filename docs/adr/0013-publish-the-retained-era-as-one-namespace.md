@@ -129,3 +129,16 @@ Issue #1533. Of the two errors the Follow-ups name, the instance-mismatch error 
 removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised by
 `LedgerTransaction.seal` ([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)).
 `Ledger8RuntimeMissingError` stays flat in `protocol`.
+
+## Amendment — ledger 9 gets flat `Ledger9*` names, and flat names pick the era (2026-10-28)
+
+Issue #1536. Every type with a `Ledger8` member now has a ledger 9 variant named `Ledger9*`
+(`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract parameter is an alias
+that picks the variant from the contract type, `Ledger8` branch first. A type without a contract
+parameter keeps only its `Ledger9*` name.
+
+The ledger 9 variants are flat exports, not a `Ledger9` namespace. The entry points return them,
+and a dApp that emits declarations must be able to name what it infers: a type reachable only
+through a namespace re-export fails with TS4023 ("cannot be named"). The `Ledger8` namespace has
+the same defect; flat `Ledger8*` exports are a follow-up.
+

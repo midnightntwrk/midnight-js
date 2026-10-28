@@ -22,12 +22,12 @@ import { describe, expectTypeOf, it } from 'vitest';
 // so the shape under test is the compiler's view of real generated code rather than a restatement
 // of it.
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
-import type { ContractProviders } from '../../contract-providers';
+import type { Ledger9ContractProviders } from '../../contract-providers';
 import {
   deployContract,
-  type DeployContractOptions,
-  type DeployContractOptionsBase,
-  type DeployContractOptionsWithPrivateState
+  type Ledger9DeployContractOptions,
+  type Ledger9DeployContractOptionsBase,
+  type Ledger9DeployContractOptionsWithPrivateState
 } from '../../deploy-contract';
 
 // Compile-level tests, run by the typecheck pass this package enables in `vitest.config.ts` -- see
@@ -42,23 +42,23 @@ type Twin018 = Twin018Contract<Twin018PrivateState>;
 
 declare const compiledContract018: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
 declare const twinPrivateState: Twin018PrivateState;
-declare const providers018: ContractProviders<Twin018>;
+declare const providers018: Ledger9ContractProviders<Twin018>;
 
 describe('the current-era deploy options pair a private state id with a private state', () => {
   it('names where the constructor private state is stored, on the private-state variant alone', () => {
-    expectTypeOf<DeployContractOptionsWithPrivateState<Twin018>['privateStateId']>().toEqualTypeOf<PrivateStateId>();
+    expectTypeOf<Ledger9DeployContractOptionsWithPrivateState<Twin018>['privateStateId']>().toEqualTypeOf<PrivateStateId>();
     expectTypeOf<
-      DeployContractOptionsWithPrivateState<Twin018>['initialPrivateState']
+      Ledger9DeployContractOptionsWithPrivateState<Twin018>['initialPrivateState']
     >().toEqualTypeOf<Twin018PrivateState>();
     // DECLARED on the no-private-state variant as `never`, not absent from it -- see the member's own
     // TSDoc in `deploy-contract.ts` for why absence was the bug.
-    expectTypeOf<DeployContractOptionsBase<Twin018>['privateStateId']>().toEqualTypeOf<undefined>();
-    expectTypeOf<DeployContractOptionsBase<Twin018>['initialPrivateState']>().toEqualTypeOf<undefined>();
+    expectTypeOf<Ledger9DeployContractOptionsBase<Twin018>['privateStateId']>().toEqualTypeOf<undefined>();
+    expectTypeOf<Ledger9DeployContractOptionsBase<Twin018>['initialPrivateState']>().toEqualTypeOf<undefined>();
   });
 
   it('keeps both variants in the published union', () => {
-    expectTypeOf<DeployContractOptionsBase<Twin018>>().toMatchTypeOf<DeployContractOptions<Twin018>>();
-    expectTypeOf<DeployContractOptionsWithPrivateState<Twin018>>().toMatchTypeOf<DeployContractOptions<Twin018>>();
+    expectTypeOf<Ledger9DeployContractOptionsBase<Twin018>>().toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
+    expectTypeOf<Ledger9DeployContractOptionsWithPrivateState<Twin018>>().toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
   });
 
   // THE FOUR SHAPES, as a table. The two variants are SIBLINGS rather than base-and-derived: adding
@@ -68,43 +68,43 @@ describe('the current-era deploy options pair a private state id with a private 
   it('admits the private-state PAIR, and refuses either half on its own', () => {
     expectTypeOf<{
       readonly compiledContract: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
-    }>().toMatchTypeOf<DeployContractOptions<Twin018>>();
+    }>().toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
     expectTypeOf<{
       readonly compiledContract: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
       readonly privateStateId: PrivateStateId;
       readonly initialPrivateState: Twin018PrivateState;
-    }>().toMatchTypeOf<DeployContractOptions<Twin018>>();
+    }>().toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
     // An id with nothing to store under it: the deploy would store `undefined` there and hand back
     // a handle whose `initialPrivateState` is typed non-optional while actually undefined.
     expectTypeOf<{
       readonly compiledContract: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
       readonly privateStateId: PrivateStateId;
-    }>().not.toMatchTypeOf<DeployContractOptions<Twin018>>();
+    }>().not.toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
     // A state with nowhere to go: the constructor runs against it and nothing is ever stored, so
     // every later call reads a state the contract never had.
     expectTypeOf<{
       readonly compiledContract: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
       readonly initialPrivateState: Twin018PrivateState;
-    }>().not.toMatchTypeOf<DeployContractOptions<Twin018>>();
+    }>().not.toMatchTypeOf<Ledger9DeployContractOptions<Twin018>>();
   });
 
   // The same table again as DECLARATIONS, which is how a consumer writes them. `toMatchTypeOf`
   // above is plain assignability; these are what tsc reports at a call site, excess-property
   // checking included.
   it('refuses either half on its own where a consumer actually writes it', () => {
-    const neither: DeployContractOptions<Twin018> = { compiledContract: compiledContract018 };
-    const both: DeployContractOptions<Twin018> = {
+    const neither: Ledger9DeployContractOptions<Twin018> = { compiledContract: compiledContract018 };
+    const both: Ledger9DeployContractOptions<Twin018> = {
       compiledContract: compiledContract018,
       privateStateId: 'twin',
       initialPrivateState: twinPrivateState
     };
     // @ts-expect-error - a private state id with no state to store under it
-    const idAlone: DeployContractOptions<Twin018> = {
+    const idAlone: Ledger9DeployContractOptions<Twin018> = {
       compiledContract: compiledContract018,
       privateStateId: 'twin'
     };
     // @ts-expect-error - a private state with no id naming where it goes
-    const stateAlone: DeployContractOptions<Twin018> = {
+    const stateAlone: Ledger9DeployContractOptions<Twin018> = {
       compiledContract: compiledContract018,
       initialPrivateState: twinPrivateState
     };

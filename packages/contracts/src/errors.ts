@@ -19,8 +19,8 @@ import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   AnyProvableCircuitId,
-  FinalizedTxData,
   FinalizedTxRead,
+  Ledger9FinalizedTxData,
   PrivateStateId,
   ProviderMethod} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
@@ -974,7 +974,7 @@ export class TxFailedError extends AnyEraTxFailedError {
    *                  failed.
    */
   constructor(
-    public readonly finalizedTxData: FinalizedTxData,
+    public readonly finalizedTxData: Ledger9FinalizedTxData,
     public readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super('Transaction failed');
@@ -1005,7 +1005,7 @@ export class DeployTxFailedError extends TxFailedError {
   /**
    * @param finalizedTxData The finalization data of the deployment transaction that failed.
    */
-  constructor(finalizedTxData: FinalizedTxData) {
+  constructor(finalizedTxData: Ledger9FinalizedTxData) {
     super(finalizedTxData);
     this.name = 'DeployTxFailedError';
   }
@@ -1016,7 +1016,7 @@ export class DeployTxFailedError extends TxFailedError {
  *
  * `circuitId` names every circuit the failed TRANSACTION carried, so in a
  * scope that made several calls it is the whole list. That is deliberately
- * wider than {@link FinalizedCallTxData.circuitId}, which names the one call
+ * wider than {@link Ledger9FinalizedCallTxData.circuitId}, which names the one call
  * its result describes: nothing about a transaction-level failure attributes
  * it to a single call within the transaction.
  */
@@ -1026,7 +1026,7 @@ export class CallTxFailedError extends TxFailedError {
    * @param circuitId The name of the circuit that was called to build the transaction.
    */
   constructor(
-    finalizedTxData: FinalizedTxData,
+    finalizedTxData: Ledger9FinalizedTxData,
     circuitId: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super(finalizedTxData, circuitId);
@@ -1352,7 +1352,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * status other than `SucceedEntirely`.
  *
  * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
- * reused because it carries a current-era `FinalizedTxData` where a retained
+ * reused because it carries a current-era `Ledger9FinalizedTxData` where a retained
  * call is recorded as an era-tagged {@link FinalizedTxRead}.
  *
  * Carries no registered error code of its own. Branch on the class, or on the

@@ -638,7 +638,7 @@ export const findLedger8Contract = async (
  * status.
  *
  * Raises the retained-era path's own class rather than {@link CallTxFailedError},
- * which carries a current-era-only `FinalizedTxData`.
+ * which carries a current-era-only `Ledger9FinalizedTxData`.
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.

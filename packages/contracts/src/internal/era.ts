@@ -30,9 +30,9 @@ import {
 import {
   ArtifactRuntimeVersionUnavailableError,
   type ContractStateRead,
-  type FinalizedTxData,
   type FinalizedTxRead,
   InvalidLedgerStateError,
+  type Ledger9FinalizedTxData,
   LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
@@ -312,7 +312,7 @@ export function requireLedger9Record(
   record: FinalizedTxRead,
   method: ReadMethod,
   circuitId?: string | readonly string[]
-): FinalizedTxData {
+): Ledger9FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
     throw new UnknownLedgerVersionError(readEraTag(record), method);
   }

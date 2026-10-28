@@ -30,7 +30,7 @@ import {
 import { assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { UnsubmittedDeployTxData } from './tx-model';
@@ -188,7 +188,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
  * provider and a wallet.
  */
 export type UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
-  ContractProviders<C>,
+  Ledger9ContractProviders<C>,
   'zkConfigProvider' | 'walletProvider' | 'config'
 >;
 

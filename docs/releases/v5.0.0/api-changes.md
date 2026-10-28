@@ -158,7 +158,7 @@ interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; s
 // Read surface: era-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly era: 'v8'; readonly tx: LedgerTransaction<'Finalized', 'v8'>; }
-export type FinalizedTxRead = Ledger8FinalizedTxData | FinalizedTxData;
+export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
 // Refusals.
 export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
@@ -176,7 +176,7 @@ export const createWalletProviderFromHandlers: (handlers: WalletProviderHandlers
 export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHandlers) => MidnightProvider;
 ```
 
-`FinalizedTxData` gained a required `era: 'v9'`, and its `tx` is a
+`Ledger9FinalizedTxData` gained a required `era: 'v9'`, and its `tx` is a
 `LedgerTransaction<'Finalized', 'v9'>`, so narrowing a record on `era`
 narrows `tx.era` with it. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
 `MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
@@ -303,10 +303,10 @@ interface MidnightProviders {
 | `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
 
 
-### `CallResultPublic.events` + `ContractLog` re-export (#1083)
+### `Ledger9CallResultPublic.events` + `ContractLog` re-export (#1083)
 
 ```ts
-interface CallResultPublic {
+interface Ledger9CallResultPublic {
   // ...existing fields
   readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
 }
@@ -397,11 +397,11 @@ is optional: a refused deploy key has no address yet.
 ### Contract maintenance in both eras (#1514)
 
 ```ts
-export interface FinalizedMaintenanceTxData {
+export interface Ledger9FinalizedMaintenanceTxData {
   readonly era: 'v9';
-  readonly public: FinalizedTxData;
+  readonly public: Ledger9FinalizedTxData;
 }
-export type AnyEraMaintenanceTxData = FinalizedMaintenanceTxData | Ledger8.FinalizedMaintenanceTxData;
+export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8.FinalizedMaintenanceTxData;
 
 export function submitInsertVerifierKeyTx<C extends Ledger8.Contract>(
   providers: Ledger8.ContractProviders<C, Ledger8.CircuitId<C>>,
@@ -416,26 +416,26 @@ export function submitInsertVerifierKeyTx<C extends Contract.Any>(
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>,
   newVk: VerifierKey
-): Promise<FinalizedMaintenanceTxData>;
+): Promise<Ledger9FinalizedMaintenanceTxData>;
 // submitRemoveVerifierKeyTx and submitReplaceAuthorityTx take the same two overloads;
 // so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
 
 export namespace Ledger8 {
-  export interface FinalizedMaintenanceTxData {
+  export interface Ledger9FinalizedMaintenanceTxData {
     readonly era: 'v8';
     readonly public: Ledger8FinalizedTxData;
   }
-  export interface CircuitMaintenanceTxInterface {
-    removeVerifierKey(): Promise<FinalizedMaintenanceTxData>;
-    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedMaintenanceTxData>;
+  export interface Ledger9CircuitMaintenanceTxInterface {
+    removeVerifierKey(): Promise<Ledger9FinalizedMaintenanceTxData>;
+    insertVerifierKey(newVk: VerifierKey): Promise<Ledger9FinalizedMaintenanceTxData>;
   }
-  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, CircuitMaintenanceTxInterface>;
-  export interface ContractMaintenanceTxInterface {
-    replaceAuthority(newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData>;
+  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, Ledger9CircuitMaintenanceTxInterface>;
+  export interface Ledger9ContractMaintenanceTxInterface {
+    replaceAuthority(newAuthority: SigningKey): Promise<Ledger9FinalizedMaintenanceTxData>;
   }
   // FoundContract<C> and DeployedContract<C> gain
   //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
-  //   contractMaintenanceTx: ContractMaintenanceTxInterface
+  //   contractMaintenanceTx: Ledger9ContractMaintenanceTxInterface
   // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
   //   ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
   //   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.

@@ -18,10 +18,10 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import type { Ledger9ContractStates, Ledger9PublicStates } from './internal/era';
 import * as Internal from './internal/transaction';
-import type { FinalizedCallTxData, UnsubmittedCallTxData } from './tx-model';
+import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from './tx-model';
 
 export const TypeId: unique symbol = Internal.TypeId;
 export type TypeId = typeof TypeId;
@@ -34,10 +34,10 @@ export interface TransactionContext<
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 > {
   readonly [TypeId]: TypeId;
-  readonly [Internal.Submit]: () => Promise<FinalizedCallTxData<C, PCK>>;
+  readonly [Internal.Submit]: () => Promise<Ledger9FinalizedCallTxData<C, PCK>>;
   readonly [Internal.MergeUnsubmittedCallTxData]: (
     circuitId: PCK,
-    callData: UnsubmittedCallTxData<C, PCK>,
+    callData: Ledger9UnsubmittedCallTxData<C, PCK>,
     privateStateId?: PrivateStateId
   ) => void;
   readonly [Internal.CacheStates]: (
@@ -75,10 +75,10 @@ export interface TransactionContext<
   /**
    * Gets the last unsubmitted call transaction data.
    *
-   * @return A tuple containing an {@link UnsubmittedCallTxData} instance, and an optional private state
+   * @return A tuple containing an {@link Ledger9UnsubmittedCallTxData} instance, and an optional private state
    * ID, or `undefined` if circuit calls are yet to be made.
    */
-  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined;
+  getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined;
 }
 
 /**
@@ -132,10 +132,10 @@ export const withContractScopedTransaction: <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
-  providers: ContractProviders<C, PCK>,
+  providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: TransactionContext<C, PCK>) => Promise<void>,
   options?: ScopedTransactionOptions
-) => Promise<FinalizedCallTxData<C, PCK>> =
+) => Promise<Ledger9FinalizedCallTxData<C, PCK>> =
   async (providers, fn, options?) => {
     assertValidMidnightConfig(providers.config);
     return Internal.scopedTransaction(providers, fn, options);

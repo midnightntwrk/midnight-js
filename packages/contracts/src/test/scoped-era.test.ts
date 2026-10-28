@@ -45,7 +45,7 @@ import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl
 import { submitCallTx } from '../submit-call-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
-import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
+import { createUnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -110,7 +110,7 @@ describe('per-scope era resolution', () => {
     vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
-  const callOptions = (): CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
+  const callOptions = (): Ledger9CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
     compiledContract,
     contractAddress,
     circuitId: 'testCircuit' as AnyProvableCircuitId,

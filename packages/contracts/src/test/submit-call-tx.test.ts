@@ -23,7 +23,7 @@ import {
   type AnyProvableCircuitId,
   FailEntirely,
   FailFallible,
-  type FinalizedTxData,
+  type Ledger9FinalizedTxData,
   type PrivateStateId,
   SegmentFail,
   SegmentSuccess
@@ -36,8 +36,8 @@ import { resolveArtifactEra } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitLedger9Payload, submitLedger9PayloadAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
-import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
-import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
+import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from '../tx-model';
+import { createUnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   createMockCoinInfo,
   createMockCompiledContract,
@@ -74,7 +74,7 @@ describe('submit-call-tx', () => {
     mockCoinInfo = createMockCoinInfo();
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, AnyProvableCircuitId>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<Ledger9CallTxOptions<Contract.Any, AnyProvableCircuitId>> = {}) => ({
     compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
     circuitId: 'testCircuit' as AnyProvableCircuitId,
@@ -92,7 +92,7 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+  const createFailedTxData = (): Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),
@@ -115,10 +115,10 @@ describe('submit-call-tx', () => {
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>,
-    mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>,
-    options: CallTxOptions<Contract.Any, AnyProvableCircuitId>
+    mockUnprovenCallTxData: Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>,
+    mockFinalizedTxData: Ledger9FinalizedTxData,
+    result: Ledger9FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>,
+    options: Ledger9CallTxOptions<Contract.Any, AnyProvableCircuitId>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
       mockProviders,
@@ -421,7 +421,7 @@ describe('submit-call-tx', () => {
           [0, SegmentSuccess],
           [1, SegmentFail]
         ]);
-        const mockFailedTxData: FinalizedTxData = {
+        const mockFailedTxData: Ledger9FinalizedTxData = {
           ...createMockFinalizedTxData(FailFallible),
           segmentStatusMap
         };
@@ -765,7 +765,7 @@ describe('submit-call-tx', () => {
   });
 
   describe('FailFallible with unshielded outputs', () => {
-    it('should preserve guaranteed unshielded outputs in FinalizedTxData when fallible portion fails', async () => {
+    it('should preserve guaranteed unshielded outputs in Ledger9FinalizedTxData when fallible portion fails', async () => {
       const options = createBasicCallOptions();
       const mockUnprovenCallTxData = createMockUnprovenCallTxData();
       const guaranteedUnshieldedOutputs = {
@@ -781,7 +781,7 @@ describe('submit-call-tx', () => {
         [0, SegmentSuccess],
         [1, SegmentFail]
       ]);
-      const mockFailedTxData: FinalizedTxData = {
+      const mockFailedTxData: Ledger9FinalizedTxData = {
         ...createMockFinalizedTxData(FailFallible),
         segmentStatusMap,
         unshielded: guaranteedUnshieldedOutputs

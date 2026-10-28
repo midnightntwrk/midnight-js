@@ -28,7 +28,7 @@ All three name the era of the ledger that wrote them `era`.
 Two families of names, and the word that tells them apart. A `*Tx` name with no
 `Data` is a transaction handle (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). A
 `*TxData` name is data about a transaction, kept from 4.x: the record a read
-method returns (`FinalizedTxData`, `Ledger8FinalizedTxData`,
+method returns (`Ledger9FinalizedTxData`, `Ledger8FinalizedTxData`,
 `FinalizedTxRead`). Its `tx` field is a `FinalizedTx`.
 
 What each provider declares about the eras it serves is covered in

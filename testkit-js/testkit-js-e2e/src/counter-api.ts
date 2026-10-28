@@ -16,7 +16,7 @@
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
@@ -129,7 +129,7 @@ export const deploy = async (
   return counterContract;
 };
 
-export const increment = async (counterContract: DeployedCounterContract): Promise<FinalizedTxData> => {
+export const increment = async (counterContract: DeployedCounterContract): Promise<Ledger9FinalizedTxData> => {
   logger.info('Incrementing...');
   const finalizedTxData = await counterContract.callTx.increment();
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);

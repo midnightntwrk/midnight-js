@@ -22,12 +22,11 @@ export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 export {
-  type CircuitMaintenanceTxInterface,
-  type CircuitMaintenanceTxInterfaces,
-  type ContractMaintenanceTxInterface,
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface
-} from './tx-interfaces';
+  createContractMaintenanceTxInterface,
+  type Ledger9CircuitMaintenanceTxInterface,
+  type Ledger9CircuitMaintenanceTxInterfaces,
+  type Ledger9ContractMaintenanceTxInterface} from './tx-interfaces';
 // Note: ./unproven-tx is intentionally NOT re-exported.
 // Its helpers are package-private (only consumed by the submit-*.ts files in this directory).

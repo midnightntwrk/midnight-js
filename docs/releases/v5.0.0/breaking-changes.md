@@ -1152,6 +1152,59 @@ unchanged.
 
 ---
 
+## 21. Ledger 9 types carry the `Ledger9` prefix; flat names pick the era (#1536)
+
+Every type with a `Ledger8` variant now has a `Ledger9*` variant, and the flat
+name picks the variant from the contract type. A flat name no longer silently
+moves to the next ledger at a fork.
+
+**Types with a contract parameter.** The flat name stays and becomes an alias:
+
+```ts
+type FoundContract<C> = C extends Ledger8Contract ? Ledger8.FoundContract<C>
+  : C extends Ledger9Contract ? Ledger9FoundContract<C>
+  : never;
+```
+
+This applies to `FoundContract`, `DeployedContract`, `FinalizedCallTxData`,
+`SubmittedCallTx`, `UnsubmittedCallTxData`, `FoundDeployTxData`,
+`FinalizedDeployTxData`, `CallResultPrivate`, `CallTxOptions`,
+`CallTxOptionsBase`, `CallTxOptionsWithPrivateStateId`, `DeployContractOptions`,
+`DeployContractOptionsBase`, `DeployContractOptionsWithPrivateState`,
+`FindDeployedContractOptions`, `CircuitCallTxInterface`,
+`CircuitMaintenanceTxInterfaces` and `ContractProviders`.
+
+Code with a concrete contract (`FoundContract<typeof MyContract>`) does not
+change. Generic code must name the era: a circuit id of a generic contract
+(`K extends Contract.ProvableCircuitId<C>`) does not satisfy the alias, so
+write `Ledger9FinalizedCallTxData<C, K>`, `Ledger9CallTxOptions<C, K>` and so
+on. The entry points return the `Ledger9*` type, which is also what an editor
+shows.
+
+`ContractProviders` lost its third parameter (`PS`): the private state type comes
+from the contract. Use `Ledger9ContractProviders<C, K, PS>` to pass it.
+
+**Types without a contract parameter.** Renamed, with no flat alias, because
+nothing tells the eras apart:
+
+| Before | After |
+|---|---|
+| `FinalizedTxData` (types) | `Ledger9FinalizedTxData` |
+| `FinalizedMaintenanceTxData` | `Ledger9FinalizedMaintenanceTxData` |
+| `FinalizedCallTxPublicData` | `Ledger9FinalizedCallTxPublicData` |
+| `CallResultPublic` | `Ledger9CallResultPublic` |
+| `CircuitMaintenanceTxInterface` | `Ledger9CircuitMaintenanceTxInterface` |
+| `ContractMaintenanceTxInterface` | `Ledger9ContractMaintenanceTxInterface` |
+
+For a value of either era, use the unions: `VersionedFinalizedTxData`,
+`AnyEraMaintenanceTxData`. Earlier sections of this document use the names
+before this rename.
+
+New: `Ledger9Contract` (the ledger 9 `Contract.Any`), `AnyEraContract` and
+`CircuitIdOf<C>`. See ADR 0013 and ADR 0018.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

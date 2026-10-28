@@ -24,7 +24,7 @@ import {
   type UnboundTx,
   type UnprovenTx
 } from '../ledger-transaction';
-import type { FinalizedTxData } from '../midnight-types';
+import type { Ledger9FinalizedTxData } from '../midnight-types';
 import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 
 declare const unprovenTx: UnprovenTx;
@@ -81,7 +81,7 @@ describe('LedgerTransaction.unwrap', () => {
 
 describe('finalized transaction records', () => {
   it('carry the transaction as a finalized handle of the record era', () => {
-    expectTypeOf<FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v9'>>();
+    expectTypeOf<Ledger9FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v9'>>();
     expectTypeOf<Ledger8FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v8'>>();
     expectTypeOf<FinalizedTxRead['tx']>().toExtend<FinalizedTx>();
   });

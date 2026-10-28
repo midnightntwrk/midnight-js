@@ -17,7 +17,7 @@ import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contract
 import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type Ledger9FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
@@ -49,7 +49,7 @@ describe('Indexer API', () => {
   let providers: CounterProviders;
   let deployedContract: DeployedCounterContract;
   let finalizedDeployTxData: FinalizedDeployTxData<CounterContract>;
-  let incrementedTxData: FinalizedTxData;
+  let incrementedTxData: Ledger9FinalizedTxData;
   let testEnvironment: TestEnvironment;
   let indexerQueryUrl: string;
 
