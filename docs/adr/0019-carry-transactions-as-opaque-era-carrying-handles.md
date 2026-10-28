@@ -204,3 +204,12 @@ at a boundary to another ledger copy.
 **Keep the `version`-tagged record and only make the v9 variant generic.** Rejected. It keeps the
 shape change at every fork and the two handler shapes, which are the costs this ADR exists to
 remove.
+
+## Amendment — contract states and public states become bytes (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+The last sentence of point 11 ("Contract states and public states are not transactions and stay as
+ADR 0006 left them") no longer holds. They are now a `LedgerState`: bytes and the version of the
+ledger that wrote them, decoded by the caller's own runtime. Transactions are unchanged: a
+`LedgerTransaction` still holds a live object. The #1525 follow-up is closed by ADR 0020: a v8
+state is decoded with the caller's `onchain-runtime-v3` `ContractState`.

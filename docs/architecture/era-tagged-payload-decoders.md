@@ -30,7 +30,7 @@ around it, and a failure that only appears against a chain that has crossed the 
 | 1 | keep-state envelope check (`assertRetainedStateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
 | 2 | `composeCallTx` operation registry, `packages/protocol` | contract state | fixed — the registry is re-expressed for the composing era |
 | 3 | `assemble-call.ts` partitioner | ledger parameters | fixed — the chain's own parameters are carried in as bytes |
-| 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed here |
+| 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed, then removed: the read no longer decodes (ADR 0020) |
 
 The numbering the envelopes use is per payload family and the families collide, so no era can be
 derived from a `[vN]` by arithmetic or by analogy with another family's table:
@@ -42,16 +42,11 @@ derived from a `[vN]` by arithmetic or by analogy with another family's table:
 | zswap chain state | `midnight:zswap-ledger-state[v5]` | `midnight:zswap-ledger-state[v5]` |
 
 Every row above is measured against bytes minted by both real runtimes, never assumed from another
-family's numbering. The two era tables in
-`packages/utils/src/{contract-state,ledger-parameters}-envelope.ts` are pinned by those
-measurements, in two places:
-
-- **ledger parameters** and **zswap chain state** —
-  `packages/indexer-public-data-provider/src/test/ledger-parameters.test.ts`, which asserts the
-  literal tag each runtime writes.
-- **contract state** — `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`,
-  which asserts the mapping rather than the literal tag: a runtime that changed its tag fails there
-  because the minted bytes stop resolving to their era.
+family's numbering. The rows live in one table, `LEDGER_STATE_TAGS` in
+`packages/protocol/src/lib/shared/state-tags.ts`, which `LedgerState.fromBytes` in `types` and the
+`ledgerVersionOf*` readers in `utils` both read. It is pinned by
+`packages/protocol/src/test/state-tags.test.ts`, which mints every kind with both runtimes and
+asserts the literal tag each one writes.
 
 The zswap row is the one exception in kind: the same test mints it empty and carrying retained past
 roots, and asserts the bytes are identical and that each era reads the other's. A payload with no
@@ -82,11 +77,15 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 ### Decoders that are correct because the era is chosen per payload
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `toVersionedContractState` and
-  `toVersionedPublicStates` read the envelope first and decode only a v9 one, handing a v8 one on
-  as bytes; `toRawContractState` tags the record by the envelope; `parseHexContractState` and
-  `parseHexLedgerParameters` stay v9-only and refuse an era they cannot read;
+- `packages/indexer-public-data-provider/src/codec.ts` — `toContractStateRead` and
+  `toPublicStatesRead` decode nothing: they read the version tag of each payload and wrap the bytes
+  in a `LedgerState` of that version. The caller decodes with its own runtime (ADR 0020).
   `decodeRecordTransaction` dispatches per record to a table with one entry per era.
+- `packages/types/src/ledger-state.ts` — `LedgerState.deserialize` calls only the decoder for the
+  value's own version.
+- `packages/contracts/src/internal/era.ts` — `decodeLedger9ContractState` and
+  `decodeLedger9PublicStates` decode a read with the framework's copy, only to build a transaction,
+  and refuse a v8 state with `Ledger8ContractStateUnsupportedError` before any decode.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
 ### Decoders that are correct because the code path owns the era
@@ -189,8 +188,8 @@ not run. Testkit only, and not on the path of any defect above.
 
 - [The fork-crossing e2e environment](./fork-e2e-environment.md)
 - `packages/protocol/docs/shared-table-discipline.md` — why a table indexed by a value must not
-  resolve an unexpected key through `Object.prototype`, and why a tag table must not be copied. Both
-  envelope tables in `packages/utils` satisfy that by being keyed by ERA and searched rather than
-  keyed by tag and indexed, which also makes a new `LedgerVersion` with no tag a build failure.
+  resolve an unexpected key through `Object.prototype`, and why a tag table must not be copied.
+  `LEDGER_STATE_TAGS` satisfies that by being keyed by kind and ERA, and searched rather than keyed
+  by tag and indexed, which also makes a new `LedgerVersion` with no tag a build failure.
 - `packages/protocol/docs/fail-closed-decoding.md` — what a decode guarantees once the era is settled
 - `packages/contracts/docs/keep-state-pipeline.md` — the retained-era read path

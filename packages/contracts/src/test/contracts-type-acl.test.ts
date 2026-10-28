@@ -88,8 +88,6 @@ const typeOnlyExportNames = (namespaceExport?: string): string[] => {
 describe('Contracts type ACL', () => {
   it('publishes exactly this type surface', () => {
     expect(typeOnlyExportNames()).toEqual([
-      'AnyEraContractState',
-      'AnyEraContractStateReadSurface',
       'AnyEraDeployedContract',
       'AnyEraFinalizedCallTxData',
       'AnyEraFoundContract',
@@ -147,6 +145,8 @@ describe('Contracts type ACL', () => {
       'FoundDeployTxData',
       'FoundDeployTxPublicData',
       'Ledger8FoundDeployTxPublicData',
+      'Ledger9ContractStates',
+      'Ledger9PublicStates',
       'LogEvent',
       'ScopedTransactionOptions',
       'SubmitCallTxProviders',

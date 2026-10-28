@@ -81,7 +81,11 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### Contract-state and balance streams emit `PositionedRecord<T>` (#1399)
 
-`contractStateObservable`, `rawContractStateObservable` and `unshieldedBalancesObservable` emit `{ value, blockHeight, blockHash }`. Read `record.value` where you read the emitted value before; pass the position back as a `blockHeight` / `blockHash` config to resume the stream. See [breaking-changes.md](./breaking-changes.md).
+`contractStateObservable` and `unshieldedBalancesObservable` emit `{ value, blockHeight, blockHash }`. Read `record.value` where you read the emitted value before; pass the position back as a `blockHeight` / `blockHash` config to resume the stream. See [breaking-changes.md](./breaking-changes.md).
+
+### On-chain state is bytes, decoded by your own runtime (#1550)
+
+Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `LedgerState`: the bytes and the `version` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 

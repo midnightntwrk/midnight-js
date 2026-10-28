@@ -21,7 +21,7 @@ import type {
 import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 
-import { requireLedger9ContractState } from '../era';
+import { decodeLedger9PublicStates } from '../era';
 
 /**
  * The chain-side state of one cross-contract callee, as of the resolver's block.
@@ -109,7 +109,7 @@ export const makeCalleeStateResolver = (
       if (resolved === null) {
         return undefined;
       }
-      const { zswapChainState, contractState } = requireLedger9ContractState(resolved, address, 'makeCalleeStateResolver');
+      const { zswapChainState, contractState } = decodeLedger9PublicStates(resolved, address, 'makeCalleeStateResolver');
       resolvedStates.set(key, { contractState, zswapChainState });
       return contractState;
     }

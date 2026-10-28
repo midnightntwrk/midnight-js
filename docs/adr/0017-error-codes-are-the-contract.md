@@ -108,6 +108,8 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `FOREIGN_LEDGER_TRANSACTION` | ENVIRONMENT | `ForeignLedgerTransactionError`* |
 | PR | `INVALID_TRANSACTION_HANDLE` | USAGE | `InvalidTransactionHandleError`* |
 | PR | `TRANSACTION_ERA_MISMATCH` | USAGE | `TransactionEraMismatchError`* |
+| PR | `INVALID_LEDGER_STATE` | USAGE | `InvalidLedgerStateError`* |
+| PR | `LEDGER_STATE_DECODER_MISSING` | USAGE | `LedgerStateDecoderMissingError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |

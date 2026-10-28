@@ -15,22 +15,16 @@
 
 import { ledger, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import {
-  DeserializationError,
   ledgerVersionOfLedgerParameters,
   parseSerializedTag,
-  TagParseError,
   toHex
 } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
-import { parseHexLedgerParameters, parseHexZswapState } from '../codec';
-import { IndexerDataError } from '../errors';
 import {
   mintLedger8LedgerParametersBytes,
-  mintLedger8LedgerParametersHex,
   mintLedger8ZswapChainStateBytes,
   mintLedger9LedgerParametersBytes,
-  mintLedger9LedgerParametersHex,
   mintLedger9ZswapChainStateBytes
 } from './state-fixtures';
 
@@ -107,76 +101,3 @@ describe('the zswap chain state each runtime writes', () => {
 // ---------------------------------------------------------------------------
 // The decoder itself.
 // ---------------------------------------------------------------------------
-
-describe('parseHexLedgerParameters', () => {
-  test('decodes the parameters of a block from the era it can read', () => {
-    const hex = mintLedger9LedgerParametersHex();
-
-    // Round-tripped rather than merely non-null: proves the bytes really went through the v9
-    // runtime instead of being handed back untouched.
-    expect(toHex(parseHexLedgerParameters(hex).serialize())).toBe(hex);
-  });
-
-  test('refuses the parameters of a pre-fork block by era, not by decoder failure', async () => {
-    const hex = await mintLedger8LedgerParametersHex();
-
-    let rejection: unknown;
-    try {
-      parseHexLedgerParameters(hex);
-      expect.unreachable('retained-era parameters must be refused');
-    } catch (error) {
-      rejection = error;
-    }
-
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-parameters-era', version: 'v8' });
-    // The distinction this test exists for: previously these bytes reached the v9 deserializer and
-    // came back as an unclassified DeserializationError naming neither the era nor the field.
-    expect(rejection).not.toBeInstanceOf(DeserializationError);
-  });
-
-  test('refuses a payload that is not a parameter set at all, by tag rather than by decode', () => {
-    // A contract state is a well-formed envelope of the WRONG family, so the tag parses and only
-    // the era table can reject it. The v9 runtime writes `contract-state[v8]`, and `[v8]` is a
-    // SUPPORTED number in the parameters family too -- so this passes only because the table keys
-    // on the whole tag rather than on the bracketed number.
-    let rejection: unknown;
-    try {
-      parseHexLedgerParameters(toHex(new ledger.ContractState().serialize()));
-      expect.unreachable('a contract state must be refused as ledger parameters');
-    } catch (error) {
-      rejection = error;
-    }
-
-    expect(rejection).toBeInstanceOf(TagParseError);
-    // Not converted to an `IndexerError`, and not reaching the deserializer either.
-    expect(rejection).not.toBeInstanceOf(IndexerDataError);
-    expect(rejection).not.toBeInstanceOf(DeserializationError);
-  });
-
-  test('refuses a payload that is not whole hex, rather than decoding a truncated prefix', () => {
-    // `toByteArray` keeps only the leading run of whole hex bytes and discards the rest without
-    // complaining, so the guard has to run before the bytes are taken.
-    const truncated = `${mintLedger9LedgerParametersHex().slice(0, 20)}zz`;
-
-    let rejection: unknown;
-    try {
-      parseHexLedgerParameters(truncated);
-      expect.unreachable('a partly-hex payload must be refused');
-    } catch (error) {
-      rejection = error;
-    }
-
-    expect(rejection).toBeInstanceOf(IndexerDataError);
-    // The kind matters: refused for its ENCODING, before any era decision was reachable.
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-parameters-encoding' });
-  });
-});
-
-describe('parseHexZswapState', () => {
-  test('reads a zswap state either era wrote, because neither tags it with one', async () => {
-    const ledger8Hex = toHex(await mintLedger8ZswapChainStateBytes(true));
-
-    expect(toHex(parseHexZswapState(ledger8Hex).serialize())).toBe(ledger8Hex);
-  });
-});

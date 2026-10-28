@@ -103,7 +103,7 @@ remediation is opposite: the first says the bytes were this era's to read, the
 second says they may belong to the other era. A caller can tell the two apart
 by `code` alone. `STATE_DECODE_FAILED` is worth a retry only when the era was
 chosen from something other than the version tag, such as a reported protocol
-version. `getAnyEraContractState` already reads the era off the version tag, so
+version. The keep-state pipeline already reads the era off the version tag, so
 there a retry with the other era cannot help either.
 
 `Ledger8RuntimeInvalidError` is separate from `StateConversionFailedError` because

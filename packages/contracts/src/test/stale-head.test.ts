@@ -42,9 +42,9 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type ContractStateRead,
   type FinalizedTx,
   ProviderEraUnsupportedError,
-  type RawContractState,
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
@@ -72,7 +72,7 @@ import {
   readHfHexFixture,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { contractStateRead, createMockFinalizedTxData, createMockProviders } from './test-mocks';
 
 // Both redirects are `./v8-native.test.ts`'s -- see that file for why each is
 // needed. The artifact's own runtime check needs an import-time stub, and the
@@ -143,16 +143,13 @@ beforeAll(async () => {
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => {
-  const preFork = protocolVersion === PRE_FORK_PROTOCOL_VERSION;
-  return {
-    version: preFork ? 'v8' : 'v9',
-    protocolVersion,
+// Served from the same read as `raw`, and dated by the same block, as a real provider does.
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
+  contractStateRead(
     raw,
-    // Served from the same read as `raw`, and dated by the same block, as a real provider does.
-    ledgerParameters: preFork ? retainedLedgerParameters : currentLedgerParameters
-  };
-};
+    protocolVersion,
+    protocolVersion === PRE_FORK_PROTOCOL_VERSION ? retainedLedgerParameters : currentLedgerParameters
+  );
 
 /**
  * A submission provider that RECORDS what it was handed and then rejects.
@@ -542,7 +539,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const seen: SeenPayloads = {};
 
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
@@ -709,13 +706,13 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     // the very same retained-era envelope, which is precisely what sends the re-run down the
     // keep-state path.
     //
-    // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
+    // What does move is the BLOCK the read is dated by. `queryContractState` answers as of the
     // chain tip, so once the head has crossed, the record it returns carries a post-fork
     // `protocolVersion` and that block's post-fork ledger parameters. Re-dating it here rather than
     // re-serving the pre-fork record is not a convenience: a record dated before the fork, served
     // after it, is a shape no chain produces, and keeping it would have this test assert against
     // parameters the current-era composer cannot read. Nothing in the caller's code changes.
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, POST_FORK_PROTOCOL_VERSION));
     providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {

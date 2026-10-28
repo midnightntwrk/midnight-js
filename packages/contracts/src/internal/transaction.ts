@@ -20,13 +20,11 @@ import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-pr
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  type Ledger9PublicStates,
   LedgerTransaction,
   type LoggerProvider,
   type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import type { Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -35,7 +33,7 @@ import {
   MixedEraScopeError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError} from '../errors';
-import { type ContractStates } from '../get-states';
+import { type Ledger9ContractStates, type Ledger9PublicStates } from '../get-states';
 import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
@@ -51,7 +49,7 @@ export interface CachedStateIdentity {
 /** @internal */
 export interface CachedStatesWithIdentity<PS> {
   readonly identity: CachedStateIdentity;
-  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
+  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
   /**
    * The hash of the block the states were read as of. A scoped transaction is a single chain
    * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
@@ -63,7 +61,7 @@ export interface CachedStatesWithIdentity<PS> {
 
 /** @internal The states pinned to a block within a scoped transaction. */
 export interface PinnedContractStates<PS> {
-  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
+  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
   readonly blockHash: string;
 }
 
@@ -200,7 +198,7 @@ export class TransactionContextImpl<
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
    * for validated access to cached states within scoped transactions.
    */
-  getCurrentStates(): Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates | undefined {
+  getCurrentStates(): Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates | undefined {
     return this.cachedStates?.states;
   }
 
@@ -252,7 +250,7 @@ export class TransactionContextImpl<
   }
 
   [CacheStates](
-    states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates,
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
     identity: CachedStateIdentity,
     blockHash: string
   ): void {

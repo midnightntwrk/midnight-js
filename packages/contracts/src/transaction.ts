@@ -15,11 +15,11 @@
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type Ledger9PublicStates, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig, type Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
+import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { type ContractStates } from './get-states';
+import { type Ledger9ContractStates, type Ledger9PublicStates } from './get-states';
 import * as Internal from './internal/transaction';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from './tx-model';
 
@@ -41,7 +41,7 @@ export interface TransactionContext<
     privateStateId?: PrivateStateId
   ) => void;
   readonly [Internal.CacheStates]: (
-    states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates,
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
     identity: Internal.CachedStateIdentity,
     blockHash: string
   ) => void;
@@ -60,13 +60,13 @@ export interface TransactionContext<
   /**
    * Gets the current cached contract states within the transaction context.
    *
-   * @return A cached {@link ContractStates} instance, or `undefined` if circuit calls are yet to be made.
+   * @return A cached {@link Ledger9ContractStates} instance, or `undefined` if circuit calls are yet to be made.
    *
    * @remarks
    * The returned states represent the unsubmitted _running_ state of the contract within the transaction context,
    * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction.
    */
-  getCurrentStates(): Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates | undefined;
+  getCurrentStates(): Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates | undefined;
 
   /**
    * Gets the last unsubmitted call transaction data.

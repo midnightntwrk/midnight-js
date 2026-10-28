@@ -356,3 +356,12 @@ Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carr
 `unprovenTx: UnprovenTx`, a transaction handle: a v8 handle before the fork, a v9 handle after it.
 Every package from `types` up now speaks transaction handles in its public API. The rule for
 `LedgerEra` is unchanged: it still returns plain data, including the composed transaction's bytes.
+
+## Amendment — the read surface hands out no state handle (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+`getAnyEraContractState` and `AnyEraContractState` are removed, and with them the plain-data read
+of a contract state from `contracts`. `PublicDataProvider` now returns every state as a
+`LedgerState` of bytes, decoded by the caller's own runtime. The note above on the `Uint8Array`
+members of `RawContractState` no longer applies: that type is removed. The rules for the
+retained-era result types and for `LedgerEra` are unchanged.

@@ -143,6 +143,21 @@ const record = await publicDataProvider.watchForTxData(txId);
 const tx = LedgerTransaction.unwrap(record.tx, record.version);
 ```
 
+A contract state, ledger parameters and a zswap chain state come back as a
+`LedgerState`: the bytes, plus the `version` of the ledger that wrote them.
+Decode one with the runtime your contract was compiled against, so its
+`ledger()` accepts the result:
+
+```typescript
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+
+const read = await publicDataProvider.queryContractState(contractAddress);
+const state = read?.contractState.deserialize({ v9: ContractState });
+```
+
+`deserialize` calls only the decoder for the state's own `version`, and refuses
+a missing one with `LedgerStateDecoderMissingError`.
+
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
 implementation. Both adapters unwrap each handle for you, and the wallet adapter
 also seals its answer:
@@ -294,6 +309,8 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
+  InvalidLedgerStateError,
+  LedgerStateDecoderMissingError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,
@@ -357,15 +374,17 @@ import {
   type TransactionStage,
   type LedgerTransactionTypes,
 
-  // Version-tagged read results for the ledger-fork window
+  // On-chain state as bytes, decoded by the caller's own runtime
+  LedgerState,
+  type LedgerStateKind,
+  type StateDecoder,
+  type StateDecoders,
+  type ContractStateRead,
+  type PublicStatesRead,
+
+  // Version-tagged transaction records for the ledger-fork window
   type Ledger8FinalizedTxData,
   type VersionedFinalizedTxData,
-  type Ledger8ContractStateBytes,
-  type Ledger9ContractState,
-  type VersionedContractState,
-  type Ledger8PublicStates,
-  type Ledger9PublicStates,
-  type VersionedPublicStates,
   type TransactionMethod,
   type ReadMethod,
   type ProviderMethod,
@@ -385,6 +404,8 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
+  InvalidLedgerStateError,
+  LedgerStateDecoderMissingError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,

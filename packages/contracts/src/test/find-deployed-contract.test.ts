@@ -17,6 +17,7 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,6 +25,7 @@ import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, L
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
+  contractStateReadStub,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -32,8 +34,7 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockVerifierKeys
-} from './test-mocks';
+  createMockVerifierKeys} from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
@@ -42,6 +43,14 @@ vi.mock('../tx-interfaces', () => ({
 vi.mock('../governance/tx-interfaces', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
+}));
+
+// The framework decodes the read with its own runtime; the mock contract state stands in for the result.
+const deserializeCompactContractState = vi.hoisted(() => vi.fn());
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  deserializeCompactContractState
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
@@ -62,11 +71,9 @@ describe('findDeployedContract', () => {
 
   const setupCommonMocks = () => {
     vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
-      version: 'v9',
-      state: contractState
-    });
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({ version: 'v9', state: contractState });
+    deserializeCompactContractState.mockReturnValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v9'));
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractStateReadStub('v9'));
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
@@ -127,10 +134,7 @@ describe('findDeployedContract', () => {
 
   describe('a v9 deploy record whose deploy state is served from the other era', () => {
     it('refuses the attach rather than reporting a v8 state as the v9 initial state', async () => {
-      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
-        version: 'v8',
-        stateBytes: new Uint8Array([1, 2, 3])
-      });
+      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v8'));
 
       const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
         () => undefined,
@@ -267,10 +271,7 @@ describe('findDeployedContract', () => {
     });
 
     it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
-      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({
-        version: 'v8',
-        stateBytes: new Uint8Array([1])
-      });
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractStateReadStub('v8'));
 
       const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
         () => undefined,

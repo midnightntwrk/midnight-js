@@ -14,6 +14,7 @@
  */
 
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,7 @@ import { submitReplaceAuthorityTx } from '../../governance/submit-replace-author
 import { createUnprovenReplaceAuthorityTx } from '../../governance/unproven-tx';
 import { submitLedger9Payload } from '../../submit-tx';
 import {
+  contractStateReadStub,
   createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
@@ -28,11 +30,27 @@ import {
   createMockFinalizedTxData,
   createMockProviders,
   createMockSigningKey,
-  createMockUnprovenTx
-} from '../test-mocks';
+  createMockUnprovenTx} from '../test-mocks';
 
 vi.mock('../../submit-tx');
 vi.mock('../../governance/unproven-tx');
+
+// The framework decodes a read with its own runtime; these stand in for the decoded objects.
+const decode = vi.hoisted(() => ({
+  deserializeCompactContractState: vi.fn(),
+  deserializeZswapChainState: vi.fn(),
+  deserializeLedgerParameters: vi.fn()
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  ...decode
+}));
+
+const servingLedger9 = (state: unknown) => {
+  decode.deserializeCompactContractState.mockReturnValue(state);
+  return vi.fn().mockResolvedValue(contractStateReadStub('v9'));
+};
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -70,7 +88,7 @@ describe('submitReplaceAuthorityTx', () => {
     it('should successfully submit replace authority transaction and update signing key', async () => {
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
@@ -114,7 +132,7 @@ describe('submitReplaceAuthorityTx', () => {
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
 
       await expect(
@@ -133,7 +151,7 @@ describe('submitReplaceAuthorityTx', () => {
 
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
 

@@ -19,7 +19,7 @@ import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerPublicDataProvider } from '../provider';
-import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
+import { CONTRACT_STATE_WITH_PARAMETERS_QUERY,HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
 import {
   LEDGER8_ERA_PROTOCOL_VERSION,
@@ -121,14 +121,14 @@ describe('head protocol-version freshness', () => {
     // the read path: the era arrives with the bytes it dates.
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [RAW_CONTRACT_STATE_QUERY, composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION)]
+        [CONTRACT_STATE_WITH_PARAMETERS_QUERY, composedResponse(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION)]
       ])
     );
     const provider = buildProvider(query);
 
-    const record = await provider.queryRawContractState(ADDRESS);
+    const record = await provider.queryContractState(ADDRESS);
 
-    expect(record?.version).toBe('v9');
+    expect(record?.contractState.version).toBe('v9');
     expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     expect(headRequestCount(query)).toBe(0);
   });

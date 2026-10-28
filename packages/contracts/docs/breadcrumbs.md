@@ -115,7 +115,8 @@ it out rather than present-and-undefined.
 ### Encoding
 
 This is the byte-level answer, read from the bytes themselves rather than from
-`RawContractState.version`, which a provider outside this framework may set wrongly.
+`contractState.version` on the read record, which a provider outside this
+framework may build some other way.
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the

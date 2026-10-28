@@ -123,3 +123,11 @@ declare module '@midnight-ntwrk/fork-current-*' {
 
   export function ledger(state: any): any;
 }
+
+/**
+ * The current runtime as a wrapper re-exports it: the `@midnight-ntwrk/compact-runtime` instance
+ * its codegen imports. Named exactly, because the wildcard above would type it as the contract.
+ */
+declare module '@midnight-ntwrk/fork-current-baseline/runtime' {
+  export * from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+}

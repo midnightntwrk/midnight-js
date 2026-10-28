@@ -89,7 +89,7 @@ const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): val
   value.version === 'v9';
 
 /**
- * Narrows any version-tagged union (`VersionedContractState`, `VersionedFinalizedTxData`, …)
+ * Narrows any version-tagged union (`VersionedFinalizedTxData`, …)
  * to its v9 variant, for code that handles only the v9 era.
  *
  * Code that handles both eras should `switch (value.version)` and close the switch with
@@ -104,7 +104,7 @@ const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): val
  *
  * @example
  * ```ts
- * const { state } = requireLedger9(await publicDataProvider.watchForContractState(address), 'readCounter');
+ * const { tx } = requireLedger9(await publicDataProvider.watchForTxData(txId), 'readTx');
  * ```
  */
 export const requireLedger9 = <T extends { readonly version: LedgerVersion }>(

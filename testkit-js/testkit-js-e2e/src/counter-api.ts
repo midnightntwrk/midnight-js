@@ -14,9 +14,10 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
@@ -107,7 +108,7 @@ export const getCounterLedgerState = async (
     .queryContractState(contractAddress)
     .then((contractState) =>
       contractState != null
-        ? CompiledCounter.ledger(requireLedger9(contractState, 'getCounterLedgerState').state.data).round
+        ? CompiledCounter.ledger(contractState.contractState.deserialize({ v9: ContractState }).data).round
         : null
     );
   logger.info(`Ledger state: ${state}`);

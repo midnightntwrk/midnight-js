@@ -113,12 +113,11 @@ export {
   verifierKeysEqual,
   verifyContractState} from './find-deployed-contract';
 export {
-  AnyEraContractState,
-  AnyEraContractStateReadSurface,
   ContractStates,
-  getAnyEraContractState,
   getPublicStates,
-  getStates} from './get-states';
+  getStates,
+  Ledger9ContractStates,
+  Ledger9PublicStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,

@@ -13,70 +13,10 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
-
-/**
- * The v8 variant of {@link VersionedContractState}: a contract state written by
- * the v8 ledger runtime, as the serialized, tag-prefixed bytes the network
- * stored. Not decoded and not translated to the v9 encoding.
- */
-export interface Ledger8ContractStateBytes {
-  readonly version: 'v8';
-  /** Serialized, tag-prefixed byte form (`contract-state[v6]`). */
-  readonly stateBytes: Uint8Array;
-}
-
-/**
- * The v9 variant of {@link VersionedContractState}: the decoded contract state.
- */
-export interface Ledger9ContractState {
-  readonly version: 'v9';
-  readonly state: ContractState;
-}
-
-/**
- * A contract state discriminated by the ledger runtime that wrote it: the stored
- * bytes for the v8 era ({@link Ledger8ContractStateBytes}), or the decoded state
- * for v9 ({@link Ledger9ContractState}). Narrow on `version` before touching it.
- */
-export type VersionedContractState = Ledger8ContractStateBytes | Ledger9ContractState;
-
-/**
- * The v8 variant of {@link VersionedPublicStates}: the contract state and the ledger parameters
- * as the stored bytes the v8 ledger runtime wrote, not decoded and not translated. The zswap
- * chain state is decoded, because both runtimes write the same `zswap-ledger-state[v5]` encoding.
- */
-export interface Ledger8PublicStates {
-  readonly version: 'v8';
-  readonly zswapChainState: ZswapChainState;
-  /** Serialized, tag-prefixed byte form (`contract-state[v6]`). */
-  readonly stateBytes: Uint8Array;
-  /** Serialized, tag-prefixed byte form of the ledger parameters. */
-  readonly ledgerParametersBytes: Uint8Array;
-}
-
-/**
- * The v9 variant of {@link VersionedPublicStates}: every state decoded.
- */
-export interface Ledger9PublicStates {
-  readonly version: 'v9';
-  readonly zswapChainState: ZswapChainState;
-  readonly contractState: ContractState;
-  readonly ledgerParameters: LedgerParameters;
-}
-
-/**
- * The public states read from one block for one contract, discriminated by the ledger runtime
- * that wrote them. The contract state and the ledger parameters always come from the same era;
- * a provider refuses a block where they do not. They agree on a supported indexer, because the
- * node translates every contract state at the fork. Narrow on `version` before touching it.
- */
-export type VersionedPublicStates = Ledger8PublicStates | Ledger9PublicStates;
 
 /**
  * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
@@ -115,7 +55,7 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
-// `protocolVersion` to an era. These four assertions keep the discriminant sets
+// `protocolVersion` to an era. These two assertions keep the discriminant sets
 // here and `LedgerVersion` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its
 // `true` constraint. No runtime declarations, so `versioned.ts` stays
@@ -133,10 +73,4 @@ type _EveryEraHasAReadVariant = Assert<
 >;
 type _NoReadVariantOutsideTheEraSet = Assert<
   [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
->;
-type _EveryEraHasAStateVariant = Assert<
-  [Exclude<LedgerVersion, VersionedContractState['version']>] extends [never] ? true : false
->;
-type _NoStateVariantOutsideTheEraSet = Assert<
-  [Exclude<VersionedContractState['version'], LedgerVersion>] extends [never] ? true : false
 >;

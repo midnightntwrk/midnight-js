@@ -42,9 +42,9 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
+  type ContractStateRead,
   LedgerTransaction,
   type PublicDataProvider,
-  type RawContractState,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
@@ -259,12 +259,22 @@ export interface Ledger8MaintenanceRequest {
  */
 export type Ledger8PipelineReadSurface = Pick<
   PublicDataProvider,
-  'queryLatestProtocolVersion' | 'queryRawContractState'
+  'queryLatestProtocolVersion' | 'queryContractState'
 >;
 
 /**
+ * The bytes of one contract-state read, as the retained-era composer takes them.
+ */
+export interface Ledger8SnapshotBytes {
+  /** The contract state, version tag included. */
+  readonly raw: Uint8Array;
+  /** The ledger parameters of the block that dates the read, when the provider serves them. */
+  readonly ledgerParameters?: Uint8Array;
+}
+
+/**
  * The snapshot every retained-era operation is built against: ONE
- * `queryRawContractState`, whose bytes then feed the era check, the key check,
+ * `queryContractState`, whose bytes then feed the era check, the key check,
  * the execution and the composition.
  *
  * Returned as a value rather than re-read per step, which is the whole point:
@@ -272,7 +282,8 @@ export type Ledger8PipelineReadSurface = Pick<
  * transaction built half against each answer.
  */
 export interface Ledger8Snapshot {
-  readonly state: RawContractState;
+  /** The state and the ledger parameters of the read, as bytes. */
+  readonly state: Ledger8SnapshotBytes;
   /** The primary state, as this era reads it out of {@link Ledger8Snapshot.state}. */
   readonly encoded: EncodedStateValue;
   /** The entry points the state declares, with the key registered against each. */
@@ -321,9 +332,13 @@ export const readLedger8Snapshot = async (
   contractAddress: string,
   logger?: BreadcrumbSink
 ): Promise<Ledger8Snapshot> => {
-  const state = requireDeployedContract(await pdp.queryRawContractState(contractAddress), contractAddress);
+  const read: ContractStateRead = requireDeployedContract(await pdp.queryContractState(contractAddress), contractAddress);
 
-  const stateEra = await resolveContractStateEra(head, state, pdp, logger);
+  const stateEra = await resolveContractStateEra(head, read, pdp, logger);
+  const state: Ledger8SnapshotBytes = {
+    raw: read.contractState.serialize(),
+    ledgerParameters: read.ledgerParameters?.serialize()
+  };
 
   // Read with the era the ENVELOPE names, never with the head's and never with
   // a fixed one. A retained envelope is the retained ledger's to read -- pre-

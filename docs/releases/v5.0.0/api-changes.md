@@ -195,6 +195,48 @@ reads a transaction's stage from its serialized tag.
 `LedgerTransaction<'Finalized', E>`; both are now async, because a v8 read loads
 the v8 runtime first.
 
+### On-chain state as bytes (#1550)
+
+```ts
+export type LedgerStateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
+export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
+export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
+export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+  readonly kind: K;
+  readonly version: E;
+  static fromBytes<K extends LedgerStateKind, E extends LedgerVersion>(kind: K, version: E, bytes: Uint8Array): LedgerState<K, E>;
+  serialize(): Uint8Array;
+  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>;
+}
+
+export interface ContractStateRead {
+  readonly protocolVersion: number;
+  readonly contractState: LedgerState<'ContractState'>;
+  readonly ledgerParameters?: LedgerState<'LedgerParameters'>;
+}
+export interface PublicStatesRead extends ContractStateRead {
+  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+  readonly zswapChainState: LedgerState<'ZswapChainState'>;
+}
+
+interface PublicDataProvider {
+  queryContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<ContractStateRead | null>;
+  queryDeployContractState(address: ContractAddress): Promise<ContractStateRead | null>;
+  watchForContractState(address: ContractAddress): Promise<ContractStateRead>;
+  queryZSwapAndContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<PublicStatesRead | null>;
+  // queryRawContractState and rawContractStateObservable are removed.
+}
+
+export class InvalidLedgerStateError extends MidnightJsError { readonly kind: string; readonly version: LedgerVersion; readonly reason: 'unknown-kind' | 'not-bytes' | 'tag-mismatch'; }
+export class LedgerStateDecoderMissingError extends MidnightJsError { readonly kind: LedgerStateKind; readonly version: LedgerVersion; }
+```
+
+Removed from `types`: `RawContractState`, `VersionedContractState`,
+`VersionedPublicStates`, `Ledger8ContractStateBytes`, `Ledger9ContractState`,
+`Ledger8PublicStates`. `Ledger9PublicStates` moved to `contracts`. Decode a state
+with the runtime your contract was compiled against:
+`read.contractState.deserialize({ v9: ContractState })`.
+
 ### Positioned stream records (#1399)
 
 ```ts
@@ -205,8 +247,7 @@ export type PositionedRecord<T> = {
 };
 
 interface PublicDataProvider {
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<VersionedContractState>>; // VersionedContractState since #1508
-  rawContractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<RawContractState>>;
+  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<ContractStateRead>>; // ContractStateRead since #1550
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<UnshieldedBalances>>;
 }
 ```
@@ -451,6 +492,12 @@ export class DecoderEraUnsupportedError extends IndexerError {
   // resolving an inherited Object.prototype member.
 }
 ```
+
+On-chain state as bytes (#1550) — `parseHexContractState`,
+`parseHexLedgerParameters` and `parseHexZswapState` are removed: the provider
+decodes no state. `IndexerDataError` kinds `unsupported-decode-era` and
+`unsupported-parameters-era` are removed, and `malformed-zswap-encoding` is new.
+`queryContractState` now serves the block's ledger parameters too.
 
 Internally the provider was split into 7 layered files (#960): `config.ts`, `transport.ts` (`ApolloHandle = { client, dispose }`), `provider.ts` (`class IndexerPublicDataProvider`), `observables.ts`, `events-filter.ts`, `events-mapping.ts`, and `index.ts`.
 

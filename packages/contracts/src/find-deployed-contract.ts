@@ -44,7 +44,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
-import { isLedger8Request, readVersionTag, requireLedger9ContractState, requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { decodeLedger9ContractState, isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   fromStoredLedger8SigningKey,
@@ -99,16 +99,18 @@ const queryFoundDeployTxPublicData = async (
         await publicDataProvider.queryDeployContractState(contractAddress),
         contractAddress
       );
-      switch (deployState.version) {
-        case 'v8':
-          throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
-        case 'v9':
-          return { ...deployRecord, contractAddress, initialContractState: deployState.state };
-        default: {
-          const unhandled: never = deployState;
-          throw new UnknownLedgerVersionError(readVersionTag(unhandled), 'queryDeployContractState');
-        }
+      const stateVersion: unknown = deployState?.contractState?.version;
+      if (stateVersion === 'v8') {
+        throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
       }
+      if (stateVersion !== 'v9') {
+        throw new UnknownLedgerVersionError(String(stateVersion), 'queryDeployContractState');
+      }
+      return {
+        ...deployRecord,
+        contractAddress,
+        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract')
+      };
     }
     default:
       return assertNever(deployRecord, 'findDeployedContract');
@@ -606,11 +608,11 @@ export async function findDeployedContract<C extends Contract.Any>(
     contractAddress
   );
 
-  const currentContractState = requireLedger9ContractState(
+  const currentContractState = decodeLedger9ContractState(
     requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
     contractAddress,
     'findDeployedContract'
-  ).state;
+  );
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
     ContractExecutable.make(compiledContract).getProvableCircuitIds()

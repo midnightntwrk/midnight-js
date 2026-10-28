@@ -18,12 +18,11 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,
-  hasErrorCode,
-  TagParseError
+  hasErrorCode
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -40,7 +39,7 @@ import {
   resolveOperationEra
 } from '../internal/era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from '../ledger8-contract';
-import { createMockCompiledContract } from './test-mocks';
+import { contractStateRead, createMockCompiledContract } from './test-mocks';
 
 // The shared hard-fork fixture tree. Reached by relative path rather than through a package
 // dependency: `testkit-js` depends on `midnight-js-contracts`, so declaring it as a dependency
@@ -63,11 +62,7 @@ interface RawCurrentEraContract {
   initialState(options: unknown): Promise<unknown>;
 }
 
-const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersion): RawContractState => ({
-  version,
-  protocolVersion,
-  raw
-});
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead => contractStateRead(raw, protocolVersion);
 
 // Spelled as a `Mock` over the real signature rather than `ReturnType<typeof vi.fn>`, which is the
 // un-parameterised mock type and drops the call signature -- so the spy would not satisfy
@@ -556,7 +551,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   ])('answers the retained era for a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
-    await expect(resolveContractStateEra(head, rawState(ledger8Envelope, headInt, head), pdp)).resolves.toBe('v8');
+    await expect(resolveContractStateEra(head, rawState(ledger8Envelope, headInt), pdp)).resolves.toBe('v8');
 
     // No re-read at all: the head plays no part in accepting a retained envelope, so there is
     // nothing to disambiguate.
@@ -568,7 +563,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
 
     // A same-era minor node bump, and a different era entirely, reach the same answer.
     for (const headInt of [LEDGER8_HEAD, 1_000_001, LEDGER9_HEAD, 2_001_000]) {
-      await expect(resolveContractStateEra('v9', rawState(ledger8Envelope, headInt, 'v9'), pdp)).resolves.toBe('v8');
+      await expect(resolveContractStateEra('v9', rawState(ledger8Envelope, headInt), pdp)).resolves.toBe('v8');
     }
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -580,7 +575,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     // These bytes cannot be decoded by either era. The answer still names the era of the TAG, which
     // is only possible if the tag was read and the body was not: a decode would have raised a decode
     // failure instead of returning.
-    await expect(resolveContractStateEra('v9', rawState(ledger9EnvelopeCorruptBody, LEDGER9_HEAD, 'v9'), pdp)).resolves.toBe(
+    await expect(resolveContractStateEra('v9', rawState(ledger9EnvelopeCorruptBody, LEDGER9_HEAD), pdp)).resolves.toBe(
       'v9'
     );
   });
@@ -591,7 +586,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     // Whether the caller's artifacts fit it is a question about the KEYS, and it is asked elsewhere.
     const pdp = headSource();
 
-    await expect(resolveContractStateEra('v9', rawState(ledger9Envelope, LEDGER9_HEAD, 'v9'), pdp)).resolves.toBe('v9');
+    await expect(resolveContractStateEra('v9', rawState(ledger9Envelope, LEDGER9_HEAD), pdp)).resolves.toBe('v9');
 
     // No re-read: the head is not in question here.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -604,7 +599,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = headSource(LEDGER9_HEAD);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
       expect(error).toBeInstanceOf(NetworkVersionStateMismatchError);
@@ -625,7 +620,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = headSource(LEDGER8_HEAD);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('an inconsistent indexer response was accepted');
     } catch (error) {
       expect(error).toBeInstanceOf(IndexerInconsistencyError);
@@ -644,7 +639,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = rejectingHeadSource(transportFailure);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('a failed fresh head read was treated as agreement');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
@@ -655,19 +650,5 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       expect((error as Error).message).toContain("'v8'");
       expect((error as Error).message).toContain("'v9'");
     }
-  });
-
-  it('refuses bytes that are not a contract-state envelope at all', async () => {
-    // A real, well-formed, tagged payload of the WRONG TYPE: a verifier key. Its tag parses
-    // cleanly, so this is not caught by tag parsing -- it is caught by the envelope not being one
-    // this framework recognises as a contract state.
-    const verifierKey = Uint8Array.from(
-      readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'))
-    );
-    const pdp = headSource();
-
-    await expect(
-      resolveContractStateEra('v9', rawState(verifierKey, LEDGER9_HEAD, 'v9'), pdp)
-    ).rejects.toThrow(TagParseError);
   });
 });

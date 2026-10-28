@@ -111,9 +111,8 @@ export type IndexerDataErrorContext =
       reportedVersion: LedgerVersion;
       stateVersion: LedgerVersion;
     }
-  | { kind: 'unsupported-decode-era'; version: LedgerVersion }
   | { kind: 'malformed-parameters-encoding' }
-  | { kind: 'unsupported-parameters-era'; version: LedgerVersion }
+  | { kind: 'malformed-zswap-encoding' }
   | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
   | { kind: 'malformed-protocol-version'; protocolVersion: number };
 
@@ -200,16 +199,12 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, stateVersion });
   }
 
-  static unsupportedDecodeEra(version: LedgerVersion): IndexerDataError {
-    return new IndexerDataError({ kind: 'unsupported-decode-era', version });
-  }
-
   static malformedParametersEncoding(): IndexerDataError {
     return new IndexerDataError({ kind: 'malformed-parameters-encoding' });
   }
 
-  static unsupportedParametersEra(version: LedgerVersion): IndexerDataError {
-    return new IndexerDataError({ kind: 'unsupported-parameters-era', version });
+  static malformedZswapEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-zswap-encoding' });
   }
 
   static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
@@ -266,15 +261,14 @@ export class IndexerDataError extends IndexerError {
           'answers cannot both be right. Retry against a healthy indexer; if it persists, the indexer is serving ' +
           'state and block data from different eras.'
         );
-      case 'unsupported-decode-era':
-        return (
-          `The indexer served a contract state from ledger ${context.version}, which this read path cannot ` +
-          'decode. Use `queryRawContractState` to obtain the bytes together with their era and decode them ' +
-          'with the matching runtime.'
-        );
       case 'malformed-parameters-encoding':
         return (
           'The indexer returned ledger parameters that are not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'malformed-zswap-encoding':
+        return (
+          'The indexer returned a zswap chain state that is not a hex-encoded byte string. ' +
           'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
         );
       case 'mixed-era-public-states':
@@ -289,18 +283,9 @@ export class IndexerDataError extends IndexerError {
       case 'malformed-protocol-version':
         return (
           `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state, which is ` +
-          'not a non-negative integer. The raw contract-state reads copy protocolVersion onto every record, so a ' +
+          'not a non-negative integer. The contract-state reads copy protocolVersion onto every record, so a ' +
           'malformed value is refused rather than passed on. Check that the indexer and this client agree on the ' +
           'GraphQL schema.'
-        );
-      case 'unsupported-parameters-era':
-        return (
-          `The indexer served the ledger parameters of a block from ledger ${context.version}, which this read ` +
-          'path cannot decode. Ledger parameters are era-tagged and served per block, so a block from before ' +
-          'the fork carries parameters only the ledger 8 runtime can read — this is an ordinary pre-fork block, ' +
-          'not a faulty indexer. Use `queryRawContractState`, which serves the parameter bytes together with ' +
-          'their block, and decode them with the matching runtime. It serves the contract state undecoded too, ' +
-          'but not the zswap chain state — fetch that separately if you need all three.'
         );
     }
   }

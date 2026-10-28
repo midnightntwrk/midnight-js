@@ -23,10 +23,7 @@ import { createApolloClient } from './transport';
 export {
   correlateDeployTxId,
   type IndexerUtxo,
-  parseHexContractState,
-  parseHexLedgerParameters,
   parseHexTransaction,
-  parseHexZswapState,
   toSegmentStatus,
   toSegmentStatusMap,
   toTxStatus,

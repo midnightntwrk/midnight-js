@@ -15,12 +15,11 @@
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { AnyPrivateState, AnyProvableCircuitId, Ledger9PublicStates, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import type { Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
+import type { AnyPrivateState, AnyProvableCircuitId, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ScopedTransactionIdentityMismatchError } from '../errors';
-import type { ContractStates } from '../get-states';
+import type { Ledger9ContractStates, Ledger9PublicStates } from '../get-states';
 import {
   type CachedStateIdentity,
   CacheStates,
@@ -36,7 +35,7 @@ describe('TransactionContextImpl identity validation', () => {
 
   const MOCK_BLOCK_HASH = '00'.repeat(32);
 
-  const createMockStates = (): Ledger9Variant<ContractStates<AnyPrivateState>> => ({
+  const createMockStates = (): Ledger9ContractStates<AnyPrivateState> => ({
     version: 'v9',
     contractState: createMockContractState(),
     zswapChainState: { test: 'mock-zswap-chain-state' } as never,
@@ -221,7 +220,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result).toBeDefined();
       expect(result.privateState).toBe(mockCallData.private.nextPrivateState);
@@ -239,7 +238,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result).toBeDefined();
       expect(result.privateState).toBe(mockCallData2.private.nextPrivateState);
@@ -256,7 +255,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result.ledgerParameters).toBe(originalLedgerParameters);
     });
@@ -274,7 +273,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result.ledgerParameters).toBe(originalLedgerParameters);
     });
@@ -290,7 +289,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result.zswapChainState).toBe(originalZswapChainState);
     });
@@ -308,7 +307,7 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9Variant<ContractStates<AnyPrivateState>>;
+      const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
       expect(result.zswapChainState).toBe(originalZswapChainState);
     });

@@ -705,9 +705,8 @@ HANDLES differ in one place: the retained handle's
 recipient key mappings (see below). Both handles carry the maintenance
 interfaces; the retained one works only before the fork, and after it the same
 contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
-return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
-ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
-on `version` before reading the state.
+return every state as bytes with `version: 'v8'` for a contract whose state the
+v8 ledger wrote: decode it with the runtime that can read it (Step 19).
 
 `deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
 a found handle and on a deployed one. The retained-era handle used to keep the
@@ -917,9 +916,8 @@ question to raise, not as an omission that implies "it just works".
 
 ## Step 15 — Read `record.value` from the contract-state and balance streams
 
-`contractStateObservable`, `rawContractStateObservable` and
-`unshieldedBalancesObservable` emit `PositionedRecord<T>` (#1399). Read the value
-from `record.value`:
+`contractStateObservable` and `unshieldedBalancesObservable` emit
+`PositionedRecord<T>` (#1399). Read the value from `record.value`:
 
 ```ts
 // Before
@@ -928,6 +926,8 @@ publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscrib
 // After
 publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((record) => render(record.value));
 ```
+
+`record.value` is a `ContractStateRead`; decode its state as in Step 19.
 
 To resume after a restart, keep the last record's `blockHeight` (or `blockHash`)
 and pass it back as `{ type: 'blockHeight', blockHeight }`. Leave `inclusive`
@@ -975,63 +975,168 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 
 ---
 
-## Step 17 — Run indexer `4.4.0-rc.6` or later, and narrow `queryDeployContractState`
+## Step 17 — Run indexer `4.4.0-rc.6` or later, and decode `queryDeployContractState`
 
 `indexerPublicDataProvider` requires indexer `4.4.0-rc.6` or later (#1452). If
 you pin the indexer image, move it to that version or later; the framework's own
 test environments use `4.4.0-rc.6-68702121`.
 
-`queryDeployContractState` now resolves to `VersionedContractState | null`.
-Narrow on `version`:
+`queryDeployContractState` now resolves to `ContractStateRead | null`. The
+state is bytes; decode it with your own runtime:
 
 ```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+
 // Before (4.x)
 const state = await publicDataProvider.queryDeployContractState(address);
 
 // After (5.0.0)
 const deployState = await publicDataProvider.queryDeployContractState(address);
-if (deployState?.version === 'v9') {
-  use(deployState.state);
-} else if (deployState?.version === 'v8') {
-  useBytes(deployState.stateBytes);
-}
+const state = deployState?.contractState.deserialize({ v9: ContractState });
 ```
 
-A `v8` result carries the stored bytes (`stateBytes`), not a decoded state.
+A deploy record keeps the encoding it was written in, so a contract deployed
+before the fork has a v8 deploy state. See Step 19 for reading one.
 See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-version-tagged-and-the-indexer-floor-is-440-rc6-1452).
 
 ---
 
-## Step 18 — Narrow the contract-state reads, `getPublicStates` and `submitTx`
+## Step 18 — Rename the era fields, and pass handles to `submitTx`
 
-The contract-state reads, `getPublicStates` / `getStates` and `submitTx` are version-tagged (#1508).
-In code that handles only v9, narrow with `requireLedger9`:
+`submitTx` takes an `UnprovenTx` handle and resolves `VersionedFinalizedTxData` (#1508):
 
 ```ts
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
-
 // Before
-const state = await publicDataProvider.queryContractState(address);
-const [zswap, contractState, params] = (await publicDataProvider.queryZSwapAndContractState(address))!;
 await submitTx(providers, { unprovenTx });
 
 // After
-const { state } = requireLedger9(
-  (await publicDataProvider.queryContractState(address))!,
-  'readCounter'
-);
+await submitTx(providers, { unprovenTx: LedgerTransaction.seal('v9', 'Unproven', unprovenTx) }); // see Step 13
+```
+
+Rename `ContractEventBase.version` to `payloadVersion`, and read a retained-era deploy record at
+`deployTxData.public`. A provider rejection on
+any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
+match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
+[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+
+---
+
+## Step 19 — Decode on-chain state with your own runtime
+
+Every state read returns bytes (#1550). A contract state, ledger parameters and a
+zswap chain state are each a `LedgerState` from `@midnight-ntwrk/midnight-js-types`:
+the bytes, plus the `version` of the ledger that wrote them. Decode one with the
+runtime your contract was compiled against. A state decoded by any other copy of
+the runtime — the framework's included — is refused by your contract's `ledger()`
+with `expected instance of ChargedState`.
+
+`deserialize` calls only the decoder for the state's own `version`. A state
+written by a version you passed no decoder for throws
+`LedgerStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
+
+### Reading a contract state
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ledger } from './managed/counter/contract/index.js';
+
+// Before (5.0.0 pre-releases)
+const read = await publicDataProvider.queryContractState(address);
+const counter = ledger(requireLedger9(read!, 'readCounter').state.data);
+
+// After
+const read = await publicDataProvider.queryContractState(address);
+const counter = read === null ? null : ledger(read.contractState.deserialize({ v9: ContractState }).data);
+```
+
+The same applies to `watchForContractState`, `queryDeployContractState` and to
+`record.value` on `contractStateObservable`.
+
+### Reading `queryZSwapAndContractState`, `getPublicStates` and `getStates`
+
+The ledger parameters and the zswap chain state have no class in
+`compact-runtime`. Decode them with the ledger package:
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { LedgerParameters, ZswapChainState } from '@midnightntwrk/ledger-v9';
+
+// Before (5.0.0 pre-releases)
 const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
   (await publicDataProvider.queryZSwapAndContractState(address))!,
   'readCounter'
 );
-await submitTx(providers, { unprovenTx }); // an UnprovenTx handle, see Step 13
+
+// After
+const states = await publicDataProvider.queryZSwapAndContractState(address);
+if (states !== null) {
+  const contractState = states.contractState.deserialize({ v9: ContractState });
+  const zswapChainState = states.zswapChainState.deserialize({ v9: ZswapChainState });
+  const ledgerParameters = states.ledgerParameters.deserialize({ v9: LedgerParameters });
+}
 ```
 
-Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
-`version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
-any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
-match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
-[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+`getPublicStates` returns the same `PublicStatesRead`, and `getStates` adds
+`privateState`.
+
+### Replacing `getAnyEraContractState` and `queryRawContractState`
+
+Both are removed. `queryContractState` serves the same bytes, the `version` of
+the ledger that wrote them, and the block's ledger parameters:
+
+```ts
+// Before (5.0.0 pre-releases)
+const raw = await publicDataProvider.queryRawContractState(address);
+const bytes = raw?.raw;
+const parameters = raw?.ledgerParameters;
+
+// After
+const read = await publicDataProvider.queryContractState(address);
+const bytes = read?.contractState.serialize();
+const parameters = read?.ledgerParameters?.serialize();
+```
+
+`rawContractStateObservable` is removed too; `contractStateObservable` now
+emits bytes.
+
+### A contract compiled with the ledger 8 toolchain, after the fork
+
+Such a contract runs on `compact-runtime` 0.16. It reads a v8 state with its own
+`ContractState`. After the fork its state is v9, which that runtime cannot read:
+decode the bytes with the current `compact-runtime` and pass the state value to
+the old runtime as plain data.
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime'; // the current runtime
+// The runtime the contract was compiled against, installed under an alias:
+// "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0"
+import * as oldRuntime from 'compact-runtime-ledger8';
+import { ledger } from './managed/counter/contract/index.js';
+
+const read = await publicDataProvider.queryContractState(address);
+if (read !== null) {
+  const stateValue = read.contractState.deserialize({
+    v8: { deserialize: (bytes) => oldRuntime.ContractState.deserialize(bytes).data.state },
+    v9: {
+      deserialize: (bytes) => oldRuntime.StateValue.decode(ContractState.deserialize(bytes).data.state.encode())
+    }
+  });
+  const counter = ledger(stateValue);
+}
+```
+
+### Implementing `PublicDataProvider`
+
+Return a `ContractStateRead` or `PublicStatesRead`. Build each state with
+`LedgerState.fromBytes(kind, version, bytes)`, and take `version` from the
+bytes' own version tag with `ledgerVersionOfContractState` /
+`ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`.
+`fromBytes` refuses bytes that do not carry the tag of that version with
+`InvalidLedgerStateError`. Remove `queryRawContractState` and
+`rawContractStateObservable`.
+
+See [breaking-changes.md](./breaking-changes.md#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)
+and ADR 0020.
 
 ## Verification checklist
 
@@ -1056,7 +1161,8 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
-- [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
+- [ ] Every `contractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
-- [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.
-- [ ] Every contract-state read and `getPublicStates` / `getStates` result is narrowed on `version` (`switch` + `assertNever`, or `requireLedger9`).
+- [ ] The indexer is `4.4.0-rc.6` or later.
+- [ ] Every contract-state read and `getPublicStates` / `getStates` result is decoded with `deserialize`, passing the `ContractState` of the runtime your contract was compiled against.
+- [ ] No code calls `queryRawContractState`, `rawContractStateObservable` or `getAnyEraContractState`.

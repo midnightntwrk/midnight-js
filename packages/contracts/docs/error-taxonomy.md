@@ -81,7 +81,7 @@ one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
 
-`RawContractState.ledgerParameters` is optional: a provider that cannot serve
+`ContractStateRead.ledgerParameters` is optional: a provider that cannot serve
 them is still a usable provider, and the bundled indexer provider always does
 serve them. But this pipeline has just read the chain, so an absent parameter set
 *here* is a provider that did not serve them, not a caller with no read surface.

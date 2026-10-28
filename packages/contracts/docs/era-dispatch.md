@@ -355,8 +355,9 @@ frozen nor null-prototyped.
 fetched contract state belong to different ledger eras.
 
 The envelope is read from the bytes themselves, not taken from
-`RawContractState.version`: the decoder is chosen for these exact bytes, and a
-provider outside this framework may tag a record wrongly.
+`contractState.version` on the read record: the decoder is chosen for these
+exact bytes, and a provider outside this framework may build a record some other
+way.
 
 The order is load-bearing:
 
@@ -364,8 +365,9 @@ The order is load-bearing:
    cannot be decoded at all is still dated and a decoder is never handed bytes
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
-   one place, as `ledgerVersionOfContractState` in
-   `@midnight-ntwrk/midnight-js-utils`, beside the tag parser it is built on
+   one place, `LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`,
+   read here through `ledgerVersionOfContractState` from
+   `@midnight-ntwrk/midnight-js-utils`
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
    minor bump (2_000_000 to 2_001_000) is not a disagreement and must not be

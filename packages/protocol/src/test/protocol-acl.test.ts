@@ -83,6 +83,8 @@ describe('Protocol ACL package', () => {
         'InvariantViolationError',
         'latestNetworkLedgerVersion',
         'ledger',
+        'LEDGER_STATE_KINDS',
+        'LEDGER_STATE_TAGS',
         'LEDGER_VERSIONS',
         'Ledger8RuntimeInvalidError',
         'Ledger8RuntimeMissingError',

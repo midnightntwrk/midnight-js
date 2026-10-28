@@ -20,8 +20,8 @@ import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/mi
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { exitResultOrError, type Ledger9PublicStates, LedgerTransaction, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, type Ledger9Variant, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { exitResultOrError, LedgerTransaction, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
   CallOptions,
@@ -31,8 +31,8 @@ import type {
 } from './call';
 import { type ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
-import { type ContractStates, getPublicStates, getStates } from './get-states';
-import { requireLedger9ContractState } from './internal/era';
+import { getPublicStates, getStates, type Ledger9ContractStates, type Ledger9PublicStates } from './get-states';
+import { decodeLedger9PublicStates } from './internal/era';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -322,24 +322,24 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<{ readonly states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>>; readonly blockHash: string }> => {
+): Promise<{ readonly states: Ledger9ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
   const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (cached) {
-    return { states: cached.states as Ledger9Variant<ContractStates<Contract.PrivateState<C>>>, blockHash: cached.blockHash };
+    return { states: cached.states as Ledger9ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
-  const states = requireLedger9ContractState(
-    await getStates(
-      providers.publicDataProvider,
-      providers.privateStateProvider,
-      options.contractAddress,
-      options.privateStateId,
-      blockHash
-    ),
+  const { privateState, ...publicStates } = await getStates(
+    providers.publicDataProvider,
+    providers.privateStateProvider,
     options.contractAddress,
-    'createUnprovenCallTx'
+    options.privateStateId,
+    blockHash
   );
+  const states = {
+    ...decodeLedger9PublicStates(publicStates, options.contractAddress, 'createUnprovenCallTx'),
+    privateState
+  };
   if (transactionContext) {
     transactionContext[Transaction.CacheStates](states, identity, blockHash);
   }
@@ -357,7 +357,7 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
     return { states: cached.states, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
-  const states = requireLedger9ContractState(
+  const states = decodeLedger9PublicStates(
     await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash),
     options.contractAddress,
     'createUnprovenCallTx'

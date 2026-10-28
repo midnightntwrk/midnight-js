@@ -443,7 +443,7 @@ export class LedgerParametersUnservedError extends MidnightJsError {
         `the chain is running. Substituting the ledger's initial parameters would draw the guaranteed and ` +
         `fallible segment boundary from a model the chain does not use, and the node would refuse the ` +
         `guaranteed segment for running out of gas after you had already paid to prove it. Use a ` +
-        `PublicDataProvider that serves 'ledgerParameters' on 'queryRawContractState' — the bundled indexer ` +
+        `PublicDataProvider that serves 'ledgerParameters' on 'queryContractState' — the bundled indexer ` +
         `provider does.`
     );
     this.name = 'LedgerParametersUnservedError';

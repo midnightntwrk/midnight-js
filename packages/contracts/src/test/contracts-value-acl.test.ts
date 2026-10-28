@@ -83,7 +83,6 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'createUnprovenDeployTxFromVerifierKeys',
   'deployContract',
   'findDeployedContract',
-  'getAnyEraContractState',
   'getPublicStates',
   'getStates',
   'getUnshieldedBalances',
