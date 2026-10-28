@@ -189,6 +189,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
 
+Each factory takes a ledger 8 or a ledger 9 contract and builds the interface for that contract's era:
+
+```typescript
+const callTx = createCircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId);
+await callTx.increment();
+```
+
 ### Utility Functions
 
 ```typescript

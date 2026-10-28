@@ -635,6 +635,7 @@ names.
 | `types` | `FinalizedTxDataV8` | `Ledger8FinalizedTxData` |
 | `contracts` | `FoundDeployTxPublicDataV8` | `Ledger8FoundDeployTxPublicData` (flat, not in the `Ledger8` namespace: it is part of the current era's `FoundDeployTxData`) |
 | `contracts` | `Ledger8.DeployOnV9Error` | `Ledger8.DeployOnLedger9Error` |
+| `contracts` | `Ledger8.createCircuitCallTxInterface` | `createCircuitCallTxInterface`, on the flat surface; it takes a ledger 8 or a ledger 9 contract (#1523) |
 | `contracts` | `CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_V9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9`) | `LEDGER8_DEPLOY_ON_LEDGER9` (`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`) |
 | `protocol` | `ProtocolV8` | `Ledger8Protocol` |
 | `protocol` | `proveV8Transaction` (`./prove`) | `proveLedger8Transaction` |
