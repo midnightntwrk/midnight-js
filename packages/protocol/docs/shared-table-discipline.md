@@ -36,9 +36,6 @@ Both era objects handed out by `loadLedgerEra`
 reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
 
-`PUBLISHED_SCOPES` in `packages/protocol/src/errors.ts` is frozen as a plain
-array for the reason `LEDGER_VERSIONS` is.
-
 ## Null-prototype lookup tables
 
 A table that is *indexed by a value* gets a null prototype as well as a freeze.

@@ -19,11 +19,14 @@ import {
   type EncPublicKey,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
+  createMidnightProviderFromHandlers,
+  createWalletProviderFromHandlers,
+  type FinalizedTx,
   type MidnightProvider,
-  type VersionedFinalizedTransaction,
-  type VersionedUnboundTransaction,
+  type UnboundTx,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
@@ -32,7 +35,7 @@ import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
-import { adoptVersionedFinalized, adoptVersionedUnbound, unwrapVersionedFinalized } from './wallet-transaction';
+import { adoptInWallet, finalizedFromWallet } from './wallet-transaction';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
@@ -40,21 +43,11 @@ import { getInitialShieldedState, waitForFunds } from './wallet-utils';
  * Handles transaction balancing, submission, and wallet state management.
  */
 export class MidnightWalletProvider implements MidnightProvider, WalletProvider {
-  /**
-   * Both eras, declared once for both providers this class implements.
-   *
-   * Written out rather than assembled from per-era handlers, which is the escape
-   * hatch the tagged interfaces deliberately keep open for a class. The two
-   * methods below genuinely run both eras through ONE call each — the wallet
-   * SDK adopts a transaction AT a protocol version, so the era is data flowing
-   * through rather than a branch — and splitting them into handlers would duplicate
-   * the balance/sign/finalize sequence to no end.
-   *
-   * Read before an operation starts, by `assertProvidersSupportEra`. Frozen for the
-   * same reason the factories freeze their computed declaration: a widened
-   * declaration would let that check pass for an era this wallet cannot serve.
-   */
-  readonly supportedEras: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
+  /** Both eras, on both providers this class implements. */
+  readonly supportedEras: readonly LedgerVersion[];
+
+  private readonly balancer: WalletProvider;
+  private readonly submitter: MidnightProvider;
 
   logger: Logger;
   readonly env: EnvironmentConfiguration;
@@ -78,6 +71,17 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.zswapSecretKeys = ZswapSecretKeys.fromSeed(seeds.shielded);
     this.dustSecretKey = DustSecretKey.fromSeed(seeds.dust);
     this.unshieldedKeystore = unshieldedKeystore;
+    this.balancer = createWalletProviderFromHandlers({
+      v8: (tx, ttl) => this.balance('v8', tx, ttl),
+      v9: (tx, ttl) => this.balance('v9', tx, ttl),
+      getCoinPublicKey: () => this.getCoinPublicKey(),
+      getEncryptionPublicKey: () => this.getEncryptionPublicKey()
+    });
+    this.submitter = createMidnightProviderFromHandlers({
+      v8: (tx) => this.submit('v8', tx),
+      v9: (tx) => this.submit('v9', tx)
+    });
+    this.supportedEras = this.balancer.supportedEras;
   }
 
   getCoinPublicKey(): CoinPublicKey {
@@ -88,25 +92,31 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.zswapSecretKeys.encryptionPublicKey;
   }
 
-  async balanceTx(
-    tx: VersionedUnboundTransaction,
-    ttl: Date = ttlOneHour()
-  ): Promise<VersionedFinalizedTransaction> {
-    // Both eras balance through the same call. The wallet SDK adopts a
-    // transaction AT a protocol version and unwraps it WITHIN an epoch, so the
-    // era is data flowing through rather than a branch in the balancing itself;
-    // what differs per era is only how the payload is carried (a live object, or
-    // serialized bytes -- ADR 0006).
-    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(
-      await adoptVersionedUnbound(this.wallet, tx),
-      { ttl }
-    );
-    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return unwrapVersionedFinalized(this.wallet, tx.version, await this.wallet.finalizeRecipe(signed));
+  balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx> {
+    return this.balancer.balanceTx(tx, ttl);
   }
 
-  async submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(await adoptVersionedFinalized(this.wallet, tx));
+  submitTx(tx: FinalizedTx): Promise<string> {
+    return this.submitter.submitTx(tx);
+  }
+
+  private async balance<E extends LedgerVersion>(
+    era: E,
+    tx: LedgerTransactionTypes[E]['Unbound'],
+    ttl: Date = ttlOneHour()
+  ): Promise<LedgerTransactionTypes[E]['Finalized']> {
+    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(
+      await adoptInWallet(this.wallet, era, 'Unbound', tx),
+      { ttl }
+    );
+    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) =>
+      this.unshieldedKeystore.signDataAsync(payload)
+    );
+    return finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
+  }
+
+  private async submit<E extends LedgerVersion>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
+    return this.wallet.submitTransaction(await adoptInWallet(this.wallet, era, 'Finalized', tx));
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {

@@ -90,17 +90,14 @@ export const dappConnectorProofProvider = async <K extends string>(
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
   return createProofProviderFromHandlers({
-    currentEra: (tx, config) => {
+    // See the `costModel` parameter above for why the v8 handler does not take one.
+    v8: (tx, config) => {
+      refuseTimeout(config);
+      return proveLedger8Transaction(tx, provingProvider);
+    },
+    v9: (tx, config) => {
       refuseTimeout(config);
       return tx.prove(provingProvider, costModel);
-    },
-    // Bytes in, bytes out: a retained-era transaction cannot reach this method as a live object. See
-    // the `costModel` parameter above for why this handler does not take one.
-    retainedEras: {
-      v8: (txBytes, config) => {
-        refuseTimeout(config);
-        return proveLedger8Transaction(txBytes, provingProvider);
-      }
     }
   });
 };

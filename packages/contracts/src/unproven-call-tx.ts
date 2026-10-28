@@ -20,7 +20,7 @@ import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/mi
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { exitResultOrError, type Ledger9PublicStates, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { exitResultOrError, type Ledger9PublicStates, LedgerTransaction, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, type Ledger9Variant, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
@@ -198,18 +198,22 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         nextPrivateState: privateState,
         nextZswapLocalState: zswapLocalState,
         privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs,
-        unprovenTx: createUnprovenLedgerCallTx(
-          calls,
-          contractStateFor,
-          chainStateFor,
-          encryptionPublicKeyResolverForZswapState(
-            networkId,
-            zswapLocalState,
-            options.coinPublicKey,
-            walletEncryptionPublicKey,
-            options.additionalCoinEncPublicKeyMappings
-          ),
-          config
+        unprovenTx: LedgerTransaction.seal(
+          'v9',
+          'Unproven',
+          createUnprovenLedgerCallTx(
+            calls,
+            contractStateFor,
+            chainStateFor,
+            encryptionPublicKeyResolverForZswapState(
+              networkId,
+              zswapLocalState,
+              options.coinPublicKey,
+              walletEncryptionPublicKey,
+              options.additionalCoinEncPublicKeyMappings
+            ),
+            config
+          )
         ),
         // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
         // callee addresses to this wallet is genuinely created and belongs in what the caller is

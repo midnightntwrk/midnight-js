@@ -113,7 +113,7 @@ describe('Block Time Contract Tests 2', () => {
           const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
           await sleep(3000);
           const finalizedCallTx = await submitTx(providers, {
-            unprovenTx: { version: 'v9', tx: unprovenCallTx.private.unprovenTx },
+            unprovenTx: unprovenCallTx.private.unprovenTx,
             circuitId: unprovenCallTxOptions.circuitId
           });
           expect(finalizedCallTx.status).toEqual(FailEntirely);

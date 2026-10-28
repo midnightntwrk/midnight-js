@@ -23,7 +23,6 @@ import {
   type ComposeOption,
   ComposeOptionError,
   type ComposeStage,
-  Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
   PROTOCOL_ERROR_CODES,
@@ -39,20 +38,11 @@ import {
 const packageNamesIn = (message: string): string[] =>
   [...message.matchAll(/@[a-z0-9.-]+\/[a-z0-9.-]+/g)].map(([name]) => name).sort();
 
-// Which package managers the remediation covers. A published error must not
-// prescribe the one this repo happens to use, so this is asserted exhaustively:
-// dropping one, or narrowing back to a single tool, fails.
-const whyCommandsIn = (message: string): string[] =>
-  ['npm why', 'yarn why', 'pnpm why', 'bun pm why'].filter((command) =>
-    new RegExp(`\\b${command}\\b`).test(message)
-  );
-
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
     expect(PROTOCOL_ERROR_CODES).toEqual({
       UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
       UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
-      LEDGER8_INSTANCE_MISMATCH: 'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       STATE_CONVERSION_FAILED: 'MIDNIGHT_JS_P_STATE_CONVERSION_FAILED',
       COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
@@ -84,12 +74,6 @@ describe('resilience to the dual-publish scope rewrite', () => {
 
   it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
     expect(source).not.toContain('@midnight-ntwrk/');
-  });
-
-  it('names two distinct scopes in the remediation hint, not one twice', () => {
-    const names = packageNamesIn(new Ledger8InstanceMismatchError().message);
-
-    expect(new Set(names).size).toBe(names.length);
   });
 });
 
@@ -202,22 +186,6 @@ describe('instanceof', () => {
   });
 });
 
-describe('Ledger8InstanceMismatchError', () => {
-  it('carries the LEDGER8_INSTANCE_MISMATCH code, says which package is installed twice, and remediates tool-agnostically', () => {
-    const error = new Ledger8InstanceMismatchError();
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8InstanceMismatchError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.message).toContain('onchain-runtime-v3 is installed twice');
-    expect(packageNamesIn(error.message)).toEqual([
-      '@midnight-ntwrk/onchain-runtime-v3',
-      '@midnightntwrk/onchain-runtime-v3'
-    ]);
-    expect(whyCommandsIn(error.message)).toEqual(['npm why', 'yarn why', 'pnpm why', 'bun pm why']);
-  });
-});
-
 describe('StateConversionFailedError', () => {
   it('carries the STATE_CONVERSION_FAILED code, preserves the cause, and names the failing stage', () => {
     const cause = new Error('tag v8 != v6');
@@ -259,6 +227,14 @@ describe('UnknownLedgerVersionError', () => {
 
     expect(error.requestedVersion).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
+  });
+
+  it('names the call that read the version when one is given', () => {
+    const error = new UnknownLedgerVersionError('undefined', 'watchForTxData');
+
+    expect(error.context).toBe('watchForTxData');
+    expect(error.message).toContain('watchForTxData');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
   });
 });
 

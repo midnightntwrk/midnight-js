@@ -193,8 +193,8 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
- * artifact against a post-fork head is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
+ * Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+ * artifact after the fork is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
  * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
  * against contracts deployed before the fork.
  *
@@ -254,7 +254,7 @@ export async function deployContract<C extends Contract.Any>(
  * @throws Ledger8SigningKeyUnusableError If a retained-era deploy is given a `signingKey` that is not a
  *                                        `schnorr` key of 64 hex characters. Raised before anything
  *                                        is composed.
- * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed against a post-fork head.
+ * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed after the fork.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
  * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success

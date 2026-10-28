@@ -306,3 +306,21 @@ Issue #1489. The decision is unchanged; only names change.
   `ProvingProvidersByEra`, one `ProvingProvider` per era.
 
 The amendments above keep the names that were current when they were written.
+
+## Amendment — one handler per era, keyed by `LedgerVersion` (2026-10-26)
+
+Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
+The factories still build a provider from per-era handlers and still compute `supportedEras` from
+them (points 2, 3, 5, 7, 8 and 10 stand). What changed:
+
+- The handlers are keyed by `LedgerVersion`: `{ v8, v9 }`, with `undefined` for an era not served.
+  `currentEra` / `retainedEras` are gone, and so are `RetainedEraEntries`, `erasServedBy`,
+  `narrowToEra`, `EraRequest` and the `Ledger9*` / `RetainedEra*` handler types (point 4 no longer
+  applies). Every handler receives a live ledger object of its own era.
+- The factory unwraps the handle for its era's handler and seals a transaction answer (`proveTx`,
+  `balanceTx`) in the same era; `submitTx`'s `TransactionId` passes through. A
+  handle of an era with no handler is refused by the method with `ProviderEraUnsupportedError`;
+  `Ledger8PayloadUnsupportedError` and `unwrapLedger9` are removed (point 9).
+- A provider with no handler at all is refused when it is built.
+- The testkit's `MidnightWalletProvider` is now built from handlers, so the exception in point 6 is
+  no longer used in this repository. Implementing an interface directly is still supported.

@@ -13,23 +13,14 @@
  * limitations under the License.
  */
 
-import {
-  type CoinPublicKey,
-  type EncPublicKey,
-  type FinalizedTransaction,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { CoinPublicKey, EncPublicKey, FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { erasServedBy, narrowToEra, type RetainedEraEntries } from './era-entries';
+import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
-import { type UnboundTransaction,type VersionedUnboundTransaction } from './proof-provider';
-import { type VersionedTransaction } from './versioned';
-
-/**
- * A balanced, signed transaction ready for submission: either the live v9
- * ledger object, or the serialized bytes of a v8-era transaction.
- */
-export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
+import { type FinalizedTx, LedgerTransaction, type UnboundTx } from './ledger-transaction';
+import type { UnboundTransaction } from './proof-provider';
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -47,18 +38,20 @@ export interface WalletProvider {
   /**
    * Balances and signs a transaction, readying it for submission.
    *
-   * @param tx The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
-   *           ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+   * @param tx The unbound transaction handle to balance.
    * @param ttl Expiry for the intent the wallet adds while balancing. The framework always passes
    *            a `Date` `providers.config.ttlSeconds` after balancing starts; honour it rather than a
    *            TTL of your own. Implementation-defined when omitted; the testkit's
    *            `MidnightWalletProvider` defaults to one hour.
-   * @returns The balanced, signed transaction, version-tagged. Narrow on `version` — or call
-   *          `unwrapLedger9` — before reading the payload.
-   * @throws Ledger8PayloadUnsupportedError if the implementation does not handle v8 payloads.
-   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
+   * @returns The balanced, signed transaction handle, in the SAME era as `tx`.
+   * @throws InvalidTransactionHandleError if `tx` is not an unbound handle of this package.
+   * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
+   * @throws ForeignLedgerTransactionError if the balanced transaction is not an object of the
+   *         ledger copy this framework loaded for its era.
+   * @throws InvalidTransactionHandleError if the balanced transaction is not a ledger transaction
+   *         object (`not-a-transaction`) or is not at the Finalized stage (`stage-mismatch`).
    */
-  balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction>;
+  balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
 
   getCoinPublicKey(): CoinPublicKey;
 
@@ -66,79 +59,70 @@ export interface WalletProvider {
 }
 
 /**
- * Balances a ledger 9 transaction, which is passed to `balanceTx` as a live ledger
- * object. It fills the `currentEra` slot while ledger 9 is the current era.
- */
-export type Ledger9Balancer = (tx: UnboundTransaction, ttl?: Date) => Promise<FinalizedTransaction>;
-
-/**
- * Balances a RETAINED-era transaction (an era in `RetainedLedgerVersion`; today
- * ledger 8), which is passed to `balanceTx` as serialized
- * bytes in both directions.
- */
-export type RetainedEraBalancer = (txBytes: Uint8Array, ttl?: Date) => Promise<Uint8Array>;
-
-/**
- * The per-era handlers {@link createWalletProviderFromHandlers} assembles a
- * {@link WalletProvider} from.
+ * The per-era handlers and key readers {@link createWalletProviderFromHandlers}
+ * assembles a {@link WalletProvider} from: one key per ledger era, a handler for
+ * an era the wallet balances and `undefined` for one it does not.
  *
- * The two key readers sit beside the handlers rather than inside one: a coin public
- * key and an encryption public key are properties of the wallet, not of the era
- * a transaction belongs to, and duplicating them per era would invite two
- * answers to one question.
+ * A handler takes and returns objects of the ledger copy this framework loaded
+ * for its era. A handler that hands the transaction to another ledger copy —
+ * a wallet SDK built on its own install of the ledger package — serializes it
+ * on the way out and decodes the answer into the framework's copy on the way in,
+ * with `deserializeTransactionAtStage` from
+ * `@midnight-ntwrk/midnight-js-protocol/transaction`.
+ *
+ * The two key readers sit beside the handlers rather than inside one: they are
+ * properties of the wallet, not of the era a transaction belongs to.
  */
-export interface WalletProviderHandlers {
-  /** Required: every wallet balances the current era. */
-  readonly currentEra: Ledger9Balancer;
-  /** Optional, one entry per retained era this wallet balances. */
-  readonly retainedEras?: RetainedEraEntries<RetainedEraBalancer>;
+export type WalletProviderHandlers = {
+  readonly [E in LedgerVersion]:
+    | ((tx: LedgerTransactionTypes[E]['Unbound'], ttl?: Date) => Promise<LedgerTransactionTypes[E]['Finalized']>)
+    | undefined;
+} & {
   readonly getCoinPublicKey: () => CoinPublicKey;
   readonly getEncryptionPublicKey: () => EncPublicKey;
-}
+};
 
 /**
- * Assembles a {@link WalletProvider} from one handler per ledger era it serves.
+ * Assembles a {@link WalletProvider} from one handler per ledger era.
  *
  * The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
- * `supportedEras` is computed from the handlers supplied, the tag never appears in
- * implementation code, and an answer is always tagged as the era the request
- * carried.
+ * `supportedEras` is computed from the handlers given, each handle is routed to
+ * its own era's handler, and the answer is sealed in that same era.
  *
- * `currentEra` and the key readers are called with `handlers` as `this`; a
- * retained-era handler is called with no `this`.
+ * Every handler and both key readers are called with `handlers` as `this`.
  *
- * @param handlers The current-era handler, any retained-era handlers, and the two key readers.
- * @returns A {@link WalletProvider} routing each request to its era's handler.
- * @throws UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
- *         than `undefined`, is not a function. Raised at construction.
- * @throws InvalidArgumentError if `handlers` is not an object, `retainedEras` is
- *         not a plain object keyed only by retained eras, or a key reader is not
- *         a function. Raised at construction.
+ * @param handlers One entry per ledger era, and the two key readers.
+ * @returns A {@link WalletProvider} routing each handle to its era's handler.
+ * @throws UnusableEraEntryError if an era entry is neither `undefined` nor a
+ *         function. Raised at construction.
+ * @throws InvalidArgumentError if `handlers` is not an object, has no key for a
+ *         ledger era, serves no era (every entry `undefined`), or a key reader is
+ *         not a function. Raised at construction.
  */
 export const createWalletProviderFromHandlers = (handlers: WalletProviderHandlers): WalletProvider => {
-  const { currentEra, retainedEras } = readEraEntries('balanceTx', handlers, 'handler');
+  const served = readEraEntries('balanceTx', handlers, 'handler');
   const { getCoinPublicKey, getEncryptionPublicKey } = handlers;
   assertFunction('balanceTx', 'getCoinPublicKey', getCoinPublicKey);
   assertFunction('balanceTx', 'getEncryptionPublicKey', getEncryptionPublicKey);
+  const supportedEras = Object.freeze(LEDGER_VERSIONS.filter((era) => served[era] !== undefined));
+  const route: Route<'Unbound', [Date?], TransactionsAt<'Finalized'>, FinalizedTx> = {
+    method: 'balanceTx',
+    stage: 'Unbound',
+    handlers: served,
+    receiver: handlers,
+    supportedEras,
+    answer: (era, balanced) => LedgerTransaction.seal(era, 'Finalized', balanced, 'balanceTx')
+  };
   return {
-    supportedEras: erasServedBy(retainedEras),
-
-    async balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction> {
-      const request = narrowToEra(tx, 'balanceTx', retainedEras);
-      if (request.era === CURRENT_LEDGER_VERSION) {
-        return { version: CURRENT_LEDGER_VERSION, tx: await Reflect.apply(currentEra, handlers, [request.tx, ttl]) };
-      }
-      return { version: request.era, txBytes: await Reflect.apply(request.handler, undefined, [request.txBytes, ttl]) };
-    },
-
+    supportedEras,
+    balanceTx: (tx, ttl) => dispatch(route, tx, [ttl]),
     getCoinPublicKey: () => Reflect.apply(getCoinPublicKey, handlers, []),
     getEncryptionPublicKey: () => Reflect.apply(getEncryptionPublicKey, handlers, [])
   };
 };
 
 /**
- * A {@link WalletProvider} written against the v9 ledger runtime only — the
- * shape an implementation had before the transaction methods became version-tagged.
+ * A {@link WalletProvider} written against the v9 ledger runtime only.
  */
 export interface Ledger9WalletProvider {
   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
@@ -147,29 +131,23 @@ export interface Ledger9WalletProvider {
 }
 
 /**
- * Lifts a v9-only wallet implementation into the version-tagged
- * {@link WalletProvider} interface.
+ * Lifts a v9-only wallet implementation into the {@link WalletProvider}
+ * interface, unwrapping each handle on the way in and sealing the answer on the
+ * way out.
  *
- * USE THIS RATHER THAN TAGGING BY HAND. It keeps the `version` tag out of
- * implementation code, where a hand-tagged implementation meets a compiler error
- * that does not name the real problem.
- *
- * The returned provider serves v9 payloads only — `supportedEras` says so — and
- * that is permanent rather than a gap: it lifts a v9-only implementation. It
- * rejects a v8 payload with `Ledger8PayloadUnsupportedError` and an untagged one with
- * `UntaggedPayloadError`. To serve a retained era as well, use
+ * The returned provider serves v9 only — `supportedEras` says so — and refuses
+ * a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use
  * {@link createWalletProviderFromHandlers}.
  *
  * @param impl The v9-only wallet implementation to wrap.
- * @returns A {@link WalletProvider} that narrows inbound payloads and tags
- *          outbound ones.
- * @see {@link ProviderEraDeclarations} for the compiler error this avoids, and for
- * why serving v9 payloads only is permanent rather than a gap.
+ * @returns A {@link WalletProvider} serving v9.
  *
  * @example
  * ```typescript
+ * // The wallet runs its own copy of the ledger, so the transaction crosses as bytes.
  * const walletProvider = createWalletProvider({
- *   balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+ *   balanceTx: async (tx, ttl) =>
+ *     deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
  *   getCoinPublicKey: () => wallet.coinPublicKey,
  *   getEncryptionPublicKey: () => wallet.encryptionPublicKey
  * });
@@ -177,8 +155,8 @@ export interface Ledger9WalletProvider {
  */
 export const createWalletProvider = (impl: Ledger9WalletProvider): WalletProvider =>
   createWalletProviderFromHandlers({
-    currentEra: (tx, ttl) => impl.balanceTx(tx, ttl),
+    v8: undefined,
+    v9: (tx, ttl) => impl.balanceTx(tx, ttl),
     getCoinPublicKey: () => impl.getCoinPublicKey(),
     getEncryptionPublicKey: () => impl.getEncryptionPublicKey()
   });
-

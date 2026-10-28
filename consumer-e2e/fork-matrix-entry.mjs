@@ -1818,7 +1818,7 @@ const parkSubmission = (providers) => {
         // payload these legs exist to submit.
         supportedEras: midnightProvider.supportedEras,
         submitTx: async (tx) => {
-          reachSubmit(tx.version);
+          reachSubmit(tx.era);
           if (await letGone) {
             throw new Error('the parked submission was discarded rather than sent');
           }
@@ -2018,7 +2018,7 @@ const callWithRefusedSubmission = async (headAnswer) => {
     midnightProvider: {
       supportedEras: session.providers.midnightProvider.supportedEras,
       submitTx: (tx) => {
-        submittedVersion = tx.version;
+        submittedVersion = tx.era;
         refused = true;
         return Promise.reject(new Error('the node refused the transaction'));
       }

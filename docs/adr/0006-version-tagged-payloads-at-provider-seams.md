@@ -548,3 +548,17 @@ only the transaction payloads:
 read the input. The full list of changed signatures is in
 `docs/releases/v5.0.0/breaking-changes.md`, section 14.
 
+
+## Amendment — transactions become handles (2026-10-26)
+
+Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
+Points 1, 2, 5 and 6 no longer describe the transaction methods. A transaction crossing `proveTx`,
+`balanceTx` and `submitTx` is now an opaque handle (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) that
+carries its era as data and holds a live ledger object in both eras. The retained era no longer
+crosses as bytes. `VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
+`unwrapLedger9`, `Ledger8PayloadUnsupportedError` and `UntaggedPayloadError` are removed.
+
+The rest of the decision stands: the read side keeps its `version`-tagged records, and `version`
+is still derived, never asserted. On a finalized-transaction record, `tx` is a `FinalizedTx` of
+the record's era (`record.tx.era === record.version`), so point 3 of the amendment of 2026-10-16
+("the v8 variant carries the stored bytes") does not apply to transaction records.

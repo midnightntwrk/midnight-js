@@ -20,13 +20,12 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
-  UntaggedPayloadError,
   type VerifierKey,
   type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -45,7 +44,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
-import { isLedger8Request, requireLedger9ContractState,requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { isLedger8Request, readVersionTag, requireLedger9ContractState, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   fromStoredLedger8SigningKey,
@@ -107,7 +106,7 @@ const queryFoundDeployTxPublicData = async (
           return { ...deployRecord, contractAddress, initialContractState: deployState.state };
         default: {
           const unhandled: never = deployState;
-          throw new UntaggedPayloadError('queryDeployContractState', unhandled);
+          throw new UnknownLedgerVersionError(readVersionTag(unhandled), 'queryDeployContractState');
         }
       }
     }
@@ -439,8 +438,8 @@ export interface FoundContract<C extends Contract.Any> {
  * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
- * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It resolves the
- * head era, dates the fetched state's envelope against it, and byte-matches every local verifier
+ * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the
+ * network's ledger version, checks the fetched state's version tag against it, and byte-matches every local verifier
  * key against the slot the chain holds — the checks that make a later call against this contract
  * safe, done once here so a mis-dispatch is caught at attach time rather than at the first call.
  *
@@ -506,7 +505,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
- * @throws UntaggedPayloadError The deploy record or the deploy state carries no readable era tag.
+ * @throws UnknownLedgerVersionError The deploy record or the deploy state carries no readable era tag.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or

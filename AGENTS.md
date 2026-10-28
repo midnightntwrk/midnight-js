@@ -236,7 +236,7 @@ yarn test --coverage
 
 ### Creating a New Provider Implementation
 
-1. Implement the provider interface from `types/`
+1. Implement the provider interface from `types/`. For `ProofProvider`, `WalletProvider` or `MidnightProvider`, build it with the `create*FromHandlers` factory: one handler per ledger era
 2. Create factory function that returns provider
 3. Handle all error cases
 4. Write comprehensive tests
@@ -246,8 +246,9 @@ yarn test --coverage
 
 1. Understand current flow in `contracts/` package
 2. Check impact on other packages
-3. Update types if transaction shape changes
-4. Test full flow with E2E tests
+3. Keep transactions as handles (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) in every public API from `types` up; a raw ledger object lives only between `LedgerTransaction.unwrap` and `LedgerTransaction.seal` inside one function (ADR 0019)
+4. Update types if transaction shape changes
+5. Test full flow with E2E tests
 
 ## Do's and Don'ts
 

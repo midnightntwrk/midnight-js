@@ -16,8 +16,10 @@ hand-maintained execution layer
 (`docs/adr/0015-retained-era-execution-on-compact-js.md`): compact-js owns both
 acquisitions now, so the check had no second path left to compare and no
 subject. What replaced it is an install-time check, narrower in two ways —
-see *What checks this today* below. Its error, `Ledger8InstanceMismatchError`,
-stays on the published surface with its code.
+see *What checks this today* below. Its error class and
+that error's code have been removed too.
+For transactions, the check is back at run time as `isFrameworkLedgerTransaction`
+— see *The transaction guard* below.
 
 ## What a duplicate install actually produces
 
@@ -34,9 +36,9 @@ on every object handed across a class boundary, so a cross-copy handoff throws
 direction.
 
 The failure is loud but opaque: it names neither the package nor the duplicate
-install, and it surfaces deep inside a decode. That is what
-`Ledger8InstanceMismatchError` exists to replace — the same fault, reported at
-the point the two copies are first observed and naming what to go and fix.
+install, and it surfaces deep inside a decode. For transactions,
+`isFrameworkLedgerTransaction` reports the same fault before any WASM call
+sees the object.
 
 ## Receiver position: nothing is checked
 
@@ -56,6 +58,28 @@ duplicate install and silently wrong contract state. That is why the retired
 guard ran before any state crossed the bridge rather than being treated as
 optional belt-and-braces, and it is why losing it is a loss rather than a
 simplification.
+
+## The transaction guard
+
+`isFrameworkLedgerTransaction(era, value)` (`lib/shared/ledger-transaction.ts`,
+published at the `./transaction` subpath) answers, synchronously, whether a
+transaction object belongs to the ledger copy this framework loaded. It is an
+`instanceof` check against that copy's `Transaction` class:
+
+- `'own'` — the value is an instance of the framework's class;
+- `'foreign-instance'` — it is not: another physical copy of the same package
+  (for v8, typically the `@midnight-ntwrk/ledger-v8` copy wallet-sdk installs),
+  or not a transaction at all;
+- `'ledger8-not-loaded'` — the era is v8 and `loadLedger8Protocol()` has not
+  resolved yet, so the framework's class does not exist and no answer is
+  possible. The check never imports v8 itself, because it must stay
+  synchronous and must not load the v8 WASM.
+
+It guards both positions described above: a foreign object is refused before it
+can be an argument or a receiver. `LedgerTransaction.seal` in `types` turns a
+non-`'own'` answer into `ForeignLedgerTransactionError`, with the answer as its
+`reason`. Every handle is made by `seal`, so no transaction handle can hold a
+foreign object (`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`).
 
 ## What checks this today
 
@@ -78,8 +102,7 @@ but that is an inference, not the `===` the probe performed.
 
 ## The retired probe's design
 
-Recorded because `Ledger8InstanceMismatchError` still ships, and its message
-only makes sense against it.
+Recorded as history: the probe and its error are gone.
 
 Reference equality was the probe: two references to the same physical copy are
 always `===`, two from different copies never are, even at the same version.
@@ -103,39 +126,6 @@ after a duplicate that is not there.
 only retained pre-fork package this one both depended on directly and could
 receive from a consumer's own resolution. No other WASM package the engine
 acquired had a comparable second acquisition path.
-
-## What the mismatch error carries, and what it does not
-
-`Ledger8InstanceMismatchError` is thrown when `onchain-runtime-v3` is installed
-twice, so two separate copies of it are loaded into this process.
-
-Its message names that package under both npm scopes. It has no other fields
-and takes no constructor arguments. It is a direct assertion failure, not a
-wrapped lower-level exception, so unlike `StateConversionFailedError` there is
-no `cause` to carry.
-
-The remediation names every mainstream package manager rather than the one this
-repo happens to use, because this package is consumed by dApps installed with
-all of them.
-
-## Naming both published npm scopes in the remediation hint
-
-`PUBLISHED_SCOPES` in `packages/protocol/src/errors.ts` holds the npm scopes
-this package and its retained pre-fork runtimes are published under, while the
-scope migration runs. The scope is held apart from the `/` on purpose, and
-joined only inside `Ledger8InstanceMismatchError`. The dual-publish
-(`.github/scripts/publish-public-npm.mjs`) rewrites the old scope to the new one
-inside built `.js`/`.d.ts` files as well as in `package.json`, matching on the
-scope *with* its trailing slash. A scoped package name written as one literal
-would therefore ship rewritten, collapsing the two names into one and turning a
-hint that names both scopes into one that names a single scope twice. Splitting
-the scope from the slash leaves the rewrite nothing to match; `errors.test.ts`
-holds that line.
-
-`DUPLICATED_PACKAGE` carries the unscoped npm name. Both published copies
-carry this same name under a different scope, so
-naming only one scope would point every consumer installed from the other at a
-package not in their tree.
 
 ## Where the mixing still happens
 

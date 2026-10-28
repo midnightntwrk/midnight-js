@@ -15,7 +15,7 @@
 
 export * from './errors';
 export * from './lib/era/load-era';
-export * from './lib/v8/load';
+export { type Ledger8Protocol, loadLedger8Protocol } from './lib/v8/load';
 export * from './lib/v8/load-engine';
 export * from './version';
 export * as compactJs from '@midnight-ntwrk/compact-js';

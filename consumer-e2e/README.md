@@ -464,7 +464,8 @@ from the fork node relative to `compose.yml`, changed nothing.
 ### Pinning the retained runtime is a consumer requirement, not a harness detail
 
 The personas pin `@midnight-ntwrk/onchain-runtime-v3` explicitly. Without it the
-deploy fails with `Ledger8InstanceMismatchError`, because
+deploy failed with an instance-mismatch error (since removed, together with the
+runtime guard that raised it), because
 `compact-runtime@0.16` asks for `^3.0.0` while `protocol` pins one exact version
 and a resolver satisfies both with two different copies. Note that the error's own
 remediation text blames the two npm scopes; here both copies were on the *same*

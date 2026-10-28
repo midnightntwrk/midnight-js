@@ -122,3 +122,10 @@ Issue #1489. The decision is unchanged.
   and here the era that recorded the deployment.
 - `ScopedTxEraUnsupportedError`, one of the fork-window refusals published flat,
   is `ScopedTransactionEraUnsupportedError`.
+
+## Amendment — one flat `Ledger8` error is removed (2026-10-26)
+
+Issue #1533. Of the two errors the Follow-ups name, the instance-mismatch error and its code are
+removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised by
+`LedgerTransaction.seal` ([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)).
+`Ledger8RuntimeMissingError` stays flat in `protocol`.

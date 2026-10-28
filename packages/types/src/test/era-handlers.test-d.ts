@@ -13,96 +13,84 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { RetainedEraEntries } from '../era-entries';
-import { createMidnightProviderFromHandlers, type MidnightProvider } from '../midnight-provider';
-import { createProofProviderFromHandlers, type ProofProvider, type UnboundTransaction } from '../proof-provider';
-import { createWalletProviderFromHandlers, type WalletProvider } from '../wallet-provider';
+import type { FinalizedTx, UnboundTx, UnprovenTx } from '../ledger-transaction';
+import { createMidnightProviderFromHandlers, type MidnightProvider, type MidnightProviderHandlers } from '../midnight-provider';
+import {
+  createProofProviderFromHandlers,
+  type ProofProvider,
+  type ProofProviderHandlers,
+  type ProveTxConfig
+} from '../proof-provider';
+import { createWalletProviderFromHandlers, type WalletProvider, type WalletProviderHandlers } from '../wallet-provider';
 
-// These are compile-level tests: the property under test is that the file
-// type-checks, and for the `@ts-expect-error` cases that it does NOT without
-// the suppression. Vitest's typecheck pass is what turns tsc diagnostics
-// against this file into test failures.
+// Compile-level tests: the property under test is that this file type-checks,
+// and for the `@ts-expect-error` cases that it does NOT without the suppression.
 
-const stubUnbound = (): UnboundTransaction => ({}) as UnboundTransaction;
-const stubFinalized = (): FinalizedTransaction => ({}) as FinalizedTransaction;
+declare const ledger8Unbound: LedgerTransactionTypes['v8']['Unbound'];
+declare const ledger9Unbound: LedgerTransactionTypes['v9']['Unbound'];
 
 const keyReaders = {
-  getCoinPublicKey: () => 'coin-pk' as never,
-  getEncryptionPublicKey: () => 'enc-pk' as never
+  getCoinPublicKey: (): CoinPublicKey => 'coin-pk',
+  getEncryptionPublicKey: (): EncPublicKey => 'enc-pk'
 };
 
-describe('RetainedEraEntries', () => {
-  // The keying is what makes "raz a dobrze" a type-level fact rather than a
-  // convention: the current era is EXCLUDED from the key set, so a handler
-  // registered against it is a build failure — and a further era becomes
-  // registrable on its own, with no change to this type.
-  it('keys every era except the current one', () => {
-    expectTypeOf<keyof RetainedEraEntries<string>>().toEqualTypeOf<Exclude<LedgerVersion, 'v9'>>();
-  });
-});
-
-describe('createProofProviderFromHandlers', () => {
-  it('accepts a retained handler for a retained era', () => {
-    expectTypeOf(
-      createProofProviderFromHandlers({
-        currentEra: async () => stubUnbound(),
-        retainedEras: { v8: async (bytes: Uint8Array) => bytes }
-      })
-    ).toExtend<ProofProvider>();
+describe('provider methods', () => {
+  it('carry handles from stage to stage', () => {
+    expectTypeOf<ProofProvider['proveTx']>().toEqualTypeOf<
+      (tx: UnprovenTx, proveTxConfig?: ProveTxConfig) => Promise<UnboundTx>
+    >();
+    expectTypeOf<WalletProvider['balanceTx']>().toEqualTypeOf<(tx: UnboundTx, ttl?: Date) => Promise<FinalizedTx>>();
+    expectTypeOf<MidnightProvider['submitTx']>().toEqualTypeOf<(tx: FinalizedTx) => Promise<TransactionId>>();
   });
 
-  it('refuses a retained handler registered for the current era', () => {
-    createProofProviderFromHandlers({
-      currentEra: async () => stubUnbound(),
-      // @ts-expect-error the current era is not a retained era: it is passed
-      // to the provider as a live ledger object, not as bytes.
-      retainedEras: { v9: async (bytes: Uint8Array) => bytes }
-    });
-  });
-
-  it('declares its eras against the shared era vocabulary', () => {
+  it('declare their eras against the shared era vocabulary', () => {
     expectTypeOf<ProofProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
-  });
-
-  it('refuses a declaration outside the era vocabulary', () => {
-    const provider: ProofProvider = {
-      // @ts-expect-error 'v7' is not a ledger era this framework knows.
-      supportedEras: ['v7'],
-      proveTx: async () => ({ version: 'v9', tx: stubUnbound() })
-    };
-    expectTypeOf(provider).toExtend<ProofProvider>();
-  });
-});
-
-describe('createWalletProviderFromHandlers', () => {
-  it('refuses a retained handler registered for the current era', () => {
-    createWalletProviderFromHandlers({
-      currentEra: async () => stubFinalized(),
-      // @ts-expect-error see the proof-provider case above.
-      retainedEras: { v9: async (bytes: Uint8Array) => bytes },
-      ...keyReaders
-    });
-  });
-
-  it('declares its eras against the shared era vocabulary', () => {
     expectTypeOf<WalletProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
+    expectTypeOf<MidnightProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
   });
 });
 
-describe('createMidnightProviderFromHandlers', () => {
-  it('refuses a retained handler registered for the current era', () => {
-    createMidnightProviderFromHandlers({
-      currentEra: async () => 'tx-id' as TransactionId,
-      // @ts-expect-error see the proof-provider case above.
-      retainedEras: { v9: async () => 'tx-id' as TransactionId }
+describe('per-era handlers', () => {
+  it('type each era handler against that era ledger classes', () => {
+    expectTypeOf<NonNullable<ProofProviderHandlers['v8']>>().parameter(0).toEqualTypeOf<
+      LedgerTransactionTypes['v8']['Unproven']
+    >();
+    expectTypeOf<NonNullable<ProofProviderHandlers['v9']>>().returns.toEqualTypeOf<
+      Promise<LedgerTransactionTypes['v9']['Unbound']>
+    >();
+    expectTypeOf<NonNullable<WalletProviderHandlers['v8']>>().returns.toEqualTypeOf<
+      Promise<LedgerTransactionTypes['v8']['Finalized']>
+    >();
+    expectTypeOf<NonNullable<MidnightProviderHandlers['v9']>>().parameter(0).toEqualTypeOf<
+      LedgerTransactionTypes['v9']['Finalized']
+    >();
+  });
+
+  it('refuses a handler answering in the other era', () => {
+    createProofProviderFromHandlers({
+      // @ts-expect-error a v8 handler answers with a v8 transaction
+      v8: async () => ledger9Unbound,
+      v9: async () => ledger9Unbound
     });
   });
 
-  it('declares its eras against the shared era vocabulary', () => {
-    expectTypeOf<MidnightProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
+  it('requires a key for every era', () => {
+    // @ts-expect-error the v8 key is missing; an unserved era is written as undefined
+    createProofProviderFromHandlers({ v9: async () => ledger9Unbound });
+    // @ts-expect-error the v8 key is missing
+    createWalletProviderFromHandlers({ v9: undefined, ...keyReaders });
+    // @ts-expect-error the v9 key is missing
+    createMidnightProviderFromHandlers({ v8: async () => 'tx-id' });
+  });
+
+  it('accepts an era written as undefined', () => {
+    expectTypeOf(
+      createProofProviderFromHandlers({ v8: async () => ledger8Unbound, v9: undefined })
+    ).toEqualTypeOf<ProofProvider>();
   });
 });

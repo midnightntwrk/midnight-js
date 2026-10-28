@@ -14,6 +14,7 @@ yarn add @midnight-ntwrk/midnight-js-types
 import {
   type MidnightProviders,
   type FinalizedTxData,
+  type FinalizedTxRecord,
   type TxStatus,
   SucceedEntirely,
   FailFallible,
@@ -84,50 +85,81 @@ createZKIR(uint8Array: Uint8Array): ZKIR
 
 ## Transaction Types
 
-### Version-tagged payloads
+### Transaction handles
 
-During the ledger-fork window every transaction passed to a provider method is
-tagged with the ledger runtime it belongs to. The two runtimes are separate WASM
-instances, so a v8 object cannot be handed to the v9 runtime — `instanceof` does
-not cross the boundary and duck-typing cannot tell them apart. An explicit tag is
-the only mechanism available.
+Every transaction passed to a provider method is a **transaction handle**: an
+opaque object that holds one ledger transaction, the ledger era it belongs to
+(`'v8'` or `'v9'`) and the stage it has reached. The stage is part of the type:
 
 ```typescript
-interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
-type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
+type UnprovenTx = LedgerTransaction<'Unproven'>;   // before proving
+type UnboundTx = LedgerTransaction<'Unbound'>;     // proven, not yet bound
+type FinalizedTx = LedgerTransaction<'Finalized'>; // proven and bound, ready to submit
 ```
 
-There is deliberately no untagged variant, so a bare `Uint8Array` — bytes whose era
-nobody can tell — is never assignable. `proveTx`, `balanceTx` and `submitTx`
-carry these in both directions.
-
-Narrow with `unwrapLedger9`, which reports a coded error instead of letting a bare
-`TypeError` surface from inside a WASM call:
+The three provider methods take and return handles:
 
 ```typescript
-import { unwrapLedger9 } from '@midnight-ntwrk/midnight-js-types';
-
-const provenTx = unwrapLedger9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+proofProvider.proveTx(tx: UnprovenTx): Promise<UnboundTx>;
+walletProvider.balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
+midnightProvider.submitTx(tx: FinalizedTx): Promise<TransactionId>;
 ```
 
-Its `method` parameter is a `TransactionMethod`, so it covers those three methods only.
-The read surface reports a *different* union, `VersionedFinalizedTxData`, whose
-v8 variant carries `tx` rather than `txBytes` — narrow that one with
-`switch (record.version)`.
+Passing a handle at the wrong stage — an unproven handle to
+`MidnightProvider.submitTx`, for example — is a compile error.
+
+There are two ways in and out of a handle:
+
+- `LedgerTransaction.seal(era, stage, tx)` makes a handle. It refuses a ledger
+  object that does not come from the ledger copy this framework loaded (a
+  second install of the ledger package is a second WASM instance, and its
+  objects break inside the framework's WASM calls). The refusal is
+  `ForeignLedgerTransactionError`.
+- `LedgerTransaction.unwrap(handle, era)` reads the ledger object back. It
+  refuses a handle of another era with `TransactionEraMismatchError`.
+
+```typescript
+import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+
+const unprovenTx: UnprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+const provenTx = await proofProvider.proveTx(unprovenTx);
+const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+```
+
+A handle also has `era`, `stage` and `serialize()`, so you can route it or
+send its bytes without unwrapping it.
+
+To seal a v8 transaction, build it with the module that `loadLedger8Protocol()`
+from `@midnight-ntwrk/midnight-js-protocol` returns, after awaiting that call.
+Before that, `seal` cannot check a v8 object and refuses it with reason
+`ledger8-not-loaded`.
+
+A finalized-transaction record from the read side (`watchForTxData`,
+`watchForDeployTxData`) is still tagged with `version`, and its `tx` is a
+`FinalizedTx` of that same era. Read it like this:
+
+```typescript
+const record = await publicDataProvider.watchForTxData(txId);
+const tx = LedgerTransaction.unwrap(record.tx, record.version);
+```
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
-implementation rather than tagging by hand:
+implementation. Both adapters unwrap each handle for you, and the wallet adapter
+also seals its answer:
 
 ```typescript
+import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
 
+// The wallet runs its own copy of the ledger, so transactions cross as bytes.
+
 const walletProvider = createWalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  balanceTx: async (tx, ttl) =>
+    deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
   getCoinPublicKey: () => wallet.coinPublicKey,
   getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });
-const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
 ```
 
 ### Declaring the eras a provider serves
@@ -140,7 +172,7 @@ after a proof has been paid for.
 ```typescript
 interface ProofProvider {
   readonly supportedEras: readonly LedgerVersion[];
-  proveTx(unprovenTx: VersionedUnprovenTransaction, config?: ProveTxConfig): Promise<VersionedUnboundTransaction>;
+  proveTx(unprovenTx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>;
 }
 ```
 
@@ -149,42 +181,47 @@ v9-only implementation, so that is the honest answer and it needs no change from
 you.
 
 **Serving more than one era?** Write one handler per era and let the factory
-assemble the provider. The routing, the `version` tagging and the refusal of an
-era you did not supply are all handled for you, and `supportedEras` is computed
-from the handlers, so it cannot disagree with what the provider does:
+assemble the provider. There is one key per ledger era: a handler for an era
+you serve, `undefined` for one you do not. The factory unwraps each handle for
+the handler of its era, seals a transaction answer (`proveTx`, `balanceTx`) in
+that same era, and refuses an era you did not supply. `supportedEras` is computed from the handlers, so it cannot
+disagree with what the provider does:
 
 ```typescript
 import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 
 const proofProvider = createProofProviderFromHandlers({
-  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveLedger8Transaction(txBytes, provingProvider) }
+  v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
+  v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
 });
-// proofProvider.supportedEras === ['v9', 'v8']
+// proofProvider.supportedEras is ['v8', 'v9']
 ```
 
-A current-era transaction is passed to the provider as a live ledger object; a retained-era
-transaction is passed as serialized bytes, in both directions. That is why the two handler signatures
-differ, and why `retainedEras` cannot name the current era — registering one
-there is a compile error.
+Every handler gets a live ledger object of its own era and returns one. A
+handler that hands the transaction to another ledger copy — a wallet SDK, a
+DApp Connector wallet — serializes it on the way out and decodes the answer with
+`deserializeTransactionAtStage(era, stage, bytes)` from
+`@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. Take the era
+from the request, never from the answer's bytes.
 
-The factory checks the same things when the provider is built, for JavaScript
-callers the types do not reach: a handler that is not a function is refused with
-`UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`), and a `retainedEras`
-that is not a plain object keyed only by retained eras (a key for the current
-era is refused too) with `InvalidArgumentError`. The check is shape only: a
-handler built for the wrong era still passes. The provider serves from a copy of
-the handlers taken then, so replacing a handler on the object you passed in
-afterwards has no effect.
+A provider with no handler at all is refused when it is built. The factory also
+checks the handlers then, for JavaScript callers the types do not reach: a
+handler that is neither a function nor `undefined` is refused with
+`UnusableEraEntryError` (`MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY`), and a missing
+era key with `InvalidArgumentError`. The check is shape only: a handler built
+for the wrong era still passes. The provider serves from a copy of the handlers
+taken then, so replacing a handler on the object you passed in afterwards has
+no effect.
 
 `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers` are the same
-shape for the other two providers. Implementing a tagged interface directly is also
+shape for the other two providers. Implementing an interface directly is also
 fine — a class, or a provider that routes internally — in which case you write
-`supportedEras` yourself.
+`supportedEras` yourself and unwrap and seal the handles yourself.
 
-Nothing verifies the declaration. A provider still narrows its own payload and still
-reports `Ledger8PayloadUnsupportedError` for an era it cannot serve, so declaring an
-era you do not serve makes a failure later, not absent.
+Nothing verifies the declaration. A provider built from handlers still refuses
+a handle of an era it has no handler for with `ProviderEraUnsupportedError`, so
+declaring an era you do not serve makes a failure later, not absent.
 
 ### TxStatus
 
@@ -210,7 +247,7 @@ type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 ```typescript
 interface FinalizedTxData {
   version: 'v9';
-  tx: Transaction;
+  tx: FinalizedTx;      // a handle of the same era: tx.era === version
   status: TxStatus;
   txId: TransactionId;
   identifiers: readonly TransactionId[];
@@ -254,8 +291,11 @@ type UnshieldedBalances = UnshieldedBalance[];
 
 ```typescript
 import {
-  Ledger8PayloadUnsupportedError,
-  UntaggedPayloadError,
+  ForeignLedgerTransactionError,
+  InvalidTransactionHandleError,
+  TransactionEraMismatchError,
+  ProviderEraUnsupportedError,
+  UnusableEraEntryError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -309,26 +349,28 @@ import {
   type Fees,
   type BlockHash,
 
-  // Version-tagged payloads for the ledger-fork window
-  type Ledger8TransactionBytes,
-  type Ledger9Transaction,
-  type VersionedTransaction,
-  type VersionedUnprovenTransaction,
-  type VersionedUnboundTransaction,
-  type VersionedFinalizedTransaction,
-  type FinalizedTxRecord,
+  // Transaction handles
+  LedgerTransaction,
+  type UnprovenTx,
+  type UnboundTx,
+  type FinalizedTx,
+  type TransactionStage,
+  type LedgerTransactionTypes,
+
+  // Version-tagged read results for the ledger-fork window
   type Ledger8FinalizedTxData,
   type VersionedFinalizedTxData,
+  type Ledger8ContractStateBytes,
+  type Ledger9ContractState,
+  type VersionedContractState,
+  type Ledger8PublicStates,
+  type Ledger9PublicStates,
+  type VersionedPublicStates,
   type TransactionMethod,
   type ReadMethod,
   type ProviderMethod,
-  unwrapLedger9,
 
-  // Per-era handlers, era routing, and the declaration built from them
-  type RetainedEraEntries,
-  type EraRequest,
-  erasServedBy,
-  narrowToEra,
+  // The eras a provider serves
   type EraDeclaringProvider,
   type TransactionProviders,
   assertProvidersSupportEra,
@@ -340,9 +382,11 @@ import {
   LogLevel,
 
   // Errors
-  Ledger8PayloadUnsupportedError,
-  UntaggedPayloadError,
+  ForeignLedgerTransactionError,
+  InvalidTransactionHandleError,
+  TransactionEraMismatchError,
   ProviderEraUnsupportedError,
+  UnusableEraEntryError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -361,12 +405,6 @@ import {
   type ProofProviderHandlers,
   type WalletProviderHandlers,
   type MidnightProviderHandlers,
-  type Ledger9Prover,
-  type RetainedEraProver,
-  type Ledger9Balancer,
-  type RetainedEraBalancer,
-  type Ledger9Submitter,
-  type RetainedEraSubmitter,
   createProofProviderFromHandlers,
   createWalletProviderFromHandlers,
   createMidnightProviderFromHandlers,
@@ -385,7 +423,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a retained-era payload is passed to a provider as bytes, the three things the `version` tag deliberately does not establish, and why ledger parameters travel with the state |
+| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a transaction crosses a provider method as a handle, what the guard in `seal` checks, the three things the `version` tag of a read result deliberately does not establish, and why ledger parameters travel with the state |
 | [Provider era declarations](./docs/provider-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
 | [Reading the network's ledger version](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
 

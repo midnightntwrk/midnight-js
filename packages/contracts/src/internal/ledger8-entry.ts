@@ -26,7 +26,7 @@
  * the ordinary path. EVERY head reading is breadcrumbed with a `HeadReadingProvenance` naming
  * which it is — adding a reading without one is the mistake that list exists to prevent.
  *
- * @see {@link KeepStatePipeline} for the acquisition rules, the payload variants, and
+ * @see {@link KeepStatePipeline} for the acquisition rules, the era each head crosses in, and
  *      how a provider's own failure is sanitized.
  * @see {@link Breadcrumbs} for all four readings and what each provenance means.
  */
@@ -39,17 +39,11 @@ import {
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
-  NO_CIRCUIT,
-  UnknownLedgerVersionError
+  NO_CIRCUIT
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import {
-  type CoinPublicKey,
-  type EncPublicKey,
-  Transaction,
-  type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertProvidersSupportEra,
   type Ledger8FinalizedTxData,
@@ -62,6 +56,7 @@ import {
   type ReadMethod,
   SucceedEntirely,
   type TransactionProviders,
+  type UnprovenTx,
   type VersionedFinalizedTxData,
   type WalletProvider,
   type ZKConfigProvider
@@ -128,26 +123,8 @@ import {
   toStoredLedger8SigningKey
 } from './ledger8-signing-key';
 import { handleSubmitRejection } from './stale-head';
-import {
-  atProviderMethod,
-  proveBalanceSubmitLedger8Payload,
-  proveBalanceSubmitLedger9Payload,
-  type SubmitRunner
-} from './submit-payload';
+import { atProviderMethod, proveBalanceSubmit, type SubmitRunner } from './submit-payload';
 import { createEncryptionPublicKeyResolver } from './utils';
-
-/**
- * Reads freshly composed ledger 9 bytes back into the live
- * transaction its provider methods take.
- *
- * The three markers name the transaction's stage — signature-enabled,
- * unproven, unbound — which is what `composeCallTx` documents its output as.
- *
- * @param txBytes The serialized unproven ledger 9 transaction.
- * @returns The live transaction.
- */
-const readLedger9Transaction = (txBytes: Uint8Array): UnprovenTransaction =>
-  Transaction.deserialize('signature', 'pre-proof', 'pre-binding', txBytes);
 
 /**
  * The providers a retained-era operation reaches. A `Pick` of the provider set
@@ -260,10 +237,10 @@ export const acquireLedger8Runtime = async (
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *
- * The payload variant is NOT the same on both heads: a pre-fork head crosses as
- * `{ version: 'v8', txBytes }` and a post-fork head as `{ version: 'v9', tx }`,
- * because the `version` tag names the ledger runtime that produced the bytes,
- * never the toolchain that produced the contract.
+ * The era is NOT the same on both heads: the pipeline composed the transaction
+ * for the head, so a pre-fork head crosses as a v8 handle and a post-fork head as
+ * a v9 one. The handle's era names the ledger runtime that produced the
+ * transaction, never the toolchain that produced the contract.
  *
  * ## `submitTx` is the one that gets a second look
  *
@@ -277,30 +254,39 @@ export const acquireLedger8Runtime = async (
  *
  * @param providers The read surface (for the fork-crossing head re-read) plus
  * the proof, wallet and submission providers.
- * @param txBytes The serialized unproven transaction the era composed.
- * @param operation Which operation this is: the head era it resolved — which
- * also decides the payload variant — whether it is a call or a deploy, and the
- * identifiers a fork-crossing refusal has to name.
+ * @param unprovenTx The unproven transaction the pipeline composed and sealed.
+ * @param operation Which operation this is: the head era it resolved, whether
+ * it is a call or a deploy, and the identifiers a fork-crossing refusal has to
+ * name.
  * @returns The transaction id the network assigned.
- * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork payload variant.
+ * @throws InvariantViolationError if `unprovenTx` is not in the head's era,
+ * before any provider is called.
  * @throws EraInvariantViolationError if a provider answers in the other era.
+ * @throws InvalidTransactionHandleError if a provider answers with something
+ * other than a handle at the next stage.
  * @throws ProviderFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atProviderMethod}.
  * @throws ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError if the submission was
  * rejected and the head has moved, or cannot be compared — see
  * {@link handleSubmitRejection}.
- * @see {@link KeepStatePipeline} for the payload table and why tagging the
- *      post-fork payload `'v8'` would be false.
+ * @see {@link KeepStatePipeline} for the era table and why sealing the
+ *      post-fork transaction as `'v8'` would be false.
  */
 export const submitLedger8Tx = async (
   providers: Pick<
     Ledger8EntryProviders,
     'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider' | 'config'
   >,
-  txBytes: Uint8Array,
+  unprovenTx: UnprovenTx,
   operation: SubmittedOperation
 ): Promise<string> => {
-  const { circuitId, networkVersion: head } = operation;
+  const { circuitId, networkVersion } = operation;
+  if (unprovenTx.era !== networkVersion) {
+    throw new InvariantViolationError(
+      `The ledger 8 pipeline built a '${unprovenTx.era}' transaction while the network was on '${networkVersion}' ` +
+        `for circuit '${circuitId}' of contract '${operation.contractAddress}', before any provider was called`
+    );
+  }
   // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
   // up with different failure handling. `atProviderMethod` still does the sanitizing --
   // what this adds is the fork-crossing diagnosis on top of its result.
@@ -312,20 +298,7 @@ export const submitLedger8Tx = async (
     }
   };
 
-  // A SWITCH closing on `never`, not an `if`: an era added to `LedgerVersion`
-  // must not fall through into the pre-fork case and submit retained-era bytes
-  // to a head that never asked for them. Every other era decision in this
-  // package closes the same way -- see `assertEraCompatible`.
-  switch (head) {
-    case 'v9':
-      return proveBalanceSubmitLedger9Payload(providers, readLedger9Transaction(txBytes), circuitId, submit);
-    case 'v8':
-      return proveBalanceSubmitLedger8Payload(providers, txBytes, circuitId, submit);
-    default: {
-      const unhandled: never = head;
-      throw new UnknownLedgerVersionError(String(unhandled));
-    }
-  }
+  return proveBalanceSubmit(providers, unprovenTx, circuitId, submit);
 };
 
 /** What a retained-era call arrived with. */
@@ -383,7 +356,7 @@ export interface Ledger8SubmittedCall {
  * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
  * that is not the calling wallet, the burn address, or a key in
  * `additionalCoinEncPublicKeyMappings`.
- * @throws Ledger8PayloadUnsupportedError if a provider does not serve the pre-fork payload variant.
+ * @throws ProviderEraUnsupportedError if a provider does not serve the head's era.
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws ProviderFailedError if a provider rejects.
  * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
@@ -440,7 +413,7 @@ export const runLedger8Call = async (
     )
   });
 
-  const txId = await submitLedger8Tx(providers, call.txBytes, {
+  const txId = await submitLedger8Tx(providers, call.unprovenTx, {
     networkVersion: resolved.head,
     kind: 'call',
     circuitId: request.circuitId,
@@ -545,10 +518,9 @@ export const runLedger8Deploy = async (
     )
   });
 
-  const txId = await submitLedger8Tx(providers, deploy.txBytes, {
+  const txId = await submitLedger8Tx(providers, deploy.unprovenTx, {
     // Only ever a pre-fork head here -- a retained-era deploy against a
-    // post-fork head was refused above -- but the era is passed rather than
-    // assumed, so the payload variant is chosen by the same rule everywhere.
+    // network after the fork was refused above.
     networkVersion: resolved.head,
     kind: 'deploy',
     // The deploy has no circuit of its own to name, so the constructor's own
@@ -740,10 +712,10 @@ const assertLedger8RecordEra = (
 ): void => {
   // Shape before era: a tag that names no era is a DIFFERENT fault from one
   // naming the wrong era, and it wants a different remediation. Telling a
-  // caller whose provider emitted no tag to check that nothing "re-tags" the
-  // payload points them away from the fault. This is the same split the
+  // caller whose provider emitted no tag to check the era its provider answers
+  // in points them away from the fault. This is the same split the
   // current era's `requireLedger9Record` makes in its own default branch.
-  const tagged = requireTaggedRecord(record, method);
+  const tagged = requireTaggedRecord(record, method, circuitId);
   if (tagged.version === head) {
     return;
   }
@@ -754,7 +726,7 @@ const assertLedger8RecordEra = (
  * Reads back a record that only the ledger 8 era can have made, narrowing it to that era: the
  * record of an operation the era gate admits only on a pre-fork head.
  *
- * @throws UntaggedPayloadError if the record carries no era tag.
+ * @throws UnknownLedgerVersionError if the record carries no era tag.
  * @throws EraInvariantViolationError if the record is not a ledger 8 one.
  */
 const requireLedger8Record = (
@@ -763,7 +735,7 @@ const requireLedger8Record = (
   circuitId: string,
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
-  const tagged = requireTaggedRecord(record, method);
+  const tagged = requireTaggedRecord(record, method, circuitId);
   if (tagged.version !== 'v8') {
     throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
   }
@@ -892,7 +864,7 @@ const toLedger8CallTxData = (
     nextPrivateState: call.nextPrivateState,
     nextZswapLocalState: call.nextZswapLocalState,
     newCoins: call.newCoins,
-    txBytes: call.txBytes
+    unprovenTx: call.unprovenTx
   },
   calls: call.calls
 });
@@ -1370,7 +1342,7 @@ export const submitLedger8MaintenanceTx = async (
     providers.loggerProvider
   );
 
-  const txBytes = await runLedger8MaintenancePipeline({
+  const unprovenTx = await runLedger8MaintenancePipeline({
     retainedEra,
     era: resolved.era,
     head: resolved.head,
@@ -1395,7 +1367,7 @@ export const submitLedger8MaintenanceTx = async (
 
   let txId: string;
   try {
-    txId = await submitLedger8Tx(providers, txBytes, {
+    txId = await submitLedger8Tx(providers, unprovenTx, {
       networkVersion: resolved.head,
       kind: 'maintenance',
       circuitId,

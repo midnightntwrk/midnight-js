@@ -46,8 +46,8 @@ export const CURRENT_LEDGER_VERSION = 'v9' as const satisfies LedgerVersion;
 export type CurrentLedgerVersion = typeof CURRENT_LEDGER_VERSION;
 
 /**
- * Every era this build still speaks but does not run live — the eras that
- * cross a package boundary as serialized bytes.
+ * Every era this build still speaks but does not run live: its runtime is
+ * loaded only on demand, through `loadLedger8Protocol`.
  *
  * "Retained" is relative: today the set is ledger 8 (`'v8'`). At the next hard
  * fork the then-current ledger joins it. Code bound to one ledger is named

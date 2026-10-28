@@ -2201,6 +2201,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:3.0.0-rc.3"
     "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
+    "@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.2"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.2"
