@@ -177,7 +177,7 @@ deployment or a replacement that landed.
 ## Why a failed deploy is not a failed call
 
 `Ledger8DeployTxFailedError` is separate from `Ledger8CallTxFailedError` because
-the remediation is — the same reason `StaleHeadError` writes a deploy's
+the remediation is — the same reason `ForkCrossedDuringOperationError` writes a deploy's
 remediation separately. A failed call can simply be run again. A failed deploy
 cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
 lands at a DIFFERENT address, and repeating one that in fact finalized leaves two

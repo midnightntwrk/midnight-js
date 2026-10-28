@@ -841,7 +841,7 @@ maintenance result is now nested like every other `contracts` result.
 | `CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` methods | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>` |
 | `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8.CircuitMaintenanceTxInterface(s)` / `Ledger8.ContractMaintenanceTxInterface` |
 | `Ledger8.FoundContract`, `Ledger8.DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
-| `StaleHeadOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
+| `SubmittedOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
 | `ComposeStage` (protocol) | no maintenance stage | gains `'maintenance-update'` |
 | `ComposeOption` (protocol) | no replacement-key option | gains `'newSigningKey'` |
 
@@ -854,7 +854,7 @@ maintenance result is now nested like every other `contracts` result.
 `AnyEraMaintenanceTxData` is the union of both results; narrowing on `era` narrows `public`. The
 `*TxFailedError` records are unchanged.
 
-`StaleHeadOperationKind`, `ComposeStage` and `ComposeOption` are closed unions: an exhaustive
+`SubmittedOperationKind`, `ComposeStage` and `ComposeOption` are closed unions: an exhaustive
 `switch` over one of them in consumer code stops compiling until it handles the new member.
 
 A retained-era maintenance update on a post-fork head is refused with
@@ -874,6 +874,41 @@ New refusals on the retained path:
 
 A retained-era replacement key must be a `schnorr` key; any other is refused with
 `Ledger8.SigningKeyUnusableError` before anything is composed.
+
+---
+
+## 18. Plain-language names for era errors and version reads (#1491)
+
+This section affects you only if you built against a `5.0.0` pre-release. The
+names below were never in a 4.x release. The sections above already use the new
+names.
+
+Names that used maintainer words ("envelope", "head", "axis", "down-convert")
+now say what they mean. Each error code changes together with its class.
+
+| Package | Before | After |
+|---|---|---|
+| `utils` | `contractStateEnvelopeVersion` | `ledgerVersionOfContractState` |
+| `utils` | `ledgerParametersEnvelopeVersion` | `ledgerVersionOfLedgerParameters` |
+| `indexer-public-data-provider` | `EnvelopeUpperBound` = `'enforced' \| 'withheld'` | `UpperBoundCheck` = `'check' \| 'skip'` |
+| `protocol` (also on the `midnight-js` barrel) | `networkHeadVersion` | `latestNetworkLedgerVersion` |
+| `contracts` | `StaleHeadError` (`MIDNIGHT_JS_C_STALE_HEAD`) | `ForkCrossedDuringOperationError` (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`) |
+| `contracts` | `StaleHeadOperationKind` | `SubmittedOperationKind` |
+| `contracts` | `HeadReadFailedError` (`MIDNIGHT_JS_C_HEAD_READ_FAILED`) | `NetworkVersionReadFailedError` (`MIDNIGHT_JS_C_NETWORK_VERSION_READ_FAILED`) |
+| `contracts` | `HeadStateEraMismatchError` (`MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH`) | `NetworkVersionStateMismatchError` (`MIDNIGHT_JS_C_NETWORK_VERSION_STATE_MISMATCH`) |
+| `protocol` | `DownConvertFailedError` (`MIDNIGHT_JS_P_DOWN_CONVERT_FAILED`) | `StateConversionFailedError` (`MIDNIGHT_JS_P_STATE_CONVERSION_FAILED`) |
+| `protocol` | `DownConvertStage` = `'v8 envelope extraction' \| 'v9 envelope extraction' \| 'state down-convert'` | `StateConversionStage` = `'v8 version tag read' \| 'v9 version tag read' \| 'state conversion'` |
+| `protocol` | `new Ledger8InstanceMismatchError(axis)` and its `axis` field | `new Ledger8InstanceMismatchError()`, no `axis` field: the message names `onchain-runtime-v3` |
+
+Removed, with no replacement, because nothing in the framework raised them:
+
+| Package | Removed |
+|---|---|
+| `protocol` | `UnknownLedger8AxisError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS`) and the `Ledger8InstanceAxis` type |
+| `protocol` | `MerkleNotRehashedError` (`MIDNIGHT_JS_P_MERKLE_NOT_REHASHED`) |
+
+Error messages changed wording to match. Match errors on their `code`, not
+their message (ADR 0017).
 
 ---
 

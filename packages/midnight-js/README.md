@@ -42,19 +42,19 @@ import {
   CURRENT_LEDGER_VERSION, // the current era, 'v9': the `era` of every current-era result
   type LedgerVersion, // 'v8' | 'v9'
   versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
-  networkHeadVersion  // asks a source for the network head -> LedgerVersion
+  latestNetworkLedgerVersion  // asks a source for the network head -> LedgerVersion
 } from '@midnight-ntwrk/midnight-js';
 ```
 
 Use `versionOfRecord` for a `protocolVersion` read off an existing record, and
-`networkHeadVersion` for the era a transaction built now would land in. Each
+`latestNetworkLedgerVersion` for the era a transaction built now would land in. Each
 tags its failures with the path it was called on, so a handler can tell the two
 apart.
 
 Both refuse rather than guess. They raise `UnknownProtocolVersionError` when a
 `protocolVersion` is malformed (not a non-negative integer) or is well-formed
 but maps to no era this build knows. `versionOfRecord` throws;
-`networkHeadVersion` is `async`, so it rejects instead, and a rejection from
+`latestNetworkLedgerVersion` is `async`, so it rejects instead, and a rejection from
 the source itself propagates unchanged.
 
 ```typescript

@@ -27,9 +27,9 @@ export * as utils from '@midnight-ntwrk/midnight-js-utils';
 export {
   CURRENT_LEDGER_VERSION,
   type CurrentLedgerVersion,
+  latestNetworkLedgerVersion,
   LEDGER_VERSIONS,
   type LedgerVersion,
-  networkHeadVersion,
   type ProtocolVersionSource,
   type VersionedRecord,
   versionOfRecord

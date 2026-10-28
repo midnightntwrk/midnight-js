@@ -614,7 +614,7 @@ the artifact's era like `deployContract` and `submitCallTx`. The retained path i
    in the guaranteed part of the transaction, so the messages say what to read
    before retrying, and the replacement's class carries the new key.
    For a REPLACEMENT, every failure after the transaction may have landed — a
-   submission rejected while the head moved (`StaleHeadError`,
+   submission rejected while the head moved (`ForkCrossedDuringOperationError`,
    `SubmitRejectionUndiagnosedError`), a record that cannot be read back, carries
    no era tag, or comes from another era — is raised as
    `Ledger8ReplaceAuthorityUnconfirmedError` with that failure on `cause`. It

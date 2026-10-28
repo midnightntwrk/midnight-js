@@ -214,7 +214,7 @@ Two things that look interchangeable and are not:
 
 If you would rather decode the bytes yourself, `queryRawContractState` still
 serves them untouched. Its `version` is the era read off the envelope, the
-same answer `contractStateEnvelopeVersion` from `@midnight-ntwrk/midnight-js-utils`
+same answer `ledgerVersionOfContractState` from `@midnight-ntwrk/midnight-js-utils`
 gives for those bytes. `rawContractStateObservable` serves the same record type
 as a stream (without `ledgerParameters`).
 

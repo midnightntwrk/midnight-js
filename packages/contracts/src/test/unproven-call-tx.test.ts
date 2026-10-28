@@ -25,7 +25,7 @@ import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-p
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError, Ledger8ContractStateUnsupportedError } from '../errors';
+import { Ledger8ContractStateUnsupportedError,NetworkVersionReadFailedError } from '../errors';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -367,9 +367,9 @@ describe('unproven-call-tx', () => {
 
       const rejection = createUnprovenCallTx(providers, options);
 
-      await expect(rejection).rejects.toBeInstanceOf(HeadReadFailedError);
+      await expect(rejection).rejects.toBeInstanceOf(NetworkVersionReadFailedError);
       await expect(rejection).rejects.toMatchObject({
-        code: CONTRACTS_ERROR_CODES.HEAD_READ_FAILED,
+        code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED,
         category: 'TRANSIENT',
         message: 'Failed to fetch the latest block from the public data provider'
       });

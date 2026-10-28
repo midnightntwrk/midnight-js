@@ -19,7 +19,7 @@ import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 
-// Serialized ledger parameters carry a `midnight:ledger-parameters[vN]` envelope tag, where the
+// Serialized ledger parameters carry a `midnight:ledger-parameters[vN]` version tag, where the
 // bracketed number is the PARAMETER SCHEMA version and NOT the ledger era: the v8 ledger writes
 // `[v5]` and the v9 ledger writes `[v8]`. The numbering is per payload family and the families
 // collide -- `[v5]` is also what both eras write for a zswap ledger state, and `[v6]` is a contract
@@ -44,10 +44,10 @@ const LEDGER_PARAMETERS_TAG_BY_ERA = {
 } as const satisfies Record<LedgerVersion, string>;
 
 /**
- * Reads which ledger runtime wrote a serialized set of ledger parameters, from the envelope tag in
+ * Reads which ledger runtime wrote a serialized set of ledger parameters, from the version tag in
  * front of the body — without deserializing the body.
  *
- * The sibling of {@link contractStateEnvelopeVersion}, and it exists for the same reason: the
+ * The sibling of {@link ledgerVersionOfContractState}, and it exists for the same reason: the
  * indexer serves ledger parameters PER BLOCK, they are era-tagged, and each era's deserializer
  * refuses the other era's bytes on the header tag. A reader that decodes them with a fixed era's
  * runtime therefore works on one side of a fork and fails on the other — with a raw deserialization
@@ -61,19 +61,19 @@ const LEDGER_PARAMETERS_TAG_BY_ERA = {
  * Supported public API, deliberately: a caller refused a pre-fork block's parameters by an era-fixed
  * read path has to decode them itself, and needs this to pick the runtime to decode them with.
  *
- * @param raw The serialized ledger-parameters envelope, as the network returned it.
+ * @param raw The serialized ledger parameters, as the network returned it.
  * @returns The ledger era whose runtime wrote `raw`.
  * @throws TagParseError when there is no well-formed `namespace:version:` tag prefix in the first
- * 64 bytes, or when the tag is not one of the supported ledger-parameters envelopes.
+ * 64 bytes, or when the tag is not one of the supported ledger-parameters version tags.
  */
-export const ledgerParametersEnvelopeVersion = (raw: Uint8Array): LedgerVersion => {
+export const ledgerVersionOfLedgerParameters = (raw: Uint8Array): LedgerVersion => {
   const { tag } = parseSerializedTag(raw);
   const ledgerVersion = LEDGER_VERSIONS.find((era) => LEDGER_PARAMETERS_TAG_BY_ERA[era] === tag);
   if (ledgerVersion === undefined) {
     // Never echo the observed tag: it is network-supplied and validated only against a character
     // set, so embedding it verbatim puts arbitrary text into this message.
     throw new TagParseError(
-      'The serialized value does not carry a ledger-parameters envelope from a supported ledger runtime. ' +
+      'The serialized value does not start with a ledger-parameters version tag from a supported ledger runtime. ' +
         'Verify the payload came from the `ledgerParameters` field of a block and not from another serialized type.'
     );
   }

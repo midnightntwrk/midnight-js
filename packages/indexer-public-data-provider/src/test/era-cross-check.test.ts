@@ -186,7 +186,7 @@ describe('withholding the envelope upper bound', () => {
     // and the envelope is decodable, so the read has to succeed.
     const hexState = mintLedger9ContractStateHex();
 
-    const state = parseHexContractState(hexState, LEDGER8_ERA_PROTOCOL_VERSION, { upperBound: 'withheld' });
+    const state = parseHexContractState(hexState, LEDGER8_ERA_PROTOCOL_VERSION, { upperBound: 'skip' });
 
     expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
   });
@@ -197,7 +197,7 @@ describe('withholding the envelope upper bound', () => {
     // therefore never subject to the race the bound is withheld for.
     const rejection = await rejectionOf(
       mintLedger8ContractStateHex().then((hex) =>
-        parseHexContractState(hex, LEDGER9_ERA_PROTOCOL_VERSION, { upperBound: 'withheld' })
+        parseHexContractState(hex, LEDGER9_ERA_PROTOCOL_VERSION, { upperBound: 'skip' })
       )
     );
 

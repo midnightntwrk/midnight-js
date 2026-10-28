@@ -25,7 +25,7 @@ ran against — is gone. Why, and what the move cost, is in
 `docs/adr/0015-retained-era-execution-on-compact-js.md`.
 
 The error classes named here are described in [FailClosedDecoding](./fail-closed-decoding.md), which owns
-the division of labour between `DownConvertFailedError`,
+the division of labour between `StateConversionFailedError`,
 `StateDecodeFailedError`, `StateInconsistentError` and
 `Ledger8RuntimeInvalidError`; the refusal ordering
 on the composition legs is in [ComposeRefusalOrder](./compose-refusal-order.md).
@@ -40,8 +40,8 @@ before it builds anything:
 1. **The balance**, by `isContractBalance`, described below.
 2. **The primary state**, by `decodeExecutableStateValue`: decode through the
    retained runtime's `StateValue.decode`, re-encode the result, and refuse a
-   value that did not come back as `DownConvertFailedError` at stage
-   `'state down-convert'`.
+   value that did not come back as `StateConversionFailedError` at stage
+   `'state conversion'`.
 
 That second check catches loss at every depth — a shortened array, a dropped
 map entry, a changed cell, a substituted subtree — rather than only a wholesale
@@ -160,9 +160,8 @@ way a never-rehashed tree can reach the walk is an injected decode" — and ever
 negative test it had for the walk drove it through a fake decoder. The current
 execution path has no injection point, so a guard here would be one that cannot fire.
 
-`MerkleNotRehashedError` stays on the published surface with its code, rather
-than disappearing from a consumer's error taxonomy as a side effect of an
-internal refactor. Its docstring records that nothing raises it.
+The error the walk raised, `MerkleNotRehashedError`, was removed before 5.0.0
+together with its code, because nothing could raise it.
 
 ## What the round trip does not cover
 

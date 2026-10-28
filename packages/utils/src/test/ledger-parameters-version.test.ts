@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { ledgerParametersEnvelopeVersion } from '../ledger-parameters-envelope';
+import { ledgerVersionOfLedgerParameters } from '../ledger-parameters-version';
 import { TagParseError } from '../serialized-tag';
 
 // The mapping's own behaviour, tested here with the mapping. What the two ledger RUNTIMES actually
@@ -24,19 +24,19 @@ import { TagParseError } from '../serialized-tag';
 const envelope = (tag: string, body = 'parameters-body'): Uint8Array =>
   Uint8Array.from(Buffer.from(`${tag}:${body}`, 'utf8'));
 
-describe('ledgerParametersEnvelopeVersion', () => {
+describe('ledgerVersionOfLedgerParameters', () => {
   it('maps the pre-fork ledger-parameters envelope onto the v8 ledger era', () => {
-    expect(ledgerParametersEnvelopeVersion(envelope('midnight:ledger-parameters[v5]'))).toBe('v8');
+    expect(ledgerVersionOfLedgerParameters(envelope('midnight:ledger-parameters[v5]'))).toBe('v8');
   });
 
   it('maps the post-fork ledger-parameters envelope onto the v9 ledger era', () => {
-    expect(ledgerParametersEnvelopeVersion(envelope('midnight:ledger-parameters[v8]'))).toBe('v9');
+    expect(ledgerVersionOfLedgerParameters(envelope('midnight:ledger-parameters[v8]'))).toBe('v9');
   });
 
   it('reads only the tag, so a body it cannot decode is still dated', () => {
     const corruptBody = Uint8Array.from([...Buffer.from('midnight:ledger-parameters[v8]:', 'utf8'), 0xff, 0x00, 0xfe]);
 
-    expect(ledgerParametersEnvelopeVersion(corruptBody)).toBe('v9');
+    expect(ledgerVersionOfLedgerParameters(corruptBody)).toBe('v9');
   });
 
   it.each([
@@ -48,14 +48,14 @@ describe('ledgerParametersEnvelopeVersion', () => {
     ['a parameters schema version no supported runtime writes', 'midnight:ledger-parameters[v7]'],
     ['a foreign namespace', 'notmidnight:ledger-parameters[v8]']
   ])('refuses %s', (_label, tag) => {
-    expect(() => ledgerParametersEnvelopeVersion(envelope(tag))).toThrow(TagParseError);
+    expect(() => ledgerVersionOfLedgerParameters(envelope(tag))).toThrow(TagParseError);
   });
 
   it('never echoes the observed tag, which is attacker-controlled', () => {
     const hostile = 'midnight:ledger-parameters[v99-INJECTED]';
 
     try {
-      ledgerParametersEnvelopeVersion(envelope(hostile));
+      ledgerVersionOfLedgerParameters(envelope(hostile));
       expect.unreachable('an unsupported envelope must be refused');
     } catch (error) {
       expect(error).toBeInstanceOf(TagParseError);
@@ -63,7 +63,13 @@ describe('ledgerParametersEnvelopeVersion', () => {
     }
   });
 
+  it('names the version tag in plain language when it refuses one', () => {
+    expect(() => ledgerVersionOfLedgerParameters(envelope('midnight:ledger-parameters[v99]'))).toThrow(
+      /does not start with a ledger-parameters version tag/
+    );
+  });
+
   it('refuses a payload with no tag prefix at all', () => {
-    expect(() => ledgerParametersEnvelopeVersion(Uint8Array.from([0x00, 0x01, 0x02]))).toThrow(TagParseError);
+    expect(() => ledgerVersionOfLedgerParameters(Uint8Array.from([0x00, 0x01, 0x02]))).toThrow(TagParseError);
   });
 });

@@ -75,7 +75,7 @@ export interface Ledger8Engine {
    * circuit reads do not live inside the primary state, and two separate
    * options could describe two different blocks.
    *
-   * @throws DownConvertFailedError At stage `'state down-convert'` when the
+   * @throws StateConversionFailedError At stage `'state conversion'` when the
    *   state cannot be decoded, does not re-encode to its source, or carries a
    *   balance the retained runtime cannot read.
    * @throws InvalidArgumentError When the contract declares no circuit of that name.

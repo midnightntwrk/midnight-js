@@ -76,7 +76,7 @@ MidnightProviders
 ### Ledger Eras and the Fork Window
 - **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
-- **`networkHeadVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
+- **`latestNetworkLedgerVersion(source)`**: the era the network head is in, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
 - **Version-tagged payloads**: the `proveTx` / `balanceTx` / `submitTx` methods carry `VersionedTransaction<T>` = `{ version: 'v9', tx }` | `{ version: 'v8', txBytes }`. Narrow with `unwrapLedger9(payload, method)`.
 - **One era rule for every value**: `version: 'v8' | 'v9'` is the ledger era that WROTE a value; `protocolVersion` dates the block. Era-dependent reads (`queryContractState`, `watchForContractState`, `contractStateObservable`, `queryDeployContractState`, `queryZSwapAndContractState`, `getPublicStates`, `getStates`) return `Versioned*` unions: v8 = stored bytes, v9 = decoded. `queryRawContractState` returns `RawContractState`: raw bytes in both eras, `version` read off the envelope. Narrow with `switch (value.version)` + `assertNever`, or `requireLedger9(value, '<call site>')` from utils for v9-only code. The contracts `submitTx` takes `{ unprovenTx: { version, tx | txBytes } }` and accepts only a transaction of the network head's era.
 - **Version-tagged records**: `watchForTxData` / `watchForDeployTxData` return `VersionedFinalizedTxData`. Its v8 variant carries `tx`, not `txBytes`, so `unwrapLedger9` does not apply — narrow with a `switch` on `version` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
@@ -411,14 +411,14 @@ in type position -- there is no `protocol.Contract` value to read at runtime.
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on
 `@midnight-ntwrk/midnight-js-protocol` directly. `versionOfRecord` resolves the
-era of an existing record; `networkHeadVersion` resolves the era a transaction
+era of an existing record; `latestNetworkLedgerVersion` resolves the era a transaction
 built now would land in.
 
 ```typescript
 import {
   LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
   type LedgerVersion, // 'v8' | 'v9'
-  networkHeadVersion,
+  latestNetworkLedgerVersion,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js';
 
@@ -427,13 +427,13 @@ import {
 const era: LedgerVersion = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
 
 // The era at the network head, asked of a provider on every call.
-const head: LedgerVersion = await networkHeadVersion(providers.publicDataProvider);
+const head: LedgerVersion = await latestNetworkLedgerVersion(providers.publicDataProvider);
 ```
 
 Both resolvers refuse rather than guess: they raise `UnknownProtocolVersionError`
 when a `protocolVersion` is malformed (not a non-negative integer) or is
 well-formed but maps to no era this build knows. `versionOfRecord` throws;
-`networkHeadVersion` is `async` and rejects, passing a rejection from the
+`latestNetworkLedgerVersion` is `async` and rejects, passing a rejection from the
 source itself through unchanged. Handle it by class and rethrow anything else:
 
 ```typescript
@@ -518,7 +518,7 @@ try {
 }
 ```
 
-`UNCERTAIN` (`MIDNIGHT_JS_C_STALE_HEAD`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).

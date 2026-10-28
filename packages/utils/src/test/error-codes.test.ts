@@ -270,8 +270,8 @@ describe('error categories', () => {
 
   it('marks exactly these codes as safe to retry', () => {
     expect(codesIn('TRANSIENT')).toEqual([
-      'MIDNIGHT_JS_C_HEAD_READ_FAILED',
-      'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
+      'MIDNIGHT_JS_C_NETWORK_VERSION_READ_FAILED',
+      'MIDNIGHT_JS_C_NETWORK_VERSION_STATE_MISMATCH',
       'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED',
       'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
       'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED'
@@ -280,9 +280,9 @@ describe('error categories', () => {
 
   it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
     expect(codesIn('UNCERTAIN')).toEqual([
+      'MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION',
       'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
       'MIDNIGHT_JS_C_LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED',
-      'MIDNIGHT_JS_C_STALE_HEAD',
       'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
     ]);
   });

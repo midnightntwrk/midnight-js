@@ -66,7 +66,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'UnknownLedgerVersionError',
   'UnknownProtocolVersionError',
   'contracts',
-  'networkHeadVersion',
+  'latestNetworkLedgerVersion',
   'networkId',
   'protocol',
   'types',
@@ -85,7 +85,7 @@ const captureThrown = (run: () => unknown): unknown => {
   throw new Error('expected the call to throw, but it returned normally');
 };
 
-// The async sibling of `captureThrown`. `networkHeadVersion` is the barrel's
+// The async sibling of `captureThrown`. `latestNetworkLedgerVersion` is the barrel's
 // only construct-path resolver, and it rejects rather than throws.
 const captureRejected = async (run: () => Promise<unknown>): Promise<unknown> => {
   try {
@@ -125,6 +125,12 @@ describe('barrel exports', () => {
   it('should export exactly the published surface, and nothing else', () => {
     expect(Object.keys(midnightJs).sort()).toEqual([...EXPECTED_BARREL_EXPORTS].sort());
   });
+
+  it('should publish no name or error code in maintainer jargon', () => {
+    const names = [midnightJs, contracts, protocol, utils, types].flatMap((namespace) => Object.keys(namespace));
+
+    expect([...names, ...utils.MIDNIGHT_JS_ERROR_CODES].filter((name) => /envelope|head|axis|down_?convert/i.test(name))).toEqual([]);
+  });
 });
 
 describe('ledger version vocabulary', () => {
@@ -144,14 +150,14 @@ describe('ledger version vocabulary', () => {
   });
 
   it('should resolve the era at the network head', async () => {
-    await expect(midnightJs.networkHeadVersion(headSource(2_000_000))).resolves.toBe('v9');
+    await expect(midnightJs.latestNetworkLedgerVersion(headSource(2_000_000))).resolves.toBe('v9');
   });
 });
 
 describe('ledger version failures', () => {
   it('should let a caller tell the read path from the construct path by code', async () => {
     const fromRead = captureThrown(() => midnightJs.versionOfRecord({ protocolVersion: 9_000_000 }));
-    const fromConstruct = await captureRejected(() => midnightJs.networkHeadVersion(headSource(9_000_000)));
+    const fromConstruct = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(9_000_000)));
 
     expect(
       midnightJs.utils.hasErrorCode(fromRead, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)
@@ -178,7 +184,7 @@ describe('ledger version failures', () => {
   });
 
   it('should reject with the error class the barrel publishes, carrying the path and reason', async () => {
-    const thrown = await captureRejected(() => midnightJs.networkHeadVersion(headSource(1.5)));
+    const thrown = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(1.5)));
     expect(thrown).toBeInstanceOf(midnightJs.UnknownProtocolVersionError);
     // Narrows without a cast, and only succeeds if the class the barrel
     // publishes is the same module instance the thrown error was built from.
@@ -195,7 +201,7 @@ describe('ledger version failures', () => {
   it('should propagate a head-source rejection unchanged', async () => {
     const cause = new Error('indexer unreachable');
     const thrown = await captureRejected(() =>
-      midnightJs.networkHeadVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })
+      midnightJs.latestNetworkLedgerVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })
     );
 
     expect(thrown).toBe(cause);

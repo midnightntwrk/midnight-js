@@ -393,8 +393,8 @@ report success for transactions that were dropped at the boundary.
 ### The stale-head error and its two-step remediation
 
 If an operation resolves the network era, builds against it, and the fork
-applies before it lands, the framework raises `StaleHeadError`
-(`MIDNIGHT_JS_C_STALE_HEAD`) rather than a decode failure. The error carries
+applies before it lands, the framework raises `ForkCrossedDuringOperationError`
+(`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`) rather than a decode failure. The error carries
 `kind` — `'call'` or `'deploy'`, which is what you branch on to pick between the
 two remediations below — along with `startEra`, `freshEra`, `circuitId` and
 `contractAddress`. Its message carries the matching remediation in full.
@@ -405,7 +405,7 @@ was built on a pre-fork head and overtaken by the fork before it landed.
 For a **call**, the remediation is two steps, in order:
 
 1. **Confirm no finalization.** There is no transaction id to look up: the
-   submission was rejected, so nothing ever resolved to one, and `StaleHeadError`
+   submission was rejected, so nothing ever resolved to one, and `ForkCrossedDuringOperationError`
    carries none. Do it the way the error's own message prescribes — read the
    contract state at `error.contractAddress` with `queryContractState`, and check
    whether the call to `error.circuitId` is already reflected in it. Note that
@@ -475,7 +475,7 @@ dropped inside, so each member is the retained twin of the flat current-era
 name it mirrors, where one exists. The half that serves BOTH eras --
 `AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError` -- stays flat, so a handler that only receives
 results imports nothing era-specific. When the fork window closes, the whole
-namespace goes in one step; the fork-window refusals (`StaleHeadError` and the
+namespace goes in one step; the fork-window refusals (`ForkCrossedDuringOperationError` and the
 rest of that group) are published flat and go in a separate one.
 
 A call against a contract you compiled with the previous toolchain still goes
@@ -867,7 +867,7 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `StaleHeadError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
 - [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8ReplaceAuthorityUnconfirmedError` or `Ledger8SigningKeyNotStoredError` keeps the `signingKey` it carries.

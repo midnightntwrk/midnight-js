@@ -39,7 +39,7 @@ import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupportedError } from '../errors';
+import { MixedEraScopeError, NetworkVersionReadFailedError, ScopedTransactionEraUnsupportedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
@@ -169,7 +169,7 @@ describe('per-scope era resolution', () => {
   it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
     // Arrange
     onPostForkHead();
-    const failure = new HeadReadFailedError('head read failed');
+    const failure = new NetworkVersionReadFailedError('head read failed');
     vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
@@ -184,7 +184,7 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed");
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: NetworkVersionReadFailedError: head read failed");
     expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 

@@ -352,7 +352,7 @@ export namespace Ledger8 {
 }
 ```
 
-`StaleHeadOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
+`SubmittedOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
 
 - `Ledger8Engine.composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>`, with
   the `Ledger8MaintenanceRequest` and `Ledger8MaintenanceUpdateRequest` types;

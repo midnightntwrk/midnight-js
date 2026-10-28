@@ -99,30 +99,19 @@ have passed a fail-fast net by accident. That case reported
 two physical copies, and calling it one would send the reader to `npm why`
 after a duplicate that is not there.
 
-`axis` was validated against the closed union before either probe was read, for
-the same reason `extractEncodedStateValue` validates `version`: it is only
-type-checked for TypeScript callers, and it selects the package names the
-remediation hint tells the reader to trace. An unvalidated string would put an
-`Object.prototype` member where a package name belongs, and would land in an
-`axis` field consumers are told they can `switch` on. That is what
-`UnknownLedger8AxisError` exists for; `requestedAxis` carries the offending
-value and is kept out of the message, because caller-supplied text is the one
-thing these errors never render.
-
-`'onchain-runtime-v3'` was the only member of `Ledger8InstanceAxis`, because it
-was the only retained pre-fork package this one both depended on directly and
-could receive from a consumer's own resolution. No other WASM package the engine
+`onchain-runtime-v3` was the only package the guard checked, because it was the
+only retained pre-fork package this one both depended on directly and could
+receive from a consumer's own resolution. No other WASM package the engine
 acquired had a comparable second acquisition path.
 
 ## What the mismatch error carries, and what it does not
 
-`Ledger8InstanceMismatchError` is thrown when the same-named WASM package
-resolved to two physically distinct copies in this process (a
-dual-instantiation).
+`Ledger8InstanceMismatchError` is thrown when `onchain-runtime-v3` is installed
+twice, so two separate copies of it are loaded into this process.
 
-`axis` names the package the check ran on. This is a direct assertion failure (a
-reference-equality mismatch), not a wrapped lower-level exception, so unlike
-`DownConvertFailedError` there is no `cause` to carry.
+Its message names that package under both npm scopes. This is a direct
+assertion failure (a reference-equality mismatch), not a wrapped lower-level
+exception, so unlike `StateConversionFailedError` there is no `cause` to carry.
 
 The remediation names every mainstream package manager rather than the one this
 repo happens to use, because this package is consumed by dApps installed with
@@ -133,7 +122,7 @@ all of them.
 `PUBLISHED_SCOPES` in `packages/protocol/src/errors.ts` holds the npm scopes
 this package and its retained pre-fork runtimes are published under, while the
 scope migration runs. The scope is held apart from the `/` on purpose, and
-joined only at `axisPackageNames`. The dual-publish
+joined only inside `Ledger8InstanceMismatchError`. The dual-publish
 (`.github/scripts/publish-public-npm.mjs`) rewrites the old scope to the new one
 inside built `.js`/`.d.ts` files as well as in `package.json`, matching on the
 scope *with* its trailing slash. A scoped package name written as one literal
@@ -142,8 +131,8 @@ hint that names both scopes into one that names a single scope twice. Splitting
 the scope from the slash leaves the rewrite nothing to match; `errors.test.ts`
 holds that line.
 
-`AXIS_BARE_PACKAGE_NAMES` carries the unscoped npm name of each axis. Both
-published copies of an axis carry this same name under a different scope, so
+`DUPLICATED_PACKAGE` carries the unscoped npm name. Both published copies
+carry this same name under a different scope, so
 naming only one scope would point every consumer installed from the other at a
 package not in their tree.
 

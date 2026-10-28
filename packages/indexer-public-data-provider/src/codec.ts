@@ -57,13 +57,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertNever,
-  contractStateEnvelopeVersion,
   deserializeCompactContractState,
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState,
   isHex,
-  ledgerParametersEnvelopeVersion,
+  ledgerVersionOfContractState,
+  ledgerVersionOfLedgerParameters,
   parseHex,
   withDeserializationContext
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -132,7 +132,7 @@ const parametersBytesAndEnvelopeVersion = (
     throw IndexerDataError.malformedParametersEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexParameters));
-  return { raw, envelopeVersion: ledgerParametersEnvelopeVersion(raw) };
+  return { raw, envelopeVersion: ledgerVersionOfLedgerParameters(raw) };
 };
 
 /**
@@ -297,7 +297,7 @@ const stateBytesAndEnvelopeVersion = (
     throw IndexerDataError.malformedStateEncoding();
   }
   const raw = new Uint8Array(toByteArray(hexState));
-  return { raw, envelopeVersion: contractStateEnvelopeVersion(raw) };
+  return { raw, envelopeVersion: ledgerVersionOfContractState(raw) };
 };
 
 /**
@@ -333,32 +333,32 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
 
 /**
  * Whether the `protocolVersion` handed to {@link parseHexContractState} may be
- * trusted as an upper bound on the state's envelope.
+ * trusted as an upper bound on the ledger version in the state's version tag.
  *
- * `'enforced'` is the default and the case to reach for: the version is known
+ * `'check'` is the default and the case to reach for: the version is known
  * to describe the same block as the bytes, so bytes from a newer runtime are an
  * indexer fault. A call site earns it either by reading the version out of the
  * same resolution that produced the state — a `transaction` or `block` subtree
  * carrying the state itself — or by pinning both Query-root fields to one fixed
  * block offset.
  *
- * `'withheld'` is for the one shape that earns neither: `block` and `contract`
+ * `'skip'` is for the one shape that earns neither: `block` and `contract`
  * asked for as Query-root siblings on an *unpinned* read. The indexer resolves
  * those concurrently, from independent reads, and with no offset both follow
  * the chain tip — so a block indexed between the two puts them on either side
- * of a fork, giving a newer envelope under an older block with nothing wrong
- * anywhere. Only the comparison is dropped; the envelope still decides
+ * of a fork, giving a newer version tag under an older block with nothing wrong
+ * anywhere. Only the comparison is dropped; the version tag still decides
  * decodability, which is what actually keeps a wrong-era payload away from the
  * decoder.
  */
-export type EnvelopeUpperBound = 'enforced' | 'withheld';
+export type UpperBoundCheck = 'check' | 'skip';
 
 const assertEnvelopeNotNewerThanBlock = (
   envelopeVersion: LedgerVersion,
   protocolVersion: number,
-  upperBound: EnvelopeUpperBound = 'enforced'
+  upperBound: UpperBoundCheck = 'check'
 ): void => {
-  if (upperBound === 'withheld') {
+  if (upperBound === 'skip') {
     return;
   }
   const reportedVersion = reportedEra(protocolVersion);
@@ -391,7 +391,7 @@ const assertEnvelopeNotNewerThanBlock = (
  * block, and is the one direction reported as
  * {@link IndexerDataError.eraDisagreement}. Where they need not describe the
  * same block, the caller says so and the comparison is dropped instead of
- * being reported as a fault — see {@link EnvelopeUpperBound}.
+ * being reported as a fault — see {@link UpperBoundCheck}.
  *
  * Nothing reaches a deserializer until the era is settled.
  *
@@ -402,9 +402,9 @@ const assertEnvelopeNotNewerThanBlock = (
  *                        withholds the upper-bound check and nothing else.
  * @param options `upperBound` states whether `protocolVersion` certainly
  *                describes the same block as the bytes, and so whether it may
- *                bound the envelope. Defaults to `'enforced'`, so a call site
+ *                bound the envelope. Defaults to `'check'`, so a call site
  *                has to opt out of the check deliberately rather than lose it
- *                by omission. See {@link EnvelopeUpperBound}.
+ *                by omission. See {@link UpperBoundCheck}.
  *
  * @throws {IndexerDataError} When the state is not hex-encoded, when its
  *   envelope is newer than the block that dates it and that bound is enforced,
@@ -417,7 +417,7 @@ const assertEnvelopeNotNewerThanBlock = (
 export const parseHexContractState = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): ContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
   assertEnvelopeNotNewerThanBlock(envelopeVersion, protocolVersion, options?.upperBound);
@@ -445,7 +445,7 @@ export const parseHexContractState = (
 export const toVersionedContractState = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): VersionedContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
   switch (envelopeVersion) {
@@ -478,7 +478,7 @@ export const toVersionedPublicStates = (
   hexState: string,
   hexParameters: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): VersionedPublicStates => {
   const contractState = toVersionedContractState(hexState, protocolVersion, options);
   const parameters = parametersBytesAndEnvelopeVersion(hexParameters);
@@ -538,7 +538,7 @@ export const toRawContractState = (
   hexState: string,
   protocolVersion: number,
   hexLedgerParameters?: string,
-  options?: { readonly upperBound?: EnvelopeUpperBound }
+  options?: { readonly upperBound?: UpperBoundCheck }
 ): RawContractState => {
   assertWellFormedProtocolVersion(protocolVersion);
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);

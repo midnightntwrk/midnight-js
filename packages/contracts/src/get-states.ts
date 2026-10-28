@@ -21,7 +21,7 @@ import type {
   PublicDataProvider,
   VersionedPublicStates
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, ledgerVersionOfContractState } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from './errors';
 
@@ -168,7 +168,7 @@ export const getAnyEraContractState = async (
   if (served === null) {
     return null;
   }
-  const version = contractStateEnvelopeVersion(served.raw);
+  const version = ledgerVersionOfContractState(served.raw);
   const era = await loadLedgerEra(version);
   // ONE decode, not an `extractState` beside a `decodeContractState`. Those two are kept separate
   // in the keep-state pipeline because there the extraction feeds execution and the decode feeds

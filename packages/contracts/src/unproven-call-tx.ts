@@ -30,7 +30,7 @@ import type {
   CallOptionsWithProviderDataDependencies
 } from './call';
 import { type ContractProviders } from './contract-providers';
-import { HeadReadFailedError, IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
+import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
 import { type ContractStates, getPublicStates, getStates } from './get-states';
 import { requireLedger9ContractState } from './internal/era';
 import * as Transaction from './internal/transaction';
@@ -303,7 +303,7 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
 const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promise<string> => {
   const latestBlock = await publicDataProvider.queryBlock();
   if (latestBlock === undefined || latestBlock === null) {
-    throw new HeadReadFailedError('Failed to fetch the latest block from the public data provider');
+    throw new NetworkVersionReadFailedError('Failed to fetch the latest block from the public data provider');
   }
   return latestBlock.hash;
 };

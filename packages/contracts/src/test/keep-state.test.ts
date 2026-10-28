@@ -56,10 +56,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   EraInvariantViolationError,
-  HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8ArtifactOnLedger9StateError,
-  LedgerParametersUnservedError} from '../errors';
+  LedgerParametersUnservedError,  NetworkVersionStateMismatchError} from '../errors';
 import {
   type Ledger8ExecuteRequest,
   type Ledger8MaintenanceRequest,
@@ -504,9 +503,9 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(HeadStateEraMismatchError);
-    expect((caught as HeadStateEraMismatchError).head).toBe('v8');
-    expect((caught as HeadStateEraMismatchError).stateEra).toBe('v9');
+    expect(caught).toBeInstanceOf(NetworkVersionStateMismatchError);
+    expect((caught as NetworkVersionStateMismatchError).head).toBe('v8');
+    expect((caught as NetworkVersionStateMismatchError).stateEra).toBe('v9');
     // The re-read is the second head read, and it happens ONLY on a
     // disagreement -- which is why the happy path above reads the head once.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);

@@ -54,7 +54,7 @@ describe('loadLedger8Engine failure path', () => {
   });
 
   it('passes a Ledger8InstanceMismatchError from engine construction through unwrapped, and clears the memo for retry', async () => {
-    const mismatch = new Ledger8InstanceMismatchError('onchain-runtime-v3');
+    const mismatch = new Ledger8InstanceMismatchError();
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(mismatch)
     }));

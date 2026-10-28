@@ -91,3 +91,15 @@ describe('indexer error classes', () => {
     expect([error.method, 'seam' in error]).toEqual(['watchForDeployTxData', false]);
   });
 });
+
+describe('IndexerDataError messages a dApp developer reads', () => {
+  const MAINTAINER_JARGON = /envelope|\bhead\b|\baxis\b|down-?convert|dual-instantiation|shared-instance/i;
+
+  it.each([
+    ['missing-head-block', IndexerDataError.missingHeadBlock()],
+    ['era-disagreement', IndexerDataError.eraDisagreement(2_000_000, 'v8', 'v9')],
+    ['mixed-era-public-states', IndexerDataError.mixedEraPublicStates('v8', 'v9')]
+  ] as const)('uses no maintainer jargon: %s', (_kind, error) => {
+    expect(error.message).not.toMatch(MAINTAINER_JARGON);
+  });
+});

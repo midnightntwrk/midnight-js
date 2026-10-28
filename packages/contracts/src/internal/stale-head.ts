@@ -32,7 +32,7 @@
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
-import { StaleHeadError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
+import { ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import { type HeadEraReading, type HeadVersionSource, readHeadEra } from './era';
 
@@ -65,7 +65,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * The fresh read is BREADCRUMBED, with its own `'post-rejection-re-read'`
  * provenance. It is the only head reading taken after bytes were already on
  * the wire, and it is the reading the verdict below rests on, so an operator
- * asked to act on a {@link StaleHeadError} needs the integer it returned —
+ * asked to act on a {@link ForkCrossedDuringOperationError} needs the integer it returned —
  * see `./breadcrumbs.ts`.
  *
  * @param pdp The read surface, for the one fresh head read. Declared as the
@@ -79,7 +79,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * a rejection is not obliged to be an `Error`.
  * @param logger The optional logger the post-rejection head reading is written to.
  * @returns Never; the returned promise always rejects.
- * @throws StaleHeadError if a fresh head read reports a LATER era.
+ * @throws ForkCrossedDuringOperationError if a fresh head read reports a LATER era.
  * @throws SubmitRejectionUndiagnosedError if the fresh read reports an earlier
  * era, or if the read itself rejects — so neither failure is lost while the
  * question is unresolved, and both arrive carrying a registered code. A head
@@ -106,7 +106,7 @@ export const handleSubmitRejection = async (
 
   let freshReading: HeadEraReading;
   try {
-    // `readHeadEra` rather than `networkHeadVersion`: the same one round trip
+    // `readHeadEra` rather than `latestNetworkLedgerVersion`: the same one round trip
     // and the same `'construct'` era mapping, but it also yields the raw head
     // integer -- which is the value an operator acting on the verdict below
     // actually needs, and which the breadcrumb reports.
@@ -135,5 +135,5 @@ export const handleSubmitRejection = async (
     throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'head-moved-backwards', freshEra });
   }
 
-  throw new StaleHeadError(operation, freshEra, rejection);
+  throw new ForkCrossedDuringOperationError(operation, freshEra, rejection);
 };

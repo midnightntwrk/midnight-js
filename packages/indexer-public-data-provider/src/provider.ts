@@ -234,7 +234,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     }
     // Unpinned, `block` and `contract` are siblings that can straddle a fork; see `queryContractState`.
     return toRawContractState(state, block.protocolVersion, block.ledgerParameters, {
-      upperBound: offset === null ? 'withheld' : 'enforced'
+      upperBound: offset === null ? 'skip' : 'check'
     });
   }
 
@@ -274,7 +274,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // leaves them on either side of a fork. Pinned: both resolved against
         // the offset the caller named, so the bound is real.
         return toVersionedContractState(state, block.protocolVersion, {
-          upperBound: offset === null ? 'withheld' : 'enforced'
+          upperBound: offset === null ? 'skip' : 'check'
         });
       });
   }
@@ -318,7 +318,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // measured, not assumed — see `test/ledger-parameters.test.ts` and
         // `docs/architecture/era-tagged-payload-decoders.md`.
         return toVersionedPublicStates(contractZswapState, contractState, block.ledgerParameters, block.protocolVersion, {
-          upperBound: offset === null ? 'withheld' : 'enforced'
+          upperBound: offset === null ? 'skip' : 'check'
         });
       });
   }
@@ -393,7 +393,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
         Rx.map(({ state, protocolVersion }) =>
-          toVersionedContractState(state, protocolVersion, { upperBound: 'withheld' })
+          toVersionedContractState(state, protocolVersion, { upperBound: 'skip' })
         )
       )
     );

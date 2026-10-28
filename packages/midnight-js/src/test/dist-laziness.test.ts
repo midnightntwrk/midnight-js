@@ -128,7 +128,7 @@ describe('dist laziness gate', () => {
     const barrel = await import('@midnight-ntwrk/midnight-js');
 
     expect(typeof barrel.versionOfRecord).toBe('function');
-    expect(typeof barrel.networkHeadVersion).toBe('function');
+    expect(typeof barrel.latestNetworkLedgerVersion).toBe('function');
     expect(barrel.LEDGER_VERSIONS).toEqual(['v8', 'v9']);
     expect(typeof barrel.UnknownProtocolVersionError).toBe('function');
   });

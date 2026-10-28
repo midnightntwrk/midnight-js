@@ -51,12 +51,12 @@ import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
-  HeadReadFailedError,
-  HeadStateEraMismatchError,
+  ForkCrossedDuringOperationError,
   IndexerInconsistencyError,
   Ledger8DeployOnLedger9Error,
+  NetworkVersionReadFailedError,
+  NetworkVersionStateMismatchError,
   ProviderFailedError,
-  StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation
 } from '../errors';
@@ -616,7 +616,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
 
     await expect(
       resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
-    ).rejects.toThrow(HeadStateEraMismatchError);
+    ).rejects.toThrow(NetworkVersionStateMismatchError);
 
     expect(emitted(sink)).toStrictEqual([
       { decision: 'encoding', version: 'v9', source: 'contract-state-envelope-tag' },
@@ -630,7 +630,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     ]);
   });
 
-  it('refuses with HeadReadFailedError, keeping the transport failure on cause, when the re-read fails', async () => {
+  it('refuses with NetworkVersionReadFailedError, keeping the transport failure on cause, when the re-read fails', async () => {
     const transportFailure = new Error('indexer unreachable');
     const failing = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
 
@@ -638,12 +638,12 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
       (e: unknown) => e
     );
 
-    expect(error).toBeInstanceOf(HeadReadFailedError);
+    expect(error).toBeInstanceOf(NetworkVersionReadFailedError);
     expect(error).toHaveProperty('cause', transportFailure);
     expect(error).toHaveProperty(
       'message',
-      "Could not re-read the network head while checking a 'v8'-era head reading against a " +
-        "'v9'-era contract state envelope. Whether those two disagree is still unresolved, so " +
+      "Could not read the network's ledger version again while checking it ('v8') against the " +
+        "version tag of the contract state ('v9'). Whether those two disagree is still unresolved, so " +
         'this operation is refused rather than run against a guess. Retry once the read surface is reachable.'
     );
   });
@@ -772,7 +772,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
 
     await expect(
       handleSubmitRejection(headSource(LEDGER9_HEAD), callOperation('v8'), wrappedRejection(), sink)
-    ).rejects.toThrow(StaleHeadError);
+    ).rejects.toThrow(ForkCrossedDuringOperationError);
 
     expect(emitted(sink)).toStrictEqual([
       {
@@ -794,7 +794,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
     await resolveOperationEra(headSource(LEDGER8_HEAD), sink);
     await expect(
       handleSubmitRejection(headSource(LEDGER9_HEAD), callOperation('v8'), wrappedRejection(), sink)
-    ).rejects.toThrow(StaleHeadError);
+    ).rejects.toThrow(ForkCrossedDuringOperationError);
 
     expect(emitted(sink).map((breadcrumb) => 'readingProvenance' in breadcrumb ? breadcrumb.readingProvenance : undefined))
       .toEqual<(HeadReadingProvenance | undefined)[]>(['operation-start', 'post-rejection-re-read']);
@@ -835,7 +835,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
   it('never asks the network about one of this framework\'s own coded refusals, so emits nothing', async () => {
     const sink = createSink();
     const pdp = headSource(LEDGER9_HEAD);
-    const ownRefusal = new StaleHeadError(callOperation('v8'), 'v9', new Error('inner'));
+    const ownRefusal = new ForkCrossedDuringOperationError(callOperation('v8'), 'v9', new Error('inner'));
 
     await expect(handleSubmitRejection(pdp, callOperation('v8'), ownRefusal, sink)).rejects.toBe(ownRefusal);
 
@@ -926,6 +926,6 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
 
     await expect(
       resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
-    ).rejects.toThrow(HeadStateEraMismatchError);
+    ).rejects.toThrow(NetworkVersionStateMismatchError);
   });
 });

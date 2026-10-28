@@ -18,9 +18,9 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
 
 import {
-  DownConvertFailedError,
   Ledger8RuntimeInvalidError,
   PROTOCOL_ERROR_CODES,
+  StateConversionFailedError,
   UnknownLedgerVersionError
 } from '../errors';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from '../lib/era/envelope';
@@ -70,7 +70,7 @@ describe('reading a real migrated state', () => {
   // without decoding either, and the executable suite drives freshly built
   // counter states, so neither reaches this property. If the two codecs
   // disagreed on any real migrated shape, every call on every migrated contract
-  // would fail closed with `DownConvertFailedError` and both suites stay green.
+  // would fail closed with `StateConversionFailedError` and both suites stay green.
   it.each(['state-migrated-v9.hex', 'state-migrated-v9-merkle.hex'])(
     'decodes %s with the retained runtime and re-encodes it to the same bytes',
     (fixture) => {
@@ -126,7 +126,7 @@ describe('tampered goldens', () => {
   it('rejects an envelope whose bytes were corrupted', () => {
     expect(() =>
       extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState)
-    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED }));
   });
 
   it('never leaks a raw hex/byte dump when it rejects one', () => {
@@ -134,8 +134,8 @@ describe('tampered goldens', () => {
       extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
       expect.unreachable('extraction of tampered bytes must throw');
     } catch (error) {
-      expect(error).toBeInstanceOf(DownConvertFailedError);
-      expect((error as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
+      expect(error).toBeInstanceOf(StateConversionFailedError);
+      expect((error as StateConversionFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
     }
   });
 
@@ -147,7 +147,7 @@ describe('tampered goldens', () => {
     { fixture: 'state-tampered-keyset-v9to8.hex', version: 'v8' as const }
   ])('rejects $fixture read as $version', ({ fixture, version }) => {
     expect(() => extractEncodedStateValue(readHexFixture(fixture), version, ocrt3.ContractState)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED })
     );
   });
 });
@@ -172,10 +172,10 @@ describe('extractLedger9EncodedStateValue', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(DownConvertFailedError);
-    const failure = caught as DownConvertFailedError;
-    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
-    expect(failure.stage).toBe('v9 envelope extraction');
+    expect(caught).toBeInstanceOf(StateConversionFailedError);
+    const failure = caught as StateConversionFailedError;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED);
+    expect(failure.stage).toBe('v9 version tag read');
   });
 
   // The dispatching entry delegates to this function rather than duplicating
@@ -189,7 +189,7 @@ describe('extractLedger9EncodedStateValue', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(DownConvertFailedError);
-    expect((caught as DownConvertFailedError).cause).not.toBeInstanceOf(DownConvertFailedError);
+    expect(caught).toBeInstanceOf(StateConversionFailedError);
+    expect((caught as StateConversionFailedError).cause).not.toBeInstanceOf(StateConversionFailedError);
   });
 });

@@ -76,6 +76,7 @@ import {
 
 import {
   EraInvariantViolationError,
+  ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
   Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
@@ -85,11 +86,9 @@ import {
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
   PrivateStateNotFoundError,
-  StaleHeadError,
-  type StaleHeadOperationKind,
   SubmitRejectionUndiagnosedError,
-  type SubmittedOperation
-} from '../errors';
+  type SubmittedOperation,
+  type SubmittedOperationKind} from '../errors';
 import {
   Ledger8InsertVerifierKeyTxFailedError,
   Ledger8RemoveVerifierKeyTxFailedError,
@@ -236,7 +235,7 @@ export interface Ledger8Runtime {
  */
 export const acquireLedger8Runtime = async (
   providers: Ledger8RuntimeProviders,
-  kind: StaleHeadOperationKind,
+  kind: SubmittedOperationKind,
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {
   const [resolved, engine, retainedEra] = await Promise.all([
@@ -287,7 +286,7 @@ export const acquireLedger8Runtime = async (
  * @throws EraInvariantViolationError if a provider answers in the other era.
  * @throws ProviderFailedError if a provider rejects, with its own failure
  * sanitized onto `cause` — see {@link atProviderMethod}.
- * @throws StaleHeadError, SubmitRejectionUndiagnosedError if the submission was
+ * @throws ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError if the submission was
  * rejected and the head has moved, or cannot be compared — see
  * {@link handleSubmitRejection}.
  * @see {@link KeepStatePipeline} for the payload table and why tagging the
@@ -372,7 +371,7 @@ export interface Ledger8SubmittedCall {
  * private state to run against.
  * @returns The transaction id and what the call produced.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
@@ -592,7 +591,7 @@ export interface Ledger8FoundState {
  * @throws InvalidArgumentError if the artifact declares no callable circuits,
  * or if the address is malformed.
  * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the fetched
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
@@ -1322,7 +1321,7 @@ const assertLedger8MaintenanceSucceeded = (
  * submission rejected while the head was moving, or one whose rejection could not be diagnosed.
  */
 const mayHaveLanded = (error: unknown): boolean =>
-  error instanceof StaleHeadError || error instanceof SubmitRejectionUndiagnosedError;
+  error instanceof ForkCrossedDuringOperationError || error instanceof SubmitRejectionUndiagnosedError;
 
 /**
  * Runs one retained-era maintenance update end to end and waits for the chain to record it: check

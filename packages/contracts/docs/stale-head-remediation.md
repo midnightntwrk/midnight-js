@@ -40,7 +40,7 @@ bound old and there is nothing for a caller to opt out of. That is why the
 module simply asks again — see ADR 0007 and the method's own documentation in
 `packages/types/src/public-data-provider.ts`.
 
-`networkHeadVersion` is what the module calls: one round trip, the same
+`latestNetworkLedgerVersion` is what the module calls: one round trip, the same
 `'construct'` era mapping, and only the era back. The raw head integer is
 deliberately not carried past the read, because the verdict is an era
 comparison and nothing downstream of it compares integers.
@@ -54,7 +54,7 @@ rather than a step in it, and a caller writes
 
 | what a fresh head read reports | thrown |
 | ------------------------------ | ------ |
-| a LATER era than the operation started against | `StaleHeadError`, with the two-step remediation |
+| a LATER era than the operation started against | `ForkCrossedDuringOperationError`, with the two-step remediation |
 | the SAME era | the rejection, unchanged |
 | an EARLIER era | `SubmitRejectionUndiagnosedError`, reason `'head-moved-backwards'` |
 | nothing — the read itself rejects | `SubmitRejectionUndiagnosedError`, reason `'head-read-failed'` |
@@ -91,7 +91,7 @@ crosses, rather than a second one here that could redact differently. See
 
 ## What a caller is told to do
 
-`StaleHeadError` carries a two-step remediation, and the order matters. First,
+`ForkCrossedDuringOperationError` carries a two-step remediation, and the order matters. First,
 verify the transaction did not finalize: a submission rejected while the head
 was moving can still have been recorded. Only then act.
 

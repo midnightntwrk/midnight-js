@@ -54,10 +54,9 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   ContractExecutionError,
-  DownConvertFailedError,
   InvalidArgumentError,
-  InvariantViolationError
-} from '../errors';
+  InvariantViolationError,
+  StateConversionFailedError} from '../errors';
 import type { EncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ContractBalance, ContractStatePojo } from '../lib/shared/contract-state';
@@ -989,8 +988,8 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     // CODED, like every other refusal from `runLedger8Circuit`: a consumer switching on
     // `stage` must not be handed a classless error for the one refusal that
     // exists to keep #1345 closed.
-    expect(rejection).toBeInstanceOf(DownConvertFailedError);
-    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
+    expect(rejection).toBeInstanceOf(StateConversionFailedError);
+    expect((rejection as StateConversionFailedError).stage).toBe('state conversion');
     expect(String((rejection as Error).cause)).toMatch(/carries no usable balance/);
   });
 
@@ -1022,11 +1021,11 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     // Act.
     const rejection = await runAgainst({ ...fresh, state: mangle(encodedThreeEntryMap()) });
 
-    // Assert. DOWN_CONVERT_FAILED at the down-convert stage, which is what a
+    // Assert. STATE_CONVERSION_FAILED at the down-convert stage, which is what a
     // consumer switching on `stage` already discriminates on.
-    expect(rejection).toBeInstanceOf(DownConvertFailedError);
-    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
-    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+    expect(rejection).toBeInstanceOf(StateConversionFailedError);
+    expect((rejection as StateConversionFailedError).stage).toBe('state conversion');
+    expect((rejection as StateConversionFailedError).cause).toBeDefined();
   });
 
   // A state the retained decoder THROWS on, rather than one that decodes and
@@ -1053,9 +1052,9 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
 
     // Assert. The same discrimination the round-trip refusal offers, so a
     // consumer switching on `stage` reaches the same remediation either way.
-    expect(rejection).toBeInstanceOf(DownConvertFailedError);
-    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
-    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+    expect(rejection).toBeInstanceOf(StateConversionFailedError);
+    expect((rejection as StateConversionFailedError).stage).toBe('state conversion');
+    expect((rejection as StateConversionFailedError).cause).toBeDefined();
   });
 
   it('codes a colour the retained runtime cannot read, rather than leaking the WASM error', async () => {
@@ -1071,9 +1070,9 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     const rejection = await runAgainst({ ...fresh, balance: new Map([[colourWithoutRaw, 5n]]) });
 
     // Assert.
-    expect(rejection).toBeInstanceOf(DownConvertFailedError);
-    expect((rejection as DownConvertFailedError).stage).toBe('state down-convert');
-    expect((rejection as DownConvertFailedError).cause).toBeDefined();
+    expect(rejection).toBeInstanceOf(StateConversionFailedError);
+    expect((rejection as StateConversionFailedError).stage).toBe('state conversion');
+    expect((rejection as StateConversionFailedError).cause).toBeDefined();
   });
 
   it('executes a state that IS its own source, so the round trip is not refusing everything', async () => {

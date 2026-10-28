@@ -36,7 +36,7 @@ export {
 
 /**
  * Anything that can report the network's current head protocol version —
- * typically an indexer or node client. Consumed by {@link networkHeadVersion}.
+ * typically an indexer or node client. Consumed by {@link latestNetworkLedgerVersion}.
  */
 export interface ProtocolVersionSource {
   /**
@@ -83,7 +83,7 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
  *
  * Most call sites should not call this directly. Prefer
  * {@link versionOfRecord} for a `protocolVersion` read off an existing
- * indexer/node record, or {@link networkHeadVersion} for the network's
+ * indexer/node record, or {@link latestNetworkLedgerVersion} for the network's
  * current head version — both tag the resulting error with the correct
  * `path` automatically. Pass `path` explicitly here only when neither helper
  * fits the call site.
@@ -141,5 +141,5 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
  * path, on the same two conditions as {@link protocolVersionToLedger}. A
  * rejection from `source.queryLatestProtocolVersion()` propagates unchanged.
  */
-export const networkHeadVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
+export const latestNetworkLedgerVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
   protocolVersionToLedger(await source.queryLatestProtocolVersion(), 'construct');

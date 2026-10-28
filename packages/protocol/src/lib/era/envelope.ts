@@ -17,9 +17,9 @@ import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractState as Ledger9ContractState, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import {
-  DownConvertFailedError,
-  type DownConvertStage,
   Ledger8RuntimeInvalidError,
+  StateConversionFailedError,
+  type StateConversionStage,
   UnknownLedgerVersionError
 } from '../../errors';
 import type { LedgerVersion } from '../../version';
@@ -49,7 +49,7 @@ type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractSt
  *
  * @param raw The serialized `contract-state[v8]` envelope.
  * @returns The primary state read out of the envelope.
- * @throws DownConvertFailedError at stage `'v9 envelope extraction'` if the
+ * @throws StateConversionFailedError at stage `'v9 version tag read'` if the
  * envelope is malformed, truncated, over-long, or tagged for the other era,
  * carrying the runtime's own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
@@ -58,7 +58,7 @@ export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateVa
   try {
     return Ledger9ContractState.deserialize(raw).data.state.encode();
   } catch (cause) {
-    throw new DownConvertFailedError('v9 envelope extraction', cause);
+    throw new StateConversionFailedError('v9 version tag read', cause);
   }
 };
 
@@ -99,8 +99,8 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  * `LEDGER_VERSIONS`.
  * @throws Ledger8RuntimeInvalidError if `ledger8ContractState` does not carry
  * `deserialize`.
- * @throws DownConvertFailedError at stage `'v8 envelope extraction'` or
- * `'v9 envelope extraction'` if the envelope cannot be read, carrying the
+ * @throws StateConversionFailedError at stage `'v8 version tag read'` or
+ * `'v9 version tag read'` if the envelope cannot be read, carrying the
  * runtime's own diagnosis on `cause`.
  * @see {@link FailClosedDecoding}
  * @see {@link SharedTableDiscipline}
@@ -124,9 +124,9 @@ export const extractEncodedStateValue = (
     // THE STAGE IS CHECKED, not just the class: a decoder is injectable, so one
     // that wrapped at a different stage must not pass through -- see
     // FailClosedDecoding.
-    const stage: DownConvertStage = `${version} envelope extraction`;
-    throw cause instanceof DownConvertFailedError && cause.stage === stage
+    const stage: StateConversionStage = `${version} version tag read`;
+    throw cause instanceof StateConversionFailedError && cause.stage === stage
       ? cause
-      : new DownConvertFailedError(stage, cause);
+      : new StateConversionFailedError(stage, cause);
   }
 };

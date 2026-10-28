@@ -39,7 +39,7 @@ era dispatch is reachable today, belong with the package-wide table discipline
 `extractEncodedStateValue` never returns a silently empty or partial state: any
 deserialization failure (malformed bytes, a truncated or over-long payload, or
 an envelope tagged for the other ledger version) is wrapped in a
-`DownConvertFailedError` with `{ cause }`, so failures propagate loudly instead
+`StateConversionFailedError` with `{ cause }`, so failures propagate loudly instead
 of producing a misleading result. The wrapped cause carries the runtime's own
 diagnosis, which distinguishes a tag mismatch from truncated, trailing, or
 empty bytes.
@@ -73,7 +73,7 @@ every other failure after the bytes decoded.
 The same refusal to accept quietly governs the structural round trip further
 down the pipeline. `decodeExecutableStateValue` (`lib/v8/executable.ts`)
 decodes the primary state a circuit runs against, re-encodes it, and refuses a
-value that did not come back — `DownConvertFailedError` at stage `'state
+value that did not come back — `StateConversionFailedError` at stage `'state
 down-convert'`. The comparison is cross-codec by construction: a contract the
 fork translated carries a current-era envelope, so its state is
 encoded by ledger-v9 and decoded by the retained runtime, and a retained
@@ -90,10 +90,10 @@ would misdescribe the fix.
 |---|---|
 | `StateDecodeFailedError` | the envelope was never readable at all by the era it was requested for |
 | `StateInconsistentError` | the envelope was readable, but the state it decoded to is internally inconsistent |
-| `DownConvertFailedError` | a raw envelope, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
+| `StateConversionFailedError` | a raw envelope, or an already-extracted `EncodedStateValue`, could not be turned into an executable pre-fork state |
 | `Ledger8RuntimeInvalidError` | the injected pre-fork runtime cannot be used — nothing is wrong with the input |
 
-`StateDecodeFailedError` is distinct from `DownConvertFailedError`, which
+`StateDecodeFailedError` is distinct from `StateConversionFailedError`, which
 reports a failure to bridge an already-extracted state into the pre-fork
 execution algebra: the first reports the envelope never having been readable at
 all. `version` names the era whose decoder rejected it.
@@ -106,7 +106,7 @@ chosen from something other than the envelope, such as a reported protocol
 version. `getAnyEraContractState` already reads the era off the envelope, so
 there a retry with the other era cannot help either.
 
-`Ledger8RuntimeInvalidError` is separate from `DownConvertFailedError` because
+`Ledger8RuntimeInvalidError` is separate from `StateConversionFailedError` because
 the remediation is unrelated: nothing is wrong with the caller's input. Folding
 this into a down-convert failure would name an extraction stage and tell the
 caller to read a cause describing tag mismatches and truncation, sending them
@@ -117,19 +117,19 @@ then handed over incomplete.
 
 Checking the injected runtime up front is what buys that distinction. It turns
 the omission into `Ledger8RuntimeInvalidError` instead of a `TypeError` wrapped
-as a `DownConvertFailedError` — which would name an extraction stage and point
+as a `StateConversionFailedError` — which would name an extraction stage and point
 the caller at input bytes that are not the problem.
 
 Down-convert is version-agnostic — it consumes an already-extracted
 `EncodedStateValue` whichever era it came from — so its stage carries no
-version, unlike the two extraction stages (`'v8 envelope extraction'` and
-`'v9 envelope extraction'`, against `'state down-convert'`).
+version, unlike the two extraction stages (`'v8 version tag read'` and
+`'v9 version tag read'`, against `'state conversion'`).
 
 ## Why the facade's two read methods fail the same way
 
 `extractStateWith` (`packages/protocol/src/lib/shared/contract-state.ts`)
 exists so the facade's two read methods fail the SAME way. Underneath, the
-extractors raise `DownConvertFailedError` naming an extraction stage — a class
+extractors raise `StateConversionFailedError` naming an extraction stage — a class
 with no `version` field, and a diagnosis phrased around down-converting a state
 for execution, which is not what a caller asking to read a state was doing. A
 caller handed one era's bytes on the other era's object should learn that from
@@ -140,8 +140,8 @@ two it called. The extractor's own diagnosis stays on `cause`.
 
 `extractLedger9EncodedStateValue` owns the same wrapping the dispatching entry
 applies: a rejected envelope (malformed, truncated, over-long, or tagged for
-the other era) leaves as a `DownConvertFailedError` at stage
-`'v9 envelope extraction'`, carrying the runtime's own diagnosis on `cause`.
+the other era) leaves as a `StateConversionFailedError` at stage
+`'v9 version tag read'`, carrying the runtime's own diagnosis on `cause`.
 The dispatching entry delegates here rather than decoding again, so a failure
 is wrapped exactly once. The `v9` slot of the decoder table is a reference to
 that standalone decoder, not a second copy of the same read: the two must not
@@ -192,13 +192,13 @@ read a state its own era wrote.
 
 ## These errors never render caller-supplied text
 
-`DownConvertStage` is a closed union rather than a free-form string for two
+`StateConversionStage` is a closed union rather than a free-form string for two
 reasons: a consumer can `switch` on `stage` exhaustively, and no call site can
 interpolate input-derived text into the error message, which is what keeps the
 "never renders state contents" guarantee a property of this class rather than
 of every caller's discipline.
 
-`DownConvertFailedError` therefore names which step failed and nothing more, so
+`StateConversionFailedError` therefore names which step failed and nothing more, so
 the message stays useful without ever including the input bytes themselves —
 this class never renders raw hex or decoded state contents, only the stage name
 and the wrapped `cause`. The underlying runtime distinguishes tag-mismatch,

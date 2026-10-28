@@ -15,7 +15,7 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
-import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
+import { ledgerVersionOfContractState } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
@@ -206,7 +206,7 @@ const tracedRaw = async (
   config: ContractStateObservableConfig
 ): Promise<string[]> => {
   const records = await Rx.lastValueFrom(provider.rawContractStateObservable(ADDRESS, config).pipe(Rx.toArray()));
-  return records.map(({ blockHeight, value }) => `${blockHeight}:${contractStateEnvelopeVersion(value.raw)}`);
+  return records.map(({ blockHeight, value }) => `${blockHeight}:${ledgerVersionOfContractState(value.raw)}`);
 };
 
 const NAMED_TX = 'tx-10' as TransactionId;

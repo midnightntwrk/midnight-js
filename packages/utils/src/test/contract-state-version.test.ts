@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { contractStateEnvelopeVersion } from '../contract-state-envelope';
+import { ledgerVersionOfContractState } from '../contract-state-version';
 import { TagParseError } from '../serialized-tag';
 
 // The mapping's own behaviour, tested here with the mapping. What the two ledger RUNTIMES actually
@@ -26,13 +26,13 @@ import { TagParseError } from '../serialized-tag';
 const envelope = (tag: string, body = 'state-body'): Uint8Array =>
   Uint8Array.from(Buffer.from(`${tag}:${body}`, 'utf8'));
 
-describe('contractStateEnvelopeVersion', () => {
+describe('ledgerVersionOfContractState', () => {
   it('maps the pre-fork contract-state envelope onto the v8 ledger era', () => {
-    expect(contractStateEnvelopeVersion(envelope('midnight:contract-state[v6]'))).toBe('v8');
+    expect(ledgerVersionOfContractState(envelope('midnight:contract-state[v6]'))).toBe('v8');
   });
 
   it('maps the post-fork contract-state envelope onto the v9 ledger era', () => {
-    expect(contractStateEnvelopeVersion(envelope('midnight:contract-state[v8]'))).toBe('v9');
+    expect(ledgerVersionOfContractState(envelope('midnight:contract-state[v8]'))).toBe('v9');
   });
 
   it('reads only the tag, so a body it cannot decode is still dated', () => {
@@ -45,7 +45,7 @@ describe('contractStateEnvelopeVersion', () => {
       0xfe
     ]);
 
-    expect(contractStateEnvelopeVersion(corruptBody)).toBe('v9');
+    expect(ledgerVersionOfContractState(corruptBody)).toBe('v9');
   });
 
   it.each([
@@ -62,11 +62,11 @@ describe('contractStateEnvelopeVersion', () => {
     ['ledger parameters rather than a contract state', 'midnight:ledger-parameters[v8]'],
     ['a foreign namespace', 'notmidnight:contract-state[v8]']
   ])('refuses %s', (_label, tag) => {
-    expect(() => contractStateEnvelopeVersion(envelope(tag))).toThrow(TagParseError);
+    expect(() => ledgerVersionOfContractState(envelope(tag))).toThrow(TagParseError);
   });
 
   it('refuses bytes carrying no tag prefix at all', () => {
-    expect(() => contractStateEnvelopeVersion(Uint8Array.from([1, 2, 3, 4]))).toThrow(TagParseError);
+    expect(() => ledgerVersionOfContractState(Uint8Array.from([1, 2, 3, 4]))).toThrow(TagParseError);
   });
 
   it('does not echo the rejected tag into the error message', () => {
@@ -75,11 +75,17 @@ describe('contractStateEnvelopeVersion', () => {
     const hostileTag = 'midnight:contract-state[v99-injected]';
 
     try {
-      contractStateEnvelopeVersion(envelope(hostileTag));
+      ledgerVersionOfContractState(envelope(hostileTag));
       expect.unreachable('an unsupported envelope tag was accepted');
     } catch (error) {
       expect(error).toBeInstanceOf(TagParseError);
       expect((error as TagParseError).message).not.toContain('v99-injected');
     }
+  });
+
+  it('names the version tag in plain language when it refuses one', () => {
+    expect(() => ledgerVersionOfContractState(envelope('midnight:contract-state[v99]'))).toThrow(
+      /does not start with a contract-state version tag/
+    );
   });
 });

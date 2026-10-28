@@ -192,7 +192,7 @@ current-era pipeline to fail somewhere unrelated, `resolveArtifactEra` raises
 ## Reading the network's era: exactly one head read per operation
 
 `resolveOperationEra` makes EXACTLY ONE head read, and that is the whole point.
-Asking `networkHeadVersion` for the era and then asking the provider again for
+Asking `latestNetworkLedgerVersion` for the era and then asking the provider again for
 the raw integer is two network round trips, and during the fork window the
 second one can answer differently from the first — leaving one operation built
 half against each era. The era, the integer it was resolved from, and the era
@@ -364,7 +364,7 @@ The order is load-bearing:
    cannot be decoded at all is still dated and a decoder is never handed bytes
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
-   one place, as `contractStateEnvelopeVersion` in
+   one place, as `ledgerVersionOfContractState` in
    `@midnight-ntwrk/midnight-js-utils`, beside the tag parser it is built on
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
@@ -374,7 +374,7 @@ The order is load-bearing:
    request per call, so a re-read really is a second reading of the network
    (`docs/adr/0007-never-latch-the-network-head-version.md`).
 4. If the fresh head now agrees with the state, the first reading was merely
-   stale: the caller can fix it by re-running, so `HeadStateEraMismatchError`
+   stale: the caller can fix it by re-running, so `NetworkVersionStateMismatchError`
    says how.
 5. If the fresh head still disagrees, the head was not stale and the two served
    answers cannot both describe one chain: `IndexerInconsistencyError`, with

@@ -33,7 +33,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces. `protocol-acl.test.ts` pins the exact list |
-| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
+| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8Protocol()` |
 | `./engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
@@ -185,7 +185,7 @@ const deploy = era.composeDeployTx({ contractStateBytes, verifierKeys, networkId
 | `composeCallTx` | Composes an UNPROVEN call transaction and answers with its bytes plus each call's guaranteed/fallible split |
 | `composeDeployTx` | Composes an UNPROVEN deploy and returns it with the address it will have and the initial state that address came from |
 
-Derive the era with `versionOfRecord` or `networkHeadVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerVersionError`; the offending value is on the error's `requestedVersion` field, not in its message.
+Derive the era with `versionOfRecord` or `latestNetworkLedgerVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerVersionError`; the offending value is on the error's `requestedVersion` field, not in its message.
 
 Each era is memoised, so the retained pre-fork WASM is instantiated at most once per process. Asking for `'v8'` is what acquires it — a consumer that only ever asks for `'v9'` never loads it at all, which is gated by `dist-laziness.test.ts`. A **failed** v8 acquisition is not memoised: the rejection propagates unchanged as `Ledger8RuntimeMissingError` and the next call retries.
 
@@ -244,12 +244,12 @@ import {
   LEDGER_VERSIONS,          // readonly ['v8', 'v9']
   protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'   (path defaults to 'construct')
   versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
-  networkHeadVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
+  latestNetworkLedgerVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 ```
 
-Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `networkHeadVersion` for the network's current head version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
+Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `latestNetworkLedgerVersion` for the network's current head version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
 
 ## ESLint Enforcement
 

@@ -236,7 +236,7 @@ export class IndexerDataError extends IndexerError {
         );
       case 'missing-head-block':
         return (
-          'The indexer returned no head block, so the network protocol version could not be read. ' +
+          'The indexer returned no latest block, so the network protocol version could not be read. ' +
           'Wait for the indexer to finish indexing at least one block, then retry.'
         );
       case 'undated-state':
@@ -260,7 +260,7 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
       case 'era-disagreement':
         return (
-          `The indexer served a contract state whose envelope was written by ledger ${context.envelopeVersion}, ` +
+          `The indexer served a contract state whose version tag says it was written by ledger ${context.envelopeVersion}, ` +
           `but dated it to protocol version ${context.protocolVersion} (ledger ${context.reportedVersion}) — a ` +
           'block from before that runtime existed. A state cannot predate the runtime that wrote it, so the two ' +
           'answers cannot both be right. Retry against a healthy indexer; if it persists, the indexer is serving ' +
@@ -283,7 +283,7 @@ export class IndexerDataError extends IndexerError {
           `parameters of a block from ledger ${context.parametersVersion}. One value cannot carry two eras. ` +
           'Indexer 4.4.0-rc.6 and later serve every contract state translated to the era of the block, so on a ' +
           'pinned read this means an older indexer, which serves a contract untouched since the fork with its ' +
-          'pre-fork envelope (midnight-indexer #1605): upgrade the indexer. On an unpinned read the fork block can ' +
+          'pre-fork version tag (midnight-indexer #1605): upgrade the indexer. On an unpinned read the fork block can ' +
           'also be indexed between the two fields; pinning the read to a block hash or height rules that out.'
         );
       case 'malformed-protocol-version':

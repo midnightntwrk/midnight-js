@@ -65,7 +65,7 @@ Two deliberate exclusions:
   `'construct'`. A consumer holding a record's `protocolVersion` naturally
   writes `protocolVersionToLedger(record.protocolVersion)`, gets an error
   tagged `construct`, and a handler written for the `read` code silently does
-  not fire. `versionOfRecord` and `networkHeadVersion` cover both paths and tag
+  not fire. `versionOfRecord` and `latestNetworkLedgerVersion` cover both paths and tag
   each one automatically, so the raw resolver adds a footgun and no capability.
 - **`ProtocolErrorCode`.** Nothing on this surface names it. EVERY published
   class declares `code` as its own literal, so a `switch` over
@@ -114,14 +114,13 @@ application code as a `proveTx` rejection out of `contracts.deployContract` or
 `submitCallTx`. Its constructor is private and its only public member is
 `code`, so it is published purely so a consumer can `instanceof` it.
 
-The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
+The remaining codes in the table differ. `STATE_CONVERSION_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
 a state that does not decode or does not re-encode to its source.
-`LEDGER8_INSTANCE_MISMATCH` and `MERKLE_NOT_REHASHED` have none: the
-construction-time instance guard and the Merkle-rehash walk were retired with
-the hand-maintained execution layer, and `packages/protocol/src/errors.ts` says
-so on both classes. They stay published because a consumer may still switch on
-the code. `UNKNOWN_LEDGER8_AXIS` is in the same position.
+`LEDGER8_INSTANCE_MISMATCH` has none: the construction-time instance guard was
+retired with the hand-maintained execution layer, and
+`packages/protocol/src/errors.ts` says so on the class. It stays published
+because a consumer may still switch on the code.
 
 ## The error base and the general errors
 

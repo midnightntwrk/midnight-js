@@ -16,7 +16,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
-import { LEDGER_VERSIONS, networkHeadVersion, protocolVersionToLedger, versionOfRecord } from '../version';
+import { latestNetworkLedgerVersion, LEDGER_VERSIONS, protocolVersionToLedger, versionOfRecord } from '../version';
 
 describe('protocolVersionToLedger', () => {
   it.each([
@@ -110,11 +110,11 @@ describe('sourcing helpers', () => {
     });
   });
 
-  describe('networkHeadVersion', () => {
+  describe('latestNetworkLedgerVersion', () => {
     it('resolves to the mapped ledger version and queries the source exactly once', async () => {
       const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
 
-      await expect(networkHeadVersion(source)).resolves.toBe('v9');
+      await expect(latestNetworkLedgerVersion(source)).resolves.toBe('v9');
 
       expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     });
@@ -122,7 +122,7 @@ describe('sourcing helpers', () => {
     it('rejects with the construct-path code when the source reports an unknown version', async () => {
       const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(9_000_000) };
 
-      await expect(networkHeadVersion(source)).rejects.toMatchObject({
+      await expect(latestNetworkLedgerVersion(source)).rejects.toMatchObject({
         code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
       });
     });
@@ -131,7 +131,7 @@ describe('sourcing helpers', () => {
       const sourceError = new Error('network unreachable');
       const source = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(sourceError) };
 
-      await expect(networkHeadVersion(source)).rejects.toBe(sourceError);
+      await expect(latestNetworkLedgerVersion(source)).rejects.toBe(sourceError);
     });
   });
 });

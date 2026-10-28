@@ -155,15 +155,15 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
     'Pass either a CompiledContract container produced by the ledger 9 Compact toolchain, or the contract ' +
     'instance the ledger 8 (pre-fork) Compact toolchain generates.',
   'ledger9-artifact-on-ledger8-head':
-    'This contract was produced by the ledger 9 Compact toolchain, but the network head is still on ' +
+    'This contract was produced by the ledger 9 Compact toolchain, but the network is still on ' +
     'ledger 8, which cannot execute it. Run this operation against a contract produced by the ' +
-    'ledger 8 (pre-fork) Compact toolchain until the network head has crossed the fork.',
+    'ledger 8 (pre-fork) Compact toolchain until the network has crossed the fork.',
   'ledger9-transaction-on-ledger8-head':
-    'A v9 transaction was handed to submitTx, but the network head is still on ledger 8, ' +
+    'A v9 transaction was handed to submitTx, but the network is still on ledger 8, ' +
     'which cannot accept it. Nothing was proved. Submit v8 transaction bytes ({ version: \'v8\', txBytes }) ' +
-    'until the network head has crossed the fork.',
+    'until the network has crossed the fork.',
   'ledger8-transaction-on-ledger9-head':
-    'v8 transaction bytes were handed to submitTx, but the network head has crossed the fork to the v9 ' +
+    'v8 transaction bytes were handed to submitTx, but the network has crossed the fork to the v9 ' +
     'ledger era, which cannot read them. Nothing was proved. Compose the transaction again against the ' +
     'v9 ledger and submit it as { version: \'v9\', tx }.',
   // Named as a missing DECLARATION rather than a missing file: the fix is to serve what the compiler
@@ -315,8 +315,8 @@ export class Ledger8DeployOnLedger9Error extends MidnightJsError {
 
   constructor() {
     super(
-      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a post-fork network ' +
-        'head. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
+      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
+        'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
         'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
         'ledger 9 Compact toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
     );
@@ -339,7 +339,7 @@ export class Ledger8MaintenanceOnLedger9Error extends MidnightJsError {
   constructor() {
     super(
       'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot maintain a contract on a ' +
-        'post-fork network head. Recompile the contract with the ledger 9 Compact toolchain and run the same ' +
+        'network that has crossed the fork. Recompile the contract with the ledger 9 Compact toolchain and run the same ' +
         'maintenance function with that artifact: it maintains the migrated contract with the signing key ' +
         'already stored for its address.'
     );
@@ -361,9 +361,9 @@ export class Ledger8MaintenanceOnLedger9Error extends MidnightJsError {
  *
  * @see {@link EraDispatch} for the five-step check that produces this error.
  */
-export class HeadStateEraMismatchError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH];
+export class NetworkVersionStateMismatchError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH];
 
   /**
    * @param head The era the operation resolved from the network head.
@@ -374,13 +374,13 @@ export class HeadStateEraMismatchError extends MidnightJsError {
     readonly stateEra: LedgerVersion
   ) {
     super(
-      `This operation resolved a '${head}'-era network head, but the contract state it fetched carries a ` +
-        `'${stateEra}'-era envelope, and re-reading the head returned '${stateEra}' as well. The era this ` +
-        `operation started from is not the era the network now reports, which is what happens while the ` +
-        `network crosses the ledger fork. Re-read the network head, then re-run the operation against the ` +
-        `era it now reports.`
+      `This operation started while the network reported ledger '${head}', but the contract state it ` +
+        `fetched carries a '${stateEra}' version tag, and reading the network's ledger version again returned ` +
+        `'${stateEra}' as well. The ledger this operation started from is not the one the network now reports, ` +
+        `which is what happens while the network crosses the ledger fork. Re-run the operation: it reads the ` +
+        `network's ledger version again and runs against the ledger it now reports.`
     );
-    this.name = 'HeadStateEraMismatchError';
+    this.name = 'NetworkVersionStateMismatchError';
   }
 }
 
@@ -388,7 +388,7 @@ export class HeadStateEraMismatchError extends MidnightJsError {
  * An error indicating that the read surface reported a network head and a contract state whose eras
  * disagree, and that the disagreement survived a fresh head read.
  *
- * Distinct from {@link HeadStateEraMismatchError}, and the distinction is the point: there the head
+ * Distinct from {@link NetworkVersionStateMismatchError}, and the distinction is the point: there the head
  * reading was merely stale and re-running fixes it. Here the head is confirmed, so the served state
  * and the served head cannot both describe one chain — which is a fault in the data served, not a
  * timing artefact the caller can correct. Deliberately NOT reported as a fork in progress: nothing
@@ -408,8 +408,8 @@ export class IndexerInconsistencyError extends MidnightJsError {
     readonly stateEra: LedgerVersion
   ) {
     super(
-      `The read surface reported a '${head}'-era network head — confirmed by a second, fresh read — while ` +
-        `serving a contract state that carries a '${stateEra}'-era envelope. Those two answers cannot both ` +
+      `The read surface reported that the network is on ledger '${head}' — confirmed by a second, fresh ` +
+        `read — while serving a contract state that carries a '${stateEra}' version tag. Those two answers cannot both ` +
         `describe one chain, so this is an inconsistency in what was served rather than a stale reading this ` +
         `client can correct. Retry the operation, and if it persists check the health of the configured indexer.`
     );
@@ -525,14 +525,14 @@ export class ProviderFailedError extends MidnightJsError {
 }
 
 /**
- * Whether the operation a {@link StaleHeadError} refuses was deploying a
+ * Whether the operation a {@link ForkCrossedDuringOperationError} refuses was deploying a
  * contract, calling one already deployed, or maintaining one.
  *
  * The same discriminant the era pairing table takes, kept as its own type here
  * because it decides which of the genuinely different remediations the error
  * carries.
  */
-export type StaleHeadOperationKind = 'call' | 'deploy' | 'maintenance';
+export type SubmittedOperationKind = 'call' | 'deploy' | 'maintenance';
 
 /**
  * WHICH operation a submit rejection belongs to: the identity every refusal
@@ -554,7 +554,7 @@ export interface SubmittedOperation {
    */
   readonly head: LedgerVersion;
   /** Whether this operation deploys a contract, calls one already deployed, or maintains one. */
-  readonly kind: StaleHeadOperationKind;
+  readonly kind: SubmittedOperationKind;
   /**
    * The entry point this operation ran. A deploy has no circuit of its own and
    * reports the constructor's own name, `'initialState'`; a maintenance
@@ -588,40 +588,40 @@ export interface SubmittedOperation {
 // through the retained-era overloads of the governance functions. `kind: 'deploy'`
 // is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
-const STALE_HEAD_MESSAGES: Readonly<
-  Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
+const FORK_CROSSED_MESSAGES: Readonly<
+  Record<SubmittedOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
   call: (operation, freshEra) =>
-    `This call was built against a '${operation.head}'-era network head and the node rejected its ` +
-    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger ` +
+    `This call was built while the network was on ledger '${operation.head}' and the node rejected its ` +
+    `transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger ` +
     `fork while the call was being built. Take two steps, in this order. First, verify the transaction did ` +
-    `not finalize: a submission rejected while the head was moving can still have been recorded, so read ` +
+    `not finalize: a submission rejected while the fork was happening can still have been recorded, so read ` +
     `the state of the contract at '${operation.contractAddress}' and check whether the call to ` +
     `'${operation.circuitId}' is already reflected in it before doing anything that would repeat it. Then ` +
-    `re-run the call unchanged - it resolves the network head again and executes against the era the ` +
-    `network now reports.`,
+    `re-run the call unchanged - it reads the network's ledger version again and executes against the ` +
+    `ledger the network now reports.`,
   deploy: (operation, freshEra) =>
-    `This deployment was built against a '${operation.head}'-era network head and the node rejected its ` +
-    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger ` +
+    `This deployment was built while the network was on ledger '${operation.head}' and the node rejected its ` +
+    `transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger ` +
     `fork while the deployment was being built. Take two steps, in this order. First, verify the ` +
-    `deployment did not finalize: a submission rejected while the head was moving can still have been ` +
+    `deployment did not finalize: a submission rejected while the fork was happening can still have been ` +
     `recorded, so check the address this deployment composed, '${operation.contractAddress}', before ` +
     `deploying again - a deploy mints a fresh nonce, so a second attempt lands at a different address and ` +
     `would leave two copies of the contract on chain. Then recompile the contract with the ledger 9 ` +
     `Compact toolchain and deploy that artifact instead - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
-    `cannot be deployed to a post-fork head at all. See the runtime-deploy chapter of the migration guide.`,
+    `cannot be deployed to a network that has crossed the fork. See the runtime-deploy chapter of the migration guide.`,
   maintenance: (operation, freshEra) =>
-    `This maintenance update was built against a '${operation.head}'-era network head and the node rejected its ` +
-    `transaction; a fresh read of the head now reports '${freshEra}', so the network crossed the ledger fork ` +
+    `This maintenance update was built while the network was on ledger '${operation.head}' and the node rejected ` +
+    `its transaction; the network now reports ledger '${freshEra}', so the network crossed the ledger fork ` +
     `while the update was being built. Take two steps, in this order. First, verify the update did not ` +
-    `finalize: a submission rejected while the head was moving can still have been recorded, so read the ` +
+    `finalize: a submission rejected while the fork was happening can still have been recorded, so read the ` +
     `state of the contract at '${operation.contractAddress}' and check whether its ` +
     (operation.circuitId === NO_CIRCUIT
       ? 'maintenance authority'
       : `verifier key for '${operation.circuitId}'`) +
     ` already reflects the update before doing anything that would repeat it. Then recompile the contract with the ledger 9 Compact toolchain and run the same ` +
     `maintenance function with that artifact - a contract produced by the ledger 8 (pre-fork) Compact toolchain ` +
-    `cannot maintain a contract on a post-fork head.`
+    `cannot maintain a contract on a network that has crossed the fork.`
 });
 
 /**
@@ -640,9 +640,9 @@ const STALE_HEAD_MESSAGES: Readonly<
  * @see {@link StaleHeadRemediation} for why a submit rejection is diagnosed
  *      rather than propagated, and why a deploy's remediation differs.
  */
-export class StaleHeadError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.STALE_HEAD;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.STALE_HEAD];
+export class ForkCrossedDuringOperationError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION];
 
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
@@ -650,7 +650,7 @@ export class StaleHeadError extends MidnightJsError {
    * Whether the refused operation was a call, a deploy or a maintenance update —
    * the discriminant a caller branches on, and which remediation the message carries.
    */
-  readonly kind: StaleHeadOperationKind;
+  readonly kind: SubmittedOperationKind;
   /** The entry point that was run, so a caller with several in flight knows which. */
   readonly circuitId: string;
   /** The contract to reconcile, which is the first remediation step's subject. */
@@ -669,8 +669,8 @@ export class StaleHeadError extends MidnightJsError {
     readonly freshEra: LedgerVersion,
     cause: unknown
   ) {
-    super(STALE_HEAD_MESSAGES[operation.kind](operation, freshEra), { cause });
-    this.name = 'StaleHeadError';
+    super(FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra), { cause });
+    this.name = 'ForkCrossedDuringOperationError';
     this.startEra = operation.head;
     this.kind = operation.kind;
     this.circuitId = operation.circuitId;
@@ -701,7 +701,7 @@ export type SubmitRejectionUndiagnosedCause =
 // nothing observed in either case establishes one, and telling a caller to wait
 // out a fork that is not happening is worse than telling it to retry. Same
 // discipline as `IndexerInconsistencyError`.
-const undiagnosedSubject = (kind: StaleHeadOperationKind): string => {
+const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
   switch (kind) {
     case 'call':
       return 'call';
@@ -723,20 +723,20 @@ const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRe
       ? `contract '${operation.contractAddress}'`
       : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
   const opening =
-    `This ${subject} was built against a '${operation.head}'-era network head and the node rejected its ` +
+    `This ${subject} was built while the network was on ledger '${operation.head}' and the node rejected its ` +
     `transaction (${target}).`;
 
   switch (undiagnosed.reason) {
     case 'head-read-failed':
       return (
-        `${opening} The network head could not be re-read, so whether the network crossed the ledger fork ` +
-        `while this ${subject} was being built is unresolved. Both failures are on 'errors': the ` +
-        `submission rejection first, the failed head read second. Check whether the transaction finalized, ` +
+        `${opening} The network's ledger version could not be read again, so whether the network crossed the ` +
+        `ledger fork while this ${subject} was being built is unresolved. Both failures are on 'errors': the ` +
+        `submission rejection first, the failed read second. Check whether the transaction finalized, ` +
         `then retry once the read surface is reachable.`
       );
     case 'head-moved-backwards':
       return (
-        `${opening} A fresh read of the head reports '${undiagnosed.freshEra}', an EARLIER ledger era. An ` +
+        `${opening} The network now reports ledger '${undiagnosed.freshEra}', an EARLIER ledger era. An ` +
         `era only ever moves forward, so those two readings cannot both describe one chain and this ` +
         `rejection cannot be diagnosed either way. The submission rejection is on 'errors'. Check whether ` +
         `the transaction finalized, then check the health of the configured indexer before retrying.`
@@ -776,7 +776,7 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
-  readonly kind: StaleHeadOperationKind;
+  readonly kind: SubmittedOperationKind;
   readonly circuitId: string;
   readonly contractAddress: string;
 
@@ -810,13 +810,13 @@ interface EffectContractError {
  * or the public data provider returned no latest block to pin a call to. Retry when the read surface is
  * reachable; a transport failure, when there is one, is on `cause`.
  */
-export class HeadReadFailedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.HEAD_READ_FAILED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.HEAD_READ_FAILED];
+export class NetworkVersionReadFailedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED];
 
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
-    this.name = 'HeadReadFailedError';
+    this.name = 'NetworkVersionReadFailedError';
   }
 }
 
@@ -1135,11 +1135,11 @@ export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
    */
   constructor(readonly head: LedgerVersion) {
     super(
-      `A contract-scoped transaction cannot be created while the network head is on the '${head}' ledger ` +
+      `A contract-scoped transaction cannot be created while the network is on the '${head}' ledger ` +
         `era. A scope batches several circuit calls into one transaction, and this era composes exactly ` +
         `one call per transaction and refuses a longer list, so there is nothing for a scope to batch ` +
         `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
-        `the network head has crossed the fork.`
+        `the network has crossed the fork.`
     );
     this.name = 'ScopedTransactionEraUnsupportedError';
   }
@@ -1463,7 +1463,7 @@ export class Ledger8DeployUnconfirmedError extends MidnightJsError {
       `The ledger 8 deployment of the contract at '${contractAddress}' was submitted, but what the ` +
         'chain did with it could not be confirmed. ' +
         (cause instanceof EraInvariantViolationError
-          ? `The record came back from an era the head this deployment composed on cannot have recorded: ${cause.message}`
+          ? `The record came back from a ledger era that the network this deployment was built on cannot have recorded: ${cause.message}`
           : "The record the chain made of it could not be read back and attributed - see this error's " +
             'cause for what failed.') +
         ` ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
@@ -1726,7 +1726,7 @@ export class Ledger8SigningKeyNotStoredError extends MidnightJsError {
  * what the chain did with it could not be confirmed.
  *
  * Covers every way that step fails after the transaction may have landed: a submission rejected
- * while the head was moving (a {@link StaleHeadError} or {@link SubmitRejectionUndiagnosedError}
+ * while the head was moving (a {@link ForkCrossedDuringOperationError} or {@link SubmitRejectionUndiagnosedError}
  * on `cause`), the read surface rejecting, a record with no era tag, or a record from an era the
  * head this replacement composed on cannot have recorded. The new key is NOT stored, because the
  * replacement may not have landed - and it may have, so this error carries it.

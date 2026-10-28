@@ -26,11 +26,11 @@ import {
   EraArtifactMismatchError,
   type EraArtifactMismatchReason,
   EraInvariantViolationError,
-  HeadReadFailedError,
-  HeadStateEraMismatchError,
   IndexerInconsistencyError,
   Ledger8,
   LedgerParametersUnservedError,
+  NetworkVersionReadFailedError,
+  NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError
@@ -41,12 +41,12 @@ describe('the era and verification-path errors a caller has to catch are reachab
     const cases = [
       { error: new EraArtifactMismatchError('unrecognised-contract-shape'), code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH },
       { error: new Ledger8.DeployOnLedger9Error(), code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9 },
-      { error: new HeadStateEraMismatchError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH },
+      { error: new NetworkVersionStateMismatchError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH },
       { error: new IndexerInconsistencyError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY },
       { error: new BlankVerifierKeySlotError('increment'), code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT },
       { error: new VerifierKeyMismatchError('increment'), code: CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH },
       { error: new EraInvariantViolationError('submitTx'), code: CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION },
-      { error: new HeadReadFailedError('head read failed'), code: CONTRACTS_ERROR_CODES.HEAD_READ_FAILED },
+      { error: new NetworkVersionReadFailedError('head read failed'), code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED },
       { error: new ZswapOutputResolutionError('unresolved'), code: CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED },
       { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
       { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
@@ -104,7 +104,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
     const head: LedgerVersion = 'v9';
     const stateEra: LedgerVersion = 'v8';
 
-    const mismatch = new HeadStateEraMismatchError(head, stateEra);
+    const mismatch = new NetworkVersionStateMismatchError(head, stateEra);
     const inconsistency = new IndexerInconsistencyError(head, stateEra);
 
     // Asserted on BOTH classes and in a fixed order: both constructors take two same-typed

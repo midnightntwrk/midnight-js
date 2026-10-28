@@ -127,11 +127,6 @@ rather than switching on a variant tag — so a vendor bump that adds a variant 
 longer fails a build here. Why that walk did not come back is in
 [RetainedEraExecution](./retained-era-execution.md).
 
-`KNOWN_AXES` and `AXIS_BARE_PACKAGE_NAMES` reach the same property through
-`satisfies` rather than an assignment: the duplication of the one axis literal
-is checked, not trusted — `satisfies` fails to compile if `Ledger8InstanceAxis`
-gains a member the table does not name.
-
 ## Why the runtime guard is not redundant with it
 
 The compile-time guard and the runtime guard answer different threats, so

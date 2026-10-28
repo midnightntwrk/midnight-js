@@ -25,7 +25,7 @@ answer can describe.
 **Which era will a transaction I am building now land in?** No record answers
 this. The transaction lands in a future block. The only available signal is the
 network's current head version, which `PublicDataProvider.queryLatestProtocolVersion`
-reports and `networkHeadVersion` (`packages/protocol/src/version.ts`) resolves
+reports and `latestNetworkLedgerVersion` (`packages/protocol/src/version.ts`) resolves
 to a `LedgerVersion`. The distinction is already in the error surface: an
 `UnknownProtocolVersionError` carries `path: 'construct' | 'read'` precisely
 because these are two paths.
@@ -81,7 +81,7 @@ Concretely:
 needs the head reading, and it resolves the era in three steps:
 
 1. Read the head version fresh, immediately before composing, and resolve it
-   with `networkHeadVersion`. One request per deploy — the rarest write in the
+   with `latestNetworkLedgerVersion`. One request per deploy — the rarest write in the
    framework, once per contract.
 2. Compose with the era that resolves to. A version the client cannot place on
    the era timeline is a refusal (`UnknownProtocolVersionError` with
