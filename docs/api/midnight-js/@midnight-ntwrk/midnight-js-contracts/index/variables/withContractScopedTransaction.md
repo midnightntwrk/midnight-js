@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -49,7 +49,7 @@ created for all circuit calls made within `fn`.
 
 ## Throws
 
-When the network head is on a ledger era that composes only
+When the network is on a ledger era that composes only
         one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
         runs, so no circuit is executed and no private state is touched.
 

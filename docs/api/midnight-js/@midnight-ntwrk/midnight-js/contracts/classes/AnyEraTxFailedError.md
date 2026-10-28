@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -110,5 +110,6 @@ The finalized record the chain reported, version-tagged.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.version` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
+narrowing on `record.version`.

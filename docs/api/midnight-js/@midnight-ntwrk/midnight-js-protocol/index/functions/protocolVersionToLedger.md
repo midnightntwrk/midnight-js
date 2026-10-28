@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -18,8 +18,8 @@ onto the ledger runtime it corresponds to.
 
 Most call sites should not call this directly. Prefer
 [versionOfRecord](versionOfRecord.md) for a `protocolVersion` read off an existing
-indexer/node record, or [networkHeadVersion](networkHeadVersion.md) for the network's
-current head version — both tag the resulting error with the correct
+indexer/node record, or [latestNetworkLedgerVersion](latestNetworkLedgerVersion.md) for the network's
+latest ledger version — both tag the resulting error with the correct
 `path` automatically. Pass `path` explicitly here only when neither helper
 fits the call site.
 

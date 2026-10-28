@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,12 +10,12 @@
 
 Fetches a contract's public state and decodes it with the era that wrote it, whichever that is.
 
-Use this wherever a contract may predate the ledger fork. The deserializing members of the
-shipped `IndexerPublicDataProvider` — `queryContractState` and its siblings — decode with the
-current era only and refuse anything else; this reads the era off the state's own envelope and
-dispatches on it, so a contract deployed before the fork and not yet written to still reads.
+Use this wherever a contract may predate the ledger fork and the decoded state is needed in both
+eras. `queryContractState` and its siblings decode only a v9 state and hand a v8 one on as the
+stored bytes; this reads the era off the state's own envelope and decodes it with that era's
+runtime, so a contract deployed before the fork and not yet written to still reads.
 
-The read is relative to the network head. There is no block selector, so a historical read goes
+The read is relative to the network's latest block. There is no block selector, so a historical read goes
 through `queryRawContractState` directly.
 
 The retained-era runtime is acquired only when an envelope calls for it, and — once acquired

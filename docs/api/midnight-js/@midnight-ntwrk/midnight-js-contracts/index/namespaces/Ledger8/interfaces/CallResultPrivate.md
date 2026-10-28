@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -10,11 +10,8 @@ The private, ZK-confidential half of a retained-era circuit execution.
 
 Carries [CallResultPrivateBase](../../../../../midnight-js/types/interfaces/CallResultPrivateBase.md) and [UnsubmittedTxDataBase](../../../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md) — so
 the execution members and the caller's new coins come from the same
-declarations the current era uses — and adds `txBytes`, which stands in for
-`unprovenTx`: the retained composer answers with serialized bytes, and
-deserializing one into a live `UnprovenTransaction` eagerly would pay for an
-object most callers never read. ADR-0010 records that as a cost decision;
-build one from these bytes through the same public loader if you want it.
+declarations the current era uses — and adds `unprovenTx`, the transaction
+this call composed.
 
 ## Remarks
 
@@ -124,8 +121,10 @@ The JS representation of the value the circuit returned.
 
 ***
 
-### txBytes
+### unprovenTx
 
-> `readonly` **txBytes**: `Uint8Array`
+> `readonly` **unprovenTx**: [`UnprovenTx`](../../../../../midnight-js/types/type-aliases/UnprovenTx.md)
 
-The UNPROVEN transaction this call composed, serialized.
+The UNPROVEN transaction this call composed, in the era of the network
+head it was composed for: a v8 handle before the fork, a v9 handle after
+it. Read `unprovenTx.era` before unwrapping it.

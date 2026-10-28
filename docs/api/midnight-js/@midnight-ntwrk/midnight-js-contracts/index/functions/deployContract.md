@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -24,7 +24,7 @@ Configuration.
 ## Throws
 
 DeployTxFailedError If the transaction is submitted successfully but produces an error
-                            when executed by the node. Current-era arms only; the retained arm
+                            when executed by the node. Current-era overloads only; the retained-era one
                             raises `Ledger8DeployTxFailedError`, which carries a version-tagged
                             record and the signing key, instead.
 
@@ -40,7 +40,13 @@ EraArtifactMismatchError If `options.compiledContract` belongs to neither Compac
 
 ## Throws
 
-Ledger8DeployOnV9Error If a retained-era artifact is deployed against a post-fork head.
+Ledger8SigningKeyUnusableError If a retained-era deploy is given a `signingKey` that is not a
+                                       `schnorr` key of 64 hex characters. Raised before anything
+                                       is composed.
+
+## Throws
+
+Ledger8DeployOnLedger9Error If a retained-era artifact is deployed after the fork.
                                Raised before the constructor runs and before any verifier key is
                                fetched.
 
@@ -78,11 +84,11 @@ InvalidArgumentError If `privateStateId` is present with an undefined value, whi
 
 > **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
-artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+artifact after the fork is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
 current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
 against contracts deployed before the fork.
 
@@ -90,8 +96,8 @@ A verifier key is registered for every entry point the artifact declares.
 
 A maintenance authority of one key at threshold 1 is registered, that key being
 `options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
-is stored against the minted address through `providers.privateStateProvider` and reported on
-`Ledger8DeployedContract.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
+is stored against the minted address through `providers.privateStateProvider` and reported at
+`deployTxData.private.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
 the key is not on chain and not derivable from anything that is, so a store that is lost or
 cleared leaves a contract on which no verifier key can ever be inserted, removed or replaced by
 anyone.
