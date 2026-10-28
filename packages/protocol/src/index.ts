@@ -18,8 +18,12 @@ export * from './lib/era/load-era';
 export { type Ledger8Protocol, loadLedger8Protocol } from './lib/v8/load';
 export * from './lib/v8/load-engine';
 export * from './version';
+/** @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9/compact-js`. Stays ledger 9 at a fork. */
 export * as compactJs from '@midnight-ntwrk/compact-js';
+/** @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime`. Stays ledger 9 at a fork. */
 export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 export * as platform from '@midnight-ntwrk/platform-js';
+/** @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9`. Stays ledger 9 at a fork. */
 export * as ledger from '@midnightntwrk/ledger-v9';
+/** @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime`. Stays ledger 9 at a fork. */
 export * as onchainRuntime from '@midnightntwrk/onchain-runtime-v4';

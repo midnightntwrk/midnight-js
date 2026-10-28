@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import {
+  type EncodedStateValue,
+  type EncPublicKey,
+  type LedgerParameters,
+  type ZswapChainState
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
   type LogEvent,
   type StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type EncodedStateValue,
-  type EncPublicKey,
-  type LedgerParameters,
-  type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 

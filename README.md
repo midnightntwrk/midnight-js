@@ -89,7 +89,7 @@ import {
   dappConnectorProofProvider,
   dappConnectorWalletProviders
 } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
 
 const connectedAPI = await initialAPI.connect('preview');
 

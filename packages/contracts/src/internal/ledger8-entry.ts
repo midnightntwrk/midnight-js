@@ -41,9 +41,9 @@ import {
   loadLedgerEra,
   NO_CIRCUIT
 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   assertProvidersSupportEra,
   type FinalizedTxRead,

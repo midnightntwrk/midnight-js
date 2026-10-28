@@ -13,4 +13,9 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/compact-runtime';
+/**
+ * @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime`. This subpath stays an alias of ledger 9 and
+ * does not move to a later ledger at a fork.
+ * @module
+ */
+export * from './v9-compact-runtime';

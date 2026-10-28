@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import axios from 'axios';
 import pino from 'pino';
 

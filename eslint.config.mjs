@@ -139,22 +139,22 @@ const protocolImportPatterns = [
   {
     group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9 (or /v8 for ledger 8) instead. Only packages/protocol/src/ may import from ledger directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-runtime'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
   },
   {
     group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
@@ -167,6 +167,14 @@ const protocolImportPatterns = [
       'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol instead.'
   }
 ];
+
+// The unnamed subpaths are frozen aliases of ledger 9. Code bound to ledger 9
+// names it, so a later ledger never takes its place at a fork.
+const unnamedLedger9SubpathPattern = {
+  regex: '^@midnight-ntwrk/midnight-js-protocol/(ledger|compact-runtime|compact-js(/effect(/Contract)?)?|onchain-runtime)$',
+  message:
+    'Deprecated: import from the era-named subpath instead, @midnight-ntwrk/midnight-js-protocol/v9 or /v9/<name> (#1536).'
+};
 
 export default tseslint.config(
   {
@@ -322,7 +330,7 @@ export default tseslint.config(
       ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
-      'no-restricted-imports': ['error', { patterns: [distImportPattern] }],
+      'no-restricted-imports': ['error', { patterns: [distImportPattern, unnamedLedger9SubpathPattern] }],
     }
   },
   {
@@ -334,7 +342,7 @@ export default tseslint.config(
     files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
     ignores: ['packages/protocol/src/**'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [distImportPattern, ...protocolImportPatterns] }]
+      'no-restricted-imports': ['error', { patterns: [distImportPattern, unnamedLedger9SubpathPattern, ...protocolImportPatterns] }]
     }
   },
   {
@@ -345,7 +353,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [distImportPattern, ...protocolImportPatterns], paths: [networkIdImportPath] }
+        { patterns: [distImportPattern, unnamedLedger9SubpathPattern, ...protocolImportPatterns], paths: [networkIdImportPath] }
       ]
     }
   },
@@ -353,7 +361,7 @@ export default tseslint.config(
     files: ['testkit-js/testkit-js/src/**/*.ts'],
     ignores: ['**/test/**'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: [distImportPattern], paths: [networkIdImportPath] }]
+      'no-restricted-imports': ['error', { patterns: [distImportPattern, unnamedLedger9SubpathPattern], paths: [networkIdImportPath] }]
     }
   },
   {

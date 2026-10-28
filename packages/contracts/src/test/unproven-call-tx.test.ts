@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type CircuitContext,
   type ContractModuleProvider,
   type ContractState,
   type ContractStateProvider,
   StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
@@ -64,7 +64,7 @@ vi.mock('../get-states', () => ({
 }));
 
 vi.mock('../internal/utils', async () => {
-  const ledger = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+  const ledger = await import('@midnight-ntwrk/midnight-js-protocol/v9');
   return {
     createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', StateValue.newNull(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),

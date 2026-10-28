@@ -32,7 +32,7 @@
  * asserted in the typecheck suite.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { DeployedContract } from './deploy-contract';

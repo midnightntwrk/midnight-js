@@ -16,7 +16,7 @@
 import type {
   ContractAddress,
   TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type {
   BlockHashConfig,
   BlockHeightConfig,

@@ -25,12 +25,12 @@
  *      separates a data-shape base from a behaviour-bearing one.
  */
 
+import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type {
   AlignedValue,
   Op,
   ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 
 /**
  * The public, non-sensitive half of a circuit execution that every era carries.

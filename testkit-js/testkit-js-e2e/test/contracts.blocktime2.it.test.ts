@@ -18,7 +18,7 @@ import {
   type FinalizedDeployTxData,
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   type EnvironmentConfiguration,

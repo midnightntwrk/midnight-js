@@ -33,6 +33,30 @@
       "types": "./dist/v8.d.ts",
       "default": "./dist/v8.js"
     },
+    "./v9": {
+      "types": "./dist/v9.d.ts",
+      "default": "./dist/v9.js"
+    },
+    "./v9/compact-runtime": {
+      "types": "./dist/v9-compact-runtime.d.ts",
+      "default": "./dist/v9-compact-runtime.js"
+    },
+    "./v9/compact-js": {
+      "types": "./dist/v9-compact-js.d.ts",
+      "default": "./dist/v9-compact-js.js"
+    },
+    "./v9/compact-js/effect": {
+      "types": "./dist/v9-compact-js-effect.d.ts",
+      "default": "./dist/v9-compact-js-effect.js"
+    },
+    "./v9/compact-js/effect/Contract": {
+      "types": "./dist/v9-compact-js-effect-contract.d.ts",
+      "default": "./dist/v9-compact-js-effect-contract.js"
+    },
+    "./v9/onchain-runtime": {
+      "types": "./dist/v9-onchain-runtime.d.ts",
+      "default": "./dist/v9-onchain-runtime.js"
+    },
     "./engine": {
       "types": "./dist/engine.d.ts",
       "default": "./dist/engine.js"

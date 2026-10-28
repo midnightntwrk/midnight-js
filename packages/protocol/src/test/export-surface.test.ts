@@ -73,6 +73,17 @@ const entryNamesBySubpath = (): Map<string, string[]> =>
       .map(([subpath, target]) => [subpath, [...new Set(collectTargetPaths(target).map(entryNameOf))]])
   );
 
+// Each unnamed subpath is a frozen alias of its ledger 9 counterpart: it never
+// moves to a later ledger at a fork.
+const LEDGER9_ALIASES: readonly (readonly [unnamed: string, eraNamed: string])[] = [
+  ['./ledger', './v9'],
+  ['./compact-runtime', './v9/compact-runtime'],
+  ['./compact-js', './v9/compact-js'],
+  ['./compact-js/effect', './v9/compact-js/effect'],
+  ['./compact-js/effect/Contract', './v9/compact-js/effect/Contract'],
+  ['./onchain-runtime', './v9/onchain-runtime']
+];
+
 const sourceEntryNames = (): string[] =>
   readdirSync(resolve(PACKAGE_ROOT, 'src'), { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
@@ -100,6 +111,21 @@ describe('protocol export surface', () => {
     const exported = [...entryNamesBySubpath().values()].flat();
 
     expect([...new Set(exported)].sort()).toEqual(sourceEntryNames().sort());
+  });
+
+  it('publishes exactly the era-named ledger 9 subpaths', () => {
+    const eraNamed = [...entryNamesBySubpath().keys()].filter((subpath) => subpath === './v9' || subpath.startsWith('./v9/'));
+
+    expect(eraNamed.sort()).toEqual(LEDGER9_ALIASES.map(([, ledger9]) => ledger9).sort());
+  });
+
+  it.each(LEDGER9_ALIASES)('keeps %s an alias of %s with the same exports', async (unnamed, eraNamed) => {
+    const entries = entryNamesBySubpath();
+    const alias: Record<string, unknown> = await import(`../${entries.get(unnamed)?.[0]}`);
+    const ledger9: Record<string, unknown> = await import(`../${entries.get(eraNamed)?.[0]}`);
+
+    expect(Object.keys(alias).sort()).toEqual(Object.keys(ledger9).sort());
+    expect(Object.keys(alias).filter((name) => alias[name] !== ledger9[name])).toEqual([]);
   });
 
   it('publishes exactly the deserializer, the instance check and the stage reader from ./transaction', () => {

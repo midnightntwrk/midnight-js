@@ -14,7 +14,7 @@
  */
 
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';

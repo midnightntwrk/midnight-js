@@ -14,8 +14,8 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,

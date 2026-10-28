@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 

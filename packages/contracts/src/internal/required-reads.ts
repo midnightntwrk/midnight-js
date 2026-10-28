@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 
 import { ContractNotFoundError } from '../errors';

@@ -15,7 +15,7 @@
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerStateKind, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 

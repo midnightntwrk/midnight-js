@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { PublicDataProvider, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';

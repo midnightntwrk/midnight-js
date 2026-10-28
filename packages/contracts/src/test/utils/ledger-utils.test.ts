@@ -14,18 +14,8 @@
  */
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import {
-  type AlignedValue,
-  type CommunicationCommitmentData,
-  ContractOperation,
-  ContractState as CompactContractState,
-  createCircuitContext,
-  decodeZswapLocalState,
-  QueryContext,
-  type Recipient
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -56,8 +46,18 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import {
+  type AlignedValue,
+  type CommunicationCommitmentData,
+  ContractOperation,
+  ContractState as CompactContractState,
+  createCircuitContext,
+  decodeZswapLocalState,
+  QueryContext,
+  type Recipient
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';

@@ -13,4 +13,9 @@
  * limitations under the License.
  */
 
-export * from '@midnightntwrk/ledger-v9';
+/**
+ * @deprecated Import from `@midnight-ntwrk/midnight-js-protocol/v9`. This subpath stays an alias of ledger 9 and
+ * does not move to a later ledger at a fork.
+ * @module
+ */
+export * from './v9';

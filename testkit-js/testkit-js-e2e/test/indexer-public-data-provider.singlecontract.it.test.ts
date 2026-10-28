@@ -15,8 +15,8 @@
 
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
 import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,

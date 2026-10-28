@@ -15,7 +15,7 @@
 
 import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables } from '@apollo/client/core';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractEvent, PositionedRecord, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
 

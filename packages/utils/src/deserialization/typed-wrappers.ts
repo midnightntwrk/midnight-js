@@ -14,8 +14,8 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type Binding,
   ContractState as LedgerContractState,
@@ -26,8 +26,8 @@ import {
   StateValue as LedgerStateValue,
   Transaction,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type {
   ContractAddress,
   IntentHash,
   RawTokenType,
   TransactionHash,
   TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 
 import type { LedgerTransaction } from './ledger-transaction';
 

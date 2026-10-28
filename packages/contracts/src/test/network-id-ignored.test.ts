@@ -14,14 +14,14 @@
  */
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   MaintenanceUpdate,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { LedgerTransaction, type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { afterEach, expect, it } from 'vitest';
 

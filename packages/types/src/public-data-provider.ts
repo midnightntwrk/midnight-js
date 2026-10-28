@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Observable } from 'rxjs';
 
 import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from './contract-state-read';

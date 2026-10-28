@@ -13,13 +13,6 @@
  * limitations under the License.
  */
 
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import {
-  type AlignedValue,
-  type ContractAddress,
-  type ContractState,
-  type QueryContext,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   ChargedState,
@@ -36,7 +29,14 @@ import {
   UnshieldedOffer,
   type UtxoOutput,
   type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import {
+  type AlignedValue,
+  type ContractAddress,
+  type ContractState,
+  type QueryContext,
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   encodeContractKeyLocation,
   hashVerifierKey,

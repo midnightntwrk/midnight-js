@@ -1174,6 +1174,28 @@ state use. `requireLedger9` narrows on `era` too.
 See [breaking-changes.md](./breaking-changes.md#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)
 and ADR 0020.
 
+## Step 20 — Import ledger 9 from the era-named subpaths
+
+`@midnight-ntwrk/midnight-js-protocol` now names the ledger in its subpaths (#1536).
+Replace each unnamed subpath with its `/v9` counterpart:
+
+```ts
+// Before
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+
+// After
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+```
+
+The same applies to `/compact-runtime`, `/compact-js`, `/compact-js/effect` and
+`/onchain-runtime`. The old subpaths still work: they are deprecated aliases of
+ledger 9 and never move to a later ledger. Nothing breaks if you skip this step;
+the change makes your code say which ledger it was written for.
+
+See [api-changes.md](./api-changes.md#era-named-ledger-9-subpaths-1536).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.

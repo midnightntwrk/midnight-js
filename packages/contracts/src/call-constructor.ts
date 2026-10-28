@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type CoinPublicKey,
   type ContractState,
   type ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**

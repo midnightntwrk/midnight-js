@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { assert, describe, expect, test, vi } from 'vitest';
 

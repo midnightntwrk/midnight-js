@@ -50,7 +50,7 @@
  */
 
 import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
 import { Ledger8SigningKeyUnusableError } from '../errors';

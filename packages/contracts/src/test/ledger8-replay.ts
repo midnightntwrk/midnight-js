@@ -47,8 +47,8 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { expect } from 'vitest';
 
 import type {

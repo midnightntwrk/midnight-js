@@ -623,6 +623,23 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 | `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
 
+### Era-named ledger 9 subpaths (#1536)
+
+New subpaths name ledger 9 and keep that meaning at every later fork:
+
+| New subpath | Replaces (now deprecated) |
+|---|---|
+| `/v9` | `/ledger` |
+| `/v9/compact-runtime` | `/compact-runtime` |
+| `/v9/compact-js` | `/compact-js` |
+| `/v9/compact-js/effect` | `/compact-js/effect` |
+| `/v9/compact-js/effect/Contract` | `/compact-js/effect/Contract` |
+| `/v9/onchain-runtime` | `/onchain-runtime` |
+
+The deprecated subpaths and the root namespaces `ledger`, `compactRuntime`,
+`compactJs` and `onchainRuntime` still work. They stay aliases of ledger 9 and do
+not move to ledger 10 at the next fork.
+
 ## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
 
 ### `httpClientProofProvider` — object-options form (#1078)

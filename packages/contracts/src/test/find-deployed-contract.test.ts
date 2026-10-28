@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';

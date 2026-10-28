@@ -203,5 +203,5 @@ export {
 // the events (`LogEvent`) and decode them (`ContractLog.decodeAll`) without depending on
 // compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
 // `ContractLog.ContractEvent`.
-export { ContractLog } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-export type { LogEvent } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+export { ContractLog } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+export type { LogEvent } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';

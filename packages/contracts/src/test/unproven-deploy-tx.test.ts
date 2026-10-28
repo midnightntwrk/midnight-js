@@ -34,7 +34,7 @@ vi.mock('../call-constructor', () => ({
 }));
 
 const BUILT_DEPLOY_TX = vi.hoisted(async () => {
-  const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+  const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/v9');
   return Transaction.fromParts('undeployed');
 });
 

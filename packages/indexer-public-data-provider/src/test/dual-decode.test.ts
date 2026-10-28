@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type FinalizedTxRead,

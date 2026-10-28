@@ -15,8 +15,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { createVerifierKey, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
