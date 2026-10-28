@@ -31,8 +31,8 @@ import type {
 } from './call';
 import { type ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
-import { getPublicStates, getStates, type Ledger9ContractStates, type Ledger9PublicStates } from './get-states';
-import { decodeLedger9PublicStates } from './internal/era';
+import { getPublicStates, getStates } from './get-states';
+import { decodeLedger9PublicStates, type Ledger9ContractStates, type Ledger9PublicStates } from './internal/era';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -341,7 +341,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     privateState
   };
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states, identity, blockHash);
+    transactionContext[Transaction.CacheStates](states, publicStates, identity, blockHash);
   }
   return { states, blockHash };
 };
@@ -357,13 +357,10 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
     return { states: cached.states, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
-  const states = decodeLedger9PublicStates(
-    await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash),
-    options.contractAddress,
-    'createUnprovenCallTx'
-  );
+  const read = await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash);
+  const states = decodeLedger9PublicStates(read, options.contractAddress, 'createUnprovenCallTx');
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity, blockHash);
+    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
   }
   return { states, blockHash };
 };

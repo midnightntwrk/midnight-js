@@ -113,6 +113,13 @@ export type IndexerDataErrorContext =
     }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'malformed-zswap-encoding' }
+  | { kind: 'malformed-zswap-state'; era: LedgerVersion }
+  | {
+      kind: 'parameters-era-disagreement';
+      protocolVersion: number;
+      reportedVersion: LedgerVersion;
+      parametersVersion: LedgerVersion;
+    }
   | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
   | { kind: 'malformed-protocol-version'; protocolVersion: number };
 
@@ -207,6 +214,18 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'malformed-zswap-encoding' });
   }
 
+  static malformedZswapState(era: LedgerVersion, cause: unknown): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-zswap-state', era }, { cause });
+  }
+
+  static parametersEraDisagreement(
+    protocolVersion: number,
+    reportedVersion: LedgerVersion,
+    parametersVersion: LedgerVersion
+  ): IndexerDataError {
+    return new IndexerDataError({ kind: 'parameters-era-disagreement', protocolVersion, reportedVersion, parametersVersion });
+  }
+
   static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
     return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
   }
@@ -270,6 +289,18 @@ export class IndexerDataError extends IndexerError {
         return (
           'The indexer returned a zswap chain state that is not a hex-encoded byte string. ' +
           'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'malformed-zswap-state':
+        return (
+          `The indexer returned a zswap chain state that is not one the ${context.era} ledger writes. ` +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
+      case 'parameters-era-disagreement':
+        return (
+          `The indexer served the ledger parameters of a block at protocol version ${context.protocolVersion} ` +
+          `(ledger ${context.reportedVersion}), but the parameters were written by ledger ${context.parametersVersion}. ` +
+          'A block carries the parameters of its own ledger, so the two answers cannot both be right. Retry against ' +
+          'a healthy indexer.'
         );
       case 'mixed-era-public-states':
         return (

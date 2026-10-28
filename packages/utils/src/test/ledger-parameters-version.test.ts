@@ -20,7 +20,7 @@ import { TagParseError } from '../serialized-tag';
 
 // The mapping's own behaviour, tested here with the mapping. What the two ledger RUNTIMES actually
 // write is pinned separately, against real minted parameters, by
-// `packages/indexer-public-data-provider/src/test/ledger-parameters.test.ts`.
+// `packages/protocol/src/test/state-tags.test.ts`.
 const envelope = (tag: string, body = 'parameters-body'): Uint8Array =>
   Uint8Array.from(Buffer.from(`${tag}:${body}`, 'utf8'));
 
@@ -44,6 +44,9 @@ describe('ledgerVersionOfLedgerParameters', () => {
     // number independently: `[v6]` is a CONTRACT STATE written by the v8 ledger, and reading it as a
     // parameter version by pattern would date these bytes to the era that never wrote them.
     ['a contract state rather than ledger parameters', 'midnight:contract-state[v6]'],
+    // `[v8]` is also the bracket of the v9 parameters tag: a match on the bracket alone would date
+    // this contract state as v9 parameters.
+    ['a contract state whose bracket a parameters tag shares', 'midnight:contract-state[v8]'],
     ['a zswap ledger state rather than ledger parameters', 'midnight:zswap-ledger-state[v5]'],
     ['a parameters schema version no supported runtime writes', 'midnight:ledger-parameters[v7]'],
     ['a foreign namespace', 'notmidnight:ledger-parameters[v8]']

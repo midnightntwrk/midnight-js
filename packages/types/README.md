@@ -144,7 +144,7 @@ const tx = LedgerTransaction.unwrap(record.tx, record.version);
 ```
 
 A contract state, ledger parameters and a zswap chain state come back as a
-`LedgerState`: the bytes, plus the `version` of the ledger that wrote them.
+`LedgerState`: the bytes, plus the `era` of the ledger that wrote them.
 Decode one with the runtime your contract was compiled against, so its
 `ledger()` accepts the result:
 
@@ -152,11 +152,15 @@ Decode one with the runtime your contract was compiled against, so its
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 
 const read = await publicDataProvider.queryContractState(contractAddress);
-const state = read?.contractState.deserialize({ v9: ContractState });
+if (read !== null) {
+  const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+}
 ```
 
-`deserialize` calls only the decoder for the state's own `version`, and refuses
-a missing one with `LedgerStateDecoderMissingError`.
+`deserialize` calls only the decoder for the state's own `era`. It refuses a
+missing one with `LedgerStateDecoderMissingError`, and reports a decoder that
+throws as `LedgerStateDecodeFailedError`. Only `LedgerState.fromBytes(era, kind, bytes)`
+makes a `LedgerState`; `LedgerState.isLedgerState(value)` checks one.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
 implementation. Both adapters unwrap each handle for you, and the wallet adapter
@@ -311,6 +315,7 @@ import {
   TransactionEraMismatchError,
   InvalidLedgerStateError,
   LedgerStateDecoderMissingError,
+  LedgerStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,
@@ -379,8 +384,11 @@ import {
   type LedgerStateKind,
   type StateDecoder,
   type StateDecoders,
+  type DecodedState,
   type ContractStateRead,
+  type ContractStateAndParametersRead,
   type PublicStatesRead,
+  type InvalidLedgerStateReason,
 
   // Version-tagged transaction records for the ledger-fork window
   type Ledger8FinalizedTxData,
@@ -406,6 +414,7 @@ import {
   TransactionEraMismatchError,
   InvalidLedgerStateError,
   LedgerStateDecoderMissingError,
+  LedgerStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,

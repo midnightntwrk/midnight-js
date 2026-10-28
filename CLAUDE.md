@@ -73,12 +73,14 @@ of the same era (`record.tx.era === record.version`); read it with
 differently, narrow with a `switch (record.version)` closed by
 `assertNever(record, '<call site>')` from `utils`.
 
-On-chain state is bytes, never a decoded object. `queryContractState`,
-`watchForContractState`, `queryDeployContractState` and
-`contractStateObservable` return `ContractStateRead`;
-`queryZSwapAndContractState` returns `PublicStatesRead`. Each state is a
-`LedgerState` from `types` (bytes + `version`, the ledger that wrote them). The
-caller decodes it with its own runtime:
+On-chain state is bytes, never a decoded object. `watchForContractState`,
+`queryDeployContractState` and `contractStateObservable` return
+`ContractStateRead`; `queryContractState` returns
+`ContractStateAndParametersRead` (adds `ledgerParameters`);
+`queryZSwapAndContractState` and `TransactionContext.getCurrentStates()` return
+`PublicStatesRead`. Each state is a `LedgerState` from `types` (bytes + `era`,
+the ledger that wrote them), made only by `LedgerState.fromBytes(era, kind, bytes)`.
+The caller decodes it with its own runtime:
 `read.contractState.deserialize({ v9: ContractState })`. `contracts` decodes
 with the framework's copy only where it builds a transaction. See
 [ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).

@@ -93,6 +93,7 @@ export {
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   ProviderFailedError,
+  PublicStatesEraMismatchError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
   type SubmitRejectionUndiagnosedCause,
@@ -115,9 +116,7 @@ export {
 export {
   ContractStates,
   getPublicStates,
-  getStates,
-  Ledger9ContractStates,
-  Ledger9PublicStates} from './get-states';
+  getStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   CircuitMaintenanceTxInterface,

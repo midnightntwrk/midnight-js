@@ -79,7 +79,7 @@ describe('Indexer API', () => {
   test('queryDeployContractState - should return a contract state equivalent to the initial contract state produced during deployment construction', async () => {
     const deployState = await publicDataProvider.queryDeployContractState(finalizedDeployTxData.public.contractAddress);
 
-    assert(deployState?.contractState.version === 'v9', `expected a v9 deploy state, got ${deployState?.contractState.version ?? 'null'}`);
+    assert(deployState?.contractState.era === 'v9', `expected a v9 deploy state, got ${deployState?.contractState.era ?? 'null'}`);
     expect(deployState.contractState.deserialize({ v9: ContractState }).serialize()).toEqual(finalizedDeployTxData.public.initialContractState.serialize());
     expect(ledger(deployState.contractState.deserialize({ v9: ContractState }).data)).toEqual(ledger(finalizedDeployTxData.public.initialContractState.data));
   });
@@ -87,7 +87,7 @@ describe('Indexer API', () => {
   test('queryContractState - should return the current contract state of a deployed contract', async () => {
     const state = await publicDataProvider.queryContractState(finalizedDeployTxData.public.contractAddress);
 
-    assert(state?.contractState.version === 'v9', `expected a v9 contract state, got ${state?.contractState.version ?? 'null'}`);
+    assert(state?.contractState.era === 'v9', `expected a v9 contract state, got ${state?.contractState.era ?? 'null'}`);
     expect(state.contractState.deserialize({ v9: ContractState }).operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     expect(ledger(state.contractState.deserialize({ v9: ContractState }).data).round).toEqual(2n);
   });
@@ -98,7 +98,7 @@ describe('Indexer API', () => {
       blockHeight: incrementedTxData.blockHeight
     });
 
-    assert(state?.contractState.version === 'v9', `expected a v9 contract state, got ${state?.contractState.version ?? 'null'}`);
+    assert(state?.contractState.era === 'v9', `expected a v9 contract state, got ${state?.contractState.era ?? 'null'}`);
     expect(state.contractState.deserialize({ v9: ContractState }).operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     expect(ledger(state.contractState.deserialize({ v9: ContractState }).data).round).toEqual(1n);
   });
@@ -109,7 +109,7 @@ describe('Indexer API', () => {
       blockHash: incrementedTxData.blockHash
     });
 
-    assert(state?.contractState.version === 'v9', `expected a v9 contract state, got ${state?.contractState.version ?? 'null'}`);
+    assert(state?.contractState.era === 'v9', `expected a v9 contract state, got ${state?.contractState.era ?? 'null'}`);
     expect(state.contractState.deserialize({ v9: ContractState }).operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     expect(ledger(state.contractState.deserialize({ v9: ContractState }).data).round).toEqual(1n);
   });
@@ -136,13 +136,20 @@ describe('Indexer API', () => {
   test('queryContractState - should return the exact state bytes the indexer serves, with the block ledger parameters, nothing decoded', async () => {
     const address = finalizedDeployTxData.public.contractAddress;
 
+    const response = await fetch(indexerQueryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: `query { contract(address: "${address}") { state } }` })
+    });
+    const payload = (await response.json()) as { data: { contract: { state: string } } };
+
     const read = await publicDataProvider.queryContractState(address);
 
     assert(read !== null, 'expected a contract state');
-    expect(read.contractState.version).toBe('v9');
-    expect(read.contractState.serialize()).toEqual(read.contractState.deserialize({ v9: ContractState }).serialize());
-    expect(read.ledgerParameters?.version).toBe('v9');
-    expect(read.ledgerParameters?.deserialize({ v9: LedgerParameters })).toBeInstanceOf(LedgerParameters);
+    expect(read.contractState.era).toBe('v9');
+    expect(Buffer.from(read.contractState.serialize()).toString('hex')).toEqual(payload.data.contract.state);
+    expect(read.ledgerParameters.era).toBe('v9');
+    expect(read.ledgerParameters.deserialize({ v9: LedgerParameters })).toBeInstanceOf(LedgerParameters);
     expect(read.protocolVersion).toEqual(await publicDataProvider.queryLatestProtocolVersion());
   });
 
@@ -153,7 +160,7 @@ describe('Indexer API', () => {
   test('queryZSwapAndContractState - should return the current ZSwap chain state and contract state of a deployed contract', async () => {
     const state = await publicDataProvider.queryZSwapAndContractState(finalizedDeployTxData.public.contractAddress);
 
-    assert(state?.contractState.version === 'v9', `expected v9 public states, got ${state?.contractState.version ?? 'null'}`);
+    assert(state?.contractState.era === 'v9', `expected v9 public states, got ${state?.contractState.era ?? 'null'}`);
     expect(state.zswapChainState.deserialize({ v9: ZswapChainState }).firstFree).toEqual(ledger(finalizedDeployTxData.public.initialContractState.data).round);
     expect(state.contractState.deserialize({ v9: ContractState }).operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     expect(ledger(state.contractState.deserialize({ v9: ContractState }).data).round).toEqual(
@@ -193,7 +200,7 @@ describe('Indexer API', () => {
   test('watchForContractState - should immediately return the current state of a deployed contract', async () => {
     const state = await publicDataProvider.watchForContractState(finalizedDeployTxData.public.contractAddress);
 
-    assert(state?.contractState.version === 'v9', `expected a v9 contract state, got ${state?.contractState.version ?? 'null'}`);
+    assert(state?.contractState.era === 'v9', `expected a v9 contract state, got ${state?.contractState.era ?? 'null'}`);
     expect(state.contractState.deserialize({ v9: ContractState }).operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     expect(ledger(state.contractState.deserialize({ v9: ContractState }).data).round).toEqual(2n);
   });

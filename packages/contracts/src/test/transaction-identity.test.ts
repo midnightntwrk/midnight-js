@@ -14,12 +14,18 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { ChargedState, ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { AnyPrivateState, AnyProvableCircuitId, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type AnyPrivateState,
+  type AnyProvableCircuitId,
+  LedgerState,
+  type PrivateStateId
+} from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ScopedTransactionIdentityMismatchError } from '../errors';
-import type { Ledger9ContractStates, Ledger9PublicStates } from '../get-states';
+import type { Ledger9ContractStates, Ledger9PublicStates } from '../internal/era';
 import {
   type CachedStateIdentity,
   CacheStates,
@@ -27,7 +33,13 @@ import {
   MergeUnsubmittedCallTxData,
   TransactionContextImpl
 } from '../internal/transaction';
-import { createMockContractAddress, createMockContractState, createMockProviders, createMockUnprovenCallTxData } from './test-mocks';
+import {
+  createMockContractAddress,
+  createMockContractState,
+  createMockProviders,
+  createMockUnprovenCallTxData,
+  publicStatesReadStub
+} from './test-mocks';
 
 describe('TransactionContextImpl identity validation', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -35,8 +47,9 @@ describe('TransactionContextImpl identity validation', () => {
 
   const MOCK_BLOCK_HASH = '00'.repeat(32);
 
+  const MOCK_READ = publicStatesReadStub('v9');
+
   const createMockStates = (): Ledger9ContractStates<AnyPrivateState> => ({
-    version: 'v9',
     contractState: createMockContractState(),
     zswapChainState: { test: 'mock-zswap-chain-state' } as never,
     privateState: { mockPrivateState: true } as AnyPrivateState,
@@ -44,7 +57,6 @@ describe('TransactionContextImpl identity validation', () => {
   });
 
   const createMockPublicStates = (): Ledger9PublicStates => ({
-    version: 'v9',
     contractState: createMockContractState(),
     zswapChainState: { test: 'mock-zswap-chain-state' } as never,
     ledgerParameters: LedgerParameters.initialParameters()
@@ -73,7 +85,7 @@ describe('TransactionContextImpl identity validation', () => {
       const identity: CachedStateIdentity = { contractAddress, privateStateId };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       const result = txCtx[GetCurrentStatesForIdentity](identity);
 
       expect(result?.states).toBe(mockStates);
@@ -88,7 +100,7 @@ describe('TransactionContextImpl identity validation', () => {
       const requestedIdentity: CachedStateIdentity = { contractAddress: contractAddress2, privateStateId };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
 
       expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
         ScopedTransactionIdentityMismatchError
@@ -103,7 +115,7 @@ describe('TransactionContextImpl identity validation', () => {
       const requestedIdentity: CachedStateIdentity = { contractAddress, privateStateId: privateStateId2 };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
 
       expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
         ScopedTransactionIdentityMismatchError
@@ -117,7 +129,7 @@ describe('TransactionContextImpl identity validation', () => {
       const requestedIdentity: CachedStateIdentity = { contractAddress };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
 
       expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
         ScopedTransactionIdentityMismatchError
@@ -133,7 +145,7 @@ describe('TransactionContextImpl identity validation', () => {
       const requestedIdentity: CachedStateIdentity = { contractAddress: contractAddress2, privateStateId: privateStateId2 };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
 
       try {
         txCtx[GetCurrentStatesForIdentity](requestedIdentity);
@@ -154,7 +166,7 @@ describe('TransactionContextImpl identity validation', () => {
       const identity: CachedStateIdentity = { contractAddress, privateStateId };
       const mockStates = createMockStates();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
 
       const result1 = txCtx[GetCurrentStatesForIdentity](identity);
       const result2 = txCtx[GetCurrentStatesForIdentity](identity);
@@ -168,7 +180,7 @@ describe('TransactionContextImpl identity validation', () => {
       const identity: CachedStateIdentity = { contractAddress };
       const mockStates = createMockPublicStates();
 
-      txCtx[CacheStates]({ ...mockStates, privateState: undefined }, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates]({ ...mockStates, privateState: undefined }, MOCK_READ, identity, MOCK_BLOCK_HASH);
       const result = txCtx[GetCurrentStatesForIdentity](identity);
 
       expect(result?.states).toEqual({ ...mockStates, privateState: undefined });
@@ -180,7 +192,7 @@ describe('TransactionContextImpl identity validation', () => {
       const requestedIdentity: CachedStateIdentity = { contractAddress, privateStateId: 'some-id' as PrivateStateId };
       const mockStates = createMockPublicStates();
 
-      txCtx[CacheStates]({ ...mockStates, privateState: undefined }, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates]({ ...mockStates, privateState: undefined }, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
 
       expect(() => txCtx[GetCurrentStatesForIdentity](requestedIdentity)).toThrow(
         ScopedTransactionIdentityMismatchError
@@ -195,17 +207,37 @@ describe('TransactionContextImpl identity validation', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should return cached states without identity validation', () => {
-      const identity: CachedStateIdentity = {
-        contractAddress: createMockContractAddress(),
-        privateStateId: 'test-private-state-id' as PrivateStateId
-      };
-      const mockStates = createMockStates();
+    const identity: CachedStateIdentity = {
+      contractAddress: createMockContractAddress(),
+      privateStateId: 'test-private-state-id' as PrivateStateId
+    };
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+    it('returns the cached public states as bytes, without the private state', () => {
+      const contractState = new ContractState();
+      txCtx[CacheStates]({ ...createMockStates(), contractState }, MOCK_READ, identity, MOCK_BLOCK_HASH);
+
       const result = txCtx.getCurrentStates();
 
-      expect(result).toBe(mockStates);
+      expect(Object.keys(result ?? {}).sort()).toEqual(['contractState', 'ledgerParameters', 'protocolVersion', 'zswapChainState']);
+      expect(LedgerState.isLedgerState(result?.contractState)).toBe(true);
+      expect(result?.contractState.era).toBe('v9');
+      expect(result?.contractState.serialize()).toEqual(contractState.serialize());
+      expect(result?.ledgerParameters).toBe(MOCK_READ.ledgerParameters);
+      expect(result?.zswapChainState).toBe(MOCK_READ.zswapChainState);
+      expect(result?.protocolVersion).toBe(MOCK_READ.protocolVersion);
+    });
+
+    it('returns the running contract state after a call in the scope', () => {
+      const contractState = new ContractState();
+      contractState.data = new ChargedState(StateValue.newArray());
+      const before = contractState.serialize();
+      txCtx[CacheStates]({ ...createMockStates(), contractState }, MOCK_READ, identity, MOCK_BLOCK_HASH);
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', createMockUnprovenCallTxData(), identity.privateStateId);
+      const running = txCtx[GetCurrentStatesForIdentity](identity)?.states.contractState;
+
+      expect(running?.serialize()).not.toEqual(before);
+      expect(txCtx.getCurrentStates()?.contractState.serialize()).toEqual(running?.serialize());
     });
   });
 
@@ -217,7 +249,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockStates = createMockStates();
       const mockCallData = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
@@ -234,7 +266,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData1 = createMockUnprovenCallTxData();
       const mockCallData2 = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
@@ -252,7 +284,7 @@ describe('TransactionContextImpl identity validation', () => {
       const originalLedgerParameters = mockStates.ledgerParameters;
       const mockCallData = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
@@ -269,7 +301,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData1 = createMockUnprovenCallTxData();
       const mockCallData2 = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
@@ -286,7 +318,7 @@ describe('TransactionContextImpl identity validation', () => {
       const originalZswapChainState = mockStates.zswapChainState;
       const mockCallData = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
@@ -303,7 +335,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData1 = createMockUnprovenCallTxData();
       const mockCallData2 = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, identity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
@@ -321,7 +353,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockStates = createMockStates();
       const mockCallData = createMockUnprovenCallTxData();
 
-      txCtx[CacheStates](mockStates, cachedIdentity, MOCK_BLOCK_HASH);
+      txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
       expect(() => txCtx[GetCurrentStatesForIdentity](differentIdentity)).toThrow(

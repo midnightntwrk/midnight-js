@@ -14,10 +14,10 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ContractStateRead, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractStateRead, InvalidLedgerStateError, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
@@ -59,7 +59,7 @@ const headRequestCount = (query: QueryMock): number =>
 const stateHex = (read: ContractStateRead | null): { version: string; hex: string } | null =>
   read === null
     ? null
-    : { version: read.contractState.version, hex: Buffer.from(read.contractState.serialize()).toString('hex') };
+    : { version: read.contractState.era, hex: Buffer.from(read.contractState.serialize()).toString('hex') };
 
 const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   work.then(
@@ -68,9 +68,23 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
   );
 
 describe('queryContractState dates the state it reads', () => {
+  let ledger8ParametersHex: string;
+
+  beforeAll(async () => {
+    ledger8ParametersHex = await mintLedger8LedgerParametersHex();
+  });
+
+  // A block carries the parameters of its own era.
   const stateResponse = (state: string | null, protocolVersion: number | null): unknown => ({
     data: {
-      block: protocolVersion === null ? null : { protocolVersion },
+      block:
+        protocolVersion === null
+          ? null
+          : {
+              protocolVersion,
+              ledgerParameters:
+                protocolVersion === LEDGER8_ERA_PROTOCOL_VERSION ? ledger8ParametersHex : mintLedger9LedgerParametersHex()
+            },
       contract: state === null ? null : { state }
     }
   });
@@ -207,7 +221,7 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
     states === null
       ? null
       : {
-          versions: [states.contractState.version, states.ledgerParameters.version, states.zswapChainState.version],
+          versions: [states.contractState.era, states.ledgerParameters.era, states.zswapChainState.era],
           state: Buffer.from(states.contractState.serialize()).toString('hex'),
           parameters: Buffer.from(states.ledgerParameters.serialize()).toString('hex'),
           zswap: Buffer.from(states.zswapChainState.serialize()).toString('hex')
@@ -276,6 +290,38 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
       stateVersion: 'v8',
       parametersVersion: 'v9'
     });
+  });
+
+  const tripleWithZswap = (contractZswapState: string): unknown => ({
+    data: {
+      block: {
+        protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
+        ledgerParameters: mintLedger9LedgerParametersHex(),
+        contractZswapState
+      },
+      contract: { state: mintLedger9ContractStateHex() }
+    }
+  });
+
+  test('refuses a zswap chain state that is not hex-encoded', async () => {
+    const query = dispatchingQuery(new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleWithZswap('zz')]]));
+
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-zswap-encoding' });
+  });
+
+  test('refuses a zswap chain state that holds bytes of another kind, as an indexer fault', async () => {
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleWithZswap(mintLedger9ContractStateHex())]])
+    );
+
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-zswap-state', era: 'v9' });
+    expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidLedgerStateError);
   });
 
   test('refuses a pinned triple whose state is newer than the block dating it', async () => {

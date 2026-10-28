@@ -18,7 +18,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { ContractStateRead, PublicStatesRead } from '../contract-state-read';
+import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from '../contract-state-read';
 import type { LedgerState } from '../ledger-state';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
@@ -41,8 +41,12 @@ import type {
 type ContractStateReadFixture = {
   readonly protocolVersion: number;
   readonly contractState: LedgerState<'ContractState'>;
-  // Optional: a provider that cannot serve the block's ledger parameters is still a usable provider.
-  readonly ledgerParameters?: LedgerState<'LedgerParameters'>;
+};
+
+type ContractStateAndParametersReadFixture = {
+  readonly protocolVersion: number;
+  readonly contractState: LedgerState<'ContractState'>;
+  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
 };
 
 type PublicStatesReadFixture = {
@@ -61,8 +65,12 @@ type PositionedRecordFixture<T> = {
 type Without<K extends keyof PublicDataProvider> = Omit<PublicDataProvider, K>;
 
 describe('read records', () => {
-  it('pins ContractStateRead to exactly its three fields', () => {
+  it('pins ContractStateRead to exactly its two fields', () => {
     expectTypeOf<ContractStateRead>().toEqualTypeOf<ContractStateReadFixture>();
+  });
+
+  it('pins ContractStateAndParametersRead to exactly its three fields, with the ledger parameters required', () => {
+    expectTypeOf<ContractStateAndParametersRead>().toEqualTypeOf<ContractStateAndParametersReadFixture>();
   });
 
   it('pins PublicStatesRead to exactly its four fields, with the ledger parameters required', () => {
@@ -75,9 +83,12 @@ describe('read records', () => {
 });
 
 describe('contract state reads', () => {
-  it('pins queryContractState to the read record, or null', () => {
+  it('pins queryContractState to the read record with the ledger parameters, or null', () => {
     expectTypeOf<PublicDataProvider['queryContractState']>().toEqualTypeOf<
-      (contractAddress: ContractAddress, config?: BlockHeightConfig | BlockHashConfig) => Promise<ContractStateReadFixture | null>
+      (
+        contractAddress: ContractAddress,
+        config?: BlockHeightConfig | BlockHashConfig
+      ) => Promise<ContractStateAndParametersReadFixture | null>
     >();
   });
 

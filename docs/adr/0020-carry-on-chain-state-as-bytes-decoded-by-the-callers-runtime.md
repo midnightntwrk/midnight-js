@@ -4,6 +4,8 @@
 - Date: 2026-10-28
 - Deciders: Szymon Paluchowski
 - Related: amends [0006](./0006-version-tagged-payloads-at-provider-seams.md),
+  [0007](./0007-never-latch-the-network-head-version.md),
+  [0008](./0008-report-decode-failures-without-attributing-an-era.md),
   [0010](./0010-publish-era-handles-alongside-their-plain-data.md) and
   [0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md); issue #1550, supersedes #1525
 
@@ -48,15 +50,18 @@ Two facts measured for this decision:
 We will carry every value read from the network — a contract state, ledger parameters, a zswap
 chain state — as bytes, and let the caller decode it with its own runtime.
 
-One class in `types`, generic in the kind of value and the ledger version:
+One class in `types`, generic in the kind of value and the ledger era. It mirrors
+`LedgerTransaction` (ADR 0019): the era is `era`, it comes first in the factory, and only the
+factory makes one.
 
 ```ts
 type LedgerStateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState';
 
 class LedgerState<K extends LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+  readonly era: E;
   readonly kind: K;
-  readonly version: E;
-  static fromBytes<K, E>(kind: K, version: E, bytes: Uint8Array): LedgerState<K, E>;
+  static fromBytes<E, K>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
+  static isLedgerState(value: unknown): value is LedgerState;
   serialize(): Uint8Array;
   deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>;
 }
@@ -65,30 +70,44 @@ class LedgerState<K extends LedgerStateKind, E extends LedgerVersion = LedgerVer
 The rules:
 
 1. **`deserialize` takes the decoders from the caller.** `decoders` is one object per ledger
-   version, each with a `deserialize(bytes)` method, for example `{ v9: ContractState }` from the
-   dApp's own `compact-runtime`. Only the decoder of the value's own version is called. A missing
+   era, each with a `deserialize(bytes)` method, for example `{ v9: ContractState }` from the
+   dApp's own `compact-runtime`. Only the decoder of the value's own era is called. A missing
    decoder is refused with `LedgerStateDecoderMissingError`
    (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`), whose message names the class and the package to
-   import. There is no form without decoders, so the framework's copy of the runtime is never used
-   by accident.
-2. **`fromBytes` checks the tag against the version.** `LEDGER_STATE_TAGS` in
-   `@midnight-ntwrk/midnight-js-protocol/version` holds, for each kind and each ledger version, the
+   import. A decoder that throws is reported as `LedgerStateDecodeFailedError`
+   (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`) with its error as `cause`: the tag was checked when
+   the value was made, so the decoder is the wrong one. There is no form without decoders, so the
+   framework's copy of the runtime is never used by accident.
+2. **`fromBytes` checks the tag against the era.** `LEDGER_STATE_TAGS` in
+   `@midnight-ntwrk/midnight-js-protocol/version` holds, for each kind and each ledger era, the
    tag that ledger writes. `fromBytes` refuses bytes that do not start with that tag with
    `InvalidLedgerStateError` (`MIDNIGHT_JS_PR_INVALID_LEDGER_STATE`, reason `tag-mismatch`). The
-   check asks "is this tag valid for this version", never "which version does this tag name": two
-   versions share a tag when the later ledger kept the format (a zswap chain state in v8 and v9).
+   check asks "is this tag valid for this era", never "which era does this tag name": two
+   eras share a tag when the later ledger kept the format (a zswap chain state in v8 and v9).
    A ledger that changes a format gets its own row, and the check tightens by itself.
-   `LedgerVersion` gaining a version with no row is a build error.
-3. **The bytes are copied in and out.** `fromBytes` and `serialize()` copy, so no caller can change
-   a value it was handed.
+   `LedgerVersion` gaining an era with no row is a build error. A contract state and ledger
+   parameters are dated from their tag alone (`ledgerVersionOf*` in `utils`), so a tag of either
+   kind shared by two eras is a build error too.
+3. **The bytes are copied in and out, and only `fromBytes` makes a value.** `fromBytes` and
+   `serialize()` copy into a plain `Uint8Array` (a Node `Buffer` would share memory), so no
+   caller can change a value it was handed. The constructor refuses a call that does not come
+   from `fromBytes` (`not-from-bytes`), and `isLedgerState` tells a value of this copy of the
+   package from a look-alike. `contracts` checks it before it reads `era`. The bytes are a private
+   field, so `structuredClone`, `postMessage` and JSON drop them: send `serialize()` and `era`.
 4. **One read record per method.**
-   - `ContractStateRead { protocolVersion, contractState, ledgerParameters? }` is returned by
-     `queryContractState`, `watchForContractState`, `queryDeployContractState` and
-     `contractStateObservable`. `protocolVersion` dates the block of the read;
-     `contractState.version` is the ledger that wrote the bytes, which can be older.
-   - `PublicStatesRead` adds `zswapChainState` and makes `ledgerParameters` required. It is
-     returned by `queryZSwapAndContractState`. The zswap chain state takes the version of the
-     ledger parameters of the same block.
+   - `ContractStateRead { protocolVersion, contractState }` is returned by
+     `watchForContractState`, `queryDeployContractState` and `contractStateObservable`.
+     `protocolVersion` dates the block of the read; `contractState.era` is the ledger that wrote
+     the bytes.
+   - `ContractStateAndParametersRead` adds the required `ledgerParameters` of the block that
+     dates the read. It is returned by `queryContractState`, because building a call needs both.
+     The parameters and `protocolVersion` come from the same block, so the indexer provider
+     refuses parameters of another era than that block.
+   - `PublicStatesRead` adds `zswapChainState`. It is returned by `queryZSwapAndContractState`,
+     and its three states are of one era. The zswap chain state takes the era of the ledger
+     parameters of the same block.
+   - On a read with no block given, the block and the state are looked up separately, so near the
+     fork they can sit on either side of it.
    - `queryRawContractState` and `rawContractStateObservable` are removed: `queryContractState`
      serves the same bytes and the block's ledger parameters. Streams do not carry the ledger
      parameters.
@@ -97,11 +116,13 @@ The rules:
 6. **The framework decodes only to build a transaction.** `contracts` decodes a read with its own
    copy, through `utils`, where it builds a transaction: the call path, cross-contract calls,
    `findDeployedContract` and the maintenance flows. `getAnyEraContractState` is removed.
-7. **Out of scope.** `LedgerTransaction` stays a handle that holds a live object (ADR 0019). The
-   state that crosses the transaction API — `DeployTxData.initialContractState`, the initial states
-   a caller passes to build a call, and the states a scoped transaction caches
-   (`Ledger9PublicStates`, now declared in `contracts`) — stays a decoded object. Moving it to the
-   same model is a separate change, made together with `LedgerTransaction`.
+7. **The scoped transaction hands out bytes too.** `TransactionContext.getCurrentStates()` returns a
+   `PublicStatesRead` whose contract state is the running state of the scope. The decoded states
+   the scope builds calls from stay inside `contracts`.
+8. **Out of scope.** `LedgerTransaction` stays a handle that holds a live object (ADR 0019). The
+   state that crosses the transaction API — `DeployTxData.initialContractState` and the initial
+   states a caller passes to build a call — stays a decoded object. Moving it to the same model is
+   a separate change, made together with `LedgerTransaction`.
 
 A dApp reads its state like this:
 
@@ -109,7 +130,9 @@ A dApp reads its state like this:
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 
 const read = await publicDataProvider.queryContractState(address);
-const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+if (read !== null) {
+  const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+}
 ```
 
 A contract compiled with the ledger 8 toolchain reads a v8 state with its own `ContractState`. After
@@ -124,7 +147,8 @@ the fork its state is v9, which its runtime cannot read: it decodes the bytes wi
   manager installed. There is one read per question, and one class to learn. Reading a v8 state
   no longer loads the ledger 8 runtime.
 - **Negative:** `PublicDataProvider` changed before 5.0.0 final: five methods return new records,
-  two are removed. A dApp passes a decoder on every read. A ledger 8 contract that reads its state
+  two are removed. The indexer provider refuses a `queryContractState` whose block carries no
+  ledger parameters. A dApp passes a decoder on every read. A ledger 8 contract that reads its state
   after the fork needs the current runtime too. The indexer provider no longer exports
   `parseHexContractState`, `parseHexLedgerParameters` and `parseHexZswapState`.
 - **Follow-ups:** move `LedgerTransaction` and the state on the transaction API to the same model.

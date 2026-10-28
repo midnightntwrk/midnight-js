@@ -148,7 +148,7 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 
 `getStates` and `getPublicStates` return the public states as bytes: each of
 `contractState`, `zswapChainState` and `ledgerParameters` is a `LedgerState`
-with the `version` of the ledger that wrote it. Decode one with your own
+with the `era` of the ledger that wrote it. Decode one with your own
 runtime — the one your contract was compiled against — so your contract's
 `ledger()` accepts the result:
 
@@ -160,7 +160,7 @@ import { ledger } from './managed/counter/contract/index.js';
 const counter = ledger(publicStates.contractState.deserialize({ v9: ContractState }).data);
 ```
 
-A contract that may predate the fork passes a decoder per version: `v8` with the
+A contract that may predate the fork passes a decoder per era: `v8` with the
 `ContractState` of the ledger 8 runtime, `v9` with the current one. See the indexer provider's
 README, "Reading a contract that may predate the fork", for a contract compiled
 with the ledger 8 toolchain.

@@ -32,7 +32,7 @@ import {
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
-  type ContractStateRead,
+  type ContractStateAndParametersRead,
   FailFallible,
   LedgerTransaction,
   type UnboundTx,
@@ -70,7 +70,7 @@ import type { Ledger8ContractProviders } from '../../ledger8-contract';
 import { finalizedLike, handles, unboundLike } from '../ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from '../ledger8-fixture-types';
 import { hfFixturePath, readHfHexFixture } from '../ledger8-replay';
-import { contractStateRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from '../test-mocks';
+import { contractStateAndParametersRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from '../test-mocks';
 
 vi.mock('@midnight-ntwrk/compact-runtime', () => import('../ledger8-runtime-stub'));
 
@@ -109,8 +109,8 @@ describe('contract maintenance through a retained-era artifact', () => {
   let composeMaintenanceTx: ReturnType<typeof vi.fn>;
   let composed: Uint8Array;
 
-  const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): ContractStateRead =>
-    contractStateRead(raw, protocolVersion, retainedLedgerParameters);
+  const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): ContractStateAndParametersRead =>
+    contractStateAndParametersRead(raw, protocolVersion, retainedLedgerParameters);
 
   const providersOn = (state: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): Providers => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {

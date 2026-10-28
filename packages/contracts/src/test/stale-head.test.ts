@@ -42,7 +42,7 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  type ContractStateRead,
+  type ContractStateAndParametersRead,
   type FinalizedTx,
   ProviderEraUnsupportedError,
   type UnboundTx,
@@ -72,7 +72,7 @@ import {
   readHfHexFixture,
   txTagPrefix
 } from './ledger8-replay';
-import { contractStateRead, createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { contractStateAndParametersRead, createMockFinalizedTxData, createMockProviders } from './test-mocks';
 
 // Both redirects are `./v8-native.test.ts`'s -- see that file for why each is
 // needed. The artifact's own runtime check needs an import-time stub, and the
@@ -144,8 +144,8 @@ beforeAll(async () => {
 });
 
 // Served from the same read as `raw`, and dated by the same block, as a real provider does.
-const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
-  contractStateRead(
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndParametersRead =>
+  contractStateAndParametersRead(
     raw,
     protocolVersion,
     protocolVersion === PRE_FORK_PROTOCOL_VERSION ? retainedLedgerParameters : currentLedgerParameters

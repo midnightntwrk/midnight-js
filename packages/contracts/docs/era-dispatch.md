@@ -351,13 +351,14 @@ frozen nor null-prototyped.
 
 ## Pairing the head against the fetched state
 
-`assertHeadStateEraAgreement` refuses an operation whose network head and
+`resolveContractStateEra` refuses an operation whose network head and
 fetched contract state belong to different ledger eras.
 
-The envelope is read from the bytes themselves, not taken from
-`contractState.version` on the read record: the decoder is chosen for these
-exact bytes, and a provider outside this framework may build a record some other
-way.
+The envelope is `contractState.era` on the read record. Only
+`LedgerState.fromBytes` makes a `LedgerState`, and it refuses bytes whose tag
+does not match `era`, so the decoder is still chosen for these exact bytes. A
+record whose contract state is not a `LedgerState`, such as one a provider
+outside this framework built by hand, is refused as `UnrecognisedEraTagError`.
 
 The order is load-bearing:
 

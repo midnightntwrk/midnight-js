@@ -25,6 +25,7 @@ import {
   InvalidLedgerStateError,
   InvalidProtocolSchemeError,
   InvalidTransactionHandleError,
+  LedgerStateDecodeFailedError,
   LedgerStateDecoderMissingError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
@@ -72,7 +73,8 @@ describe('types error classes', () => {
     ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
     ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')],
     ['InvalidLedgerStateError', new InvalidLedgerStateError('ContractState', 'v9', 'tag-mismatch')],
-    ['LedgerStateDecoderMissingError', new LedgerStateDecoderMissingError('ContractState', 'v8')]
+    ['LedgerStateDecoderMissingError', new LedgerStateDecoderMissingError('ContractState', 'v8')],
+    ['LedgerStateDecodeFailedError', new LedgerStateDecodeFailedError('ContractState', 'v9', { cause: new Error('bad body') })]
   ];
 
   it('every exported error class extends MidnightJsError', () => {

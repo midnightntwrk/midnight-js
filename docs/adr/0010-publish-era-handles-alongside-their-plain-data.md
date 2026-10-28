@@ -363,5 +363,7 @@ Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded
 `getAnyEraContractState` and `AnyEraContractState` are removed, and with them the plain-data read
 of a contract state from `contracts`. `PublicDataProvider` now returns every state as a
 `LedgerState` of bytes, decoded by the caller's own runtime. The note above on the `Uint8Array`
-members of `RawContractState` no longer applies: that type is removed. The rules for the
-retained-era result types and for `LedgerEra` are unchanged.
+members of `RawContractState` no longer applies: that type is removed. The internal
+`Ledger8SnapshotBytes` in `contracts` reuses the member names `raw` and `ledgerParameters`; it is
+not public, so this ADR's naming rule does not bind it. The rules for the retained-era result types
+and for `LedgerEra` are unchanged.

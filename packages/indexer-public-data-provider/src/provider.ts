@@ -26,6 +26,7 @@ import type {
   ContractEventQueryFilter,
   ContractEventsPage,
   ContractEventSubscriptionFilter,
+  ContractStateAndParametersRead,
   ContractStateObservableConfig,
   ContractStateRead,
   PositionedRecord,
@@ -37,7 +38,7 @@ import type {
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
-import { toContractStateRead, toPublicStatesRead, toUnshieldedBalances } from './codec';
+import { toContractStateAndParametersRead, toContractStateRead, toPublicStatesRead, toUnshieldedBalances } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
@@ -164,7 +165,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * `PublicDataProvider.queryLatestProtocolVersion` — but there is no measured
    * cost here to spend that budget on, and an expiring cache is not free to
    * get right. For the era of a state already read, use its
-   * `contractState.version`, which costs no request at all.
+   * `contractState.era`, which costs no request at all.
    *
    * @throws {IndexerDataError} When the indexer has not indexed a block yet
    *   and therefore reports no latest block.
@@ -186,7 +187,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractStateRead | null> {
+  ): Promise<ContractStateAndParametersRead | null> {
     assertIsContractAddress(address);
     // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
     // contract action at or before it), which is what cross-contract reads require.
@@ -217,7 +218,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // followed the chain tip, so a block indexed between the two reads
         // leaves them on either side of a fork. Pinned: both resolved against
         // the offset the caller named, so the bound is real.
-        return toContractStateRead(state, block.protocolVersion, block.ledgerParameters, {
+        return toContractStateAndParametersRead(state, block.protocolVersion, block.ledgerParameters, {
           upperBound: offset === null ? 'skip' : 'check'
         });
       });
@@ -337,7 +338,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
         Rx.map(({ state, protocolVersion }) =>
-          toContractStateRead(state, protocolVersion, undefined, { upperBound: 'skip' })
+          toContractStateRead(state, protocolVersion, { upperBound: 'skip' })
         )
       )
     );
@@ -473,9 +474,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   /**
    * Creates a stream of contract states for `contractAddress`.
    *
-   * Each state arrives as bytes with the version of the ledger that wrote it.
+   * Each state arrives as bytes with the era of the ledger that wrote it.
    * A v8 state does not end the stream, so a stream started before the ledger
-   * fork keeps going across it. `ledgerParameters` is always absent: the
+   * fork keeps going across it. A record carries no ledger parameters: the
    * subscription does not ask for them, which would cost one blob per contract
    * action.
    *

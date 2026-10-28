@@ -130,8 +130,8 @@ const plainRecords = (records: readonly PositionedRecord<ContractStateRead>[]) =
     ...position,
     value: {
       protocolVersion: value.protocolVersion,
-      contractState: { kind: value.contractState.kind, version: value.contractState.version, bytes: value.contractState.serialize() },
-      ledgerParameters: value.ledgerParameters
+      contractState: { kind: value.contractState.kind, era: value.contractState.era, bytes: value.contractState.serialize() },
+      fields: Object.keys(value).sort()
     }
   }));
 
@@ -157,16 +157,14 @@ describe('contractStateObservable — latest', () => {
 
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    // The WHOLE record, not field by field: this is the one assertion that
-    // fails if the record grows a field, and the one that pins
-    // `ledgerParameters` as absent, which only the subscription's field list
-    // guarantees.
+    // The WHOLE record, not field by field: `fields` fails if the record grows
+    // a field, such as ledger parameters the subscription does not ask for.
     expect(plainRecords(seen)).toEqual([
       {
         value: {
           protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
-          contractState: { kind: 'ContractState', version: 'v8', bytes: new Uint8Array(fromHex(hexState)) },
-          ledgerParameters: undefined
+          contractState: { kind: 'ContractState', era: 'v8', bytes: new Uint8Array(fromHex(hexState)) },
+          fields: ['contractState', 'protocolVersion']
         },
         blockHeight: 10,
         blockHash: '0x10'
@@ -188,7 +186,7 @@ describe('contractStateObservable — latest', () => {
 
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map((record) => record.value.contractState.version)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
     expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
   });
 
@@ -218,7 +216,7 @@ describe('contractStateObservable — latest', () => {
 
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map(({ value }) => value.contractState.version)).toEqual(['v9']);
+    expect(seen.map(({ value }) => value.contractState.era)).toEqual(['v9']);
   });
 
   test('ends the stream on a record whose version tag is newer than the block that dates it', async () => {
@@ -251,7 +249,7 @@ describe('contractStateObservable — latest', () => {
 
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map(({ value }) => ({ version: value.contractState.version, protocolVersion: value.protocolVersion }))).toEqual([
+    expect(seen.map(({ value }) => ({ version: value.contractState.era, protocolVersion: value.protocolVersion }))).toEqual([
       { version: 'v8', protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }
     ]);
   });
@@ -330,7 +328,7 @@ describe('contractStateObservable — every configuration branch', () => {
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'all' }));
 
     expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
-    expect(seen.map((record) => record.value.contractState.version)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
   });
 
   test('txId: streams the states from the named transaction onward', async () => {
@@ -578,8 +576,8 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
       {
         value: {
           protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
-          contractState: { kind: 'ContractState', version: 'v9', bytes: new Uint8Array(fromHex(translated)) },
-          ledgerParameters: undefined
+          contractState: { kind: 'ContractState', era: 'v9', bytes: new Uint8Array(fromHex(translated)) },
+          fields: ['contractState', 'protocolVersion']
         },
         blockHeight: FORK_HEIGHT,
         blockHash: `0x${FORK_HEIGHT}`
@@ -598,7 +596,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
 
     const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 }));
 
-    expect(seen.map((record) => record.value.contractState.version)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
     expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
     expect(positionsOf(seen)).toEqual([
       { blockHeight: ACTION_HEIGHT, blockHash: `0x${ACTION_HEIGHT}` },

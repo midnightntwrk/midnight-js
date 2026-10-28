@@ -205,7 +205,7 @@ const tracedStates = async (
   config: ContractStateObservableConfig
 ): Promise<string[]> => {
   const records = await Rx.lastValueFrom(provider.contractStateObservable(ADDRESS, config).pipe(Rx.toArray()));
-  return records.map(({ blockHeight, value }) => `${blockHeight}:${value.contractState.version}`);
+  return records.map(({ blockHeight, value }) => `${blockHeight}:${value.contractState.era}`);
 };
 
 const NAMED_TX = 'tx-10' as TransactionId;

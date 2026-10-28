@@ -110,6 +110,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `TRANSACTION_ERA_MISMATCH` | USAGE | `TransactionEraMismatchError`* |
 | PR | `INVALID_LEDGER_STATE` | USAGE | `InvalidLedgerStateError`* |
 | PR | `LEDGER_STATE_DECODER_MISSING` | USAGE | `LedgerStateDecoderMissingError`* |
+| PR | `LEDGER_STATE_DECODE_FAILED` | USAGE | `LedgerStateDecodeFailedError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |
@@ -129,6 +130,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError`* |
 | C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError`* |
 | C | `PRIVATE_STATE_NOT_FOUND` | USAGE | `PrivateStateNotFoundError`* |
+| C | `PUBLIC_STATES_ERA_MISMATCH` | INTEGRITY | `PublicStatesEraMismatchError`* |
 | U | `ZK_ARTIFACT_INTEGRITY_FAILED` | INTEGRITY | `ZkArtifactIntegrityError` |
 | U | `ZK_ARTIFACT_CONTRACT_INFO_INVALID` | INTEGRITY | `ZkArtifactContractInfoError` |
 | U | `PASSWORD_INVALID` | USAGE | `PasswordValidationError` |

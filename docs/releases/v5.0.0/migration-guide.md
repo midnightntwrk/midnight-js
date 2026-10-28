@@ -312,7 +312,7 @@ const submitBuiltTransaction = async (): Promise<types.VersionedFinalizedTxData>
 ```
 
 `submitTx` reads the network head and accepts only a transaction of the head's
-era; see [Step 18](#step-18--narrow-the-contract-state-reads-getpublicstates-and-submittx).
+era; see [Step 18](#step-18--rename-the-era-fields-and-pass-handles-to-submittx).
 
 ### `.private.unprovenTx`
 
@@ -705,7 +705,7 @@ HANDLES differ in one place: the retained handle's
 recipient key mappings (see below). Both handles carry the maintenance
 interfaces; the retained one works only before the fork, and after it the same
 contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
-return every state as bytes with `version: 'v8'` for a contract whose state the
+return every state as bytes, with `era: 'v8'` for a contract whose state the
 v8 ledger wrote: decode it with the runtime that can read it (Step 19).
 
 `deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
@@ -1025,14 +1025,21 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 
 Every state read returns bytes (#1550). A contract state, ledger parameters and a
 zswap chain state are each a `LedgerState` from `@midnight-ntwrk/midnight-js-types`:
-the bytes, plus the `version` of the ledger that wrote them. Decode one with the
+the bytes, plus the `era` of the ledger that wrote them. Decode one with the
 runtime your contract was compiled against. A state decoded by any other copy of
 the runtime — the framework's included — is refused by your contract's `ledger()`
 with `expected instance of ChargedState`.
 
-`deserialize` calls only the decoder for the state's own `version`. A state
-written by a version you passed no decoder for throws
+`deserialize` calls only the decoder for the state's own `era`. A state
+written by an era you passed no decoder for throws
 `LedgerStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
+A decoder that throws, for example the class of another kind, is reported as
+`LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`),
+with the decoder's error as `cause`.
+
+A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
+`postMessage` and JSON drop them. To hand one to a worker or store it, send
+`serialize()` and `era`, and rebuild it with `LedgerState.fromBytes(era, kind, bytes)`.
 
 ### Reading a contract state
 
@@ -1050,7 +1057,9 @@ const counter = read === null ? null : ledger(read.contractState.deserialize({ v
 ```
 
 The same applies to `watchForContractState`, `queryDeployContractState` and to
-`record.value` on `contractStateObservable`.
+`record.value` on `contractStateObservable`. Those three carry no ledger
+parameters: only `queryContractState` returns them, as
+`ContractStateAndParametersRead`.
 
 ### Reading `queryZSwapAndContractState`, `getPublicStates` and `getStates`
 
@@ -1077,11 +1086,13 @@ if (states !== null) {
 ```
 
 `getPublicStates` returns the same `PublicStatesRead`, and `getStates` adds
-`privateState`.
+`privateState`. Inside a scoped transaction, `TransactionContext.getCurrentStates()`
+returns a `PublicStatesRead` too, with the running contract state; decode it the
+same way.
 
 ### Replacing `getAnyEraContractState` and `queryRawContractState`
 
-Both are removed. `queryContractState` serves the same bytes, the `version` of
+Both are removed. `queryContractState` serves the same bytes, the `era` of
 the ledger that wrote them, and the block's ledger parameters:
 
 ```ts
@@ -1093,7 +1104,7 @@ const parameters = raw?.ledgerParameters;
 // After
 const read = await publicDataProvider.queryContractState(address);
 const bytes = read?.contractState.serialize();
-const parameters = read?.ledgerParameters?.serialize();
+const parameters = read?.ledgerParameters.serialize();
 ```
 
 `rawContractStateObservable` is removed too; `contractStateObservable` now
@@ -1127,11 +1138,13 @@ if (read !== null) {
 
 ### Implementing `PublicDataProvider`
 
-Return a `ContractStateRead` or `PublicStatesRead`. Build each state with
-`LedgerState.fromBytes(kind, version, bytes)`, and take `version` from the
+Return a `ContractStateAndParametersRead` from `queryContractState`, a
+`PublicStatesRead` from `queryZSwapAndContractState` and a `ContractStateRead`
+from the other reads. Build each state with
+`LedgerState.fromBytes(era, kind, bytes)`, and take `era` from the
 bytes' own version tag with `ledgerVersionOfContractState` /
 `ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`.
-`fromBytes` refuses bytes that do not carry the tag of that version with
+`fromBytes` refuses bytes that do not carry the tag of that era with
 `InvalidLedgerStateError`. Remove `queryRawContractState` and
 `rawContractStateObservable`.
 

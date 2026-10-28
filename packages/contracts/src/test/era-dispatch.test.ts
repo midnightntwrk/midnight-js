@@ -22,7 +22,8 @@ import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,
-  hasErrorCode
+  hasErrorCode,
+  UnrecognisedEraTagError
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -650,5 +651,21 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       expect((error as Error).message).toContain("'v8'");
       expect((error as Error).message).toContain("'v9'");
     }
+  });
+});
+
+describe('resolveContractStateEra reads only a LedgerState', () => {
+  it('refuses a record whose contract state is not a LedgerState, the shape of a pre-5.0.0 provider', async () => {
+    const queryLatestProtocolVersion = vi.fn();
+    const preFiveRecord = { protocolVersion: 2_000_000, contractState: { version: 'v9', state: new Uint8Array() } };
+
+    // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
+    const rejection = await resolveContractStateEra('v9', preFiveRecord, { queryLatestProtocolVersion }).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 });

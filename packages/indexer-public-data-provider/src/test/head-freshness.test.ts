@@ -27,6 +27,7 @@ import {
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8TransactionHex,
   mintLedger9ContractStateHex,
+  mintLedger9LedgerParametersHex,
   mintLedger9TransactionHex} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
@@ -49,7 +50,7 @@ const headResponse = (protocolVersion: number): unknown => ({ data: { block: { p
 
 /** The composed state read: the dating block and the state in one response. */
 const composedResponse = (state: string, protocolVersion: number): unknown => ({
-  data: { block: { protocolVersion }, contract: { state } }
+  data: { block: { protocolVersion, ledgerParameters: mintLedger9LedgerParametersHex() }, contract: { state } }
 });
 
 /** How many of the recorded requests asked the indexer for the head version. */
@@ -128,7 +129,7 @@ describe('head protocol-version freshness', () => {
 
     const record = await provider.queryContractState(ADDRESS);
 
-    expect(record?.contractState.version).toBe('v9');
+    expect(record?.contractState.era).toBe('v9');
     expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     expect(headRequestCount(query)).toBe(0);
   });

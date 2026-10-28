@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   PrivateStateId,
   PrivateStateProvider,
@@ -39,7 +38,7 @@ export type ContractStates<PS> = PublicStatesRead & {
 
 /**
  * Fetches only the public visible (Zswap and ledger) states of a contract, as bytes with the
- * version of the ledger that wrote them.
+ * era of the ledger that wrote them.
  *
  * @param publicDataProvider The provider to use to fetch the public states (Zswap and ledger)
  *                           from the blockchain.
@@ -60,27 +59,6 @@ export const getPublicStates = async (
     throw new ContractNotFoundError(`No public state found at contract address '${contractAddress}'`);
   }
   return publicStates;
-};
-
-/**
- * The public states of a contract, decoded by the framework's own runtime to build a transaction.
- * Carried by a scoped transaction between its calls.
- */
-export interface Ledger9PublicStates {
-  readonly version: 'v9';
-  readonly zswapChainState: ZswapChainState;
-  readonly contractState: ContractState;
-  readonly ledgerParameters: LedgerParameters;
-}
-
-/**
- * {@link Ledger9PublicStates} together with the private state of the contract.
- */
-export type Ledger9ContractStates<PS> = Ledger9PublicStates & {
-  /**
-   * The private state of a contract.
-   */
-  readonly privateState: PS;
 };
 
 /**

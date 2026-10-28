@@ -29,7 +29,9 @@ export type LedgerStateKind = (typeof LEDGER_STATE_KINDS)[number];
 // DO NOT COPY THIS TABLE. It decides which era's decoder is handed network-supplied bytes; see
 // `packages/protocol/docs/shared-table-discipline.md`. `satisfies` makes a new `LedgerVersion` with
 // no row here a build failure. Every entry is pinned against what the runtimes write by
-// `test/state-tags.test.ts`.
+// `test/state-tags.test.ts`. A contract state and ledger parameters are dated from their tag alone
+// (`ledgerVersionOf*` in `utils`), so the asserts below make a tag shared by two eras of either kind a
+// build failure.
 export const LEDGER_STATE_TAGS = Object.freeze({
   ContractState: Object.freeze({
     v8: 'midnight:contract-state[v6]',
@@ -44,3 +46,14 @@ export const LEDGER_STATE_TAGS = Object.freeze({
     v9: 'midnight:zswap-ledger-state[v5]'
   })
 } as const satisfies Record<LedgerStateKind, Record<LedgerVersion, string>>);
+
+type Assert<T extends true> = T;
+type TagOf<K extends LedgerStateKind, E extends LedgerVersion> = (typeof LEDGER_STATE_TAGS)[K][E];
+type ErasSharingATag<K extends LedgerStateKind> = {
+  [A in LedgerVersion]: { [B in Exclude<LedgerVersion, A>]: TagOf<K, A> extends TagOf<K, B> ? A : never }[Exclude<
+    LedgerVersion,
+    A
+  >];
+}[LedgerVersion];
+type _ContractStateTagsAreDistinct = Assert<[ErasSharingATag<'ContractState'>] extends [never] ? true : false>;
+type _LedgerParametersTagsAreDistinct = Assert<[ErasSharingATag<'LedgerParameters'>] extends [never] ? true : false>;

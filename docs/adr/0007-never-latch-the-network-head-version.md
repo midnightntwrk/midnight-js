@@ -200,3 +200,11 @@ read off the envelope of `raw`, the era that wrote the bytes. `protocolVersion` 
 the data, per record, and still dates the block; on an enforced read it bounds the envelope from
 above. `VersionedFinalizedTxData.version` is still derived from `protocolVersion`, because a
 transaction is written by the era of the block that includes it.
+
+## Amendment — the era of a state lives on the state (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+`RawContractState` is removed. Every state read returns a `LedgerState`, whose `era` is read off
+the envelope of its bytes, as the amendment above describes for `RawContractState.version`. The
+record's `protocolVersion` still dates the block and, on an enforced read, bounds the state's era
+from above. The rule of this ADR is unchanged.

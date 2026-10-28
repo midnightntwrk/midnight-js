@@ -49,7 +49,7 @@ import {
   sampleEncryptionPublicKey
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  type ContractStateRead,
+  type ContractStateAndParametersRead,
   createMidnightProvider,
   createProofProvider,
   createWalletProvider,
@@ -136,7 +136,7 @@ import {
   SAMPLED_SIGNING_KEY,
   txTagPrefix
 } from './ledger8-replay';
-import { contractStateRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, networkIdOf } from './test-mocks';
+import { contractStateAndParametersRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, networkIdOf } from './test-mocks';
 
 // The real generated artifact opens with `checkRuntimeVersion('0.16.0')`, which
 // the installed current runtime rejects, so the specifier is redirected to the
@@ -221,8 +221,8 @@ beforeAll(async () => {
 });
 
 // Served from the same read as `raw`, and dated by the same block, as a real provider does.
-const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
-  contractStateRead(
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndParametersRead =>
+  contractStateAndParametersRead(
     raw,
     protocolVersion,
     protocolVersion === PRE_FORK_PROTOCOL_VERSION ? retainedLedgerParameters : currentLedgerParameters

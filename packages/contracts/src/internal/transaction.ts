@@ -20,9 +20,11 @@ import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-pr
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
+  LedgerState,
   LedgerTransaction,
   type LoggerProvider,
   type PrivateStateId,
+  type PublicStatesRead,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -33,12 +35,18 @@ import {
   MixedEraScopeError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError} from '../errors';
-import { type Ledger9ContractStates, type Ledger9PublicStates } from '../get-states';
 import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
-import { acquireHeadEra, type HeadVersionSource, readHeadEra, type ResolvedOperationEra } from './era';
+import {
+  acquireHeadEra,
+  type HeadVersionSource,
+  type Ledger9ContractStates,
+  type Ledger9PublicStates,
+  readHeadEra,
+  type ResolvedOperationEra
+} from './era';
 
 /** @internal */
 export interface CachedStateIdentity {
@@ -50,6 +58,8 @@ export interface CachedStateIdentity {
 export interface CachedStatesWithIdentity<PS> {
   readonly identity: CachedStateIdentity;
   readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
+  /** The public states as read, as bytes. Its contract state is the one the scope started from. */
+  readonly read: PublicStatesRead;
   /**
    * The hash of the block the states were read as of. A scoped transaction is a single chain
    * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
@@ -198,8 +208,12 @@ export class TransactionContextImpl<
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
    * for validated access to cached states within scoped transactions.
    */
-  getCurrentStates(): Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates | undefined {
-    return this.cachedStates?.states;
+  getCurrentStates(): PublicStatesRead | undefined {
+    if (!this.cachedStates) {
+      return undefined;
+    }
+    const { read, states } = this.cachedStates;
+    return { ...read, contractState: LedgerState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](
@@ -251,10 +265,11 @@ export class TransactionContextImpl<
 
   [CacheStates](
     states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
+    read: PublicStatesRead,
     identity: CachedStateIdentity,
     blockHash: string
   ): void {
-    this.cachedStates = { states, identity, blockHash };
+    this.cachedStates = { states, read, identity, blockHash };
   }
 
   [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
@@ -283,7 +298,8 @@ export class TransactionContextImpl<
     // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
     // stays pinned to the block its states were first read at.
     this[CacheStates](
-      { version: 'v9', contractState, zswapChainState, ledgerParameters, privateState },
+      { contractState, zswapChainState, ledgerParameters, privateState },
+      this.cachedStates.read,
       this.cachedStates.identity,
       this.cachedStates.blockHash
     );

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,14 +26,24 @@ vi.mock('@midnightntwrk/ledger-v8', async (importOriginal) => {
   return importOriginal();
 });
 
-// A file of its own: the v8 ledger, once loaded, stays loaded for the process.
+const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+// A file of its own: the v8 ledger, once loaded, stays loaded for the process. The tests run in
+// order, and the last one loads it to prove the mock above sees a load.
 describe('LedgerState of a v8 value', () => {
-  it('is built and serialized without loading the v8 ledger', () => {
+  it('is built and serialized without loading the v8 ledger', async () => {
     const bytes = new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v8}:body`);
 
-    const state = LedgerState.fromBytes('ContractState', 'v8', bytes);
+    const state = LedgerState.fromBytes('v8', 'ContractState', bytes);
 
     expect(state.serialize()).toEqual(bytes);
+    await settle();
     expect(ledger8Import).not.toHaveBeenCalled();
+  });
+
+  it('sees the v8 ledger load when it is loaded', async () => {
+    await loadLedger8Protocol();
+
+    expect(ledger8Import).toHaveBeenCalledOnce();
   });
 });

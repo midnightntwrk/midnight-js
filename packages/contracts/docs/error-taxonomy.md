@@ -76,15 +76,17 @@ that no diagnosis of it could be made.
 
 ## Refuse before the caller pays
 
-Three refusals exist to convert a late, paid-for failure into an early, free
+Four refusals exist to convert a late, paid-for failure into an early, free
 one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
 
-`ContractStateRead.ledgerParameters` is optional: a provider that cannot serve
-them is still a usable provider, and the bundled indexer provider always does
-serve them. But this pipeline has just read the chain, so an absent parameter set
-*here* is a provider that did not serve them, not a caller with no read surface.
+`queryContractState` returns a `ContractStateAndParametersRead`, whose
+`ledgerParameters` is required, and the bundled indexer provider refuses a block
+that carries none. A provider written in JavaScript is out of reach of the
+types, though, and this pipeline has just read the chain, so an absent parameter
+set *here* is a provider that did not serve them, not a caller with no read
+surface.
 
 It is raised instead of substituting the ledger's initial parameters, which is
 what happened before and is the failure this class exists to replace: the
@@ -96,6 +98,16 @@ named the cost model, so the diagnosis was unreachable from the error.
 The compatibility path still exists for a caller that genuinely cannot read the
 chain, but it has to be selected by name — `INITIAL_LEDGER_PARAMETERS` in
 `midnight-js-protocol`.
+
+### `PublicStatesEraMismatchError`
+
+A call is built from the contract state, the ledger parameters and the zswap
+chain state of one read, decoded with the framework's v9 runtime. A
+`PublicStatesRead` is typed as one era, but a provider written in JavaScript can
+serve parameters or a zswap state of another era, or none. Decoding those would
+fail inside the runtime with a message that tells the dApp to pass a decoder it
+never passes. So the era of each state is checked before anything is decoded,
+and the refusal names the state and the provider as the fault.
 
 ### `Ledger8ShieldedSpendUnsupportedError`
 

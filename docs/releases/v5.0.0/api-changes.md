@@ -202,9 +202,10 @@ export type LedgerStateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChain
 export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
 export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
 export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+  readonly era: E;
   readonly kind: K;
-  readonly version: E;
-  static fromBytes<K extends LedgerStateKind, E extends LedgerVersion>(kind: K, version: E, bytes: Uint8Array): LedgerState<K, E>;
+  static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
+  static isLedgerState(value: unknown): value is LedgerState;
   serialize(): Uint8Array;
   deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>;
 }
@@ -212,29 +213,45 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
 export interface ContractStateRead {
   readonly protocolVersion: number;
   readonly contractState: LedgerState<'ContractState'>;
-  readonly ledgerParameters?: LedgerState<'LedgerParameters'>;
 }
-export interface PublicStatesRead extends ContractStateRead {
+export interface ContractStateAndParametersRead extends ContractStateRead {
   readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+}
+export interface PublicStatesRead extends ContractStateAndParametersRead {
   readonly zswapChainState: LedgerState<'ZswapChainState'>;
 }
 
 interface PublicDataProvider {
-  queryContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<ContractStateRead | null>;
+  queryContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<ContractStateAndParametersRead | null>;
   queryDeployContractState(address: ContractAddress): Promise<ContractStateRead | null>;
   watchForContractState(address: ContractAddress): Promise<ContractStateRead>;
   queryZSwapAndContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<PublicStatesRead | null>;
   // queryRawContractState and rawContractStateObservable are removed.
 }
 
-export class InvalidLedgerStateError extends MidnightJsError { readonly kind: string; readonly version: LedgerVersion; readonly reason: 'unknown-kind' | 'not-bytes' | 'tag-mismatch'; }
-export class LedgerStateDecoderMissingError extends MidnightJsError { readonly kind: LedgerStateKind; readonly version: LedgerVersion; }
+export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export class InvalidLedgerStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidLedgerStateReason; }
+export class LedgerStateDecoderMissingError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
+export class LedgerStateDecodeFailedError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
+```
+
+In `contracts`:
+
+```ts
+interface TransactionContext<C, PCK> {
+  getCurrentStates(): PublicStatesRead | undefined; // the running contract state, as bytes
+}
+export class PublicStatesEraMismatchError extends MidnightJsError {
+  readonly contractAddress: string;
+  readonly field: 'ledgerParameters' | 'zswapChainState';
+  readonly received: LedgerVersion | undefined;
+}
 ```
 
 Removed from `types`: `RawContractState`, `VersionedContractState`,
 `VersionedPublicStates`, `Ledger8ContractStateBytes`, `Ledger9ContractState`,
-`Ledger8PublicStates`. `Ledger9PublicStates` moved to `contracts`. Decode a state
-with the runtime your contract was compiled against:
+`Ledger8PublicStates`, `Ledger9PublicStates`. Decode a state with the runtime
+your contract was compiled against:
 `read.contractState.deserialize({ v9: ContractState })`.
 
 ### Positioned stream records (#1399)

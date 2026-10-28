@@ -51,6 +51,7 @@ import { CURRENT_LEDGER_VERSION, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midni
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
+  type ContractStateAndParametersRead,
   type ContractStateRead,
   type FinalizedTxData,
   type Ledger8FinalizedTxData,
@@ -463,17 +464,23 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
  * The record a `PublicDataProvider` serves for these bytes: the version comes from the bytes' own
  * version tag, as the indexer provider reads it.
  */
-export const contractStateRead = (
+export const contractStateRead = (raw: Uint8Array, protocolVersion: number): ContractStateRead => ({
+  protocolVersion,
+  contractState: LedgerState.fromBytes(ledgerVersionOfContractState(raw), 'ContractState', raw)
+});
+
+/** {@link contractStateRead} with the ledger parameters `queryContractState` serves beside the state. */
+export const contractStateAndParametersRead = (
   raw: Uint8Array,
   protocolVersion: number,
-  ledgerParameters?: Uint8Array
-): ContractStateRead => ({
-  protocolVersion,
-  contractState: LedgerState.fromBytes('ContractState', ledgerVersionOfContractState(raw), raw),
-  ledgerParameters:
-    ledgerParameters === undefined
-      ? undefined
-      : LedgerState.fromBytes('LedgerParameters', ledgerVersionOfLedgerParameters(ledgerParameters), ledgerParameters)
+  ledgerParameters: Uint8Array
+): ContractStateAndParametersRead => ({
+  ...contractStateRead(raw, protocolVersion),
+  ledgerParameters: LedgerState.fromBytes(
+    ledgerVersionOfLedgerParameters(ledgerParameters),
+    'LedgerParameters',
+    ledgerParameters
+  )
 });
 
 const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
@@ -484,7 +491,16 @@ const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`)
  */
 export const contractStateReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): ContractStateRead => ({
   protocolVersion,
-  contractState: LedgerState.fromBytes('ContractState', version, tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
+  contractState: LedgerState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
+});
+
+/** {@link contractStateReadStub} with ledger parameters that are only the version tag of `version`. */
+export const contractStateAndParametersReadStub = (
+  version: LedgerVersion,
+  protocolVersion = 2_000_000
+): ContractStateAndParametersRead => ({
+  ...contractStateReadStub(version, protocolVersion),
+  ledgerParameters: LedgerState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });
 
 type Serializable = { serialize(): Uint8Array };
@@ -499,8 +515,8 @@ export const publicStatesRead = (
 ): PublicStatesRead => ({
   protocolVersion,
   contractState: contractStateReadStub('v9').contractState,
-  zswapChainState: LedgerState.fromBytes('ZswapChainState', 'v9', states.zswapChainState.serialize()),
-  ledgerParameters: LedgerState.fromBytes('LedgerParameters', 'v9', states.ledgerParameters.serialize())
+  zswapChainState: LedgerState.fromBytes('v9', 'ZswapChainState', states.zswapChainState.serialize()),
+  ledgerParameters: LedgerState.fromBytes('v9', 'LedgerParameters', states.ledgerParameters.serialize())
 });
 
 
@@ -510,7 +526,7 @@ export const publicStatesRead = (
  */
 export const publicStatesReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): PublicStatesRead => ({
   protocolVersion,
-  contractState: LedgerState.fromBytes('ContractState', version, tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
-  zswapChainState: LedgerState.fromBytes('ZswapChainState', version, tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
-  ledgerParameters: LedgerState.fromBytes('LedgerParameters', version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+  contractState: LedgerState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
+  zswapChainState: LedgerState.fromBytes(version, 'ZswapChainState', tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
+  ledgerParameters: LedgerState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });

@@ -420,6 +420,37 @@ export class IndexerInconsistencyError extends MidnightJsError {
 }
 
 /**
+ * An error indicating that the read surface served the public states of a contract whose ledger
+ * parameters or zswap chain state were not written by the same ledger era as its v9 contract state,
+ * or were missing. One read carries the states of one era, so the states cannot be combined into a
+ * call.
+ */
+export class PublicStatesEraMismatchError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.PUBLIC_STATES_ERA_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.PUBLIC_STATES_ERA_MISMATCH];
+
+  /**
+   * @param contractAddress The contract whose public states were read.
+   * @param field The state that does not match the contract state.
+   * @param received The era of that state, or `undefined` when it was missing.
+   */
+  constructor(
+    readonly contractAddress: string,
+    readonly field: 'ledgerParameters' | 'zswapChainState',
+    readonly received: LedgerVersion | undefined
+  ) {
+    super(
+      `The read surface served the v9 contract state of the contract at '${contractAddress}' with ` +
+        `${received === undefined ? `no ${field}` : `a ${field} written by the ${received} ledger`}. ` +
+        `One read carries the states of one era, so they cannot be combined into a call. Use a ` +
+        `PublicDataProvider whose 'queryZSwapAndContractState' serves all three states of one era — the ` +
+        `bundled indexer provider does.`
+    );
+    this.name = 'PublicStatesEraMismatchError';
+  }
+}
+
+/**
  * An error indicating that the read surface served a contract state without the block's ledger
  * parameters, so a call cannot be composed against the cost model the chain is running.
  *

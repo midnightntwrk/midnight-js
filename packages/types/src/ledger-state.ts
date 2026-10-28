@@ -22,7 +22,7 @@ import {
   type LedgerVersion
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { InvalidLedgerStateError, LedgerStateDecoderMissingError } from './errors';
+import { InvalidLedgerStateError, LedgerStateDecodeFailedError, LedgerStateDecoderMissingError } from './errors';
 
 export type { LedgerStateKind };
 
@@ -42,7 +42,7 @@ export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>
  * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`.
  */
 export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = E extends keyof D
-  ? D[E] extends StateDecoder<infer T>
+  ? D[E] extends StateDecoder<infer T> | undefined
     ? T
     : never
   : never;
@@ -52,81 +52,111 @@ const startsWithTag = (bytes: Uint8Array, tag: string): boolean => {
   return bytes.length >= prefix.length && prefix.every((byte, index) => bytes[index] === byte);
 };
 
+const isDecoderMap = (decoders: unknown): decoders is StateDecoders =>
+  typeof decoders === 'object' && decoders !== null;
+
+const FROM_BYTES: unique symbol = Symbol('LedgerState.fromBytes');
+
 /**
  * A value the ledger wrote — a contract state, ledger parameters or a zswap chain state — carried
- * as its bytes, with the version of the ledger that wrote them.
+ * as its bytes, with the era of the ledger that wrote them.
  *
- * The framework never hands out a decoded state. The caller decodes it with its own runtime, so a
- * contract state comes back as an object its compiled contract accepts:
+ * No read hands out a decoded state. The caller decodes it with its own runtime, so a contract
+ * state comes back as an object its compiled contract accepts:
  *
  * ```ts
  * import { ContractState } from '@midnight-ntwrk/compact-runtime';
  *
  * const read = await publicDataProvider.queryContractState(address);
- * const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+ * if (read !== null) {
+ *   const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+ * }
  * ```
  *
+ * A `LedgerState` keeps its bytes in a private field, so `structuredClone`, `postMessage` and JSON
+ * drop them. To send one elsewhere, send `serialize()` and `era`, and rebuild it with
+ * {@link LedgerState.fromBytes}.
+ *
  * @typeParam K The kind of value.
- * @typeParam E The version of the ledger that wrote it.
+ * @typeParam E The era of the ledger that wrote it.
  */
 export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
   readonly #bytes: Uint8Array;
 
   private constructor(
+    fromBytes: typeof FROM_BYTES,
+    readonly era: E,
     readonly kind: K,
-    readonly version: E,
     bytes: Uint8Array
   ) {
+    if (fromBytes !== FROM_BYTES) {
+      throw new InvalidLedgerStateError(undefined, undefined, 'not-from-bytes');
+    }
     this.#bytes = bytes;
     Object.freeze(this);
   }
 
   /**
-   * Wraps bytes the ledger of `version` wrote for a value of `kind`.
+   * Wraps bytes the ledger of `era` wrote for a value of `kind`.
    *
-   * @throws UnknownLedgerVersionError when `version` is not a supported ledger version.
+   * @throws UnknownLedgerVersionError when `era` is not a supported ledger era.
    * @throws InvalidLedgerStateError when `kind` is unknown, `bytes` is not a `Uint8Array`, or the
    * bytes do not start with the tag that ledger writes for that kind.
    */
-  static fromBytes<K extends LedgerStateKind, E extends LedgerVersion>(
+  static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(
+    era: E,
     kind: K,
-    version: E,
     bytes: Uint8Array
   ): LedgerState<K, E> {
-    if (!LEDGER_VERSIONS.includes(version)) {
-      throw new UnknownLedgerVersionError(String(version));
+    if (!LEDGER_VERSIONS.includes(era)) {
+      throw new UnknownLedgerVersionError(String(era));
     }
     if (!LEDGER_STATE_KINDS.includes(kind)) {
-      throw new InvalidLedgerStateError(String(kind), version, 'unknown-kind');
+      throw new InvalidLedgerStateError(String(kind), era, 'unknown-kind');
     }
     if (!(bytes instanceof Uint8Array)) {
-      throw new InvalidLedgerStateError(kind, version, 'not-bytes');
+      throw new InvalidLedgerStateError(kind, era, 'not-bytes');
     }
-    if (!startsWithTag(bytes, LEDGER_STATE_TAGS[kind][version])) {
-      throw new InvalidLedgerStateError(kind, version, 'tag-mismatch');
+    if (!startsWithTag(bytes, LEDGER_STATE_TAGS[kind][era])) {
+      throw new InvalidLedgerStateError(kind, era, 'tag-mismatch');
     }
-    return new LedgerState(kind, version, bytes.slice());
+    return new LedgerState(FROM_BYTES, era, kind, new Uint8Array(bytes));
+  }
+
+  /**
+   * Whether `value` was made by {@link LedgerState.fromBytes} of this copy of the package. A
+   * look-alike object, or one made by a second installed copy of the package, gives `false`.
+   */
+  static isLedgerState(value: unknown): value is LedgerState {
+    return typeof value === 'object' && value !== null && #bytes in value;
   }
 
   /**
    * @returns A copy of the bytes, exactly as the ledger wrote them.
    */
   serialize(): Uint8Array {
-    return this.#bytes.slice();
+    return new Uint8Array(this.#bytes);
   }
 
   /**
-   * Decodes the value with the decoder for its own version.
+   * Decodes the value with the decoder for its own era.
    *
-   * @param decoders One decoder per ledger version, from the caller's own runtime, e.g.
+   * @param decoders One decoder per ledger era, from the caller's own runtime, e.g.
    * `{ v9: ContractState }`.
-   * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link version}.
+   * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link era}.
+   * @throws LedgerStateDecodeFailedError when the decoder throws, for example because it decodes
+   * another kind.
    */
   deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E> {
-    const decoder: StateDecoder | undefined = Object.hasOwn(decoders, this.version) ? decoders[this.version] : undefined;
+    const decoder: StateDecoder | undefined =
+      isDecoderMap(decoders) && Object.hasOwn(decoders, this.era) ? decoders[this.era] : undefined;
     if (typeof decoder?.deserialize !== 'function') {
-      throw new LedgerStateDecoderMissingError(this.kind, this.version);
+      throw new LedgerStateDecoderMissingError(this.kind, this.era);
     }
-    return decoder.deserialize(this.serialize()) as DecodedState<D, E>;
+    try {
+      return decoder.deserialize(this.serialize()) as DecodedState<D, E>;
+    } catch (cause: unknown) {
+      throw new LedgerStateDecodeFailedError(this.kind, this.era, { cause });
+    }
   }
 }

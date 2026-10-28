@@ -20,7 +20,7 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
@@ -99,12 +99,9 @@ const queryFoundDeployTxPublicData = async (
         await publicDataProvider.queryDeployContractState(contractAddress),
         contractAddress
       );
-      const stateVersion: unknown = deployState?.contractState?.version;
-      if (stateVersion === 'v8') {
+      const stateEra: unknown = deployState?.contractState?.era;
+      if (stateEra === 'v8') {
         throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
-      }
-      if (stateVersion !== 'v9') {
-        throw new UnknownLedgerVersionError(String(stateVersion), 'queryDeployContractState');
       }
       return {
         ...deployRecord,
@@ -507,7 +504,9 @@ export async function findDeployedContract<C extends Contract.Any>(
  * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
- * @throws UnknownLedgerVersionError The deploy record or the deploy state carries no readable era tag.
+ * @throws UnknownLedgerVersionError The deploy record carries no readable era tag.
+ * @throws UnrecognisedEraTagError The deploy state is not a `LedgerState`: the shape of a pre-5.0.0
+ *                                 provider.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
  *                           state found at `contractAddress`, carry no deployed verifier key, or

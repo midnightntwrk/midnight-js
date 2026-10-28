@@ -16,7 +16,7 @@
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { ContractStateRead, PublicStatesRead } from './contract-state-read';
+import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from './contract-state-read';
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
 import type { VersionedFinalizedTxData } from './versioned';
 
@@ -354,10 +354,11 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the on-chain state of a contract as bytes, with the ledger parameters of the block
-   * that dates the read when the provider can serve them. If no block hash or block height are
-   * provided, the contract state at the address in the latest block is returned. Decode the state
-   * with your own runtime: `read.contractState.deserialize({ v9: ContractState })`.
+   * that dates the read. If no block hash or block height are provided, the contract state at the
+   * address in the latest block is returned. Decode the state with your own runtime:
+   * `read.contractState.deserialize({ v9: ContractState })`.
    * Immediately returns null if no matching data is found.
+   * @throws When the state or the ledger parameters are not well-formed bytes of a known era.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -365,13 +366,14 @@ export interface PublicDataProvider {
   queryContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<ContractStateRead | null>;
+  ): Promise<ContractStateAndParametersRead | null>;
 
   /**
    * Retrieves the zswap chain state (token balances), the contract state of the contract at the
    * given address, and the ledger parameters in effect on the associated block, each as bytes with
-   * the version of the ledger that wrote them. All three are retrieved in a single query to ensure
-   * consistency.
+   * the era of the ledger that wrote them. All three are written by the ledger of one era. On a read
+   * with no block given, the block and the states are looked up separately, so near the hard fork
+   * the parameters can come from a block other than the one the states were read at.
    * Immediately returns null if no matching data is found.
    * @throws When the contract state and the ledger parameters were written by different eras.
    * @param contractAddress The address of the contract of interest.
@@ -385,7 +387,7 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the contract state in the deploy's record for the contract at the given contract address,
-   * or in the latest update's record when the contract has been updated, as bytes with the version
+   * or in the latest update's record when the contract has been updated, as bytes with the era
    * of the ledger that wrote them.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
@@ -404,7 +406,7 @@ export interface PublicDataProvider {
   ): Promise<UnshieldedBalances | null>;
 
   /**
-   * Retrieves the contract state of the contract with the given address, as bytes with the version
+   * Retrieves the contract state of the contract with the given address, as bytes with the era
    * of the ledger that wrote them. Waits indefinitely for matching data to appear.
    * @param contractAddress The address of the contract of interest.
    */
@@ -456,11 +458,12 @@ export interface PublicDataProvider {
   watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
 
   /**
-   * Creates a stream of contract states, each as bytes with the version of the ledger that wrote
+   * Creates a stream of contract states, each as bytes with the era of the ledger that wrote
    * them. The observable emits a value every time a state is either created or updated at the given
-   * address. A replay that starts before the hard fork emits the pre-fork states as v8 values and
-   * carries on. `ledgerParameters` may be absent on a stream: a caller that needs them reads
-   * {@link queryContractState} with `{ type: 'blockHash', blockHash }` from the same record.
+   * address. A replay that starts before the hard fork emits the pre-fork states with
+   * `contractState.era === 'v8'` and carries on. A stream carries no ledger parameters: a caller that
+   * needs them reads {@link queryContractState} with `{ type: 'blockHash', blockHash }` from the same
+   * record.
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
@@ -553,7 +556,7 @@ export interface PublicDataProvider {
    * PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
    * is the question — it dates the block the read resolved and costs no extra
    * request. For a contract state that block can be newer than the bytes; the
-   * era that wrote the bytes is `contractState.version`. Reach for this method only where there is no
+   * era that wrote the bytes is `contractState.era`. Reach for this method only where there is no
    * record to date: the deploy path.
    *
    * The answer is a LOWER BOUND on the era of the block that will include a

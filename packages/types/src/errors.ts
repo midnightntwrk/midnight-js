@@ -19,7 +19,7 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerStateKind, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, type LedgerStateKind, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -107,7 +107,8 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   INVALID_TRANSACTION_HANDLE: 'MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE',
   TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH',
   INVALID_LEDGER_STATE: 'MIDNIGHT_JS_PR_INVALID_LEDGER_STATE',
-  LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING'
+  LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING',
+  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -148,7 +149,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE]: USAGE,
   [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
-  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: USAGE
 });
 
 const {
@@ -174,7 +176,8 @@ const {
   INVALID_TRANSACTION_HANDLE,
   TRANSACTION_ERA_MISMATCH,
   INVALID_LEDGER_STATE,
-  LEDGER_STATE_DECODER_MISSING
+  LEDGER_STATE_DECODER_MISSING,
+  LEDGER_STATE_DECODE_FAILED
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -427,14 +430,28 @@ export class TransactionEraMismatchError extends MidnightJsError {
  *
  * - `'unknown-kind'`: the kind is not a {@link LedgerStateKind}.
  * - `'not-bytes'`: the value is not a `Uint8Array`.
- * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that version writes for that
+ * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that era writes for that
  *   kind.
+ * - `'not-from-bytes'`: the value was constructed without `LedgerState.fromBytes`.
  */
-export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch';
+export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+
+const INVALID_LEDGER_STATE_MESSAGES: Readonly<
+  Record<InvalidLedgerStateReason, (kind: string, era: string) => string>
+> = {
+  'unknown-kind': (kind) =>
+    `Cannot build a LedgerState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
+  'not-bytes': (kind) => `Cannot build a ${kind} LedgerState: the value is not a Uint8Array.`,
+  'tag-mismatch': (kind, era) =>
+    `The bytes are not a ${kind} written by the ${era} ledger. ` +
+    `Pass the era of the ledger that wrote them, and check they hold a ${kind}.`,
+  'not-from-bytes': () => 'A LedgerState can only be made by LedgerState.fromBytes.'
+};
 
 /**
  * Thrown by `LedgerState.fromBytes` when the bytes are not a value of the given kind written by the
- * ledger of the given version. The bytes are never quoted in the message.
+ * ledger of the given era, and by the `LedgerState` constructor when it is called without
+ * `LedgerState.fromBytes`. The bytes are never quoted in the message.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
@@ -443,32 +460,24 @@ export class InvalidLedgerStateError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_LEDGER_STATE];
 
   /**
-   * @param kind The kind the caller named.
-   * @param version The ledger version the caller named.
+   * @param kind The kind the caller named, or `undefined` when the constructor was called directly.
+   * @param era The ledger era the caller named, or `undefined` when the constructor was called
+   *   directly.
    * @param reason Why the value was refused.
    */
   constructor(
-    readonly kind: string,
-    readonly version: LedgerVersion,
+    readonly kind: string | undefined,
+    readonly era: LedgerVersion | undefined,
     readonly reason: InvalidLedgerStateReason
   ) {
-    super(
-      reason === 'unknown-kind'
-        ? `Cannot build a LedgerState of kind '${kind}'. Use one of 'ContractState', 'LedgerParameters' or 'ZswapChainState'.`
-        : reason === 'not-bytes'
-          ? `Cannot build a ${kind} LedgerState: the value is not a Uint8Array.`
-          : `The bytes are not a ${kind} written by the ${version} ledger. ` +
-            `Pass the version of the ledger that wrote them, and check they hold a ${kind}.`
-    );
+    super(INVALID_LEDGER_STATE_MESSAGES[reason](String(kind), String(era)));
     this.name = 'InvalidLedgerStateError';
   }
 }
 
-// Where a dApp imports the class that decodes each kind, per era. A contract state goes through the
-// dApp's own compact-runtime, so the object it gets back is one its compiled contract accepts.
 const DECODER_SOURCE: Readonly<Record<LedgerStateKind, Readonly<Record<LedgerVersion, string>>>> = {
   ContractState: {
-    v8: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your ledger 8 contract was compiled against',
+    v8: '`ContractState` from a ledger 8 `@midnight-ntwrk/compact-runtime` (0.16), such as the copy a ledger 8 contract was compiled against',
     v9: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your contract was compiled against'
   },
   LedgerParameters: {
@@ -482,7 +491,7 @@ const DECODER_SOURCE: Readonly<Record<LedgerStateKind, Readonly<Record<LedgerVer
 };
 
 /**
- * Thrown by `LedgerState.deserialize` when the decoders passed in have none for the version of the
+ * Thrown by `LedgerState.deserialize` when the decoders passed in have none for the era of the
  * value. The message names the class to import.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
@@ -493,17 +502,47 @@ export class LedgerStateDecoderMissingError extends MidnightJsError {
 
   /**
    * @param kind The kind of the value.
-   * @param version The ledger version that wrote the value.
+   * @param era The ledger era that wrote the value.
    */
   constructor(
     readonly kind: LedgerStateKind,
-    readonly version: LedgerVersion
+    readonly era: LedgerVersion
   ) {
     super(
-      `No decoder for a ${kind} written by the ${version} ledger. ` +
-        `Pass { ${version}: ${kind} }, with ${DECODER_SOURCE[kind][version]}.`
+      `No decoder for a ${kind} written by the ${era} ledger. ` +
+        `Pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}.`
     );
     this.name = 'LedgerStateDecoderMissingError';
+  }
+}
+
+/**
+ * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws. The bytes
+ * carry the right tag, so the decoder is the wrong one: it decodes another kind, or comes from a
+ * runtime that cannot read this era. The decoder's failure is the `cause`.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class LedgerStateDecodeFailedError extends MidnightJsError {
+  readonly code = LEDGER_STATE_DECODE_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER_STATE_DECODE_FAILED];
+
+  /**
+   * @param kind The kind of the value.
+   * @param era The ledger era that wrote the value.
+   * @param options Carries the decoder's failure as `cause`.
+   */
+  constructor(
+    readonly kind: LedgerStateKind,
+    readonly era: LedgerVersion,
+    options: { readonly cause: unknown }
+  ) {
+    super(
+      `The decoder passed for ${era} could not decode a ${kind} written by the ${era} ledger. ` +
+        `Pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}.`,
+      options
+    );
+    this.name = 'LedgerStateDecodeFailedError';
   }
 }
 

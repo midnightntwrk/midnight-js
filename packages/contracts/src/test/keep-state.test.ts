@@ -46,6 +46,7 @@ import {
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type ContractStateAndParametersRead,
   type ContractStateRead,
   type FinalizedTx,
   LedgerTransaction,
@@ -91,7 +92,7 @@ import {
   type ReplayState,
   txTagPrefix
 } from './ledger8-replay';
-import { contractStateRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from './test-mocks';
+import { contractStateAndParametersRead, contractStateRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from './test-mocks';
 import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // See `./v8-native.test.ts` for both redirects: the artifact's own runtime
@@ -144,13 +145,12 @@ type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeo
 // Served from the SAME read as `raw`, which is what a real provider does and what the pipeline
 // now requires. The initial parameters stand in for the content -- a chain serves different
 // numbers -- but they are the CURRENT era's bytes, which is what dates them to this block.
-const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
-  contractStateRead(raw, protocolVersion, LedgerParameters.initialParameters().serialize());
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndParametersRead =>
+  contractStateAndParametersRead(raw, protocolVersion, LedgerParameters.initialParameters().serialize());
 
 /**
- * The same record with the block's parameters missing, which is what a `PublicDataProvider` that
- * does not serve them produces. `ContractStateRead.ledgerParameters` is optional, so such a provider
- * is type-correct and the omission cannot be caught at the provider interface.
+ * The same record with the block's parameters missing, which is what a `PublicDataProvider` written
+ * in JavaScript, out of reach of the provider types, can still produce.
  */
 const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
   contractStateRead(raw, protocolVersion);
@@ -569,21 +569,6 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // a wasted proof.
     expect(log).not.toContain('era.composeCallTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
-  });
-
-  it('reads a current-era envelope with the CURRENT decoder even when the record mislabels itself as retained', async () => {
-    // The mirror, and the one a label-based route would get wrong in the
-    // dangerous direction: the label AGREES with the retained pipeline while
-    // the bytes are current-era. Routing on the label would hand current-era
-    // bytes to the retained decoder, which refuses them on the envelope tag.
-    // The envelope decides which decoder may read the bytes; it does not decide
-    // whether the caller's artifacts fit the contract.
-    const providers = postForkProviders(v6Envelope);
-    providers.publicDataProvider.queryContractState = vi
-      .fn()
-      .mockResolvedValue({ ...rawState(ledger9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
-
-    await expect(submitCallTx(providers, callOptions())).resolves.toBeDefined();
   });
 
   it('calls a MIGRATED contract again, whose state is current-era but whose keys are still retained', async () => {

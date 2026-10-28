@@ -21,6 +21,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol';
 import { type ContractAddress, type IntentHash, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
+  ContractStateAndParametersRead,
   ContractStateRead,
   PublicStatesRead,
   ReadMethod,
@@ -29,6 +30,7 @@ import type {
 import {
   FailEntirely,
   FailFallible,
+  InvalidLedgerStateError,
   LedgerState,
   type LedgerTransaction,
   SegmentFail,
@@ -314,20 +316,35 @@ const datedContractState = (
   assertWellFormedProtocolVersion(protocolVersion);
   const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
   assertStateNotNewerThanBlock(ledgerVersion, protocolVersion, options?.upperBound);
-  return LedgerState.fromBytes('ContractState', ledgerVersion, raw);
+  return LedgerState.fromBytes(ledgerVersion, 'ContractState', raw);
 };
 
-const ledgerParametersState = (hexParameters: string): LedgerState<'LedgerParameters'> => {
+const blockLedgerParameters = (hexParameters: string, protocolVersion: number): LedgerState<'LedgerParameters'> => {
   const { raw, ledgerVersion } = parametersBytesAndLedgerVersion(hexParameters);
-  return LedgerState.fromBytes('LedgerParameters', ledgerVersion, raw);
+  const blockVersion = reportedEra(protocolVersion);
+  if (blockVersion !== undefined && blockVersion !== ledgerVersion) {
+    throw IndexerDataError.parametersEraDisagreement(protocolVersion, blockVersion, ledgerVersion);
+  }
+  return LedgerState.fromBytes(ledgerVersion, 'LedgerParameters', raw);
+};
+
+const zswapChainState = (hexZswapState: string, era: LedgerVersion): LedgerState<'ZswapChainState'> => {
+  const raw = zswapBytes(hexZswapState);
+  try {
+    return LedgerState.fromBytes(era, 'ZswapChainState', raw);
+  } catch (error: unknown) {
+    if (error instanceof InvalidLedgerStateError) {
+      throw IndexerDataError.malformedZswapState(era, error);
+    }
+    throw error;
+  }
 };
 
 /**
- * Builds the record served by the contract-state reads of `PublicDataProvider`:
- * `queryContractState`, `watchForContractState`, `queryDeployContractState` and
+ * Builds the record served by `watchForContractState`, `queryDeployContractState` and
  * `contractStateObservable`. Nothing is decoded.
  *
- * The version tag on the bytes gives `contractState.version`, and `protocolVersion` bounds it: a
+ * The version tag on the bytes gives `contractState.era`, and `protocolVersion` bounds it: a
  * version tag newer than a checked dating block is {@link IndexerDataError.eraDisagreement}. A
  * `protocolVersion` that is not a non-negative integer is
  * {@link IndexerDataError.malformedProtocolVersion}, because it is copied onto the record; one this
@@ -335,34 +352,53 @@ const ledgerParametersState = (hexParameters: string): LedgerState<'LedgerParame
  *
  * @param hexState The hex-encoded serialized contract state, as the indexer serves it.
  * @param protocolVersion The protocol-version integer of the block that dates the state.
- * @param hexLedgerParameters The block's ledger parameters, when the read selects them.
  * @param options `upperBound` states whether `protocolVersion` certainly describes the same block as
  *                the bytes. Defaults to `'check'`. See {@link UpperBoundCheck}.
- * @throws {IndexerDataError} When a payload is not hex-encoded, or the state is newer than a checked
- *   dating block.
- * @throws {TagParseError} When a payload carries no supported version tag.
+ * @throws {IndexerDataError} When the state is not hex-encoded, or is newer than a checked dating
+ *   block.
+ * @throws {TagParseError} When the state carries no supported version tag.
  */
 export const toContractStateRead = (
   hexState: string,
   protocolVersion: number,
-  hexLedgerParameters?: string,
   options?: { readonly upperBound?: UpperBoundCheck }
 ): ContractStateRead => ({
   protocolVersion,
-  contractState: datedContractState(hexState, protocolVersion, options),
-  ledgerParameters: hexLedgerParameters === undefined ? undefined : ledgerParametersState(hexLedgerParameters)
+  contractState: datedContractState(hexState, protocolVersion, options)
+});
+
+/**
+ * Builds the record served by `queryContractState`: {@link toContractStateRead} plus the ledger
+ * parameters of the block that dates the read. Nothing is decoded.
+ *
+ * The parameters and `protocolVersion` come from the same block, so parameters of another era than
+ * that block are {@link IndexerDataError.parametersEraDisagreement}.
+ *
+ * @throws {IndexerDataError} When a payload is not hex-encoded, the state is newer than a checked
+ *   dating block, or the parameters are of another era than their block.
+ * @throws {TagParseError} When a payload carries no supported version tag.
+ */
+export const toContractStateAndParametersRead = (
+  hexState: string,
+  protocolVersion: number,
+  hexLedgerParameters: string,
+  options?: { readonly upperBound?: UpperBoundCheck }
+): ContractStateAndParametersRead => ({
+  ...toContractStateRead(hexState, protocolVersion, options),
+  ledgerParameters: blockLedgerParameters(hexLedgerParameters, protocolVersion)
 });
 
 /**
  * Builds the record served by `PublicDataProvider.queryZSwapAndContractState`. Nothing is decoded.
  *
- * The contract state is dated as in {@link toContractStateRead}. The ledger parameters must come
- * from the same era as the state; a pair from two eras is refused rather than mixed. The zswap chain
- * state carries no era of its own on the wire — v8 and v9 write the same format — so it takes the
- * era of the ledger parameters of its block.
+ * The contract state and the parameters are dated as in {@link toContractStateAndParametersRead}.
+ * The parameters must come from the same era as the state; a pair from two eras is refused rather
+ * than mixed. The zswap chain state carries no era of its own on the wire — v8 and v9 write the same
+ * format — so it takes the era of the ledger parameters of its block.
  *
  * @throws {IndexerDataError} `mixed-era-public-states` when the state and the parameters were
- *   written by different eras.
+ *   written by different eras, and `malformed-zswap-encoding` / `malformed-zswap-state` when the
+ *   zswap chain state is not hex-encoded or not a zswap chain state of that era.
  */
 export const toPublicStatesRead = (
   hexZswapState: string,
@@ -371,16 +407,20 @@ export const toPublicStatesRead = (
   protocolVersion: number,
   options?: { readonly upperBound?: UpperBoundCheck }
 ): PublicStatesRead => {
-  const contractState = datedContractState(hexState, protocolVersion, options);
-  const ledgerParameters = ledgerParametersState(hexParameters);
-  if (ledgerParameters.version !== contractState.version) {
-    throw IndexerDataError.mixedEraPublicStates(contractState.version, ledgerParameters.version);
+  const { contractState, ledgerParameters } = toContractStateAndParametersRead(
+    hexState,
+    protocolVersion,
+    hexParameters,
+    options
+  );
+  if (ledgerParameters.era !== contractState.era) {
+    throw IndexerDataError.mixedEraPublicStates(contractState.era, ledgerParameters.era);
   }
   return {
     protocolVersion,
     contractState,
     ledgerParameters,
-    zswapChainState: LedgerState.fromBytes('ZswapChainState', ledgerParameters.version, zswapBytes(hexZswapState))
+    zswapChainState: zswapChainState(hexZswapState, ledgerParameters.era)
   };
 };
 

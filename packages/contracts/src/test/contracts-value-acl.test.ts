@@ -55,6 +55,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'IncompleteDeployContractPrivateStateConfig',
   'IncompleteFindContractPrivateStateConfig',
   'IndexerInconsistencyError',
+  'PublicStatesEraMismatchError',
   'InsertVerifierKeyTxFailedError',
   'Ledger8',
   'LedgerParametersUnservedError',

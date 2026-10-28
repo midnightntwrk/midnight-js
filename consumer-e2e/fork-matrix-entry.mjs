@@ -284,9 +284,15 @@ const envelopeTag = (raw) => {
 const sampleEnvelope = async (publicDataProvider, contractAddress, samples, everyMs) => {
   const seen = [];
   for (let i = 0; i < samples; i += 1) {
-    const state = await publicDataProvider.queryContractState(contractAddress).catch(() => null);
+    const state = await publicDataProvider.queryContractState(contractAddress).catch((error) => ({ error }));
     const head = await publicDataProvider.queryLatestProtocolVersion().catch(() => null);
-    seen.push(state === null ? `head=${head} state=absent` : `head=${head} tag=${envelopeTag(state.contractState.serialize())}`);
+    seen.push(
+      state === null
+        ? `head=${head} state=absent`
+        : 'error' in state
+          ? `head=${head} error=${state.error?.name ?? String(state.error)}`
+          : `head=${head} tag=${envelopeTag(state.contractState.serialize())}`
+    );
     if (i + 1 < samples) {
       await delay(everyMs);
     }
@@ -307,9 +313,9 @@ const STREAM_WATCH_MS = 60_000;
  * block's ledger parameters. Nothing is decoded: the read hands back bytes in both eras.
  */
 const describeVersionedState = (state) => ({
-  version: state.contractState.version,
+  version: state.contractState.era,
   stateBytes: state.contractState.serialize().length,
-  ledgerParameters: state.ledgerParameters?.version ?? 'absent'
+  ledgerParameters: state.ledgerParameters?.era ?? 'absent'
 });
 
 /**
@@ -338,8 +344,8 @@ const recordsUntilFirstLedger9 = (publicDataProvider, contractAddress, streamCon
     );
     subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
       next: ({ value, blockHeight }) => {
-        seen.push({ version: value.version, blockHeight });
-        if (value.version === 'v9') {
+        seen.push({ version: value.contractState.era, blockHeight });
+        if (value.contractState.era === 'v9') {
           finish(() => resolve(seen));
         }
       },
@@ -466,13 +472,19 @@ const decodeAnswer = async (run) => {
  */
 const waitForContract = async (publicDataProvider, contractAddress, timeoutMs) => {
   const deadline = Date.now() + timeoutMs;
+  let lastError;
   for (;;) {
-    const state = await publicDataProvider.queryContractState(contractAddress).catch(() => null);
+    const state = await publicDataProvider.queryContractState(contractAddress).catch((error) => {
+      lastError = error;
+      return null;
+    });
     if (state !== null) {
       return state;
     }
     if (Date.now() >= deadline) {
-      throw new Error(`the indexer never served state for ${contractAddress} after its deploy was submitted`);
+      throw new Error(`the indexer never served state for ${contractAddress} after its deploy was submitted`, {
+        cause: lastError
+      });
     }
     await delay(2_000);
   }
@@ -1047,7 +1059,7 @@ const deployRetained = async (key, providers) => {
   return {
     txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
-    indexedAs: state.contractState.version,
+    indexedAs: state.contractState.era,
     envelope: envelopeTag(state.contractState.serialize()),
     // The key the path persisted for this address, CARRIED IN PROCESS ONLY so the
     // post-fork `findDeployedContract` leg has something to compare against that
@@ -1527,7 +1539,7 @@ await leg('pre-fork retained deploy', async () => {
   return {
     txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
-    indexedAs: state.contractState.version,
+    indexedAs: state.contractState.era,
     envelope: envelopeTag(state.contractState.serialize())
   };
 });
@@ -2250,8 +2262,8 @@ if (MEASURES_READ_SURFACE) {
       type: 'blockHash',
       blockHash: deployment.deployBlockHash
     });
-    if (state?.contractState.version !== 'v8') {
-      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.contractState.version ?? 'null'}'`);
+    if (state?.contractState.era !== 'v8') {
+      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.contractState.era ?? 'null'}'`);
     }
     return describeVersionedState(state);
   });
@@ -2305,7 +2317,7 @@ if (MEASURES_READ_SURFACE) {
 // translation of the current state must not reach it.
 const expectLedger8DeployState = async (name, publicDataProvider, contractAddress) => {
   const deployState = await publicDataProvider.queryDeployContractState(contractAddress);
-  const version = deployState === null ? 'absent' : deployState.contractState.version;
+  const version = deployState === null ? 'absent' : deployState.contractState.era;
   if (version !== 'v8') {
     failures.push(`${name}: expected queryDeployContractState to report the deploy state tagged 'v8', got '${version}'`);
   }
@@ -2983,7 +2995,7 @@ await leg('reads its own pre-fork history', async () => {
   if (state === null) {
     throw new Error('the contract deployed before the fork is no longer readable after it');
   }
-  return { version: state.contractState.version, protocolVersion: state.protocolVersion };
+  return { version: state.contractState.era, protocolVersion: state.protocolVersion };
 });
 
 // ── (e) the rest of the contract surface, on a chain that carries v8 history ──
@@ -3139,7 +3151,7 @@ const readOwnLedger = async (entry, providers, contractAddress) => {
       throw new Error('the indexer served no contract state');
     }
     ledger(state.contractState.deserialize({ v9: runtime.ContractState }).data);
-    return { ledgerReadBy: 'own runtime', stateVersion: state.contractState.version };
+    return { ledgerReadBy: 'own runtime', stateVersion: state.contractState.era };
   } catch (error) {
     failures.push(`post-fork ${entry.key}: reading the ledger with the contract's own runtime failed: ${describeError(error)}`);
     return { ledgerReadBy: `FAILED: ${describeError(error)}` };

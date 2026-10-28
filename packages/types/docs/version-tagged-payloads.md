@@ -18,7 +18,7 @@ This package handles that fact in three ways:
   and checks the WASM instance when it is made.
 - A value the ledger wrote and the read side returns — a contract state, ledger
   parameters, a zswap chain state — is a **`LedgerState`**: the bytes, plus the
-  version of the ledger that wrote them. The caller decodes it with its own
+  era of the ledger that wrote them. The caller decodes it with its own
   runtime.
 - A finalized-transaction record (`VersionedFinalizedTxData`) carries a
   `version` discriminant.
@@ -73,24 +73,31 @@ comes from the request, never from the bytes.
 ## On-chain state is bytes, decoded by the caller
 
 `LedgerState<K, E>` holds the bytes the ledger wrote, a `kind`
-(`'ContractState'`, `'LedgerParameters'` or `'ZswapChainState'`) and a `version`
-(`'v8'` or `'v9'`). The reads return it inside a record: `ContractStateRead`
-from `queryContractState`, `watchForContractState`, `queryDeployContractState`
+(`'ContractState'`, `'LedgerParameters'` or `'ZswapChainState'`) and an `era`
+(`'v8'` or `'v9'`), like `LedgerTransaction`. The reads return it inside a
+record: `ContractStateAndParametersRead` from `queryContractState`,
+`ContractStateRead` from `watchForContractState`, `queryDeployContractState`
 and `contractStateObservable`, and `PublicStatesRead` from
 `queryZSwapAndContractState`.
 
-- `LedgerState.fromBytes(kind, version, bytes)` makes one. It checks that the
-  bytes start with the tag the ledger of `version` writes for `kind`
+- `LedgerState.fromBytes(era, kind, bytes)` makes one, and nothing else can. It
+  checks that the bytes start with the tag the ledger of `era` writes for `kind`
   (`LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`), and
   refuses other bytes with `InvalidLedgerStateError`. A zswap chain state has the
-  same tag in v8 and v9, so the check accepts it under either version.
-- `state.serialize()` returns a copy of the bytes.
+  same tag in v8 and v9, so the check accepts it under either era.
+- `LedgerState.isLedgerState(value)` tells a `LedgerState` of this copy of the
+  package from a look-alike object.
+- `state.serialize()` returns a copy of the bytes. `fromBytes` copies too, so a
+  Node `Buffer` passed in shares no memory with the state.
 - `state.deserialize({ v9: ContractState })` decodes with the decoder for the
-  state's own version, and only that one. Pass the class from the runtime your
+  state's own era, and only that one. Pass the class from the runtime your
   contract was compiled against: a state decoded by another copy is refused by
   your contract's `ledger()` with `expected instance of ChargedState`. A missing
   decoder is refused with `LedgerStateDecoderMissingError`, whose message names
-  the class to import.
+  the class to import. A decoder that throws is reported as
+  `LedgerStateDecodeFailedError`, with its error as `cause`.
+- The bytes are a private field, so `structuredClone`, `postMessage` and JSON
+  drop them. Send `serialize()` and `era`, and rebuild with `fromBytes`.
 
 The shape is the same in every era, so the next fork changes no read type.
 

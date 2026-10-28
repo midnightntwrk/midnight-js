@@ -42,7 +42,8 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
-  type ContractStateRead,
+  type ContractStateAndParametersRead,
+  LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
   type UnprovenTx
@@ -332,12 +333,16 @@ export const readLedger8Snapshot = async (
   contractAddress: string,
   logger?: BreadcrumbSink
 ): Promise<Ledger8Snapshot> => {
-  const read: ContractStateRead = requireDeployedContract(await pdp.queryContractState(contractAddress), contractAddress);
+  const read: ContractStateAndParametersRead = requireDeployedContract(
+    await pdp.queryContractState(contractAddress),
+    contractAddress
+  );
 
   const stateEra = await resolveContractStateEra(head, read, pdp, logger);
+  const parameters: unknown = read.ledgerParameters;
   const state: Ledger8SnapshotBytes = {
     raw: read.contractState.serialize(),
-    ledgerParameters: read.ledgerParameters?.serialize()
+    ledgerParameters: LedgerState.isLedgerState(parameters) ? parameters.serialize() : undefined
   };
 
   // Read with the era the ENVELOPE names, never with the head's and never with

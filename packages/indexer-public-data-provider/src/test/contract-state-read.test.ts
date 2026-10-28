@@ -24,7 +24,7 @@ import {
   toHex,
   UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
@@ -34,7 +34,9 @@ import {
   LEDGER8_ERA_PROTOCOL_VERSION,
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateHex,
+  mintLedger8LedgerParametersHex,
   mintLedger9ContractStateHex,
+  mintLedger9LedgerParametersHex,
   UNRESOLVABLE_PROTOCOL_VERSION
 } from './state-fixtures';
 
@@ -45,9 +47,23 @@ type QueryMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => Promise<unk
 const buildProvider = (query: QueryMock): IndexerPublicDataProvider =>
   new IndexerPublicDataProvider(stubApolloHandle({ query }), 1000);
 
-const composedResponse = (state: string | null, protocolVersion: number | null, ledgerParameters?: string): unknown => ({
+let ledger8ParametersHex: string;
+
+beforeAll(async () => {
+  ledger8ParametersHex = await mintLedger8LedgerParametersHex();
+});
+
+// A block carries the parameters of its own era; `null` serves a block without them.
+const parametersOfBlock = (protocolVersion: number | null): string =>
+  protocolVersion === LEDGER8_ERA_PROTOCOL_VERSION ? ledger8ParametersHex : mintLedger9LedgerParametersHex();
+
+const composedResponse = (
+  state: string | null,
+  protocolVersion: number | null,
+  ledgerParameters: string | null = parametersOfBlock(protocolVersion)
+): unknown => ({
   data: {
-    block: protocolVersion === null ? null : { protocolVersion, ledgerParameters },
+    block: protocolVersion === null ? null : { protocolVersion, ...(ledgerParameters === null ? {} : { ledgerParameters }) },
     contract: state === null ? null : { state }
   }
 });
@@ -55,7 +71,7 @@ const composedResponse = (state: string | null, protocolVersion: number | null, 
 const providerServing = (
   state: string | null,
   protocolVersion: number | null,
-  ledgerParameters?: string
+  ledgerParameters?: string | null
 ): IndexerPublicDataProvider =>
   buildProvider(
     vi.fn<(request: ApolloRequest) => Promise<unknown>>().mockResolvedValue(composedResponse(state, protocolVersion, ledgerParameters))
@@ -194,7 +210,7 @@ describe('queryContractState', () => {
       );
 
       expect(record?.ledgerParameters?.kind).toBe('LedgerParameters');
-      expect(record?.ledgerParameters?.version).toBe('v9');
+      expect(record?.ledgerParameters?.era).toBe('v9');
       expect(record?.ledgerParameters?.serialize()).toEqual(new Uint8Array(fromHex(parametersHex)));
     });
 
@@ -206,13 +222,38 @@ describe('queryContractState', () => {
         ADDRESS
       );
 
-      expect(record?.ledgerParameters?.version).toBe('v8');
+      expect(record?.ledgerParameters?.era).toBe('v8');
     });
 
-    test('leaves the ledger parameters out when the block carries none', async () => {
-      const record = await providerServing(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION).queryContractState(ADDRESS);
+    test('refuses a block that carries no ledger parameters', async () => {
+      const rejection = await providerServing(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION, null)
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
 
-      expect(record?.ledgerParameters).toBeUndefined();
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-parameters-encoding' });
+    });
+
+    test('refuses ledger parameters of another era than the block that carries them', async () => {
+      const parametersHex = toHex((await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize());
+
+      const rejection = await providerServing(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION, parametersHex)
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({
+        kind: 'parameters-era-disagreement',
+        protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
+        reportedVersion: 'v9',
+        parametersVersion: 'v8'
+      });
     });
 
     test('refuses ledger parameters that are not hex-encoded', async () => {
@@ -234,7 +275,7 @@ describe('queryContractState', () => {
 
       const record = await providerServing(stateHex, LEDGER9_ERA_PROTOCOL_VERSION).queryContractState(ADDRESS);
 
-      expect(record?.contractState.version).toBe('v9');
+      expect(record?.contractState.era).toBe('v9');
       expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
       expect(ledger.ContractState.deserialize(record?.contractState.serialize() ?? new Uint8Array()).serialize()).toEqual(
         new Uint8Array(fromHex(stateHex))
@@ -247,7 +288,7 @@ describe('queryContractState', () => {
 
       const record = await providerServing(stateHex, LEDGER8_ERA_PROTOCOL_VERSION).queryContractState(ADDRESS);
 
-      expect(record?.contractState.version).toBe('v8');
+      expect(record?.contractState.era).toBe('v8');
       expect(record?.protocolVersion).toBe(LEDGER8_ERA_PROTOCOL_VERSION);
       expect(v8.ContractState.deserialize(record?.contractState.serialize() ?? new Uint8Array()).serialize()).toEqual(
         new Uint8Array(fromHex(stateHex))
@@ -259,7 +300,7 @@ describe('queryContractState', () => {
         ADDRESS
       );
 
-      expect(record?.contractState.version).toBe('v8');
+      expect(record?.contractState.era).toBe('v8');
       expect(record?.protocolVersion).toBe(LEDGER9_ERA_PROTOCOL_VERSION);
     });
 
@@ -270,7 +311,7 @@ describe('queryContractState', () => {
         ADDRESS
       );
 
-      expect(record?.contractState.version).toBe('v9');
+      expect(record?.contractState.era).toBe('v9');
     });
 
     test('refuses a pinned state whose version tag is newer than the block that dates it', async () => {
@@ -295,7 +336,7 @@ describe('queryContractState', () => {
         ADDRESS
       );
 
-      expect(record?.contractState.version).toBe('v9');
+      expect(record?.contractState.era).toBe('v9');
     });
 
     test('refuses a malformed protocol version rather than copying it onto the record', async () => {

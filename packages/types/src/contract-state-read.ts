@@ -24,31 +24,41 @@ import type { LedgerState } from './ledger-state';
  * import { ContractState } from '@midnight-ntwrk/compact-runtime';
  *
  * const read = await publicDataProvider.queryContractState(address);
- * const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+ * if (read !== null) {
+ *   const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+ * }
  * ```
  */
 export interface ContractStateRead {
   /**
-   * The protocol-version integer of the block that dates the read. Its era can be newer than
-   * `contractState.version`: a state keeps the version of the ledger that wrote it.
+   * The protocol-version integer of the block that dates the read. A state keeps the era of the
+   * ledger that wrote it, so this era can be newer than `contractState.era`. On a read with no block
+   * given, the block and the state are looked up separately, so near the hard fork this era can also
+   * be older than `contractState.era`.
    */
   readonly protocolVersion: number;
   /** The contract state. */
   readonly contractState: LedgerState<'ContractState'>;
+}
+
+/**
+ * A {@link ContractStateRead} together with the ledger parameters of the block that dates the read.
+ * `queryContractState` returns it, because building a call needs both.
+ */
+export interface ContractStateAndParametersRead extends ContractStateRead {
   /**
-   * The ledger parameters of the block that dates the read. They come from the same block as the
-   * state. Optional, because a provider that cannot serve them is still a usable provider.
+   * The ledger parameters of the block that dates the read. On a read with no block given, that
+   * block is looked up separately from the state, so near the hard fork it can be a block other than
+   * the one the state was read at.
    */
-  readonly ledgerParameters?: LedgerState<'LedgerParameters'>;
+  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
 }
 
 /**
  * The public states of one contract read from one block: the contract state, the zswap chain state
- * and the ledger parameters, all as bytes.
+ * and the ledger parameters, all as bytes and all written by the ledger of one era.
  */
-export interface PublicStatesRead extends ContractStateRead {
-  /** The ledger parameters of the block, always present on this record. */
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+export interface PublicStatesRead extends ContractStateAndParametersRead {
   /** The zswap chain state of the contract, resolved at the block. */
   readonly zswapChainState: LedgerState<'ZswapChainState'>;
 }

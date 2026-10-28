@@ -21,11 +21,13 @@ import {
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   ArtifactRuntimeVersionUnavailableError,
   type ContractStateRead,
   type FinalizedTxData,
+  LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
   type PublicStatesRead,
@@ -52,8 +54,8 @@ import {
   Ledger8MaintenanceOnLedger9Error,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
+  PublicStatesEraMismatchError,
   type SubmittedOperationKind} from '../errors';
-import type { Ledger9PublicStates } from '../get-states';
 import type { Ledger8Contract } from '../ledger8-contract';
 import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
@@ -92,15 +94,45 @@ export function requireProviderResult<S extends TransactionStage>(
 const CONTRACTS_PACKAGE = '@midnight-ntwrk/midnight-js-contracts';
 
 const requireLedger9Read = (read: ContractStateRead, contractAddress: string, operation: string): void => {
-  const version: unknown = read?.contractState?.version;
-  if (version === 'v9') {
-    return;
+  const contractState: unknown = read?.contractState;
+  if (!LedgerState.isLedgerState(contractState)) {
+    throw new UnrecognisedEraTagError(operation, contractState);
   }
-  if (version === 'v8') {
+  if (contractState.era === 'v8') {
     throw new Ledger8ContractStateUnsupportedError(contractAddress, operation);
   }
-  throw new UnrecognisedEraTagError(operation, read?.contractState);
+  if (contractState.era !== 'v9') {
+    throw new UnrecognisedEraTagError(operation, contractState);
+  }
 };
+
+const requireLedger9Companion = (
+  read: PublicStatesRead,
+  field: 'ledgerParameters' | 'zswapChainState',
+  contractAddress: string
+): void => {
+  const state: unknown = read[field];
+  if (!LedgerState.isLedgerState(state)) {
+    throw new PublicStatesEraMismatchError(contractAddress, field, undefined);
+  }
+  if (state.era !== 'v9') {
+    throw new PublicStatesEraMismatchError(contractAddress, field, state.era);
+  }
+};
+
+/**
+ * The public states of a contract, decoded by the framework's own runtime to build a transaction.
+ */
+export interface Ledger9PublicStates {
+  readonly contractState: ContractState;
+  readonly ledgerParameters: LedgerParameters;
+  readonly zswapChainState: ZswapChainState;
+}
+
+/** {@link Ledger9PublicStates} together with the private state of the contract. */
+export interface Ledger9ContractStates<PS> extends Ledger9PublicStates {
+  readonly privateState: PS;
+}
 
 /**
  * Decodes a contract state this package read on the caller's behalf, with the framework's own
@@ -124,17 +156,21 @@ export const decodeLedger9ContractState = (
  * runtime. Only for building a transaction: a dApp decodes the states with its own runtime.
  *
  * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the contract state.
- * @throws UnrecognisedEraTagError if the record carries no state of a known era.
+ * @throws UnrecognisedEraTagError if the record carries no contract state of a known era.
+ * @throws PublicStatesEraMismatchError if the ledger parameters or the zswap chain state are missing
+ *   or were not written by the v9 ledger.
  */
 export const decodeLedger9PublicStates = (
   read: PublicStatesRead,
   contractAddress: string,
   operation: string
 ): Ledger9PublicStates => {
+  requireLedger9Read(read, contractAddress, operation);
+  requireLedger9Companion(read, 'ledgerParameters', contractAddress);
+  requireLedger9Companion(read, 'zswapChainState', contractAddress);
   const contractState = decodeLedger9ContractState(read, contractAddress, operation);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return {
-    version: 'v9',
     contractState,
     ledgerParameters: read.ledgerParameters.deserialize({
       v9: { deserialize: (bytes) => deserializeLedgerParameters(bytes, { caller }) }
@@ -770,7 +806,7 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * The envelope's era is `state.contractState.version`: `LedgerState.fromBytes` refuses bytes whose
+ * The envelope's era is `state.contractState.era`: `LedgerState.fromBytes` refuses bytes whose
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
@@ -792,6 +828,8 @@ export const assertEraCompatible = (
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws NetworkVersionStateMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
+ * @throws UnrecognisedEraTagError if the contract state is not a `LedgerState`: the shape of a
+ * pre-5.0.0 provider.
  */
 export const resolveContractStateEra = async (
   head: LedgerVersion,
@@ -799,7 +837,11 @@ export const resolveContractStateEra = async (
   pdp: HeadVersionSource,
   logger?: BreadcrumbSink
 ): Promise<LedgerVersion> => {
-  const stateEra = state.contractState.version;
+  const contractState: unknown = state?.contractState;
+  if (!LedgerState.isLedgerState(contractState)) {
+    throw new UnrecognisedEraTagError('queryContractState', contractState);
+  }
+  const stateEra = contractState.era;
   // Reported for the ACCEPTED case too, not only for a refusal: which era
   // decoded a state is the fact an operator needs when the state decodes but
   // the call behaves oddly, and only the accepted path reaches a decoder.

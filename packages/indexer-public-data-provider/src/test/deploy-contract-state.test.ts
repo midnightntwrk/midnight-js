@@ -54,7 +54,7 @@ const providerAnswering = (data: unknown) => {
 };
 
 const serialized = (result: ContractStateRead | null): { version: string; bytes: number[] } | null =>
-  result === null ? null : { version: result.contractState.version, bytes: Array.from(result.contractState.serialize()) };
+  result === null ? null : { version: result.contractState.era, bytes: Array.from(result.contractState.serialize()) };
 
 const ARMS: readonly { arm: ActionArm; record: string }[] = [
   { arm: 'ContractDeploy', record: "the deploy's record" },
