@@ -397,9 +397,9 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
  * current toolchain's `CompiledContract` container.
  *
  * Shape only, with no artifact read, so it is synchronous. It is for enumerating the circuits a
- * contract declares and for narrowing which overload a call type-checks against, never for choosing
- * a pipeline: {@link resolveArtifactEra} remains the one era decision, and every operation reached
- * after this check makes it.
+ * contract declares, for narrowing which overload a call type-checks against and for building the
+ * matching options shape, never for choosing a pipeline: {@link resolveArtifactEra} remains the
+ * one era decision, and every operation reached after this check makes it.
  *
  * @param compiledContract The contract a caller passed.
  * @returns `true` for the retained toolchain's shape.
