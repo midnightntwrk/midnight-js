@@ -120,7 +120,7 @@ export type FoundDeployTxData<C extends AnyEraContract> = C extends Ledger8Contr
     ? Ledger9FoundDeployTxData<C>
     : never;
 
-/** A finalized deploy. Generic code names an era: `Ledger9FinalizedDeployTxData<C>` or `Ledger8.DeployTxData<C>`. */
+/** A finalized deploy. Generic code names an era: `Ledger9FinalizedDeployTxData<C>` or `Ledger8DeployTxData<C>`. */
 export type FinalizedDeployTxData<C extends AnyEraContract> = C extends Ledger8Contract
   ? Ledger8DeployTxData<C>
   : C extends Ledger9Contract

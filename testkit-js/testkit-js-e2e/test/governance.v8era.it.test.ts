@@ -18,7 +18,8 @@ import path from 'node:path';
 import {
   BlankVerifierKeySlotError,
   deployContract,
-  type Ledger8,
+  type Ledger8CircuitId,
+  type Ledger8ContractProviders,
   submitCallTx,
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
@@ -78,7 +79,7 @@ describe('Contract maintenance through a retained-era artifact on a pre-fork (le
   let testEnvironment: TestEnvironment;
   let environmentConfiguration: EnvironmentConfiguration;
   let wallet: MidnightWalletProvider;
-  let providers: Ledger8.ContractProviders<typeof contract, Ledger8.CircuitId<typeof contract>>;
+  let providers: Ledger8ContractProviders<typeof contract, Ledger8CircuitId<typeof contract>>;
   let contractAddress: ContractAddress;
   let deployKey: SigningKey;
 

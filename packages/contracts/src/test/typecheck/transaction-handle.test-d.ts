@@ -20,13 +20,15 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type {
   FinalizedCallTxData,
   FinalizedDeployTxData,
-  Ledger8,
+  Ledger8CallResultPrivate,
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8FinalizedCallTxData,
   SubmitTxOptions,
   UnsubmittedCallTxData,
   UnsubmittedDeployTxData,
   UnsubmittedTxData
 } from '../../index';
-import type { Ledger8CallResultPrivate, Ledger8CircuitId, Ledger8Contract } from '../../ledger8-contract';
 
 type AnyLedger8CircuitId = Ledger8CircuitId<Ledger8Contract>;
 
@@ -40,8 +42,7 @@ describe('every transaction the contracts barrel publishes is a handle', () => {
 
   it('carries the retained-era call result as an UnprovenTx and no transaction bytes', () => {
     expectTypeOf<Ledger8CallResultPrivate<Ledger8Contract, AnyLedger8CircuitId>['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
-    expectTypeOf<Ledger8.CallResultPrivate<Ledger8.Contract, AnyLedger8CircuitId>['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
-    expectTypeOf<Ledger8.CallResultPrivate<Ledger8.Contract, AnyLedger8CircuitId>>().not.toHaveProperty('txBytes');
+    expectTypeOf<Ledger8CallResultPrivate<Ledger8Contract, AnyLedger8CircuitId>>().not.toHaveProperty('txBytes');
   });
 
   it('carries the finalized record as a FinalizedTx of the record era', () => {
@@ -49,7 +50,7 @@ describe('every transaction the contracts barrel publishes is a handle', () => {
       LedgerTransaction<'Finalized', 'v9'>
     >();
     expectTypeOf<FinalizedDeployTxData<Contract.Any>['public']['tx']>().toExtend<FinalizedTx>();
-    expectTypeOf<Ledger8.FinalizedCallTxData<Ledger8.Contract, AnyLedger8CircuitId>['public']['tx']>().toEqualTypeOf<
+    expectTypeOf<Ledger8FinalizedCallTxData<Ledger8Contract, AnyLedger8CircuitId>['public']['tx']>().toEqualTypeOf<
       LedgerTransaction<'Finalized', 'v8'> | LedgerTransaction<'Finalized', 'v9'>
     >();
   });

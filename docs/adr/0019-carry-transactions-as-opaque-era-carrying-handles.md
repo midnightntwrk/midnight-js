@@ -122,7 +122,7 @@ The rules:
 7. **Layer rule.** `protocol` sits below `types` and cannot know the handle, so it speaks raw ledger
    objects. Every package from `types` upward speaks only handles in its public API: the three
    provider methods, every `contracts` function and result that takes or returns a transaction
-   (`submitTx`, `createUnproven*Tx`, `.private.unprovenTx`, `Ledger8.CallResultPrivate.unprovenTx`),
+   (`submitTx`, `createUnproven*Tx`, `.private.unprovenTx`, `Ledger8CallResultPrivate.unprovenTx`),
    the finalized-transaction records of the read side, `utils.deserializeLedgerTransaction` and
    `indexer-public-data-provider.parseHexTransaction`. The one exception is the per-era handler
    types, which take and return raw objects of their own era by design.

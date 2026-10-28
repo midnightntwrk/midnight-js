@@ -140,7 +140,44 @@ describe('Contracts type ACL', () => {
       'FoundContract',
       'FoundDeployTxData',
       'FoundDeployTxPublicData',
+      'Ledger8CallResultPrivate',
+      'Ledger8CallResultPublic',
+      'Ledger8CallTxOptions',
+      'Ledger8CallTxOptionsBase',
+      'Ledger8CallTxOptionsWithPrivateStateId',
+      'Ledger8CallTxTarget',
+      'Ledger8Circuit',
+      'Ledger8CircuitCallTxInterface',
+      'Ledger8CircuitContext',
+      'Ledger8CircuitId',
+      'Ledger8CircuitMaintenanceTxInterface',
+      'Ledger8CircuitMaintenanceTxInterfaces',
+      'Ledger8CircuitParameters',
+      'Ledger8CircuitResult',
+      'Ledger8CircuitReturnType',
+      'Ledger8ConstructorParameters',
+      'Ledger8Contract',
+      'Ledger8ContractCall',
+      'Ledger8ContractCallPublic',
+      'Ledger8ContractMaintenanceTxInterface',
+      'Ledger8ContractProviders',
+      'Ledger8DeployContractOptions',
+      'Ledger8DeployContractOptionsBase',
+      'Ledger8DeployContractOptionsWithPrivateState',
+      'Ledger8DeployedContract',
+      'Ledger8DeployTxData',
+      'Ledger8FinalizedCallTxData',
+      'Ledger8FinalizedCallTxPublicData',
+      'Ledger8FinalizedMaintenanceTxData',
+      'Ledger8FindDeployedContractOptions',
+      'Ledger8FoundContract',
+      'Ledger8FoundDeployTxData',
       'Ledger8FoundDeployTxPublicData',
+      'Ledger8InitialStateResult',
+      'Ledger8PrivateState',
+      'Ledger8SubmittedCallTx',
+      'Ledger8UnsubmittedCallTxData',
+      'Ledger8Witness',
       'Ledger9CallResultPrivate',
       'Ledger9CallResultPublic',
       'Ledger9CallTxOptions',
@@ -194,52 +231,13 @@ describe('Contracts type ACL', () => {
   /**
    * @given the `Ledger8` namespace the barrel re-exports
    * @when its type-only members are read with the compiler's own resolution
-   * @then they equal the pinned set exactly
+   * @then there are none
    *
-   * The retained-era family left the flat surface, and the list above stopped
-   * covering it with it. Pinned here instead: dropping this suite would leave
-   * ~30 published types with no gate at all, which is the surface the previous
-   * list existed to guard.
+   * A type reachable only through the namespace cannot be named in a dApp's declaration emit
+   * (TS4023), so the retained-era types are flat `Ledger8*` names and the namespace keeps only
+   * the error classes.
    */
-  it('publishes exactly this retained-era type surface', () => {
-    expect(typeOnlyExportNames('Ledger8')).toEqual([
-      'CallResultPrivate',
-      'CallResultPublic',
-      'CallTxOptions',
-      'CallTxOptionsBase',
-      'CallTxOptionsWithPrivateStateId',
-      'CallTxTarget',
-      'Circuit',
-      'CircuitCallTxInterface',
-      'CircuitContext',
-      'CircuitId',
-      'CircuitMaintenanceTxInterface',
-      'CircuitMaintenanceTxInterfaces',
-      'CircuitParameters',
-      'CircuitResult',
-      'CircuitReturnType',
-      'ConstructorParameters',
-      'Contract',
-      'ContractCall',
-      'ContractCallPublic',
-      'ContractMaintenanceTxInterface',
-      'ContractProviders',
-      'DeployContractOptions',
-      'DeployContractOptionsBase',
-      'DeployContractOptionsWithPrivateState',
-      'DeployedContract',
-      'DeployTxData',
-      'FinalizedCallTxData',
-      'FinalizedCallTxPublicData',
-      'FinalizedMaintenanceTxData',
-      'FindDeployedContractOptions',
-      'FoundContract',
-      'FoundDeployTxData',
-      'InitialStateResult',
-      'PrivateState',
-      'SubmittedCallTx',
-      'UnsubmittedCallTxData',
-      'Witness'
-    ]);
+  it('publishes no type under the retained-era namespace', () => {
+    expect(typeOnlyExportNames('Ledger8')).toEqual([]);
   });
 });

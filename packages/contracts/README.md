@@ -216,7 +216,7 @@ type ContractProviders = {
 A flat name such as `FoundContract<C>` picks the ledger 8 or ledger 9 variant
 from the contract type, so `FoundContract<typeof MyContract>` is always the
 type of the toolchain that compiled `MyContract`. The entry points return the
-era-named type: `Ledger9FoundContract<C>` or `Ledger8.FoundContract<C>`.
+era-named type: `Ledger9FoundContract<C>` or `Ledger8FoundContract<C>`.
 
 In generic code the contract is unknown, so name the era:
 

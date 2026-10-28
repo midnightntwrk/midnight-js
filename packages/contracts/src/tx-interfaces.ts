@@ -70,7 +70,7 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
 
 /**
  * Creates the options `submitCallTx` takes to call one circuit: a {@link Ledger9CallTxOptions} for a
- * ledger 9 `CompiledContract`, or a `Ledger8.CallTxOptions` for a ledger 8 contract.
+ * ledger 9 `CompiledContract`, or a {@link Ledger8CallTxOptions} for a ledger 8 contract.
  *
  * `args` is left out for a circuit that takes no arguments, and `privateStateId` when it is
  * `undefined`. `circuitId` must be a circuit the contract declares; a plain string literal is
@@ -169,7 +169,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
 };
 
 /**
- * Creates a {@link Ledger9CircuitCallTxInterface}, or the retained era's `Ledger8.CircuitCallTxInterface`
+ * Creates a {@link Ledger9CircuitCallTxInterface}, or the retained era's `Ledger8CircuitCallTxInterface`
  * for a contract the retained Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.

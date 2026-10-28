@@ -840,20 +840,20 @@ Match errors on their `code`, not their message (ADR 0017).
 
 ## 16. Retained-era handles: one `deployTxData` shape and one signing-key type (#1514)
 
-`Ledger8.FoundContract` and `Ledger8.DeployedContract` now carry `deployTxData` as
+`Ledger8FoundContract` and `Ledger8DeployedContract` now carry `deployTxData` as
 `{ era, public, private }`, the shape the current era's handles have. The deployer's data moved
 off the top level, and the retained era's signing key is now the current era's `SigningKey`,
 `{ tag, value }`.
 
 | Where | Before | After |
 |---|---|---|
-| `Ledger8.FoundContract.deployTxData` | `{ public: FinalizedTxRead }` | `Ledger8.FoundDeployTxData<C>`: `{ era: 'v8', public: FinalizedTxRead & { contractAddress }, private: { signingKey, initialPrivateState } }` |
-| `Ledger8.DeployedContract.deployTxData` | `{ public: FinalizedTxRead }` | `Ledger8.DeployTxData<C>`: `public` adds `initialContractState`, `initialContractStateBytes`; `private` adds `initialZswapState` |
-| `Ledger8.FoundContract.signingKey` | `Ledger8SigningKey \| undefined` (bare hex) | removed; `deployTxData.private.signingKey: SigningKey \| undefined` |
-| `Ledger8.DeployedContract.signingKey` | `Ledger8SigningKey` | removed; `deployTxData.private.signingKey: SigningKey` |
-| `Ledger8.DeployedContract.initialContractState`, `initialContractStateBytes` | top level | `deployTxData.public.*` |
-| `Ledger8.DeployedContract.initialPrivateState`, `initialZswapState` | top level | `deployTxData.private.*` |
-| `Ledger8.DeployContractOptions.signingKey`, `Ledger8.FindDeployedContractOptions.signingKey` | `Ledger8SigningKey` (bare hex) | `SigningKey` |
+| `Ledger8FoundContract.deployTxData` | `{ public: FinalizedTxRead }` | `Ledger8FoundDeployTxData<C>`: `{ era: 'v8', public: FinalizedTxRead & { contractAddress }, private: { signingKey, initialPrivateState } }` |
+| `Ledger8DeployedContract.deployTxData` | `{ public: FinalizedTxRead }` | `Ledger8DeployTxData<C>`: `public` adds `initialContractState`, `initialContractStateBytes`; `private` adds `initialZswapState` |
+| `Ledger8FoundContract.signingKey` | `Ledger8SigningKey \| undefined` (bare hex) | removed; `deployTxData.private.signingKey: SigningKey \| undefined` |
+| `Ledger8DeployedContract.signingKey` | `Ledger8SigningKey` | removed; `deployTxData.private.signingKey: SigningKey` |
+| `Ledger8DeployedContract.initialContractState`, `initialContractStateBytes` | top level | `deployTxData.public.*` |
+| `Ledger8DeployedContract.initialPrivateState`, `initialZswapState` | top level | `deployTxData.private.*` |
+| `Ledger8DeployContractOptions.signingKey`, `Ledger8FindDeployedContractOptions.signingKey` | `Ledger8SigningKey` (bare hex) | `SigningKey` |
 | `Ledger8.DeployTxFailedError.signingKey`, `Ledger8.DeployUnconfirmedError.signingKey`, `Ledger8.DeployNotStoredError.signingKey` | `Ledger8SigningKey` | `SigningKey` |
 | `Ledger8.SigningKeyUnusableError` | raised by `findDeployedContract` only; `contractAddress: string` | also raised by `deployContract` and by the retained-era `submitReplaceAuthorityTx` / `replaceAuthority`, before anything is composed; `contractAddress?: string` (absent on a deploy) |
 
@@ -880,11 +880,11 @@ maintenance result is now nested like every other `contracts` result.
 
 | Where | Before | After |
 |---|---|---|
-| `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>`, `{ era: 'v9', public: FinalizedTxData }`; a retained-era artifact resolves `Promise<Ledger8.FinalizedMaintenanceTxData>`, `{ era: 'v8', public: Ledger8FinalizedTxData }` |
+| `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>`, `{ era: 'v9', public: FinalizedTxData }`; a retained-era artifact resolves `Promise<Ledger8FinalizedMaintenanceTxData>`, `{ era: 'v8', public: Ledger8FinalizedTxData }` |
 | `submitReplaceAuthorityTx(...)` | `(newAuthority) => Promise<FinalizedTxData>` | `(newAuthority) => Promise<FinalizedMaintenanceTxData>`, or the retained-era result for a retained-era artifact |
 | `CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` methods | `Promise<FinalizedTxData>` | `Promise<FinalizedMaintenanceTxData>` |
-| `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8.CircuitMaintenanceTxInterface(s)` / `Ledger8.ContractMaintenanceTxInterface` |
-| `Ledger8.FoundContract`, `Ledger8.DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
+| `createCircuitMaintenanceTxInterface(s)`, `createContractMaintenanceTxInterface` | current-era artifact only | also a retained-era artifact, answering `Ledger8CircuitMaintenanceTxInterface(s)` / `Ledger8ContractMaintenanceTxInterface` |
+| `Ledger8FoundContract`, `Ledger8DeployedContract` | no maintenance members | `circuitMaintenanceTx`, `contractMaintenanceTx` |
 | `SubmittedOperationKind` | `'call' \| 'deploy'` | `'call' \| 'deploy' \| 'maintenance'` |
 | `ComposeStage` (protocol) | no maintenance stage | gains `'maintenance-update'` |
 | `ComposeOption` (protocol) | no replacement-key option | gains `'newSigningKey'` |
@@ -971,7 +971,7 @@ way.
 | `types` | `UntaggedPayloadError` | `InvalidTransactionHandleError` (`MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE`), reason `not-a-handle` |
 | `protocol` | `Ledger8InstanceMismatchError` (`MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH`) | `ForeignLedgerTransactionError` (`MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION`) in `types`, raised by `LedgerTransaction.seal` |
 | `types` | `Ledger8FinalizedTxData.tx` (a v8 ledger object) | `FinalizedTx`; read it with `LedgerTransaction.unwrap(record.tx, record.era)` |
-| `contracts` | `Ledger8.CallResultPrivate.txBytes` | `unprovenTx: UnprovenTx`, a v8 handle before the fork and a v9 handle after it |
+| `contracts` | `Ledger8CallResultPrivate.txBytes` | `unprovenTx: UnprovenTx`, a v8 handle before the fork and a v9 handle after it |
 | `contracts` | `SubmitTxOptions.unprovenTx: VersionedUnprovenTransaction` | `UnprovenTx` |
 
 New codes, all in `PROVIDER_ERROR_CODES`:
@@ -1165,7 +1165,7 @@ moves to the next ledger at a fork.
 **Types with a contract parameter.** The flat name stays and becomes an alias:
 
 ```ts
-type FoundContract<C> = C extends Ledger8.Contract ? Ledger8.FoundContract<C>
+type FoundContract<C> = C extends Ledger8Contract ? Ledger8FoundContract<C>
   : C extends Ledger9Contract ? Ledger9FoundContract<C>
   : never;
 ```
@@ -1211,6 +1211,30 @@ before this rename.
 
 New: `Ledger9Contract` (the ledger 9 `Contract.Any`), `AnyEraContract` and
 `CircuitIdOf<C>`. See ADR 0013 and ADR 0018.
+
+---
+
+## 23. Ledger 8 types are flat `Ledger8*` names (#1561)
+
+The `Ledger8` namespace no longer has type members. Each ledger 8 type is a flat
+export with the `Ledger8` prefix, like the `Ledger9*` types:
+
+| Before | After |
+|---|---|
+| `Ledger8.FoundContract<C>` | `Ledger8FoundContract<C>` |
+| `Ledger8.DeployedContract<C>` | `Ledger8DeployedContract<C>` |
+| `Ledger8.FinalizedCallTxData<C, K>` | `Ledger8FinalizedCallTxData<C, K>` |
+| `Ledger8.Contract` | `Ledger8Contract` |
+| `Ledger8.X` (any of the 37 types) | `Ledger8X` |
+
+Why: the entry points return these types by their `Ledger8*` names. A dApp built
+with `declaration: true` that exports a value inferred from a ledger 8 call failed
+with TS4023 ("has or is using name 'Ledger8DeployedContract' ... but cannot be
+named"), because the package exported the type only through the namespace.
+
+The 18 error classes stay in the namespace (`Ledger8.CallTxFailedError`). An error
+type reaches your code only through your own `Ledger8.X`, so declaration emit can
+always name it. See ADR 0013.
 
 ---
 

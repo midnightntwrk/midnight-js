@@ -145,3 +145,23 @@ and a dApp that emits declarations must be able to name what it infers: a type r
 through a namespace re-export fails with TS4023 ("cannot be named"). The `Ledger8` namespace has
 the same defect; flat `Ledger8*` exports are a follow-up.
 
+
+## Amendment — ledger 8 types are flat `Ledger8*` names; the namespace keeps the errors (2026-10-28)
+
+Issue #1561. The decision changes for types.
+
+- The 37 retained-era types are flat exports under their declared names (`Ledger8FoundContract`,
+  `Ledger8DeployedContract`, ...). The `Ledger8` namespace has no type members.
+- The 18 retained-era error classes stay in the `Ledger8` namespace (`Ledger8.CallTxFailedError`).
+
+Why types: the entry points return the retained types by their declared names. A dApp built with
+`declaration: true` that exports a value inferred from a ledger 8 call must be able to name that
+type, and a type reachable only through a namespace re-export fails with TS4023. This is the same
+reason the ledger 9 types are flat (#1536).
+
+Why not errors: no entry point returns an error type. A consumer reaches one only through its own
+`Ledger8.X`, which declaration emit prints back unchanged. Moving the errors is left to #1557.
+
+Consequences: the "one name instead of 37" benefit is gone for types; withdrawing the retained era
+now also deletes the flat `Ledger8*` type block in `src/index.ts`. The declaration names and the
+published names agree for types, so the "divergent names" negative applies only to the errors.

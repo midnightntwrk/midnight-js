@@ -16,7 +16,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { deployContract, type Ledger8, ProviderFailedError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  deployContract,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  ProviderFailedError,
+  submitCallTx
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
@@ -97,7 +104,7 @@ const currentTimeSeconds = (): bigint => BigInt(Math.floor(Date.now() / 1_000));
 const unshieldedContract = new RetainedUnshieldedContract<undefined>({});
 const blockTimeContract = new RetainedBlockTimeContract<undefined>({});
 
-type RetainedProviders<C extends Ledger8.Contract> = Ledger8.ContractProviders<C, Ledger8.CircuitId<C>>;
+type RetainedProviders<C extends Ledger8Contract> = Ledger8ContractProviders<C, Ledger8CircuitId<C>>;
 
 describe('Retained-era contract calls on a pre-fork (ledger v8) network', () => {
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
