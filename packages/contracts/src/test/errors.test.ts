@@ -28,10 +28,10 @@ import {
   EraInvariantViolationError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  Ledger8DeployNotStoredError,
-  Ledger8DeployUnconfirmedError,
-  Ledger8RecipientUnmappableError,
-  Ledger8SigningKeyUnusableError,
+  Ledger8CallUnsupportedError,
+  Ledger8NotStoredError,
+  Ledger8SigningKeyError,
+  Ledger8UnconfirmedError,
   type TxFailedDetails,
   TxFailedError,
   type TxFailedOperation
@@ -208,83 +208,90 @@ describe('the incomplete private-state configuration refusals', () => {
   });
 });
 
-describe('Ledger8DeployUnconfirmedError', () => {
+describe('Ledger8UnconfirmedError', () => {
   const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'b2'.repeat(32) };
   const ADDRESS = '0300'.repeat(8);
   const eraViolation = (): EraInvariantViolationError =>
     new EraInvariantViolationError('watchForDeployTxData', undefined, 'v8', 'v9');
 
   it('keeps the era violation on cause, so the condition and its registered code stay reachable', () => {
-    // The class no longer EXTENDS the violation, so `cause` is the only route left to the method and
-    // the code a caller branches on. Dropping it would strand the original stack too.
     const violation = eraViolation();
 
-    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, violation);
+    const error = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, violation);
 
     expect(error.cause).toBe(violation);
-    expect(error.cause instanceof EraInvariantViolationError).toBe(true);
     expect(hasErrorCode(error.cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
   });
 
   it('keeps a non-era rejection on cause too, unreplaced', () => {
     const unreachable = new Error('indexer unreachable');
 
-    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, unreachable);
+    const error = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, unreachable);
 
     expect(error.cause).toBe(unreachable);
-    expect(error.cause instanceof EraInvariantViolationError).toBe(false);
   });
 
-  it('states per CONDITION why the deployment is unconfirmed, because the two reasons differ', () => {
-    // One class does not mean one message: a record that arrived from the wrong era and a record
-    // that never arrived send a reader to different places to find out what happened.
-    const mislabelled = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
-    const unreadable = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
+  it('states per CONDITION why a deployment is unconfirmed, because the two reasons differ', () => {
+    const mislabelled = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, eraViolation());
+    const unreadable = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
 
     expect(mislabelled.message).toContain('watchForDeployTxData');
     expect(unreadable.message).toContain('could not be read back');
     expect(mislabelled.message).not.toBe(unreadable.message);
   });
 
-  it('ends both conditions on the same remediation, because the caller does the same thing', () => {
-    const mislabelled = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
-    const unreadable = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
+  it('ends both deploy conditions on the same remediation, because the caller does the same thing', () => {
+    const mislabelled = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, eraViolation());
+    const unreadable = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, new Error('indexer unreachable'));
 
     expect(mislabelled.message).toContain('may still finalize');
     expect(unreadable.message).toContain('may still finalize');
   });
 
-  it('carries the signing key and says where to read it, without printing the key itself', () => {
-    const error = new Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, eraViolation());
+  it('tells a deployment and an authority replacement apart by operation and message', () => {
+    const deploy = new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, new Error('down'));
+    const replacement = new Ledger8UnconfirmedError('replace-authority', ADDRESS, SIGNING_KEY, new Error('down'));
 
-    expect(error.signingKey).toBe(SIGNING_KEY);
-    expect(error.contractAddress).toBe(ADDRESS);
-    expect(error.name).toBe('Ledger8DeployUnconfirmedError');
-    expect(error.message).toContain('signingKey');
-    // The key is a SECRET, and after submission this error holds the only copy. Named as a member
-    // to read, never rendered into text that reaches a log or an issue tracker.
-    expect(error.message).not.toContain(SIGNING_KEY.value);
+    expect(deploy.operation).toBe('deploy');
+    expect(replacement.operation).toBe('replace-authority');
+    expect(deploy.message).toContain('The ledger 8 deployment of the contract');
+    expect(replacement.message).toContain('The maintenance authority replacement for the ledger 8 contract');
+    expect(replacement.message).toContain('MaintenanceAuthorityMismatchError');
+    expect(replacement.message).toContain('The new key was NOT stored');
   });
+
+  it.each(['deploy', 'replace-authority'] as const)(
+    'carries the %s signing key and says where to read it, without printing the key itself',
+    (operation) => {
+      const error = new Ledger8UnconfirmedError(operation, ADDRESS, SIGNING_KEY, eraViolation());
+
+      expect(error.signingKey).toBe(SIGNING_KEY);
+      expect(error.contractAddress).toBe(ADDRESS);
+      expect(error.name).toBe('Ledger8UnconfirmedError');
+      expect(error.code).toBe(CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED);
+      expect(error.message).toContain('signingKey');
+      expect(error.message).not.toContain(SIGNING_KEY.value);
+    }
+  );
 });
 
-describe('Ledger8DeployNotStoredError', () => {
+describe('Ledger8NotStoredError', () => {
   const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'c3'.repeat(32) };
   const ADDRESS = '0400'.repeat(8);
 
   it('keeps the store rejection on cause, unreplaced', () => {
     const refused = new Error('signing-key sublevel is read-only');
 
-    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', refused);
+    const error = new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', refused);
 
-    // What the store refused is what an operator acts on; this class adds the one fact a store
-    // rejection cannot carry, which is the key the confirmed deployment's authority was built from.
     expect(error.cause).toBe(refused);
-    expect(error.name).toBe('Ledger8DeployNotStoredError');
+    expect(error.name).toBe('Ledger8NotStoredError');
+    expect(error.code).toBe(CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED);
   });
 
-  it('says which write was refused, because the two lose different things', () => {
-    const key = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
-    const state = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'private-state', new Error('refused'));
+  it('says which write a deployment was refused, because the two lose different things', () => {
+    const key = new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+    const state = new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'private-state', new Error('refused'));
 
     expect(key.stage).toBe('signing-key');
     expect(state.stage).toBe('private-state');
@@ -294,33 +301,44 @@ describe('Ledger8DeployNotStoredError', () => {
   });
 
   it('tells the caller NOT to deploy again, because the contract already exists', () => {
-    // The harm this class exists to remove: read as "deploy failed, retry", a raw store rejection
-    // mints a SECOND contract at a different address while the first sits on chain unmaintainable.
-    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+    const error = new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
 
     expect(error.message).toContain('CONFIRMED on chain');
     expect(error.message).toContain('Do NOT deploy again');
   });
 
-  it('carries the signing key and says where to read it, without printing the key itself', () => {
-    const error = new Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+  it('says the authority was REPLACED when a replacement key could not be stored', () => {
+    const error = new Ledger8NotStoredError('replace-authority', ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
 
-    expect(error.signingKey).toBe(SIGNING_KEY);
-    expect(error.contractAddress).toBe(ADDRESS);
-    expect(error.message).toContain('signingKey');
-    // The key is a SECRET, and on the refused-key path this error holds the only copy of it.
-    expect(error.message).not.toContain(SIGNING_KEY.value);
+    expect(error.operation).toBe('replace-authority');
+    expect(error.message).toContain('was REPLACED on chain');
+    expect(error.message).toContain('The key held before no longer authorizes anything');
+    expect(error.message).not.toContain('Do NOT deploy again');
   });
+
+  it.each(['deploy', 'replace-authority'] as const)(
+    'carries the %s signing key and says where to read it, without printing the key itself',
+    (operation) => {
+      const error = new Ledger8NotStoredError(operation, ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+
+      expect(error.signingKey).toBe(SIGNING_KEY);
+      expect(error.contractAddress).toBe(ADDRESS);
+      expect(error.message).toContain('signingKey');
+      expect(error.message).not.toContain(SIGNING_KEY.value);
+    }
+  );
 });
 
-describe('Ledger8SigningKeyUnusableError', () => {
+describe('Ledger8SigningKeyError', () => {
   const ADDRESS = '0500'.repeat(8);
 
-  it('names the address and the option, and says what a retained key looks like', () => {
-    const error = new Ledger8SigningKeyUnusableError(ADDRESS);
+  it('names the address and the option, and says what a retained key looks like, when the key is unusable', () => {
+    const error = new Ledger8SigningKeyError('unusable', ADDRESS);
 
+    expect(error.reason).toBe('unusable');
     expect(error.contractAddress).toBe(ADDRESS);
-    expect(error.name).toBe('Ledger8SigningKeyUnusableError');
+    expect(error.name).toBe('Ledger8SigningKeyError');
+    expect(error.code).toBe(CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY);
     expect(error.message).toContain(ADDRESS);
     expect(error.message).toContain('signingKey');
     expect(error.message).toContain('schnorr');
@@ -328,7 +346,7 @@ describe('Ledger8SigningKeyUnusableError', () => {
   });
 
   it('refuses a key supplied before any address exists, without naming one', () => {
-    const error = new Ledger8SigningKeyUnusableError();
+    const error = new Ledger8SigningKeyError('unusable');
 
     expect(error.contractAddress).toBeUndefined();
     expect(error.message).toContain('signingKey');
@@ -338,23 +356,42 @@ describe('Ledger8SigningKeyUnusableError', () => {
   it('never renders the value it refused, and does not carry it as a member either', () => {
     const supplied = 'd4'.repeat(20);
 
-    const error = new Ledger8SigningKeyUnusableError(ADDRESS);
+    const error = new Ledger8SigningKeyError('unusable', ADDRESS);
 
-    // The caller already holds the value it passed, so this error has no reason to hold a second
-    // copy -- and an error message reaches logs and issue trackers.
     expect(error.message).not.toContain(supplied);
     expect('signingKey' in error).toBe(false);
   });
+
+  it('names the address and the remedy when no key is held, and keeps the store failure on cause', () => {
+    const storeFailure = new Error('wrong store password');
+
+    const error = new Ledger8SigningKeyError('unavailable', ADDRESS, { cause: storeFailure });
+
+    expect(error.reason).toBe('unavailable');
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.cause).toBe(storeFailure);
+    expect(error.message).toContain(`No usable ledger 8 signing key is held for the contract at '${ADDRESS}'`);
+    expect(error.message).toContain('privateStateProvider.setSigningKey(address, key)');
+    expect('signingKey' in error).toBe(false);
+  });
+
+  it('carries no cause when the store was readable', () => {
+    const error = new Ledger8SigningKeyError('unavailable', ADDRESS);
+
+    expect(error.cause).toBeUndefined();
+  });
 });
 
-describe('Ledger8RecipientUnmappableError', () => {
+describe('Ledger8CallUnsupportedError', () => {
   const RECIPIENT = 'be'.repeat(32);
 
   it('tells a CALL to add the recipient to the mappings on its call options, and says nothing about deploys', () => {
-    const error = new Ledger8RecipientUnmappableError('mintAndSendShielded', RECIPIENT);
+    const error = new Ledger8CallUnsupportedError('unmappable-recipient', 'mintAndSendShielded', RECIPIENT);
 
+    expect(error.reason).toBe('unmappable-recipient');
     expect(error.circuitId).toBe('mintAndSendShielded');
     expect(error.recipientCoinPublicKey).toBe(RECIPIENT);
+    expect(error.code).toBe(CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED);
     expect(error.message).toContain("Circuit 'mintAndSendShielded'");
     expect(error.message).toContain(RECIPIENT);
     expect(error.message).toMatch(/to `additionalCoinEncPublicKeyMappings` on the call options/);
@@ -362,12 +399,21 @@ describe('Ledger8RecipientUnmappableError', () => {
   });
 
   it('tells a DEPLOY its options take no mappings, and does not send it after the call options', () => {
-    const error = new Ledger8RecipientUnmappableError('initialState', RECIPIENT);
+    const error = new Ledger8CallUnsupportedError('unmappable-recipient', 'initialState', RECIPIENT);
 
     expect(error.circuitId).toBe('initialState');
     expect(error.message).toContain(RECIPIENT);
     expect(error.message).toMatch(/constructor/);
     expect(error.message).toMatch(/ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`/);
     expect(error.message).not.toMatch(/on the call options/);
+  });
+
+  it('names the circuit and the missing chain state when a call spends a held shielded coin', () => {
+    const error = new Ledger8CallUnsupportedError('shielded-spend', 'spend');
+
+    expect(error.reason).toBe('shielded-spend');
+    expect(error.recipientCoinPublicKey).toBeUndefined();
+    expect(error.message).toContain("Circuit 'spend' spends a shielded coin the contract already holds on chain");
+    expect(error.message).toContain('Zswap chain state');
   });
 });

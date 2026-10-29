@@ -416,37 +416,6 @@ export class LedgerParametersUnservedError extends MidnightJsError {
 }
 
 /**
- * An error indicating that a retained-era call would spend a shielded coin the
- * contract already holds on chain, which this pipeline structurally cannot
- * compose.
- *
- * A coin the same call produced is NOT refused: it is paired with its own
- * output as a transient and needs no chain state. Only spends of previously
- * held coins are.
- *
- * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this
- * refuses before the offer is built.
- */
-export class Ledger8ShieldedSpendUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED];
-
-  /**
-   * @param circuitId The circuit whose call was refused.
-   */
-  constructor(readonly circuitId: string) {
-    super(
-      `Circuit '${circuitId}' spends a shielded coin the contract already holds on chain, which a ` +
-        'ledger 8 call cannot compose: building the Zswap offer for such a spend needs the ' +
-        "contract's Zswap chain state, and the ledger 8 pipeline does not read one. A coin the same " +
-        'call produces is fine — it is paired with its own output — so only spends of previously held ' +
-        'coins are affected. Run this circuit against a contract produced by the ledger 9 Compact toolchain.'
-    );
-    this.name = 'Ledger8ShieldedSpendUnsupportedError';
-  }
-}
-
-/**
  * An error indicating that a provider rejected a transaction at one of the
  * three transaction methods, with the provider's own failure SANITIZED onto
  * `cause`. Raised on every submit path, whatever era the transaction belongs to.
@@ -1201,60 +1170,6 @@ const DEPLOY_KEY_STRANDED_REMEDIATION =
   'again: a deploy mints a fresh nonce, so a second attempt lands at a different one.';
 
 /**
- * An error indicating that a retained-era deployment was submitted, but what
- * the chain did with it could not be confirmed.
- *
- * Covers every way that step fails: the read surface rejecting, a record whose
- * version tag is missing or unrecognised, and a record arriving from an era the
- * network this deployment composed on cannot have recorded. The message states
- * which condition was hit.
- *
- * DO NOT DEPLOY AGAIN on seeing this. The transaction may still finalize, this
- * error holds the only copy of the signing key, and the address has to be
- * checked first.
- *
- * Branch on `cause` for the underlying failure — an unreachable indexer, a
- * timeout, a value that is not a transaction handle, an era violation. It is wrapped rather than
- * replaced, so `cause instanceof EraInvariantViolationError`, its method and its
- * registered code all stay reachable.
- *
- * Reachable only AFTER submission. Every refusal ahead of it is raised with no
- * key having been sampled.
- *
- * @see {@link ErrorTaxonomy} for why one class covers the whole window.
- */
-export class Ledger8DeployUnconfirmedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED];
-
-  /**
-   * @param contractAddress The address the submitted deployment composed.
-   * @param signingKey The key that deployment's maintenance authority was built
-   * from - sampled when the caller named none, and then this is its only copy.
-   * @param cause Why the deployment could not be confirmed: the read surface's
-   * own rejection, or the {@link EraInvariantViolationError} the record was
-   * refused by.
-   */
-  constructor(
-    readonly contractAddress: string,
-    readonly signingKey: SigningKey,
-    cause: unknown
-  ) {
-    super(
-      `The ledger 8 deployment of the contract at '${contractAddress}' was submitted, but what the ` +
-        'chain did with it could not be confirmed. ' +
-        (cause instanceof EraInvariantViolationError
-          ? `The record came back from a ledger era that the network this deployment was built on cannot have recorded: ${cause.message}`
-          : "The record the chain made of it could not be read back and attributed - see this error's " +
-            'cause for what failed.') +
-        ` ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
-      { cause }
-    );
-    this.name = 'Ledger8DeployUnconfirmedError';
-  }
-}
-
-/**
  * An error indicating that the fetched contract state declares the same entry
  * point NAME more than once, so which slot a call would dispatch on is
  * ambiguous.
@@ -1286,259 +1201,284 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
   }
 }
 
-/**
- * An error indicating that a retained-era call would pay a shielded coin to a
- * user-owned recipient whose encryption public key it cannot resolve: not the
- * calling wallet, not the burn address, and not a key in the caller's
- * `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy too,
- * whose options carry no mappings, with `circuitId` set to `'initialState'`;
- * the message then names the constructor and gives the deploy-specific advice.
- *
- * Raised BEFORE the offer is built. Without it the condition surfaced from
- * inside `createZswapOutput` as a bare `Error` naming neither the era nor the
- * circuit, and advising an `encryptionPublicKeyResolver` mapping the caller
- * never handles directly.
- *
- * Refusal rather than a best effort is the only answer that cannot lose a coin:
- * encrypting the output to the caller's own key instead would compose, prove,
- * balance and submit, and leave the recipient owning a coin it could never
- * discover.
- *
- * @see {@link KeepStatePipeline} for how the retained-era path resolves each
- *      recipient's encryption key.
- */
-/** The entry-point name a retained-era deploy reports its constructor under. */
 export const LEDGER8_CONSTRUCTOR_ENTRY_POINT = 'initialState';
 
-export class Ledger8RecipientUnmappableError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE];
+/** Why a retained-era signing key could not be used. */
+type Ledger8SigningKeyReason =
+  /** A key the caller supplied in this call is not one the retained era can sign with. */
+  | 'unusable'
+  /** A maintenance update found no usable key held for the contract it targets. */
+  | 'unavailable';
 
+const LEDGER8_SIGNING_KEY_MESSAGES: Readonly<Record<Ledger8SigningKeyReason, (contractAddress?: string) => string>> =
+  Object.freeze({
+    unusable: (contractAddress) =>
+      "The 'signingKey' supplied for the ledger 8 contract" +
+      (contractAddress === undefined ? '' : ` at '${contractAddress}'`) +
+      ' is not a key that era can sign with, so nothing was composed or stored. A ledger 8 key is a ' +
+      "`schnorr` key whose value is exactly 64 hexadecimal characters - 32 bytes - which is what that era's " +
+      '`sampleSigningKey` produces. The supplied value is not rendered here: it is secret material, and an ' +
+      'error message reaches logs and issue trackers.',
+    unavailable: (contractAddress) =>
+      `No usable ledger 8 signing key is held for the contract${contractAddress === undefined ? '' : ` at '${contractAddress}'`}, ` +
+      'so the maintenance update was not composed. Either nothing is stored for that address, the stored entry is not a ledger 8 ' +
+      "key - a `schnorr` key of 64 hexadecimal characters - or the store could not be read (see this error's " +
+      "cause). Store the key the contract's maintenance authority was built from with " +
+      '`privateStateProvider.setSigningKey(address, key)`, or attach with `findDeployedContract` passing ' +
+      '`signingKey`.'
+  });
+
+/**
+ * An error indicating that a signing key is not usable by the retained era.
+ *
+ * `reason` is `'unusable'` when a key the caller supplied in this call - on a retained-era deploy, an
+ * attach, or an authority replacement - is not one the retained era can sign with. It is refused
+ * BEFORE anything is composed or stored. Stored unchecked, a key the read rejects is reported on the
+ * attach that supplied it and read as ABSENT on every later one, and the bad entry has by then
+ * already replaced whatever was held there. The caller can correct it, because the value came from
+ * the caller, in this call.
+ *
+ * `reason` is `'unavailable'` when a retained-era maintenance update found no signing key it can
+ * sign with for the contract it targets: nothing is stored for the address, the stored entry is not
+ * a retained-era key, or the store could not be read, in which case the read failure is on `cause`.
+ * Raised before anything is composed or proven. Unlike an attach, which reports an unusable entry as
+ * absent, a maintenance update cannot proceed without the key.
+ *
+ * The key is never rendered, and is not carried as a member: the caller already holds it, or has none.
+ */
+export class Ledger8SigningKeyError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY];
+
+  /**
+   * @param reason Which way the key could not be used. Also the discriminant a caller branches on.
+   * @param contractAddress The address the key was supplied for or looked up under. `undefined` for a
+   * deploy, which has no address until it is composed.
+   * @param options Carries the store's own failure on `cause`, when the entry could not be read at all.
+   */
   constructor(
-    readonly circuitId: string,
-    readonly recipientCoinPublicKey: string
+    readonly reason: Ledger8SigningKeyReason,
+    readonly contractAddress?: string,
+    options?: ErrorOptions
   ) {
-    const isConstructor = circuitId === LEDGER8_CONSTRUCTOR_ENTRY_POINT;
-    super(
-      `${isConstructor ? 'The constructor' : `Circuit '${circuitId}'`} pays a shielded coin to recipient ` +
-        `'${recipientCoinPublicKey}', whose encryption public key cannot be resolved: it is not the ` +
-        "calling wallet's own key, the burn address, or a mapped recipient. Refusing is deliberate - " +
-        "encrypting the coin to the caller's own key would submit successfully and leave the " +
-        'recipient unable to discover it. ' +
-        (isConstructor
-          ? 'A ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
-            'cannot pay a shielded coin to a third party.'
-          : "Add the recipient's coin public key and encryption public key to " +
-            '`additionalCoinEncPublicKeyMappings` on the call options.')
-    );
-    this.name = 'Ledger8RecipientUnmappableError';
+    super(LEDGER8_SIGNING_KEY_MESSAGES[reason](contractAddress), options?.cause === undefined ? undefined : { cause: options.cause });
+    this.name = 'Ledger8SigningKeyError';
   }
 }
 
+/** The retained-era operation a submitted transaction belongs to. */
+type Ledger8KeyedOperation = 'deploy' | 'replace-authority';
+
+const LEDGER8_UNCONFIRMED_MESSAGES: Readonly<
+  Record<Ledger8KeyedOperation, (contractAddress: string, cause: unknown) => string>
+> = Object.freeze({
+  deploy: (contractAddress, cause) =>
+    `The ledger 8 deployment of the contract at '${contractAddress}' was submitted, but what the ` +
+    'chain did with it could not be confirmed. ' +
+    (cause instanceof EraInvariantViolationError
+      ? `The record came back from a ledger era that the network this deployment was built on cannot have recorded: ${cause.message}`
+      : "The record the chain made of it could not be read back and attributed - see this error's " +
+        'cause for what failed.') +
+    ` ${DEPLOY_KEY_STRANDED_REMEDIATION}`,
+  'replace-authority': (contractAddress) =>
+    `The maintenance authority replacement for the ledger 8 contract at '${contractAddress}' was submitted, ` +
+    "but whether the chain applied it could not be confirmed - see this error's cause for what failed. The " +
+    "new key was NOT stored. Keep this error's 'signingKey': if the replacement landed, it is the only key " +
+    "that authorizes the contract now. Find out which key the contract's authority holds before doing " +
+    'anything else: try a maintenance update with the key still stored; if it is refused with ' +
+    "MaintenanceAuthorityMismatchError, the replacement landed - store this error's 'signingKey' with " +
+    '`privateStateProvider.setSigningKey(address, error.signingKey)`.'
+});
+
 /**
- * An error indicating that a retained-era deployment was CONFIRMED on chain,
- * but the private-state provider refused to record it locally.
+ * An error indicating that a retained-era transaction carrying a signing key was submitted, but what
+ * the chain did with it could not be confirmed.
  *
- * Distinct from {@link Ledger8DeployUnconfirmedError}, which covers the window
- * where the chain's answer is unknown. Here the answer arrived and it was
- * success, so the contract EXISTS and its maintenance authority is built from
- * this error's key. DO NOT DEPLOY AGAIN.
+ * `operation` `'deploy'`: covers the read surface rejecting, a record whose version tag is missing or
+ * unrecognised, and a record arriving from an era the network this deployment composed on cannot have
+ * recorded. DO NOT DEPLOY AGAIN on seeing this. The transaction may still finalize, this error holds
+ * the only copy of the signing key, and the address has to be checked first. Reachable only AFTER
+ * submission: every refusal ahead of it is raised with no key having been sampled.
  *
- * Carries the signing key over both writes, and {@link stage} says which one
- * the store refused.
+ * `operation` `'replace-authority'`: covers a submission rejected while the network was crossing the
+ * fork (a {@link ForkCrossedDuringOperationError} or {@link SubmitRejectionUndiagnosedError} on
+ * `cause`), the read surface rejecting, a record with no era tag, or a record from an era the network
+ * cannot have recorded. The new key is NOT stored, because the replacement may not have landed - and
+ * it may have, so this error carries it.
  *
- * {@link Ledger8DeployNotStoredError.signingKey} is NAMED but never rendered
- * into the message.
+ * Branch on `cause` for the underlying failure. It is wrapped rather than replaced, so a
+ * `cause instanceof EraInvariantViolationError`, its method and its registered code stay reachable.
  *
- * @see {@link ErrorTaxonomy} for the after-submission region this closes and
- * why the key rides along even where only one write can strand it.
+ * {@link Ledger8UnconfirmedError.signingKey} is NAMED but never rendered into the message.
+ *
+ * @see {@link ErrorTaxonomy} for why one class covers the whole window.
  */
-export class Ledger8DeployNotStoredError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED];
+export class Ledger8UnconfirmedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED];
 
   /**
-   * @param contractAddress The address the confirmed deployment created.
-   * @param signingKey The key that deployment's maintenance authority was built
-   * from - sampled when the caller named none.
-   * @param stage Which write the store refused. `'signing-key'` means this
-   * error holds the only copy of the key; `'private-state'` means the key was
-   * already stored and the local state is what is missing.
+   * @param operation Which submitted operation could not be confirmed.
+   * @param contractAddress The address the submitted deployment composed, or the contract whose
+   * authority the replacement targets.
+   * @param signingKey The key that deployment's maintenance authority was built from, or the key the
+   * replacement would install. Sampled when the caller named none, and then this is its only copy.
+   * @param cause Why the operation could not be confirmed.
+   */
+  constructor(
+    readonly operation: Ledger8KeyedOperation,
+    readonly contractAddress: string,
+    readonly signingKey: SigningKey,
+    cause: unknown
+  ) {
+    super(LEDGER8_UNCONFIRMED_MESSAGES[operation](contractAddress, cause), { cause });
+    this.name = 'Ledger8UnconfirmedError';
+  }
+}
+
+/** Which write the private-state provider refused. */
+type Ledger8NotStoredStage = 'signing-key' | 'private-state';
+
+const LEDGER8_NOT_STORED_MESSAGES: Readonly<
+  Record<Ledger8KeyedOperation, (contractAddress: string, stage: Ledger8NotStoredStage) => string>
+> = Object.freeze({
+  deploy: (contractAddress, stage) =>
+    `The ledger 8 deployment of the contract at '${contractAddress}' was CONFIRMED on chain, but the ` +
+    'private-state provider refused to record it locally. ' +
+    (stage === 'signing-key'
+      ? "The SIGNING KEY could not be stored, so this error's 'signingKey' is the only copy that now " +
+        'exists. The contract is on chain under a maintenance authority built from it, and without it ' +
+        'no verifier key can ever be inserted, removed or replaced there. Keep it, fix what the store ' +
+        "refused - see this error's cause - and write it back with " +
+        '`privateStateProvider.setSigningKey(address, error.signingKey)`.'
+      : 'The INITIAL PRIVATE STATE could not be stored. The signing key was written first and is held ' +
+        "by the provider, and is on this error's 'signingKey' as well. Reconcile the local state " +
+        "against the chain before calling this contract - see this error's cause for what the store " +
+        'refused.') +
+    ' Do NOT deploy again: this contract exists, and a deploy mints a fresh nonce, so a second attempt ' +
+    'lands at a different address and leaves two copies on chain.',
+  'replace-authority': (contractAddress) =>
+    `The maintenance authority of the ledger 8 contract at '${contractAddress}' was REPLACED on chain, but the ` +
+    "private-state provider refused to store the new key, so this error's 'signingKey' is the only copy that " +
+    'now exists. The key held before no longer authorizes anything on that contract. Keep it, fix what the ' +
+    "store refused - see this error's cause - and write it back with " +
+    '`privateStateProvider.setSigningKey(address, error.signingKey)`.'
+});
+
+/**
+ * An error indicating that a retained-era operation was CONFIRMED on chain, but the private-state
+ * provider refused to record it locally.
+ *
+ * `operation` `'deploy'`: distinct from {@link Ledger8UnconfirmedError}, which covers the window where
+ * the chain's answer is unknown. Here the answer arrived and it was success, so the contract EXISTS
+ * and its maintenance authority is built from this error's key. DO NOT DEPLOY AGAIN. `stage` says
+ * which of the two writes the store refused.
+ *
+ * `operation` `'replace-authority'`: a maintenance authority REPLACEMENT was confirmed, and the store
+ * refused the new key (`stage` is `'signing-key'`). The key held before no longer authorizes anything
+ * on the contract, so this is the only copy of the one that does.
+ *
+ * {@link Ledger8NotStoredError.signingKey} is NAMED but never rendered into the message.
+ *
+ * @see {@link ErrorTaxonomy} for the after-submission region this closes and why the key rides along
+ * even where only one write can strand it.
+ */
+export class Ledger8NotStoredError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED];
+
+  /**
+   * @param operation Which confirmed operation the store refused to record.
+   * @param contractAddress The address the confirmed deployment created, or the contract whose
+   * authority was replaced.
+   * @param signingKey The key the contract's maintenance authority was built from, or the new
+   * authority's key.
+   * @param stage Which write the store refused. `'signing-key'` means this error holds the only copy
+   * of the key; `'private-state'` means the key was already stored and the local state is what is
+   * missing.
    * @param cause What the private-state provider rejected with.
    */
   constructor(
+    readonly operation: Ledger8KeyedOperation,
     readonly contractAddress: string,
     readonly signingKey: SigningKey,
-    readonly stage: 'signing-key' | 'private-state',
+    readonly stage: Ledger8NotStoredStage,
     cause: unknown
   ) {
-    super(
-      `The ledger 8 deployment of the contract at '${contractAddress}' was CONFIRMED on chain, but the ` +
-        'private-state provider refused to record it locally. ' +
-        (stage === 'signing-key'
-          ? "The SIGNING KEY could not be stored, so this error's 'signingKey' is the only copy that now " +
-            'exists. The contract is on chain under a maintenance authority built from it, and without it ' +
-            'no verifier key can ever be inserted, removed or replaced there. Keep it, fix what the store ' +
-            "refused - see this error's cause - and write it back with " +
-            "`privateStateProvider.setSigningKey(address, error.signingKey)`."
-          : "The INITIAL PRIVATE STATE could not be stored. The signing key was written first and is held " +
-            "by the provider, and is on this error's 'signingKey' as well. Reconcile the local state " +
-            "against the chain before calling this contract - see this error's cause for what the store " +
-            'refused.') +
-        ' Do NOT deploy again: this contract exists, and a deploy mints a fresh nonce, so a second attempt ' +
-        'lands at a different address and leaves two copies on chain.',
-      { cause }
-    );
-    this.name = 'Ledger8DeployNotStoredError';
+    super(LEDGER8_NOT_STORED_MESSAGES[operation](contractAddress, stage), { cause });
+    this.name = 'Ledger8NotStoredError';
   }
 }
 
-/**
- * An error indicating that a signing key the caller supplied in this call - on a
- * retained-era deploy, an attach, or an authority replacement - is not one the
- * retained era can sign with.
- *
- * Refused BEFORE anything is composed or stored. Stored unchecked, a key the
- * read rejects is reported on the attach that supplied it and read as ABSENT on
- * every later one - the same store answering two different things about the
- * same address, with nothing erroring - and the bad entry has by then already
- * replaced whatever was held there.
- *
- * A refusal is cheap here in a way it is not on the attach's READ path, which
- * reports an unusable stored entry as absent instead: this value came from the
- * caller, in this call, so the caller can correct it.
- *
- * The key is not rendered, and is not carried as a member either: the caller
- * already holds it.
- */
-export class Ledger8SigningKeyUnusableError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE];
+/** Why a retained-era call cannot be composed. */
+type Ledger8CallUnsupportedReason =
+  /** The call would spend a shielded coin the contract already holds on chain. */
+  | 'shielded-spend'
+  /** The call would pay a shielded coin to a recipient whose encryption public key cannot be resolved. */
+  | 'unmappable-recipient';
 
-  /**
-   * @param contractAddress The address the key was supplied for, or `undefined`
-   * for a deploy, which has no address until it is composed.
-   */
-  constructor(readonly contractAddress?: string) {
-    super(
-      "The 'signingKey' supplied for the ledger 8 contract" +
-        (contractAddress === undefined ? '' : ` at '${contractAddress}'`) +
-        ' is not a key that era can sign with, so nothing was composed or stored. A ledger 8 key is a ' +
-        "`schnorr` key whose value is exactly 64 hexadecimal characters - 32 bytes - which is what that era's " +
-        '`sampleSigningKey` produces. The supplied value is not rendered here: it is secret material, and an ' +
-        'error message reaches logs and issue trackers.'
+const LEDGER8_CALL_UNSUPPORTED_MESSAGES: Readonly<
+  Record<Ledger8CallUnsupportedReason, (circuitId: string, recipientCoinPublicKey?: string) => string>
+> = Object.freeze({
+  'shielded-spend': (circuitId) =>
+    `Circuit '${circuitId}' spends a shielded coin the contract already holds on chain, which a ` +
+    'ledger 8 call cannot compose: building the Zswap offer for such a spend needs the ' +
+    "contract's Zswap chain state, and the ledger 8 pipeline does not read one. A coin the same " +
+    'call produces is fine — it is paired with its own output — so only spends of previously held ' +
+    'coins are affected. Run this circuit against a contract produced by the ledger 9 Compact toolchain.',
+  'unmappable-recipient': (circuitId, recipientCoinPublicKey) => {
+    const isConstructor = circuitId === LEDGER8_CONSTRUCTOR_ENTRY_POINT;
+    return (
+      `${isConstructor ? 'The constructor' : `Circuit '${circuitId}'`} pays a shielded coin to recipient ` +
+      `'${recipientCoinPublicKey}', whose encryption public key cannot be resolved: it is not the ` +
+      "calling wallet's own key, the burn address, or a mapped recipient. Refusing is deliberate - " +
+      "encrypting the coin to the caller's own key would submit successfully and leave the " +
+      'recipient unable to discover it. ' +
+      (isConstructor
+        ? 'A ledger 8 deploy takes no `additionalCoinEncPublicKeyMappings`, so its constructor ' +
+          'cannot pay a shielded coin to a third party.'
+        : "Add the recipient's coin public key and encryption public key to " +
+          '`additionalCoinEncPublicKeyMappings` on the call options.')
     );
-    this.name = 'Ledger8SigningKeyUnusableError';
   }
-}
+});
 
 /**
- * An error indicating that a retained-era maintenance update found no signing key it can sign with
- * for the contract it targets.
+ * An error indicating that a retained-era call cannot be composed, refused BEFORE the offer is built.
  *
- * Covers three cases a caller remedies the same way: nothing is stored for the address, the stored
- * entry is not a retained-era key, or the store could not be read, in which case the read failure is
- * on `cause`. Raised before anything is composed or proven.
+ * `reason` `'shielded-spend'`: the call would spend a shielded coin the contract already holds on
+ * chain, which this pipeline structurally cannot compose. A coin the same call produced is NOT
+ * refused: it is paired with its own output as a transient and needs no chain state. Only spends of
+ * previously held coins are.
  *
- * Unlike an attach, which reports an unusable entry as absent, a maintenance update cannot proceed
- * without the key, so the absence is a refusal here. The key is never rendered.
+ * `reason` `'unmappable-recipient'`: the call would pay a shielded coin to a user-owned recipient
+ * whose encryption public key it cannot resolve: not the calling wallet, not the burn address, and
+ * not a key in the caller's `additionalCoinEncPublicKeyMappings`. Raised by a retained-era deploy
+ * too, whose options carry no mappings, with `circuitId` set to `'initialState'`; the message then
+ * names the constructor and gives the deploy-specific advice. Refusal rather than a best effort is the
+ * only answer that cannot lose a coin: encrypting the output to the caller's own key would compose,
+ * prove, balance and submit, and leave the recipient owning a coin it could never discover.
+ *
+ * @see {@link ErrorTaxonomy} for what the retained-era path is missing and why this refuses before
+ * the offer is built.
+ * @see {@link KeepStatePipeline} for how the retained-era path resolves each recipient's encryption key.
  */
-export class Ledger8SigningKeyUnavailableError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE];
+export class Ledger8CallUnsupportedError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED];
 
   /**
-   * @param contractAddress The contract the maintenance update targets.
-   * @param cause The store's own failure, when the entry could not be read at all.
+   * @param reason Why the call was refused. Also the discriminant a caller branches on.
+   * @param circuitId The circuit whose call was refused, or `'initialState'` for a deploy.
+   * @param recipientCoinPublicKey The recipient that could not be resolved. Set for
+   * `'unmappable-recipient'`.
    */
   constructor(
-    readonly contractAddress: string,
-    cause?: unknown
+    readonly reason: Ledger8CallUnsupportedReason,
+    readonly circuitId: string,
+    readonly recipientCoinPublicKey?: string
   ) {
-    super(
-      `No usable ledger 8 signing key is held for the contract at '${contractAddress}', so the maintenance ` +
-        'update was not composed. Either nothing is stored for that address, the stored entry is not a ledger 8 ' +
-        "key - a `schnorr` key of 64 hexadecimal characters - or the store could not be read (see this error's " +
-        'cause). Store the key the contract\'s maintenance authority was built from with ' +
-        '`privateStateProvider.setSigningKey(address, key)`, or attach with `findDeployedContract` passing ' +
-        '`signingKey`.',
-      cause === undefined ? undefined : { cause }
-    );
-    this.name = 'Ledger8SigningKeyUnavailableError';
-  }
-}
-
-/**
- * An error indicating that a retained-era maintenance authority REPLACEMENT was confirmed on chain,
- * but the private-state provider refused to store the new key.
- *
- * {@link Ledger8SigningKeyNotStoredError.signingKey} is NAMED but never rendered into the message:
- * the key it held before no longer authorizes anything on the contract, so this is the only copy of
- * the one that does.
- */
-export class Ledger8SigningKeyNotStoredError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED];
-
-  /**
-   * @param contractAddress The contract whose authority was replaced.
-   * @param signingKey The new authority's key, which the store refused.
-   * @param cause The store's own failure.
-   */
-  constructor(
-    readonly contractAddress: string,
-    readonly signingKey: SigningKey,
-    cause: unknown
-  ) {
-    super(
-      `The maintenance authority of the ledger 8 contract at '${contractAddress}' was REPLACED on chain, but the ` +
-        "private-state provider refused to store the new key, so this error's 'signingKey' is the only copy that " +
-        'now exists. The key held before no longer authorizes anything on that contract. Keep it, fix what the ' +
-        "store refused - see this error's cause - and write it back with " +
-        '`privateStateProvider.setSigningKey(address, error.signingKey)`.',
-      { cause }
-    );
-    this.name = 'Ledger8SigningKeyNotStoredError';
-  }
-}
-
-/**
- * An error indicating that a retained-era maintenance authority REPLACEMENT was submitted, but
- * what the chain did with it could not be confirmed.
- *
- * Covers every way that step fails after the transaction may have landed: a submission rejected
- * while the network was crossing the fork (a {@link ForkCrossedDuringOperationError} or {@link SubmitRejectionUndiagnosedError}
- * on `cause`), the read surface rejecting, a record with no era tag, or a record from an era the
- * network this replacement composed on cannot have recorded. The new key is NOT stored, because the
- * replacement may not have landed - and it may have, so this error carries it.
- *
- * {@link Ledger8ReplaceAuthorityUnconfirmedError.signingKey} is NAMED but never rendered into the
- * message: if the replacement landed, it is the only key that authorizes anything on the contract.
- */
-export class Ledger8ReplaceAuthorityUnconfirmedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED];
-
-  /**
-   * @param contractAddress The contract whose authority the replacement targets.
-   * @param signingKey The key the replacement would install.
-   * @param cause Why the replacement could not be confirmed.
-   */
-  constructor(
-    readonly contractAddress: string,
-    readonly signingKey: SigningKey,
-    cause: unknown
-  ) {
-    super(
-      `The maintenance authority replacement for the ledger 8 contract at '${contractAddress}' was submitted, ` +
-        "but whether the chain applied it could not be confirmed - see this error's cause for what failed. The " +
-        "new key was NOT stored. Keep this error's 'signingKey': if the replacement landed, it is the only key " +
-        "that authorizes the contract now. Find out which key the contract's authority holds before doing " +
-        'anything else: try a maintenance update with the key still stored; if it is refused with ' +
-        "MaintenanceAuthorityMismatchError, the replacement landed - store this error's 'signingKey' with " +
-        '`privateStateProvider.setSigningKey(address, error.signingKey)`.',
-      { cause }
-    );
-    this.name = 'Ledger8ReplaceAuthorityUnconfirmedError';
+    super(LEDGER8_CALL_UNSUPPORTED_MESSAGES[reason](circuitId, recipientCoinPublicKey));
+    this.name = 'Ledger8CallUnsupportedError';
   }
 }

@@ -78,11 +78,10 @@ import {
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
-  Ledger8DeployNotStoredError,
-  Ledger8DeployUnconfirmedError,
-  Ledger8RecipientUnmappableError,
-  Ledger8ShieldedSpendUnsupportedError,
-  Ledger8SigningKeyUnusableError,
+  Ledger8CallUnsupportedError,
+  Ledger8NotStoredError,
+  Ledger8SigningKeyError,
+  Ledger8UnconfirmedError,
   ProviderFailedError,
   TxFailedError,
   VerifierKeyMismatchError
@@ -1323,7 +1322,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
     });
 
-    await expect(deploying).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+    await expect(deploying).rejects.toMatchObject({
+      name: 'Ledger8CallUnsupportedError',
+      reason: 'unmappable-recipient',
+      circuitId: 'initialState'
+    });
     await expect(deploying).rejects.toMatchObject({
       circuitId: 'initialState',
       recipientCoinPublicKey: thirdPartyCoinPublicKey
@@ -1931,9 +1934,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       // pointing at the option that fixes it. The bare `Error` the offer
       // builder raises names none of them, and its advice -- supply a resolver
       // mapping -- names a knob the caller never sees.
-      expect(caught).toBeInstanceOf(Ledger8RecipientUnmappableError);
-      expect((caught as Ledger8RecipientUnmappableError).circuitId).toBe(CIRCUIT_ID);
-      expect((caught as Ledger8RecipientUnmappableError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
+      expect(caught).toBeInstanceOf(Ledger8CallUnsupportedError);
+      expect((caught as Ledger8CallUnsupportedError).reason).toBe('unmappable-recipient');
+      expect((caught as Ledger8CallUnsupportedError).circuitId).toBe(CIRCUIT_ID);
+      expect((caught as Ledger8CallUnsupportedError).recipientCoinPublicKey).toBe(thirdPartyCoinPublicKey);
       // The message names the caller-facing option, not the internal resolver.
       expect((caught as Error).message).not.toMatch(/Provide a mapping via the encryptionPublicKeyResolver/);
       expect((caught as Error).message).toContain('additionalCoinEncPublicKeyMappings');
@@ -1978,7 +1982,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
           ...callOptions(),
           additionalCoinEncPublicKeyMappings: new Map([[sampleCoinPublicKey(), sampleEncryptionPublicKey()]])
         })
-      ).rejects.toBeInstanceOf(Ledger8RecipientUnmappableError);
+      ).rejects.toBeInstanceOf(Ledger8CallUnsupportedError);
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
     });
@@ -2093,9 +2097,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // A TYPED refusal naming the era limitation and the circuit, rather than
     // the bare assertion the offer builder would otherwise raise from inside
     // itself, naming neither.
-    expect(caught).toBeInstanceOf(Ledger8ShieldedSpendUnsupportedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED)).toBe(true);
-    expect((caught as Ledger8ShieldedSpendUnsupportedError).circuitId).toBe(CIRCUIT_ID);
+    expect(caught).toBeInstanceOf(Ledger8CallUnsupportedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED)).toBe(true);
+    expect((caught as Ledger8CallUnsupportedError).reason).toBe('shielded-spend');
+    expect((caught as Ledger8CallUnsupportedError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as Error).message).toContain('Zswap chain state');
     // Refused before anything was composed or sent anywhere.
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
@@ -2541,8 +2546,9 @@ describe('deploying a retained-era contract through deployContract', () => {
       signingKey: { tag: 'ecdsa', value: CALLER_OWN_SIGNING_KEY }
     }).catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
-    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBeUndefined();
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyError);
+    expect((caught as Ledger8SigningKeyError).reason).toBe('unusable');
+    expect((caught as Ledger8SigningKeyError).contractAddress).toBeUndefined();
     expect((caught as Error).message).not.toContain(CALLER_OWN_SIGNING_KEY);
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
@@ -2553,7 +2559,7 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     await expect(
       deployContract(providers, { compiledContract: contract, signingKey: { tag: 'schnorr', value: 'ab'.repeat(16) } })
-    ).rejects.toThrow(Ledger8SigningKeyUnusableError);
+    ).rejects.toThrow(Ledger8SigningKeyError);
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
@@ -2637,8 +2643,8 @@ describe('deploying a retained-era contract through deployContract', () => {
       initialPrivateState: {}
     }).catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     // The namespace switch too, not only the write: moved ahead of the assertions, a refused
     // deploy would leave the provider pointed at an address holding nothing, and the next
@@ -2660,8 +2666,8 @@ describe('deploying a retained-era contract through deployContract', () => {
       (error: unknown) => error
     );
 
-    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
   });
 
   it('refuses a deploy the node recorded with a non-success status, and stores nothing', async () => {
@@ -3071,15 +3077,15 @@ describe('deploying a retained-era contract through deployContract', () => {
     // One refusal for every way the record fails to arrive usable, with the era violation kept on
     // `cause` -- so the condition a caller branches on, its method and its registered code are all
     // still reachable, and the original stack is not thrown away.
-    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    const cause = (caught as Ledger8DeployUnconfirmedError).cause;
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    const cause = (caught as Ledger8UnconfirmedError).cause;
     expect(cause).toBeInstanceOf(EraInvariantViolationError);
     expect(hasErrorCode(cause, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
     expect((cause as EraInvariantViolationError).method).toBe('watchForDeployTxData');
     // The transaction is already on the network by the time this is raised, so discarding the key
     // here leaves whatever does finalize permanently unmaintainable.
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8DeployUnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect((caught as Ledger8UnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
+    expect((caught as Ledger8UnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
   });
 
   it('carries the signing key when the record cannot be read back at all, keeping the rejection on cause', async () => {
@@ -3094,11 +3100,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    expect((caught as Ledger8UnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
     // The reason the record is unreadable is what the caller acts on, so it is kept rather than
     // replaced -- this class adds the one fact a provider rejection cannot carry.
-    expect((caught as Ledger8DeployUnconfirmedError).cause).toBe(unreachable);
+    expect((caught as Ledger8UnconfirmedError).cause).toBe(unreachable);
   });
 
   it('carries the signing key when the record comes back with no readable era tag', async () => {
@@ -3117,9 +3123,10 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployUnconfirmedError);
-    expect((caught as Ledger8DeployUnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8DeployUnconfirmedError).cause).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    expect((caught as Ledger8UnconfirmedError).operation).toBe('deploy');
+    expect((caught as Ledger8UnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
+    expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(UnknownLedgerVersionError);
   });
 
   it('persists the signing key against the address it minted, in the shape the store takes', async () => {
@@ -3199,11 +3206,12 @@ describe('deploying a retained-era contract through deployContract', () => {
     // The deployment is CONFIRMED by this point. A raw rejection here drops the only copy of an
     // authority the chain already holds, and reads to the caller as "deploy failed, retry" -- which
     // mints a second contract at a different address.
-    expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
-    expect((caught as Ledger8DeployNotStoredError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8DeployNotStoredError).stage).toBe('signing-key');
-    expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
-    expect((caught as Ledger8DeployNotStoredError).contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect(caught).toBeInstanceOf(Ledger8NotStoredError);
+    expect((caught as Ledger8NotStoredError).operation).toBe('deploy');
+    expect((caught as Ledger8NotStoredError).signingKey).toEqual(SAMPLED_KEY);
+    expect((caught as Ledger8NotStoredError).stage).toBe('signing-key');
+    expect((caught as Ledger8NotStoredError).cause).toBe(refused);
+    expect((caught as Ledger8NotStoredError).contractAddress).toMatch(/^[0-9a-f]+$/);
   });
 
   it('carries the signing key when the private-state write is refused instead', async () => {
@@ -3220,10 +3228,11 @@ describe('deploying a retained-era contract through deployContract', () => {
     // The key IS stored by the time this rejects -- the order above guarantees it -- and the error
     // says so rather than claiming the key is stranded. It still carries the key: one class over
     // the whole after-success region is what makes "every refusal here carries the key" checkable.
-    expect(caught).toBeInstanceOf(Ledger8DeployNotStoredError);
-    expect((caught as Ledger8DeployNotStoredError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8DeployNotStoredError).stage).toBe('private-state');
-    expect((caught as Ledger8DeployNotStoredError).cause).toBe(refused);
+    expect(caught).toBeInstanceOf(Ledger8NotStoredError);
+    expect((caught as Ledger8NotStoredError).operation).toBe('deploy');
+    expect((caught as Ledger8NotStoredError).signingKey).toEqual(SAMPLED_KEY);
+    expect((caught as Ledger8NotStoredError).stage).toBe('private-state');
+    expect((caught as Ledger8NotStoredError).cause).toBe(refused);
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledTimes(1);
   });
 
@@ -3799,8 +3808,9 @@ describe('attaching to a retained-era contract already on chain', () => {
     // out of the same store, with nothing erroring either time -- and the good entry it replaced
     // is already gone. The caller passed this value in this call, so a refusal is cheap here in a
     // way it is not on the read path.
-    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
-    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyError);
+    expect((caught as Ledger8SigningKeyError).reason).toBe('unusable');
+    expect((caught as Ledger8SigningKeyError).contractAddress).toBe(recording.contractAddress);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
 
@@ -3812,8 +3822,9 @@ describe('attaching to a retained-era contract already on chain', () => {
       signingKey: { tag: 'ecdsa', value: SUPPLIED_KEY_SHAPE }
     }).catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
-    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyError);
+    expect((caught as Ledger8SigningKeyError).reason).toBe('unusable');
+    expect((caught as Ledger8SigningKeyError).contractAddress).toBe(recording.contractAddress);
     expect((caught as Error).message).not.toContain(SUPPLIED_KEY_SHAPE);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });

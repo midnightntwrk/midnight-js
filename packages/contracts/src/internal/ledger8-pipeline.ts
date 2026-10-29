@@ -56,8 +56,7 @@ import {
   EraMismatchError,
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
-  Ledger8RecipientUnmappableError,
-  Ledger8ShieldedSpendUnsupportedError,
+  Ledger8CallUnsupportedError,
   LedgerParametersUnservedError,
   PublicStatesEraMismatchError,
   VerifierKeyMismatchError
@@ -494,7 +493,7 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  * @param zswapLocalState The call's post-execution Zswap local state.
  * @param resolve The resolver this call will build its offer with.
  * @param circuitId The circuit this flow is running, for the refusal.
- * @throws Ledger8RecipientUnmappableError for the first unresolvable recipient.
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` for the first unresolvable recipient.
  */
 const assertRecipientsResolvable = (
   zswapLocalState: Ledger8Transcript['zswapLocalState'],
@@ -503,7 +502,7 @@ const assertRecipientsResolvable = (
 ): void => {
   for (const { recipient } of zswapLocalState.outputs) {
     if (recipient.is_left && resolve(recipient.left) === undefined) {
-      throw new Ledger8RecipientUnmappableError(circuitId, recipient.left);
+      throw new Ledger8CallUnsupportedError('unmappable-recipient', circuitId, recipient.left);
     }
   }
 };
@@ -656,7 +655,7 @@ export interface Ledger8CallPipelineResult<TState> {
  * @throws LedgerParametersUnservedError if the read served no ledger parameters.
  * @throws PublicStatesEraMismatchError if the ledger parameters were written by another era than
  * the head the call is composed for.
- * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a shielded
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a shielded
  * coin the contract already held — see {@link spendsHeldCoin}.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
  */
@@ -715,7 +714,7 @@ export const runLedger8CallPipeline = async <TState>(
   // state is the real fix and is tracked separately; until then this refuses in
   // the caller's own test run rather than in production.
   if (spendsHeldCoin(transcript.zswapLocalState)) {
-    throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
+    throw new Ledger8CallUnsupportedError('shielded-spend', circuitId);
   }
 
   // Also before the offer is built, and for the same reason: a recipient this

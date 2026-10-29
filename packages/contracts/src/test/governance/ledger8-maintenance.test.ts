@@ -47,10 +47,8 @@ import {
   EraInvariantViolationError,
   EraMismatchError,
   ForkCrossedDuringOperationError,
-  Ledger8ReplaceAuthorityUnconfirmedError,
-  Ledger8SigningKeyNotStoredError,
-  Ledger8SigningKeyUnavailableError,
-  Ledger8SigningKeyUnusableError,
+  Ledger8NotStoredError,
+  Ledger8UnconfirmedError,
   ProviderFailedError,
   SubmitRejectionUndiagnosedError,
   TxFailedError
@@ -290,7 +288,7 @@ describe('contract maintenance through a retained-era artifact', () => {
 
       await expect(
         submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)({ tag: 'ecdsa', value: NEW_KEY.value })
-      ).rejects.toThrow(Ledger8SigningKeyUnusableError);
+      ).rejects.toMatchObject({ name: 'Ledger8SigningKeyError', reason: 'unusable' });
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
@@ -303,9 +301,11 @@ describe('contract maintenance through a retained-era artifact', () => {
       const providers = providersOn(keyedState);
       providers.privateStateProvider.getSigningKey = vi.fn(read);
 
-      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
-        Ledger8SigningKeyUnavailableError
-      );
+      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toMatchObject({
+        name: 'Ledger8SigningKeyError',
+        reason: 'unavailable',
+        contractAddress: CONTRACT_ADDRESS
+      });
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
     });
 
@@ -315,7 +315,8 @@ describe('contract maintenance through a retained-era artifact', () => {
       providers.privateStateProvider.getSigningKey = vi.fn().mockRejectedValue(readFailure);
 
       await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toMatchObject({
-        name: 'Ledger8SigningKeyUnavailableError',
+        name: 'Ledger8SigningKeyError',
+        reason: 'unavailable',
         cause: readFailure
       });
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
@@ -342,8 +343,12 @@ describe('contract maintenance through a retained-era artifact', () => {
       );
 
       // Assert
-      expect(failure).toBeInstanceOf(Ledger8ReplaceAuthorityUnconfirmedError);
-      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY });
+      expect(failure).toBeInstanceOf(Ledger8UnconfirmedError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        contractAddress: CONTRACT_ADDRESS,
+        signingKey: NEW_KEY
+      });
       expect((failure as Error).cause).toBeInstanceOf(causeClass);
       expect((failure as Error).message).not.toContain(NEW_KEY.value);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
@@ -535,8 +540,14 @@ describe('contract maintenance through a retained-era artifact', () => {
         (error: unknown) => error
       );
 
-      expect(failure).toBeInstanceOf(Ledger8SigningKeyNotStoredError);
-      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY, cause: storeFailure });
+      expect(failure).toBeInstanceOf(Ledger8NotStoredError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        stage: 'signing-key',
+        contractAddress: CONTRACT_ADDRESS,
+        signingKey: NEW_KEY,
+        cause: storeFailure
+      });
       expect((failure as Error).message).not.toContain(NEW_KEY.value);
     });
   });

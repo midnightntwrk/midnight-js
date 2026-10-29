@@ -73,7 +73,7 @@ import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
  *         The error contains the finalized transaction data for debugging. Raised by both eras;
  *         `record.era` tells which.
  * @throws {EraMismatchError} with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
- * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable key.
+ * @throws {Ledger8SigningKeyError} with reason `'unavailable'` When the retained-era overload finds no usable key.
  * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
  *         the contract's maintenance authority. Raised before anything is proven.
  * @throws {InvalidArgumentError} When the circuit's verifier key slot already holds a key, or the

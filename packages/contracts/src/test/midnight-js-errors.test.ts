@@ -53,7 +53,6 @@ const cases: readonly Case[] = [
     'INTEGRITY'
   ],
   ['LedgerParametersUnservedError', new errors.LedgerParametersUnservedError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED, 'ENVIRONMENT'],
-  ['Ledger8ShieldedSpendUnsupportedError', new errors.Ledger8ShieldedSpendUnsupportedError('spend'), CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED, 'USAGE'],
   ['ProviderFailedError', new errors.ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.PROVIDER_FAILED, 'ENVIRONMENT'],
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
@@ -65,14 +64,11 @@ const cases: readonly Case[] = [
   ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH, 'USAGE'],
   ['BlankVerifierKeySlotError', new errors.BlankVerifierKeySlotError('increment'), CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT, 'INTEGRITY'],
   ['VerifierKeyMismatchError', new errors.VerifierKeyMismatchError('increment'), CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH, 'INTEGRITY'],
-  ['Ledger8DeployUnconfirmedError', new errors.Ledger8DeployUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_UNCONFIRMED, 'UNCERTAIN'],
   ['Ledger8AmbiguousEntryPointError', new errors.Ledger8AmbiguousEntryPointError('increment', 2), CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT, 'INTEGRITY'],
-  ['Ledger8RecipientUnmappableError', new errors.Ledger8RecipientUnmappableError('increment', 'ab'.repeat(32)), CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE, 'USAGE'],
-  ['Ledger8DeployNotStoredError', new errors.Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED, 'ENVIRONMENT'],
-  ['Ledger8SigningKeyUnusableError', new errors.Ledger8SigningKeyUnusableError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE, 'USAGE'],
-  ['Ledger8SigningKeyUnavailableError', new errors.Ledger8SigningKeyUnavailableError(ADDRESS, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE, 'USAGE'],
-  ['Ledger8SigningKeyNotStoredError', new errors.Ledger8SigningKeyNotStoredError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED, 'ENVIRONMENT'],
-  ['Ledger8ReplaceAuthorityUnconfirmedError', new errors.Ledger8ReplaceAuthorityUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED, 'UNCERTAIN'],
+  ['Ledger8SigningKeyError', new errors.Ledger8SigningKeyError('unusable', ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY, 'USAGE'],
+  ['Ledger8UnconfirmedError', new errors.Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED, 'UNCERTAIN'],
+  ['Ledger8NotStoredError', new errors.Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED, 'ENVIRONMENT'],
+  ['Ledger8CallUnsupportedError', new errors.Ledger8CallUnsupportedError('shielded-spend', 'spend'), CONTRACTS_ERROR_CODES.LEDGER8_CALL_UNSUPPORTED, 'USAGE'],
   ['NetworkVersionReadFailedError', new errors.NetworkVersionReadFailedError('network version read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED, 'TRANSIENT'],
   ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
   ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],
@@ -81,7 +77,7 @@ const cases: readonly Case[] = [
 
 describe('contracts error classes', () => {
   it('every error class in errors.ts extends MidnightJsError', () => {
-    expect(errorClasses.length).toBeGreaterThan(25);
+    expect(errorClasses.length).toBe(26);
     expect(errorClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
   });
 

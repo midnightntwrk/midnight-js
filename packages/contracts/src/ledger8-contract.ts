@@ -269,7 +269,7 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
    * encrypt shielded coins the circuit pays to a recipient other than the
    * calling wallet. A user-owned recipient that is neither the calling wallet,
    * the burn address, nor a key in this map is refused with
-   * `Ledger8RecipientUnmappableError` before anything is proven.
+   * `Ledger8CallUnsupportedError` (reason `'unmappable-recipient'`) before anything is proven.
    */
   readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
@@ -581,7 +581,7 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
    * The same `{ tag, value }` shape the current era takes. The retained era
    * signs with `schnorr` only, so any other key -- or a value that is not
    * exactly 64 hexadecimal characters -- is refused with
-   * `Ledger8SigningKeyUnusableError` before anything is composed.
+   * `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.
    */
   readonly signingKey?: SigningKey;
 }
@@ -699,7 +699,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
    * value is exactly 64 hexadecimal characters, which is what that era's
    * `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
-   * length, and those are refused with `Ledger8SigningKeyUnusableError`.
+   * length, and those are refused with `Ledger8SigningKeyError` (reason `'unusable'`).
    * Nothing is written when it is refused.
    *
    * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}

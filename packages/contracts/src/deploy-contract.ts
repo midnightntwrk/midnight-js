@@ -249,13 +249,13 @@ export async function deployContract<C extends Contract.Any>(
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
- * @throws Ledger8SigningKeyUnusableError If a retained-era deploy is given a `signingKey` that is not a
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If a retained-era deploy is given a `signingKey` that is not a
  *                                        `schnorr` key of 64 hex characters. Raised before anything
  *                                        is composed.
  * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained-era artifact is deployed after the fork.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
- * @throws Ledger8DeployUnconfirmedError If what the chain did with a submitted retained-era
+ * @throws Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted retained-era
  *                                        deployment cannot be confirmed - the record unreadable, or
  *                                        back from an era the head it composed on cannot have
  *                                        recorded. Carries the signing key, and the underlying

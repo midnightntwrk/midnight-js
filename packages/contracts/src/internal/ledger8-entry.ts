@@ -73,11 +73,9 @@ import {
   EraInvariantViolationError,
   ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
-  Ledger8DeployNotStoredError,
-  Ledger8DeployUnconfirmedError,
-  Ledger8ReplaceAuthorityUnconfirmedError,
-  Ledger8SigningKeyNotStoredError,
-  Ledger8SigningKeyUnavailableError,
+  Ledger8NotStoredError,
+  Ledger8SigningKeyError,
+  Ledger8UnconfirmedError,
   PrivateStateNotFoundError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
@@ -346,9 +344,9 @@ export interface Ledger8SubmittedCall {
  * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
  * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
  * pre-proving key check.
- * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a coin the
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a coin the
  * contract already held.
- * @throws Ledger8RecipientUnmappableError if a shielded output pays a recipient
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if a shielded output pays a recipient
  * that is not the calling wallet, the burn address, or a key in
  * `additionalCoinEncPublicKeyMappings`.
  * @throws ProviderEraUnsupportedError if a provider does not serve the head's era.
@@ -1067,12 +1065,12 @@ export interface Ledger8DeployedState {
  * @returns The minted address, the finalized record, the signing key now stored
  * against that address, and everything the constructor produced.
  * @throws TxFailedError if the node recorded a non-success status.
- * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
+ * @throws Ledger8UnconfirmedError with operation `'deploy'` if the record cannot be read back and
  * attributed to the head at all, the record's era included.
- * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
+ * @throws Ledger8NotStoredError with operation `'deploy'` if the deployment was CONFIRMED and the
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
- * @throws Ledger8SigningKeyUnusableError if a supplied key is not one the
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the
  * retained era can sign with. Raised before the head is read.
  * @throws Every error {@link runLedger8Deploy} raises.
  * @see {@link KeepStatePipeline} for why every slot has to be registered, and
@@ -1120,7 +1118,7 @@ export const submitLedger8DeployTx = async (
     // caller holding the same problem, so one class carries the key over all of
     // them. The failure itself rides on `cause`, so an era violation keeps its
     // method and its registered code where a caller branches on them.
-    throw new Ledger8DeployUnconfirmedError(deploy.contractAddress, signingKey, error);
+    throw new Ledger8UnconfirmedError('deploy', deploy.contractAddress, signingKey, error);
   }
   assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, signingKey);
 
@@ -1159,13 +1157,13 @@ export const submitLedger8DeployTx = async (
   try {
     await providers.privateStateProvider.setSigningKey(deploy.contractAddress, signingKey);
   } catch (error) {
-    throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'signing-key', error);
+    throw new Ledger8NotStoredError('deploy', deploy.contractAddress, signingKey, 'signing-key', error);
   }
   if (privateStateId !== undefined) {
     try {
       await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
     } catch (error) {
-      throw new Ledger8DeployNotStoredError(deploy.contractAddress, signingKey, 'private-state', error);
+      throw new Ledger8NotStoredError('deploy', deploy.contractAddress, signingKey, 'private-state', error);
     }
   }
 
@@ -1214,7 +1212,7 @@ export interface Ledger8MaintenanceEntryProviders extends Ledger8EntryProviders 
  * @param contractAddress The contract being maintained.
  * @param sink The configured logger, or `undefined`.
  * @returns The retained-era key held for the address.
- * @throws Ledger8SigningKeyUnavailableError if nothing usable is stored, or the store cannot be read.
+ * @throws Ledger8SigningKeyError with reason `'unavailable'` if nothing usable is stored, or the store cannot be read.
  */
 const readLedger8MaintenanceSigningKey = async (
   privateStateProvider: Pick<PrivateStateProvider, 'getSigningKey'>,
@@ -1225,12 +1223,12 @@ const readLedger8MaintenanceSigningKey = async (
   try {
     stored = await privateStateProvider.getSigningKey(contractAddress);
   } catch (error) {
-    throw new Ledger8SigningKeyUnavailableError(contractAddress, error);
+    throw new Ledger8SigningKeyError('unavailable', contractAddress, { cause: error });
   }
   const signingKey =
     stored === undefined || stored === null ? undefined : fromStoredLedger8SigningKey(stored, contractAddress, sink);
   if (signingKey === undefined) {
-    throw new Ledger8SigningKeyUnavailableError(contractAddress);
+    throw new Ledger8SigningKeyError('unavailable', contractAddress);
   }
   return signingKey;
 };
@@ -1239,7 +1237,7 @@ const readLedger8MaintenanceSigningKey = async (
  * The update in the shape the engine takes, with the replacement key checked and unwrapped.
  *
  * @throws InvalidArgumentError if the artifact declares no circuit of that name.
- * @throws Ledger8SigningKeyUnusableError if the replacement key is not one the retained era can sign with.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if the replacement key is not one the retained era can sign with.
  */
 const toLedger8MaintenanceUpdate = (
   contract: Ledger8Contract,
@@ -1301,15 +1299,15 @@ const mayHaveLanded = (error: unknown): boolean =>
  * @param request The contract, its address and the update.
  * @returns The finalized ledger 8 record.
  * @throws InvalidArgumentError if the address is malformed, or the artifact declares no such circuit.
- * @throws Ledger8SigningKeyUnusableError if a replacement key is not one the retained era can sign with.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a replacement key is not one the retained era can sign with.
  * Raised before the head is read.
  * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` on a post-fork head.
- * @throws Ledger8SigningKeyUnavailableError if no usable key is held for the address.
+ * @throws Ledger8SigningKeyError with reason `'unavailable'` if no usable key is held for the address.
  * @throws MaintenanceAuthorityMismatchError if the held key is not the contract's authority. Raised
  * before anything is proven.
  * @throws EraInvariantViolationError if the record comes back from an era other than ledger 8.
  * @throws TxFailedError if the node recorded a non-success status.
- * @throws Ledger8SigningKeyNotStoredError if a replacement was CONFIRMED and the store then refused
+ * @throws Ledger8NotStoredError with operation `'replace-authority'` if a replacement was CONFIRMED and the store then refused
  * the new key. It carries the key.
  * @throws Every error {@link runLedger8MaintenancePipeline} and {@link submitLedger8Tx} raise.
  */
@@ -1354,7 +1352,7 @@ export const submitLedger8MaintenanceTx = async (
   const circuitId = update.kind === 'replace-authority' ? NO_CIRCUIT : update.circuitId;
   const unconfirmed = (error: unknown): unknown =>
     request.update.kind === 'replace-authority'
-      ? new Ledger8ReplaceAuthorityUnconfirmedError(contractAddress, request.update.newSigningKey, error)
+      ? new Ledger8UnconfirmedError('replace-authority', contractAddress, request.update.newSigningKey, error)
       : error;
 
   let txId: string;
@@ -1387,7 +1385,7 @@ export const submitLedger8MaintenanceTx = async (
     try {
       await providers.privateStateProvider.setSigningKey(contractAddress, newSigningKey);
     } catch (error) {
-      throw new Ledger8SigningKeyNotStoredError(contractAddress, newSigningKey, error);
+      throw new Ledger8NotStoredError('replace-authority', contractAddress, newSigningKey, 'signing-key', error);
     }
   }
   return record;

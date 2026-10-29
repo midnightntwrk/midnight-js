@@ -536,7 +536,7 @@ try {
 }
 ```
 
-`UNCERTAIN` (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
+`UNCERTAIN` (`MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION`, `MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED`, `MIDNIGHT_JS_C_LEDGER8_UNCONFIRMED`) means a submitted transaction may already be on chain. Never retry these blindly: follow the code's row first.
 
 Use `hasErrorCode`, `isMidnightJsError` and `errorCategory` rather than `instanceof`: two installed copies
 of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](TROUBLESHOOTING.md#midnightjs-error-codes).

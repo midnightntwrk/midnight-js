@@ -58,7 +58,7 @@ import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { Ledger8SigningKeyUnusableError } from '../errors';
+import { Ledger8SigningKeyError } from '../errors';
 import {
   fromStoredLedger8SigningKey,
   LEDGER8_SIGNING_KEY_HEX_LENGTH,
@@ -134,14 +134,15 @@ describe('a retained-era signing key crossing the private-state provider', () =>
       }
     })();
 
-    expect(caught).toBeInstanceOf(Ledger8SigningKeyUnusableError);
-    expect((caught as Ledger8SigningKeyUnusableError).contractAddress).toBe(CONTRACT_ADDRESS);
+    expect(caught).toBeInstanceOf(Ledger8SigningKeyError);
+    expect((caught as Ledger8SigningKeyError).reason).toBe('unusable');
+    expect((caught as Ledger8SigningKeyError).contractAddress).toBe(CONTRACT_ADDRESS);
     expect((caught as Error).message).not.toContain(retainedKey.slice(0, -2));
   });
 
   it('refuses a published key with no address to name when none exists yet', () => {
     expect(() => requireLedger8SigningKey({ tag: 'ecdsa', value: retainedKey }, undefined)).toThrow(
-      Ledger8SigningKeyUnusableError
+      Ledger8SigningKeyError
     );
   });
 });

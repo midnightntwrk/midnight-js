@@ -127,7 +127,7 @@ const queryFoundDeployTxPublicData = async (
  * @param signingKey The key the caller supplied on the attach options, if any.
  * @param sink The configured logger, or `undefined`.
  * @returns The key now held for that address, or `undefined` when none usable is.
- * @throws Ledger8SigningKeyUnusableError If a supplied key is not one this framework can store and
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If a supplied key is not one this framework can store and
  * read back. Raised BEFORE the write, so a refused key replaces nothing.
  * @see {@link KeepStatePipeline} for the three ways this diverges from the current era's rule, and
  * why each divergence is one.

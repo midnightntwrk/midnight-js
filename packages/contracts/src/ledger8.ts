@@ -17,7 +17,7 @@
  * The refusals the RETAINED era raises, under one name.
  *
  * The barrel re-exports this module as `Ledger8`, so a caller writes
- * `Ledger8.DeployUnconfirmedError`. The era prefix is dropped inside, because the namespace already
+ * `Ledger8.UnconfirmedError`. The era prefix is dropped inside, because the namespace already
  * carries it -- so a declaration this reference calls `Ledger8X` is the member published as
  * `Ledger8.X`.
  *
@@ -32,12 +32,8 @@
 
 export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
-  Ledger8DeployNotStoredError as DeployNotStoredError,
-  Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
-  Ledger8RecipientUnmappableError as RecipientUnmappableError,
-  Ledger8ReplaceAuthorityUnconfirmedError as ReplaceAuthorityUnconfirmedError,
-  Ledger8ShieldedSpendUnsupportedError as ShieldedSpendUnsupportedError,
-  Ledger8SigningKeyNotStoredError as SigningKeyNotStoredError,
-  Ledger8SigningKeyUnavailableError as SigningKeyUnavailableError,
-  Ledger8SigningKeyUnusableError as SigningKeyUnusableError
+  Ledger8CallUnsupportedError as CallUnsupportedError,
+  Ledger8NotStoredError as NotStoredError,
+  Ledger8SigningKeyError as SigningKeyError,
+  Ledger8UnconfirmedError as UnconfirmedError
 } from './errors';
