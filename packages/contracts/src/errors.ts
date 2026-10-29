@@ -122,7 +122,7 @@ export class EraInvariantViolationError extends MidnightJsError {
  * config provider serves, and two about a transaction handed to `submitTx`. From the caller's side
  * that is one condition: something it passed does not belong to the era it is being run against.
  */
-export type EraArtifactMismatchReason =
+export type EraMismatchReason =
   /** A raw ledger 9 contract instance, passed where its `CompiledContract` container belongs. */
   | 'unwrapped-ledger9-contract'
   /** An object matching no era's shape at all. */
@@ -138,9 +138,23 @@ export type EraArtifactMismatchReason =
   /** A ZK config provider that cannot report a declared runtime version at all. */
   | 'provider-cannot-declare-era'
   /** An artifact set declaring a `compact-runtime` this framework places on no ledger era. */
-  | 'unknown-artifact-runtime-version';
+  | 'unknown-artifact-runtime-version'
+  /** A ledger 8 (pre-fork) contract submitted for deployment to a network that has crossed the fork. */
+  | 'ledger8-deploy-on-ledger9-network'
+  /** A ledger 8 (pre-fork) contract given to a maintenance update on a network that has crossed the fork. */
+  | 'ledger8-maintenance-on-ledger9-network'
+  /** Ledger 8 artifacts given for a contract held on chain in a ledger 9 state they do not describe. `detail` carries the contract address; `cause` the key mismatch. */
+  | 'ledger8-artifact-on-ledger9-contract'
+  /** A read that handles only ledger 9 states met a state the v8 ledger wrote. `detail` carries the contract address and the operation. */
+  | 'ledger8-contract-state-unsupported'
+  /** A contract-scoped transaction created while the network is still on ledger 8. `detail` carries the network version. */
+  | 'scope-on-ledger8-network'
+  /** A call against a ledger 8 (pre-fork) contract given a contract-scoped transaction to join. `detail` carries the circuit id. */
+  | 'ledger8-call-in-scope'
+  /** A result whose `era` tag names neither pipeline. `detail` carries the value received. */
+  | 'unrecognised-result-era';
 
-const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason, string>> = Object.freeze({
+const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Object.freeze({
   // Named as the mistake it is: the raw instance and the container both carry `impureCircuits`, so
   // nothing about the value the caller passed looks wrong to it.
   'unwrapped-ledger9-contract':
@@ -184,11 +198,52 @@ const ERA_ARTIFACT_MISMATCH_MESSAGES: Readonly<Record<EraArtifactMismatchReason,
   'unknown-artifact-runtime-version':
     'These artifacts declare a compact-runtime this version of midnight-js places on no ledger era, so ' +
     'no pipeline can be chosen for them. Upgrade midnight-js to one that knows this toolchain, or ' +
-    'rebuild the contract with a toolchain this version supports.'
+    'rebuild the contract with a toolchain this version supports.',
+  'ledger8-deploy-on-ledger9-network':
+    'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
+    'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
+    'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
+    'ledger 9 Compact toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.',
+  'ledger8-maintenance-on-ledger9-network':
+    'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot maintain a contract on a ' +
+    'network that has crossed the fork. Recompile the contract with the ledger 9 Compact toolchain and run the same ' +
+    'maintenance function with that artifact: it maintains the migrated contract with the signing key ' +
+    'already stored for its address.',
+  'ledger8-artifact-on-ledger9-contract':
+    'The contract is held on chain in a ledger 9 state whose verifier key ' +
+    'for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ' +
+    'this contract. A contract deployed before the fork keeps its ledger 8 keys even after the fork ' +
+    'translates its state, so this is not that case: it is a contract built with ledger 9 Compact toolchain ' +
+    'artifacts. Re-run the operation with the artifacts the ledger 9 Compact toolchain produced for it. Retrying ' +
+    'with the same artifacts cannot succeed.',
+  'ledger8-contract-state-unsupported':
+    'The contract is held on chain in a state written by the v8 ledger, and ' +
+    'the operation runs only against states written by the v9 ledger. Before the hard fork, run the ' +
+    'operation through the contract the ledger 8 (pre-fork) Compact toolchain produced. After the fork, the ' +
+    'indexer serves every contract\'s state translated to v9 from version 4.4.0-rc.6 on: upgrade an ' +
+    'older indexer.',
+  'scope-on-ledger8-network':
+    'A contract-scoped transaction cannot be created while the network is on the ledger 8 era. ' +
+    'A scope batches several circuit calls into one transaction, and this era composes exactly ' +
+    'one call per transaction and refuses a longer list, so there is nothing for a scope to batch ' +
+    'into. Either submit each call as its own transaction with submitCallTx, or run the scope once ' +
+    'the network has crossed the fork.',
+  'ledger8-call-in-scope':
+    'A circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain cannot ' +
+    'join a contract-scoped transaction: a scope merges its calls into one ledger 9 transaction, ' +
+    'while a ledger 8 call is composed and submitted on its own. Submit this call as its own ' +
+    'transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ' +
+    'produced by the ledger 9 Compact toolchain.',
+  'unrecognised-result-era':
+    `A result carried an era tag naming neither pipeline. ` +
+    `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
+    `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
+    `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
+    `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
 });
 
-/** Options for {@link EraArtifactMismatchError}. */
-export interface EraArtifactMismatchOptions extends ErrorOptions {
+/** Options for {@link EraMismatchError}. */
+export interface EraMismatchOptions extends ErrorOptions {
   /**
    * A sentence appended to the settled wording for this reason, naming the value that was actually
    * seen. Kept OUT of the reason's own message so every instance of a reason reads identically up to
@@ -198,17 +253,18 @@ export interface EraArtifactMismatchOptions extends ErrorOptions {
 }
 
 /**
- * An error indicating that the contract handed to an entry point does not belong to the era the
- * operation can execute — or to either era.
+ * An error indicating that a value the caller passed does not belong to the era the operation can
+ * execute — or to either era. The value is a contract, an artifact set, a transaction, a scope, a
+ * result, or a contract state read from the chain.
  *
  * Raised before any pipeline is entered, so no proving, no provider round trip and no state decode
  * happens on a request that cannot succeed.
  *
  * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
-export class EraArtifactMismatchError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH];
+export class EraMismatchError extends MidnightJsError {
+  readonly code = CONTRACTS_ERROR_CODES.ERA_MISMATCH;
+  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_MISMATCH];
 
   /**
    * @param reason Which era mismatch this is. Also the discriminant a caller branches on, so it is
@@ -218,132 +274,12 @@ export class EraArtifactMismatchError extends MidnightJsError {
    *                value that was seen.
    */
   constructor(
-    readonly reason: EraArtifactMismatchReason,
-    options?: EraArtifactMismatchOptions
+    readonly reason: EraMismatchReason,
+    options?: EraMismatchOptions
   ) {
-    const message = ERA_ARTIFACT_MISMATCH_MESSAGES[reason];
+    const message = ERA_MISMATCH_MESSAGES[reason];
     super(options?.detail === undefined ? message : `${message} ${options.detail}`, { cause: options?.cause });
-    this.name = 'EraArtifactMismatchError';
-  }
-}
-
-/**
- * An error indicating that the contract at this address is held on chain in a ledger 9 state,
- * while the artifacts handed to this operation came from the ledger 8 (pre-fork) Compact toolchain.
- *
- * Ledger 8 artifacts stay supported for a contract whose state ledger 8 wrote, and they stay
- * supported after that state has been MIGRATED: the fork rewrites its version tag to ledger 9, and the
- * ledger carries the ledger 8 verifier keys across unchanged. So a ledger 9 version tag on its own says
- * nothing about which toolchain built the contract, and this error is not raised for one.
- *
- * What raises it is the pair: a ledger 9 version tag AND a key these artifacts cannot match. A
- * migrated pre-fork contract still declares the keys the ledger 8 toolchain produced, so it does not
- * reach here; a contract deployed with ledger 9 toolchain artifacts declares keys no ledger 8
- * artifact can match, and that is the case named here.
- *
- * Distinct from the era disagreements either side of it: nothing here is stale or inconsistent, and
- * a retry cannot change it. What has to change is which artifacts the caller passes.
- */
-export class Ledger8ArtifactOnLedger9StateError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE];
-
-  /**
-   * @param contractAddress The contract whose on-chain state was read.
-   * @param options Carries the key-mismatch this refusal re-reports on `cause`, so the byte-level
-   * diagnosis is not lost behind the era-level one.
-   */
-  constructor(
-    readonly contractAddress: string,
-    options?: ErrorOptions
-  ) {
-    super(
-      `The contract at '${contractAddress}' is held on chain in a ledger 9 state whose verifier key ` +
-        `for this circuit is not the one the supplied artifacts carry, so those artifacts do not describe ` +
-        `this contract. A contract deployed before the fork keeps its ledger 8 keys even after the fork ` +
-        `translates its state, so this is not that case: it is a contract built with ledger 9 Compact toolchain ` +
-        `artifacts. Re-run the operation with the artifacts the ledger 9 Compact toolchain produced for it. Retrying ` +
-        `with the same artifacts cannot succeed.`,
-      options
-    );
-    this.name = 'Ledger8ArtifactOnLedger9StateError';
-  }
-}
-
-/**
- * An error indicating that the contract at this address is held on chain in a state the v8 ledger
- * wrote, while the operation runs only against states the v9 ledger wrote.
- *
- * The contracts-level counterpart of `Ledger8ValueUnsupportedError` from `midnight-js-utils`, for
- * the reads this package makes on the caller's behalf: it names the contract and the operation,
- * because the caller has no `switch` of its own to put the v8 branch in.
- */
-export class Ledger8ContractStateUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED];
-
-  /**
-   * @param contractAddress The contract whose on-chain state was read.
-   * @param operation The operation that handles only v9 states.
-   */
-  constructor(
-    readonly contractAddress: string,
-    readonly operation: string
-  ) {
-    super(
-      `The contract at '${contractAddress}' is held on chain in a state written by the v8 ledger, and ` +
-        `${operation} runs only against states written by the v9 ledger. Before the hard fork, run the ` +
-        `operation through the contract the ledger 8 (pre-fork) Compact toolchain produced. After the fork, the ` +
-        `indexer serves every contract's state translated to v9 from version 4.4.0-rc.6 on: upgrade an ` +
-        `older indexer.`
-    );
-    this.name = 'Ledger8ContractStateUnsupportedError';
-  }
-}
-
-/**
- * An error indicating that a contract produced by the retained Compact toolchain was submitted for
- * DEPLOYMENT to a network that has already crossed the fork.
- *
- * The retained era is supported for calls against contracts already on chain, which is what keeps
- * pre-fork deployments callable. A new deployment has no such history to preserve, so it is refused
- * rather than written to the chain in an era the network has left.
- */
-export class Ledger8DeployOnLedger9Error extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9];
-
-  constructor() {
-    super(
-      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
-        'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
-        'fork, but a new deployment has no pre-fork history to preserve. Recompile the contract with the ' +
-        'ledger 9 Compact toolchain and deploy that artifact — see the runtime-deploy chapter of the migration guide.'
-    );
-    this.name = 'Ledger8DeployOnLedger9Error';
-  }
-}
-
-/**
- * An error indicating that a contract MAINTENANCE update was given a contract produced by the
- * retained Compact toolchain while the network has already crossed the fork.
- *
- * The retained era maintains contracts only before the fork. After it, the same contract is
- * maintained through the same functions with the artifact recompiled by the current toolchain, and
- * with the signing key already stored for its address.
- */
-export class Ledger8MaintenanceOnLedger9Error extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9];
-
-  constructor() {
-    super(
-      'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot maintain a contract on a ' +
-        'network that has crossed the fork. Recompile the contract with the ledger 9 Compact toolchain and run the same ' +
-        'maintenance function with that artifact: it maintains the migrated contract with the signing key ' +
-        'already stored for its address.'
-    );
-    this.name = 'Ledger8MaintenanceOnLedger9Error';
+    this.name = 'EraMismatchError';
   }
 }
 
@@ -895,37 +831,6 @@ export const isEffectContractError = (error: unknown): error is EffectContractEr
   'message' in ((error as Record<string, unknown>).cause as object);
 
 /**
- * An era tag on a result that names neither pipeline.
- *
- * {@link isLedger8Result} refuses rather than answering `false`. Answering
- * `false` would mean "this is a current-era result", which for an unreadable
- * tag is a guess, and the caller would then read the result through the wrong
- * era's shape. Every result this framework builds carries one of the two
- * literals; a value that does not has been round-tripped through something
- * that dropped it -- a queue, a JSON boundary, a structured clone -- or was
- * stored under a 5.0.0 pre-release, which tagged results `'ledger9'` /
- * `'ledger8'`.
- */
-export class UnknownResultEraError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA];
-
-  /**
-   * @param received What the result's `era` field actually held.
-   */
-  constructor(readonly received: unknown) {
-    super(
-      `A result carried an era tag naming neither pipeline (got: ${JSON.stringify(received) ?? 'undefined'}). ` +
-        `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
-        `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
-        `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
-        `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
-    );
-    this.name = 'UnknownResultEraError';
-  }
-}
-
-/**
  * The operations whose transaction the chain can record as failed.
  */
 export type TxFailedOperation = 'call' | 'deploy' | 'insert-verifier-key' | 'remove-verifier-key' | 'replace-authority';
@@ -1142,71 +1047,6 @@ export class ContractTypeError extends MidnightJsError {
     this.keylessCircuitIds = mismatch.keyless;
     this.mismatchedCircuitIds = mismatch.mismatched;
     this.circuitIds = [...mismatch.missing, ...mismatch.keyless, ...mismatch.mismatched];
-  }
-}
-
-/**
- * An error indicating that a contract-scoped transaction was created while the
- * network is on a ledger era that has no way to express one.
- *
- * The pre-fork era composes exactly one call per transaction, which leaves a
- * pre-fork scope nothing to batch into. The message names both ways forward,
- * because the caller's batching intent cannot be honoured either way.
- *
- * Raised when the scope is CREATED, and from the network version READING alone — before
- * that era's runtime is acquired. Both are load-bearing; do not move it later.
- *
- * @see {@link ErrorTaxonomy} for the refuse-before-you-pay placement rule.
- * @see {@link ForkCrossedRemediation} for what each placement property prevents.
- */
-export class ScopedTransactionEraUnsupportedError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED];
-
-  /**
-   * @param networkVersion The ledger version the network is on, as the scope resolved it.
-   */
-  constructor(readonly networkVersion: LedgerVersion) {
-    super(
-      `A contract-scoped transaction cannot be created while the network is on the '${networkVersion}' ledger ` +
-        `era. A scope batches several circuit calls into one transaction, and this era composes exactly ` +
-        `one call per transaction and refuses a longer list, so there is nothing for a scope to batch ` +
-        `into. Either submit each call as its own transaction with submitCallTx, or run the scope once ` +
-        `the network has crossed the fork.`
-    );
-    this.name = 'ScopedTransactionEraUnsupportedError';
-  }
-}
-
-/**
- * An error indicating that a call against a contract produced by the RETAINED
- * Compact toolchain was handed a contract-scoped transaction to join.
- *
- * A scope merges live CURRENT-era transactions, and a retained-era call crosses
- * the provider methods as its own transaction, so there is nothing to merge it
- * into on either side of the fork.
- *
- * Raised rather than ignored, and that is the change it makes: the retained-era
- * path previously accepted a scope context and ran outside it.
- *
- * @see {@link ForkCrossedRemediation} for why the two cannot be batched.
- */
-export class MixedEraScopeError extends MidnightJsError {
-  readonly code = CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE;
-  readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE];
-
-  /**
-   * @param circuitId The circuit whose call was refused.
-   */
-  constructor(readonly circuitId: string) {
-    super(
-      `Circuit '${circuitId}' belongs to a contract produced by the ledger 8 (pre-fork) Compact toolchain and cannot ` +
-        `join a contract-scoped transaction: a scope merges its calls into one ledger 9 transaction, ` +
-        `while a ledger 8 call is composed and submitted on its own. Submit this call as its own ` +
-        `transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ` +
-        `produced by the ledger 9 Compact toolchain.`
-    );
-    this.name = 'MixedEraScopeError';
   }
 }
 

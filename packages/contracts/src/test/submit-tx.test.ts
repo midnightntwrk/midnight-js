@@ -34,7 +34,7 @@ import {
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EraArtifactMismatchError, EraInvariantViolationError, ProviderFailedError } from '../errors';
+import { EraInvariantViolationError, EraMismatchError, ProviderFailedError } from '../errors';
 import { submitLedger9Payload, submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
 import { handles } from './ledger-transaction-fixtures';
 import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, createMockUnprovenTx } from './test-mocks';
@@ -350,7 +350,7 @@ describe('submit-tx', () => {
 
       const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: await handles.v8.Unproven() }));
 
-      expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
+      expect(rejection).toBeInstanceOf(EraMismatchError);
       expect(rejection).toMatchObject({ reason: 'ledger8-transaction-on-ledger9-network' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });
@@ -363,7 +363,7 @@ describe('submit-tx', () => {
 
       const rejection = await rejectionOf(submit(mockProviders, { unprovenTx: createMockUnprovenTx() }));
 
-      expect(rejection).toBeInstanceOf(EraArtifactMismatchError);
+      expect(rejection).toBeInstanceOf(EraMismatchError);
       expect(rejection).toMatchObject({ reason: 'ledger9-transaction-on-ledger8-network' });
       expect(mockProviders.proofProvider.proveTx).not.toHaveBeenCalled();
     });

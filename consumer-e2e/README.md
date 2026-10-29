@@ -125,7 +125,7 @@ untouched:
   that the store now holds the new key. (c3) then asserts that this key, not the
   deploy's, survived the fork;
 - **after the fork, retained artifact**: refused with
-  `Ledger8.MaintenanceOnLedger9Error`. The proof and submission providers in this
+  `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`. The proof and submission providers in this
   leg refuse to be reached, and the stored key must be unchanged;
 - **after the fork, recompiled artifact**: through the v9 path, from the same
   store, with the key the first leg stored. This is the only place the run

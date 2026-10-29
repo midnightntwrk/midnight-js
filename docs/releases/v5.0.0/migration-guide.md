@@ -614,8 +614,8 @@ For a **maintenance** update, the two steps match the deploy case:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8.DeployOnLedger9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`).
+This section is linked from `EraMismatchError` with reason `'ledger8-deploy-on-ledger9-network'`
+(`MIDNIGHT_JS_C_ERA_MISMATCH`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
@@ -623,7 +623,7 @@ up a new contract per user, per market, per game — read this before the fork.
 The retained era stays supported for **calls against contracts deployed before
 the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only before
 the fork**. After the fork `deployContract` refuses one with
-`Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
+`EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), before the constructor runs and before any verifier
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either

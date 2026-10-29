@@ -193,7 +193,7 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
- * artifact after the fork is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
+ * artifact after the fork is refused with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`). Recompile with the
  * current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
  * against contracts deployed before the fork.
  *
@@ -242,7 +242,7 @@ export async function deployContract<C extends Contract.Any>(
  * @throws TxFailedError If the transaction is submitted successfully but produces an error
  *                       when executed by the node, in either era. Carries the contract address and
  *                       the signing key, because a `FailFallible` deployment landed.
- * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, is
+ * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, is
  *                                  a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
  *                                  toolchain this framework can place. Raised before anything is
@@ -252,7 +252,7 @@ export async function deployContract<C extends Contract.Any>(
  * @throws Ledger8SigningKeyUnusableError If a retained-era deploy is given a `signingKey` that is not a
  *                                        `schnorr` key of 64 hex characters. Raised before anything
  *                                        is composed.
- * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed after the fork.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained-era artifact is deployed after the fork.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
  * @throws Ledger8DeployUnconfirmedError If what the chain did with a submitted retained-era

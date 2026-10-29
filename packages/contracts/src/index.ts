@@ -47,10 +47,9 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // the other half of that diagnosis, for a head that could not be re-read or that reported an
 // EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
-// behaves the same whichever failure came first. `ScopedTransactionEraUnsupportedError` and
-// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
-// head era that composes only one call per transaction, and a retained-toolchain call cannot join
-// a scope at all.
+// behaves the same whichever failure came first. The scoped-transaction era rules are reasons of
+// `EraMismatchError` -- a scope is refused outright on a head era that composes only one call per
+// transaction, and a retained-toolchain call cannot join a scope at all.
 //
 // The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
 // per entry point -- call, deploy, find -- and they stay together on the flat surface; the deploy
@@ -66,23 +65,21 @@ export {
   ContractNotFoundError,
   ContractTypeError,
   ContractTypeMismatch,
-  EraArtifactMismatchError,
-  type EraArtifactMismatchOptions,
-  type EraArtifactMismatchReason,
   EraInvariantViolationError,
+  EraMismatchError,
+  type EraMismatchOptions,
+  type EraMismatchReason,
   ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
   LedgerParametersUnservedError,
-  MixedEraScopeError,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   ProviderFailedError,
   PublicStatesEraMismatchError,
-  ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
   type SubmitRejectionUndiagnosedCause,
   SubmitRejectionUndiagnosedError,
@@ -91,7 +88,6 @@ export {
   type TxFailedDetails,
   TxFailedError,
   type TxFailedOperation,
-  UnknownResultEraError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
 export {

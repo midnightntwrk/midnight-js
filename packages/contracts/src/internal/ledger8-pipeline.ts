@@ -53,9 +53,9 @@ import { Option } from 'effect';
 
 import {
   BlankVerifierKeySlotError,
+  EraMismatchError,
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
-  Ledger8ArtifactOnLedger9StateError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   LedgerParametersUnservedError,
@@ -423,7 +423,7 @@ const snapshotEntryPoint = (
  * @param contractAddress The contract being operated on, named in the era-level refusal.
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
- * @throws Ledger8ArtifactOnLedger9StateError if the keys differ byte for byte AND the state
+ * @throws EraMismatchError with reason `'ledger8-artifact-on-ledger9-contract'` if the keys differ byte for byte AND the state
  * carries a ledger 9 envelope, which together mean the contract was built with ledger 9 toolchain
  * artifacts — carrying the byte-level mismatch on `cause`.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a ledger 8 state.
@@ -447,7 +447,10 @@ export const assertSnapshotVerifierKey = (
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
-      throw new Ledger8ArtifactOnLedger9StateError(contractAddress, { cause });
+      throw new EraMismatchError('ledger8-artifact-on-ledger9-contract', {
+        detail: `Contract address: ${contractAddress}.`,
+        cause
+      });
     }
     throw cause;
   }

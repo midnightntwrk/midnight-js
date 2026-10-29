@@ -60,10 +60,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   EraInvariantViolationError,
+  EraMismatchError,
   IndexerInconsistencyError,
-  Ledger8ArtifactOnLedger9StateError,
   LedgerParametersUnservedError,  NetworkVersionStateMismatchError,
-  PublicStatesEraMismatchError} from '../errors';
+  PublicStatesEraMismatchError,
+  VerifierKeyMismatchError
+} from '../errors';
 import {
   type Ledger8ExecuteRequest,
   type Ledger8MaintenanceRequest,
@@ -657,8 +659,10 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ArtifactOnLedger9StateError);
-    expect((caught as Ledger8ArtifactOnLedger9StateError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect(caught).toMatchObject({ reason: 'ledger8-artifact-on-ledger9-contract', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+    expect((caught as EraMismatchError).message).toContain(recording.contractAddress);
+    expect((caught as EraMismatchError).cause).toBeInstanceOf(VerifierKeyMismatchError);
     // Refused before anything is paid for: a proof against a key the chain does
     // not hold is rejected on submission, which is the late failure this
     // ordering exists to prevent.

@@ -45,8 +45,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  EraMismatchError,
   ForkCrossedDuringOperationError,
-  Ledger8MaintenanceOnLedger9Error,
   Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8SigningKeyNotStoredError,
   Ledger8SigningKeyUnavailableError,
@@ -270,12 +270,17 @@ describe('contract maintenance through a retained-era artifact', () => {
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     });
 
-    it('refuses a post-fork head with the recompile remediation, before the key is read', async () => {
+    it.each([
+      ['insert', (providers: Providers) => submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK)],
+      ['remove', (providers: Providers) => submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)],
+      ['replace authority', (providers: Providers) => submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY)]
+    ])('refuses a %s on a post-fork head with the recompile remediation, before the key is read', async (_name, run) => {
       const providers = providersOn(keyedState, POST_FORK_PROTOCOL_VERSION);
 
-      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
-        Ledger8MaintenanceOnLedger9Error
-      );
+      const failure = await run(providers).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(EraMismatchError);
+      expect(failure).toMatchObject({ reason: 'ledger8-maintenance-on-ledger9-network', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
       expect(providers.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
     });

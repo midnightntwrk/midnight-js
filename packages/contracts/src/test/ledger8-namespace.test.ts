@@ -25,12 +25,8 @@ import { describe, expect, it } from 'vitest';
 // list below cannot see it.
 import {
   Ledger8AmbiguousEntryPointError,
-  Ledger8ArtifactOnLedger9StateError,
-  Ledger8ContractStateUnsupportedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnLedger9Error,
   Ledger8DeployUnconfirmedError,
-  Ledger8MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError,
   Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -51,12 +47,8 @@ import { Ledger8 } from '../index';
  */
 const LEDGER8_MEMBERS = [
   'AmbiguousEntryPointError',
-  'ArtifactOnLedger9StateError',
-  'ContractStateUnsupportedError',
   'DeployNotStoredError',
-  'DeployOnLedger9Error',
   'DeployUnconfirmedError',
-  'MaintenanceOnLedger9Error',
   'RecipientUnmappableError',
   'ReplaceAuthorityUnconfirmedError',
   'ShieldedSpendUnsupportedError',
@@ -73,9 +65,9 @@ const LEDGER8_MEMBERS = [
  * transitional one.
  */
 const ERA_NEUTRAL_MEMBERS = [
+  'EraMismatchError',
   'TxFailedError',
-  'isLedger8Result',
-  'UnknownResultEraError'
+  'isLedger8Result'
 ];
 
 /**
@@ -125,15 +117,11 @@ describe('the retained era is published as one namespace', () => {
     // Identity, not spelling. Every assertion below fails if the rename table in `src/ledger8.ts`
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
-    expect(Ledger8.ArtifactOnLedger9StateError).toBe(Ledger8ArtifactOnLedger9StateError);
-    expect(Ledger8.ContractStateUnsupportedError).toBe(Ledger8ContractStateUnsupportedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
-    expect(Ledger8.DeployOnLedger9Error).toBe(Ledger8DeployOnLedger9Error);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
     expect(Ledger8.SigningKeyUnusableError).toBe(Ledger8SigningKeyUnusableError);
-    expect(Ledger8.MaintenanceOnLedger9Error).toBe(Ledger8MaintenanceOnLedger9Error);
     expect(Ledger8.SigningKeyUnavailableError).toBe(Ledger8SigningKeyUnavailableError);
     expect(Ledger8.SigningKeyNotStoredError).toBe(Ledger8SigningKeyNotStoredError);
     expect(Ledger8.ReplaceAuthorityUnconfirmedError).toBe(Ledger8ReplaceAuthorityUnconfirmedError);
@@ -154,8 +142,8 @@ describe('the retained era is published as one namespace', () => {
   it('carries the registered error code on a class reached through the namespace', () => {
     // The namespace is a RENAME of the existing classes, not a second set of them. A same-named
     // stub would satisfy the key list above and fail here.
-    const error = new Ledger8.DeployOnLedger9Error();
+    const error = new Ledger8.DeployNotStoredError('ab'.repeat(32), { tag: 'schnorr', value: '11'.repeat(32) }, 'signing-key', new Error('store down'));
 
-    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
+    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED)).toBe(true);
   });
 });

@@ -30,8 +30,7 @@ import {
 import { type CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
 import {
-  MixedEraScopeError,
-  ScopedTransactionEraUnsupportedError,
+  EraMismatchError,
   ScopedTransactionIdentityMismatchError,
   TxFailedError
 } from '../errors';
@@ -130,7 +129,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * @param pdp The read surface, for the single head read.
  * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The era facts the scope runs under.
- * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
+ * @throws EraMismatchError with reason `'scope-on-ledger8-network'` if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @see {@link ForkCrossedRemediation} for why both properties of this placement
@@ -145,7 +144,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new ScopedTransactionEraUnsupportedError(reading.head);
+    throw new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${reading.head}'.` });
   }
 
   return acquireHeadEra(reading);
@@ -352,7 +351,7 @@ export const isTransactionContext = <
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
  * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
- * @throws MixedEraScopeError if a real transaction context was passed.
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
@@ -362,7 +361,7 @@ export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionConte
     return;
   }
   if (isTransactionContext(transactionContext)) {
-    throw new MixedEraScopeError(circuitId);
+    throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.` });
   }
   throw new InvalidArgumentError(
     `submitCallTx was passed a third argument that is not a transaction context (received ` +
@@ -532,7 +531,7 @@ export const scopedTransaction = async <
   // into it -- would otherwise have it read as an options bag. A fresh scope
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
-  // it was handed" failure `MixedEraScopeError` exists to stop, one case over.
+  // it was handed" failure `'ledger8-call-in-scope'` exists to stop, one case over.
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,

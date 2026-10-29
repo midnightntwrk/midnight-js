@@ -195,8 +195,8 @@ export interface Ledger8Runtime {
  * pipeline-selection breadcrumbs are written to, and the contract this
  * operation names — omitted by a deploy, which has no address yet.
  * @returns The resolved era facts and the acquired engine.
- * @throws Ledger8DeployOnLedger9Error for a retained-era deploy on a post-fork head.
- * @throws Ledger8MaintenanceOnLedger9Error for a retained-era maintenance update on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` for a retained-era deploy on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` for a retained-era maintenance update on a post-fork head.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  * @throws ProviderEraUnsupportedError if a transaction provider does not serve the era this
@@ -338,7 +338,7 @@ export interface Ledger8SubmittedCall {
  * @param request The contract, its address, the circuit, its arguments and the
  * private state to run against.
  * @returns The transaction id and what the call produced.
- * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
@@ -431,7 +431,7 @@ export interface Ledger8DeployRequest {
    * before the call it is an argument to: a map built inline was fetched ahead
    * of the era and provider gates below, so a retained artifact on a post-fork head
    * - whose ZK config an ordinary browser no longer serves after the fork - got
-   * the provider's fetch rejection in place of `Ledger8DeployOnLedger9Error`, which
+   * the provider's fetch rejection in place of `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), which
    * is the reason a caller can act on.
    */
   readonly resolveVerifierKeys: () => Promise<ReadonlyMap<string, Uint8Array>>;
@@ -466,7 +466,7 @@ export interface Ledger8SubmittedDeploy {
  * @param request The contract, its constructor arguments, the private state,
  * the verifier keys to register and the optional signing key.
  * @returns The transaction id, the composed deploy record and the head era.
- * @throws Ledger8DeployOnLedger9Error on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` on a post-fork head.
  */
 export const runLedger8Deploy = async (
   providers: Ledger8EntryProviders,
@@ -557,7 +557,7 @@ export interface Ledger8FoundState {
  * @returns The deploy record as the read surface reported it.
  * @throws InvalidArgumentError if the artifact declares no callable circuits,
  * or if the address is malformed.
- * @throws EraArtifactMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
@@ -1303,7 +1303,7 @@ const mayHaveLanded = (error: unknown): boolean =>
  * @throws InvalidArgumentError if the address is malformed, or the artifact declares no such circuit.
  * @throws Ledger8SigningKeyUnusableError if a replacement key is not one the retained era can sign with.
  * Raised before the head is read.
- * @throws Ledger8MaintenanceOnLedger9Error on a post-fork head.
+ * @throws EraMismatchError with reason `'ledger8-maintenance-on-ledger9-network'` on a post-fork head.
  * @throws Ledger8SigningKeyUnavailableError if no usable key is held for the address.
  * @throws MaintenanceAuthorityMismatchError if the held key is not the contract's authority. Raised
  * before anything is proven.

@@ -43,10 +43,7 @@ type Case = readonly [string, Error, ContractsErrorCode, MidnightJsErrorCategory
 
 const cases: readonly Case[] = [
   ['EraInvariantViolationError', new errors.EraInvariantViolationError('submitTx'), CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION, 'INTERNAL'],
-  ['EraArtifactMismatchError', new errors.EraArtifactMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH, 'USAGE'],
-  ['Ledger8ArtifactOnLedger9StateError', new errors.Ledger8ArtifactOnLedger9StateError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE, 'USAGE'],
-  ['Ledger8ContractStateUnsupportedError', new errors.Ledger8ContractStateUnsupportedError(ADDRESS, 'findDeployedContract'), CONTRACTS_ERROR_CODES.LEDGER8_CONTRACT_STATE_UNSUPPORTED, 'USAGE'],
-  ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
+  ['EraMismatchError', new errors.EraMismatchError('unrecognised-contract-shape'), CONTRACTS_ERROR_CODES.ERA_MISMATCH, 'USAGE'],
   ['NetworkVersionStateMismatchError', new errors.NetworkVersionStateMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
   [
@@ -60,11 +57,8 @@ const cases: readonly Case[] = [
   ['ProviderFailedError', new errors.ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.PROVIDER_FAILED, 'ENVIRONMENT'],
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
-  ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
   ['TxFailedError', new errors.TxFailedError('call', finalizedTxData, { circuitId: 'increment' }), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
-  ['ScopedTransactionEraUnsupportedError', new errors.ScopedTransactionEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED, 'USAGE'],
-  ['MixedEraScopeError', new errors.MixedEraScopeError('increment'), CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE, 'USAGE'],
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteFindContractPrivateStateConfig', new errors.IncompleteFindContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG, 'USAGE'],
@@ -76,7 +70,6 @@ const cases: readonly Case[] = [
   ['Ledger8RecipientUnmappableError', new errors.Ledger8RecipientUnmappableError('increment', 'ab'.repeat(32)), CONTRACTS_ERROR_CODES.LEDGER8_RECIPIENT_UNMAPPABLE, 'USAGE'],
   ['Ledger8DeployNotStoredError', new errors.Ledger8DeployNotStoredError(ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_NOT_STORED, 'ENVIRONMENT'],
   ['Ledger8SigningKeyUnusableError', new errors.Ledger8SigningKeyUnusableError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNUSABLE, 'USAGE'],
-  ['Ledger8MaintenanceOnLedger9Error', new errors.Ledger8MaintenanceOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_MAINTENANCE_ON_LEDGER9, 'USAGE'],
   ['Ledger8SigningKeyUnavailableError', new errors.Ledger8SigningKeyUnavailableError(ADDRESS, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE, 'USAGE'],
   ['Ledger8SigningKeyNotStoredError', new errors.Ledger8SigningKeyNotStoredError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED, 'ENVIRONMENT'],
   ['Ledger8ReplaceAuthorityUnconfirmedError', new errors.Ledger8ReplaceAuthorityUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED, 'UNCERTAIN'],
@@ -88,7 +81,7 @@ const cases: readonly Case[] = [
 
 describe('contracts error classes', () => {
   it('every error class in errors.ts extends MidnightJsError', () => {
-    expect(errorClasses.length).toBeGreaterThan(30);
+    expect(errorClasses.length).toBeGreaterThan(25);
     expect(errorClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
   });
 
@@ -126,19 +119,17 @@ describe('contracts error classes', () => {
     expect([error.name, error.code]).toEqual(['ProviderFailedError', 'MIDNIGHT_JS_C_PROVIDER_FAILED']);
   });
 
-  it('the retained-deploy refusal carries the Ledger9 name and code', () => {
-    const error = new errors.Ledger8DeployOnLedger9Error();
+  it('the retained-deploy refusal carries the era-mismatch name, reason and code', () => {
+    const error = new errors.EraMismatchError('ledger8-deploy-on-ledger9-network');
 
-    expect([error.name, error.code]).toEqual(['Ledger8DeployOnLedger9Error', 'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9']);
+    expect([error.name, error.reason, error.code]).toEqual([
+      'EraMismatchError',
+      'ledger8-deploy-on-ledger9-network',
+      'MIDNIGHT_JS_C_ERA_MISMATCH'
+    ]);
   });
 
   it.each([
-    ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), 'MIDNIGHT_JS_C_UNKNOWN_RESULT_ERA'],
-    [
-      'ScopedTransactionEraUnsupportedError',
-      new errors.ScopedTransactionEraUnsupportedError('v8'),
-      'MIDNIGHT_JS_C_SCOPED_TRANSACTION_ERA_UNSUPPORTED'
-    ],
     [
       'ScopedTransactionIdentityMismatchError',
       new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }),

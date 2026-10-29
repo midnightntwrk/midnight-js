@@ -43,7 +43,7 @@ export const requireDeployedContract = <T>(state: T | null | undefined, contract
  * @param contractAddress The contract being maintained.
  * @returns The contract's latest state.
  * @throws ContractNotFoundError if no state is found on chain for `contractAddress`.
- * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the state.
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote the state.
  */
 export const queryExistingContractState = async (
   publicDataProvider: Pick<PublicDataProvider, 'queryContractState'>,

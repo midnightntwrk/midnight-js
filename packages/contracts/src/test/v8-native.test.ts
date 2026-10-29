@@ -79,7 +79,6 @@ import {
   IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployOnLedger9Error,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
@@ -1418,7 +1417,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
         privateState: {},
         resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
       })
-    ).rejects.toBeInstanceOf(Ledger8DeployOnLedger9Error);
+    ).rejects.toMatchObject({ name: 'EraMismatchError', reason: 'ledger8-deploy-on-ledger9-network' });
     // Refused before ANY work: no constructor executed, nothing composed.
     expect(log).toEqual([]);
   });
@@ -2859,9 +2858,10 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     // Reachable through this entry point at last: the unconditional refusal
     // that stood in front of it is gone, so the era pairing table decides.
-    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnLedger9Error
-    );
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toMatchObject({
+      name: 'EraMismatchError',
+      reason: 'ledger8-deploy-on-ledger9-network'
+    });
     expect(log).toEqual([]);
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
   });
@@ -3006,9 +3006,10 @@ describe('deploying a retained-era contract through deployContract', () => {
       .fn()
       .mockRejectedValue(new Error('retained-era ZK config is no longer served'));
 
-    await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployOnLedger9Error
-    );
+    await expect(deployContract(providers, { compiledContract: contract })).rejects.toMatchObject({
+      name: 'EraMismatchError',
+      reason: 'ledger8-deploy-on-ledger9-network'
+    });
     expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
   });
 

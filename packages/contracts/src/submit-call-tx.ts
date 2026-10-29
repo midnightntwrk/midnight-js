@@ -152,7 +152,7 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
- * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
  *         container, or its artifacts declare no toolchain this framework can place. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'
@@ -286,7 +286,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
  *
- * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
  *         container, or its artifacts declare no toolchain this framework can place. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'

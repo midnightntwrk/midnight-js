@@ -18,7 +18,7 @@ import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
-import { UnknownResultEraError } from '../errors';
+import { EraMismatchError } from '../errors';
 
 // A result is only ever read here through its `era` tag, so the smallest thing
 // carrying one is the whole fixture this needs.
@@ -44,7 +44,7 @@ describe('isLedger8Result', () => {
     ['a tag of the wrong primitive type', { era: 9, txId: 'tx-1' }]
   ])('refuses %s rather than answering false', (_label, result) => {
     expect(() => isLedger8Result(result as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnknownResultEraError
+      EraMismatchError
     );
   });
 
@@ -58,24 +58,25 @@ describe('isLedger8Result', () => {
       }
     })();
 
-    expect(caught).toBeInstanceOf(UnknownResultEraError);
-    expect((caught as UnknownResultEraError).received).toBe('v7');
-    expect((caught as UnknownResultEraError).code).toBe(CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA);
-    expect((caught as UnknownResultEraError).message).toEqual(
-      'A result carried an era tag naming neither pipeline (got: "v7"). ' +
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('unrecognised-result-era');
+    expect((caught as EraMismatchError).code).toBe(CONTRACTS_ERROR_CODES.ERA_MISMATCH);
+    expect((caught as EraMismatchError).message).toEqual(
+      'A result carried an era tag naming neither pipeline. ' +
         "Results are tagged 'v9' or 'v8' by the pipeline that built them. A tag lost in transit -- through a queue, " +
         'a JSON boundary, a structured clone -- cannot be recovered here: narrow the result before it crosses that ' +
         "boundary, or carry the era beside it. A result stored under a 5.0.0 pre-release carries 'ledger9' or " +
-        "'ledger8': map those to 'v9' and 'v8'."
+        "'ledger8': map those to 'v9' and 'v8'. " +
+        'Received: "v7".'
     );
   });
 
   it('refuses a null or undefined result rather than reading a member off it', () => {
     expect(() => isLedger8Result(null as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnknownResultEraError
+      EraMismatchError
     );
     expect(() => isLedger8Result(undefined as unknown as { readonly era: LedgerVersion })).toThrow(
-      UnknownResultEraError
+      EraMismatchError
     );
   });
 });

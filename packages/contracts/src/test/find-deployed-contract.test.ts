@@ -21,7 +21,7 @@ import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -277,8 +277,10 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
+      expect(rejection).toBeInstanceOf(EraMismatchError);
+      expect(rejection).toMatchObject({ reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+      expect((rejection as EraMismatchError).message).toContain(contractAddress);
+      expect((rejection as EraMismatchError).message).toContain('findDeployedContract');
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 

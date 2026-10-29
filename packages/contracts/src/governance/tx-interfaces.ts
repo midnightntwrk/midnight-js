@@ -67,7 +67,7 @@ export interface Ledger9CircuitMaintenanceTxInterface {
  * @param contractAddress The address of the deployed contract for which this
  *                        interface is being created.
  * @throws InvalidArgumentError If `contractAddress` is malformed.
- * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createCircuitMaintenanceTxInterface<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -117,7 +117,7 @@ export type Ledger9CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Reco
  * @param compiledContract The contract to use to execute circuits.
  * @param contractAddress The ledger address of the contract.
  * @throws InvalidArgumentError If `contractAddress` is malformed.
- * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createCircuitMaintenanceTxInterfaces<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -174,7 +174,7 @@ export interface Ledger9ContractMaintenanceTxInterface {
  * @param compiledContract The contract the interface is for.
  * @param contractAddress The ledger address of the contract.
  * @throws InvalidArgumentError If `contractAddress` is malformed.
- * @throws EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
 export function createContractMaintenanceTxInterface<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,

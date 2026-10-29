@@ -496,7 +496,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
  *                                   nothing is stored under it.
  * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
- * @throws Ledger8ContractStateUnsupportedError The current contract state was written by the v8
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` The current contract state was written by the v8
  * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
@@ -509,7 +509,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
- * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, or
  *                                  is a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
  *                                  toolchain this framework can place. Raised before anything is

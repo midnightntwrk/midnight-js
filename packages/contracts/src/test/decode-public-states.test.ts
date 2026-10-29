@@ -19,7 +19,7 @@ import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError, PublicStatesEraMismatchError } from '../errors';
+import { EraMismatchError, PublicStatesEraMismatchError } from '../errors';
 import { decodeLedger9PublicStates } from '../internal/era';
 import { createMockContractAddress, publicStatesReadStub } from './test-mocks';
 
@@ -93,7 +93,9 @@ describe('decodeLedger9PublicStates', () => {
   it('refuses a contract state written by the v8 ledger', () => {
     const error = rejectionOf(() => decodeLedger9PublicStates(publicStatesReadStub('v8'), contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect(error).toMatchObject({ reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+    expect((error as EraMismatchError).message).toContain(contractAddress);
   });
 
   it('refuses a record whose contract state is not a LedgerState, the shape of a pre-5.0.0 provider', () => {

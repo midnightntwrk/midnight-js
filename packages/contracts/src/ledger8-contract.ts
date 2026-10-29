@@ -725,7 +725,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  *
  * ONE signature per circuit, where `Ledger9CircuitCallTxInterface`
  * has two: the retained era cannot join a scoped transaction — a scope refuses
- * a retained-era call with `MixedEraScopeError` — so there is no context-taking
+ * a retained-era call with `EraMismatchError` (reason `'ledger8-call-in-scope'`) — so there is no context-taking
  * overload to declare.
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
@@ -1016,7 +1016,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * one the rest of this package uses.
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
- * `EraArtifactMismatchError` in `./errors`, which is what `resolveArtifactEra` in `./internal/era`
+ * `EraMismatchError` in `./errors`, which is what `resolveArtifactEra` in `./internal/era`
  * raises when it is handed an object belonging to neither era.
  * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not re-exported
  * from the package index.

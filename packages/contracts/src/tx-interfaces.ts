@@ -84,7 +84,7 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
  * @param additionalCoinEncPublicKeyMappings Encryption keys for shielded coins the circuit pays
  * to a recipient other than the calling wallet, or `undefined` for none.
  * @param args The circuit's own arguments.
- * @throws EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+ * @throws EraMismatchError If `compiledContract` has the shape of neither a ledger 8
  * contract nor a ledger 9 `CompiledContract`.
  */
 export function createCallTxOptions<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
@@ -178,7 +178,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
  * @param privateStateId The identifier of the state of the witnesses of the contract,
  * or `undefined` for a contract that carries none.
  * @throws InvalidArgumentError If `contractAddress` is malformed.
- * @throws EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+ * @throws EraMismatchError If `compiledContract` has the shape of neither a ledger 8
  * contract nor a ledger 9 `CompiledContract`.
  */
 export function createCircuitCallTxInterface<C extends Ledger8Contract>(
