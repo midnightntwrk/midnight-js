@@ -187,7 +187,7 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * @remarks Unlike the other `Ledger8*` types, it outlives the retained pipeline:
  * it is part of `Ledger9FoundDeployTxData`.
  *
- * @see {@link RetainedEraNamespace} for which names belong to the retained era.
+ * @see {@link ErrorTaxonomy} for how the `Ledger8` names are used.
  */
 export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   /**

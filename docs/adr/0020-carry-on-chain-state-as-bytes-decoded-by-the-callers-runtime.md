@@ -194,3 +194,9 @@ plain data still has to be turned into a handle of the dApp's runtime before `le
 
 **Check that the tag NAMES the version.** Rejected. The zswap chain state has one tag for two
 versions, and a later ledger may share a tag for another kind too.
+
+## Amendment — the error for a value with no era (2026-10-29)
+
+`UnrecognisedEraTagError` is now `UnknownLedgerVersionError`, with a `requestedVersion` of `'undefined'` or
+`'null'` when the value carried no era. See the 2026-10-29 amendment of
+[ADR 0017](./0017-error-codes-are-the-contract.md).

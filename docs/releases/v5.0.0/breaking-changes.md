@@ -2,6 +2,8 @@
 
 v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
+> Sections 12 to 23 name error classes as they were during the pre-releases. [Section 24](#24-one-error-class-per-fault-1557) maps every one of them to its final class.
+
 ---
 
 ## 1. Protocol bindings moved to ledger-v9 / onchain-runtime-v4 (`@midnightntwrk` scope) (#970)
@@ -1232,9 +1234,100 @@ with `declaration: true` that exports a value inferred from a ledger 8 call fail
 with TS4023 ("has or is using name 'Ledger8DeployedContract' ... but cannot be
 named"), because the package exported the type only through the namespace.
 
-The 18 error classes stay in the namespace (`Ledger8.CallTxFailedError`). An error
-type reaches your code only through your own `Ledger8.X`, so declaration emit can
-always name it. See ADR 0013.
+The error classes were first left in the namespace. That did not last: the namespace is
+removed and the errors are merged, see [section 24](#24-one-error-class-per-fault-1557). See ADR 0013.
+
+---
+
+## 24. One error class per fault (#1557)
+
+There is no `Ledger8` namespace any more. The 12 error classes below replace about 40. Each fault is one
+class, and a field says which case it was. Sections 8 to 23 above name classes as they were during the
+pre-releases. Use this section for the final names.
+
+### 24a. Failed transactions: one `TxFailedError`
+
+`TxFailedError(operation, record, details)` replaces every per-operation and per-era class. A v4-style
+`error instanceof TxFailedError` around a ledger 8 call now catches it. The code stays
+`MIDNIGHT_JS_C_TX_FAILED`.
+
+| Before | After |
+|---|---|
+| `AnyEraTxFailedError`, `TxFailedError` | `TxFailedError` |
+| `CallTxFailedError`, `Ledger8.CallTxFailedError` | `TxFailedError`, `operation: 'call'` |
+| `DeployTxFailedError`, `Ledger8.DeployTxFailedError` | `TxFailedError`, `operation: 'deploy'` |
+| `InsertVerifierKeyTxFailedError`, `Ledger8.InsertVerifierKeyTxFailedError` | `TxFailedError`, `operation: 'insert-verifier-key'` |
+| `RemoveVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError` | `TxFailedError`, `operation: 'remove-verifier-key'` |
+| `ReplaceMaintenanceAuthorityTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TxFailedError`, `operation: 'replace-authority'` |
+| `error.finalizedTxData` (ledger 9), `error.txData` (ledger 8) | `error.record`, a `FinalizedTxRead`; narrow on `record.era` |
+| the ledger 9 message, a JSON dump of the record | a sentence; read `segmentStatusMap` and the other record fields from `error.record` |
+| `contractAddress`, `circuitId`, `signingKey` always present on the class that had them | optional fields, set per operation |
+
+`signingKey` is an enumerable property, so a logger that serializes the properties of an error writes
+it out. This was already true for ledger 8 and is now also true for ledger 9. The key is never in the
+message. Do not pass a failed deploy or replacement whole to a logger.
+
+### 24b. Wrong era: one `EraMismatchError`
+
+`EraArtifactMismatchError` is `EraMismatchError`, and its code `MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH` is
+`MIDNIGHT_JS_C_ERA_MISMATCH`. `EraArtifactMismatchReason` and `EraArtifactMismatchOptions` are
+`EraMismatchReason` and `EraMismatchOptions`. Seven classes became reasons of it:
+
+| Before | After: `reason` | Field that moved into the message (`detail`) |
+|---|---|---|
+| `Ledger8.DeployOnLedger9Error` (`LEDGER8_DEPLOY_ON_LEDGER9`) | `'ledger8-deploy-on-ledger9-network'` | none |
+| `Ledger8.MaintenanceOnLedger9Error` (`LEDGER8_MAINTENANCE_ON_LEDGER9`) | `'ledger8-maintenance-on-ledger9-network'` | none |
+| `Ledger8.ArtifactOnLedger9StateError` (`LEDGER8_ARTIFACT_ON_LEDGER9_STATE`) | `'ledger8-artifact-on-ledger9-contract'` | `contractAddress` |
+| `Ledger8.ContractStateUnsupportedError` (`LEDGER8_CONTRACT_STATE_UNSUPPORTED`) | `'ledger8-contract-state-unsupported'` | `contractAddress`, `operation` |
+| `ScopedTransactionEraUnsupportedError` (`SCOPED_TRANSACTION_ERA_UNSUPPORTED`) | `'scope-on-ledger8-network'` | `networkVersion` |
+| `MixedEraScopeError` (`MIXED_ERA_SCOPE`) | `'ledger8-call-in-scope'` | `circuitId` |
+| `UnknownResultEraError` (`UNKNOWN_RESULT_ERA`) | `'unrecognised-result-era'` | `received` |
+
+These fields are gone as typed members. Read them from the message, or from the call you made. An
+exhaustive `switch` on `reason` must handle the seven new members.
+
+`EraInvariantViolationError` is unchanged, except that `requireLedger9Record` now names `received`.
+`PublicStatesEraMismatchError`, `IndexerInconsistencyError` and `TransactionEraMismatchError` are
+unchanged.
+
+### 24c. No era: `UnknownLedgerVersionError`
+
+| Before | After |
+|---|---|
+| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerVersionError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`, ENVIRONMENT). `requestedVersion` is `'undefined'` or `'null'` when the value carried no era |
+| `Ledger8ValueUnsupportedError` (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`), `requireLedger9` | removed. Narrow with `switch (value.era)`, closed by `assertNever` |
+
+The category changes from USAGE to ENVIRONMENT. A value with no era means a provider written for a
+release before 5.0.0, or an outdated midnight-js. The fix is in the installation. A state with a
+known era but no `serialize()` still raises `InvalidLedgerStateError`.
+
+### 24d. Ledger 8: nine classes became five, all flat
+
+| Before | After |
+|---|---|
+| `Ledger8.SigningKeyUnusableError` (`LEDGER8_SIGNING_KEY_UNUSABLE`) | `Ledger8SigningKeyError`, `reason: 'unusable'` |
+| `Ledger8.SigningKeyUnavailableError` (`LEDGER8_SIGNING_KEY_UNAVAILABLE`) | `Ledger8SigningKeyError`, `reason: 'unavailable'` |
+| `Ledger8.DeployUnconfirmedError` (`LEDGER8_DEPLOY_UNCONFIRMED`) | `Ledger8UnconfirmedError`, `operation: 'deploy'` |
+| `Ledger8.ReplaceAuthorityUnconfirmedError` (`LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED`) | `Ledger8UnconfirmedError`, `operation: 'replace-authority'` |
+| `Ledger8.DeployNotStoredError` (`LEDGER8_DEPLOY_NOT_STORED`) | `Ledger8NotStoredError`, `operation: 'deploy'` |
+| `Ledger8.SigningKeyNotStoredError` (`LEDGER8_SIGNING_KEY_NOT_STORED`) | `Ledger8NotStoredError`, `operation: 'replace-authority'`, `stage: 'signing-key'` |
+| `Ledger8.ShieldedSpendUnsupportedError` (`LEDGER8_SHIELDED_SPEND_UNSUPPORTED`) | `Ledger8CallUnsupportedError`, `reason: 'shielded-spend'` |
+| `Ledger8.RecipientUnmappableError` (`LEDGER8_RECIPIENT_UNMAPPABLE`) | `Ledger8CallUnsupportedError`, `reason: 'unmappable-recipient'` |
+| `Ledger8.AmbiguousEntryPointError` | `Ledger8AmbiguousEntryPointError`, unchanged |
+
+The new codes are `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY` (USAGE), `MIDNIGHT_JS_C_LEDGER8_UNCONFIRMED`
+(UNCERTAIN), `MIDNIGHT_JS_C_LEDGER8_NOT_STORED` (ENVIRONMENT) and `MIDNIGHT_JS_C_LEDGER8_CALL_UNSUPPORTED`
+(USAGE). A `Ledger8NotStoredError` with `operation: 'deploy'` means the contract exists: do not deploy
+again. With `operation: 'replace-authority'` the old key no longer authorizes anything: keep
+`error.signingKey`.
+
+Four types are exported flat for the fields: `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`,
+`Ledger8NotStoredStage` and `Ledger8CallUnsupportedReason`.
+
+Replace `error instanceof Ledger8.X` with the class in the table, then branch on `reason`, `operation`
+or `stage` where you told the old classes apart. If you branched on a code, use the new code.
+
+See ADR 0013 and ADR 0017.
 
 ---
 

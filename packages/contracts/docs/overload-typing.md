@@ -217,7 +217,7 @@ mistyped current-era call report that the caller's perfectly ordinary contract
 statement on the common path. An overload that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
 
-`NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
+`NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraMismatchError`, which
 `resolveArtifactEra` raises when it is handed an object belonging to neither era. A
 thrown error can carry full remediation text where a compiler diagnostic cannot,
 which is why the text is not wired into an overload.
@@ -230,7 +230,7 @@ The message is a runtime `const` rather than a bare literal inside
 `NeitherContractShape` so the text is written ONCE and can be read by a runtime
 consumer — the error above, and any test asserting on one — while `typeof` still
 gives the type a string LITERAL member. It is not re-exported from the package
-index: the error that carries it, `EraArtifactMismatchError`, is the consumer
+index: the error that carries it, `EraMismatchError`, is the consumer
 surface, and that error IS exported — so a consumer narrows on the error rather
 than comparing against the message. `overloads.test-d.ts` pins the wording
 verbatim, and pins that a neither-era object really is refused by

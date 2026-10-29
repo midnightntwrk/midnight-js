@@ -97,8 +97,8 @@ get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 |---|---|---|
 | v9 | v9 | proved, balanced and submitted as v9 handles |
 | v8 | v8 | proved, balanced and submitted as v8 handles |
-| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
-| v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+| v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
+| v9 | v8 | refused with `EraMismatchError` before proving |
 
 It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
 
@@ -122,7 +122,7 @@ await submitReplaceAuthorityTx(providers, compiledContract, contractAddress)(new
 
 All three take either era's artifact. A ledger 8 artifact maintains a contract
 only before the fork and answers `{ era: 'v8', public: Ledger8FinalizedTxData }`;
-after the fork it is refused with `Ledger8.MaintenanceOnLedger9Error`, and the
+after the fork it is refused with `EraMismatchError` (reason `'ledger8-maintenance-on-ledger9-network'`), and the
 same function with the recompiled ledger 9 artifact maintains the migrated
 contract with the same stored key.
 
@@ -284,6 +284,31 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
 
+## Handling Errors
+
+One class covers one fault. A field on it says which case it was.
+
+```typescript
+import { EraMismatchError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+
+try {
+  await submitCallTx(providers, compiledContract, options);
+} catch (error) {
+  if (error instanceof TxFailedError) {
+    // error.operation is 'call', 'deploy', 'insert-verifier-key', 'remove-verifier-key' or 'replace-authority'.
+    // error.record is what the chain recorded, in either era. Read the status and
+    // the segmentStatusMap from it; the message does not repeat them.
+  } else if (error instanceof EraMismatchError) {
+    // error.reason says which era mistake it was.
+  }
+  throw error;
+}
+```
+
+`TxFailedError.signingKey` is set after a failed deploy or replacement. It is an enumerable property,
+so a logger that serializes the properties of an error writes it out. Keep the key and do not log the
+error whole.
+
 ## Architecture Documents
 
 The reasoning behind this package's shape lives in `docs/`, not in the source
@@ -299,7 +324,7 @@ docstring resolves to it.
 | [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a retained-era deploy is refused |
 | [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
 | [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four network version readings and their provenance, the privacy rule, and the one fault that is swallowed |
-| [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, which errors register a code and which deliberately do not, the three refusals that fire before a caller pays, and the after-submission region the signing key rides through |
+| [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, how the ledger 8 names are used, which errors register a code and which deliberately do not, the three refusals that fire before a caller pays, and the after-submission region the signing key rides through |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
 parameters, what it returns and what it throws. Anything that answers "why is

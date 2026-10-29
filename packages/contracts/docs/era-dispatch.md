@@ -187,7 +187,7 @@ the shape of the family it was serving.
 The failure mode changed with it, deliberately. Where the provisional check
 returned `false` for an object belonging to neither era and let it fall into the
 current-era pipeline to fail somewhere unrelated, `resolveArtifactEra` raises
-`EraArtifactMismatchError` with remediation text at the entry point.
+`EraMismatchError` with remediation text at the entry point.
 
 ## Reading the network's era: exactly one head read per operation
 
@@ -239,7 +239,7 @@ retained era exists to keep working, and a new deployment has no such history to
 preserve. A maintenance update has a working path after the fork already: the
 same function with the artifact recompiled by the current toolchain maintains the
 migrated contract with the signing key stored for its address. So the retained
-artifact is refused there with `Ledger8MaintenanceOnLedger9Error`, which names
+artifact is refused there with `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`, which names
 that path, rather than routed anywhere.
 
 That path depends on one fact this package does not control: the fork
@@ -252,20 +252,20 @@ stored. See `consumer-e2e/README.md`.
 
 Only the two RETAINED rows are enforced in production. Every call site passes
 the literal `'v8'`, so the current-era rows are reachable from tests alone,
-and the `current-era` + `v8` refusal — `EraArtifactMismatchError` with reason
+and the `current-era` + `v8` refusal — `EraMismatchError` with reason
 `'ledger9-artifact-on-ledger8-network'` — is not raised by any shipped path.
 
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
 an artifact against. The scoped path does pay for one, which is why a scope on a
-pre-fork head is refused (`ScopedTransactionEraUnsupportedError`) and a single call on the
+pre-fork head is refused (`EraMismatchError`, reason `'scope-on-ledger8-network'`) and a single call on the
 same head is not. A current-era call against a pre-fork head therefore fails
 LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction handle rather than an artifact. It reads the handle's `era`, pays for
 one read of the network's ledger version, and accepts only a transaction of that
-era. The other era is refused there, before proving, as `EraArtifactMismatchError`:
+era. The other era is refused there, before proving, as `EraMismatchError`:
 a v9 handle before the fork with reason `'ledger9-transaction-on-ledger8-network'`,
 a v8 handle after the fork with reason `'ledger8-transaction-on-ledger9-network'`.
 The v9 ledger cannot read a v8 transaction, so there is nothing to route the
@@ -363,7 +363,7 @@ from its `era`, `kind` and `serialize()` with `fromBytes`, which checks the tag
 again (`InvalidLedgerStateError`, `tag-mismatch`, for forged bytes). A record
 whose contract state has none of those, such as one a provider outside this
 framework built by hand in the pre-5.0.0 shape, is refused as
-`UnrecognisedEraTagError`.
+`UnknownLedgerVersionError`.
 
 The order is load-bearing:
 

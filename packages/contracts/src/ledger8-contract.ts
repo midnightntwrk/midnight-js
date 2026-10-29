@@ -119,7 +119,7 @@ export interface Ledger8CircuitContext<PS = unknown> {
  *
  * @see {@link OverloadTyping} for what this buys, and what broke when the
  *      circuit took {@link Ledger8CircuitContext} here instead.
- * @see {@link RetainedEraNamespace} for the membership rule.
+ * @see {@link ErrorTaxonomy} for how the `Ledger8` names are used.
  */
 export type Ledger8CircuitContextArgument = { readonly [K in keyof Ledger8CircuitContext]: never };
 

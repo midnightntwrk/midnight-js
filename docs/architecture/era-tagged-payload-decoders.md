@@ -86,7 +86,7 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
   value's own version.
 - `packages/contracts/src/internal/era.ts` — `decodeLedger9ContractState` and
   `decodeLedger9PublicStates` decode a read with the framework's copy, only to build a transaction,
-  and refuse a v8 state with `Ledger8ContractStateUnsupportedError` before any decode.
+  and refuse a v8 state with `EraMismatchError` (reason `'ledger8-contract-state-unsupported'`) before any decode.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
 ### Decoders that are correct because the code path owns the era
