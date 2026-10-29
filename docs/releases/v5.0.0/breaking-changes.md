@@ -1162,7 +1162,7 @@ moves to the next ledger at a fork.
 **Types with a contract parameter.** The flat name stays and becomes an alias:
 
 ```ts
-type FoundContract<C> = C extends Ledger8Contract ? Ledger8.FoundContract<C>
+type FoundContract<C> = C extends Ledger8.Contract ? Ledger8.FoundContract<C>
   : C extends Ledger9Contract ? Ledger9FoundContract<C>
   : never;
 ```

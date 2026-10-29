@@ -421,21 +421,21 @@ export function submitInsertVerifierKeyTx<C extends Contract.Any>(
 // so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
 
 export namespace Ledger8 {
-  export interface Ledger9FinalizedMaintenanceTxData {
+  export interface FinalizedMaintenanceTxData {
     readonly era: 'v8';
     readonly public: Ledger8FinalizedTxData;
   }
-  export interface Ledger9CircuitMaintenanceTxInterface {
-    removeVerifierKey(): Promise<Ledger9FinalizedMaintenanceTxData>;
-    insertVerifierKey(newVk: VerifierKey): Promise<Ledger9FinalizedMaintenanceTxData>;
+  export interface CircuitMaintenanceTxInterface {
+    removeVerifierKey(): Promise<FinalizedMaintenanceTxData>;
+    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedMaintenanceTxData>;
   }
-  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, Ledger9CircuitMaintenanceTxInterface>;
-  export interface Ledger9ContractMaintenanceTxInterface {
-    replaceAuthority(newAuthority: SigningKey): Promise<Ledger9FinalizedMaintenanceTxData>;
+  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, CircuitMaintenanceTxInterface>;
+  export interface ContractMaintenanceTxInterface {
+    replaceAuthority(newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData>;
   }
   // FoundContract<C> and DeployedContract<C> gain
   //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
-  //   contractMaintenanceTx: Ledger9ContractMaintenanceTxInterface
+  //   contractMaintenanceTx: ContractMaintenanceTxInterface
   // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
   //   ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
   //   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.

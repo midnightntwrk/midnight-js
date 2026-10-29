@@ -140,8 +140,7 @@ export {
 // and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
 // what deliberately stays flat, and how the whole surface is withdrawn in one step.
 export * as Ledger8 from './ledger8';
-// The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*`
-// names rather than a namespace, so a dApp's declaration emit can name what the entry points return.
+// The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*` names.
 export type { Ledger9CallResultPrivate, Ledger9CallResultPublic } from './call';
 export type { Ledger9ContractProviders } from './contract-providers';
 export type {

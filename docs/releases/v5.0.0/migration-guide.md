@@ -1242,6 +1242,9 @@ The same holds for a generic return type. A helper typed
 `Promise<FoundContract<C>>` around `findDeployedContract` no longer compiles:
 type it `Promise<Ledger9FoundContract<C>>`.
 
+A flat name given `any` as the contract is a union of both eras: `FoundContract<any>` has
+`era: 'v8' | 'v9'`. Name the contract, or use `Ledger9FoundContract<any>`.
+
 Rename the types that have no contract parameter: `FinalizedTxData` →
 `Ledger9FinalizedTxData`, `FinalizedMaintenanceTxData` →
 `Ledger9FinalizedMaintenanceTxData`, `FinalizedCallTxPublicData` →

@@ -252,12 +252,12 @@ watchForUnshieldedBalances(
 // Wait for deploy transaction data
 watchForDeployTxData(
   contractAddress: ContractAddress
-): Promise<Ledger9FinalizedTxData>
+): Promise<FinalizedTxRead>
 
 // Wait for any transaction data
 watchForTxData(
   txId: TransactionId
-): Promise<Ledger9FinalizedTxData>
+): Promise<FinalizedTxRead>
 ```
 
 ### Observable Methods

@@ -42,7 +42,6 @@ import type {
   Ledger9CallTxOptionsWithPrivateStateId,
   Ledger9CircuitCallTxInterface,
   Ledger9CircuitMaintenanceTxInterfaces,
-  Ledger9Contract,
   Ledger9ContractProviders,
   Ledger9DeployContractOptions,
   Ledger9DeployContractOptionsBase,
@@ -117,42 +116,42 @@ describe('a flat name picks the variant of the era that compiled the contract', 
 
   it('refuses a circuit id the contract does not declare', () => {
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<FinalizedCallTxData<V9, 'decrement'>>().toBeObject();
+    type _V9FinalizedCallTxData = FinalizedCallTxData<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<FinalizedCallTxData<V8, 'decrement'>>().toBeObject();
+    type _V8FinalizedCallTxData = FinalizedCallTxData<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<SubmittedCallTx<V9, 'decrement'>>().toBeObject();
+    type _V9SubmittedCallTx = SubmittedCallTx<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<SubmittedCallTx<V8, 'decrement'>>().toBeObject();
+    type _V8SubmittedCallTx = SubmittedCallTx<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<UnsubmittedCallTxData<V9, 'decrement'>>().toBeObject();
+    type _V9UnsubmittedCallTxData = UnsubmittedCallTxData<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<UnsubmittedCallTxData<V8, 'decrement'>>().toBeObject();
+    type _V8UnsubmittedCallTxData = UnsubmittedCallTxData<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<CallResultPrivate<V9, 'decrement'>>().toBeObject();
+    type _V9CallResultPrivate = CallResultPrivate<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<CallResultPrivate<V8, 'decrement'>>().toBeObject();
+    type _V8CallResultPrivate = CallResultPrivate<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<CallTxOptions<V9, 'decrement'>>().toBeObject();
+    type _V9CallTxOptions = CallTxOptions<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<CallTxOptions<V8, 'decrement'>>().toBeObject();
+    type _V8CallTxOptions = CallTxOptions<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<CallTxOptionsBase<V9, 'decrement'>>().toBeObject();
+    type _V9CallTxOptionsBase = CallTxOptionsBase<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<CallTxOptionsBase<V8, 'decrement'>>().toBeObject();
+    type _V8CallTxOptionsBase = CallTxOptionsBase<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<CallTxOptionsWithPrivateStateId<V9, 'decrement'>>().toBeObject();
+    type _V9CallTxOptionsWithPrivateStateId = CallTxOptionsWithPrivateStateId<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<CallTxOptionsWithPrivateStateId<V8, 'decrement'>>().toBeObject();
+    type _V8CallTxOptionsWithPrivateStateId = CallTxOptionsWithPrivateStateId<V8, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
-    expectTypeOf<ContractProviders<V9, 'decrement'>>().toBeObject();
+    type _V9ContractProviders = ContractProviders<V9, 'decrement'>;
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
-    expectTypeOf<ContractProviders<V8, 'decrement'>>().toBeObject();
+    type _V8ContractProviders = ContractProviders<V8, 'decrement'>;
   });
 
   it('refuses a type that is not a contract', () => {
     // @ts-expect-error a string is not a contract of any era
-    expectTypeOf<FoundContract<string>>().toBeNever();
+    type _NotAContract = FoundContract<string>;
   });
 
   it('picks the era of each member of a union of contracts', () => {
@@ -170,6 +169,96 @@ describe('the circuit ids of a contract', () => {
   });
 });
 
+describe('a concrete contract with a generic circuit id', () => {
+  it('converts both ways between the flat name and the ledger 9 name', () => {
+    const finalizedCallTxData = <PCK extends CircuitIdOf<V9>>(value: Ledger9FinalizedCallTxData<V9, PCK>): Ledger9FinalizedCallTxData<V9, PCK> => {
+      const flat: FinalizedCallTxData<V9, PCK> = value;
+      return flat;
+    };
+    const submittedCallTx = <PCK extends CircuitIdOf<V9>>(value: Ledger9SubmittedCallTx<V9, PCK>): Ledger9SubmittedCallTx<V9, PCK> => {
+      const flat: SubmittedCallTx<V9, PCK> = value;
+      return flat;
+    };
+    const unsubmittedCallTxData = <PCK extends CircuitIdOf<V9>>(value: Ledger9UnsubmittedCallTxData<V9, PCK>): Ledger9UnsubmittedCallTxData<V9, PCK> => {
+      const flat: UnsubmittedCallTxData<V9, PCK> = value;
+      return flat;
+    };
+    const callResultPrivate = <PCK extends CircuitIdOf<V9>>(value: Ledger9CallResultPrivate<V9, PCK>): Ledger9CallResultPrivate<V9, PCK> => {
+      const flat: CallResultPrivate<V9, PCK> = value;
+      return flat;
+    };
+    const callTxOptions = <PCK extends CircuitIdOf<V9>>(value: Ledger9CallTxOptions<V9, PCK>): Ledger9CallTxOptions<V9, PCK> => {
+      const flat: CallTxOptions<V9, PCK> = value;
+      return flat;
+    };
+    const callTxOptionsBase = <PCK extends CircuitIdOf<V9>>(value: Ledger9CallTxOptionsBase<V9, PCK>): Ledger9CallTxOptionsBase<V9, PCK> => {
+      const flat: CallTxOptionsBase<V9, PCK> = value;
+      return flat;
+    };
+    const callTxOptionsWithPrivateStateId = <PCK extends CircuitIdOf<V9>>(value: Ledger9CallTxOptionsWithPrivateStateId<V9, PCK>): Ledger9CallTxOptionsWithPrivateStateId<V9, PCK> => {
+      const flat: CallTxOptionsWithPrivateStateId<V9, PCK> = value;
+      return flat;
+    };
+    const contractProviders = <PCK extends CircuitIdOf<V9>>(value: Ledger9ContractProviders<V9, PCK>): Ledger9ContractProviders<V9, PCK> => {
+      const flat: ContractProviders<V9, PCK> = value;
+      return flat;
+    };
+
+    expectTypeOf(finalizedCallTxData<K>).returns.toEqualTypeOf<FinalizedCallTxData<V9, K>>();
+    expectTypeOf(submittedCallTx<K>).returns.toEqualTypeOf<SubmittedCallTx<V9, K>>();
+    expectTypeOf(unsubmittedCallTxData<K>).returns.toEqualTypeOf<UnsubmittedCallTxData<V9, K>>();
+    expectTypeOf(callResultPrivate<K>).returns.toEqualTypeOf<CallResultPrivate<V9, K>>();
+    expectTypeOf(callTxOptions<K>).returns.toEqualTypeOf<CallTxOptions<V9, K>>();
+    expectTypeOf(callTxOptionsBase<K>).returns.toEqualTypeOf<CallTxOptionsBase<V9, K>>();
+    expectTypeOf(callTxOptionsWithPrivateStateId<K>).returns.toEqualTypeOf<CallTxOptionsWithPrivateStateId<V9, K>>();
+    expectTypeOf(contractProviders<K>).returns.toEqualTypeOf<ContractProviders<V9, K>>();
+  });
+
+  it('converts both ways between the flat name and the ledger 8 name', () => {
+    const finalizedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8.FinalizedCallTxData<V8, PCK>): Ledger8.FinalizedCallTxData<V8, PCK> => {
+      const flat: FinalizedCallTxData<V8, PCK> = value;
+      return flat;
+    };
+    const submittedCallTx = <PCK extends CircuitIdOf<V8>>(value: Ledger8.SubmittedCallTx<V8, PCK>): Ledger8.SubmittedCallTx<V8, PCK> => {
+      const flat: SubmittedCallTx<V8, PCK> = value;
+      return flat;
+    };
+    const unsubmittedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8.UnsubmittedCallTxData<V8, PCK>): Ledger8.UnsubmittedCallTxData<V8, PCK> => {
+      const flat: UnsubmittedCallTxData<V8, PCK> = value;
+      return flat;
+    };
+    const callResultPrivate = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallResultPrivate<V8, PCK>): Ledger8.CallResultPrivate<V8, PCK> => {
+      const flat: CallResultPrivate<V8, PCK> = value;
+      return flat;
+    };
+    const callTxOptions = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptions<V8, PCK>): Ledger8.CallTxOptions<V8, PCK> => {
+      const flat: CallTxOptions<V8, PCK> = value;
+      return flat;
+    };
+    const callTxOptionsBase = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptionsBase<V8, PCK>): Ledger8.CallTxOptionsBase<V8, PCK> => {
+      const flat: CallTxOptionsBase<V8, PCK> = value;
+      return flat;
+    };
+    const callTxOptionsWithPrivateStateId = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptionsWithPrivateStateId<V8, PCK>): Ledger8.CallTxOptionsWithPrivateStateId<V8, PCK> => {
+      const flat: CallTxOptionsWithPrivateStateId<V8, PCK> = value;
+      return flat;
+    };
+    const contractProviders = <PCK extends CircuitIdOf<V8>>(value: Ledger8.ContractProviders<V8, PCK>): Ledger8.ContractProviders<V8, PCK> => {
+      const flat: ContractProviders<V8, PCK> = value;
+      return flat;
+    };
+
+    expectTypeOf(finalizedCallTxData<K>).returns.toEqualTypeOf<FinalizedCallTxData<V8, K>>();
+    expectTypeOf(submittedCallTx<K>).returns.toEqualTypeOf<SubmittedCallTx<V8, K>>();
+    expectTypeOf(unsubmittedCallTxData<K>).returns.toEqualTypeOf<UnsubmittedCallTxData<V8, K>>();
+    expectTypeOf(callResultPrivate<K>).returns.toEqualTypeOf<CallResultPrivate<V8, K>>();
+    expectTypeOf(callTxOptions<K>).returns.toEqualTypeOf<CallTxOptions<V8, K>>();
+    expectTypeOf(callTxOptionsBase<K>).returns.toEqualTypeOf<CallTxOptionsBase<V8, K>>();
+    expectTypeOf(callTxOptionsWithPrivateStateId<K>).returns.toEqualTypeOf<CallTxOptionsWithPrivateStateId<V8, K>>();
+    expectTypeOf(contractProviders<K>).returns.toEqualTypeOf<ContractProviders<V8, K>>();
+  });
+});
+
 describe('generic code names an era', () => {
   it('cannot pass a ledger 9 circuit id of a generic contract to a flat name', () => {
     const publicOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
@@ -177,7 +266,7 @@ describe('generic code names an era', () => {
       data: FinalizedCallTxData<C, PCK>
     ) => data.public;
 
-    expectTypeOf(publicOf).toBeFunction();
+    void publicOf;
   });
 
   it('passes it to the era-named type', () => {
@@ -185,12 +274,6 @@ describe('generic code names an era', () => {
       data: Ledger9FinalizedCallTxData<C, PCK>
     ) => data.public;
 
-    expectTypeOf(publicOf).toBeFunction();
-  });
-});
-
-describe('the ledger 9 contract', () => {
-  it('is any contract the ledger 9 toolchain compiles', () => {
-    expectTypeOf<Ledger9Contract>().toEqualTypeOf<Contract.Any>();
+    expectTypeOf(publicOf<V9, K>).returns.toEqualTypeOf<FinalizedCallTxData<V9, K>['public']>();
   });
 });

@@ -76,11 +76,7 @@ export type CircuitIdOf<C extends AnyEraContract> = C extends Ledger8Contract
     ? Contract.ProvableCircuitId<C>
     : never;
 
-// Every flat name below picks the variant of the era that compiled `C`. The
-// `Ledger8` branch comes first: ledger 8 is told apart only because
-// `Ledger8Contract` structurally excludes a ledger 9 contract. Inside a generic
-// function `C` is unknown, so the alias stays unresolved; name an era there
-// (`Ledger9FoundContract<C>`) or take an `AnyEra*` union.
+// Every flat name below picks the variant of the era that compiled `C`.
 
 /** The contract found at an address. Generic code names an era: `Ledger9FoundContract<C>`. */
 export type FoundContract<C extends AnyEraContract> = C extends Ledger8Contract
@@ -98,23 +94,23 @@ export type DeployedContract<C extends AnyEraContract> = C extends Ledger8Contra
 
 /** A finalized circuit call. Generic code names an era: `Ledger9FinalizedCallTxData<C, K>`. */
 export type FinalizedCallTxData<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8FinalizedCallTxData<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8FinalizedCallTxData<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9FinalizedCallTxData<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9FinalizedCallTxData<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** A submitted, not yet finalized circuit call. Generic code names an era: `Ledger9SubmittedCallTx<C, K>`. */
 export type SubmittedCallTx<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8SubmittedCallTx<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8SubmittedCallTx<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9SubmittedCallTx<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9SubmittedCallTx<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** A proven circuit call, not yet submitted. Generic code names an era: `Ledger9UnsubmittedCallTxData<C, K>`. */
 export type UnsubmittedCallTxData<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8UnsubmittedCallTxData<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8UnsubmittedCallTxData<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9UnsubmittedCallTxData<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9UnsubmittedCallTxData<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The deploy transaction of a found contract. Generic code names an era: `Ledger9FoundDeployTxData<C>`. */
@@ -133,30 +129,30 @@ export type FinalizedDeployTxData<C extends AnyEraContract> = C extends Ledger8C
 
 /** The private result of a circuit call. Generic code names an era: `Ledger9CallResultPrivate<C, K>`. */
 export type CallResultPrivate<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8CallResultPrivate<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8CallResultPrivate<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9CallResultPrivate<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9CallResultPrivate<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The options of a circuit call. Generic code names an era: `Ledger9CallTxOptions<C, K>`. */
 export type CallTxOptions<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8CallTxOptions<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8CallTxOptions<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9CallTxOptions<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9CallTxOptions<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The options of a circuit call without private state. Generic code names an era: `Ledger9CallTxOptionsBase<C, K>`. */
 export type CallTxOptionsBase<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8CallTxOptionsBase<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8CallTxOptionsBase<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9CallTxOptionsBase<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9CallTxOptionsBase<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The options of a circuit call with a private state id. Generic code names an era: `Ledger9CallTxOptionsWithPrivateStateId<C, K>`. */
 export type CallTxOptionsWithPrivateStateId<C extends AnyEraContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
-  ? Ledger8CallTxOptionsWithPrivateStateId<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8CallTxOptionsWithPrivateStateId<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9CallTxOptionsWithPrivateStateId<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9CallTxOptionsWithPrivateStateId<C, K & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The options of `deployContract`. Generic code names an era: `Ledger9DeployContractOptions<C>`. */
@@ -209,7 +205,7 @@ export type ContractProviders<
   C extends AnyEraContract = Ledger9Contract,
   K extends CircuitIdOf<C> = CircuitIdOf<C>
 > = C extends Ledger8Contract
-  ? Ledger8ContractProviders<C, Extract<K, Ledger8CircuitId<C>>>
+  ? Ledger8ContractProviders<C, K & Ledger8CircuitId<C>>
   : C extends Ledger9Contract
-    ? Ledger9ContractProviders<C, Extract<K, Contract.ProvableCircuitId<C>>>
+    ? Ledger9ContractProviders<C, K & Contract.ProvableCircuitId<C>>
     : never;

@@ -123,7 +123,7 @@ The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from
 ```ts
 interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
+  readonly logEvents: readonly LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
 }
 ```
 

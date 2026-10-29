@@ -133,9 +133,12 @@ removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised b
 ## Amendment — ledger 9 gets flat `Ledger9*` names, and flat names pick the era (2026-10-28)
 
 Issue #1536. Every ledger 9 result, option and interface type that has a `Ledger8` member is now
-named `Ledger9*` (`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract parameter is an alias
-that picks the variant from the contract type, `Ledger8` branch first. A type without a contract
-parameter keeps only its `Ledger9*` name.
+named `Ledger9*` (`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract
+parameter is an alias that picks the variant from the contract type, `Ledger8` branch first:
+`Ledger9Contract` is `Contract.Any`, which a ledger 8 artifact also satisfies, so only
+`Ledger8Contract` tells the eras apart. Inside a generic function `C` is unknown and the alias stays
+unresolved, so generic code names the era. A type without a contract parameter keeps only its
+`Ledger9*` name.
 
 The ledger 9 variants are flat exports, not a `Ledger9` namespace. The entry points return them,
 and a dApp that emits declarations must be able to name what it infers: a type reachable only
