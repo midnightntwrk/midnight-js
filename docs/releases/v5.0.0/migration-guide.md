@@ -333,8 +333,10 @@ After:
 ```ts
 import { contracts, type protocol, types } from '@midnight-ntwrk/midnight-js';
 
-type AnyContract = protocol.Contract.Any;
-declare const callTx: contracts.UnsubmittedCallTxData<AnyContract, protocol.Contract.ProvableCircuitId<AnyContract>>;
+declare const callTx: contracts.UnsubmittedCallTxData<
+  contracts.Ledger9Contract,
+  protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+>;
 declare const proofProvider: types.ProofProvider;
 declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;
 
@@ -1329,7 +1331,7 @@ const onResult = (result: AnyFinalizedCallTxData) => ...;
 const onFound = (found: FoundContract<MyContract | MyLedger8Contract>) => ...;
 ```
 
-`AnyEraContract` → `SmartContract`, `AnyEraSubmittedCallTx` → `AnySubmittedCallTx`,
+`AnyEraContract` → `AnyContract`, `AnyEraSubmittedCallTx` → `AnySubmittedCallTx`,
 `AnyEraDeployedContract<C, L8>` → `DeployedContract<C | L8>`, `AnyEraMaintenanceTxData` →
 `FinalizedMaintenanceTxData`. In `5.0.0-rc.5`, `FinalizedMaintenanceTxData` was the
 ledger 9 type; it is now the union, so narrow it on `era` or write

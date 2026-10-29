@@ -236,7 +236,7 @@ const onCall = (result: AnyFinalizedCallTxData) =>
 ```
 
 A flat name with no contract parameter is the union of every era:
-`FinalizedMaintenanceTxData`, `SmartContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
+`FinalizedMaintenanceTxData`, `AnyContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
 
 ## Exports
 

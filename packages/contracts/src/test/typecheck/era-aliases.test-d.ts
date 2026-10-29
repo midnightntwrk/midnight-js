@@ -18,6 +18,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import type {
+  AnyContract,
   AnyFinalizedCallTxData,
   AnySubmittedCallTx,
   CallResultPrivate,
@@ -79,7 +80,6 @@ import type {
   Ledger9FoundDeployTxData,
   Ledger9SubmittedCallTx,
   Ledger9UnsubmittedCallTxData,
-  SmartContract,
   SubmittedCallTx,
   UnsubmittedCallTxData
 } from '../../index';
@@ -189,7 +189,7 @@ describe('a flat name picks the variant of the era that compiled the contract', 
 
 describe('a flat name without a contract is the union of every era', () => {
   it('names a contract of either era', () => {
-    expectTypeOf<SmartContract>().toEqualTypeOf<Ledger8Contract | Ledger9Contract>();
+    expectTypeOf<AnyContract>().toEqualTypeOf<Ledger8Contract | Ledger9Contract>();
   });
 
   it('names a maintenance result of either era', () => {
@@ -227,10 +227,10 @@ describe('a flat name without a contract is the union of every era', () => {
     type _NoCircuitSubmitted = SubmittedCallTx<V9>;
   });
 
-  it('types the circuit values as any when instantiated with SmartContract itself', () => {
-    // Known limit: SmartContract is a constraint. The widest ledger 9 contract is `Contract<any>`,
-    // so a value of any contract is `AnyFinalizedCallTxData`, not `FinalizedCallTxData<SmartContract, …>`.
-    expectTypeOf<FinalizedCallTxData<SmartContract, CircuitIdOf<SmartContract>>['private']['result']>().toBeAny();
+  it('types the circuit values as any when instantiated with AnyContract itself', () => {
+    // Known limit: AnyContract is a constraint. The widest ledger 9 contract is `Contract<any>`,
+    // so a value of any contract is `AnyFinalizedCallTxData`, not `FinalizedCallTxData<AnyContract, …>`.
+    expectTypeOf<FinalizedCallTxData<AnyContract, CircuitIdOf<AnyContract>>['private']['result']>().toBeAny();
   });
 
   it('reads the circuit values of a call of either era as unknown, never any', () => {

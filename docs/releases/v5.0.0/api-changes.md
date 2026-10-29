@@ -467,7 +467,7 @@ error instanceof Ledger8.CallTxFailedError;
 
 ```ts
 // A name without a ledger prefix is valid for every era
-export type SmartContract = Ledger8Contract | Ledger9Contract;
+export type AnyContract = Ledger8Contract | Ledger9Contract;
 export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 // A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
 export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;

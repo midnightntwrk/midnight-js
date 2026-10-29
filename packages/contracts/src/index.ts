@@ -177,6 +177,7 @@ export type {
   Ledger9DeployedContract
 } from './deploy-contract';
 export type {
+  AnyContract,
   AnyFinalizedCallTxData,
   AnySubmittedCallTx,
   CallResultPrivate,
@@ -198,7 +199,6 @@ export type {
   FoundContract,
   FoundDeployTxData,
   Ledger9Contract,
-  SmartContract,
   SubmittedCallTx,
   UnsubmittedCallTxData
 } from './era-aliases';

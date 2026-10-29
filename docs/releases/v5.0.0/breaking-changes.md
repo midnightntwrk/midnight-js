@@ -1251,7 +1251,7 @@ the names before this rename.
 
 | Before | After |
 |---|---|
-| `AnyEraContract` | `SmartContract` |
+| `AnyEraContract` | `AnyContract` |
 | `AnyEraFinalizedCallTxData` | `AnyFinalizedCallTxData` |
 | `AnyEraSubmittedCallTx` | `AnySubmittedCallTx` |
 | `AnyEraFoundContract<C, L8>` | `FoundContract<C \| L8>` |
