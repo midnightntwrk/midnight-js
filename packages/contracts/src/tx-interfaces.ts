@@ -20,7 +20,7 @@ import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { hasLedger8ContractShape } from './internal/era';
 import type {
   Ledger8CallTxOptions,
@@ -32,16 +32,16 @@ import type {
 } from './ledger8-contract';
 import { submitCallTx } from './submit-call-tx';
 import * as Transaction from './transaction';
-import type { FinalizedCallTxData } from './tx-model';
-import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
+import type { Ledger9FinalizedCallTxData } from './tx-model';
+import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
 
 /**
  * A type that lifts each circuit defined in a contract to a function that builds
  * and submits a call transaction.
  */
-export type CircuitCallTxInterface<C extends Contract.Any> = {
+export type Ledger9CircuitCallTxInterface<C extends Contract.Any> = {
   [PCK in Contract.ProvableCircuitId<C>]: {
-    (...args: Contract.CircuitParameters<C, PCK>): Promise<FinalizedCallTxData<C, PCK>>,
+    (...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
     (txCtx: Transaction.TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>>
   };
 };
@@ -69,7 +69,7 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
 };
 
 /**
- * Creates the options `submitCallTx` takes to call one circuit: a {@link CallTxOptions} for a
+ * Creates the options `submitCallTx` takes to call one circuit: a {@link Ledger9CallTxOptions} for a
  * ledger 9 `CompiledContract`, or a `Ledger8.CallTxOptions` for a ledger 8 contract.
  *
  * `args` is left out for a circuit that takes no arguments, and `privateStateId` when it is
@@ -102,7 +102,7 @@ export function createCallTxOptions<C extends Contract.Any, PCK extends Contract
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
   args: Contract.CircuitParameters<C, PCK>
-): CallTxOptions<C, PCK>;
+): Ledger9CallTxOptions<C, PCK>;
 export function createCallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
   circuitId: PCK,
@@ -110,7 +110,7 @@ export function createCallTxOptions<C extends Contract.Any, PCK extends Contract
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
   args: Contract.CircuitParameters<C, PCK> | Ledger8CircuitParameters<Ledger8Contract, string>
-): CallTxOptions<C, PCK> | Ledger8CallTxOptions<Ledger8Contract, string> {
+): Ledger9CallTxOptions<C, PCK> | Ledger8CallTxOptions<Ledger8Contract, string> {
   if (hasLedger8ContractShape(compiledContract)) {
     return createLedger8CallTxOptions(
       compiledContract,
@@ -129,7 +129,7 @@ export function createCallTxOptions<C extends Contract.Any, PCK extends Contract
   };
   const callTxOptionsBase = args.length !== 0 ? { ...callOptionsBase, args } : callOptionsBase;
   const callTxOptions = privateStateId === undefined ? callTxOptionsBase : { ...callTxOptionsBase, privateStateId };
-  return callTxOptions as CallTxOptions<C, PCK>;
+  return callTxOptions as Ledger9CallTxOptions<C, PCK>;
 }
 
 /**
@@ -169,7 +169,7 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
 };
 
 /**
- * Creates a {@link CircuitCallTxInterface}, or the retained era's `Ledger8.CircuitCallTxInterface`
+ * Creates a {@link Ledger9CircuitCallTxInterface}, or the retained era's `Ledger8.CircuitCallTxInterface`
  * for a contract the retained Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
@@ -188,17 +188,17 @@ export function createCircuitCallTxInterface<C extends Ledger8Contract>(
   privateStateId: PrivateStateId | undefined
 ): Ledger8CircuitCallTxInterface<C>;
 export function createCircuitCallTxInterface<C extends Contract.Any>(
-  providers: ContractProviders<C>,
+  providers: Ledger9ContractProviders<C>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined
-): CircuitCallTxInterface<C>;
+): Ledger9CircuitCallTxInterface<C>;
 export function createCircuitCallTxInterface<C extends Contract.Any>(
-  providers: ContractProviders<C>,
+  providers: Ledger9ContractProviders<C>,
   compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined
-): CircuitCallTxInterface<C> | Ledger8CircuitCallTxInterface<Ledger8Contract> {
+): Ledger9CircuitCallTxInterface<C> | Ledger8CircuitCallTxInterface<Ledger8Contract> {
   assertIsContractAddress(contractAddress);
   if (hasLedger8ContractShape(compiledContract)) {
     return createLedger8CircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId);
@@ -219,10 +219,10 @@ export function createCircuitCallTxInterface<C extends Contract.Any>(
           callArgs as Contract.CircuitParameters<C, Contract.ProvableCircuitId<C>>
         );
         return txCtx
-          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)
+          ? submitCallTx(providers, callOptions as Ledger9CallTxOptionsWithPrivateStateId<C, Contract.ProvableCircuitId<C>>, txCtx)
           : submitCallTx(providers, callOptions)
       }
     }),
     {}
-  ) as CircuitCallTxInterface<C>;
+  ) as Ledger9CircuitCallTxInterface<C>;
 }

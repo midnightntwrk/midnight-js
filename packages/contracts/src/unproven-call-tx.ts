@@ -19,7 +19,6 @@ import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { exitResultOrError, LedgerTransaction, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -29,7 +28,7 @@ import type {
   CallOptionsWithPrivateState,
   CallOptionsWithProviderDataDependencies
 } from './call';
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import { decodeLedger9PublicStates, type Ledger9ContractStates, type Ledger9PublicStates } from './internal/era';
@@ -39,7 +38,7 @@ import {
   zswapCallsToNewCoins
 } from './internal/utils';
 import { type TransactionContext } from './transaction';
-import type { UnsubmittedCallTxData } from './tx-model';
+import type { Ledger9UnsubmittedCallTxData } from './tx-model';
 
 /**
  * Enables cross-contract calls during circuit execution.
@@ -66,14 +65,14 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract<undefin
   options: CallOptionsWithProviderDataDependencies<C, PCK>,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: CrossContractConfig
-): Promise<UnsubmittedCallTxData<C, PCK>>;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithPrivateState<C, PCK>,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: CrossContractConfig
-): Promise<UnsubmittedCallTxData<C, PCK>>;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 /**
  * Calls a circuit using the provided initial `states` and creates an unbalanced,
@@ -90,7 +89,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
- * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
+ * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
  * the unproven transaction, ZK inputs/outputs, and next private state. See
  * that type for handling guidance before logging, serializing, or
  * transmitting the result.
@@ -100,7 +99,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   options: CallOptions<C, PCK>,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: CrossContractConfig
-): Promise<UnsubmittedCallTxData<C, PCK>> {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
   const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters, config } = options;
   assertValidMidnightConfig(config, 'options.config');
   const { networkId } = config;
@@ -183,7 +182,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
 
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       public: {
         nextContractState: rootCall.public.contractState,
         nextContractStateEncoded: rootCall.public.contractState.encode(),
@@ -239,7 +238,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
 /**
  * Base type for configuration for a call transaction; identical to {@link CallOptionsWithArguments}.
  */
-export type CallTxOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallOptionsWithArguments<C, PCK>;
+export type Ledger9CallTxOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallOptionsWithArguments<C, PCK>;
 
 /**
  * Call transaction options with the private state ID to use to store the new private
@@ -247,7 +246,7 @@ export type CallTxOptionsBase<C extends Contract.Any, PCK extends Contract.Prova
  * stored at the given private state ID, we don't need an 'initialPrivateState' like
  * in {@link DeployTxOptionsWithPrivateState}.
  */
-export type CallTxOptionsWithPrivateStateId<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallTxOptionsBase<
+export type Ledger9CallTxOptionsWithPrivateStateId<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Ledger9CallTxOptionsBase<
   C,
   PCK
 > & {
@@ -260,12 +259,12 @@ export type CallTxOptionsWithPrivateStateId<C extends Contract.Any, PCK extends 
 /**
  * Call transaction configuration.
  */
-export type CallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
-  | CallTxOptionsBase<C, PCK>
-  | CallTxOptionsWithPrivateStateId<C, PCK>;
+export type Ledger9CallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  | Ledger9CallTxOptionsBase<C, PCK>
+  | Ledger9CallTxOptionsWithPrivateStateId<C, PCK>;
 
 const createCallOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  callTxOptions: CallTxOptions<C, PCK>,
+  callTxOptions: Ledger9CallTxOptions<C, PCK>,
   coinPublicKey: CoinPublicKey,
   ledgerParameters: LedgerParameters,
   initialContractState: ContractState,
@@ -320,7 +319,7 @@ const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promi
 // cached states with a freshly-queried latest block.
 const getContractStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
-  options: CallTxOptionsWithPrivateStateId<C, PCK>,
+  options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
@@ -348,7 +347,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
 
 const getContractPublicStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
-  options: CallTxOptionsBase<C, PCK>,
+  options: Ledger9CallTxOptionsBase<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9PublicStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
@@ -372,7 +371,7 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
  * contract with no private state.
  */
 export type UnprovenCallTxProvidersBase = Pick<
-  ContractProviders,
+  Ledger9ContractProviders,
   'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider' | 'config'
 >;
 
@@ -382,7 +381,7 @@ export type UnprovenCallTxProvidersBase = Pick<
  * only used when creating a call transaction for a contract with a private state.
  */
 export type UnprovenCallTxProvidersWithPrivateState<C extends Contract.Any> = UnprovenCallTxProvidersBase &
-  Pick<ContractProviders<C>, 'privateStateProvider'>;
+  Pick<Ledger9ContractProviders<C>, 'privateStateProvider'>;
 
 /**
  * Providers needed to create a call transaction.
@@ -393,15 +392,15 @@ export type UnprovenCallTxProviders<C extends Contract.Any> =
 
 export async function createUnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
-  options: CallTxOptionsBase<C, PCK>,
+  options: Ledger9CallTxOptionsBase<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<UnsubmittedCallTxData<C, PCK>>;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
-  options: CallTxOptionsWithPrivateStateId<C, PCK>,
+  options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<UnsubmittedCallTxData<C, PCK>>;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 
 /**
  * Calls a circuit using states fetched from the public data provider and private state
@@ -424,16 +423,16 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * @throws InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
  *
  * @remarks
- * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
+ * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
  * the unproven transaction, ZK inputs/outputs, and next private state. See
  * that type for handling guidance before logging, serializing, or
  * transmitting the result.
  */
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
-  options: CallTxOptions<C, PCK>,
+  options: Ledger9CallTxOptions<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<UnsubmittedCallTxData<C, PCK>> {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
   const declaredCircuitId = ContractExecutable.make(options.compiledContract)

@@ -16,13 +16,12 @@
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
-import { type ContractProviders } from './contract-providers';
-import type { FoundContract } from './find-deployed-contract';
+import { type Ledger9ContractProviders } from './contract-providers';
+import type { Ledger9FoundContract } from './find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
@@ -41,7 +40,7 @@ import {
 } from './ledger8-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } from './tx-interfaces';
-import type { FinalizedDeployTxData } from './tx-model';
+import type { Ledger9FinalizedDeployTxData } from './tx-model';
 
 /**
  * What both {@link deployContract} option variants carry, and nothing either variant
@@ -90,9 +89,9 @@ export type DeployContractOptionsShared<C extends Contract.Any> = ContractConstr
  * The {@link deployContract} options variant for a contract whose private state is stored
  * NOWHERE: the constructor runs against `undefined` and nothing is written.
  *
- * The other variant is {@link DeployContractOptionsWithPrivateState}.
+ * The other variant is {@link Ledger9DeployContractOptionsWithPrivateState}.
  */
-export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOptionsShared<C> & {
+export type Ledger9DeployContractOptionsBase<C extends Contract.Any> = DeployContractOptionsShared<C> & {
   /**
    * DECLARED on this variant, and only ever `undefined`.
    *
@@ -107,7 +106,7 @@ export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOp
   readonly privateStateId?: never;
   /**
    * DECLARED on this variant, and only ever `undefined` — see
-   * {@link DeployContractOptionsBase.privateStateId} for why the member is
+   * {@link Ledger9DeployContractOptionsBase.privateStateId} for why the member is
    * present rather than absent.
    */
   readonly initialPrivateState?: never;
@@ -121,7 +120,7 @@ export type DeployContractOptionsBase<C extends Contract.Any> = DeployContractOp
  * an id with no state stores `undefined` under a name a later call will read
  * back.
  */
-export type DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsShared<C> & {
+export type Ledger9DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsShared<C> & {
   /**
    * An identifier for the private state of the contract being deployed.
    */
@@ -135,21 +134,21 @@ export type DeployContractOptionsWithPrivateState<C extends Contract.Any> = Depl
 /**
  * Configuration for {@link deployContract}.
  */
-export type DeployContractOptions<C extends Contract.Any> =
-  | DeployContractOptionsBase<C>
-  | DeployContractOptionsWithPrivateState<C>;
+export type Ledger9DeployContractOptions<C extends Contract.Any> =
+  | Ledger9DeployContractOptionsBase<C>
+  | Ledger9DeployContractOptionsWithPrivateState<C>;
 
 /**
  * Interface for a contract that has been deployed to the blockchain.
  */
-export interface DeployedContract<C extends Contract.Any> extends FoundContract<C> {
+export interface Ledger9DeployedContract<C extends Contract.Any> extends Ledger9FoundContract<C> {
   /**
    * Data resulting from the deployment transaction that created this contract. The information in a
    * {@link deployTxData} contains additional private information that does not
-   * exist in {@link FoundContract.deployTxData} because certain private data is only available to
+   * exist in {@link Ledger9FoundContract.deployTxData} because certain private data is only available to
    * the deployer of a contract.
    */
-  readonly deployTxData: FinalizedDeployTxData<C>;
+  readonly deployTxData: Ledger9FinalizedDeployTxData<C>;
 }
 
 /**
@@ -157,11 +156,11 @@ export interface DeployedContract<C extends Contract.Any> extends FoundContract<
  * the variant and the id is defined.
  */
 const namesPrivateState = <C extends Contract.Any>(
-  options: DeployContractOptions<C>
-): options is DeployContractOptionsWithPrivateState<C> => 'privateStateId' in options;
+  options: Ledger9DeployContractOptions<C>
+): options is Ledger9DeployContractOptionsWithPrivateState<C> => 'privateStateId' in options;
 
 const createDeployTxOptions = <C extends Contract.Any>(
-  deployContractOptions: DeployContractOptions<C>
+  deployContractOptions: Ledger9DeployContractOptions<C>
 ): DeployTxOptions<C> => {
   const signingKey = deployContractOptions.signingKey ?? sampleSigningKey();
 
@@ -221,21 +220,21 @@ export async function deployContract<C extends Ledger8Contract>(
  * Deploys a contract that declares no private state, so no private state id is required.
  */
 export async function deployContract<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
-  options: DeployContractOptionsBase<C>
-): Promise<DeployedContract<C>>;
+  providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
+  options: Ledger9DeployContractOptionsBase<C>
+): Promise<Ledger9DeployedContract<C>>;
 
 /**
  * Deploys a contract that declares private state, naming where to store the initial state.
  */
 export async function deployContract<C extends Contract.Any>(
-  providers: ContractProviders<C>,
-  options: DeployContractOptionsWithPrivateState<C>
-): Promise<DeployedContract<C>>;
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9DeployContractOptionsWithPrivateState<C>
+): Promise<Ledger9DeployedContract<C>>;
 
 /**
  * Creates and submits a contract deployment transaction. This function is the entry point for the transaction
- * construction workflow and is used to create a {@link DeployedContract} instance.
+ * construction workflow and is used to create a {@link Ledger9DeployedContract} instance.
  *
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
@@ -277,9 +276,9 @@ export async function deployContract<C extends Contract.Any>(
  *               ahead of the pairing refusal.
  */
 export async function deployContract<C extends Contract.Any>(
-  providers: ContractProviders<C>,
-  options: DeployContractOptions<C> | AnyLedger8DeployContractOptions
-): Promise<DeployedContract<C> | AnyLedger8DeployedContract> {
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9DeployContractOptions<C> | AnyLedger8DeployContractOptions
+): Promise<Ledger9DeployedContract<C> | AnyLedger8DeployedContract> {
   assertValidMidnightConfig(providers.config);
   assertDeployPrivateStatePairing(options);
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
@@ -326,7 +325,7 @@ export async function deployContract<C extends Contract.Any>(
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
-    era: CURRENT_LEDGER_VERSION,
+    era: 'v9',
     compiledContract: options.compiledContract,
     contractAddress: deployTxData.public.contractAddress,
     deployTxData,

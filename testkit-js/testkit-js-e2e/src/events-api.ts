@@ -14,7 +14,7 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 import type { Logger } from 'pino';
@@ -52,7 +52,7 @@ export const deploy = async (providers: EventsProviders): Promise<DeployedEvents
   return eventsContract;
 };
 
-const submit = async (label: string, call: Promise<{ public: FinalizedTxData }>): Promise<FinalizedTxData> => {
+const submit = async (label: string, call: Promise<{ public: Ledger9FinalizedTxData }>): Promise<Ledger9FinalizedTxData> => {
   logger.info(`Emitting ${label}...`);
   const { public: finalizedTxData } = await call;
   logger.info(`Transaction ${finalizedTxData.txId} added in block ${finalizedTxData.blockHeight}`);
@@ -63,36 +63,36 @@ export const emitMisc = (
   eventsContract: DeployedEventsContract,
   name: Uint8Array,
   payload: Uint8Array
-): Promise<FinalizedTxData> => submit('Misc', eventsContract.callTx.emitMisc(name, payload));
+): Promise<Ledger9FinalizedTxData> => submit('Misc', eventsContract.callTx.emitMisc(name, payload));
 
 export const emitShieldedSpend = (
   eventsContract: DeployedEventsContract,
   nullifier: Uint8Array
-): Promise<FinalizedTxData> => submit('ShieldedSpend', eventsContract.callTx.emitShieldedSpend(nullifier));
+): Promise<Ledger9FinalizedTxData> => submit('ShieldedSpend', eventsContract.callTx.emitShieldedSpend(nullifier));
 
 export const emitShieldedBurn = (
   eventsContract: DeployedEventsContract,
   nullifier: Uint8Array
-): Promise<FinalizedTxData> => submit('ShieldedBurn', eventsContract.callTx.emitShieldedBurn(nullifier));
+): Promise<Ledger9FinalizedTxData> => submit('ShieldedBurn', eventsContract.callTx.emitShieldedBurn(nullifier));
 
 export const emitUnshieldedSpend = (
   eventsContract: DeployedEventsContract,
   tokenType: Uint8Array,
   amount: bigint
-): Promise<FinalizedTxData> => submit('UnshieldedSpend', eventsContract.callTx.emitUnshieldedSpend(tokenType, amount));
+): Promise<Ledger9FinalizedTxData> => submit('UnshieldedSpend', eventsContract.callTx.emitUnshieldedSpend(tokenType, amount));
 
 export const emitUnshieldedReceive = (
   eventsContract: DeployedEventsContract,
   tokenType: Uint8Array,
   amount: bigint
-): Promise<FinalizedTxData> =>
+): Promise<Ledger9FinalizedTxData> =>
   submit('UnshieldedReceive', eventsContract.callTx.emitUnshieldedReceive(tokenType, amount));
 
 export const emitUnshieldedBurn = (
   eventsContract: DeployedEventsContract,
   tokenType: Uint8Array,
   amount: bigint
-): Promise<FinalizedTxData> => submit('UnshieldedBurn', eventsContract.callTx.emitUnshieldedBurn(tokenType, amount));
+): Promise<Ledger9FinalizedTxData> => submit('UnshieldedBurn', eventsContract.callTx.emitUnshieldedBurn(tokenType, amount));
 
-export const emitLifecycle = (eventsContract: DeployedEventsContract): Promise<FinalizedTxData> =>
+export const emitLifecycle = (eventsContract: DeployedEventsContract): Promise<Ledger9FinalizedTxData> =>
   submit('Paused + Unpaused', eventsContract.callTx.emitLifecycle());

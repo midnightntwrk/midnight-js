@@ -211,6 +211,25 @@ type ContractProviders = {
 };
 ```
 
+## Type Names and Ledger Eras
+
+A flat name such as `FoundContract<C>` picks the ledger 8 or ledger 9 variant
+from the contract type, so `FoundContract<typeof MyContract>` is always the
+type of the toolchain that compiled `MyContract`. The entry points return the
+era-named type: `Ledger9FoundContract<C>` or `Ledger8.FoundContract<C>`.
+
+In generic code the contract is unknown, so name the era:
+
+```typescript
+const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, K>
+) => data.public;
+```
+
+Types with no contract parameter have only their era-named form, for example
+`Ledger9FinalizedMaintenanceTxData`. To accept either era, use the `AnyEra*`
+unions.
+
 ## Exports
 
 ```typescript
@@ -243,8 +262,8 @@ import {
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface,
   CircuitCallTxInterface,
-  CircuitMaintenanceTxInterface,
-  ContractMaintenanceTxInterface,
+  Ledger9CircuitMaintenanceTxInterface,
+  Ledger9ContractMaintenanceTxInterface,
 
   // Utilities
   verifierKeysEqual,

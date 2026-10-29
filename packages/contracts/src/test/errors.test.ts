@@ -18,8 +18,8 @@ import {
   type AnyProvableCircuitId,
   FailEntirely,
   FailFallible,
-  type FinalizedTxData,
   type Ledger8FinalizedTxData,
+  type Ledger9FinalizedTxData,
   SegmentFail,
   SegmentSuccess,
   type TxStatus
@@ -59,7 +59,7 @@ describe('TxFailedError', () => {
       [0, SegmentSuccess],
       [1, SegmentFail]
     ]);
-    const finalizedTxData: FinalizedTxData = {
+    const finalizedTxData: Ledger9FinalizedTxData = {
       ...createMockFinalizedTxData(FailFallible),
       segmentStatusMap
     };
@@ -81,7 +81,7 @@ describe('TxFailedError', () => {
   });
 
   it('should serialize empty segmentStatusMap as empty object', () => {
-    const finalizedTxData: FinalizedTxData = {
+    const finalizedTxData: Ledger9FinalizedTxData = {
       ...createMockFinalizedTxData(FailFallible),
       segmentStatusMap: new Map()
     };
@@ -145,7 +145,7 @@ describe('CallTxFailedError', () => {
       [0, SegmentSuccess],
       [1, SegmentFail]
     ]);
-    const finalizedTxData: FinalizedTxData = {
+    const finalizedTxData: Ledger9FinalizedTxData = {
       ...createMockFinalizedTxData(FailFallible),
       segmentStatusMap
     };

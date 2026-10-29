@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Intent, type MaintenanceUpdate } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { Intent, type MaintenanceUpdate, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type {
@@ -28,7 +28,6 @@ import {
   LedgerTransaction,
   makeContractExecutableRuntime,
   type MidnightConfig,
-  Transaction,
   type UnprovenTx,
   type VerifierKey,
   type ZKConfigProvider

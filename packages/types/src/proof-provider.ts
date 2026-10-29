@@ -31,7 +31,8 @@ import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
 import { LedgerTransaction, type UnboundTx, type UnprovenTx } from './ledger-transaction';
 
-export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+/** A proven ledger 9 transaction, not yet bound: what `Ledger9WalletProvider.balanceTx` takes. */
+export type Ledger9UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
 /**
  * The configuration for the proof request to the proof provider.

@@ -21,7 +21,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from '../../governance/tx-interfaces';
-import type { FinalizedMaintenanceTxData } from '../../tx-model';
+import type { Ledger9FinalizedMaintenanceTxData } from '../../tx-model';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -37,7 +37,7 @@ describe('governance/tx-interfaces', () => {
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
-  let mockMaintenanceTxData: FinalizedMaintenanceTxData;
+  let mockMaintenanceTxData: Ledger9FinalizedMaintenanceTxData;
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -64,3 +64,14 @@ through them changes meaning at every fork.
   consumer to pick a ledger. A `@deprecated` alias would also not warn: the declaration bundler drops
   module-level JSDoc, and TypeScript does not flag a deprecated module path.
 - `./compact-js/v8/effect` keeps its path: renaming it would break consumers for no gain.
+
+## Amendment — era-generic type names pick the era from the contract (2026-10-28)
+
+Issue #1536, part B. A ledger 9 result type without a prefix (`FoundContract`, `FinalizedTxData`)
+broke the rule above: at the next fork it would have meant ledger 10. Two rules now apply:
+
+- High-level types: the flat name is era-generic. With a contract parameter it is a conditional
+  alias over the `Ledger8` / `Ledger9` variants, so it keeps its meaning at a fork; ledger 10 adds a
+  branch. Without one it does not exist, and only the `Ledger9*` name remains.
+- Low-level functions serve one era each, so they are named after it (#1527).
+

@@ -212,7 +212,7 @@ describe('retained-era error classes', () => {
   it('should pair each published error class with its published code', () => {
     expect(
       midnightJs.utils.hasErrorCode(
-        new midnightJs.Ledger8RuntimeMissingError('/engine', new Error('resolution failed')),
+        new midnightJs.Ledger8RuntimeMissingError('/v8/engine', new Error('resolution failed')),
         midnightJs.PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING
       )
     ).toBe(true);

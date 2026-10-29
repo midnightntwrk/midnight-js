@@ -44,7 +44,7 @@ An era-named subpath always means the same ledger. At the next fork, a new
 | `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./v9` | `@midnightntwrk/ledger-v9` | Ledger 9 types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Ledger 8 — do not import at runtime; use `loadLedger8Protocol()` |
-| `./engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
+| `./v8/engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
 | `./v9/compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities for ledger 9 |
 | `./v9/compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings for ledger 9 |
 | `./v9/compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings for ledger 9 |
@@ -89,7 +89,7 @@ docstring resolves to it.
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the version tag is the only authority over the bytes, and the division of labour between the three decode failures |
 | [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era paths refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
-| [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
+| [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./v8/engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
 | [Injected vendor slices](./docs/injected-vendor-slices.md) | How a function names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
 | [Cross-era operation registry](./docs/cross-era-operation-registry.md) | What actually crosses the fork boundary when a contract served with its retained-era version tag is called, why re-expressing its operations is faithful rather than a substitution, and why the primary state is left at its default |
 | [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
@@ -119,7 +119,7 @@ If the v8 module cannot be loaded (usually a broken or partial install), `loadLe
 
 ## Running Contracts on the Retained Pre-Fork Engine
 
-Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
+Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./v8/engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
 ```typescript
 import { loadLedger8Engine, loadLedgerEra, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
@@ -158,7 +158,7 @@ Circuits with Zswap coin effects run on this leg like any other. The transcript 
 
 The transcript also carries `partitionContext` — the block, the starting effects and the commitment indices the pre-fork query context recorded while the circuit ran. Pass it on unchanged: a transcript composed without it is partitioned against a context the circuit never ran on, and a circuit that RECEIVED a coin in-contract cannot be partitioned at all, because the index its commitment was registered at lives only in that context. `wrapKeepStateCall` carries it for you; a hand-built call entry has to supply it. A context the target era cannot read throws `ComposeFailedError` with `stage: 'call-partition-context'`.
 
-A failure to load the chunk itself rejects with `Ledger8RuntimeMissingError` whose `subpath` is `'/engine'`; read `cause` for which module actually failed to resolve.
+A failure to load the chunk itself rejects with `Ledger8RuntimeMissingError` whose `subpath` is `'/v8/engine'`; read `cause` for which module actually failed to resolve.
 
 ## Ledger-Era Facade
 

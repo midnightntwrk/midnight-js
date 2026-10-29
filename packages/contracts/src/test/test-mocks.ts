@@ -53,8 +53,8 @@ import {
   type AnyProvableCircuitId,
   type ContractStateAndParametersRead,
   type ContractStateRead,
-  type FinalizedTxData,
   type Ledger8FinalizedTxData,
+  type Ledger9FinalizedTxData,
   LedgerState,
   type MidnightConfig,
   type PrivateStateId,
@@ -73,8 +73,8 @@ import type { Mock } from 'vitest';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
-import type { ContractProviders } from '../contract-providers';
-import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import type { Ledger9ContractProviders } from '../contract-providers';
+import { type Ledger9UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import { handles } from './ledger-transaction-fixtures';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -231,7 +231,7 @@ export const networkIdOf = (tx: { toString(compact?: boolean): string }): string
 
 const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
 
-export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
+export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   config: MOCK_CONFIG,
   midnightProvider: {
     supportedEras: MOCK_SUPPORTED_ERAS,
@@ -297,7 +297,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   }
 });
 
-export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
+export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger9FinalizedTxData => ({
   era: 'v9',
   status: status,
   txId: 'test-tx-id',
@@ -389,7 +389,7 @@ export const createMockContractCall = (
   communicationCommitment: overrides.communicationCommitment ?? Option.none()
 });
 
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),

@@ -39,7 +39,7 @@ const SYNTAX_RULE_ID = 'no-restricted-syntax';
 const EXPLICIT_ANY_RULE_ID = '@typescript-eslint/no-explicit-any';
 const LEDGER8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
 const ERROR_SEVERITY = 2;
-const ENGINE_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/engine`;
+const ENGINE_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8/engine`;
 
 // The ESLint constructor only stores options — config resolution happens
 // lazily inside `lintText` — so eager initialisation here is cheap and lets
@@ -254,32 +254,32 @@ describe('unused eslint-disable directives', () => {
   });
 });
 
-describe('protocol/engine gate canaries', () => {
-  it('flags a runtime import of protocol/engine from a consumer package', async () => {
+describe('protocol/v8/engine gate canaries', () => {
+  it('flags a runtime import of protocol/v8/engine from a consumer package', async () => {
     const messages = await lintMessagesFor(importStatement(ENGINE_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
-    expect(messages).toHaveLength(1);
+    expect(messages.map(({ message }) => message)).toEqual([expect.stringContaining('loadLedger8Engine()')]);
   });
 
-  it('allows a type-only import of protocol/engine from a consumer package', async () => {
+  it('allows a type-only import of protocol/v8/engine from a consumer package', async () => {
     const messages = await lintMessagesFor(typeImportStatement(ENGINE_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
-  it('allows a runtime import of protocol/engine inside packages/protocol/src/', async () => {
+  it('allows a runtime import of protocol/v8/engine inside packages/protocol/src/', async () => {
     const messages = await lintMessagesFor(importStatement(ENGINE_SUBPATH), PROTOCOL_INTERNAL_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
-  it('flags a dynamic import of protocol/engine from a consumer package', async () => {
+  it('flags a dynamic import of protocol/v8/engine from a consumer package', async () => {
     const messages = await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), CONSUMER_PATH, SYNTAX_RULE_ID);
 
-    expect(messages).toHaveLength(1);
+    expect(messages.map(({ message }) => message)).toEqual([expect.stringContaining('loadLedger8Engine()')]);
   });
 
-  it('allows a dynamic import of protocol/engine inside packages/protocol/src/', async () => {
+  it('allows a dynamic import of protocol/v8/engine inside packages/protocol/src/', async () => {
     const messages = await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toEqual([]);
@@ -349,7 +349,7 @@ describe('plain-throw gate', () => {
   );
 
   it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
-    'still bans dynamic imports of protocol/v8 and protocol/engine in %s',
+    'still bans dynamic imports of protocol/v8 and protocol/v8/engine in %s',
     async (filePath) => {
       expect((await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
       expect((await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);

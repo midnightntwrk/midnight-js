@@ -41,11 +41,11 @@ import { describe, expectTypeOf, it } from 'vitest';
 // regenerated, the identifiers named `Twin018*` should be renamed with it.
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import type { CallResult } from '../../call';
-import type { ContractProviders } from '../../contract-providers';
+import type { Ledger9ContractProviders } from '../../contract-providers';
 import {
   deployContract,
-  type DeployContractOptionsWithPrivateState,
-  type DeployedContract
+  type Ledger9DeployContractOptionsWithPrivateState,
+  type Ledger9DeployedContract
 } from '../../deploy-contract';
 import {
   type AnyEraDeployedContract,
@@ -59,7 +59,7 @@ import {
   findDeployedContract,
   type FindDeployedContractOptionsBase,
   type FindDeployedContractOptionsStorePrivateState,
-  type FoundContract
+  type Ledger9FoundContract
 } from '../../find-deployed-contract';
 import {
   createCircuitMaintenanceTxInterfaces,
@@ -101,16 +101,16 @@ import {
 import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
-import { type CircuitCallTxInterface, createCircuitCallTxInterface } from '../../tx-interfaces';
+import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
-  FinalizedCallTxData,
-  FinalizedDeployTxPublicData,
-  FinalizedMaintenanceTxData,
   FoundDeployTxPublicData,
   Ledger8FoundDeployTxPublicData,
-  SubmittedCallTx
+  Ledger9FinalizedCallTxData,
+  Ledger9FinalizedDeployTxPublicData,
+  Ledger9FinalizedMaintenanceTxData,
+  Ledger9SubmittedCallTx
 } from '../../tx-model';
-import type { CallTxOptions, CallTxOptionsBase, CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
+import type { Ledger9CallTxOptions, Ledger9CallTxOptionsBase, Ledger9CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
 import type {
   CoinReceiver016Coin,
   CoinReceiver016Contract,
@@ -153,9 +153,9 @@ declare const providersCoin: Ledger8ContractProviders<CoinReceiver016Contract, '
 declare const optionsCoin: Ledger8CallTxOptionsBase<CoinReceiver016Contract, 'receive_coin'>;
 
 // Current-era call-site material, typed off the real generated declaration file.
-declare const providers018: ContractProviders<Twin018, 'increment'>;
-declare const currentCallTx: FoundContract<Twin018>['callTx']['increment'];
-declare const options018: CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
+declare const providers018: Ledger9ContractProviders<Twin018, 'increment'>;
+declare const currentCallTx: Ledger9FoundContract<Twin018>['callTx']['increment'];
+declare const options018: Ledger9CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
 declare const compiledContract018: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
 declare const contract018: Twin018;
 
@@ -364,11 +364,11 @@ describe('every result names the pipeline that produced it', () => {
   // branching on the record reaches for the wrong module.
 
   type EitherEraCall =
-    | FinalizedCallTxData<Twin018, 'increment'>
+    | Ledger9FinalizedCallTxData<Twin018, 'increment'>
     | Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
 
   it('tags both eras at the same path, with that era own literal', () => {
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger9FinalizedCallTxData<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['era']
     >().toEqualTypeOf<'v8'>();
@@ -439,8 +439,8 @@ describe('every result names the pipeline that produced it', () => {
     // rests on and which nothing asserted. If a concrete result stops being
     // assignable to the union, every handler declared against it stops
     // compiling -- and no other assertion here would notice.
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>>().toExtend<AnyEraFinalizedCallTxData>();
-    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>>().toExtend<AnyEraSubmittedCallTx>();
+    expectTypeOf<Ledger9FinalizedCallTxData<Twin018, 'increment'>>().toExtend<AnyEraFinalizedCallTxData>();
+    expectTypeOf<Ledger9SubmittedCallTx<Twin018, 'increment'>>().toExtend<AnyEraSubmittedCallTx>();
 
     // A caller whose parameter is tagged with the WIDE union still narrows to
     // something usable. `Extract` alone answers `never` here -- there is no
@@ -457,9 +457,9 @@ describe('every result names the pipeline that produced it', () => {
     type Deployed = AnyEraDeployedContract<Twin018, Counter016Contract>;
 
     expectTypeOf<Extract<Found, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundContract<Counter016Contract>>();
-    expectTypeOf<Exclude<Found, { era: 'v8' }>>().toEqualTypeOf<FoundContract<Twin018>>();
+    expectTypeOf<Exclude<Found, { era: 'v8' }>>().toEqualTypeOf<Ledger9FoundContract<Twin018>>();
     expectTypeOf<Extract<Deployed, { era: 'v8' }>>().toEqualTypeOf<Ledger8DeployedContract<Counter016Contract>>();
-    expectTypeOf<Exclude<Deployed, { era: 'v8' }>>().toEqualTypeOf<DeployedContract<Twin018>>();
+    expectTypeOf<Exclude<Deployed, { era: 'v8' }>>().toEqualTypeOf<Ledger9DeployedContract<Twin018>>();
 
     expectTypeOf<Deployed>().toExtend<Found>();
 
@@ -480,13 +480,13 @@ describe('every result names the pipeline that produced it', () => {
   });
 
   it('tags the asynchronous submit and the contract handles too', () => {
-    expectTypeOf<SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger9SubmittedCallTx<Twin018, 'increment'>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<
       Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['era']
     >().toEqualTypeOf<'v8'>();
-    expectTypeOf<FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger9FoundContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<Ledger8FoundContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
-    expectTypeOf<DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
+    expectTypeOf<Ledger9DeployedContract<Twin018>['era']>().toEqualTypeOf<CurrentLedgerVersion>();
     expectTypeOf<Ledger8DeployedContract<Counter016Contract>['era']>().toEqualTypeOf<'v8'>();
   });
 });
@@ -733,7 +733,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
    * construction site. It is on both results now.
    */
 
-  type CurrentEraResult = FinalizedCallTxData<Twin018, 'increment'>;
+  type CurrentEraResult = Ledger9FinalizedCallTxData<Twin018, 'increment'>;
   type RetainedEraResult = Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>;
 
   it('still CARRIES every member the allow-lists above excuse from parity', () => {
@@ -812,7 +812,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<keyof Ledger8FoundContract<Counter016Contract>['callTx']>().toEqualTypeOf<
       Ledger8CircuitId<Counter016Contract>
     >();
-    expectTypeOf<keyof FoundContract<Twin018>['callTx']>().toEqualTypeOf<Contract.ProvableCircuitId<Twin018>>();
+    expectTypeOf<keyof Ledger9FoundContract<Twin018>['callTx']>().toEqualTypeOf<Contract.ProvableCircuitId<Twin018>>();
     expectTypeOf<
       ReturnType<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>
     >().toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
@@ -829,10 +829,10 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // is declared last on the current era, so reading the last overload names it,
     // and on the retained era the last overload is the only one.
     expectTypeOf(currentCallTx).toBeCallableWith();
-    expectTypeOf<ReturnType<FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
+    expectTypeOf<ReturnType<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
       Promise<CallResult<Twin018, 'increment'>>
     >();
-    expectTypeOf<Parameters<FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
+    expectTypeOf<Parameters<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
       [txCtx: TransactionContext<Twin018, 'increment'>]
     >();
 
@@ -857,7 +857,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // and this result's own TSDoc example tells the caller to read. Two paths to
     // one value is a divergence waiting to happen, so the duplicate went rather
     // than being mirrored onto the current era.
-    expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
+    expectTypeOf<keyof Ledger9SubmittedCallTx<Twin018, 'increment'>>().toEqualTypeOf<
       keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>
     >();
 
@@ -865,7 +865,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // TOP-LEVEL members of the two submitted results, so a member dropped from
     // the nested execution data is invisible to it -- which is how `era` fell
     // off this result while every top-level key set still matched.
-    expectTypeOf<keyof SubmittedCallTx<Twin018, 'increment'>['callTxData']>().toEqualTypeOf<
+    expectTypeOf<keyof Ledger9SubmittedCallTx<Twin018, 'increment'>['callTxData']>().toEqualTypeOf<
       keyof Ledger8SubmittedCallTx<Counter016Contract, 'increment'>['callTxData']
     >();
   });
@@ -873,7 +873,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
   it('puts the circuit return value on `private.result` in BOTH eras', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>().toHaveProperty('private');
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty('result');
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('result');
+    expectTypeOf<Ledger9FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('result');
   });
 
   it('puts the finalized record on `public` in BOTH eras, keeping the retained era tag', () => {
@@ -901,7 +901,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['private']>().toHaveProperty(
       'nextPrivateState'
     );
-    expectTypeOf<FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('nextPrivateState');
+    expectTypeOf<Ledger9FinalizedCallTxData<Twin018, 'increment'>['private']>().toHaveProperty('nextPrivateState');
   });
 });
 
@@ -911,12 +911,12 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   // above stayed green. A base cannot hold these in step: `era`, `callTx` and
   // `deployTxData` are era-specific types in every era, so a base over them
   // would declare a key set and nothing else -- the shape ADR-0009 already
-  // rejected for `FinalizedCallTxData`. The key-set gate is the whole
+  // rejected for `Ledger9FinalizedCallTxData`. The key-set gate is the whole
   // mechanism here.
 
-  type CurrentFound = FoundContract<Twin018>;
+  type CurrentFound = Ledger9FoundContract<Twin018>;
   type RetainedFound = Ledger8FoundContract<Counter016Contract>;
-  type CurrentDeployed = DeployedContract<Twin018>;
+  type CurrentDeployed = Ledger9DeployedContract<Twin018>;
   type RetainedDeployed = Ledger8DeployedContract<Counter016Contract>;
 
   it('carries the same members on a FOUND contract in BOTH eras, the maintenance pair included', () => {
@@ -1001,7 +1001,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
 describe('the two eras options types do not structurally match each other', () => {
   it('does not accept retained-era options where the current-era overload expects its own', () => {
     // @ts-expect-error - a raw retained-era contract instance is not a CompiledContract container
-    const notCurrentEraOptions: CallTxOptionsBase<Twin018, 'increment'> = options016;
+    const notCurrentEraOptions: Ledger9CallTxOptionsBase<Twin018, 'increment'> = options016;
     void notCurrentEraOptions;
   });
 
@@ -1017,7 +1017,7 @@ describe('the two eras options types do not structurally match each other', () =
     // Asserting the remainder matches pins the reason, not just the failure — and it is asserted on
     // `Ledger8CallTxOptionsBase`, not on `Ledger8CallTxTarget`, precisely so that making `args`
     // unconditional again would fail here rather than quietly move the directive above.
-    expectTypeOf<Omit<CallTxOptionsWithPrivateStateId<Twin018, 'increment'>, 'compiledContract'>>().toMatchTypeOf<
+    expectTypeOf<Omit<Ledger9CallTxOptionsWithPrivateStateId<Twin018, 'increment'>, 'compiledContract'>>().toMatchTypeOf<
       Omit<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>, 'compiledContract'>
     >();
   });
@@ -1028,7 +1028,7 @@ describe('the two eras options types do not structurally match each other', () =
     // all — the same circuit, two different call shapes, for no reason a caller could see.
     expectTypeOf<Ledger8CircuitParameters<Counter016Contract, 'increment'>>().toEqualTypeOf<[]>();
     expectTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>().not.toHaveProperty('args');
-    expectTypeOf<CallTxOptionsBase<Twin018, 'increment'>>().not.toHaveProperty('args');
+    expectTypeOf<Ledger9CallTxOptionsBase<Twin018, 'increment'>>().not.toHaveProperty('args');
     expectTypeOf<Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>>().toEqualTypeOf<
       Ledger8CallTxTarget<Counter016Contract, 'increment'>
     >();
@@ -1058,7 +1058,7 @@ describe('submitCallTx resolves a retained-era call to the retained-era return t
 
   it('still picks the current-era overload for current-era options', () => {
     expectTypeOf(submitCallTx(providers018, options018)).toEqualTypeOf<
-      Promise<FinalizedCallTxData<Twin018, 'increment'>>
+      Promise<Ledger9FinalizedCallTxData<Twin018, 'increment'>>
     >();
   });
 });
@@ -1071,7 +1071,7 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
   });
 
   it('resolves a current-era submitCallTxAsync to the current-era submitted-tx type', () => {
-    expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<SubmittedCallTx<Twin018, 'increment'>>>();
+    expectTypeOf(submitCallTxAsync(providers018, options018)).toEqualTypeOf<Promise<Ledger9SubmittedCallTx<Twin018, 'increment'>>>();
   });
 
   // The retained DEPLOYED-contract type, not `never`: the path composes and
@@ -1089,7 +1089,7 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
   it('resolves a current-era deployContract to the current-era deployed-contract type', () => {
     expectTypeOf(
       deployContract(providers018, { compiledContract: compiledContract018, privateStateId: 'counter', initialPrivateState: { round: 0n } })
-    ).toEqualTypeOf<Promise<DeployedContract<Twin018>>>();
+    ).toEqualTypeOf<Promise<Ledger9DeployedContract<Twin018>>>();
   });
 
   it('resolves a retained-era findDeployedContract to the retained-era found-contract type', () => {
@@ -1111,7 +1111,7 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
         privateStateId: 'counter',
         initialPrivateState: { round: 0n }
       })
-    ).toEqualTypeOf<Promise<FoundContract<Twin018>>>();
+    ).toEqualTypeOf<Promise<Ledger9FoundContract<Twin018>>>();
   });
 });
 
@@ -1184,39 +1184,39 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
     expectTypeOf<Parameters<typeof submitCallTx>>().toEqualTypeOf<
       [
         providers: SubmitTxProviders<Contract<undefined>, string>,
-        options: CallTxOptionsBase<Contract<undefined>, string>,
+        options: Ledger9CallTxOptionsBase<Contract<undefined>, string>,
         transactionContext: TransactionContext<Contract<undefined>, string>
       ]
     >();
   });
 
-  it('leaves ReturnType<typeof submitCallTxAsync> reporting the current-era SubmittedCallTx', () => {
-    expectTypeOf<ReturnType<typeof submitCallTxAsync>>().toEqualTypeOf<Promise<SubmittedCallTx<Contract.Any, string>>>();
+  it('leaves ReturnType<typeof submitCallTxAsync> reporting Ledger9SubmittedCallTx', () => {
+    expectTypeOf<ReturnType<typeof submitCallTxAsync>>().toEqualTypeOf<Promise<Ledger9SubmittedCallTx<Contract.Any, string>>>();
   });
 
   it('leaves Parameters<typeof submitCallTxAsync> reporting the current-era call', () => {
     expectTypeOf<Parameters<typeof submitCallTxAsync>>().toEqualTypeOf<
-      [providers: SubmitCallTxProviders<Contract.Any, string>, options: CallTxOptions<Contract.Any, string>]
+      [providers: SubmitCallTxProviders<Contract.Any, string>, options: Ledger9CallTxOptions<Contract.Any, string>]
     >();
   });
 
-  it('leaves ReturnType<typeof deployContract> reporting the current-era DeployedContract', () => {
-    expectTypeOf<ReturnType<typeof deployContract>>().toEqualTypeOf<Promise<DeployedContract<Contract.Any>>>();
+  it('leaves ReturnType<typeof deployContract> reporting Ledger9DeployedContract', () => {
+    expectTypeOf<ReturnType<typeof deployContract>>().toEqualTypeOf<Promise<Ledger9DeployedContract<Contract.Any>>>();
   });
 
   it('leaves Parameters<typeof deployContract> reporting the current-era private-state deploy', () => {
     expectTypeOf<Parameters<typeof deployContract>>().toEqualTypeOf<
-      [providers: ContractProviders<Contract.Any>, options: DeployContractOptionsWithPrivateState<Contract.Any>]
+      [providers: Ledger9ContractProviders<Contract.Any>, options: Ledger9DeployContractOptionsWithPrivateState<Contract.Any>]
     >();
   });
 
-  it('leaves ReturnType<typeof findDeployedContract> reporting the current-era FoundContract', () => {
-    expectTypeOf<ReturnType<typeof findDeployedContract>>().toEqualTypeOf<Promise<FoundContract<Contract.Any>>>();
+  it('leaves ReturnType<typeof findDeployedContract> reporting Ledger9FoundContract', () => {
+    expectTypeOf<ReturnType<typeof findDeployedContract>>().toEqualTypeOf<Promise<Ledger9FoundContract<Contract.Any>>>();
   });
 
   it('leaves Parameters<typeof findDeployedContract> reporting the current-era store-private-state find', () => {
     expectTypeOf<Parameters<typeof findDeployedContract>>().toEqualTypeOf<
-      [providers: ContractProviders<Contract.Any>, options: FindDeployedContractOptionsStorePrivateState<Contract.Any>]
+      [providers: Ledger9ContractProviders<Contract.Any>, options: FindDeployedContractOptionsStorePrivateState<Contract.Any>]
     >();
   });
 });
@@ -1264,7 +1264,7 @@ describe('the retained-era private state flows through the family', () => {
 });
 
 describe('a found contract may have been deployed in either ledger era', () => {
-  type Found = FoundContract<Twin018>;
+  type Found = Ledger9FoundContract<Twin018>;
   type FoundPublic = Found['deployTxData']['public'];
 
   it('tags the deploy record with the ledger era that recorded it', () => {
@@ -1278,20 +1278,20 @@ describe('a found contract may have been deployed in either ledger era', () => {
 
   it('requires narrowing on `era` before the deploy-time state is read', () => {
     expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
-    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>>().toEqualTypeOf<Ledger9FinalizedDeployTxPublicData>();
     expectTypeOf<Extract<FoundPublic, { era: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
     expectTypeOf<Extract<FoundPublic, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
     expectTypeOf<Ledger8FoundDeployTxPublicData>().not.toHaveProperty('initialContractState');
   });
 
   it('keeps a deployed contract usable wherever a found contract is expected', () => {
-    expectTypeOf<DeployedContract<Twin018>>().toMatchTypeOf<FoundContract<Twin018>>();
-    expectTypeOf<DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Ledger9DeployedContract<Twin018>>().toMatchTypeOf<Ledger9FoundContract<Twin018>>();
+    expectTypeOf<Ledger9DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<Ledger9FinalizedDeployTxPublicData>();
   });
 });
 
 declare const verifierKey: VerifierKey;
-declare const providersAny: ContractProviders;
+declare const providersAny: Ledger9ContractProviders;
 declare const anyEraMaintenance: AnyEraMaintenanceTxData;
 
 describe('the maintenance functions select their era by the artifact, and answer in that era', () => {
@@ -1311,10 +1311,10 @@ describe('the maintenance functions select their era by the artifact, and answer
   it('answers a current-era artifact with the current record', () => {
     expectTypeOf(
       submitInsertVerifierKeyTx(providersAny, compiledContract018, contractAddress, 'increment', verifierKey)
-    ).resolves.toEqualTypeOf<FinalizedMaintenanceTxData>();
+    ).resolves.toEqualTypeOf<Ledger9FinalizedMaintenanceTxData>();
     expectTypeOf(
       submitReplaceAuthorityTx(providersAny, compiledContract018, contractAddress)(currentSigningKey)
-    ).resolves.toEqualTypeOf<FinalizedMaintenanceTxData>();
+    ).resolves.toEqualTypeOf<Ledger9FinalizedMaintenanceTxData>();
   });
 
   it('refuses a circuit the retained-era artifact does not declare', () => {
@@ -1360,7 +1360,7 @@ describe('createCircuitCallTxInterface selects its era by the artifact, and answ
   it('builds the current interface for a current-era artifact', () => {
     expectTypeOf(
       createCircuitCallTxInterface(providers018, compiledContract018, contractAddress, undefined)
-    ).toEqualTypeOf<CircuitCallTxInterface<Twin018>>();
+    ).toEqualTypeOf<Ledger9CircuitCallTxInterface<Twin018>>();
   });
 
   it('refuses a neither-era contract', () => {

@@ -224,7 +224,7 @@ export class UnknownProtocolVersionError extends MidnightJsError {
  *
  * @see {@link ModuleGraphAndLazyLoading}
  */
-export type Ledger8Subpath = '/v8' | '/engine';
+export type Ledger8Subpath = '/v8' | '/v8/engine';
 
 /**
  * Thrown when a lazily-loaded subpath export carrying the retained pre-fork

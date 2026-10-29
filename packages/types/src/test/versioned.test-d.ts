@@ -17,7 +17,7 @@ import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { LedgerTransaction } from '../ledger-transaction';
-import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
+import type { BlockHash, Fees, Ledger9FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
 import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
@@ -28,9 +28,9 @@ import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 // test failures; a plain `yarn test` runs them. Running these bodies at
 // runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
-// Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
+// Spelled out independently of `Ledger9FinalizedTxData` (no `Omit`/`keyof` derived
 // from it) so the equality check below actually pins the v9 variant's shape
-// instead of reflexively restating it. Keep in step with `FinalizedTxData`
+// instead of reflexively restating it. Keep in step with `Ledger9FinalizedTxData`
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
 type Ledger9FinalizedTxDataFixture = {
   readonly era: 'v9';
@@ -95,10 +95,10 @@ describe('FinalizedTxRead', () => {
 
   it('pins the v9 variant field-for-field — fails if any field is dropped, added, or retyped', () => {
     // Bidirectional: catches a field being dropped (fixture would then demand
-    // a field FinalizedTxData no longer has), added (FinalizedTxData would
+    // a field Ledger9FinalizedTxData no longer has), added (Ledger9FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
     // type breaks assignability in at least one direction).
-    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<FinalizedTxData>();
+    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<Ledger9FinalizedTxData>();
   });
 
   it('has exactly the v8 and v9 variants — fails if a variant is silently removed, a third variant added, or a discriminant widened', () => {

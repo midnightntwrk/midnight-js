@@ -118,12 +118,12 @@ Notable schema-driven decisions:
 
 The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
 
-`CallResultPublic` now carries them:
+`Ledger9CallResultPublic` now carries them:
 
 ```ts
-interface CallResultPublic {
+interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
+  readonly logEvents: readonly LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
 }
 ```
 
@@ -135,10 +135,10 @@ import { contracts } from '@midnight-ntwrk/midnight-js';
 const result = await callTx(/* ... */);
 
 // lenient: never throws — undecodable entries are skipped
-const logs = contracts.ContractLog.decodeAll(result.public.events);
+const logs = contracts.ContractLog.decodeAll(result.public.logEvents);
 ```
 
-The single `events` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
+The single `logEvents` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
 
 ---
 

@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyPartitionContext, emptyZswapLocalState, readHexFixture } from './fixtures';
 
 // The engine lives in its own rollup entry, loaded through the package's
-// `./engine` subpath — so it is a SECOND bundle, and everything it throws
+// `./v8/engine` subpath — so it is a SECOND bundle, and everything it throws
 // crosses a bundle boundary before a caller sees it. Every other engine suite
 // resolves src/ once, which makes that boundary invisible: an error class
 // inlined separately into each bundle answers `false` to `instanceof` against

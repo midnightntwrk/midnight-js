@@ -301,7 +301,7 @@ export interface FinalizedTxRecord {
  * @see {@link VersionTaggedPayloads} for what the tag promises from this
  * framework's providers, and what it does not promise from a third party's.
  */
-export interface FinalizedTxData extends FinalizedTxRecord {
+export interface Ledger9FinalizedTxData extends FinalizedTxRecord {
   /**
    * Discriminant identifying this as a v9 ledger record.
    */

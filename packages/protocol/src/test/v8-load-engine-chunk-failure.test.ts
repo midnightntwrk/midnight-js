@@ -54,7 +54,7 @@ describe('loadLedger8Engine failure path', () => {
   });
 
   it('does not double-wrap when the engine chunk itself already rejects with Ledger8RuntimeMissingError', async () => {
-    const alreadyWrapped = new Ledger8RuntimeMissingError('/engine', new Error('inner resolution failure'));
+    const alreadyWrapped = new Ledger8RuntimeMissingError('/v8/engine', new Error('inner resolution failure'));
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(alreadyWrapped)
     }));

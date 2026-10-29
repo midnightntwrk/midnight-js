@@ -20,11 +20,11 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
-import { type ContractProviders } from '../contract-providers';
-import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
+import { type Ledger9ContractProviders } from '../contract-providers';
+import { deployContract, type Ledger9DeployContractOptionsBase, type Ledger9DeployedContract } from '../deploy-contract';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 import type { submitDeployTx } from '../submit-deploy-tx';
-import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { type Ledger9FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -54,11 +54,11 @@ describe('deployContract', () => {
   // The tests resolve unsubmitted-level tx data where the real function
   // returns finalized-level data; the code under test forwards the value
   // opaquely, so the missing finalized fields are never read.
-  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): FinalizedDeployTxData<Contract.Any> =>
-    data as FinalizedDeployTxData<Contract.Any>;
+  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
+    data as Ledger9FinalizedDeployTxData<Contract.Any>;
   let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
-  let providers: ContractProviders;
-  let baseOptions: DeployContractOptionsBase<Contract.Any>;
+  let providers: Ledger9ContractProviders;
+  let baseOptions: Ledger9DeployContractOptionsBase<Contract.Any>;
 
   const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
     era: CURRENT_LEDGER_VERSION,
@@ -77,9 +77,9 @@ describe('deployContract', () => {
   });
 
   const assertDeployResult = (
-    result: DeployedContract<Contract.Any>,
+    result: Ledger9DeployedContract<Contract.Any>,
     deployTxData: UnsubmittedDeployTxData<Contract.Any>,
-    options: DeployContractOptionsBase<Contract.Any> = baseOptions
+    options: Ledger9DeployContractOptionsBase<Contract.Any> = baseOptions
   ) => {
     expect(result).toBeDefined();
     // IDENTITY, not shape: see the same pair in find-deployed-contract.test.ts.

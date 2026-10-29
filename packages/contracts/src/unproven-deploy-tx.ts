@@ -18,7 +18,6 @@ import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   exitResultOrError,
   LedgerTransaction,
@@ -30,7 +29,7 @@ import {
 import { assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { UnsubmittedDeployTxData } from './tx-model';
@@ -160,7 +159,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     );
 
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       public: {
         contractAddress,
         initialContractState
@@ -188,7 +187,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
  * provider and a wallet.
  */
 export type UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
-  ContractProviders<C>,
+  Ledger9ContractProviders<C>,
   'zkConfigProvider' | 'walletProvider' | 'config'
 >;
 

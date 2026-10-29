@@ -16,11 +16,10 @@
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9ContractProviders } from '../contract-providers';
 import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
@@ -31,7 +30,7 @@ import type {
   Ledger8FinalizedMaintenanceTxData
 } from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
-import type { FinalizedMaintenanceTxData } from '../tx-model';
+import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
 
@@ -96,16 +95,16 @@ export function submitReplaceAuthorityTx<C extends Ledger8Contract>(
   contractAddress: ContractAddress
 ): (newAuthority: SigningKey) => Promise<Ledger8FinalizedMaintenanceTxData>;
 export function submitReplaceAuthorityTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
-): (newAuthority: SigningKey) => Promise<FinalizedMaintenanceTxData>;
+): (newAuthority: SigningKey) => Promise<Ledger9FinalizedMaintenanceTxData>;
 export function submitReplaceAuthorityTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
-): (newAuthority: SigningKey) => Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
-  return async (newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> => {
+): (newAuthority: SigningKey) => Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
+  return async (newAuthority: SigningKey): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> => {
     assertValidMidnightConfig(providers.config);
     if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
       return {
@@ -137,6 +136,6 @@ export function submitReplaceAuthorityTx<C extends Contract.Any>(
     // TODO: What if machine crashes right before the following set executes? How to recover?
     //       Likely will need a history of pending transactions.
     await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
-    return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
+    return { era: 'v9', public: submitTxResult };
   };
 }

@@ -28,7 +28,6 @@ import {
   type LogEvent,
   type StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 
 /**
@@ -139,13 +138,13 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
  * the JS `result` value alone), extract that field explicitly rather than
  * passing the whole object across a trust boundary.
  */
-export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+export type Ledger9CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   CallResultPrivateBase<Contract.CircuitReturnType<C, PCK>, Contract.PrivateState<C>>;
 
 /**
  * The public portions of the call result.
  */
-export interface CallResultPublic extends CallResultPublicBase {
+export interface Ledger9CallResultPublic extends CallResultPublicBase {
   /**
    * The public state resulting from executing the circuit.
    */
@@ -162,7 +161,7 @@ export interface CallResultPublic extends CallResultPublicBase {
    *
    * Derived from the handle rather than fetched again, so the two cannot
    * describe different states. It costs one encode per call; read
-   * {@link CallResultPublic.nextContractState} instead when the value never
+   * {@link Ledger9CallResultPublic.nextContractState} instead when the value never
    * leaves the process that produced it.
    *
    * @see ADR-0010 for the decision to publish the handle AND the bytes.
@@ -188,7 +187,7 @@ export interface CallResultPublic extends CallResultPublicBase {
  *
  * @remarks
  * **Privacy-sensitive type.** The `private` field is a
- * {@link CallResultPrivate} carrying ZK-confidential data. Treat the whole
+ * {@link Ledger9CallResultPrivate} carrying ZK-confidential data. Treat the whole
  * object as confidential when logging, serializing, or transmitting — read
  * only the `public` field or destructure specific non-sensitive fields rather
  * than spreading or stringifying the whole object.
@@ -200,13 +199,13 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    * @remarks Describes the **root** contract call (the circuit that was invoked). It is the
    * application-facing view; equivalent to the last entry of {@link calls}.
    */
-  readonly public: CallResultPublic;
+  readonly public: Ledger9CallResultPublic;
   /**
    * The private/sensitive data produced by the circuit execution.
    *
    * @remarks Describes the **root** contract call. Equivalent to the last entry of {@link calls}.
    */
-  readonly private: CallResultPrivate<C, PCK>;
+  readonly private: Ledger9CallResultPrivate<C, PCK>;
   /**
    * Proof data for every contract call made while executing the circuit, in execution-trace order:
    * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
@@ -218,11 +217,11 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    */
   readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
 }

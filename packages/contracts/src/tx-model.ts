@@ -15,16 +15,15 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
-  FinalizedTxData,
   Ledger8FinalizedTxData,
+  Ledger9FinalizedTxData,
   SubmittedCallTxBase,
   UnprovenTx,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
-import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
+import type { CallResult, Ledger9CallResultPrivate, Ledger9CallResultPublic } from './call';
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -102,13 +101,13 @@ export interface UnsubmittedDeployTxPrivateData<C extends Contract.Any> {
  */
 export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -166,15 +165,15 @@ export interface UnsubmittedDeployTxData<C extends Contract.Any> extends Unsubmi
 /**
  * The public data of a finalized deployment transaction: the deploy-specific
  * public data ({@link UnsubmittedDeployTxPublicData}) combined with the
- * finalized transaction data ({@link FinalizedTxData}).
+ * finalized transaction data ({@link Ledger9FinalizedTxData}).
  */
-export interface FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, FinalizedTxData {}
+export interface Ledger9FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, Ledger9FinalizedTxData {}
 
 export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends UnsubmittedDeployTxDataBase<C> {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedDeployTxPublicData;
+  readonly public: Ledger9FinalizedDeployTxPublicData;
 }
 
 /**
@@ -185,8 +184,8 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * cannot be decoded by the current runtime. Read the current state with
  * `PublicDataProvider.queryContractState`.
  *
- * @remarks Published flat, not under the `Ledger8` namespace: it is part of the
- * current era's `FoundDeployTxData`, and outlives the retained pipeline.
+ * @remarks Published flat, not under the `Ledger8` namespace: it is part of
+ * `Ledger9FoundDeployTxData`, and outlives the retained pipeline.
  *
  * @see {@link RetainedEraNamespace} for which names the namespace holds.
  */
@@ -202,7 +201,7 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
  * era that recorded the deploy transaction. Narrow on `era` before reading
  * `tx` or `initialContractState`; `contractAddress` is present on both variants.
  */
-export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 
 /**
  * What a contract maintenance update -- a verifier key inserted or removed, or the maintenance
@@ -212,11 +211,11 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Finalized
  * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
  * are `AnyEraMaintenanceTxData`.
  */
-export interface FinalizedMaintenanceTxData {
-  /** The pipeline that produced this result: always the current era here. */
-  readonly era: CurrentLedgerVersion;
+export interface Ledger9FinalizedMaintenanceTxData {
+  /** The pipeline that produced this result: always ledger 9 here. */
+  readonly era: 'v9';
   /** The finalized record of the maintenance transaction. */
-  readonly public: FinalizedTxData;
+  readonly public: Ledger9FinalizedTxData;
 }
 
 /**
@@ -227,12 +226,12 @@ export interface FinalizedMaintenanceTxData {
  * the initial private state. When logging, serializing, or transmitting, read
  * only the `public` field or destructure specific non-sensitive fields.
  */
-export interface FoundDeployTxData<C extends Contract.Any> {
+export interface Ledger9FoundDeployTxData<C extends Contract.Any> {
   /**
-   * The pipeline this handle runs on: always the current era here. The era that
+   * The pipeline this handle runs on: always ledger 9 here. The era that
    * recorded the deploy transaction is `public.era`.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
   /**
    * The data of the deploy transaction that is visible on the blockchain.
    */
@@ -260,11 +259,11 @@ export interface FoundDeployTxData<C extends Contract.Any> {
  * observability platforms (log shippers, error reporters, analytics) is
  * not an intended use.
  */
-export interface FinalizedDeployTxData<C extends Contract.Any> extends UnsubmittedDeployTxData<C> {
+export interface Ledger9FinalizedDeployTxData<C extends Contract.Any> extends UnsubmittedDeployTxData<C> {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedDeployTxPublicData;
+  readonly public: Ledger9FinalizedDeployTxPublicData;
 }
 
 /**
@@ -281,14 +280,14 @@ export interface FinalizedDeployTxData<C extends Contract.Any> extends Unsubmitt
  */
 /**
  * The private data of an unsubmitted call transaction: the circuit execution's
- * private result ({@link CallResultPrivate}) combined with the unproven
+ * private result ({@link Ledger9CallResultPrivate}) combined with the unproven
  * transaction data ({@link UnsubmittedTxData}).
  */
 export interface UnsubmittedCallTxPrivateData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
-  extends CallResultPrivate<C, PCK>,
+  extends Ledger9CallResultPrivate<C, PCK>,
     UnsubmittedTxData {}
 
-export interface UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
+export interface Ledger9UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
   extends CallResult<C, PCK> {
   /**
    * Private data relevant to this call transaction.
@@ -300,7 +299,7 @@ export interface UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contr
  * Data for a submitted, finalized call transaction.
  *
  * @remarks
- * **Privacy-sensitive type.** Inherits {@link UnsubmittedCallTxData}'s
+ * **Privacy-sensitive type.** Inherits {@link Ledger9UnsubmittedCallTxData}'s
  * `private` field, which transitively carries the unproven transaction,
  * new shielded coins, ZK inputs/outputs, the private transcript outputs, and
  * the next private state. Treat as confidential when logging, serializing, or
@@ -315,13 +314,13 @@ export interface UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contr
  */
 /**
  * The public data of a finalized call transaction: the circuit execution's
- * public result ({@link CallResultPublic}) combined with the finalized
- * transaction data ({@link FinalizedTxData}).
+ * public result ({@link Ledger9CallResultPublic}) combined with the finalized
+ * transaction data ({@link Ledger9FinalizedTxData}).
  */
-export interface FinalizedCallTxPublicData extends CallResultPublic, FinalizedTxData {}
+export interface Ledger9FinalizedCallTxPublicData extends Ledger9CallResultPublic, Ledger9FinalizedTxData {}
 
-export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
-  extends UnsubmittedCallTxData<C, PCK> {
+export interface Ledger9FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
+  extends Ledger9UnsubmittedCallTxData<C, PCK> {
   /**
    * The circuit whose call this result describes.
    *
@@ -343,7 +342,7 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
    * `PCK`. A scope is legitimately typed with the union --
    * `withContractScopedTransaction<C>` defaults it that way -- while the calls
    * made inside it name one circuit each, and invariance refuses exactly that
-   * pairing. `SubmittedCallTx` has no scope on its path and names `PCK`
+   * pairing. `Ledger9SubmittedCallTx` has no scope on its path and names `PCK`
    * precisely.
    *
    * What catches a regression here is `testkit-js-e2e`'s scoped-transaction
@@ -357,7 +356,7 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
   /**
    * Public data relevant to this call transaction.
    */
-  readonly public: FinalizedCallTxPublicData;
+  readonly public: Ledger9FinalizedCallTxPublicData;
 }
 
 /**
@@ -366,22 +365,22 @@ export interface FinalizedCallTxData<C extends Contract.Any, PCK extends Contrac
  *
  * @remarks
  * **Privacy-sensitive type.** The `callTxData` field carries
- * {@link UnsubmittedCallTxData} and transitively the unproven transaction
+ * {@link Ledger9UnsubmittedCallTxData} and transitively the unproven transaction
  * and the call's private state. Treat as confidential when logging,
  * serializing, or transmitting — read only `txId` or destructure specific
  * non-sensitive fields rather than spreading or stringifying the whole
  * object.
  */
-export interface SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
-  extends SubmittedCallTxBase<UnsubmittedCallTxData<C, PCK>> {
-  /** See {@link FinalizedCallTxData.circuitId}. */
+export interface Ledger9SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
+  extends SubmittedCallTxBase<Ledger9UnsubmittedCallTxData<C, PCK>> {
+  /** See {@link Ledger9FinalizedCallTxData.circuitId}. */
   readonly circuitId: PCK;
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
 }

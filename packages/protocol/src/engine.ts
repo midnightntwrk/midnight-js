@@ -14,7 +14,7 @@
  */
 
 /**
- * Build entry for the `./engine` subpath, re-exporting the engine
+ * Build entry for the `./v8/engine` subpath, re-exporting the engine
  * implementation that lives under `lib/`.
  *
  * @see {@link ModuleGraphAndLazyLoading}

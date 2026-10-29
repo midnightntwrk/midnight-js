@@ -21,7 +21,6 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   type FinalizedTxRead,  type PrivateStateId,
@@ -29,7 +28,7 @@ import {
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from './contract-providers';
+import { type Ledger9ContractProviders } from './contract-providers';
 import {
   ContractTypeError,
   EraInvariantViolationError,
@@ -37,11 +36,10 @@ import {
   PrivateStateNotFoundError
 } from './errors';
 import {
-  type CircuitMaintenanceTxInterfaces,
-  type ContractMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface
-} from './governance/tx-interfaces';
+  createContractMaintenanceTxInterface,
+  type Ledger9CircuitMaintenanceTxInterfaces,
+  type Ledger9ContractMaintenanceTxInterface} from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
 import { decodeLedger9ContractState, isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
@@ -62,15 +60,14 @@ import {
   type Ledger8PrivateState
 } from './ledger8-contract';
 import {
-  type CircuitCallTxInterface,
   createCircuitCallTxInterface,
-  createLedger8CircuitCallTxInterface
-} from './tx-interfaces';
-import type { FoundDeployTxData, FoundDeployTxPublicData } from './tx-model';
+  createLedger8CircuitCallTxInterface,
+  type Ledger9CircuitCallTxInterface} from './tx-interfaces';
+import type { FoundDeployTxPublicData,Ledger9FoundDeployTxData } from './tx-model';
 
 const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
-  options: FindDeployedContractOptions<C>
+  options: Ledger9FindDeployedContractOptions<C>
 ): Promise<SigningKey> => {
   if (options.signingKey) {
     await privateStateProvider.setSigningKey(options.contractAddress, options.signingKey);
@@ -86,7 +83,7 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
 };
 
 const queryFoundDeployTxPublicData = async (
-  publicDataProvider: ContractProviders['publicDataProvider'],
+  publicDataProvider: Ledger9ContractProviders['publicDataProvider'],
   deployRecord: FinalizedTxRead,
   contractAddress: ContractAddress
 ): Promise<FoundDeployTxPublicData> => {
@@ -376,7 +373,7 @@ export interface FindDeployedContractOptionsStorePrivateState<C extends Contract
 /**
  * Configuration for {@link findDeployedContract}.
  */
-export type FindDeployedContractOptions<C extends Contract.Any> =
+export type Ledger9FindDeployedContractOptions<C extends Contract.Any> =
   | FindDeployedContractOptionsBase<C>
   | FindDeployedContractOptionsExistingPrivateState<C>
   | FindDeployedContractOptionsStorePrivateState<C>;
@@ -384,15 +381,15 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
 /**
  * Base type for a deployed contract that has been found on the blockchain.
  */
-export interface FoundContract<C extends Contract.Any> {
+export interface Ledger9FoundContract<C extends Contract.Any> {
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
   /**
    * The compiled contract this handle executes circuits from, exactly as the
    * caller supplied it.
@@ -408,21 +405,21 @@ export interface FoundContract<C extends Contract.Any> {
    * tagged with the ledger era that recorded it: narrow on `public.era` before reading `tx` or
    * `initialContractState`.
    */
-  readonly deployTxData: FoundDeployTxData<C>;
+  readonly deployTxData: Ledger9FoundDeployTxData<C>;
   /**
    * Interface for creating call transactions for a contract.
    */
-  readonly callTx: CircuitCallTxInterface<C>;
+  readonly callTx: Ledger9CircuitCallTxInterface<C>;
   /**
    * An interface for creating maintenance transactions for circuits defined in the
    * contract that was deployed.
    */
-  readonly circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>;
+  readonly circuitMaintenanceTx: Ledger9CircuitMaintenanceTxInterfaces<C>;
   /**
    * Interface for creating maintenance transactions for the contract that was
    * deployed.
    */
-  readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
+  readonly contractMaintenanceTx: Ledger9ContractMaintenanceTxInterface;
 }
 
 /*
@@ -466,31 +463,31 @@ export async function findDeployedContract<C extends Ledger8Contract>(
  * Attaches to a deployed contract that declares no private state.
  */
 export async function findDeployedContract<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
+  providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
-): Promise<FoundContract<C>>;
+): Promise<Ledger9FoundContract<C>>;
 
 /**
  * Attaches to a deployed contract, reusing the private state already stored at `privateStateId`.
  */
 export async function findDeployedContract<C extends Contract.Any>(
-  providers: ContractProviders<C>,
+  providers: Ledger9ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
-): Promise<FoundContract<C>>;
+): Promise<Ledger9FoundContract<C>>;
 
 /**
  * Attaches to a deployed contract, storing the given `initialPrivateState` at `privateStateId`.
  */
 export async function findDeployedContract<C extends Contract.Any>(
-  providers: ContractProviders<C>,
+  providers: Ledger9ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
-): Promise<FoundContract<C>>;
+): Promise<Ledger9FoundContract<C>>;
 
 /**
- * Creates an instance of {@link FoundContract} given the address of a deployed contract and an
+ * Creates an instance of {@link Ledger9FoundContract} given the address of a deployed contract and an
  * optional private state ID at which an existing private state is stored. When given, the current value
  * at the private state ID is used as the `initialPrivateState` value in the `finalizedDeployTxData`
- * property of the returned `FoundContract`.
+ * property of the returned `Ledger9FoundContract`.
  *
  * @param providers The providers used to manage transaction lifecycles.
  * @param options Configuration.
@@ -521,9 +518,9 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                                  consulted.
  */
 export async function findDeployedContract<C extends Contract.Any>(
-  providers: ContractProviders<C>,
-  options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
-): Promise<FoundContract<C> | AnyLedger8FoundContract> {
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
+): Promise<Ledger9FoundContract<C> | AnyLedger8FoundContract> {
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
     const found = await findLedger8Contract(providers, {
@@ -621,11 +618,11 @@ export async function findDeployedContract<C extends Contract.Any>(
   const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
 
   return {
-    era: CURRENT_LEDGER_VERSION,
+    era: 'v9',
     compiledContract,
     contractAddress,
     deployTxData: {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       private: {
         signingKey,
         initialPrivateState

@@ -17,7 +17,6 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerState,
@@ -29,7 +28,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type CallResult } from '../call';
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9ContractProviders } from '../contract-providers';
 import {
   CallTxFailedError,
   MixedEraScopeError,
@@ -37,7 +36,7 @@ import {
   ScopedTransactionIdentityMismatchError} from '../errors';
 import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
-import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import {
   acquireHeadEra,
@@ -157,7 +156,7 @@ export class TransactionContextImpl<
   PCK extends Contract.ProvableCircuitId<C>
 > implements Transaction.TransactionContext<C, PCK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
-  readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
   /**
    * The era facts this scope resolved when it was created, or `undefined` for a
@@ -185,12 +184,12 @@ export class TransactionContextImpl<
    * circuit merged into the scope and becomes an array.
    */
   currentUnsubmittedCall:
-    | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
+    | { readonly callTxData: Ledger9UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
     | undefined;
   submitTxOptions: Ledger9PayloadSubmitOptions<PCK> | undefined = undefined;
 
   constructor(
-    providers: ContractProviders<C, PCK>,
+    providers: Ledger9ContractProviders<C, PCK>,
     options?: Transaction.ScopedTransactionOptions,
     resolvedEra?: ResolvedOperationEra
   ) {
@@ -232,13 +231,13 @@ export class TransactionContextImpl<
     return { states: this.cachedStates.states, blockHash: this.cachedStates.blockHash };
   }
 
-  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
+  getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
     return this.currentUnsubmittedCall === undefined
       ? undefined
       : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateId];
   }
 
-  async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
+  async [Submit](): Promise<Ledger9FinalizedCallTxData<C, PCK>> {
     const current = this.currentUnsubmittedCall;
     if (current === undefined) {
       throw new InvalidArgumentError('No calls were submitted.');
@@ -252,7 +251,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       circuitId,
       private: unprovenCallTxData.private,
       public: {
@@ -272,7 +271,7 @@ export class TransactionContextImpl<
     this.cachedStates = { states, read, identity, blockHash };
   }
 
-  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
+  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: Ledger9UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
     this.currentUnsubmittedCall = { callTxData: callData, privateStateId, circuitId };
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
@@ -313,7 +312,7 @@ export const mergeUnsubmittedCallTxData = <
 >(
   txCtx: Transaction.TransactionContext<C, PCK>,
   circuitId: PCK,
-  callData: UnsubmittedCallTxData<C, PCK>,
+  callData: Ledger9UnsubmittedCallTxData<C, PCK>,
   privateStateId?: PrivateStateId
 ): void => {
   txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
@@ -410,7 +409,7 @@ const runScope = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
+  providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
   outerTxCtx: Transaction.TransactionContext<C, PCK> | undefined,
   txOptions: Transaction.ScopedTransactionOptions | undefined,
@@ -440,7 +439,7 @@ const runScope = async <
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
@@ -478,12 +477,12 @@ const runScope = async <
  */
 export const scoped: {
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
+    providers: Ledger9ContractProviders<C, PCK>,
     fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
-  ): Promise<FinalizedCallTxData<C, PCK>>,
+  ): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
+    providers: Ledger9ContractProviders<C, PCK>,
     fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
     txCtx: Transaction.TransactionContext<C, PCK>,
     options?: Transaction.ScopedTransactionOptions
@@ -492,7 +491,7 @@ export const scoped: {
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
+  providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
   txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
@@ -521,10 +520,10 @@ export const scopedTransaction = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
+  providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
   txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
-): Promise<FinalizedCallTxData<C, PCK>> => {
+): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
   // public entry point, so a JavaScript caller passing a transaction context

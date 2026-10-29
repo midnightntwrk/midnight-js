@@ -26,6 +26,7 @@ import {
   type PartitionedTranscript,
   type PreProof,
   sampleEncryptionPublicKey,
+  Transaction,
   type Transcript,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -41,7 +42,7 @@ import {
   type EncodedZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type MidnightConfig, Transaction } from '@midnight-ntwrk/midnight-js-types';
+import { type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

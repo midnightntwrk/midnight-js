@@ -22,7 +22,7 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError, UTILS_ERR
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
-import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
+import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
   contractStateAndParametersReadStub,
@@ -78,7 +78,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
-  const expectBasicResult = (result: FoundContract<Contract.Any>) => {
+  const expectBasicResult = (result: Ledger9FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
     // IDENTITY, not shape: the handle promises the artifact the caller passed
     // and the address it asked for. A key-set parity gate proves both members

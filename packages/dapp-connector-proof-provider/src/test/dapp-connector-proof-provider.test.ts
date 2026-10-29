@@ -19,8 +19,8 @@ import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9'
 import {
   InvalidTransactionHandleError,
   type KeyMaterialProvider,
+  type Ledger9UnboundTransaction,
   LedgerTransaction,
-  type UnboundTransaction,
   type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
@@ -59,7 +59,7 @@ const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
   );
 
 describe('dappConnectorProofProvider', () => {
-  let provenLedger9Tx: UnboundTransaction;
+  let provenLedger9Tx: Ledger9UnboundTransaction;
 
   beforeAll(async () => {
     provenLedger9Tx = await Transaction.fromParts('undeployed').prove(

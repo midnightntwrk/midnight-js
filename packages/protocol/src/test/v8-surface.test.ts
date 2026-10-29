@@ -314,7 +314,7 @@ const SRC_ROOT = resolve(__dirname, '..');
 // ESM build resolves. Captured generically and resolved against the importing
 // file below, rather than matched as text against one target name: since the
 // era split, `./engine.js` from lib/v8/ is the plain `lib/v8/engine.ts`
-// sibling while `../../engine.js` is the lazily-loaded `./engine` build
+// sibling while `../../engine.js` is the lazily-loaded `./v8/engine` build
 // entry, and no text pattern can tell those two apart.
 const RELATIVE_SPECIFIER = /['"`]((?:\.{1,2}\/)+[^'"`]*\.js)['"`]/g;
 // Type-only imports AND type-only re-exports are erased before anything runs,

@@ -20,7 +20,7 @@ import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js
 import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
 import { type FinalizedTx, LedgerTransaction, type UnboundTx } from './ledger-transaction';
-import type { UnboundTransaction } from './proof-provider';
+import type { Ledger9UnboundTransaction } from './proof-provider';
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -125,7 +125,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
  * A {@link WalletProvider} written against the v9 ledger runtime only.
  */
 export interface Ledger9WalletProvider {
-  balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: Ledger9UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   getCoinPublicKey(): CoinPublicKey;
   getEncryptionPublicKey(): EncPublicKey;
 }

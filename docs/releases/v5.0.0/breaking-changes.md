@@ -816,9 +816,9 @@ The README glossary defines both terms.
 
 | Package | Before | After |
 |---|---|---|
-| `protocol` (`./engine`) | `RetainedContract` | `Ledger8EngineContract` |
-| `protocol` (`./engine`) | `RunRetainedCircuitOptions`, `RunRetainedConstructorOptions` | `Ledger8CircuitOptions`, `Ledger8ConstructorOptions` |
-| `protocol` (`./engine`) | `Ledger8Engine.reexpressOperationsForCurrentEra` | `reexpressOperationsForLedger9` |
+| `protocol` (`./v8/engine`) | `RetainedContract` | `Ledger8EngineContract` |
+| `protocol` (`./v8/engine`) | `RunRetainedCircuitOptions`, `RunRetainedConstructorOptions` | `Ledger8CircuitOptions`, `Ledger8ConstructorOptions` |
+| `protocol` (`./v8/engine`) | `Ledger8Engine.reexpressOperationsForCurrentEra` | `reexpressOperationsForLedger9` |
 | `protocol` | `RetainedEraSubpath` (also on the `midnight-js` barrel) | `Ledger8Subpath` |
 | `types` | `CurrentEraProver`, `CurrentEraBalancer`, `CurrentEraSubmitter` | removed in [18](#18-transactions-are-handles-1533) |
 | `contracts` | `RetainedArtifactOnCurrentEraStateError` (flat) | `Ledger8.ArtifactOnLedger9StateError` (in the `Ledger8` namespace, like every other ledger 8 refusal; ADR 0013) |
@@ -1141,6 +1141,9 @@ depends on one. These 4.x subpaths and root namespaces are removed:
 | root `compactJs` namespace | `import * as compactJs from '…/v9/compact-js'` |
 | root `onchainRuntime` namespace | `import * as onchainRuntime from '…/v9/onchain-runtime'` |
 
+The ledger 8 engine moved from `/engine` to `/v8/engine`, and `Ledger8RuntimeMissingError.subpath`
+names it `'/v8/engine'`. Code outside `protocol` imports only its types; `loadLedger8Engine()` loads it.
+
 **Why:** the unnamed subpaths served ledger 8 in 4.x and ledger 9 in 5.0.0, and
 would serve ledger 10 after the next fork. A `./vN` subpath always serves the
 same ledger; the next ledger adds `./v10` and `./v10/*` next to it.
@@ -1149,6 +1152,65 @@ same ledger; the next ledger adds `./v10` and `./v10/*` next to it.
 table shows — see Step 20 of the [migration guide](./migration-guide.md).
 `platform`, the `./platform-js` subpaths and `./compact-js/v8/effect` are
 unchanged.
+
+---
+
+## 22. Ledger 9 types carry the `Ledger9` prefix; flat names pick the era (#1536)
+
+Every ledger 9 result, option and interface type that has a `Ledger8`
+counterpart is now `Ledger9*`, and the flat name picks the variant from the
+contract type. A flat name no longer silently
+moves to the next ledger at a fork.
+
+**Types with a contract parameter.** The flat name stays and becomes an alias:
+
+```ts
+type FoundContract<C> = C extends Ledger8.Contract ? Ledger8.FoundContract<C>
+  : C extends Ledger9Contract ? Ledger9FoundContract<C>
+  : never;
+```
+
+This applies to `FoundContract`, `DeployedContract`, `FinalizedCallTxData`,
+`SubmittedCallTx`, `UnsubmittedCallTxData`, `FoundDeployTxData`,
+`FinalizedDeployTxData`, `CallResultPrivate`, `CallTxOptions`,
+`CallTxOptionsBase`, `CallTxOptionsWithPrivateStateId`, `DeployContractOptions`,
+`DeployContractOptionsBase`, `DeployContractOptionsWithPrivateState`,
+`FindDeployedContractOptions`, `CircuitCallTxInterface`,
+`CircuitMaintenanceTxInterfaces` and `ContractProviders`.
+
+Code with a concrete contract (`FoundContract<typeof MyContract>`) does not
+change. Generic code must name the era: a circuit id of a generic contract
+(`K extends Contract.ProvableCircuitId<C>`) does not satisfy the alias, so
+write `Ledger9FinalizedCallTxData<C, K>`, `Ledger9CallTxOptions<C, K>` and so
+on. The entry points return the `Ledger9*` type, which is also what an editor
+shows.
+
+`ContractProviders` lost its third parameter (`PS`): the private state type comes
+from the contract. Use `Ledger9ContractProviders<C, K, PS>` to pass it.
+
+**Types without a contract parameter.** Renamed, with no flat alias, because
+nothing tells the eras apart:
+
+| Before | After |
+|---|---|
+| `FinalizedTxData` (types) | `Ledger9FinalizedTxData` |
+| `UnboundTransaction` (types) | `Ledger9UnboundTransaction` |
+| `FinalizedMaintenanceTxData` | `Ledger9FinalizedMaintenanceTxData` |
+| `FinalizedCallTxPublicData` | `Ledger9FinalizedCallTxPublicData` |
+| `FinalizedDeployTxPublicData` | `Ledger9FinalizedDeployTxPublicData` |
+| `CallResultPublic` | `Ledger9CallResultPublic` |
+| `CircuitMaintenanceTxInterface` | `Ledger9CircuitMaintenanceTxInterface` |
+| `ContractMaintenanceTxInterface` | `Ledger9ContractMaintenanceTxInterface` |
+
+For a value of either era, use the unions: `FinalizedTxRead`,
+`AnyEraMaintenanceTxData`.
+
+`types` no longer re-exports the ledger 9 `Transaction` class; import it from
+`@midnight-ntwrk/midnight-js-protocol/v9`. Earlier sections of this document use the names
+before this rename.
+
+New: `Ledger9Contract` (the ledger 9 `Contract.Any`), `AnyEraContract` and
+`CircuitIdOf<C>`. See ADR 0013 and ADR 0018.
 
 ---
 

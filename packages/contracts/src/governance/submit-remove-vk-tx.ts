@@ -17,11 +17,10 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9ContractProviders } from '../contract-providers';
 import { BlankVerifierKeySlotError } from '../errors';
 import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
@@ -33,7 +32,7 @@ import type {
   Ledger8FinalizedMaintenanceTxData
 } from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
-import type { FinalizedMaintenanceTxData } from '../tx-model';
+import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
 
@@ -94,17 +93,17 @@ export async function submitRemoveVerifierKeyTx<C extends Ledger8Contract>(
   circuitId: Ledger8CircuitId<C>
 ): Promise<Ledger8FinalizedMaintenanceTxData>;
 export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>
-): Promise<FinalizedMaintenanceTxData>;
+): Promise<Ledger9FinalizedMaintenanceTxData>;
 export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C> | string
-): Promise<FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
+): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   assertValidMidnightConfig(providers.config);
   if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
     return {
@@ -141,5 +140,5 @@ export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
   if (submitTxResult.status !== SucceedEntirely) {
     throw new RemoveVerifierKeyTxFailedError(submitTxResult);
   }
-  return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
+  return { era: 'v9', public: submitTxResult };
 }
