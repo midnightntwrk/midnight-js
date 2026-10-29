@@ -114,10 +114,8 @@ export interface Ledger8CircuitContext<PS = unknown> {
  * `never`, and it is derived by a mapped type so the two cannot drift apart on
  * a member.
  *
- * Deliberately NOT published through the `Ledger8` namespace: it is
- * uninhabited, so no caller can obtain one, and a published type nobody can
- * hold is the rule that also keeps `Ledger8DeployedContract` and the
- * `AnyLedger8*` aliases off the surface.
+ * Deliberately NOT exported: it is uninhabited, so no caller can obtain one,
+ * and a type nobody can hold has no place on the surface.
  *
  * @see {@link OverloadTyping} for what this buys, and what broke when the
  *      circuit took {@link Ledger8CircuitContext} here instead.
@@ -972,9 +970,9 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * {@link Ledger8DeployedContract.deployTxData}, which carries what the
  * constructor produced and a signing key that is always present.
  *
- * Published under the retained-era namespace so a caller that receives one by
- * inference can also NAME it. This is what `deployContract`'s retained-era overload
- * answers with.
+ * Exported flat so a caller that receives one by inference can also NAME it, and
+ * a dApp's declaration emit can write it. This is what `deployContract`'s
+ * retained-era overload answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
   /** See {@link Ledger8DeployTxData}. */
