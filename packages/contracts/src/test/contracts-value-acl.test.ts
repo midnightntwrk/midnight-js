@@ -35,9 +35,8 @@ const DIST_INDEX_PATH = 'dist/index.js';
  * `contracts-type-acl.test.ts`, which reads them off the barrel with the
  * compiler's own resolution.
  *
- * `Ledger8` is one name here and a namespace of its own behind it: the members
- * inside it are pinned by `ledger8-namespace.test.ts`, so this list stays a
- * list of the names a consumer imports.
+ * The retained-era error classes are flat names here; `ledger8-flat-errors.test.ts` pins them on
+ * their own as well.
  */
 const RUNTIME_EXPORTS: readonly string[] = [
   'BlankVerifierKeySlotError',
@@ -53,7 +52,11 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'IncompleteFindContractPrivateStateConfig',
   'IndexerInconsistencyError',
   'PublicStatesEraMismatchError',
-  'Ledger8',
+  'Ledger8AmbiguousEntryPointError',
+  'Ledger8CallUnsupportedError',
+  'Ledger8NotStoredError',
+  'Ledger8SigningKeyError',
+  'Ledger8UnconfirmedError',
   'LedgerParametersUnservedError',
   'NetworkVersionReadFailedError',
   'NetworkVersionStateMismatchError',
@@ -98,13 +101,9 @@ const RUNTIME_EXPORTS: readonly string[] = [
 // local export list at the end.
 const EXPORT_STATEMENT = /^export\s*\{([^}]*)\}/gm;
 
-// And the namespace form. Rollup happens to hoist `export * as Ledger8` into the
-// brace list above as `ledger8 as Ledger8`, so the brace scan alone catches it
-// today -- but that is an emit detail. `preserveModules`, a different bundler or
-// plain `tsc` leave the statement standing, and a scan that reads brace lists
-// only would then report the name as a DROPPED export rather than as a statement
-// it could not parse: a failure that sends a reader looking for a deleted export
-// that is still there.
+// And the namespace form (`export * as X from`). The barrel has none today; scanning for it keeps
+// a namespace added later from being reported as a dropped export, since `preserveModules` or plain
+// `tsc` leave the statement standing where rollup hoists it into the brace list.
 const NAMESPACE_EXPORT_STATEMENT = /^export\s*\*\s*as\s+(\w+)\s+from/gm;
 
 /**

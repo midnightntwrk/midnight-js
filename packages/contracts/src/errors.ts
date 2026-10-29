@@ -1041,8 +1041,7 @@ export class IncompleteCallTxPrivateStateConfig extends MidnightJsError {
  * no initial private state to store. The message names the missing half.
  *
  * Raised by `deployContract` (both eras) and `submitDeployTx`, before any provider is touched.
- * It stays on the flat surface rather than under the `Ledger8` namespace because it is the deploy
- * member of the three-refusal family `IncompleteCallTxPrivateStateConfig` and
+ * It is the deploy member of the three-refusal family `IncompleteCallTxPrivateStateConfig` and
  * {@link IncompleteFindContractPrivateStateConfig} belong to — one client-side rule per entry
  * point, and client-side storage is era-independent.
  */
@@ -1204,7 +1203,7 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
 export const LEDGER8_CONSTRUCTOR_ENTRY_POINT = 'initialState';
 
 /** Why a retained-era signing key could not be used. */
-type Ledger8SigningKeyReason =
+export type Ledger8SigningKeyReason =
   /** A key the caller supplied in this call is not one the retained era can sign with. */
   | 'unusable'
   /** A maintenance update found no usable key held for the contract it targets. */
@@ -1267,7 +1266,7 @@ export class Ledger8SigningKeyError extends MidnightJsError {
 }
 
 /** The retained-era operation a submitted transaction belongs to. */
-type Ledger8KeyedOperation = 'deploy' | 'replace-authority';
+export type Ledger8KeyedOperation = 'deploy' | 'replace-authority';
 
 const LEDGER8_UNCONFIRMED_MESSAGES: Readonly<
   Record<Ledger8KeyedOperation, (contractAddress: string, cause: unknown) => string>
@@ -1337,7 +1336,7 @@ export class Ledger8UnconfirmedError extends MidnightJsError {
 }
 
 /** Which write the private-state provider refused. */
-type Ledger8NotStoredStage = 'signing-key' | 'private-state';
+export type Ledger8NotStoredStage = 'signing-key' | 'private-state';
 
 const LEDGER8_NOT_STORED_MESSAGES: Readonly<
   Record<Ledger8KeyedOperation, (contractAddress: string, stage: Ledger8NotStoredStage) => string>
@@ -1425,7 +1424,7 @@ export class Ledger8NotStoredError extends MidnightJsError {
 }
 
 /** Why a retained-era call cannot be composed. */
-type Ledger8CallUnsupportedReason =
+export type Ledger8CallUnsupportedReason =
   /** The call would spend a shielded coin the contract already holds on chain. */
   | 'shielded-spend'
   /** The call would pay a shielded coin to a recipient whose encryption public key cannot be resolved. */
