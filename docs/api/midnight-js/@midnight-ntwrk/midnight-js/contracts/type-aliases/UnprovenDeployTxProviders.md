@@ -6,7 +6,7 @@
 
 # Type Alias: UnprovenDeployTxProviders\<C\>
 
-> **UnprovenDeployTxProviders**\<`C`\> = `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"zkConfigProvider"` \| `"walletProvider"` \| `"config"`\>
+> **UnprovenDeployTxProviders**\<`C`\> = `Pick`\<[`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\>, `"zkConfigProvider"` \| `"walletProvider"` \| `"config"`\>
 
 Providers needed to create an unproven deployment transactions, just the ZK artifact
 provider and a wallet.

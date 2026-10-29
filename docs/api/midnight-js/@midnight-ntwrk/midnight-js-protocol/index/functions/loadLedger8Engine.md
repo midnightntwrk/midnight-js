@@ -30,7 +30,7 @@ The engine's public surface, memoised after the first successful
 
 ## Throws
 
-Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
+Ledger8RuntimeMissingError If the retained runtime, or the `./v8/engine`
   chunk itself, cannot be acquired.
 
 ## See

@@ -22,19 +22,17 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[CacheStates\]
 
-> `readonly` **\[CacheStates\]**: (`states`, `identity`, `blockHash`) => `void`
+> `readonly` **\[CacheStates\]**: (`states`, `read`, `identity`, `blockHash`) => `void`
 
 #### Parameters
 
 ##### states
 
-[`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) \| [`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) & `object`
+`Ledger9PublicStates` \| `Ledger9ContractStates`\<[`PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\>
 
-[`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md)
+##### read
 
-***
-
-[`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) & `object`
+[`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md)
 
 ##### identity
 
@@ -78,7 +76,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ##### callData
 
-[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>
+[`Ledger9UnsubmittedCallTxData`](Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK`\>
 
 ##### privateStateId?
 
@@ -92,11 +90,11 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[Submit\]
 
-> `readonly` **\[Submit\]**: () => `Promise`\<[`FinalizedCallTxData`](FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> `readonly` **\[Submit\]**: () => `Promise`\<[`Ledger9FinalizedCallTxData`](Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 #### Returns
 
-`Promise`\<[`FinalizedCallTxData`](FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9FinalizedCallTxData`](Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ***
 
@@ -123,40 +121,35 @@ mappings were specified for the current transaction context.
 
 ### getCurrentStates()
 
-> **getCurrentStates**(): [`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) \| [`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) & `object` \| `undefined`
+> **getCurrentStates**(): [`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md) \| `undefined`
 
-Gets the current cached contract states within the transaction context.
+Gets the public states of the contract within the transaction context, as bytes. Decode them with
+your own runtime, as with `getStates`: `states.contractState.deserialize({ v9: ContractState })`.
 
 #### Returns
 
-A cached [ContractStates](../type-aliases/ContractStates.md) instance, or `undefined` if circuit calls are yet to be made.
+[`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md) \| `undefined`
 
-[`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md)
-
-***
-
-[`Ledger9PublicStates`](../../types/interfaces/Ledger9PublicStates.md) & `object`
-
-***
-
-`undefined`
+The public states, or `undefined` if circuit calls are yet to be made.
 
 #### Remarks
 
-The returned states represent the unsubmitted _running_ state of the contract within the transaction context,
-reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction.
+The contract state is the unsubmitted _running_ state of the contract within the transaction context,
+reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction. The
+ledger parameters and the zswap chain state are those of the block the scope was first read at. The
+running private state is `getLastUnsubmittedCallTxDataToTransact()?.[0].private.nextPrivateState`.
 
 ***
 
 ### getLastUnsubmittedCallTxDataToTransact()
 
-> **getLastUnsubmittedCallTxDataToTransact**(): \[[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
+> **getLastUnsubmittedCallTxDataToTransact**(): \[[`Ledger9UnsubmittedCallTxData`](Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
 
 Gets the last unsubmitted call transaction data.
 
 #### Returns
 
-\[[`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
+\[[`Ledger9UnsubmittedCallTxData`](Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
 
-A tuple containing an [UnsubmittedCallTxData](UnsubmittedCallTxData.md) instance, and an optional private state
+A tuple containing an [Ledger9UnsubmittedCallTxData](Ledger9UnsubmittedCallTxData.md) instance, and an optional private state
 ID, or `undefined` if circuit calls are yet to be made.

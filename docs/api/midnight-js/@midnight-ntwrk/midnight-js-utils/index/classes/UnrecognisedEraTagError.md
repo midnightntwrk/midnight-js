@@ -7,7 +7,7 @@
 # Class: UnrecognisedEraTagError
 
 Raised by [requireLedger9](../functions/requireLedger9.md) when the value carries no era tag this build recognises: `null`,
-a value with no `version`, or an era newer than this build.
+a value with no `era`, or an era newer than this build.
 
 ## Extends
 
@@ -31,7 +31,7 @@ Names the call site that handles only v9 values.
 
 `unknown`
 
-The offending value. Only its `version` is read.
+The offending value. Only its `era` is read.
 
 #### Returns
 
@@ -75,4 +75,4 @@ Names the call site that handles only v9 values.
 
 > `readonly` **received**: `string`
 
-What the value's `version` held, or `'null'` / `'undefined'` when there was none.
+What the value's `era` held, or `'null'` / `'undefined'` when there was none.

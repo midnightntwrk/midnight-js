@@ -6,8 +6,8 @@
 
 # Type Alias: FoundDeployTxPublicData
 
-> **FoundDeployTxPublicData** = [`Ledger8FoundDeployTxPublicData`](../interfaces/Ledger8FoundDeployTxPublicData.md) \| [`FinalizedDeployTxPublicData`](../interfaces/FinalizedDeployTxPublicData.md)
+> **FoundDeployTxPublicData** = [`Ledger8FoundDeployTxPublicData`](../interfaces/Ledger8FoundDeployTxPublicData.md) \| [`Ledger9FinalizedDeployTxPublicData`](../interfaces/Ledger9FinalizedDeployTxPublicData.md)
 
 The public data of a deployment found on chain, discriminated by the ledger
-era that recorded the deploy transaction. Narrow on `version` before reading
+era that recorded the deploy transaction. Narrow on `era` before reading
 `tx` or `initialContractState`; `contractAddress` is present on both variants.

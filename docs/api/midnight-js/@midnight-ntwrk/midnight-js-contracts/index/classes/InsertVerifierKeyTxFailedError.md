@@ -22,7 +22,7 @@ An error indicating that a verifier key insertion transaction failed.
 
 ##### finalizedTxData
 
-[`FinalizedTxData`](../../../midnight-js/types/interfaces/FinalizedTxData.md)
+[`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
 
 #### Returns
 
@@ -80,7 +80,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### finalizedTxData
 
-> `readonly` **finalizedTxData**: [`FinalizedTxData`](../../../midnight-js/types/interfaces/FinalizedTxData.md)
+> `readonly` **finalizedTxData**: [`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
 
 The finalization data of the transaction that failed.
 
@@ -94,21 +94,21 @@ The finalization data of the transaction that failed.
 
 #### Get Signature
 
-> **get** **record**(): [`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> **get** **record**(): [`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 variant on this class.
 
 ##### Returns
 
-[`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-`record.tx` is a `FinalizedTx` in the era `record.version` names.
-Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
-narrowing on `record.version`.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.
 
 #### Inherited from
 

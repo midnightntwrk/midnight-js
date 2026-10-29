@@ -42,7 +42,7 @@ UnhandledUnionMemberError Always.
 ## Example
 
 ```ts
-switch (record.version) {
+switch (record.era) {
   case 'v8': return readRetained(record);
   case 'v9': return readNative(record);
   default: return assertNever(record, 'readContractRecord');

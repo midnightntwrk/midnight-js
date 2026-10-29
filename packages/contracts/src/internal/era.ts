@@ -25,19 +25,19 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/comp
 import {
   CURRENT_LEDGER_VERSION,
   LEDGER_VERSIONS,
-  type LedgerStateKind
+  type StateKind
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   ArtifactRuntimeVersionUnavailableError,
   type ContractStateRead,
   type FinalizedTxRead,
-  InvalidLedgerStateError,
+  InvalidSerializedStateError,
   type Ledger9FinalizedTxData,
-  LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
   type PublicStatesRead,
   type ReadMethod,
+  SerializedState,
   type TransactionMethod,
   type TransactionStage,
   type ZKConfigProvider
@@ -101,16 +101,16 @@ const CONTRACTS_PACKAGE = '@midnight-ntwrk/midnight-js-contracts';
 const isLedgerVersion = (value: unknown): value is LedgerVersion => LEDGER_VERSIONS.some((era) => era === value);
 
 /**
- * The `LedgerState` of this copy of the types package for a state a provider served, or `undefined`
- * when the value names no era this build knows. A `LedgerState` made by a second installed copy
- * of the types package fails `LedgerState.isLedgerState`, so every state is rebuilt from its bytes,
+ * The `SerializedState` of this copy of the types package for a state a provider served, or `undefined`
+ * when the value names no era this build knows. A `SerializedState` made by a second installed copy
+ * of the types package fails `SerializedState.isSerializedState`, so every state is rebuilt from its bytes,
  * which checks the tag again. The tag also tells the kinds apart, so a state of another kind is
  * refused by it.
  *
- * @throws InvalidLedgerStateError if the value does not serialize to bytes (`not-bytes`), or the
+ * @throws InvalidSerializedStateError if the value does not serialize to bytes (`not-bytes`), or the
  * bytes are not a `kind` written by the era the value names (`tag-mismatch`).
  */
-export const ownLedgerState = <K extends LedgerStateKind>(value: unknown, kind: K): LedgerState<K> | undefined => {
+export const ownSerializedState = <K extends StateKind>(value: unknown, kind: K): SerializedState<K> | undefined => {
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
@@ -121,18 +121,18 @@ export const ownLedgerState = <K extends LedgerStateKind>(value: unknown, kind: 
   const serialize: unknown = Reflect.get(value, 'serialize');
   const bytes: unknown = typeof serialize === 'function' ? Reflect.apply(serialize, value, []) : undefined;
   if (!(bytes instanceof Uint8Array)) {
-    throw new InvalidLedgerStateError(kind, era, 'not-bytes');
+    throw new InvalidSerializedStateError(kind, era, 'not-bytes');
   }
-  return LedgerState.fromBytes(era, kind, bytes);
+  return SerializedState.fromBytes(era, kind, bytes);
 };
 
 const requireLedger9Read = (
   read: ContractStateRead,
   contractAddress: string,
   operation: string
-): LedgerState<'ContractState'> => {
+): SerializedState<'ContractState'> => {
   const contractState: unknown = read?.contractState;
-  const state = ownLedgerState(contractState, 'ContractState');
+  const state = ownSerializedState(contractState, 'ContractState');
   if (state === undefined) {
     throw new UnrecognisedEraTagError(operation, contractState);
   }
@@ -148,12 +148,12 @@ const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState
   kind: PublicStatesRead[F]['kind'],
   contractAddress: string,
   operation: string
-): LedgerState<PublicStatesRead[F]['kind']> => {
+): SerializedState<PublicStatesRead[F]['kind']> => {
   const served: unknown = read[field];
   if (served === undefined || served === null) {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', undefined);
   }
-  const state = ownLedgerState(served, kind);
+  const state = ownSerializedState(served, kind);
   if (state === undefined) {
     throw new UnrecognisedEraTagError(operation, served);
   }
@@ -201,7 +201,7 @@ export const decodeLedger9ContractState = (
  * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the contract state.
  * @throws UnrecognisedEraTagError if a state names no era this build knows, such as a state in the
  *   shape of a pre-5.0.0 provider.
- * @throws InvalidLedgerStateError if a state does not serialize to bytes of its kind and era.
+ * @throws InvalidSerializedStateError if a state does not serialize to bytes of its kind and era.
  * @throws PublicStatesEraMismatchError if the ledger parameters or the zswap chain state are missing
  *   or were not written by the v9 ledger.
  */
@@ -851,7 +851,7 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * The envelope's era is `state.contractState.era`: `LedgerState.fromBytes` refuses bytes whose
+ * The envelope's era is `state.contractState.era`: `SerializedState.fromBytes` refuses bytes whose
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
@@ -873,7 +873,7 @@ export const assertEraCompatible = (
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws NetworkVersionStateMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
- * @throws UnrecognisedEraTagError if the contract state is not a `LedgerState`: the shape of a
+ * @throws UnrecognisedEraTagError if the contract state is not a `SerializedState`: the shape of a
  * pre-5.0.0 provider.
  */
 export const resolveContractStateEra = async (
@@ -883,7 +883,7 @@ export const resolveContractStateEra = async (
   logger?: BreadcrumbSink
 ): Promise<LedgerVersion> => {
   const served: unknown = state?.contractState;
-  const contractState = ownLedgerState(served, 'ContractState');
+  const contractState = ownSerializedState(served, 'ContractState');
   if (contractState === undefined) {
     throw new UnrecognisedEraTagError('queryContractState', served);
   }

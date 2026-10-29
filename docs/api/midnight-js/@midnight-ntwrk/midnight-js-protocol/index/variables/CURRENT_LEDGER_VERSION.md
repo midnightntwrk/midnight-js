@@ -8,7 +8,7 @@
 
 > `const` **CURRENT\_LEDGER\_VERSION**: `"v9"`
 
-The era whose objects this build hands out live, through `./ledger`.
+The era whose objects this build links eagerly, today through `./v9`.
 
 "Current" is relative: today it is ledger 9 (`'v9'`). At the next hard fork it
 moves to the new ledger and ledger 9 joins [RetainedLedgerVersion](../type-aliases/RetainedLedgerVersion.md). Code

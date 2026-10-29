@@ -6,31 +6,12 @@
 
 # Type Alias: DeployContractOptionsWithPrivateState\<C\>
 
-> **DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
+> **DeployContractOptionsWithPrivateState**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9DeployContractOptionsWithPrivateState`](Ledger9DeployContractOptionsWithPrivateState.md)\<`C`\> : `never`
 
-[deployContract](../functions/deployContract.md) options with information needed to store private states;
-only used if the contract being deployed has a private state.
-
-Both members together or neither: a state with no id has nowhere to go, and
-an id with no state stores `undefined` under a name a later call will read
-back.
-
-## Type Declaration
-
-### initialPrivateState
-
-> `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
-
-The private state to run the circuit against.
-
-### privateStateId
-
-> `readonly` **privateStateId**: [`PrivateStateId`](../../../midnight-js/types/type-aliases/PrivateStateId.md)
-
-An identifier for the private state of the contract being deployed.
+The options of `deployContract` with private state. Generic code names an era: `Ledger9DeployContractOptionsWithPrivateState<C>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

@@ -19,7 +19,7 @@ half of the same admission path is a separate thread — see
 ## The pipeline is named by the ledger era, not the toolchain
 
 A pipeline is named by a `LedgerVersion`, `'v8'` or `'v9'` — the same values a
-payload's `version` and a provider's `supportedEras` use. Each member names the
+payload's `era` and a provider's `supportedEras` use. Each member names the
 LEDGER ERA the pipeline executes against, never a toolchain version, because the toolchain
 moves independently of the ledger and a name pinned to it goes stale on the next
 compiler bump.
@@ -310,8 +310,8 @@ column are both written. What cannot happen is an era arriving unruled.
 
 ### Two fields, one set of values
 
-A result's `era` and its record's `version` take the same values but name
-different facts. `era` says which era built the caller's artifact; `version`
+A result's `era` and its record's `public.era` take the same values but name
+different facts. `era` says which era built the caller's artifact; `public.era`
 says which era recorded the transaction. After the fork they DISAGREE: a
 retained-era call is recorded as a keep-state transaction tagged `'v9'` while
 `era` on its result says `'v8'`
@@ -353,12 +353,19 @@ frozen nor null-prototyped.
 
 ## Pairing the head against the fetched state
 
-`assertHeadStateEraAgreement` refuses an operation whose network head and
+`resolveContractStateEra` refuses an operation whose network head and
 fetched contract state belong to different ledger eras.
 
-The envelope is read from the bytes themselves, not taken from
-`RawContractState.version`: the decoder is chosen for these exact bytes, and a
-provider outside this framework may tag a record wrongly.
+The envelope is `contractState.era` on the read record. Only
+`SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
+does not match `era`, so the decoder is still chosen for these exact bytes.
+`SerializedState.isSerializedState` is not the gate: it answers `false` for a state made
+by a second installed copy of the types package. Instead every state is rebuilt
+from its `era`, `kind` and `serialize()` with `fromBytes`, which checks the tag
+again (`InvalidSerializedStateError`, `tag-mismatch`, for forged bytes). A record
+whose contract state has none of those, such as one a provider outside this
+framework built by hand in the pre-5.0.0 shape, is refused as
+`UnrecognisedEraTagError`.
 
 The order is load-bearing:
 
@@ -366,8 +373,9 @@ The order is load-bearing:
    cannot be decoded at all is still dated and a decoder is never handed bytes
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
-   one place, as `ledgerVersionOfContractState` in
-   `@midnight-ntwrk/midnight-js-utils`, beside the tag parser it is built on
+   one place, `LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`,
+   read here through `ledgerVersionOfContractState` from
+   `@midnight-ntwrk/midnight-js-utils`
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
    minor bump (2_000_000 to 2_001_000) is not a disagreement and must not be
@@ -406,7 +414,7 @@ variant on the flows that only ever send v9 transactions. `PublicDataProvider`
 reports both eras, and the v9-only flows reject a v8-era record here rather
 than widening their own public return types. Both record checks, it and
 `requireTaggedRecord`, also refuse a record whose `tx` is not a handle
-(`InvalidTransactionHandleError`) or is a handle of another era than `version`
+(`InvalidTransactionHandleError`) or is a handle of another era than `era`
 (`EraInvariantViolationError`), naming the read method, so a third-party
 provider's mistake surfaces at the read and not in the caller's own `unwrap`.
 
@@ -470,9 +478,9 @@ called.
 
 ## Dating a finalized record against the head
 
-`version` on a finalized record names the era of the `tx` handle beside it:
-`record.tx.era === record.version`. The framework's providers build both from
-one decision, so they agree. A record whose `version` is wrong for the block it
+`era` on a finalized record names the era of the `tx` handle beside it:
+`record.tx.era === record.era`. The framework's providers build both from
+one decision, so they agree. A record whose `era` is wrong for the block it
 came from still misleads a caller that narrows on it, so the era is checked
 against the head.
 
@@ -481,10 +489,10 @@ The current era refuses the mirror of this on its call paths, through
 have been deployed before the fork. `assertLedger8RecordEra` is the retained-era path's half, and it
 compares the record against the HEAD rather than against a fixed era, because a
 retained-era call is legitimately recorded by EITHER era — which is why the
-result type keeps `version` a union in the first place.
+result type keeps `public.era` a union in the first place.
 
-What it does NOT assert is that the result's `era` and the record's `version`
-agree. They legitimately disagree: `era: 'v8'` with `version: 'v9'` IS a
+What it does NOT assert is that the result's `era` and the record's `public.era`
+agree. They legitimately disagree: `era: 'v8'` with `public.era: 'v9'` IS a
 keep-state transaction. The agreement that has to hold is between the record and
 the head the operation started on.
 

@@ -78,8 +78,8 @@ On-chain state is bytes, never a decoded object. `watchForContractState`,
 `ContractStateRead`; `queryContractState` returns
 `ContractStateAndParametersRead` (adds `ledgerParameters`);
 `queryZSwapAndContractState` and `TransactionContext.getCurrentStates()` return
-`PublicStatesRead`. Each state is a `LedgerState` from `types` (bytes + `era`,
-the ledger that wrote them), made only by `LedgerState.fromBytes(era, kind, bytes)`.
+`PublicStatesRead`. Each state is a `SerializedState` from `types` (bytes + `era`,
+the ledger that wrote them), made only by `SerializedState.fromBytes(era, kind, bytes)`.
 The caller decodes it with its own runtime:
 `read.contractState.deserialize({ v9: ContractState })`. `contracts` decodes
 with the framework's copy only where it builds a transaction. See

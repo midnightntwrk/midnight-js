@@ -20,7 +20,7 @@ export const LEDGER_STATE_KINDS = Object.freeze(['ContractState', 'LedgerParamet
 /**
  * A kind of value the ledger writes and the indexer serves as bytes.
  */
-export type LedgerStateKind = (typeof LEDGER_STATE_KINDS)[number];
+export type StateKind = (typeof LEDGER_STATE_KINDS)[number];
 
 // The bracketed number is the format version of one kind, not the ledger era. Pinned by
 // test/state-tags.test.ts; see docs/architecture/era-tagged-payload-decoders.md.
@@ -37,11 +37,11 @@ export const LEDGER_STATE_TAGS = Object.freeze({
     v8: 'midnight:zswap-ledger-state[v5]',
     v9: 'midnight:zswap-ledger-state[v5]'
   })
-} as const satisfies Record<LedgerStateKind, Record<LedgerVersion, string>>);
+} as const satisfies Record<StateKind, Record<LedgerVersion, string>>);
 
 type Assert<T extends true> = T;
-type TagOf<K extends LedgerStateKind, E extends LedgerVersion> = (typeof LEDGER_STATE_TAGS)[K][E];
-type ErasSharingATag<K extends LedgerStateKind> = {
+type TagOf<K extends StateKind, E extends LedgerVersion> = (typeof LEDGER_STATE_TAGS)[K][E];
+type ErasSharingATag<K extends StateKind> = {
   [A in LedgerVersion]: { [B in Exclude<LedgerVersion, A>]: TagOf<K, A> extends TagOf<K, B> ? A : never }[Exclude<
     LedgerVersion,
     A

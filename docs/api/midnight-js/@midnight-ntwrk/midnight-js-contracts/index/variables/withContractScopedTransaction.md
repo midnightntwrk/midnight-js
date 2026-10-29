@@ -6,7 +6,7 @@
 
 # Variable: withContractScopedTransaction
 
-> `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Executes a function within the context of a contract-scoped transaction.
 
@@ -24,7 +24,7 @@ Executes a function within the context of a contract-scoped transaction.
 
 ### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, `PCK`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`, `PCK`\>
 
 The contract providers to use within the transaction.
 
@@ -42,7 +42,7 @@ Optional transaction scope options.
 
 ## Returns
 
-`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 A `Promise` that resolves with the finalized transaction data of the single transaction
 created for all circuit calls made within `fn`.

@@ -14,12 +14,12 @@ NOT here, because no such handle may cross an era boundary.
 
 ## Extended by
 
-- [`CallResultPublic`](../../contracts/interfaces/CallResultPublic.md)
-- [`CallResultPublic`](../../contracts/namespaces/Ledger8/interfaces/CallResultPublic.md)
-- [`ContractCallPublic`](../../contracts/namespaces/Ledger8/interfaces/ContractCallPublic.md)
-- [`CallResultPublic`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/CallResultPublic.md)
-- [`ContractCallPublic`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/ContractCallPublic.md)
-- [`CallResultPublic`](../../../midnight-js-contracts/index/interfaces/CallResultPublic.md)
+- [`Ledger8CallResultPublic`](../../contracts/interfaces/Ledger8CallResultPublic.md)
+- [`Ledger8ContractCallPublic`](../../contracts/interfaces/Ledger8ContractCallPublic.md)
+- [`Ledger9CallResultPublic`](../../contracts/interfaces/Ledger9CallResultPublic.md)
+- [`Ledger8CallResultPublic`](../../../midnight-js-contracts/index/interfaces/Ledger8CallResultPublic.md)
+- [`Ledger8ContractCallPublic`](../../../midnight-js-contracts/index/interfaces/Ledger8ContractCallPublic.md)
+- [`Ledger9CallResultPublic`](../../../midnight-js-contracts/index/interfaces/Ledger9CallResultPublic.md)
 
 ## Properties
 

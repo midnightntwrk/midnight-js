@@ -59,7 +59,7 @@ callee — omits it and gets fresh randomness.
 > `readonly` **ledgerParametersBytes**: [`LedgerParametersOption`](../type-aliases/LedgerParametersOption.md)
 
 The ledger parameters the chain held at the block this call is built against, serialized —
-`RawContractState.ledgerParameters`, passed through untouched — or
+`ContractStateAndParametersRead.ledgerParameters`, serialized and passed through untouched — or
 [INITIAL\_LEDGER\_PARAMETERS](../variables/INITIAL_LEDGER_PARAMETERS.md) to partition against the ledger's initial cost model instead.
 
 Required, and deliberately so. See [LedgerParametersOption](../type-aliases/LedgerParametersOption.md).

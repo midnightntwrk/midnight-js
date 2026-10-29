@@ -8,7 +8,7 @@
 
 ## Call Signature
 
-> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<[`FinalizedMaintenanceTxData`](../namespaces/Ledger8/interfaces/FinalizedMaintenanceTxData.md)\>
+> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<[`Ledger8FinalizedMaintenanceTxData`](../interfaces/Ledger8FinalizedMaintenanceTxData.md)\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
@@ -40,13 +40,13 @@ Midnight transactions execute in two phases:
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 The providers to use to manage the transaction lifecycle.
 
@@ -69,7 +69,7 @@ A function that takes the signing key of the new contract maintenance authority 
          resolves with the finalized transaction data under `public`, tagged with the pipeline's
          `era`, or rejects if an error occurs along the way.
 
-(`newAuthority`) => `Promise`\<[`FinalizedMaintenanceTxData`](../namespaces/Ledger8/interfaces/FinalizedMaintenanceTxData.md)\>
+(`newAuthority`) => `Promise`\<[`Ledger8FinalizedMaintenanceTxData`](../interfaces/Ledger8FinalizedMaintenanceTxData.md)\>
 
 ### Throws
 
@@ -112,7 +112,7 @@ TODO: There are at least three options we should support in the future:
 
 ## Call Signature
 
-> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<[`FinalizedMaintenanceTxData`](../interfaces/FinalizedMaintenanceTxData.md)\>
+> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<[`Ledger9FinalizedMaintenanceTxData`](../interfaces/Ledger9FinalizedMaintenanceTxData.md)\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
@@ -150,7 +150,7 @@ Midnight transactions execute in two phases:
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)
 
 The providers to use to manage the transaction lifecycle.
 
@@ -173,7 +173,7 @@ A function that takes the signing key of the new contract maintenance authority 
          resolves with the finalized transaction data under `public`, tagged with the pipeline's
          `era`, or rejects if an error occurs along the way.
 
-(`newAuthority`) => `Promise`\<[`FinalizedMaintenanceTxData`](../interfaces/FinalizedMaintenanceTxData.md)\>
+(`newAuthority`) => `Promise`\<[`Ledger9FinalizedMaintenanceTxData`](../interfaces/Ledger9FinalizedMaintenanceTxData.md)\>
 
 ### Throws
 

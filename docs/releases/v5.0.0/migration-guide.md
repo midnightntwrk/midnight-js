@@ -1022,7 +1022,7 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 ## Step 19 — Decode on-chain state with your own runtime
 
 Every state read returns bytes (#1550). A contract state, ledger parameters and a
-zswap chain state are each a `LedgerState` from `@midnight-ntwrk/midnight-js-types`:
+zswap chain state are each a `SerializedState` from `@midnight-ntwrk/midnight-js-types`:
 the bytes, plus the `era` of the ledger that wrote them. Decode one with the
 runtime your contract was compiled against. A state decoded by any other copy of
 the runtime — the framework's included — is refused by your contract's `ledger()`
@@ -1030,16 +1030,16 @@ with `expected instance of ChargedState`.
 
 `deserialize` calls only the decoder for the state's own `era`. A state
 written by an era you passed no decoder for throws
-`LedgerStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
+`SerializedStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
 A decoder that throws, for example the class of another kind, is reported as
-`LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`),
+`SerializedStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`),
 with the decoder's error as `cause`. A decoder error that is already a
 `MidnightJsError` is rethrown unchanged. Passing no decoder for any era the
 state can be does not compile, so the mistake shows up where you make it.
 
-A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
+A `SerializedState` keeps its bytes in a private field, so `structuredClone`,
 `postMessage` and JSON drop them. To hand one to a worker or store it, send
-`serialize()` and `era`, and rebuild it with `LedgerState.fromBytes(era, kind, bytes)`.
+`serialize()` and `era`, and rebuild it with `SerializedState.fromBytes(era, kind, bytes)`.
 
 ### Reading a contract state
 
@@ -1141,20 +1141,20 @@ if (read !== null) {
 Return a `ContractStateAndParametersRead` from `queryContractState`, a
 `PublicStatesRead` from `queryZSwapAndContractState` and a `ContractStateRead`
 from the other reads. Build each state with
-`LedgerState.fromBytes(era, kind, bytes)`, and take `era` from the
+`SerializedState.fromBytes(era, kind, bytes)`, and take `era` from the
 bytes' own version tag with `ledgerVersionOfContractState` /
 `ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`.
 A zswap chain state has the same tag in v8 and v9, so its tag cannot date it:
 give it the era of the ledger parameters of the same block.
 `fromBytes` refuses bytes that do not carry the tag of that era with
-`InvalidLedgerStateError`. Remove `queryRawContractState` and
+`InvalidSerializedStateError`. Remove `queryRawContractState` and
 `rawContractStateObservable`.
 
-`contracts` accepts a `LedgerState` made by a second installed copy of
+`contracts` accepts a `SerializedState` made by a second installed copy of
 `@midnight-ntwrk/midnight-js-types` too: it rebuilds each state from its bytes
-with `LedgerState.fromBytes`, which checks the tag again. A state in a shape
+with `SerializedState.fromBytes`, which checks the tag again. A state in a shape
 that names no known era is refused with `UnrecognisedEraTagError`; a state of
-another kind fails the tag check (`InvalidLedgerStateError`); ledger parameters
+another kind fails the tag check (`InvalidSerializedStateError`); ledger parameters
 or a zswap chain state that are missing, or of another era than the call, are
 refused with `PublicStatesEraMismatchError`.
 

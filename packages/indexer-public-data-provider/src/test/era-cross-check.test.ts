@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type ContractStateRead, InvalidLedgerStateError, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractStateRead, InvalidSerializedStateError, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
@@ -321,7 +321,7 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-zswap-state', era: 'v9' });
-    expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidLedgerStateError);
+    expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidSerializedStateError);
   });
 
   test('refuses a pinned triple whose state is newer than the block dating it', async () => {
