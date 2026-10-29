@@ -16,16 +16,15 @@
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerStateKind, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerVersion,type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
-  InvalidLedgerStateError,
-  LedgerStateDecodeFailedError,
-  LedgerStateDecoderMissingError,
-  PROVIDER_ERROR_CODES
-} from '../errors';
-import { LedgerState } from '../ledger-state';
+  InvalidSerializedStateError,
+  PROVIDER_ERROR_CODES,
+  SerializedStateDecodeFailedError,
+  SerializedStateDecoderMissingError} from '../errors';
+import { SerializedState } from '../serialized-state';
 
 type Runtime = {
   readonly ContractState: new () => { serialize(): Uint8Array };
@@ -33,13 +32,13 @@ type Runtime = {
   readonly ZswapChainState: new () => { serialize(): Uint8Array };
 };
 
-const mint: Readonly<Record<LedgerStateKind, (runtime: Runtime) => Uint8Array>> = {
+const mint: Readonly<Record<StateKind, (runtime: Runtime) => Uint8Array>> = {
   ContractState: (runtime) => new runtime.ContractState().serialize(),
   LedgerParameters: (runtime) => runtime.LedgerParameters.initialParameters().serialize(),
   ZswapChainState: (runtime) => new runtime.ZswapChainState().serialize()
 };
 
-const bytesOf = {} as Record<LedgerStateKind, Record<LedgerVersion, Uint8Array>>;
+const bytesOf = {} as Record<StateKind, Record<LedgerVersion, Uint8Array>>;
 
 beforeAll(async () => {
   const runtimes: Record<LedgerVersion, Runtime> = { v8: await loadLedger8Protocol(), v9: ledger9 };
@@ -59,9 +58,9 @@ const thrownBy = (act: () => unknown): unknown => {
   throw new Error('expected the call to throw');
 };
 
-describe('LedgerState.fromBytes', () => {
+describe('SerializedState.fromBytes', () => {
   it.each(everyKindAndEra)('carries a %s written by the %s runtime', (kind, era) => {
-    const state = LedgerState.fromBytes(era, kind, bytesOf[kind][era]);
+    const state = SerializedState.fromBytes(era, kind, bytesOf[kind][era]);
 
     expect(state.kind).toBe(kind);
     expect(state.era).toBe(era);
@@ -73,9 +72,9 @@ describe('LedgerState.fromBytes', () => {
   );
 
   it.each(datedByTag)('refuses a %s claimed as %s whose tag belongs to %s', (kind, era, otherEra) => {
-    const error = thrownBy(() => LedgerState.fromBytes(era, kind, bytesOf[kind][otherEra]));
+    const error = thrownBy(() => SerializedState.fromBytes(era, kind, bytesOf[kind][otherEra]));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({
       code: PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE,
       kind,
@@ -86,47 +85,47 @@ describe('LedgerState.fromBytes', () => {
 
   it.each(LEDGER_VERSIONS)('carries zswap bytes of either era as %s, because both write the same tag', (era) => {
     for (const writer of LEDGER_VERSIONS) {
-      expect(LedgerState.fromBytes(era, 'ZswapChainState', bytesOf.ZswapChainState[writer]).era).toBe(era);
+      expect(SerializedState.fromBytes(era, 'ZswapChainState', bytesOf.ZswapChainState[writer]).era).toBe(era);
     }
   });
 
   it('refuses bytes of another kind', () => {
-    const error = thrownBy(() => LedgerState.fromBytes('v9', 'ContractState', bytesOf.LedgerParameters.v9));
+    const error = thrownBy(() => SerializedState.fromBytes('v9', 'ContractState', bytesOf.LedgerParameters.v9));
 
     expect(error).toMatchObject({ kind: 'ContractState', reason: 'tag-mismatch' });
   });
 
   it('refuses bytes shorter than the tag', () => {
-    const error = thrownBy(() => LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9.subarray(0, 10)));
+    const error = thrownBy(() => SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9.subarray(0, 10)));
 
     expect(error).toMatchObject({ reason: 'tag-mismatch' });
   });
 
   it('refuses an unknown kind', () => {
-    // @ts-expect-error the kind is outside LedgerStateKind
-    const error = thrownBy(() => LedgerState.fromBytes('v9', 'Transaction', bytesOf.ContractState.v9));
+    // @ts-expect-error the kind is outside StateKind
+    const error = thrownBy(() => SerializedState.fromBytes('v9', 'Transaction', bytesOf.ContractState.v9));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ reason: 'unknown-kind' });
   });
 
   it('refuses a value that is not a Uint8Array', () => {
     // @ts-expect-error the bytes are a string
-    const error = thrownBy(() => LedgerState.fromBytes('v9', 'ContractState', 'midnight:contract-state[v8]:'));
+    const error = thrownBy(() => SerializedState.fromBytes('v9', 'ContractState', 'midnight:contract-state[v8]:'));
 
     expect(error).toMatchObject({ reason: 'not-bytes' });
   });
 
   it('refuses an unknown ledger era', () => {
     // @ts-expect-error the era is outside LedgerVersion
-    const error = thrownBy(() => LedgerState.fromBytes('v10', 'ContractState', bytesOf.ContractState.v9));
+    const error = thrownBy(() => SerializedState.fromBytes('v10', 'ContractState', bytesOf.ContractState.v9));
 
     expect(error).toBeInstanceOf(UnknownLedgerVersionError);
   });
 
   it('keeps its own copy of the bytes', () => {
     const bytes = bytesOf.ContractState.v9.slice();
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytes);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytes);
 
     bytes.fill(0);
 
@@ -134,7 +133,7 @@ describe('LedgerState.fromBytes', () => {
   });
 
   it('hands out a fresh copy on every serialize', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     state.serialize().fill(0);
 
@@ -143,7 +142,7 @@ describe('LedgerState.fromBytes', () => {
 
   it('keeps its own copy of bytes passed as a Buffer', () => {
     const buffer = Buffer.from(bytesOf.ContractState.v9);
-    const state = LedgerState.fromBytes('v9', 'ContractState', buffer);
+    const state = SerializedState.fromBytes('v9', 'ContractState', buffer);
 
     buffer.fill(0);
 
@@ -151,7 +150,7 @@ describe('LedgerState.fromBytes', () => {
   });
 
   it('hands out a copy that does not share memory with bytes passed as a Buffer', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', Buffer.from(bytesOf.ContractState.v9));
+    const state = SerializedState.fromBytes('v9', 'ContractState', Buffer.from(bytesOf.ContractState.v9));
 
     state.serialize().fill(0);
 
@@ -163,7 +162,7 @@ describe('LedgerState.fromBytes', () => {
     backing.set(bytesOf.ContractState.v9, 8);
     const view = backing.subarray(8);
 
-    const state = LedgerState.fromBytes('v9', 'ContractState', view);
+    const state = SerializedState.fromBytes('v9', 'ContractState', view);
     backing.fill(0);
 
     expect(view.byteOffset).toBe(backing.byteOffset + 8);
@@ -171,20 +170,20 @@ describe('LedgerState.fromBytes', () => {
   });
 
   it('is frozen', () => {
-    expect(Object.isFrozen(LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9))).toBe(true);
+    expect(Object.isFrozen(SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9))).toBe(true);
   });
 
-  it('refuses a LedgerState constructed without fromBytes', () => {
-    const error = thrownBy(() => Reflect.construct(LedgerState, ['v9', 'ContractState', bytesOf.ContractState.v9]));
+  it('refuses a SerializedState constructed without fromBytes', () => {
+    const error = thrownBy(() => Reflect.construct(SerializedState, ['v9', 'ContractState', bytesOf.ContractState.v9]));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ code: PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE, reason: 'not-from-bytes' });
   });
 });
 
-describe('LedgerState.isLedgerState', () => {
+describe('SerializedState.isSerializedState', () => {
   it('accepts a value made by fromBytes', () => {
-    expect(LedgerState.isLedgerState(LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9))).toBe(true);
+    expect(SerializedState.isSerializedState(SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9))).toBe(true);
   });
 
   it('refuses a look-alike object', () => {
@@ -195,29 +194,29 @@ describe('LedgerState.isLedgerState', () => {
       deserialize: () => undefined
     };
 
-    expect(LedgerState.isLedgerState(lookAlike)).toBe(false);
+    expect(SerializedState.isSerializedState(lookAlike)).toBe(false);
   });
 
   it.each([null, undefined, 'midnight:contract-state[v8]:'])('refuses %s', (value) => {
-    expect(LedgerState.isLedgerState(value)).toBe(false);
+    expect(SerializedState.isSerializedState(value)).toBe(false);
   });
 
   it('refuses a value made by a second loaded copy of the module', async () => {
     vi.resetModules();
-    const secondCopy = await import('../ledger-state');
-    const fromSecondCopy = secondCopy.LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const secondCopy = await import('../serialized-state');
+    const fromSecondCopy = secondCopy.SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
-    expect(secondCopy.LedgerState).not.toBe(LedgerState);
-    expect(secondCopy.LedgerState.isLedgerState(fromSecondCopy)).toBe(true);
-    expect(LedgerState.isLedgerState(fromSecondCopy)).toBe(false);
+    expect(secondCopy.SerializedState).not.toBe(SerializedState);
+    expect(secondCopy.SerializedState.isSerializedState(fromSecondCopy)).toBe(true);
+    expect(SerializedState.isSerializedState(fromSecondCopy)).toBe(false);
   });
 });
 
-describe('LedgerState.deserialize', () => {
+describe('SerializedState.deserialize', () => {
   it('decodes with the decoder of its own era only', () => {
     const v8 = { deserialize: vi.fn(() => 'from v8') };
     const v9 = { deserialize: vi.fn(() => 'from v9') };
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     const decoded = state.deserialize({ v8, v9 });
 
@@ -227,14 +226,14 @@ describe('LedgerState.deserialize', () => {
   });
 
   it('gives an object of the runtime the caller passed', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     expect(state.deserialize({ v9: ledger9.ContractState })).toBeInstanceOf(ledger9.ContractState);
   });
 
   it('decodes zswap bytes with either era, because both write the same format', async () => {
     const ledger8 = await loadLedger8Protocol();
-    const state = LedgerState.fromBytes('v8', 'ZswapChainState', bytesOf.ZswapChainState.v9);
+    const state = SerializedState.fromBytes('v8', 'ZswapChainState', bytesOf.ZswapChainState.v9);
 
     expect(state.deserialize({ v8: ledger8.ZswapChainState })).toBeInstanceOf(ledger8.ZswapChainState);
   });
@@ -248,47 +247,47 @@ describe('LedgerState.deserialize', () => {
     ['ZswapChainState', 'v8', '@midnightntwrk/ledger-v8']
   ] as const)('refuses a %s of %s with no decoder for its era and names %s', (kind, era, packageName) => {
     const otherEra = era === 'v9' ? 'v8' : 'v9';
-    const state = LedgerState.fromBytes(era, kind, bytesOf[kind][era]);
+    const state = SerializedState.fromBytes(era, kind, bytesOf[kind][era]);
 
     const error = thrownBy(() =>
       // @ts-expect-error a value of a known era needs a decoder for that era
       state.deserialize({ [otherEra]: { deserialize: () => 'wrong era' } })
     );
 
-    expect(error).toBeInstanceOf(LedgerStateDecoderMissingError);
+    expect(error).toBeInstanceOf(SerializedStateDecoderMissingError);
     expect(error).toMatchObject({ code: PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING, kind, era });
     expect(String(error)).toContain(packageName);
   });
 
   it('ignores a decoder inherited through the prototype', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
     const inherited: { v9?: { deserialize(bytes: Uint8Array): string } } = Object.create({
       v9: { deserialize: () => 'inherited' }
     });
 
-    expect(thrownBy(() => state.deserialize(inherited))).toBeInstanceOf(LedgerStateDecoderMissingError);
+    expect(thrownBy(() => state.deserialize(inherited))).toBeInstanceOf(SerializedStateDecoderMissingError);
   });
 
   it('refuses a decoder with no deserialize function', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     // @ts-expect-error the decoder has no deserialize
-    expect(thrownBy(() => state.deserialize({ v9: {} }))).toBeInstanceOf(LedgerStateDecoderMissingError);
+    expect(thrownBy(() => state.deserialize({ v9: {} }))).toBeInstanceOf(SerializedStateDecoderMissingError);
   });
 
   it.each([undefined, null])('refuses %s in place of the decoders', (decoders) => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     // @ts-expect-error the decoders are missing
     const error = thrownBy(() => state.deserialize(decoders));
 
-    expect(error).toBeInstanceOf(LedgerStateDecoderMissingError);
+    expect(error).toBeInstanceOf(SerializedStateDecoderMissingError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9' });
   });
 
   it('reports a decoder failure as a coded error that keeps the failure as its cause', () => {
     const failure = new Error('bad body');
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     const error = thrownBy(() =>
       state.deserialize({
@@ -300,7 +299,7 @@ describe('LedgerState.deserialize', () => {
       })
     );
 
-    expect(error).toBeInstanceOf(LedgerStateDecodeFailedError);
+    expect(error).toBeInstanceOf(SerializedStateDecodeFailedError);
     expect(error).toMatchObject({
       code: PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED,
       category: 'INTEGRITY',
@@ -312,7 +311,7 @@ describe('LedgerState.deserialize', () => {
 
   it('rethrows a coded error from the decoder unchanged', () => {
     const coded = new UnknownLedgerVersionError('v10');
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     const error = thrownBy(() =>
       state.deserialize({
@@ -328,7 +327,7 @@ describe('LedgerState.deserialize', () => {
   });
 
   it('keeps its bytes when the decoder writes into the bytes it was given', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     state.deserialize({ v9: { deserialize: (bytes: Uint8Array) => bytes.fill(0) } });
 
@@ -336,11 +335,11 @@ describe('LedgerState.deserialize', () => {
   });
 
   it('reports the decoder of another kind as a decode failure', () => {
-    const state = LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+    const state = SerializedState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
 
     const error = thrownBy(() => state.deserialize({ v9: ledger9.LedgerParameters }));
 
-    expect(error).toBeInstanceOf(LedgerStateDecodeFailedError);
+    expect(error).toBeInstanceOf(SerializedStateDecodeFailedError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9' });
   });
 });

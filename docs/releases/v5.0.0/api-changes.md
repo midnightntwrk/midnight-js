@@ -198,27 +198,27 @@ the v8 runtime first.
 ### On-chain state as bytes (#1550)
 
 ```ts
-export type LedgerStateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
+export type StateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
 export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
 export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
-export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+export class SerializedState<K extends StateKind = StateKind, E extends LedgerVersion = LedgerVersion> {
   readonly era: E;
   readonly kind: K;
-  static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
-  static isLedgerState(value: unknown): value is LedgerState;
+  static fromBytes<E extends LedgerVersion, K extends StateKind>(era: E, kind: K, bytes: Uint8Array): SerializedState<K, E>;
+  static isSerializedState(value: unknown): value is SerializedState;
   serialize(): Uint8Array;
   deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>; // does not compile when D has no decoder for any era E can be
 }
 
 export interface ContractStateRead {
   readonly protocolVersion: number;
-  readonly contractState: LedgerState<'ContractState'>;
+  readonly contractState: SerializedState<'ContractState'>;
 }
 export interface ContractStateAndParametersRead extends ContractStateRead {
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
 }
 export interface PublicStatesRead extends ContractStateAndParametersRead {
-  readonly zswapChainState: LedgerState<'ZswapChainState'>;
+  readonly zswapChainState: SerializedState<'ZswapChainState'>;
 }
 
 interface PublicDataProvider {
@@ -229,10 +229,10 @@ interface PublicDataProvider {
   // queryRawContractState and rawContractStateObservable are removed.
 }
 
-export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
-export class InvalidLedgerStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidLedgerStateReason; }
-export class LedgerStateDecoderMissingError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
-export class LedgerStateDecodeFailedError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
+export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export class InvalidSerializedStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidSerializedStateReason; }
+export class SerializedStateDecoderMissingError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
+export class SerializedStateDecodeFailedError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
 ```
 
 In `contracts`:

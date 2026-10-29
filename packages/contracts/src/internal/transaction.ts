@@ -19,11 +19,11 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyProvableCircuitId,
-  LedgerState,
   LedgerTransaction,
   type LoggerProvider,
   type PrivateStateId,
   type PublicStatesRead,
+  SerializedState,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -212,7 +212,7 @@ export class TransactionContextImpl<
       return undefined;
     }
     const { read, states } = this.cachedStates;
-    return { ...read, contractState: LedgerState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
+    return { ...read, contractState: SerializedState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](

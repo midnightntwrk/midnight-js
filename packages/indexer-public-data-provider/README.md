@@ -81,7 +81,7 @@ queryLatestProtocolVersion(): Promise<number>
 ### Reading State Across the Ledger Fork
 
 Every state read returns bytes, never a decoded object. A contract state,
-ledger parameters and a zswap chain state are each a `LedgerState` from
+ledger parameters and a zswap chain state are each a `SerializedState` from
 `@midnight-ntwrk/midnight-js-types`: the bytes exactly as the network sent them,
 plus `kind` and `era`, the ledger that wrote them. Decode one with the
 runtime your own contract was compiled against, so the object is one its
@@ -94,7 +94,7 @@ import { ledger } from './managed/counter/contract/index.js';
 const read = await provider.queryContractState(contractAddress);
 
 if (read !== null) {
-  // Throws LedgerStateDecoderMissingError if the state was written by the v8 ledger.
+  // Throws SerializedStateDecoderMissingError if the state was written by the v8 ledger.
   const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
 }
 ```

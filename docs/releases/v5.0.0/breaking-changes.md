@@ -693,7 +693,7 @@ the value. The era of the block that dated a read stays in `protocolVersion`. A 
 record is the `FinalizedTxRead` union; narrow it with `switch (value.era)` closed by `assertNever`, or,
 in code that handles only v9, with `requireLedger9(value, '<call site>')` from
 `@midnight-ntwrk/midnight-js-utils`, which throws `Ledger8ValueUnsupportedError` on a v8 value. An
-on-chain state is a `LedgerState` of bytes with the same shape in both eras
+on-chain state is a `SerializedState` of bytes with the same shape in both eras
 ([section 20](#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)).
 
 ### 14a. Changed signatures
@@ -1038,7 +1038,7 @@ whenever the package manager installed two copies of the runtime, and the v9
 shape would have changed again at the next fork.
 
 Now every value read from the network — a contract state, ledger parameters, a
-zswap chain state — is a `LedgerState` from `@midnight-ntwrk/midnight-js-types`:
+zswap chain state — is a `SerializedState` from `@midnight-ntwrk/midnight-js-types`:
 the bytes, a `kind` and the `era` of the ledger that wrote them. You decode it
 with the runtime your contract was compiled against (ADR 0020):
 
@@ -1055,15 +1055,15 @@ with the runtime your contract was compiled against (ADR 0020):
 
 `deserialize` calls only the decoder for the state's own `era`. Pass one per
 era you can read. A state written by an era you passed no decoder for is
-refused with `LedgerStateDecoderMissingError`, whose message names the class to
+refused with `SerializedStateDecoderMissingError`, whose message names the class to
 import. A decoder that throws, for example one for another kind, is reported as
-`LedgerStateDecodeFailedError`, with the decoder's error as `cause`. A decoder
+`SerializedStateDecodeFailedError`, with the decoder's error as `cause`. A decoder
 error that is already a `MidnightJsError` is rethrown unchanged. Passing no
 decoder for any era the state can be does not compile.
 
-A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
+A `SerializedState` keeps its bytes in a private field, so `structuredClone`,
 `postMessage` and JSON drop them. To send one to a worker or store it, send
-`serialize()` and `era` and rebuild it with `LedgerState.fromBytes`.
+`serialize()` and `era` and rebuild it with `SerializedState.fromBytes`.
 
 | Package | Before | After |
 |---|---|---|
@@ -1073,7 +1073,7 @@ A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
 | `types` | `queryZSwapAndContractState`: `VersionedPublicStates` | `PublicStatesRead`: `{ protocolVersion, contractState, zswapChainState, ledgerParameters }`, all of one era |
 | `types` | `queryRawContractState` | removed; `queryContractState` serves the same bytes and the block's ledger parameters |
 | `types` | `rawContractStateObservable` | removed; use `contractStateObservable` |
-| `types` | `RawContractState`, `VersionedContractState`, `VersionedPublicStates`, `Ledger8ContractStateBytes`, `Ledger9ContractState`, `Ledger8PublicStates`, `Ledger9PublicStates` | removed; use `ContractStateRead`, `ContractStateAndParametersRead`, `PublicStatesRead` and `LedgerState` |
+| `types` | `RawContractState`, `VersionedContractState`, `VersionedPublicStates`, `Ledger8ContractStateBytes`, `Ledger9ContractState`, `Ledger8PublicStates`, `Ledger9PublicStates` | removed; use `ContractStateRead`, `ContractStateAndParametersRead`, `PublicStatesRead` and `SerializedState` |
 | `contracts` | `getPublicStates`: `VersionedPublicStates`; `getStates`, `ContractStates<PS>`: `VersionedPublicStates & { privateState }` | `PublicStatesRead`; `PublicStatesRead & { privateState }` |
 | `contracts` | `TransactionContext.getCurrentStates()`: `ContractStates<PS> \| PublicContractStates` | `PublicStatesRead \| undefined`: the running contract state and the scope's parameters and zswap chain state, as bytes. The running private state is `getLastUnsubmittedCallTxDataToTransact()?.[0].private.nextPrivateState` |
 | `contracts` | `getAnyEraContractState`, `AnyEraContractState`, `AnyEraContractStateReadSurface` | removed; read with `queryContractState` and decode with your own runtime |
@@ -1084,19 +1084,19 @@ A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
 | `types` | `VersionedFinalizedTxData`, discriminated by `version` | `FinalizedTxRead`, discriminated by `era`, like a handle and a state: narrow with `switch (record.era)` and read `LedgerTransaction.unwrap(record.tx, record.era)` |
 | `utils` | `requireLedger9`, `Ledger9Variant`, `UnrecognisedEraTagError` read `version` | they read `era`; `UnrecognisedEraTagError.received` is what `era` held |
 
-New in `types`: `LedgerState`, `LedgerStateKind`, `StateDecoder`,
+New in `types`: `SerializedState`, `StateKind`, `StateDecoder`,
 `StateDecoders`, `DecodedState`, `ContractStateRead`,
-`ContractStateAndParametersRead`, `PublicStatesRead`, `InvalidLedgerStateReason`.
+`ContractStateAndParametersRead`, `PublicStatesRead`, `InvalidSerializedStateReason`.
 New in `protocol` (`./version`): `LEDGER_STATE_TAGS`, `LEDGER_STATE_KINDS`,
-`LedgerStateKind`.
+`StateKind`.
 
 New codes:
 
 | Class | Code | Category | When |
 |---|---|---|---|
-| `InvalidLedgerStateError` | `MIDNIGHT_JS_PR_INVALID_LEDGER_STATE` | USAGE | `LedgerState.fromBytes` got bytes that do not start with the tag the ledger of `era` writes for `kind` (`tag-mismatch`), a value that is not a `Uint8Array` (`not-bytes`), or an unknown `kind` (`unknown-kind`); or the constructor was called without `fromBytes` (`not-from-bytes`) |
-| `LedgerStateDecoderMissingError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING` | USAGE | `deserialize` got no decoder for the state's `era` |
-| `LedgerStateDecodeFailedError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED` | INTEGRITY | the decoder for the state's `era` threw an error that is not a `MidnightJsError`: the bytes are corrupt or the decoder is for another kind; its error is the `cause` |
+| `InvalidSerializedStateError` | `MIDNIGHT_JS_PR_INVALID_LEDGER_STATE` | USAGE | `SerializedState.fromBytes` got bytes that do not start with the tag the ledger of `era` writes for `kind` (`tag-mismatch`), a value that is not a `Uint8Array` (`not-bytes`), or an unknown `kind` (`unknown-kind`); or the constructor was called without `fromBytes` (`not-from-bytes`) |
+| `SerializedStateDecoderMissingError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING` | USAGE | `deserialize` got no decoder for the state's `era` |
+| `SerializedStateDecodeFailedError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED` | INTEGRITY | the decoder for the state's `era` threw an error that is not a `MidnightJsError`: the bytes are corrupt or the decoder is for another kind; its error is the `cause` |
 | `PublicStatesEraMismatchError` (`contracts`) | `MIDNIGHT_JS_C_PUBLIC_STATES_ERA_MISMATCH` | INTEGRITY | the ledger parameters or the zswap chain state served to build a call are missing or of another era than the call (`expected`); raised on the v9 path and in the v8 pipeline |
 
 Reading a v8 state no longer loads the ledger 8 runtime.
@@ -1106,20 +1106,20 @@ initial states you pass to build a call are still decoded `ContractState`
 objects.
 
 If you implement `PublicDataProvider` yourself, build each state with
-`LedgerState.fromBytes(era, kind, bytes)`, taking `era` from the bytes'
+`SerializedState.fromBytes(era, kind, bytes)`, taking `era` from the bytes'
 own version tag (`ledgerVersionOfContractState` and
 `ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`).
-`LedgerState.isLedgerState(value)` tells a `LedgerState` of this copy of the
+`SerializedState.isSerializedState(value)` tells a `SerializedState` of this copy of the
 package from a look-alike object.
 
-`contracts` also accepts a `LedgerState` made by a second installed copy of
+`contracts` also accepts a `SerializedState` made by a second installed copy of
 `@midnight-ntwrk/midnight-js-types`: it rebuilds each state from its `era`,
-`kind` and `serialize()` with `LedgerState.fromBytes`, which checks the tag
+`kind` and `serialize()` with `SerializedState.fromBytes`, which checks the tag
 again. Bytes that do not carry the tag of the era they claim are refused with
-`InvalidLedgerStateError` (`tag-mismatch`).
+`InvalidSerializedStateError` (`tag-mismatch`).
 
 The v8 pipeline (keep-state and ledger 8 maintenance) refuses ledger parameters
-served in a shape that is not a `LedgerState` with `UnrecognisedEraTagError`,
+served in a shape that is not a `SerializedState` with `UnrecognisedEraTagError`,
 instead of taking them as absent. Parameters not served at all still give
 `LedgerParametersUnservedError`.
 

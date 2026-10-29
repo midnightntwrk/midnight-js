@@ -194,3 +194,14 @@ plain data still has to be turned into a handle of the dApp's runtime before `le
 
 **Check that the tag NAMES the version.** Rejected. The zswap chain state has one tag for two
 versions, and a later ledger may share a tag for another kind too.
+
+## Amendment — the class is renamed (2026-10-29)
+
+Issue #1568. The ledger packages export a different `LedgerState`, the whole ledger state, so a
+dApp that imports both saw two unrelated classes under one name. Before 5.0.0 final, `LedgerState`
+is `SerializedState`, `LedgerState.isLedgerState` is `SerializedState.isSerializedState`, and
+`LedgerStateKind` is `StateKind`. The errors are `InvalidSerializedStateError` (with
+`InvalidSerializedStateReason`), `SerializedStateDecoderMissingError` and
+`SerializedStateDecodeFailedError`; the shorter `StateDecodeFailedError` is already a `protocol`
+error. The error codes are unchanged. The decision is unchanged, and the sections above keep the
+names that were current when they were written.

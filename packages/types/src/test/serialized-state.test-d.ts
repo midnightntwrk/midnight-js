@@ -17,12 +17,12 @@ import type { ContractState as Ledger8ContractState } from '@midnight-ntwrk/midn
 import type { ContractState as Ledger9ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import { LedgerState, type StateDecoders } from '../ledger-state';
+import { SerializedState, type StateDecoders } from '../serialized-state';
 
-declare const anyEraState: LedgerState<'ContractState'>;
-declare const ledger9State: LedgerState<'ContractState', 'v9'>;
-declare const ledger8State: LedgerState<'ContractState', 'v8'>;
-declare const parameters: LedgerState<'LedgerParameters'>;
+declare const anyEraState: SerializedState<'ContractState'>;
+declare const ledger9State: SerializedState<'ContractState', 'v9'>;
+declare const ledger8State: SerializedState<'ContractState', 'v8'>;
+declare const parameters: SerializedState<'LedgerParameters'>;
 declare const ledger9Decoder: typeof Ledger9ContractState;
 declare const ledger8Decoder: typeof Ledger8ContractState;
 declare const parametersDecoder: typeof LedgerParameters;
@@ -30,18 +30,18 @@ declare const optionalDecoders: { readonly v9?: typeof Ledger9ContractState };
 declare const typedDecoders: StateDecoders;
 declare const bytes: Uint8Array;
 
-describe('LedgerState.fromBytes', () => {
+describe('SerializedState.fromBytes', () => {
   it('infers the era and the kind from its arguments', () => {
-    expectTypeOf(LedgerState.fromBytes('v9', 'ContractState', bytes)).toEqualTypeOf<LedgerState<'ContractState', 'v9'>>();
+    expectTypeOf(SerializedState.fromBytes('v9', 'ContractState', bytes)).toEqualTypeOf<SerializedState<'ContractState', 'v9'>>();
   });
 
   it('cannot be bypassed with new', () => {
     // @ts-expect-error the constructor is private
-    expectTypeOf(new LedgerState(Symbol('LedgerState.fromBytes'), 'v9', 'ContractState', bytes)).not.toBeAny();
+    expectTypeOf(new SerializedState(Symbol('SerializedState.fromBytes'), 'v9', 'ContractState', bytes)).not.toBeAny();
   });
 });
 
-describe('LedgerState.deserialize', () => {
+describe('SerializedState.deserialize', () => {
   it('returns what the decoder of the value era returns', () => {
     expectTypeOf(ledger9State.deserialize({ v9: ledger9Decoder })).toEqualTypeOf<Ledger9ContractState>();
     expectTypeOf(ledger8State.deserialize({ v8: ledger8Decoder })).toEqualTypeOf<Ledger8ContractState>();
@@ -76,12 +76,12 @@ describe('LedgerState.deserialize', () => {
   });
 
   it('lets a state of one era stand where a state of any era is expected', () => {
-    expectTypeOf(ledger9State).toExtend<LedgerState<'ContractState'>>();
-    expectTypeOf(ledger8State).toExtend<LedgerState<'ContractState'>>();
+    expectTypeOf(ledger9State).toExtend<SerializedState<'ContractState'>>();
+    expectTypeOf(ledger8State).toExtend<SerializedState<'ContractState'>>();
   });
 
   it('keeps the kinds apart', () => {
-    expectTypeOf(parameters).not.toExtend<LedgerState<'ContractState'>>();
+    expectTypeOf(parameters).not.toExtend<SerializedState<'ContractState'>>();
     expectTypeOf(parameters.deserialize({ v9: parametersDecoder })).toEqualTypeOf<LedgerParameters>();
   });
 });

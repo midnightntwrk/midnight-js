@@ -147,7 +147,7 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 ```
 
 `getStates` and `getPublicStates` return the public states as bytes: each of
-`contractState`, `zswapChainState` and `ledgerParameters` is a `LedgerState`
+`contractState`, `zswapChainState` and `ledgerParameters` is a `SerializedState`
 with the `era` of the ledger that wrote it. Decode one with your own
 runtime — the one your contract was compiled against — so your contract's
 `ledger()` accepts the result:
@@ -156,7 +156,7 @@ runtime — the one your contract was compiled against — so your contract's
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { ledger } from './managed/counter/contract/index.js';
 
-// Throws LedgerStateDecoderMissingError if the state was written by the v8 ledger.
+// Throws SerializedStateDecoderMissingError if the state was written by the v8 ledger.
 const counter = ledger(publicStates.contractState.deserialize({ v9: ContractState }).data);
 ```
 

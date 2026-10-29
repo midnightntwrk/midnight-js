@@ -85,7 +85,7 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### On-chain state is bytes, decoded by your own runtime (#1550)
 
-Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `LedgerState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
+Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `SerializedState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 

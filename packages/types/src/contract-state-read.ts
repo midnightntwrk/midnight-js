@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerState } from './ledger-state';
+import type { SerializedState } from './serialized-state';
 
 /**
  * A contract state read from the network, as bytes.
@@ -38,7 +38,7 @@ export interface ContractStateRead {
    */
   readonly protocolVersion: number;
   /** The contract state. */
-  readonly contractState: LedgerState<'ContractState'>;
+  readonly contractState: SerializedState<'ContractState'>;
 }
 
 /**
@@ -51,7 +51,7 @@ export interface ContractStateAndParametersRead extends ContractStateRead {
    * block is looked up separately from the state, so near the hard fork it can be a block other than
    * the one the state was read at.
    */
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
 }
 
 /**
@@ -60,5 +60,5 @@ export interface ContractStateAndParametersRead extends ContractStateRead {
  */
 export interface PublicStatesRead extends ContractStateAndParametersRead {
   /** The zswap chain state of the contract, resolved at the block. */
-  readonly zswapChainState: LedgerState<'ZswapChainState'>;
+  readonly zswapChainState: SerializedState<'ZswapChainState'>;
 }

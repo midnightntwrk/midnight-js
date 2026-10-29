@@ -18,13 +18,12 @@ import {
   LEDGER_STATE_KINDS,
   LEDGER_STATE_TAGS,
   LEDGER_VERSIONS,
-  type LedgerStateKind,
-  type LedgerVersion
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+  type LedgerVersion,
+  type StateKind} from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { InvalidLedgerStateError, LedgerStateDecodeFailedError, LedgerStateDecoderMissingError } from './errors';
+import { InvalidSerializedStateError, SerializedStateDecodeFailedError, SerializedStateDecoderMissingError } from './errors';
 
-export type { LedgerStateKind };
+export type { StateKind };
 
 /**
  * Anything that turns bytes into an object, such as the `ContractState` class of a runtime.
@@ -45,7 +44,7 @@ type DecodedByEra<D extends StateDecoders, E extends LedgerVersion> = E extends 
   : never;
 
 /**
- * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`.
+ * What {@link SerializedState.deserialize} returns for decoders `D` and a value of era `E`.
  */
 export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = DecodedByEra<D, E>;
 
@@ -63,7 +62,7 @@ const startsWithTag = (bytes: Uint8Array, tag: string): boolean => {
 const isDecoderMap = (decoders: unknown): decoders is StateDecoders =>
   typeof decoders === 'object' && decoders !== null;
 
-const FROM_BYTES: unique symbol = Symbol('LedgerState.fromBytes');
+const FROM_BYTES: unique symbol = Symbol('SerializedState.fromBytes');
 
 /**
  * A value the ledger wrote — a contract state, ledger parameters or a zswap chain state — carried
@@ -81,14 +80,14 @@ const FROM_BYTES: unique symbol = Symbol('LedgerState.fromBytes');
  * }
  * ```
  *
- * A `LedgerState` keeps its bytes in a private field, so `structuredClone`, `postMessage` and JSON
+ * A `SerializedState` keeps its bytes in a private field, so `structuredClone`, `postMessage` and JSON
  * drop them. To send one elsewhere, send `serialize()` and `era`, and rebuild it with
- * {@link LedgerState.fromBytes}.
+ * {@link SerializedState.fromBytes}.
  *
  * @typeParam K The kind of value.
  * @typeParam E The era of the ledger that wrote it.
  */
-export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E extends LedgerVersion = LedgerVersion> {
+export class SerializedState<K extends StateKind = StateKind, out E extends LedgerVersion = LedgerVersion> {
   readonly #bytes: Uint8Array;
 
   private constructor(
@@ -98,7 +97,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
     bytes: Uint8Array
   ) {
     if (fromBytes !== FROM_BYTES) {
-      throw new InvalidLedgerStateError(undefined, undefined, 'not-from-bytes');
+      throw new InvalidSerializedStateError(undefined, undefined, 'not-from-bytes');
     }
     this.#bytes = bytes;
     Object.freeze(this);
@@ -108,34 +107,34 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
    * Wraps bytes the ledger of `era` wrote for a value of `kind`.
    *
    * @throws UnknownLedgerVersionError when `era` is not a supported ledger era.
-   * @throws InvalidLedgerStateError when `kind` is unknown, `bytes` is not a `Uint8Array`, or the
+   * @throws InvalidSerializedStateError when `kind` is unknown, `bytes` is not a `Uint8Array`, or the
    * bytes do not start with the tag that ledger writes for that kind.
    */
-  static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(
+  static fromBytes<E extends LedgerVersion, K extends StateKind>(
     era: E,
     kind: K,
     bytes: Uint8Array
-  ): LedgerState<K, E> {
+  ): SerializedState<K, E> {
     if (!LEDGER_VERSIONS.includes(era)) {
       throw new UnknownLedgerVersionError(String(era));
     }
     if (!LEDGER_STATE_KINDS.includes(kind)) {
-      throw new InvalidLedgerStateError(String(kind), era, 'unknown-kind');
+      throw new InvalidSerializedStateError(String(kind), era, 'unknown-kind');
     }
     if (!(bytes instanceof Uint8Array)) {
-      throw new InvalidLedgerStateError(kind, era, 'not-bytes');
+      throw new InvalidSerializedStateError(kind, era, 'not-bytes');
     }
     if (!startsWithTag(bytes, LEDGER_STATE_TAGS[kind][era])) {
-      throw new InvalidLedgerStateError(kind, era, 'tag-mismatch');
+      throw new InvalidSerializedStateError(kind, era, 'tag-mismatch');
     }
-    return new LedgerState(FROM_BYTES, era, kind, new Uint8Array(bytes));
+    return new SerializedState(FROM_BYTES, era, kind, new Uint8Array(bytes));
   }
 
   /**
-   * Whether `value` was made by {@link LedgerState.fromBytes} of this copy of the package. A
+   * Whether `value` was made by {@link SerializedState.fromBytes} of this copy of the package. A
    * look-alike object, or one made by a second installed copy of the package, gives `false`.
    */
-  static isLedgerState(value: unknown): value is LedgerState {
+  static isSerializedState(value: unknown): value is SerializedState {
     return typeof value === 'object' && value !== null && #bytes in value;
   }
 
@@ -151,9 +150,9 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
    *
    * @param decoders One decoder per ledger era, from the caller's own runtime, e.g.
    * `{ v9: ContractState }`. Decoders with none for any era this value can be do not compile.
-   * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link era}, which only a
+   * @throws SerializedStateDecoderMissingError when `decoders` has none for {@link era}, which only a
    * value whose era is not known when compiling can reach.
-   * @throws LedgerStateDecodeFailedError when the decoder throws an error that is not a
+   * @throws SerializedStateDecodeFailedError when the decoder throws an error that is not a
    * `MidnightJsError`, for example because it decodes another kind or the bytes after the tag are
    * corrupt. A `MidnightJsError` from the decoder is rethrown unchanged.
    */
@@ -161,7 +160,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
     const decoder: StateDecoder | undefined =
       isDecoderMap(decoders) && Object.hasOwn(decoders, this.era) ? decoders[this.era] : undefined;
     if (typeof decoder?.deserialize !== 'function') {
-      throw new LedgerStateDecoderMissingError(this.kind, this.era);
+      throw new SerializedStateDecoderMissingError(this.kind, this.era);
     }
     try {
       return decoder.deserialize(this.serialize()) as DecodedState<D, E>;
@@ -169,7 +168,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
       if (cause instanceof MidnightJsError) {
         throw cause;
       }
-      throw new LedgerStateDecodeFailedError(this.kind, this.era, { cause });
+      throw new SerializedStateDecodeFailedError(this.kind, this.era, { cause });
     }
   }
 }
