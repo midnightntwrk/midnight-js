@@ -34,13 +34,14 @@ export class PreviewTestEnvironment extends RemoteTestEnvironment {
    * - proofServer: URL for the proof generation server
    */
   getEnvironmentConfiguration(): EnvironmentConfiguration {
+    const preview = networks.preview();
     return {
       walletNetworkId: NetworkId.NetworkId.Preview,
-      networkId: networks.preview.networkId,
-      indexer: networks.preview.indexer.queryURL,
-      indexerWS: networks.preview.indexer.subscriptionURL,
-      node: networks.preview.nodeURL,
-      nodeWS: networks.preview.nodeWsURL,
+      networkId: preview.networkId,
+      indexer: preview.indexer.queryURL,
+      indexerWS: preview.indexer.subscriptionURL,
+      node: preview.nodeURL,
+      nodeWS: preview.nodeWsURL,
       faucet: 'https://faucet.preview.midnight.network/api/drips',
       proofServer: this.proofServerContainer?.getUrl()
     };

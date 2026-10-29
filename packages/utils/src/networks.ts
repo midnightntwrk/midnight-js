@@ -36,9 +36,11 @@ const blockfrostNetwork = (
   projectId: string,
   urls: { queryURL: string; subscriptionURL: string; nodeURL: string; nodeWsURL: string }
 ): MidnightNetwork => {
-  if (projectId.trim() === '') {
+  const trimmed = projectId.trim();
+  if (trimmed === '' || trimmed !== projectId) {
+    const got = trimmed === '' ? 'an empty string' : 'a token with whitespace around it';
     throw new InvalidArgumentError(
-      `The ${networkId} endpoints need a Blockfrost project token for a Midnight ${networkId} project, got an empty string.`
+      `The ${networkId} endpoints need a Blockfrost project token for a Midnight ${networkId} project, got ${got}.`
     );
   }
   return {
@@ -53,7 +55,7 @@ const blockfrostNetwork = (
 };
 
 /**
- * Public endpoints of the Midnight networks.
+ * Public endpoints of the Midnight networks. Call the network to get its {@link MidnightNetwork}.
  *
  * `preview` is hosted by Midnight. `preprod` and `mainnet` are served by Blockfrost, so they take
  * a Blockfrost project token for that network and put it on every URL as `?project_id=<token>`.
@@ -65,12 +67,12 @@ const blockfrostNetwork = (
  *
  * @example
  * ```typescript
- * const preview = networks.preview;
+ * const preview = networks.preview();
  * const mainnet = networks.mainnet(blockfrostMainnetProjectId);
  * ```
  */
 export const networks = {
-  preview: {
+  preview: (): MidnightNetwork => ({
     networkId: 'preview',
     indexer: {
       queryURL: 'https://indexer.preview.midnight.network/api/v4/graphql',
@@ -78,9 +80,9 @@ export const networks = {
     },
     nodeURL: 'https://rpc.preview.midnight.network',
     nodeWsURL: 'wss://rpc.preview.midnight.network'
-  },
+  }),
   /**
-   * @throws InvalidArgumentError If `blockfrostProjectId` is empty.
+   * @throws InvalidArgumentError If `blockfrostProjectId` is empty or has whitespace around it.
    */
   preprod: (blockfrostProjectId: string): MidnightNetwork =>
     blockfrostNetwork('preprod', blockfrostProjectId, {
@@ -90,7 +92,7 @@ export const networks = {
       nodeWsURL: 'wss://rpc.midnight-preprod.blockfrost.io'
     }),
   /**
-   * @throws InvalidArgumentError If `blockfrostProjectId` is empty.
+   * @throws InvalidArgumentError If `blockfrostProjectId` is empty or has whitespace around it.
    */
   mainnet: (blockfrostProjectId: string): MidnightNetwork =>
     blockfrostNetwork('mainnet', blockfrostProjectId, {
@@ -99,8 +101,4 @@ export const networks = {
       nodeURL: 'https://rpc.midnight-mainnet.blockfrost.io',
       nodeWsURL: 'wss://rpc.midnight-mainnet.blockfrost.io'
     })
-} as const satisfies {
-  preview: MidnightNetwork;
-  preprod: (blockfrostProjectId: string) => MidnightNetwork;
-  mainnet: (blockfrostProjectId: string) => MidnightNetwork;
-};
+} as const;

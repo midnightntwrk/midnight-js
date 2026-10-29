@@ -20,22 +20,19 @@ import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
 /** The part of the DApp Connector's `ConnectedAPI` that {@link dappConnectorNetwork} calls. */
 export type DAppConnectorNetworkAPI = Pick<WalletConnectedAPI, 'getConfiguration'>;
 
-const HTTP_AND_WS_SCHEMES = [
-  ['http://', 'ws://'],
-  ['https://', 'wss://']
-] as const;
+const walletURL = (field: string, value: string, schemes: readonly string[]): URL => {
+  const url = value.trim() === value && URL.canParse(value) ? new URL(value) : undefined;
+  if (url === undefined || !schemes.includes(url.protocol) || url.hostname === '') {
+    throw new InvalidArgumentError(`The wallet's ${field} must be a ${schemes.join(' or ')} URL with a host.`);
+  }
+  return url;
+};
 
 const nodeURLs = (substrateNodeUri: string): Pick<MidnightNetwork, 'nodeURL' | 'nodeWsURL'> => {
-  const [, scheme = '', rest = ''] = /^([a-z]+:\/\/)(.*)$/i.exec(substrateNodeUri) ?? [];
-  const lowerScheme = scheme.toLowerCase();
-  for (const [http, ws] of HTTP_AND_WS_SCHEMES) {
-    if (lowerScheme === http || lowerScheme === ws) {
-      return { nodeURL: http + rest, nodeWsURL: ws + rest };
-    }
-  }
-  throw new InvalidArgumentError(
-    `The wallet's substrateNodeUri must start with http://, https://, ws:// or wss://, got ${JSON.stringify(substrateNodeUri)}.`
-  );
+  const { protocol } = walletURL('substrateNodeUri', substrateNodeUri, ['http:', 'https:', 'ws:', 'wss:']);
+  const rest = substrateNodeUri.slice(protocol.length);
+  const secure = protocol === 'https:' || protocol === 'wss:';
+  return { nodeURL: `${secure ? 'https:' : 'http:'}${rest}`, nodeWsURL: `${secure ? 'wss:' : 'ws:'}${rest}` };
 };
 
 /**
@@ -47,7 +44,8 @@ const nodeURLs = (substrateNodeUri: string): Pick<MidnightNetwork, 'nodeURL' | '
  * other node URL is the same URI with the matching scheme.
  *
  * @param api - The DApp Connector's `ConnectedAPI`, or any object with the method in {@link DAppConnectorNetworkAPI}.
- * @throws InvalidArgumentError If the wallet's `substrateNodeUri` is not an http, https, ws or wss URL.
+ * @throws InvalidArgumentError If the wallet's `networkId` is empty, or one of its URIs is not a URL of the
+ * expected scheme with a host. The message names the field, never its value, which can hold a token.
  *
  * @example
  * ```typescript
@@ -57,6 +55,11 @@ const nodeURLs = (substrateNodeUri: string): Pick<MidnightNetwork, 'nodeURL' | '
  */
 export const dappConnectorNetwork = async (api: DAppConnectorNetworkAPI): Promise<MidnightNetwork> => {
   const { networkId, indexerUri, indexerWsUri, substrateNodeUri } = await api.getConfiguration();
+  if (networkId === '' || networkId.trim() !== networkId) {
+    throw new InvalidArgumentError("The wallet's networkId must be a non-empty string without whitespace around it.");
+  }
+  walletURL('indexerUri', indexerUri, ['http:', 'https:']);
+  walletURL('indexerWsUri', indexerWsUri, ['ws:', 'wss:']);
   return {
     networkId,
     indexer: { queryURL: indexerUri, subscriptionURL: indexerWsUri },

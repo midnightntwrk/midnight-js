@@ -30,6 +30,12 @@ const walletWith = (overrides: Partial<Configuration>) => ({
     })
 });
 
+const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => error
+  );
+
 describe('dappConnectorNetwork', () => {
   it('builds the network from the endpoints the wallet uses', async () => {
     const network = await dappConnectorNetwork(walletWith({}));
@@ -50,6 +56,7 @@ describe('dappConnectorNetwork', () => {
     ['wss://rpc.example.com', 'https://rpc.example.com', 'wss://rpc.example.com'],
     ['http://localhost:9944', 'http://localhost:9944', 'ws://localhost:9944'],
     ['ws://localhost:9944', 'http://localhost:9944', 'ws://localhost:9944'],
+    ['WSS://RPC.Example.com:443/Path', 'https://RPC.Example.com:443/Path', 'wss://RPC.Example.com:443/Path'],
     [
       'https://rpc.midnight-mainnet.blockfrost.io?project_id=token',
       'https://rpc.midnight-mainnet.blockfrost.io?project_id=token',
@@ -61,13 +68,21 @@ describe('dappConnectorNetwork', () => {
     expect({ nodeURL: network.nodeURL, nodeWsURL: network.nodeWsURL }).toEqual({ nodeURL, nodeWsURL });
   });
 
-  it.each(['ftp://rpc.example.com', 'rpc.example.com', ''])(
-    'refuses a substrate URI that is not http, https, ws or wss (%j)',
-    async (substrateNodeUri) => {
-      const result = dappConnectorNetwork(walletWith({ substrateNodeUri }));
+  it.each([
+    ['networkId', { networkId: '' }],
+    ['networkId', { networkId: ' preview' }],
+    ['indexerUri', { indexerUri: '' }],
+    ['indexerUri', { indexerUri: 'wss://indexer.example.com/api?project_id=secretToken' }],
+    ['indexerWsUri', { indexerWsUri: 'https://indexer.example.com/ws?project_id=secretToken' }],
+    ['substrateNodeUri', { substrateNodeUri: 'ftp://rpc.example.com?project_id=secretToken' }],
+    ['substrateNodeUri', { substrateNodeUri: 'rpc.example.com' }],
+    ['substrateNodeUri', { substrateNodeUri: 'https://' }],
+    ['substrateNodeUri', { substrateNodeUri: ' https://rpc.example.com' }]
+  ] as const)('refuses a wallet %s of %j, naming the field but not the value', async (field, overrides) => {
+    const error = await rejectionOf(dappConnectorNetwork(walletWith(overrides)));
 
-      await expect(result).rejects.toThrow(InvalidArgumentError);
-      await expect(dappConnectorNetwork(walletWith({ substrateNodeUri }))).rejects.toThrow(/substrateNodeUri/);
-    }
-  );
+    expect(error).toBeInstanceOf(InvalidArgumentError);
+    expect(error).toHaveProperty('message', expect.stringContaining(`wallet's ${field}`));
+    expect(error).toHaveProperty('message', expect.not.stringContaining('secretToken'));
+  });
 });

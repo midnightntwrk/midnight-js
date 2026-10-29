@@ -88,25 +88,40 @@ export type ApolloHandle = {
   dispose(): Promise<void>;
 };
 
-const URL_WITH_QUERY = /\b((?:https?|wss?):\/\/[^\s?#"'<>]+)\?[^\s"'<>]*/g;
+const URL_WITH_QUERY = /\b((?:https?|wss?):\/\/[^\s?#"'<>]+)\?[^\s"'<>]*/gi;
 
 const redactUrlQueries = (text: string): string => text.replace(URL_WITH_QUERY, '$1?<redacted>');
 
+const redactInPlace = (error: Error, key: 'message' | 'stack'): void => {
+  const text = error[key];
+  const redacted = text === undefined ? undefined : redactUrlQueries(text);
+  if (redacted !== text) {
+    Object.defineProperty(error, key, { value: redacted, writable: true, configurable: true });
+  }
+};
+
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
+const withoutRequestURL = async (response: Response): Promise<Response> =>
+  new Response(NULL_BODY_STATUSES.has(response.status) ? null : await response.text(), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+
 /**
- * Wraps `fetch` so the error of a failed request does not show a URL query string, which can hold
- * an API token such as a Blockfrost `project_id`. The same error object is rethrown.
+ * Wraps `fetch` so URL query strings, which can hold an API token such as a Blockfrost `project_id`, stay out of
+ * the message and stack of a failed request's error, which is rethrown, and out of the response, which loses its URL.
  */
 export const withRedactedUrlQueries =
   (fetchImpl: typeof fetch): typeof fetch =>
   async (input, init) => {
     try {
-      return await fetchImpl(input, init);
+      return await withoutRequestURL(await fetchImpl(input, init));
     } catch (error) {
       if (error instanceof Error) {
-        error.message = redactUrlQueries(error.message);
-        if (error.stack !== undefined) {
-          error.stack = redactUrlQueries(error.stack);
-        }
+        redactInPlace(error, 'message');
+        redactInPlace(error, 'stack');
       }
       throw error;
     }

@@ -372,7 +372,7 @@ const provingProvider = await dappConnectorProvingProvider(
 ### DApp Connector Network
 
 A browser dApp with a DApp Connector wallet takes its network id and endpoints from the wallet, not from
-`networks`: the user picks the network and the services in the wallet, and no API token ends up in the dApp.
+`networks`: the user picks the network and the services in the wallet, and the dApp needs no API token of its own.
 
 ```typescript
 import { dappConnectorNetwork } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
@@ -383,7 +383,8 @@ const publicDataProvider = indexerPublicDataProvider(network.indexer);
 ```
 
 - The wallet reports one node URI; `nodeURL` and `nodeWsURL` are that URI with the http and ws scheme.
-- `InvalidArgumentError`: the wallet's `substrateNodeUri` is not an http, https, ws or wss URL.
+- `InvalidArgumentError`: the wallet's `networkId` is empty, or one of its URIs is not a URL of the expected
+  scheme with a host. The message names the field, never its value.
 
 ### DApp Connector Balancing and Submission
 
@@ -530,7 +531,7 @@ Connector wallet uses `dappConnectorNetwork` instead (see DApp Connector Network
 import { networks } from '@midnight-ntwrk/midnight-js-utils';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-const net = networks.preview; // or networks.preprod(projectId), networks.mainnet(projectId)
+const net = networks.preview(); // or networks.preprod(projectId), networks.mainnet(projectId)
 const publicDataProvider = indexerPublicDataProvider(net.indexer);
 ```
 
@@ -570,7 +571,7 @@ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client
 import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { createMidnightProviders, networks } from '@midnight-ntwrk/midnight-js-utils';
 
-const net = networks.preview;
+const net = networks.preview();
 const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
 // Checks the set and returns it unchanged: a missing provider or a bad config fails here,

@@ -20,7 +20,7 @@ import { networks } from '../networks';
 
 describe('networks', () => {
   it('defines the Midnight-hosted preview endpoints', () => {
-    expect(networks.preview).toEqual({
+    expect(networks.preview()).toEqual({
       networkId: 'preview',
       indexer: {
         queryURL: 'https://indexer.preview.midnight.network/api/v4/graphql',
@@ -62,12 +62,16 @@ describe('networks', () => {
   });
 
   it.each([
-    ['preprod', ''],
-    ['preprod', '   '],
-    ['mainnet', ''],
-    ['mainnet', '   ']
-  ] as const)('refuses a %s network without a project token (%j)', (name, projectId) => {
-    expect(() => networks[name](projectId)).toThrow(InvalidArgumentError);
-    expect(() => networks[name](projectId)).toThrow(/Blockfrost project token/);
+    ['preprod', '', /got an empty string/],
+    ['preprod', '   ', /got an empty string/],
+    ['mainnet', '', /got an empty string/],
+    ['mainnet', ' secretToken', /got a token with whitespace around it/],
+    ['mainnet', 'secretToken\n', /got a token with whitespace around it/]
+  ] as const)('refuses a %s project token %j without showing it', (name, projectId, reason) => {
+    const act = () => networks[name](projectId);
+
+    expect(act).toThrow(InvalidArgumentError);
+    expect(act).toThrow(reason);
+    expect(act).not.toThrow(/secretToken/);
   });
 });
