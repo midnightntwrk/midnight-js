@@ -1264,15 +1264,14 @@ do not change.
 
 ```ts
 // Before
-import { type Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+import { Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
 const handle = (data: Ledger8.FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
+const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
 
-// After
-import { type Ledger8FinalizedCallTxData } from '@midnight-ntwrk/midnight-js-contracts';
+// After: the type is flat; the error class is unchanged, so keep the `Ledger8` value import
+import { Ledger8, type Ledger8FinalizedCallTxData } from '@midnight-ntwrk/midnight-js-contracts';
 const handle = (data: Ledger8FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
-
-// No change
-if (error instanceof Ledger8.CallTxFailedError) { /* ... */ }
+const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
 ```
 
 A package that emits declarations can now export a value inferred from a ledger 8

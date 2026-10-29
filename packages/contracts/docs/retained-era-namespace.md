@@ -31,9 +31,16 @@ try {
 
 The flat unprefixed name (`FoundContract<C>`) picks between `Ledger8FoundContract`
 and `Ledger9FoundContract` by contract type (#1536). Not every `Ledger8*` type has
-a ledger 9 twin: `Ledger8Circuit`, `Ledger8Witness`, `Ledger8Contract` and
-`Ledger8CircuitContext` have none on this package's surface, because the current
-era's equivalents live under `Contract.*` in `@midnight-ntwrk/compact-js`.
+a `Ledger9*` twin on this package's surface:
+
+- `Ledger8Circuit`, `Ledger8CircuitContext`, `Ledger8CircuitId`,
+  `Ledger8CircuitParameters`, `Ledger8CircuitResult`, `Ledger8CircuitReturnType`,
+  `Ledger8ConstructorParameters`, `Ledger8InitialStateResult`,
+  `Ledger8PrivateState` and `Ledger8Witness` describe the contract itself. The
+  current era's equivalents live under `Contract.*` in `@midnight-ntwrk/compact-js`.
+- `Ledger8CallTxTarget`, `Ledger8ContractCall` and `Ledger8ContractCallPublic`
+  describe the retained call pipeline, which has no ledger 9 counterpart.
+- `Ledger8DeployTxData` pairs with `Ledger9FinalizedDeployTxData`.
 
 ## Why the types are flat
 

@@ -22,7 +22,51 @@ import { describe, expect, it } from 'vitest';
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 const CONSUMER = resolve(__dirname, 'ledger8-declaration-emit-consumer.ts');
 
+const LEDGER8_TYPES = [
+  'Ledger8CallResultPrivate',
+  'Ledger8CallResultPublic',
+  'Ledger8CallTxOptions',
+  'Ledger8CallTxOptionsBase',
+  'Ledger8CallTxOptionsWithPrivateStateId',
+  'Ledger8CallTxTarget',
+  'Ledger8Circuit',
+  'Ledger8CircuitCallTxInterface',
+  'Ledger8CircuitContext',
+  'Ledger8CircuitId',
+  'Ledger8CircuitMaintenanceTxInterface',
+  'Ledger8CircuitMaintenanceTxInterfaces',
+  'Ledger8CircuitParameters',
+  'Ledger8CircuitResult',
+  'Ledger8CircuitReturnType',
+  'Ledger8ConstructorParameters',
+  'Ledger8Contract',
+  'Ledger8ContractCall',
+  'Ledger8ContractCallPublic',
+  'Ledger8ContractMaintenanceTxInterface',
+  'Ledger8ContractProviders',
+  'Ledger8DeployContractOptions',
+  'Ledger8DeployContractOptionsBase',
+  'Ledger8DeployContractOptionsWithPrivateState',
+  'Ledger8DeployedContract',
+  'Ledger8DeployTxData',
+  'Ledger8FinalizedCallTxData',
+  'Ledger8FinalizedCallTxPublicData',
+  'Ledger8FinalizedMaintenanceTxData',
+  'Ledger8FindDeployedContractOptions',
+  'Ledger8FoundContract',
+  'Ledger8FoundDeployTxData',
+  'Ledger8FoundDeployTxPublicData',
+  'Ledger8InitialStateResult',
+  'Ledger8PrivateState',
+  'Ledger8SubmittedCallTx',
+  'Ledger8UnsubmittedCallTxData',
+  'Ledger8Witness'
+];
+
 const CONSUMER_SOURCE = `
+import type {
+  ${LEDGER8_TYPES.join(',\n  ')}
+} from '@midnight-ntwrk/midnight-js-contracts';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
@@ -54,6 +98,12 @@ export const contractMaintenance = createContractMaintenanceTxInterface<C>(arg()
 export const inserted = submitInsertVerifierKeyTx<C>(arg(), arg(), arg(), arg(), arg());
 export const removed = submitRemoveVerifierKeyTx<C>(arg(), arg(), arg(), arg());
 export const replaceAuthority = submitReplaceAuthorityTx<C>(arg(), arg(), arg());
+
+export const deployTxData = arg<Awaited<typeof deployed>>().deployTxData;
+export const foundDeployTxData = arg<Awaited<typeof found>>().deployTxData;
+export const callPrivate = arg<Awaited<typeof called>>().private;
+export const calls = arg<Awaited<typeof called>>().calls;
+export const callTxData = arg<Awaited<typeof submitted>>().callTxData;
 `;
 
 const compilerOptions: ts.CompilerOptions = {
@@ -96,9 +146,10 @@ const declarationEmitDiagnostics = (): string[] => {
 
 describe('a dApp that emits declarations', () => {
   /**
-   * @given a consumer that exports the inferred result of every ledger 8 entry point
+   * @given a consumer that imports every flat ledger 8 type, and exports the inferred result of every
+   *        ledger 8 entry point and the members those results nest
    * @when it is compiled against the built package with `declaration: true`
-   * @then the compiler can name every type, so there is no TS4023
+   * @then every type is published and the compiler can name it, so there is no TS2305 and no TS4023
    */
   it('can export a value inferred from each ledger 8 entry point', () => {
     expect(declarationEmitDiagnostics()).toEqual([]);
