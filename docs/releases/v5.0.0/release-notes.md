@@ -97,7 +97,7 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 
 ### A name without a ledger prefix is valid for every era (#1566)
 
-`Ledger8*` and `Ledger9*` names are bound to one ledger. A flat name with a contract picks the era from it; without one it is the union of every era: `FinalizedCallTxData`, `SubmittedCallTx`, `FinalizedMaintenanceTxData` and `SmartContract`. `TxFailedError` is now the base both eras' failure classes extend, so the ledger 9 classes are renamed: `CallTxFailedError` → `Ledger9CallTxFailedError`, `DeployTxFailedError` → `Ledger9DeployTxFailedError`, and so on. See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
+`Ledger8*` and `Ledger9*` names are bound to one ledger. A flat name with a contract picks the era from it; without one it is the union of every era: `FinalizedMaintenanceTxData` and `SmartContract`. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`. `TxFailedError` is now the base both eras' failure classes extend, so the ledger 9 classes are renamed: `CallTxFailedError` → `Ledger9CallTxFailedError`, `DeployTxFailedError` → `Ledger9DeployTxFailedError`, and so on. See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
 
 ## New Features
 

@@ -226,16 +226,17 @@ const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
 ) => data.public;
 ```
 
-A flat name with no contract is the union of every era. Declare a parameter
-that accepts either era with it, and narrow it on `era` or with `isLedger8Result`:
+To accept a call of any contract in either era, use `AnyFinalizedCallTxData`
+or `AnySubmittedCallTx`. Their `result` and `nextPrivateState` are `unknown`;
+narrow on `era` or with `isLedger8Result`:
 
 ```typescript
-const onCall = (result: FinalizedCallTxData) =>
+const onCall = (result: AnyFinalizedCallTxData) =>
   isLedger8Result(result) ? result.public.txId : result.public.logEvents;
 ```
 
-`FinalizedMaintenanceTxData` and `SmartContract` work the same way. For a
-handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
+A flat name with no contract parameter is the union of every era:
+`FinalizedMaintenanceTxData`, `SmartContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
 
 ## Exports
 

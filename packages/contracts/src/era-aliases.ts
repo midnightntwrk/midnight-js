@@ -90,11 +90,19 @@ type WithOpaqueCircuitValues<T extends { readonly private: object }> = Omit<T, '
   };
 };
 
-type FinalizedCallTxDataOfEitherEra =
+/**
+ * A finalized circuit call of any contract, in either era. Its `result` and `nextPrivateState` are
+ * `unknown`. Narrow it with `isLedger8Result`; name the contract to get precise types back.
+ */
+export type AnyFinalizedCallTxData =
   | WithOpaqueCircuitValues<Ledger9FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>>
   | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 
-type SubmittedCallTxOfEitherEra =
+/**
+ * A submitted, not yet finalized circuit call of any contract, in either era. Its `result` and
+ * `nextPrivateState` are `unknown`. Narrow it with `isLedger8Result`.
+ */
+export type AnySubmittedCallTx =
   | (Omit<Ledger9SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>, 'callTxData'> & {
       readonly callTxData: WithOpaqueCircuitValues<
         Ledger9SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>['callTxData']
@@ -102,8 +110,7 @@ type SubmittedCallTxOfEitherEra =
     })
   | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 
-// Every flat name below picks the variant of the era that compiled `C`. Without a contract it is
-// the union of every era: narrow it with `isLedger8Result`.
+// Every flat name below picks the variant of the era that compiled `C`.
 
 /** The contract found at an address. Generic code names an era: `Ledger9FoundContract<C>`. */
 export type FoundContract<C extends SmartContract> = C extends Ledger8Contract
@@ -121,31 +128,23 @@ export type DeployedContract<C extends SmartContract> = C extends Ledger8Contrac
 
 /**
  * A finalized circuit call. Generic code names an era: `Ledger9FinalizedCallTxData<C, K>`.
- * Without a contract, a call of either era, whose `result` and `nextPrivateState` are `unknown`.
+ * A call of any contract, in either era, is {@link AnyFinalizedCallTxData}.
  */
-export type FinalizedCallTxData<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>> = [
-  C
-] extends [never]
-  ? FinalizedCallTxDataOfEitherEra
-  : C extends Ledger8Contract
-    ? Ledger8FinalizedCallTxData<C, K & Ledger8CircuitId<C>>
-    : C extends Ledger9Contract
-      ? Ledger9FinalizedCallTxData<C, K & Contract.ProvableCircuitId<C>>
-      : never;
+export type FinalizedCallTxData<C extends SmartContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
+  ? Ledger8FinalizedCallTxData<C, K & Ledger8CircuitId<C>>
+  : C extends Ledger9Contract
+    ? Ledger9FinalizedCallTxData<C, K & Contract.ProvableCircuitId<C>>
+    : never;
 
 /**
  * A submitted, not yet finalized circuit call. Generic code names an era: `Ledger9SubmittedCallTx<C, K>`.
- * Without a contract, a submission of either era, whose `result` and `nextPrivateState` are `unknown`.
+ * A submission of any contract, in either era, is {@link AnySubmittedCallTx}.
  */
-export type SubmittedCallTx<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>> = [
-  C
-] extends [never]
-  ? SubmittedCallTxOfEitherEra
-  : C extends Ledger8Contract
-    ? Ledger8SubmittedCallTx<C, K & Ledger8CircuitId<C>>
-    : C extends Ledger9Contract
-      ? Ledger9SubmittedCallTx<C, K & Contract.ProvableCircuitId<C>>
-      : never;
+export type SubmittedCallTx<C extends SmartContract, K extends CircuitIdOf<C>> = C extends Ledger8Contract
+  ? Ledger8SubmittedCallTx<C, K & Ledger8CircuitId<C>>
+  : C extends Ledger9Contract
+    ? Ledger9SubmittedCallTx<C, K & Contract.ProvableCircuitId<C>>
+    : never;
 
 /** A contract maintenance update recorded on chain, in either era. Narrow it on `era`. */
 export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;

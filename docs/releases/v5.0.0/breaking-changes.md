@@ -1242,7 +1242,8 @@ always name it. See ADR 0013.
 
 One rule for names: a `Ledger8` / `Ledger9` prefix means bound to one ledger. No prefix
 means valid for every era: with a contract parameter the name picks the era from the
-contract; without one it is the union of all eras. Earlier sections of this document use
+contract; without one it is the union of all eras. An `Any` prefix keeps its meaning of
+any contract and any circuit (`AnyProvableCircuitId`). Earlier sections of this document use
 the names before this rename.
 
 **Types.**
@@ -1250,8 +1251,8 @@ the names before this rename.
 | Before | After |
 |---|---|
 | `AnyEraContract` | `SmartContract` |
-| `AnyEraFinalizedCallTxData` | `FinalizedCallTxData` (no type arguments) |
-| `AnyEraSubmittedCallTx` | `SubmittedCallTx` (no type arguments) |
+| `AnyEraFinalizedCallTxData` | `AnyFinalizedCallTxData` |
+| `AnyEraSubmittedCallTx` | `AnySubmittedCallTx` |
 | `AnyEraFoundContract<C, L8>` | `FoundContract<C \| L8>` |
 | `AnyEraDeployedContract<C, L8>` | `DeployedContract<C \| L8>` |
 | `AnyEraMaintenanceTxData` | `FinalizedMaintenanceTxData` |

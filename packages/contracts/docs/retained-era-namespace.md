@@ -91,8 +91,8 @@ A name belongs to the retained era's family when BOTH hold:
 A name that serves BOTH eras has no era prefix, so a consumer that only RECEIVES
 results never imports the transitional half:
 
-- `FinalizedCallTxData`, `SubmittedCallTx` and `FinalizedMaintenanceTxData` with no
-  contract, `FoundContract<C | L8>` and `DeployedContract<C | L8>`, and
+- `AnyFinalizedCallTxData`, `AnySubmittedCallTx`, `FinalizedMaintenanceTxData`,
+  `FoundContract<C | L8>` and `DeployedContract<C | L8>`, and
   `isLedger8Result` -- the unions a shared handler declares, and the guard that
   narrows them.
 - `TxFailedError` -- the base both eras' failure classes extend.

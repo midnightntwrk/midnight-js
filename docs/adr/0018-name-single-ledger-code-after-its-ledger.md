@@ -91,9 +91,14 @@ contract keeps its `Ledger9*` name, and the flat name, where it exists, is the u
 - No exported name carries the `AnyEra` prefix. `AnyEraContract` is `SmartContract`;
   `AnyEraMaintenanceTxData` is `FinalizedMaintenanceTxData`; `AnyEraFoundContract<C, L8>` and
   `AnyEraDeployedContract<C, L8>` are `FoundContract<C | L8>` and `DeployedContract<C | L8>`.
-- `FinalizedCallTxData` and `SubmittedCallTx` without type arguments are the unions of both eras. Their
-  ledger 9 member reads `result` and `nextPrivateState` as `unknown`: the widest ledger 9 instantiation
-  would type them `any`, which turns off checking in exactly the handlers that receive either era.
+- `FinalizedCallTxData<C, K>` and `SubmittedCallTx<C, K>` keep both type arguments required, as in
+  4.x. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`: it is a
+  weaker type, not the same one for every era, because without a contract `result` and
+  `nextPrivateState` are `unknown` (the widest ledger 9 instantiation would type them `any`, which
+  turns off checking in exactly the handlers that receive either era). A default type argument would
+  have given one name three meanings: one era, every circuit of one contract, and any call.
+- The `Any` prefix keeps the meaning it already has in `AnyProvableCircuitId` and
+  `AnyLedger8FinalizedCallTxData`: any contract and any circuit. It says nothing about the era.
 - `ContractProviders` requires its contract. A provider set serves one contract, so a union of the
   eras' sets has no use, and a ledger 9 default would break the rule.
 - `TxFailedError` is the base of every recorded-failure class, in both eras. The ledger 9 classes take

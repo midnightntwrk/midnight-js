@@ -466,11 +466,12 @@ error instanceof Ledger8.CallTxFailedError;
 ### Types for both eras carry no prefix (#1566)
 
 ```ts
-// A flat name without a contract is the union of every era
+// A name without a ledger prefix is valid for every era
 export type SmartContract = Ledger8Contract | Ledger9Contract;
 export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
-export type FinalizedCallTxData<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>>;
-export type SubmittedCallTx<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>>;
+// A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
+export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 // `ContractProviders` requires its contract: `ContractProviders<C, K?>`
 
 // The base of every recorded-failure class, in both eras

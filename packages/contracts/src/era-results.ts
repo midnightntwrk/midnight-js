@@ -18,10 +18,9 @@
  *
  * The entry-point overloads select ONE era's result type by inference, which is
  * what a caller making a call wants. A caller RECEIVING a result -- a telemetry
- * sink, a retry handler, a queue consumer -- declares its parameter with a flat
- * name and no contract (`FinalizedCallTxData`, `SubmittedCallTx`,
- * `FinalizedMaintenanceTxData`), or with a union of its contracts
- * (`FoundContract<C | L8>`), and narrows it here.
+ * sink, a retry handler, a queue consumer -- declares its parameter with
+ * `AnyFinalizedCallTxData`, `AnySubmittedCallTx` or `FinalizedMaintenanceTxData`,
+ * or with a union of its contracts (`FoundContract<C | L8>`), and narrows it here.
  */
 
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';

@@ -652,7 +652,7 @@ The retained era's types are flat `Ledger8*` names in `midnight-js-contracts`:
 `Ledger8FinalizedCallTxData` is the result type below, `Ledger8Contract` the
 constraint for a helper of your own. Its error classes are under the `Ledger8`
 namespace: `Ledger8.CallTxFailedError` is the failure class. The half that serves
-BOTH eras -- `FinalizedCallTxData`, `isLedger8Result`, `TxFailedError`
+BOTH eras -- `AnyFinalizedCallTxData`, `isLedger8Result`, `TxFailedError`
 -- carries no era prefix, so a handler that only receives results imports nothing
 era-specific. The fork-window refusals (`ForkCrossedDuringOperationError` and the
 rest of that group) are published flat and are removed in a separate step.
@@ -671,8 +671,8 @@ either era.
 - **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
   `LedgerVersion`, the same values as `public.era`), read off the compiled
   artifact. Narrow with `isLedger8Result(result)`, and
-  declare a parameter that accepts both with `FinalizedCallTxData` or
-  `SubmittedCallTx`, written without type arguments.
+  declare a parameter that accepts both with `AnyFinalizedCallTxData` or
+  `AnySubmittedCallTx`.
 - **`era` is not `public.era`.** `era` names the pipeline that produced the
   objects; `public.era` names the ledger that recorded the transaction.
   After the fork they disagree for every retained-era call: `era: 'v8'`
@@ -1310,11 +1310,11 @@ const onResult = (result: AnyEraFinalizedCallTxData) => ...;
 const onFound = (found: AnyEraFoundContract<MyContract, MyLedger8Contract>) => ...;
 
 // After
-const onResult = (result: FinalizedCallTxData) => ...;
+const onResult = (result: AnyFinalizedCallTxData) => ...;
 const onFound = (found: FoundContract<MyContract | MyLedger8Contract>) => ...;
 ```
 
-`AnyEraContract` → `SmartContract`, `AnyEraSubmittedCallTx` → `SubmittedCallTx`,
+`AnyEraContract` → `SmartContract`, `AnyEraSubmittedCallTx` → `AnySubmittedCallTx`,
 `AnyEraDeployedContract<C, L8>` → `DeployedContract<C | L8>`, `AnyEraMaintenanceTxData` →
 `FinalizedMaintenanceTxData`, `AnyEraTxFailedError` → `TxFailedError`. In `5.0.0-rc.5`,
 `FinalizedMaintenanceTxData` was the ledger 9 type; it is now the union, so narrow it on

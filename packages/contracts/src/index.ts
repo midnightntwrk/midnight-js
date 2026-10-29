@@ -177,6 +177,8 @@ export type {
   Ledger9DeployedContract
 } from './deploy-contract';
 export type {
+  AnyFinalizedCallTxData,
+  AnySubmittedCallTx,
   CallResultPrivate,
   CallTxOptions,
   CallTxOptionsBase,

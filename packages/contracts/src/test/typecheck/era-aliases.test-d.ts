@@ -18,6 +18,8 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import type {
+  AnyFinalizedCallTxData,
+  AnySubmittedCallTx,
   CallResultPrivate,
   CallTxOptions,
   CallTxOptionsBase,
@@ -197,28 +199,39 @@ describe('a flat name without a contract is the union of every era', () => {
   });
 
   it('names a finalized call of either era', () => {
-    expectTypeOf<Extract<FinalizedCallTxData, { era: 'v8' }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnyFinalizedCallTxData, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
-    expectTypeOf<Exclude<FinalizedCallTxData, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
-    expectTypeOf<FinalizedCallTxData<V9, K>>().toExtend<FinalizedCallTxData>();
-    expectTypeOf<FinalizedCallTxData<V8, K>>().toExtend<FinalizedCallTxData>();
+    expectTypeOf<Exclude<AnyFinalizedCallTxData, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
+    expectTypeOf<FinalizedCallTxData<V9, K>>().toExtend<AnyFinalizedCallTxData>();
+    expectTypeOf<FinalizedCallTxData<V8, K>>().toExtend<AnyFinalizedCallTxData>();
   });
 
   it('names a submitted call of either era', () => {
-    expectTypeOf<Extract<SubmittedCallTx, { era: 'v8' }>>().toEqualTypeOf<
+    expectTypeOf<Extract<AnySubmittedCallTx, { era: 'v8' }>>().toEqualTypeOf<
       Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
     >();
-    expectTypeOf<Exclude<SubmittedCallTx, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
-    expectTypeOf<SubmittedCallTx<V9, K>>().toExtend<SubmittedCallTx>();
-    expectTypeOf<SubmittedCallTx<V8, K>>().toExtend<SubmittedCallTx>();
+    expectTypeOf<Exclude<AnySubmittedCallTx, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
+    expectTypeOf<SubmittedCallTx<V9, K>>().toExtend<AnySubmittedCallTx>();
+    expectTypeOf<SubmittedCallTx<V8, K>>().toExtend<AnySubmittedCallTx>();
+  });
+
+  it('refuses a call result type without a contract and a circuit', () => {
+    // @ts-expect-error a call result of either era is AnyFinalizedCallTxData
+    type _NoContract = FinalizedCallTxData;
+    // @ts-expect-error the circuit has to be named
+    type _NoCircuit = FinalizedCallTxData<V9>;
+    // @ts-expect-error a submitted call of either era is AnySubmittedCallTx
+    type _NoContractSubmitted = SubmittedCallTx;
+    // @ts-expect-error the circuit has to be named
+    type _NoCircuitSubmitted = SubmittedCallTx<V9>;
   });
 
   it('reads the circuit values of a call of either era as unknown, never any', () => {
-    expectTypeOf<FinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
-    expectTypeOf<FinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
-    expectTypeOf<SubmittedCallTx['callTxData']['private']['result']>().toEqualTypeOf<unknown>();
-    expectTypeOf<SubmittedCallTx['callTxData']['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnyFinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnyFinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnySubmittedCallTx['callTxData']['private']['result']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnySubmittedCallTx['callTxData']['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
   });
 });
 
