@@ -36,7 +36,7 @@ import type {
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
+import { ComposeFailedError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -48,7 +48,7 @@ import {
   type PublicDataProvider,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
@@ -65,7 +65,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { ownLedgerState, resolveContractStateEra } from './era';
+import { ownLedgerState, readEraTag, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -307,7 +307,7 @@ export interface Ledger8Snapshot {
 /**
  * The ledger parameters served beside the state, or `undefined` when the provider served none.
  *
- * @throws UnrecognisedEraTagError if the parameters are served in a shape that is not a
+ * @throws UnknownLedgerVersionError if the parameters are served in a shape that is not a
  * `LedgerState`.
  * @throws InvalidLedgerStateError if they are not ledger parameters written by the era they name.
  */
@@ -320,7 +320,7 @@ const servedLedgerParameters = (
   }
   const parameters = ownLedgerState(served, 'LedgerParameters');
   if (parameters === undefined) {
-    throw new UnrecognisedEraTagError('queryContractState', served);
+    throw new UnknownLedgerVersionError(readEraTag(served), 'queryContractState');
   }
   return parameters;
 };
@@ -348,7 +348,7 @@ const servedLedgerParameters = (
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
- * @throws UnrecognisedEraTagError if the ledger parameters are served in a shape that is not a
+ * @throws UnknownLedgerVersionError if the ledger parameters are served in a shape that is not a
  * `LedgerState`.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */

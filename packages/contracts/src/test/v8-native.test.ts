@@ -66,7 +66,7 @@ import {
   type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -902,7 +902,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     });
 
     it('refuses ledger parameters served in a shape that is not a LedgerState, rather than taking them as absent', async () => {
-      await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnrecognisedEraTagError);
+      await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnknownLedgerVersionError);
     });
 
     it('keeps the bytes of ledger parameters made by a second installed copy of the types package', async () => {

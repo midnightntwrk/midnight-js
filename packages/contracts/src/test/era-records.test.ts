@@ -139,4 +139,14 @@ describe('requireLedger9Record', () => {
 
     expect(requireLedger9Record(record, 'watchForTxData')).toBe(record);
   });
+
+  it('names the v8 era it received and the v9 era it expected', () => {
+    const record = createMockLedger8FinalizedTxData();
+
+    const error = thrownBy(() => requireLedger9Record(record, 'watchForTxData'));
+
+    expect(error).toBeInstanceOf(EraInvariantViolationError);
+    expect(error).toMatchObject({ expected: 'v9', received: 'v8' });
+    expect((error as EraInvariantViolationError).message).not.toContain("'other'");
+  });
 });

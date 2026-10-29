@@ -18,7 +18,7 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
@@ -160,8 +160,9 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnrecognisedEraTagError);
-      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG)).toBe(true);
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBe('undefined');
       expect(rejection.context).toBe('findDeployedContract');
     });
 
@@ -173,8 +174,9 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnrecognisedEraTagError);
-      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG)).toBe(true);
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBe('undefined');
       expect(rejection.context).toBe('findDeployedContract');
     });
   });

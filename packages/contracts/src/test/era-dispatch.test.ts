@@ -24,7 +24,6 @@ import {
   DeserializationError,
   errorCategory,
   hasErrorCode,
-  UnrecognisedEraTagError,
   UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
@@ -684,7 +683,8 @@ describe('resolveContractStateEra reads only a LedgerState', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(rejection).toMatchObject({ requestedVersion: 'undefined', context: 'queryContractState' });
     expect(queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 });

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { InvalidLedgerStateError, LedgerState, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
-import { UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, PublicStatesEraMismatchError } from '../errors';
@@ -104,7 +104,14 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
     const error = rejectionOf(() => decodeLedger9PublicStates(preFiveRecord, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toMatchObject({
+      code: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+      category: 'ENVIRONMENT',
+      requestedVersion: 'undefined',
+      context: 'createUnprovenCallTx'
+    });
+    expect((error as UnknownLedgerVersionError).message).toContain('pre-5.0.0 provider');
   });
 
   it.each(['ledgerParameters', 'zswapChainState'] as const)(
@@ -219,8 +226,8 @@ describe('decodeLedger9PublicStates', () => {
 
       const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-      expect(error).toBeInstanceOf(UnrecognisedEraTagError);
-      expect(error).toMatchObject({ context: 'createUnprovenCallTx', received: 'undefined' });
+      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(error).toMatchObject({ context: 'createUnprovenCallTx', requestedVersion: 'undefined' });
       expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
     }
   );
@@ -232,8 +239,8 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state names an era newer than this build
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(UnrecognisedEraTagError);
-    expect(error).toMatchObject({ received: 'v10' });
+    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toMatchObject({ requestedVersion: 'v10', category: 'ENVIRONMENT' });
     expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });
 
