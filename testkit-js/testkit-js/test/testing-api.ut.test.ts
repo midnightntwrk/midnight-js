@@ -76,15 +76,6 @@ describe('[Unit tests] Testing API', () => {
     expect(() => getTestEnvironment(logger)).toThrow(`Environment variable 'MN_TEST_NETWORK_ID' is required`);
   });
 
-  it('preprod environment configuration should match networks.preprod', () => {
-    const env = new PreprodTestEnvironment(logger);
-    const config = env.getEnvironmentConfiguration();
-    expect(config.networkId).toBe(networks.preprod.networkId);
-    expect(config.indexer).toBe(networks.preprod.indexer.queryURL);
-    expect(config.indexerWS).toBe(networks.preprod.indexer.subscriptionURL);
-    expect(config.node).toBe(networks.preprod.nodeURL);
-  });
-
   it('preview environment configuration should match networks.preview', () => {
     const env = new PreviewTestEnvironment(logger);
     const config = env.getEnvironmentConfiguration();
@@ -92,5 +83,6 @@ describe('[Unit tests] Testing API', () => {
     expect(config.indexer).toBe(networks.preview.indexer.queryURL);
     expect(config.indexerWS).toBe(networks.preview.indexer.subscriptionURL);
     expect(config.node).toBe(networks.preview.nodeURL);
+    expect(config.nodeWS).toBe(networks.preview.nodeWsURL);
   });
 });

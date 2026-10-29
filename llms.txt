@@ -504,13 +504,16 @@ The network id is not global state: it travels on the provider set as
 `config.networkId` (see the provider setup example below).
 `@midnight-ntwrk/midnight-js-network-id` is deprecated — the framework ignores
 `setNetworkId()`. Predefined endpoints for public networks are shipped in
-`@midnight-ntwrk/midnight-js-utils`:
+`@midnight-ntwrk/midnight-js-utils`. `preview` is hosted by Midnight. `preprod`
+and `mainnet` are served by Blockfrost and take a Blockfrost project token for
+that network, which ends up in every URL — remove it before you log a URL. For
+other endpoints, pass your own `MidnightNetwork`:
 
 ```typescript
 import { networks } from '@midnight-ntwrk/midnight-js-utils';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-const net = networks.preview; // or networks.preprod
+const net = networks.preview; // or networks.preprod(projectId), networks.mainnet(projectId)
 const publicDataProvider = indexerPublicDataProvider(net.indexer);
 ```
 
@@ -544,10 +547,6 @@ of a package make `instanceof` answer `false`. All codes: [TROUBLESHOOTING.md](T
 ## Provider Setup Example
 
 ```typescript
-<<<<<<< HEAD
-=======
-import { networks } from '@midnight-ntwrk/midnight-js-utils';
->>>>>>> 9c2c67cf (feat(utils): ship predefined network endpoints for preprod and preview (#1529))
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';

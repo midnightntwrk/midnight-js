@@ -40,7 +40,7 @@ export class PreviewTestEnvironment extends RemoteTestEnvironment {
       indexer: networks.preview.indexer.queryURL,
       indexerWS: networks.preview.indexer.subscriptionURL,
       node: networks.preview.nodeURL,
-      nodeWS: 'wss://rpc.preview.midnight.network',
+      nodeWS: networks.preview.nodeWsURL,
       faucet: 'https://faucet.preview.midnight.network/api/drips',
       proofServer: this.proofServerContainer?.getUrl()
     };

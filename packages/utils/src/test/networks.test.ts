@@ -13,22 +13,61 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from "vitest";
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { describe, expect, it } from 'vitest';
 
-import { networks } from "../networks";
+import { networks } from '../networks';
 
-describe("networks", () => {
-  it("defines valid preprod endpoints", () => {
-    expect(networks.preprod.networkId).toBe("preprod");
-    expect(networks.preprod.indexer.queryURL).toBe("https://indexer.preprod.midnight.network/api/v4/graphql");
-    expect(networks.preprod.indexer.subscriptionURL).toBe("wss://indexer.preprod.midnight.network/api/v4/graphql/ws");
-    expect(networks.preprod.nodeURL).toBe("https://rpc.preprod.midnight.network");
+describe('networks', () => {
+  it('defines the Midnight-hosted preview endpoints', () => {
+    expect(networks.preview).toEqual({
+      networkId: 'preview',
+      indexer: {
+        queryURL: 'https://indexer.preview.midnight.network/api/v4/graphql',
+        subscriptionURL: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws'
+      },
+      nodeURL: 'https://rpc.preview.midnight.network',
+      nodeWsURL: 'wss://rpc.preview.midnight.network'
+    });
   });
 
-  it("defines valid preview endpoints", () => {
-    expect(networks.preview.networkId).toBe("preview");
-    expect(networks.preview.indexer.queryURL).toBe("https://indexer.preview.midnight.network/api/v4/graphql");
-    expect(networks.preview.indexer.subscriptionURL).toBe("wss://indexer.preview.midnight.network/api/v4/graphql/ws");
-    expect(networks.preview.nodeURL).toBe("https://rpc.preview.midnight.network");
+  it('builds the Blockfrost preprod endpoints with the project token on every URL', () => {
+    expect(networks.preprod('preprodToken')).toEqual({
+      networkId: 'preprod',
+      indexer: {
+        queryURL: 'https://midnight-preprod.blockfrost.io/api/v0?project_id=preprodToken',
+        subscriptionURL: 'wss://midnight-preprod.blockfrost.io/api/v0/ws?project_id=preprodToken'
+      },
+      nodeURL: 'https://rpc.midnight-preprod.blockfrost.io?project_id=preprodToken',
+      nodeWsURL: 'wss://rpc.midnight-preprod.blockfrost.io?project_id=preprodToken'
+    });
+  });
+
+  it('builds the Blockfrost mainnet endpoints with the project token on every URL', () => {
+    expect(networks.mainnet('mainnetToken')).toEqual({
+      networkId: 'mainnet',
+      indexer: {
+        queryURL: 'https://midnight-mainnet.blockfrost.io/api/v0?project_id=mainnetToken',
+        subscriptionURL: 'wss://midnight-mainnet.blockfrost.io/api/v0/ws?project_id=mainnetToken'
+      },
+      nodeURL: 'https://rpc.midnight-mainnet.blockfrost.io?project_id=mainnetToken',
+      nodeWsURL: 'wss://rpc.midnight-mainnet.blockfrost.io?project_id=mainnetToken'
+    });
+  });
+
+  it('encodes a project token that contains URL characters', () => {
+    const network = networks.mainnet('a&b=c d');
+
+    expect(network.nodeURL).toBe('https://rpc.midnight-mainnet.blockfrost.io?project_id=a%26b%3Dc%20d');
+  });
+
+  it.each([
+    ['preprod', ''],
+    ['preprod', '   '],
+    ['mainnet', ''],
+    ['mainnet', '   ']
+  ] as const)('refuses a %s network without a project token (%j)', (name, projectId) => {
+    expect(() => networks[name](projectId)).toThrow(InvalidArgumentError);
+    expect(() => networks[name](projectId)).toThrow(/Blockfrost project token/);
   });
 });
