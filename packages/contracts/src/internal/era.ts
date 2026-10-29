@@ -100,14 +100,21 @@ const describeEraTag = (era: unknown): string =>
     : String(era);
 
 /**
+ * The raw era tag of a value a provider answered with, or `undefined` when it carries none.
+ *
+ * @param record The value a provider answered with.
+ */
+export const eraTagOf = (record: unknown): unknown =>
+  typeof record === 'object' && record !== null ? Reflect.get(record, 'era') : undefined;
+
+/**
  * Reads the era tag of a record for an error message, without being able to throw.
  *
  * @param record The value a provider answered with.
  * @returns The tag as text, the type of a tag that is an object, or
  *   `'undefined'` when `record` is not an object.
  */
-export const readEraTag = (record: unknown): string =>
-  typeof record === 'object' && record !== null ? describeEraTag(Reflect.get(record, 'era')) : 'undefined';
+export const readEraTag = (record: unknown): string => describeEraTag(eraTagOf(record));
 
 type StateReadMethod = 'queryContractState' | 'queryDeployContractState' | 'queryZSwapAndContractState';
 
@@ -148,11 +155,12 @@ const requireLedger9Read = (
   const contractState: unknown = read?.contractState;
   const state = ownLedgerState(contractState, 'ContractState');
   if (state === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(contractState), servedBy);
+    throw new UnknownLedgerVersionError(eraTagOf(contractState), servedBy);
   }
   if (state.era === 'v8') {
     throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`
+      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+      contractAddress
     });
   }
   return state;
@@ -170,7 +178,7 @@ const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState
   }
   const state = ownLedgerState(served, kind);
   if (state === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(served), 'queryZSwapAndContractState');
+    throw new UnknownLedgerVersionError(eraTagOf(served), 'queryZSwapAndContractState');
   }
   if (state.era !== 'v9') {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', state.era);
@@ -281,7 +289,7 @@ export function requireTaggedRecord(
   circuitId?: string | readonly string[]
 ): FinalizedTxRead {
   if (typeof record !== 'object' || record === null) {
-    throw new UnknownLedgerVersionError(readEraTag(record), method);
+    throw new UnknownLedgerVersionError(eraTagOf(record), method);
   }
   switch (record.era) {
     case 'v8':
@@ -289,7 +297,7 @@ export function requireTaggedRecord(
       return requireRecordHandle(record, method, circuitId);
     default: {
       const unhandled: never = record;
-      throw new UnknownLedgerVersionError(readEraTag(unhandled), method);
+      throw new UnknownLedgerVersionError(eraTagOf(unhandled), method);
     }
   }
 }
@@ -315,7 +323,7 @@ export function requireLedger9Record(
   circuitId?: string | readonly string[]
 ): Ledger9FinalizedTxData {
   if (typeof record !== 'object' || record === null) {
-    throw new UnknownLedgerVersionError(readEraTag(record), method);
+    throw new UnknownLedgerVersionError(eraTagOf(record), method);
   }
   switch (record.era) {
     case 'v9':
@@ -324,7 +332,7 @@ export function requireLedger9Record(
       throw new EraInvariantViolationError(method, circuitId, 'v9', 'v8');
     default: {
       const unhandled: never = record;
-      throw new UnknownLedgerVersionError(readEraTag(unhandled), method);
+      throw new UnknownLedgerVersionError(eraTagOf(unhandled), method);
     }
   }
 }
@@ -790,7 +798,7 @@ export const assertEraCompatible = (
   // or anything with `Symbol.toPrimitive` would select a real row and be RULED ON, where the
   // `switch` this replaced compared with `===` and refused it.
   if (typeof pipeline !== 'string') {
-    throw new UnknownLedgerVersionError(String(pipeline));
+    throw new UnknownLedgerVersionError(pipeline);
   }
   const pipelineRulings = ERA_PAIRING[pipeline];
   if (pipelineRulings === undefined) {
@@ -798,7 +806,7 @@ export const assertEraCompatible = (
   }
 
   if (typeof head !== 'string') {
-    throw new UnknownLedgerVersionError(String(head));
+    throw new UnknownLedgerVersionError(head);
   }
   const verdict = pipelineRulings[head];
   if (verdict === undefined) {
@@ -824,7 +832,7 @@ export const assertEraCompatible = (
       throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
     default: {
       const unhandled: never = verdict;
-      throw new UnknownLedgerVersionError(String(unhandled));
+      throw new UnknownLedgerVersionError(unhandled);
     }
   }
 };
@@ -886,7 +894,7 @@ export const resolveContractStateEra = async (
   const served: unknown = state?.contractState;
   const contractState = ownLedgerState(served, 'ContractState');
   if (contractState === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(served), 'queryContractState');
+    throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }
   const stateEra = contractState.era;
   // Reported for the ACCEPTED case too, not only for a refusal: which era

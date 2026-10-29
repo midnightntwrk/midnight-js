@@ -129,7 +129,7 @@ describe('findDeployedContract', () => {
 
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(rejection.requestedVersion).toBe('undefined');
+      expect(rejection.requestedVersion).toBeUndefined();
     });
   });
 
@@ -162,7 +162,7 @@ describe('findDeployedContract', () => {
 
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(rejection.requestedVersion).toBe('undefined');
+      expect(rejection.requestedVersion).toBeUndefined();
       expect(rejection.context).toBe('queryDeployContractState');
     });
 
@@ -176,7 +176,7 @@ describe('findDeployedContract', () => {
 
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(rejection.requestedVersion).toBe('undefined');
+      expect(rejection.requestedVersion).toBeUndefined();
       expect(rejection.context).toBe('queryDeployContractState');
     });
   });
@@ -282,6 +282,7 @@ describe('findDeployedContract', () => {
       expect(rejection).toBeInstanceOf(EraMismatchError);
       expect(rejection).toMatchObject({ reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
       expect((rejection as EraMismatchError).message).toContain(contractAddress);
+      expect((rejection as EraMismatchError).contractAddress).toBe(contractAddress);
       expect((rejection as EraMismatchError).message).toContain('findDeployedContract');
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });

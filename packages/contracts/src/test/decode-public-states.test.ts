@@ -108,7 +108,7 @@ describe('decodeLedger9PublicStates', () => {
     expect(error).toMatchObject({
       code: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       category: 'ENVIRONMENT',
-      requestedVersion: 'undefined',
+      requestedVersion: undefined,
       context: 'queryZSwapAndContractState'
     });
     expect((error as UnknownLedgerVersionError).message).toContain('pre-5.0.0 provider');
@@ -227,7 +227,7 @@ describe('decodeLedger9PublicStates', () => {
       const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
       expect(error).toBeInstanceOf(UnknownLedgerVersionError);
-      expect(error).toMatchObject({ context: 'queryZSwapAndContractState', requestedVersion: 'undefined' });
+      expect(error).toMatchObject({ context: 'queryZSwapAndContractState', requestedVersion: undefined });
       expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
     }
   );

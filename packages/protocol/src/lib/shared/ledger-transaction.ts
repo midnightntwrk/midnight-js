@@ -133,7 +133,7 @@ const isTransactionShaped = (value: unknown): value is { serialize(): Uint8Array
 
 const assertKnownEra = (era: string): void => {
   if (!LEDGER_VERSIONS.some((version) => version === era)) {
-    throw new UnknownLedgerVersionError(String(era));
+    throw new UnknownLedgerVersionError(era);
   }
 };
 

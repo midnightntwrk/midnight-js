@@ -410,7 +410,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   // `Object.prototype`, which is exactly what these tests exist to rule out.
   //
   // These tests pin the VALUE blamed, and deliberately not the message.
-  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string => {
+  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string | undefined => {
     try {
       assertEraCompatible(pipeline, head, 'call');
       return expect.unreachable(`assertEraCompatible ruled on ${String(pipeline)}/${String(head)}`);
@@ -440,8 +440,8 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     ];
 
     for (const coerces of coercing) {
-      expect(refusedEra(asArtifactEra(coerces), 'v9')).toBe(String(coerces));
-      expect(refusedEra('v9', asHeadEra(coerces))).toBe(String(coerces));
+      expect(refusedEra(asArtifactEra(coerces), 'v9')).toBe('object');
+      expect(refusedEra('v9', asHeadEra(coerces))).toBe('object');
     }
   });
 
@@ -684,7 +684,7 @@ describe('resolveContractStateEra reads only a LedgerState', () => {
     );
 
     expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
-    expect(rejection).toMatchObject({ requestedVersion: 'undefined', context: 'queryContractState' });
+    expect(rejection).toMatchObject({ requestedVersion: undefined, context: 'queryContractState' });
     expect(queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 });

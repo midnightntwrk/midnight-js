@@ -112,7 +112,7 @@ export const extractEncodedStateValue = (
 ): EncodedStateValue => {
   const decoder = ENVELOPE_DECODERS[version];
   if (typeof decoder !== 'function') {
-    throw new UnknownLedgerVersionError(String(version));
+    throw new UnknownLedgerVersionError(version);
   }
   if (typeof ledger8ContractState?.deserialize !== 'function') {
     throw new Ledger8RuntimeInvalidError('ContractState.deserialize');

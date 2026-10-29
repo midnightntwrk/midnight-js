@@ -262,7 +262,7 @@ describe('retained-era error classes', () => {
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
     const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
     const inconsistentEra: LedgerVersion = new midnightJs.StateInconsistentError('v9', new Error('boom')).version;
-    const requested: string = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
+    const requested: string | undefined = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
 
     expect([subpath, stage, option, decodedEra, inconsistentEra, requested]).toEqual([
       '/v8',

@@ -945,6 +945,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       expect(caught).toBeInstanceOf(Ledger8AmbiguousEntryPointError);
       expect((caught as Ledger8AmbiguousEntryPointError).circuitId).toBe(CIRCUIT_ID);
       expect((caught as Ledger8AmbiguousEntryPointError).matchCount).toBe(2);
+      expect((caught as Ledger8AmbiguousEntryPointError).contractAddress).toBe(recording.contractAddress);
     });
   });
 

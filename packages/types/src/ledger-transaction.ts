@@ -150,7 +150,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
       throw new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', describeArgument(handle));
     }
     if (!LEDGER_VERSIONS.includes(era)) {
-      throw new UnknownLedgerVersionError(String(era));
+      throw new UnknownLedgerVersionError(era);
     }
     const slot = handle.#slot;
     const tx = Object.hasOwn(slot, era) ? slot[era] : undefined;

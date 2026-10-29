@@ -88,7 +88,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
 
       expect(error).toBeInstanceOf(UnknownLedgerVersionError);
       expect(hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(error).toMatchObject({ requestedVersion: 'undefined', context: method });
+      expect(error).toMatchObject({ requestedVersion: undefined, context: method });
       expect(String(error)).toContain(method);
     }
   );
@@ -98,7 +98,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     const error = thrownBy(() => read('v9', 'watchForTxData'));
 
     expect(error).toBeInstanceOf(UnknownLedgerVersionError);
-    expect(error).toMatchObject({ requestedVersion: 'undefined', context: 'watchForTxData' });
+    expect(error).toMatchObject({ requestedVersion: undefined, context: 'watchForTxData' });
   });
 
   it('refuses a version that cannot be turned into text with the coded error, not a TypeError', () => {

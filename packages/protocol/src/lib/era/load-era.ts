@@ -118,7 +118,7 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
       // `const unhandled: never` is a compile-time exhaustiveness gate, and the
       // runtime rejection is not redundant with it -- see SharedTableDiscipline.
       const unhandled: never = version;
-      return Promise.reject(new UnknownLedgerVersionError(String(unhandled)));
+      return Promise.reject(new UnknownLedgerVersionError(unhandled));
     }
   }
 };

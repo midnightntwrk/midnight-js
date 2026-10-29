@@ -220,9 +220,22 @@ describe('submitInsertVerifierKeyTx', () => {
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
-      await expect(
-        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
-      ).rejects.toThrow(TxFailedError);
+      const failure = await submitInsertVerifierKeyTx(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId,
+        mockVerifierKey
+      ).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'insert-verifier-key',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        circuitId,
+        record: failedTxData
+      });
     });
   });
 });

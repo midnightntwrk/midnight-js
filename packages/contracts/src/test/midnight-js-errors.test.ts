@@ -64,7 +64,7 @@ const cases: readonly Case[] = [
   ['ScopedTransactionIdentityMismatchError', new errors.ScopedTransactionIdentityMismatchError({ contractAddress: ADDRESS }, { contractAddress: ADDRESS }), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_IDENTITY_MISMATCH, 'USAGE'],
   ['BlankVerifierKeySlotError', new errors.BlankVerifierKeySlotError('increment'), CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT, 'INTEGRITY'],
   ['VerifierKeyMismatchError', new errors.VerifierKeyMismatchError('increment'), CONTRACTS_ERROR_CODES.VERIFIER_KEY_MISMATCH, 'INTEGRITY'],
-  ['Ledger8AmbiguousEntryPointError', new errors.Ledger8AmbiguousEntryPointError('increment', 2), CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT, 'INTEGRITY'],
+  ['Ledger8AmbiguousEntryPointError', new errors.Ledger8AmbiguousEntryPointError('0200'.repeat(8), 'increment', 2), CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT, 'INTEGRITY'],
   ['Ledger8SigningKeyError', new errors.Ledger8SigningKeyError('unusable', ADDRESS), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY, 'USAGE'],
   ['Ledger8UnconfirmedError', new errors.Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED, 'UNCERTAIN'],
   ['Ledger8NotStoredError', new errors.Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED, 'ENVIRONMENT'],
@@ -87,7 +87,7 @@ describe('contracts error classes', () => {
 
   it('the table below covers every concrete error class', () => {
     const covered = new Set(cases.map(([name]) => name));
-    const concrete = errorClasses.map((c) => c.name).filter((name) => name !== 'AnyEraTxFailedError');
+    const concrete = errorClasses.map((c) => c.name);
 
     expect(concrete.filter((name) => !covered.has(name))).toEqual([]);
   });

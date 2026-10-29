@@ -24,6 +24,9 @@ import { EraMismatchError } from '../errors';
 // carrying one is the whole fixture this needs.
 const taggedResult = (era: LedgerVersion) => ({ era, txId: 'tx-1' });
 
+// The shape an untyped JavaScript caller hands over: no compile-time era to lean on.
+const isLedger8ResultUntyped = (value: unknown): unknown => Reflect.apply(isLedger8Result, undefined, [value]);
+
 describe('isLedger8Result', () => {
   it('answers true for the retained pipeline and false for the current one', () => {
     expect(isLedger8Result(taggedResult('v8'))).toBe(true);
@@ -43,7 +46,7 @@ describe('isLedger8Result', () => {
     ['a tag explicitly undefined', { era: undefined, txId: 'tx-1' }],
     ['a tag of the wrong primitive type', { era: 9, txId: 'tx-1' }]
   ])('refuses %s rather than answering false', (_label, result) => {
-    expect(() => isLedger8Result(result as unknown as { readonly era: LedgerVersion })).toThrow(
+    expect(() => isLedger8ResultUntyped(result)).toThrow(
       EraMismatchError
     );
   });
@@ -51,7 +54,7 @@ describe('isLedger8Result', () => {
   it('names the tag it received and carries a branchable code', () => {
     const caught = (() => {
       try {
-        isLedger8Result({ era: 'v7' } as unknown as { readonly era: LedgerVersion });
+        isLedger8ResultUntyped({ era: 'v7' });
         return undefined;
       } catch (error: unknown) {
         return error;
@@ -72,11 +75,11 @@ describe('isLedger8Result', () => {
   });
 
   it('refuses a BigInt era with EraMismatchError, not a TypeError from rendering it', () => {
-    const result = { era: 9n } as unknown as { readonly era: LedgerVersion };
+    const result = { era: 9n };
 
     const caught = (() => {
       try {
-        isLedger8Result(result);
+        isLedger8ResultUntyped(result);
         return undefined;
       } catch (error: unknown) {
         return error;
@@ -90,11 +93,11 @@ describe('isLedger8Result', () => {
   it('refuses a circular era with EraMismatchError, not a TypeError from rendering it', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
-    const result = { era: circular } as unknown as { readonly era: LedgerVersion };
+    const result = { era: circular };
 
     const caught = (() => {
       try {
-        isLedger8Result(result);
+        isLedger8ResultUntyped(result);
         return undefined;
       } catch (error: unknown) {
         return error;
@@ -107,10 +110,10 @@ describe('isLedger8Result', () => {
   });
 
   it('refuses a null or undefined result rather than reading a member off it', () => {
-    expect(() => isLedger8Result(null as unknown as { readonly era: LedgerVersion })).toThrow(
+    expect(() => isLedger8ResultUntyped(null)).toThrow(
       EraMismatchError
     );
-    expect(() => isLedger8Result(undefined as unknown as { readonly era: LedgerVersion })).toThrow(
+    expect(() => isLedger8ResultUntyped(undefined)).toThrow(
       EraMismatchError
     );
   });

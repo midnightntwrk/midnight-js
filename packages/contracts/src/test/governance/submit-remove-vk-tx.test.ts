@@ -198,9 +198,21 @@ describe('submitRemoveVerifierKeyTx', () => {
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
-      await expect(
-        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(TxFailedError);
+      const failure = await submitRemoveVerifierKeyTx(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId
+      ).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'remove-verifier-key',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        circuitId,
+        record: failedTxData
+      });
     });
   });
 });

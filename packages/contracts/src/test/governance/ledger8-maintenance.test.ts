@@ -491,18 +491,20 @@ describe('contract maintenance through a retained-era artifact', () => {
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
 
-    it('names the circuit on a failed verifier key update', async () => {
+    it.each([
+      ['an insert', true, (providers: Providers) => submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK)],
+      ['a remove', false, (providers: Providers) => submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)]
+    ] as const)('names the circuit on %s the chain recorded as failed', async (_case, blank, run) => {
       // Arrange
-      const providers = providersOn(keyedState);
+      const providers = providersOn(blank ? blankState : keyedState);
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));
 
       // Act
-      const failure = await submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID).catch(
-        (error: unknown) => error
-      );
+      const failure = await run(providers).catch((error: unknown) => error);
 
       // Assert
       expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({ circuitId: CIRCUIT_ID });
       expect((failure as Error).message).toContain(`'${CIRCUIT_ID}'`);
     });
 

@@ -662,6 +662,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(caught).toBeInstanceOf(EraMismatchError);
     expect(caught).toMatchObject({ reason: 'ledger8-artifact-on-ledger9-contract', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
     expect((caught as EraMismatchError).message).toContain(recording.contractAddress);
+    expect((caught as EraMismatchError).contractAddress).toBe(recording.contractAddress);
     expect((caught as EraMismatchError).cause).toBeInstanceOf(VerifierKeyMismatchError);
     // Refused before anything is paid for: a proof against a key the chain does
     // not hold is rejected on submission, which is the late failure this

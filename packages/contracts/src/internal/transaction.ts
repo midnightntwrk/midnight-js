@@ -245,7 +245,7 @@ export class TransactionContextImpl<
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
-      throw new TxFailedError('call', finalizedTxData, { circuitId: this.submitTxOptions!.circuitId });
+      throw new TxFailedError('call', finalizedTxData, { circuitId: this.submitTxOptions!.circuitId ?? circuitId });
     }
     if (privateStateId) {
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
@@ -361,7 +361,7 @@ export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionConte
     return;
   }
   if (isTransactionContext(transactionContext)) {
-    throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.` });
+    throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
   }
   throw new InvalidArgumentError(
     `submitCallTx was passed a third argument that is not a transaction context (received ` +

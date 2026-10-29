@@ -230,11 +230,24 @@ describe('UnknownLedgerVersionError', () => {
   });
 
   it('names the call that read the version when one is given', () => {
-    const error = new UnknownLedgerVersionError('undefined', 'watchForTxData');
+    const error = new UnknownLedgerVersionError(undefined, 'watchForTxData');
 
     expect(error.context).toBe('watchForTxData');
     expect(error.message).toContain('watchForTxData');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+  });
+
+  it.each([undefined, null])('reports a value with no era as an undefined requestedVersion (%s)', (missing) => {
+    const error = new UnknownLedgerVersionError(missing, 'watchForTxData');
+
+    expect(error.requestedVersion).toBeUndefined();
+    expect(error.message).toContain('carried no era');
+  });
+
+  it('names the kind of a non-scalar value rather than its contents', () => {
+    const error = new UnknownLedgerVersionError({ era: 'v9' });
+
+    expect(error.requestedVersion).toBe('object');
   });
 
   it('gives the protocolVersionToLedger advice only when the caller passed the version', () => {

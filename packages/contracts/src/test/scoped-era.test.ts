@@ -438,6 +438,7 @@ describe('a retained-era call handed a scope', () => {
     expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
     expect((caught as EraMismatchError).message).toContain('retainedCircuit');
+    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
     // The remediation has to say where the call CAN go, because the caller's
     // batching intent cannot be honoured either way.
     expect((caught as Error).message).toContain('submitCallTx');
@@ -478,6 +479,7 @@ describe('a retained-era call handed a scope', () => {
     expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
     expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
     expect((caught as EraMismatchError).message).toContain('retainedCircuit');
+    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
   });
 
   it.each([

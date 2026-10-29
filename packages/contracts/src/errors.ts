@@ -17,14 +17,24 @@ import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-prot
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type {
-  AnyProvableCircuitId,
-  FinalizedTxRead,
-  PrivateStateId,
-  ProviderMethod} from '@midnight-ntwrk/midnight-js-types';
+import {
+  type AnyProvableCircuitId,
+  type FinalizedTxRead,
+  type PrivateStateId,
+  type ProviderMethod,
+  SegmentFail
+} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
+
+const assignDefined = (target: object, values: Readonly<Record<string, unknown>>): void => {
+  Object.assign(target, Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)));
+};
+
+const hideSigningKey = (target: object, signingKey: SigningKey): void => {
+  Object.defineProperty(target, 'signingKey', { value: signingKey, enumerable: false });
+};
 
 // `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
 // carries several. Each id is quoted individually so a two-circuit list cannot
@@ -250,6 +260,10 @@ export interface EraMismatchOptions extends ErrorOptions {
    * the fact that varies.
    */
   readonly detail?: string;
+  /** The contract the refused value belongs to. Set for `'ledger8-artifact-on-ledger9-contract'` and `'ledger8-contract-state-unsupported'`. */
+  readonly contractAddress?: ContractAddress;
+  /** The circuit the refused call names. Set for `'ledger8-call-in-scope'`. */
+  readonly circuitId?: string;
 }
 
 /**
@@ -257,13 +271,20 @@ export interface EraMismatchOptions extends ErrorOptions {
  * execute — or to either era. The value is a contract, an artifact set, a transaction, a scope, a
  * result, or a contract state read from the chain.
  *
- * Raised before anything is proved or submitted.
+ * Raised before anything is proved or submitted, except `'unrecognised-result-era'`, which is raised
+ * when a result that came back from the chain is read.
  *
  * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
 export class EraMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_MISMATCH;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.ERA_MISMATCH];
+  /** The sentence appended to the reason's wording, naming the value that was seen. */
+  declare readonly detail?: string;
+  /** The contract the refused value belongs to, for the reasons that have one. */
+  declare readonly contractAddress?: ContractAddress;
+  /** The circuit the refused call names, for `'ledger8-call-in-scope'`. */
+  declare readonly circuitId?: string;
 
   /**
    * @param reason Which era mismatch this is. Also the discriminant a caller branches on, so it is
@@ -279,6 +300,11 @@ export class EraMismatchError extends MidnightJsError {
     const message = ERA_MISMATCH_MESSAGES[reason];
     super(options?.detail === undefined ? message : `${message} ${options.detail}`, { cause: options?.cause });
     this.name = 'EraMismatchError';
+    assignDefined(this, {
+      detail: options?.detail,
+      contractAddress: options?.contractAddress,
+      circuitId: options?.circuitId
+    });
   }
 }
 
@@ -848,11 +874,19 @@ const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circu
     case 'replace-authority':
       return (
         "The new key was NOT stored; the store still holds the old one. Keep this error's 'signingKey': if the " +
-        'replacement landed after all, it is the only key that authorizes the contract. Try a maintenance ' +
-        'update with the stored key; if it is refused with MaintenanceAuthorityMismatchError, store this ' +
-        "error's 'signingKey' with `privateStateProvider.setSigningKey(address, error.signingKey)`."
+        'replacement landed after all, it is the only key that authorizes the contract. To find out, read the ' +
+        "contract state with `publicDataProvider.queryContractState(address)` and compare its " +
+        "`maintenanceAuthority` committee with `signatureVerifyingKey(error.signingKey)`. If the new key is " +
+        'there, store it with `privateStateProvider.setSigningKey(address, error.signingKey)`.'
       );
   }
+};
+
+const describeFailedSegments = (record: FinalizedTxRead): string | undefined => {
+  const failed = [...(record.segmentStatusMap ?? [])]
+    .filter(([, status]) => status === SegmentFail)
+    .map(([segment]) => segment);
+  return failed.length === 0 ? undefined : `Failed segments: ${failed.join(', ')}.`;
 };
 
 const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead, details: TxFailedDetails): string => {
@@ -862,8 +896,14 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
   const circuits = [details.circuitId ?? []].flat().map((id) => `'${id}'`).join(', ');
   const head =
     `The ${TX_FAILED_NOUNS[operation]}${circuitClause}${contractClause} was recorded on chain with status ` +
-    `'${record.status}' rather than 'SucceedEntirely' (transaction id '${record.txId}').`;
-  return [head, fallible ? FAIL_FALLIBLE_OUTCOME : undefined, txFailedFollowUp(operation, fallible, circuits)]
+    `'${record.status}' rather than 'SucceedEntirely' (transaction id '${record.txId}', hash '${record.txHash}', ` +
+    `block ${record.blockHeight}).`;
+  return [
+    head,
+    describeFailedSegments(record),
+    fallible ? FAIL_FALLIBLE_OUTCOME : undefined,
+    txFailedFollowUp(operation, fallible, circuits)
+  ]
     .filter((part): part is string => part !== undefined)
     .join(' ');
 };
@@ -879,7 +919,8 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
  *
  * {@link TxFailedError.signingKey} is NAMED in the message but never rendered
  * into it: after a failed deploy or replacement it may be the only copy of the
- * authority over a contract that landed.
+ * authority over a contract that landed. It is not enumerable, so a logger that
+ * serializes an error's properties does not write it out.
  *
  * Branch on the registered code rather than `instanceof` where more than one
  * copy of this package may be loaded.
@@ -887,15 +928,30 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
 export class TxFailedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.TX_FAILED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.TX_FAILED];
-  readonly contractAddress?: ContractAddress;
-  readonly circuitId?: string | readonly string[];
-  readonly signingKey?: SigningKey;
+  declare readonly contractAddress?: ContractAddress;
+  declare readonly circuitId?: string | readonly string[];
+  declare readonly signingKey?: SigningKey;
 
   /**
    * @param operation The operation whose transaction failed.
    * @param record The finalized record the chain reported, tagged with its era.
-   * @param details What the operation was about. Each member is set by the operations that have it.
+   * @param details What the operation was about. Each operation requires the members it always has.
    */
+  constructor(
+    operation: 'deploy' | 'replace-authority',
+    record: FinalizedTxRead,
+    details: { readonly contractAddress: ContractAddress; readonly signingKey: SigningKey }
+  );
+  constructor(
+    operation: 'insert-verifier-key' | 'remove-verifier-key',
+    record: FinalizedTxRead,
+    details: { readonly contractAddress: ContractAddress; readonly circuitId: string }
+  );
+  constructor(
+    operation: 'call',
+    record: FinalizedTxRead,
+    details: { readonly circuitId: string | readonly string[]; readonly contractAddress?: ContractAddress }
+  );
   constructor(
     readonly operation: TxFailedOperation,
     readonly record: FinalizedTxRead,
@@ -903,9 +959,10 @@ export class TxFailedError extends MidnightJsError {
   ) {
     super(describeTxFailure(operation, record, details));
     this.name = 'TxFailedError';
-    this.contractAddress = details.contractAddress;
-    this.circuitId = details.circuitId;
-    this.signingKey = details.signingKey;
+    assignDefined(this, { contractAddress: details.contractAddress, circuitId: details.circuitId });
+    if (details.signingKey !== undefined) {
+      hideSigningKey(this, details.signingKey);
+    }
   }
 }
 
@@ -1187,12 +1244,13 @@ export class Ledger8AmbiguousEntryPointError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_AMBIGUOUS_ENTRY_POINT];
 
   constructor(
+    readonly contractAddress: string,
     readonly circuitId: string,
     readonly matchCount: number
   ) {
     super(
-      `The contract state on chain declares ${matchCount} entry points that decode to the name ` +
-        `'${circuitId}', so which slot a call would dispatch on is ambiguous. Checking one slot's ` +
+      `The contract state on chain at '${contractAddress}' declares ${matchCount} entry points that decode ` +
+        `to the name '${circuitId}', so which slot a call would dispatch on is ambiguous. Checking one slot's ` +
         'verifier key would not establish that the chain verifies the proof against that same slot. ' +
         'Report this contract address: a state with duplicate entry-point names is not something a ' +
         'caller can work around.'
@@ -1256,6 +1314,8 @@ export class Ledger8SigningKeyError extends MidnightJsError {
    * deploy, which has no address until it is composed.
    * @param options Carries the store's own failure on `cause`, when the entry could not be read at all.
    */
+  constructor(reason: 'unusable', contractAddress?: string);
+  constructor(reason: 'unavailable', contractAddress: string, options?: ErrorOptions);
   constructor(
     readonly reason: Ledger8SigningKeyReason,
     readonly contractAddress?: string,
@@ -1309,7 +1369,8 @@ const LEDGER8_UNCONFIRMED_MESSAGES: Readonly<
  * Branch on `cause` for the underlying failure. It is wrapped rather than replaced, so a
  * `cause instanceof EraInvariantViolationError`, its method and its registered code stay reachable.
  *
- * {@link Ledger8UnconfirmedError.signingKey} is NAMED but never rendered into the message.
+ * {@link Ledger8UnconfirmedError.signingKey} is NAMED but never rendered into the message, and is
+ * not enumerable.
  *
  * @see {@link ErrorTaxonomy} for why one class covers the whole window.
  */
@@ -1325,14 +1386,17 @@ export class Ledger8UnconfirmedError extends MidnightJsError {
    * replacement would install. Sampled when the caller named none, and then this is its only copy.
    * @param cause Why the operation could not be confirmed.
    */
+  declare readonly signingKey: SigningKey;
+
   constructor(
     readonly operation: Ledger8KeyedOperation,
     readonly contractAddress: string,
-    readonly signingKey: SigningKey,
+    signingKey: SigningKey,
     cause: unknown
   ) {
     super(LEDGER8_UNCONFIRMED_MESSAGES[operation](contractAddress, cause), { cause });
     this.name = 'Ledger8UnconfirmedError';
+    hideSigningKey(this, signingKey);
   }
 }
 
@@ -1378,7 +1442,8 @@ const LEDGER8_NOT_STORED_MESSAGES: Readonly<
  * refused the new key (`stage` is `'signing-key'`). The key held before no longer authorizes anything
  * on the contract, so this is the only copy of the one that does.
  *
- * {@link Ledger8NotStoredError.signingKey} is NAMED but never rendered into the message.
+ * {@link Ledger8NotStoredError.signingKey} is NAMED but never rendered into the message, and is
+ * not enumerable.
  *
  * @see {@link ErrorTaxonomy} for the after-submission region this closes and why the key rides along
  * even where only one write can strand it.
@@ -1386,6 +1451,7 @@ const LEDGER8_NOT_STORED_MESSAGES: Readonly<
 export class Ledger8NotStoredError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED];
+  declare readonly signingKey: SigningKey;
 
   /**
    * @param operation Which confirmed operation the store refused to record.
@@ -1415,12 +1481,13 @@ export class Ledger8NotStoredError extends MidnightJsError {
   constructor(
     readonly operation: Ledger8KeyedOperation,
     readonly contractAddress: string,
-    readonly signingKey: SigningKey,
+    signingKey: SigningKey,
     readonly stage: Ledger8NotStoredStage,
     cause: unknown
   ) {
     super(LEDGER8_NOT_STORED_MESSAGES[operation](contractAddress, stage), { cause });
     this.name = 'Ledger8NotStoredError';
+    hideSigningKey(this, signingKey);
   }
 }
 

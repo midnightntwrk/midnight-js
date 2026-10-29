@@ -19,6 +19,8 @@ import {
   FailFallible,
   type FinalizedTxRead,
   type Ledger8FinalizedTxData,
+  SegmentFail,
+  SegmentSuccess,
   type TxStatus
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -26,13 +28,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   EraInvariantViolationError,
+  EraMismatchError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
+  Ledger8AmbiguousEntryPointError,
   Ledger8CallUnsupportedError,
   Ledger8NotStoredError,
   Ledger8SigningKeyError,
   Ledger8UnconfirmedError,
-  type TxFailedDetails,
   TxFailedError,
   type TxFailedOperation
 } from '../errors';
@@ -63,17 +66,16 @@ const TX_FAILED_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
 const failedRecord = (era: 'v8' | 'v9', status: TxStatus): FinalizedTxRead =>
   era === 'v8' ? ledger8FailedRecord(status) : createMockFinalizedTxData(status);
 
-const detailsFor = (operation: TxFailedOperation): TxFailedDetails => {
+const buildTxFailed = (operation: TxFailedOperation, record: FinalizedTxRead): TxFailedError => {
   switch (operation) {
     case 'call':
-      return { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' };
+      return new TxFailedError(operation, record, { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' });
     case 'deploy':
-      return { contractAddress: TX_FAILED_ADDRESS, signingKey: TX_FAILED_KEY };
+    case 'replace-authority':
+      return new TxFailedError(operation, record, { contractAddress: TX_FAILED_ADDRESS, signingKey: TX_FAILED_KEY });
     case 'insert-verifier-key':
     case 'remove-verifier-key':
-      return { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' };
-    case 'replace-authority':
-      return { contractAddress: TX_FAILED_ADDRESS, signingKey: TX_FAILED_KEY };
+      return new TxFailedError(operation, record, { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' });
   }
 };
 
@@ -89,7 +91,7 @@ describe('TxFailedError', () => {
     ({ operation, era, status }) => {
       const record = failedRecord(era, status);
 
-      const error = new TxFailedError(operation, record, detailsFor(operation));
+      const error = buildTxFailed(operation, record);
 
       expect(error).toBeInstanceOf(TxFailedError);
       expect(error.operation).toBe(operation);
@@ -106,7 +108,7 @@ describe('TxFailedError', () => {
     ({ operation, era, status }) => {
       const record = failedRecord(era, status);
 
-      const error = new TxFailedError(operation, record, detailsFor(operation));
+      const error = buildTxFailed(operation, record);
 
       expect(error.message).toContain(status);
       expect(error.message).toContain(record.txId);
@@ -116,7 +118,7 @@ describe('TxFailedError', () => {
   it.each(
     txFailedCases.filter(({ operation }) => operation === 'deploy' || operation === 'replace-authority')
   )('never renders the signing key ($operation, $era, $status)', ({ operation, era, status }) => {
-    const error = new TxFailedError(operation, failedRecord(era, status), detailsFor(operation));
+    const error = buildTxFailed(operation, failedRecord(era, status));
 
     expect(error.signingKey).toBe(TX_FAILED_KEY);
     expect(error.message).not.toContain(TX_FAILED_KEY.value);
@@ -131,21 +133,21 @@ describe('TxFailedError', () => {
   });
 
   it.each(TX_FAILED_OPERATIONS)('does not claim the contract state advanced on FailFallible (%s)', (operation) => {
-    const error = new TxFailedError(operation, failedRecord('v9', FailFallible), detailsFor(operation));
+    const error = buildTxFailed(operation, failedRecord('v9', FailFallible));
 
     expect(error.message).not.toMatch(/state advanced/);
     expect(error.message).toContain('guaranteed');
   });
 
   it('tells a caller not to deploy again before checking the address', () => {
-    const error = new TxFailedError('deploy', failedRecord('v9', FailFallible), detailsFor('deploy'));
+    const error = buildTxFailed('deploy', failedRecord('v9', FailFallible));
 
     expect(error.message).toContain('before deploying again');
     expect(error.message).toContain(TX_FAILED_ADDRESS);
   });
 
   it('carries the contract address and circuit id it was given', () => {
-    const error = new TxFailedError('remove-verifier-key', failedRecord('v8', FailEntirely), detailsFor('remove-verifier-key'));
+    const error = buildTxFailed('remove-verifier-key', failedRecord('v8', FailEntirely));
 
     expect(error.contractAddress).toBe(TX_FAILED_ADDRESS);
     expect(error.circuitId).toBe('increment');
@@ -154,7 +156,7 @@ describe('TxFailedError', () => {
   it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
     'does not say the update may have landed when the status is FailEntirely (%s)',
     (operation) => {
-      const error = new TxFailedError(operation, failedRecord('v9', FailEntirely), detailsFor(operation));
+      const error = buildTxFailed(operation, failedRecord('v9', FailEntirely));
 
       expect(error.message).not.toContain('may have landed');
     }
@@ -163,11 +165,83 @@ describe('TxFailedError', () => {
   it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
     'says the update may have landed when the status is FailFallible (%s)',
     (operation) => {
-      const error = new TxFailedError(operation, failedRecord('v9', FailFallible), detailsFor(operation));
+      const error = buildTxFailed(operation, failedRecord('v9', FailFallible));
 
       expect(error.message).toContain('may have landed');
     }
   );
+
+  it.each(TX_FAILED_ERAS)(
+    'tells a failed replacement to compare the chain authority with the new key, in words true for every era (%s)',
+    (era) => {
+      const error = buildTxFailed('replace-authority', failedRecord(era, FailFallible));
+
+      expect(error.message).not.toContain('MaintenanceAuthorityMismatchError');
+      expect(error.message).toContain('queryContractState');
+      expect(error.message).toContain('maintenanceAuthority');
+      expect(error.message).toContain('signatureVerifyingKey');
+      expect(error.message).toContain('privateStateProvider.setSigningKey(address, error.signingKey)');
+    }
+  );
+
+  it.each(TX_FAILED_ERAS)('names the transaction hash, the block height and the failed segments (%s)', (era) => {
+    const record: FinalizedTxRead = {
+      ...failedRecord(era, FailFallible),
+      txHash: 'feedbeef',
+      blockHeight: 4242,
+      segmentStatusMap: new Map([
+        [1, SegmentSuccess],
+        [2, SegmentFail],
+        [5, SegmentFail]
+      ])
+    };
+
+    const error = buildTxFailed('call', record);
+
+    expect(error.message).toContain("hash 'feedbeef'");
+    expect(error.message).toContain('block 4242');
+    expect(error.message).toContain('Failed segments: 2, 5.');
+  });
+
+  it('names no failed segments when the record carries no segment map', () => {
+    const error = buildTxFailed('call', failedRecord('v9', FailEntirely));
+
+    expect(error.message).not.toContain('Failed segments');
+  });
+
+  it.each(['deploy', 'replace-authority'] as const)(
+    'keeps the signing key readable but out of enumeration and serialization (%s)',
+    (operation) => {
+      const error = buildTxFailed(operation, failedRecord('v9', FailFallible));
+
+      expect(error.signingKey).toBe(TX_FAILED_KEY);
+      expect(Object.keys(error)).not.toContain('signingKey');
+      expect(JSON.stringify({ ...error })).not.toContain(TX_FAILED_KEY.value);
+    }
+  );
+
+  it('sets no member the operation does not have', () => {
+    const error = new TxFailedError('call', failedRecord('v9', FailEntirely), { circuitId: 'increment' });
+
+    expect('signingKey' in error).toBe(false);
+    expect('contractAddress' in error).toBe(false);
+  });
+
+  it('refuses at compile time a deploy or a replacement without its signing key', () => {
+    // @ts-expect-error a deploy always carries the key its authority was built from
+    const deploy = new TxFailedError('deploy', failedRecord('v9', FailFallible), { contractAddress: TX_FAILED_ADDRESS });
+    // @ts-expect-error a replacement always carries the new key
+    const replace = new TxFailedError('replace-authority', failedRecord('v9', FailFallible), { contractAddress: TX_FAILED_ADDRESS });
+
+    expect([deploy.operation, replace.operation]).toEqual(['deploy', 'replace-authority']);
+  });
+
+  it('refuses at compile time a verifier key update without its circuit', () => {
+    // @ts-expect-error an insert names the circuit whose key it inserts
+    const error = new TxFailedError('insert-verifier-key', failedRecord('v9', FailFallible), { contractAddress: TX_FAILED_ADDRESS });
+
+    expect(error.operation).toBe('insert-verifier-key');
+  });
 });
 
 describe('EraInvariantViolationError', () => {
@@ -450,5 +524,66 @@ describe('Ledger8CallUnsupportedError', () => {
     const error = new Ledger8CallUnsupportedError('unmappable-recipient', 'mint');
 
     expect(error.reason).toBe('unmappable-recipient');
+  });
+});
+
+describe('signing key exposure on the ledger 8 errors that carry one', () => {
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'e5'.repeat(32) };
+  const ADDRESS = '0600'.repeat(8);
+
+  it.each([
+    ['Ledger8UnconfirmedError', () => new Ledger8UnconfirmedError('deploy', ADDRESS, SIGNING_KEY, new Error('x'))],
+    ['Ledger8NotStoredError', () => new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', new Error('x'))]
+  ])('keeps the key readable but out of enumeration and serialization (%s)', (_name, build) => {
+    const error = build();
+
+    expect(error.signingKey).toBe(SIGNING_KEY);
+    expect(Object.keys(error)).not.toContain('signingKey');
+    expect(JSON.stringify({ ...error })).not.toContain(SIGNING_KEY.value);
+  });
+});
+
+describe('Ledger8SigningKeyError overloads', () => {
+  it('refuses at compile time an unavailable key that names no contract', () => {
+    // @ts-expect-error a maintenance update always targets an address
+    const error = new Ledger8SigningKeyError('unavailable');
+
+    expect(error.reason).toBe('unavailable');
+  });
+});
+
+describe('Ledger8AmbiguousEntryPointError', () => {
+  const ADDRESS = '0700'.repeat(8);
+
+  it('carries and names the contract address it asks the caller to report', () => {
+    const error = new Ledger8AmbiguousEntryPointError(ADDRESS, 'increment', 2);
+
+    expect(error.contractAddress).toBe(ADDRESS);
+    expect(error.circuitId).toBe('increment');
+    expect(error.matchCount).toBe(2);
+    expect(error.message).toContain(`'${ADDRESS}'`);
+  });
+});
+
+describe('EraMismatchError', () => {
+  it('keeps the contract address, the circuit id and the detail it was given', () => {
+    const error = new EraMismatchError('ledger8-call-in-scope', {
+      contractAddress: '0800'.repeat(8),
+      circuitId: 'increment',
+      detail: "Circuit: 'increment'."
+    });
+
+    expect(error.contractAddress).toBe('0800'.repeat(8));
+    expect(error.circuitId).toBe('increment');
+    expect(error.detail).toBe("Circuit: 'increment'.");
+    expect(error.message).toContain("Circuit: 'increment'.");
+  });
+
+  it('sets no member it was not given', () => {
+    const error = new EraMismatchError('unrecognised-contract-shape');
+
+    expect('contractAddress' in error).toBe(false);
+    expect('circuitId' in error).toBe(false);
+    expect('detail' in error).toBe(false);
   });
 });

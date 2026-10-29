@@ -160,7 +160,18 @@ describe('submitReplaceAuthorityTx', () => {
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
 
-      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(TxFailedError);
+      const failure = await replaceAuthorityFn(mockNewAuthority).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        record: failedTxData
+      });
+      expect((failure as InstanceType<typeof TxFailedError>).signingKey).toBe(mockNewAuthority);
+      expect((failure as Error).message).not.toContain(mockNewAuthority.value);
+      expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
   });
 });

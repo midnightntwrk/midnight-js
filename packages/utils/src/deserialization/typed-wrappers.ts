@@ -162,7 +162,7 @@ export const deserializeLedgerTransaction = async <E extends LedgerVersion>(
   ctx: CallSiteContext
 ): Promise<LedgerTransaction<'Finalized', E>> => {
   if (!LEDGER_VERSIONS.includes(era)) {
-    throw new UnknownLedgerVersionError(String(era));
+    throw new UnknownLedgerVersionError(era);
   }
   const read = await finalizedReaders[era]();
   const tx = withDeserializationContext(

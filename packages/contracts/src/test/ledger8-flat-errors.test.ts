@@ -104,7 +104,7 @@ describe('the retained-era errors are published flat', () => {
     const signingKey = { tag: 'schnorr' as const, value: '11'.repeat(32) };
     const address = 'ab'.repeat(32);
     const instances: Record<string, { name: string }> = {
-      Ledger8AmbiguousEntryPointError: new barrel.Ledger8AmbiguousEntryPointError('increment', 2),
+      Ledger8AmbiguousEntryPointError: new barrel.Ledger8AmbiguousEntryPointError('0200'.repeat(8), 'increment', 2),
       Ledger8CallUnsupportedError: new barrel.Ledger8CallUnsupportedError('shielded-spend', 'increment'),
       Ledger8NotStoredError: new barrel.Ledger8NotStoredError('deploy', address, signingKey, 'signing-key', new Error('store down')),
       Ledger8SigningKeyError: new barrel.Ledger8SigningKeyError('unusable'),

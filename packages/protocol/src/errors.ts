@@ -855,19 +855,28 @@ export class Ledger8RuntimeInvalidError extends MidnightJsError {
   }
 }
 
+const describeRequestedVersion = (value: unknown): string | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  return typeof value === 'object' || typeof value === 'function' ? typeof value : String(value);
+};
+
 /**
  * Thrown when a ledger era was requested by a value that is not a member of
  * `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
  * `extractEncodedStateValue` (`lib/era/envelope.ts`).
  *
- * A TypeScript caller cannot produce this: `version` is typed as
- * `LedgerVersion`. It exists for the untyped JavaScript consumers this package
- * also serves.
+ * Two sources: an untyped JavaScript caller passing a value that is not a
+ * `LedgerVersion`, and a provider returning a value with no era or an unknown
+ * one. The second is named by `context`.
  *
  * Carries no `version` field, unlike every other era-aware error here — there
  * is no valid era to name.
  *
- * @param requestedVersion The offending value that was passed. Carried for
+ * @param requestedVersion The offending value. Kept as `undefined` when the
+ *   value carried no era, as the kind (`'object'`, `'function'`) for a value
+ *   that is not a scalar, and as its string form otherwise. Carried for
  *   programmatic use only; it is deliberately kept out of the message.
  * @param context The call that read the version off a value it was handed,
  *   for example the provider method that returned a record. Named in the
@@ -879,8 +888,10 @@ export class UnknownLedgerVersionError extends MidnightJsError {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
 
+  readonly requestedVersion: string | undefined;
+
   constructor(
-    readonly requestedVersion: string,
+    requestedVersion: unknown,
     readonly context?: string
   ) {
     super(
@@ -890,11 +901,11 @@ export class UnknownLedgerVersionError extends MidnightJsError {
         (context === undefined
           ? 'Derive it with protocolVersionToLedger rather than constructing the string by hand. '
           : '') +
-        'A `requestedVersion` of ' +
-        "'undefined' or 'null' means the value carried no era, which is the shape of a pre-5.0.0 provider: " +
-        'upgrade that provider.'
+        'A `requestedVersion` of `undefined` means the value carried no era, which is the shape of a ' +
+        'pre-5.0.0 provider: upgrade that provider.'
     );
     this.name = 'UnknownLedgerVersionError';
+    this.requestedVersion = describeRequestedVersion(requestedVersion);
   }
 }
 

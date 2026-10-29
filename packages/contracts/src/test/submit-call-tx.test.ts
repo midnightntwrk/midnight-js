@@ -362,6 +362,9 @@ describe('submit-call-tx', () => {
           expect(error).toBeInstanceOf(TxFailedError);
           expect((error as TxFailedError).record).toEqual(mockFailedTxData);
           expect((error as TxFailedError).circuitId).toEqual(circuitId);
+          expect((error as TxFailedError).operation).toBe('call');
+          expect((error as TxFailedError).code).toBe('MIDNIGHT_JS_C_TX_FAILED');
+          expect('contractAddress' in (error as TxFailedError)).toBe(false);
         }
       });
 

@@ -117,7 +117,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E exte
     bytes: Uint8Array
   ): LedgerState<K, E> {
     if (!LEDGER_VERSIONS.includes(era)) {
-      throw new UnknownLedgerVersionError(String(era));
+      throw new UnknownLedgerVersionError(era);
     }
     if (!LEDGER_STATE_KINDS.includes(kind)) {
       throw new InvalidLedgerStateError(String(kind), era, 'unknown-kind');

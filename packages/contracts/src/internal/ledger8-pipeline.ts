@@ -64,7 +64,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { ownLedgerState, readEraTag, resolveContractStateEra } from './era';
+import { eraTagOf, ownLedgerState, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -319,7 +319,7 @@ const servedLedgerParameters = (
   }
   const parameters = ownLedgerState(served, 'LedgerParameters');
   if (parameters === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(served), 'queryContractState');
+    throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }
   return parameters;
 };
@@ -395,11 +395,12 @@ export const readLedger8Snapshot = async (
  */
 const snapshotEntryPoint = (
   snapshot: Ledger8Snapshot,
-  circuitId: string
+  circuitId: string,
+  contractAddress: string
 ): ContractStatePojo['entryPoints'][number] | undefined => {
   const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
   if (matches.length > 1) {
-    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
+    throw new Ledger8AmbiguousEntryPointError(contractAddress, circuitId, matches.length);
   }
   return matches[0];
 };
@@ -434,7 +435,7 @@ export const assertSnapshotVerifierKey = (
   localVerifierKey: Uint8Array,
   contractAddress: string
 ): void => {
-  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId, contractAddress);
   try {
     assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
   } catch (cause) {
@@ -448,6 +449,7 @@ export const assertSnapshotVerifierKey = (
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
       throw new EraMismatchError('ledger8-artifact-on-ledger9-contract', {
         detail: `Contract address: ${contractAddress}.`,
+        contractAddress,
         cause
       });
     }
@@ -1061,7 +1063,7 @@ const assertMaintenanceSlot = (
     return;
   }
   const { circuitId } = update;
-  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId, contractAddress);
   if (update.kind === 'insert-verifier-key') {
     if (entryPoint?.verifierKey !== undefined) {
       throw new InvalidArgumentError(
