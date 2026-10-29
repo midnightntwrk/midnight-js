@@ -20,7 +20,7 @@ The updated states resulting from executing a contract constructor.
 
 > `readonly` **era**: `"v9"`
 
-The pipeline that produced this result: always the current era here.
+The pipeline that produced this result: always ledger 9 here.
 
 Read off the compiled artifact, NEVER off a transaction record — the two
 facts disagree after the fork, and only this one says which module the

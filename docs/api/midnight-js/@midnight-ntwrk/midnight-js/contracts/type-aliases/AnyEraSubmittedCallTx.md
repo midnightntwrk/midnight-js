@@ -6,7 +6,7 @@
 
 # Type Alias: AnyEraSubmittedCallTx
 
-> **AnyEraSubmittedCallTx** = `Omit`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk), [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)\>\>, `"callTxData"`\> & `object` \| [`SubmittedCallTx`](../namespaces/Ledger8/interfaces/SubmittedCallTx.md)\<[`Contract`](../namespaces/Ledger8/interfaces/Contract.md), [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<[`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\>\>
+> **AnyEraSubmittedCallTx** = `Omit`\<[`Ledger9SubmittedCallTx`](../interfaces/Ledger9SubmittedCallTx.md)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk), [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)\>\>, `"callTxData"`\> & `object` \| [`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<[`Ledger8Contract`](../interfaces/Ledger8Contract.md), [`Ledger8CircuitId`](Ledger8CircuitId.md)\<[`Ledger8Contract`](../interfaces/Ledger8Contract.md)\>\>
 
 What a submission that does not wait for finalization answers with, in
 either era.

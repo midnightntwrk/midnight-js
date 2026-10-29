@@ -12,7 +12,7 @@ non-success status, in EITHER era. The one class to catch.
 Each subclass keeps its own historical member -- `finalizedTxData` on the
 current era's, `txData` on the retained one -- so nothing reading those
 breaks. [AnyEraTxFailedError.record](#record) is the member to write new code
-against, and it needs narrowing on `version` before `tx` is touched.
+against, and it needs narrowing on `era` before `tx` is touched.
 
 ## See
 
@@ -104,12 +104,12 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### record
 
-> `abstract` `readonly` **record**: [`VersionedFinalizedTxData`](../../types/type-aliases/VersionedFinalizedTxData.md)
+> `abstract` `readonly` **record**: [`FinalizedTxRead`](../../types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-`record.tx` is a `FinalizedTx` in the era `record.version` names.
-Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
-narrowing on `record.version`.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.

@@ -22,11 +22,9 @@ import {
   ForeignLedgerTransactionError,
   ImportConflictError,
   InvalidExportFormatError,
-  InvalidLedgerStateError,
   InvalidProtocolSchemeError,
+  InvalidSerializedStateError,
   InvalidTransactionHandleError,
-  LedgerStateDecodeFailedError,
-  LedgerStateDecoderMissingError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
   PrivateStateImportError,
@@ -37,6 +35,8 @@ import {
   PROVIDER_ERROR_CATEGORIES,
   PROVIDER_ERROR_CODES,
   ProviderEraUnsupportedError,
+  SerializedStateDecodeFailedError,
+  SerializedStateDecoderMissingError,
   SigningKeyExportError,
   TransactionEraMismatchError,
   UnusableEraEntryError,
@@ -72,9 +72,9 @@ describe('types error classes', () => {
     ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
     ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
     ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')],
-    ['InvalidLedgerStateError', new InvalidLedgerStateError('ContractState', 'v9', 'tag-mismatch')],
-    ['LedgerStateDecoderMissingError', new LedgerStateDecoderMissingError('ContractState', 'v8')],
-    ['LedgerStateDecodeFailedError', new LedgerStateDecodeFailedError('ContractState', 'v9', { cause: new Error('bad body') })]
+    ['InvalidSerializedStateError', new InvalidSerializedStateError('ContractState', 'v9', 'tag-mismatch')],
+    ['SerializedStateDecoderMissingError', new SerializedStateDecoderMissingError('ContractState', 'v8')],
+    ['SerializedStateDecodeFailedError', new SerializedStateDecodeFailedError('ContractState', 'v9', { cause: new Error('bad body') })]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
@@ -84,6 +84,10 @@ describe('types error classes', () => {
 
   it('builds an instance of every exported error class below', () => {
     expect(exportedClasses.map((c) => c.name).sort()).toEqual(instances.map(([name]) => name).sort());
+  });
+
+  it.each(instances)('%s reports its class name', (name, error) => {
+    expect(error.name).toBe(name);
   });
 
   it.each(instances)('%s carries a registered code and the category the table gives that code', (_name, error) => {

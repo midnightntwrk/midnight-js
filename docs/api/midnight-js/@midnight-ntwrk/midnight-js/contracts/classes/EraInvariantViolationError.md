@@ -28,7 +28,7 @@ the record has to agree with.
 [EraInvariantViolationError.received](#received) names the era that actually came
 back. An answer that is not a transaction handle at all is a different
 fault and raises `InvalidTransactionHandleError` instead; a read-surface
-record whose `version` is missing or unrecognised raises
+record whose `era` is missing or unrecognised raises
 `UnknownLedgerVersionError`.
 
 ## Extends

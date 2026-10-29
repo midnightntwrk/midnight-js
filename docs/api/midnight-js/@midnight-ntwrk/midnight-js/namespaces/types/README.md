@@ -158,9 +158,21 @@ Re-exports [ContractExecutableRuntimeOptions](../../types/type-aliases/ContractE
 
 ***
 
+### ContractStateAndParametersRead
+
+Re-exports [ContractStateAndParametersRead](../../types/interfaces/ContractStateAndParametersRead.md)
+
+***
+
 ### ContractStateObservableConfig
 
 Re-exports [ContractStateObservableConfig](../../types/type-aliases/ContractStateObservableConfig.md)
+
+***
+
+### ContractStateRead
+
+Re-exports [ContractStateRead](../../types/interfaces/ContractStateRead.md)
 
 ***
 
@@ -224,6 +236,18 @@ Re-exports [createZKIR](../../types/variables/createZKIR.md)
 
 ***
 
+### DecodedState
+
+Re-exports [DecodedState](../../types/type-aliases/DecodedState.md)
+
+***
+
+### DecodersFor
+
+Re-exports [DecodersFor](../../types/type-aliases/DecodersFor.md)
+
+***
+
 ### EraDeclaringProvider
 
 Re-exports [EraDeclaringProvider](../../types/interfaces/EraDeclaringProvider.md)
@@ -284,9 +308,9 @@ Re-exports [FinalizedTx](../../types/type-aliases/FinalizedTx.md)
 
 ***
 
-### FinalizedTxData
+### FinalizedTxRead
 
-Re-exports [FinalizedTxData](../../types/interfaces/FinalizedTxData.md)
+Re-exports [FinalizedTxRead](../../types/type-aliases/FinalizedTxRead.md)
 
 ***
 
@@ -350,6 +374,18 @@ Re-exports [InvalidProtocolSchemeError](../../types/classes/InvalidProtocolSchem
 
 ***
 
+### InvalidSerializedStateError
+
+Re-exports [InvalidSerializedStateError](../../types/classes/InvalidSerializedStateError.md)
+
+***
+
+### InvalidSerializedStateReason
+
+Re-exports [InvalidSerializedStateReason](../../types/type-aliases/InvalidSerializedStateReason.md)
+
+***
+
 ### InvalidTransactionHandleError
 
 Re-exports [InvalidTransactionHandleError](../../types/classes/InvalidTransactionHandleError.md)
@@ -374,33 +410,21 @@ Re-exports [Latest](../../types/type-aliases/Latest.md)
 
 ***
 
-### Ledger8ContractStateBytes
-
-Re-exports [Ledger8ContractStateBytes](../../types/interfaces/Ledger8ContractStateBytes.md)
-
-***
-
 ### Ledger8FinalizedTxData
 
 Re-exports [Ledger8FinalizedTxData](../../types/interfaces/Ledger8FinalizedTxData.md)
 
 ***
 
-### Ledger8PublicStates
+### Ledger9FinalizedTxData
 
-Re-exports [Ledger8PublicStates](../../types/interfaces/Ledger8PublicStates.md)
-
-***
-
-### Ledger9ContractState
-
-Re-exports [Ledger9ContractState](../../types/interfaces/Ledger9ContractState.md)
+Re-exports [Ledger9FinalizedTxData](../../types/interfaces/Ledger9FinalizedTxData.md)
 
 ***
 
-### Ledger9PublicStates
+### Ledger9UnboundTransaction
 
-Re-exports [Ledger9PublicStates](../../types/interfaces/Ledger9PublicStates.md)
+Re-exports [Ledger9UnboundTransaction](../../types/type-aliases/Ledger9UnboundTransaction.md)
 
 ***
 
@@ -638,9 +662,9 @@ Re-exports [PublicDataProvider](../../types/interfaces/PublicDataProvider.md)
 
 ***
 
-### RawContractState
+### PublicStatesRead
 
-Re-exports [RawContractState](../../types/interfaces/RawContractState.md)
+Re-exports [PublicStatesRead](../../types/interfaces/PublicStatesRead.md)
 
 ***
 
@@ -668,6 +692,24 @@ Re-exports [SegmentSuccess](../../types/variables/SegmentSuccess.md)
 
 ***
 
+### SerializedState
+
+Re-exports [SerializedState](../../types/classes/SerializedState.md)
+
+***
+
+### SerializedStateDecodeFailedError
+
+Re-exports [SerializedStateDecodeFailedError](../../types/classes/SerializedStateDecodeFailedError.md)
+
+***
+
+### SerializedStateDecoderMissingError
+
+Re-exports [SerializedStateDecoderMissingError](../../types/classes/SerializedStateDecoderMissingError.md)
+
+***
+
 ### SigningKeyExport
 
 Re-exports [SigningKeyExport](../../types/interfaces/SigningKeyExport.md)
@@ -677,6 +719,24 @@ Re-exports [SigningKeyExport](../../types/interfaces/SigningKeyExport.md)
 ### SigningKeyExportError
 
 Re-exports [SigningKeyExportError](../../types/classes/SigningKeyExportError.md)
+
+***
+
+### StateDecoder
+
+Re-exports [StateDecoder](../../types/interfaces/StateDecoder.md)
+
+***
+
+### StateDecoders
+
+Re-exports [StateDecoders](../../types/type-aliases/StateDecoders.md)
+
+***
+
+### StateKind
+
+Re-exports [StateKind](../../types/type-aliases/StateKind.md)
 
 ***
 
@@ -740,12 +800,6 @@ Re-exports [TxStatus](../../types/type-aliases/TxStatus.md)
 
 ***
 
-### UnboundTransaction
-
-Re-exports [UnboundTransaction](../../types/type-aliases/UnboundTransaction.md)
-
-***
-
 ### UnboundTx
 
 Re-exports [UnboundTx](../../types/type-aliases/UnboundTx.md)
@@ -797,24 +851,6 @@ Re-exports [UnusableEraEntryError](../../types/classes/UnusableEraEntryError.md)
 ### VerifierKey
 
 Re-exports [VerifierKey](../../types/type-aliases/VerifierKey.md)
-
-***
-
-### VersionedContractState
-
-Re-exports [VersionedContractState](../../types/type-aliases/VersionedContractState.md)
-
-***
-
-### VersionedFinalizedTxData
-
-Re-exports [VersionedFinalizedTxData](../../types/type-aliases/VersionedFinalizedTxData.md)
-
-***
-
-### VersionedPublicStates
-
-Re-exports [VersionedPublicStates](../../types/type-aliases/VersionedPublicStates.md)
 
 ***
 

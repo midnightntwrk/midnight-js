@@ -8,7 +8,7 @@
 
 > **ReadMethod** = `"watchForTxData"` \| `"watchForDeployTxData"`
 
-The [PublicDataProvider](../interfaces/PublicDataProvider.md) methods that report a version-tagged
+The [PublicDataProvider](../interfaces/PublicDataProvider.md) methods that report an era-tagged
 finalized-transaction record.
 
 Declared here, alongside the interface that owns those methods, rather than

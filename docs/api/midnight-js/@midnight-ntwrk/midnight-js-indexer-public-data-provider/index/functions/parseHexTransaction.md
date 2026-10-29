@@ -8,6 +8,10 @@
 
 > **parseHexTransaction**\<`E`\>(`era`, `s`, `details?`): `Promise`\<[`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Finalized"`, `E`\>\>
 
+Takes a hex-encoded indexer transaction, decodes it to bytes, and dispatches to the typed
+deserialization wrapper from `@midnight-ntwrk/midnight-js-utils`. Re-exported from the package
+entry point, so its signature is public API.
+
 ## Type Parameters
 
 ### E

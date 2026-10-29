@@ -6,7 +6,7 @@
 
 # Function: submitTx()
 
-> **submitTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
+> **submitTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)\>
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.
@@ -81,7 +81,7 @@ Configuration.
 
 ## Returns
 
-`Promise`\<[`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)\>
+`Promise`\<[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)\>
 
 A promise that resolves with the finalized transaction data, tagged with the era of
          the head it ran on, or rejects if an error occurs along the way.

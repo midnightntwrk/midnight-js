@@ -6,7 +6,7 @@
 
 # Type Alias: AnyEraFoundContract\<C, L8\>
 
-> **AnyEraFoundContract**\<`C`, `L8`\> = [`FoundContract`](../interfaces/FoundContract.md)\<`C`\> \| [`FoundContract`](../namespaces/Ledger8/interfaces/FoundContract.md)\<`L8`\>
+> **AnyEraFoundContract**\<`C`, `L8`\> = [`Ledger9FoundContract`](../interfaces/Ledger9FoundContract.md)\<`C`\> \| [`Ledger8FoundContract`](../interfaces/Ledger8FoundContract.md)\<`L8`\>
 
 A contract found on chain by `findDeployedContract`, in either era.
 
@@ -23,7 +23,7 @@ The current-era contract.
 
 ### L8
 
-`L8` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)
+`L8` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
 The retained-era contract.
 

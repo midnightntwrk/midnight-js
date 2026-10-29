@@ -8,10 +8,10 @@
 
 > `const` **requireLedger9**: \<`T`\>(`value`, `context`) => [`Ledger9Variant`](../type-aliases/Ledger9Variant.md)\<`T`\>
 
-Narrows any version-tagged union (`VersionedContractState`, `VersionedFinalizedTxData`, …)
+Narrows any era-tagged union (`FinalizedTxRead`, …)
 to its v9 variant, for code that handles only the v9 era.
 
-Code that handles both eras should `switch (value.version)` and close the switch with
+Code that handles both eras should `switch (value.era)` and close the switch with
 [assertNever](../functions/assertNever.md) instead.
 
 ## Type Parameters
@@ -26,7 +26,7 @@ Code that handles both eras should `switch (value.version)` and close the switch
 
 `WithLedger9Variant`\<`T`\>
 
-The version-tagged value.
+The era-tagged value.
 
 ### context
 
@@ -46,11 +46,11 @@ Ledger8ValueUnsupportedError if the value was written by the v8 ledger.
 
 ## Throws
 
-UnrecognisedEraTagError if the value is `null`, has no `version`, or carries an era this
+UnrecognisedEraTagError if the value is `null`, has no `era`, or carries an era this
   build does not know.
 
 ## Example
 
 ```ts
-const { state } = requireLedger9(await publicDataProvider.watchForContractState(address), 'readCounter');
+const { tx } = requireLedger9(await publicDataProvider.watchForTxData(txId), 'readTx');
 ```

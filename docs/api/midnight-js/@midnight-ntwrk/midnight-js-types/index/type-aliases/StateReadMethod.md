@@ -8,5 +8,5 @@
 
 > **StateReadMethod** = `"queryDeployContractState"`
 
-The [PublicDataProvider](../interfaces/PublicDataProvider.md) methods that report a version-tagged contract
-state.
+The [PublicDataProvider](../interfaces/PublicDataProvider.md) methods that report a contract state with
+its era.

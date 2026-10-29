@@ -19,7 +19,7 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { LEDGER_STATE_KINDS, type LedgerStateKind, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -61,7 +61,7 @@ export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
  * Most of the group belongs to the provider methods. Two sets do not, and are here
  * because this is the one provider-scoped group there is: `PRIVATE_STATE_NOT_SERIALIZABLE`
  * belongs to the private-state provider, and `INVALID_LEDGER_STATE`,
- * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `LedgerState`.
+ * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `SerializedState`.
  *
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
@@ -427,36 +427,36 @@ export class TransactionEraMismatchError extends MidnightJsError {
 }
 
 /**
- * Why {@link InvalidLedgerStateError} refused a value.
+ * Why {@link InvalidSerializedStateError} refused a value.
  *
- * - `'unknown-kind'`: the kind is not a {@link LedgerStateKind}.
+ * - `'unknown-kind'`: the kind is not a {@link StateKind}.
  * - `'not-bytes'`: the value is not a `Uint8Array`.
  * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that era writes for that
  *   kind.
- * - `'not-from-bytes'`: the value was constructed without `LedgerState.fromBytes`.
+ * - `'not-from-bytes'`: the value was constructed without `SerializedState.fromBytes`.
  */
-export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
 
 const INVALID_LEDGER_STATE_MESSAGES: Readonly<
-  Record<InvalidLedgerStateReason, (kind: string, era: string) => string>
+  Record<InvalidSerializedStateReason, (kind: string, era: string) => string>
 > = {
   'unknown-kind': (kind) =>
-    `Cannot build a LedgerState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
-  'not-bytes': (kind) => `Cannot build a ${kind} LedgerState: the value is not a Uint8Array.`,
+    `Cannot build a SerializedState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
+  'not-bytes': (kind) => `Cannot build a ${kind} SerializedState: the value is not a Uint8Array.`,
   'tag-mismatch': (kind, era) =>
     `The bytes are not a ${kind} written by the ${era} ledger. ` +
     `Pass the era of the ledger that wrote them, and check they hold a ${kind}.`,
-  'not-from-bytes': () => 'A LedgerState can only be made by LedgerState.fromBytes.'
+  'not-from-bytes': () => 'A SerializedState can only be made by SerializedState.fromBytes.'
 };
 
 /**
- * Thrown by `LedgerState.fromBytes` when the bytes are not a value of the given kind written by the
- * ledger of the given era, and by the `LedgerState` constructor when it is called without
- * `LedgerState.fromBytes`. The bytes are never quoted in the message.
+ * Thrown by `SerializedState.fromBytes` when the bytes are not a value of the given kind written by the
+ * ledger of the given era, and by the `SerializedState` constructor when it is called without
+ * `SerializedState.fromBytes`. The bytes are never quoted in the message.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
-export class InvalidLedgerStateError extends MidnightJsError {
+export class InvalidSerializedStateError extends MidnightJsError {
   readonly code = INVALID_LEDGER_STATE;
   readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_LEDGER_STATE];
 
@@ -469,14 +469,14 @@ export class InvalidLedgerStateError extends MidnightJsError {
   constructor(
     readonly kind: string | undefined,
     readonly era: LedgerVersion | undefined,
-    readonly reason: InvalidLedgerStateReason
+    readonly reason: InvalidSerializedStateReason
   ) {
     super(INVALID_LEDGER_STATE_MESSAGES[reason](String(kind), String(era)));
-    this.name = 'InvalidLedgerStateError';
+    this.name = 'InvalidSerializedStateError';
   }
 }
 
-const DECODER_SOURCE: Readonly<Record<LedgerStateKind, Readonly<Record<LedgerVersion, string>>>> = {
+const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerVersion, string>>>> = {
   ContractState: {
     v8: '`ContractState` from a ledger 8 `@midnight-ntwrk/compact-runtime` (0.16), such as the copy a ledger 8 contract was compiled against',
     v9: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your contract was compiled against'
@@ -492,12 +492,12 @@ const DECODER_SOURCE: Readonly<Record<LedgerStateKind, Readonly<Record<LedgerVer
 };
 
 /**
- * Thrown by `LedgerState.deserialize` when the decoders passed in have none for the era of the
+ * Thrown by `SerializedState.deserialize` when the decoders passed in have none for the era of the
  * value. The message names the class to import.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
-export class LedgerStateDecoderMissingError extends MidnightJsError {
+export class SerializedStateDecoderMissingError extends MidnightJsError {
   readonly code = LEDGER_STATE_DECODER_MISSING;
   readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER_STATE_DECODER_MISSING];
 
@@ -506,19 +506,19 @@ export class LedgerStateDecoderMissingError extends MidnightJsError {
    * @param era The ledger era that wrote the value.
    */
   constructor(
-    readonly kind: LedgerStateKind,
+    readonly kind: StateKind,
     readonly era: LedgerVersion
   ) {
     super(
       `No decoder for a ${kind} written by the ${era} ledger. ` +
         `Pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}.`
     );
-    this.name = 'LedgerStateDecoderMissingError';
+    this.name = 'SerializedStateDecoderMissingError';
   }
 }
 
 /**
- * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws an error
+ * Thrown by `SerializedState.deserialize` when the decoder for the era of the value throws an error
  * that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
  * are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
  * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
@@ -526,7 +526,7 @@ export class LedgerStateDecoderMissingError extends MidnightJsError {
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
-export class LedgerStateDecodeFailedError extends MidnightJsError {
+export class SerializedStateDecodeFailedError extends MidnightJsError {
   readonly code = LEDGER_STATE_DECODE_FAILED;
   readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER_STATE_DECODE_FAILED];
 
@@ -536,7 +536,7 @@ export class LedgerStateDecodeFailedError extends MidnightJsError {
    * @param options Carries the decoder's failure as `cause`.
    */
   constructor(
-    readonly kind: LedgerStateKind,
+    readonly kind: StateKind,
     readonly era: LedgerVersion,
     options: { readonly cause: unknown }
   ) {
@@ -546,7 +546,7 @@ export class LedgerStateDecodeFailedError extends MidnightJsError {
         `if you do, the bytes are corrupt.`,
       options
     );
-    this.name = 'LedgerStateDecodeFailedError';
+    this.name = 'SerializedStateDecodeFailedError';
   }
 }
 
@@ -566,6 +566,7 @@ export class InvalidProtocolSchemeError extends MidnightJsError {
     public readonly allowableSchemes: string[]
   ) {
     super(`Invalid protocol scheme: '${invalidScheme}'. Allowable schemes are one of: ${allowableSchemes.join(',')}`);
+    this.name = 'InvalidProtocolSchemeError';
   }
 }
 

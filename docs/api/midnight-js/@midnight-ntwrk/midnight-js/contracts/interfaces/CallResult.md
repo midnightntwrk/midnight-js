@@ -11,14 +11,14 @@ Contains all information resulting from circuit execution.
 ## Remarks
 
 **Privacy-sensitive type.** The `private` field is a
-[CallResultPrivate](../type-aliases/CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+[Ledger9CallResultPrivate](../type-aliases/Ledger9CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
 object as confidential when logging, serializing, or transmitting — read
 only the `public` field or destructure specific non-sensitive fields rather
 than spreading or stringifying the whole object.
 
 ## Extended by
 
-- [`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)
+- [`Ledger9UnsubmittedCallTxData`](Ledger9UnsubmittedCallTxData.md)
 
 ## Type Parameters
 
@@ -52,7 +52,7 @@ for a call in the tree. Treat as confidential alongside [private](#private).
 
 > `readonly` **era**: `"v9"`
 
-The pipeline that produced this result: always the current era here.
+The pipeline that produced this result: always ledger 9 here.
 
 Read off the compiled artifact, NEVER off a transaction record — the two
 facts disagree after the fork, and only this one says which module the
@@ -62,7 +62,7 @@ objects in this result came from.
 
 ### private
 
-> `readonly` **private**: [`CallResultPrivate`](../type-aliases/CallResultPrivate.md)\<`C`, `PCK`\>
+> `readonly` **private**: [`Ledger9CallResultPrivate`](../type-aliases/Ledger9CallResultPrivate.md)\<`C`, `PCK`\>
 
 The private/sensitive data produced by the circuit execution.
 
@@ -74,7 +74,7 @@ Describes the **root** contract call. Equivalent to the last entry of [calls](#c
 
 ### public
 
-> `readonly` **public**: [`CallResultPublic`](CallResultPublic.md)
+> `readonly` **public**: [`Ledger9CallResultPublic`](Ledger9CallResultPublic.md)
 
 The public/non-sensitive data produced by the circuit execution.
 

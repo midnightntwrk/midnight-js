@@ -61,14 +61,14 @@ When `privateStateId` is present with an undefined value. Raised before anything
 
 ## Remarks
 
-The returned [FinalizedDeployTxData](../interfaces/FinalizedDeployTxData.md) is privacy-sensitive and carries
+The returned [Ledger9FinalizedDeployTxData](../interfaces/Ledger9FinalizedDeployTxData.md) is privacy-sensitive and carries
 the unproven transaction, signing key, and initial private state. See that
 type for handling guidance before logging, serializing, or transmitting the
 result.
 
 ## Call Signature
 
-> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -80,7 +80,7 @@ result.
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
 
 #### options
 
@@ -88,11 +88,11 @@ result.
 
 ### Returns
 
-`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -104,7 +104,7 @@ result.
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 #### options
 
@@ -112,4 +112,4 @@ result.
 
 ### Returns
 
-`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>

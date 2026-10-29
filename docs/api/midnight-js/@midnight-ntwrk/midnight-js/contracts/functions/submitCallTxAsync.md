@@ -8,7 +8,7 @@
 
 ## Call Signature
 
-> **submitCallTxAsync**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../namespaces/Ledger8/interfaces/SubmittedCallTx.md)\<`C`, `K`\>\>
+> **submitCallTxAsync**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `K`\>\>
 
 The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
@@ -20,7 +20,7 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 #### K
 
@@ -30,15 +30,15 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, `K`\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `K`\>
 
 #### options
 
-[`CallTxOptions`](../namespaces/Ledger8/type-aliases/CallTxOptions.md)\<`C`, `K`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
 
 ### Returns
 
-`Promise`\<[`SubmittedCallTx`](../namespaces/Ledger8/interfaces/SubmittedCallTx.md)\<`C`, `K`\>\>
+`Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `K`\>\>
 
 ### See
 
@@ -48,7 +48,7 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 ## Call Signature
 
-> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger9SubmittedCallTx`](../interfaces/Ledger9SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 Creates and submits a transaction for the invocation of a circuit on a given contract,
 returning immediately after submission without waiting for finalization.
@@ -103,13 +103,13 @@ The providers used to manage the invocation lifecycle.
 
 #### options
 
-[`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
+[`Ledger9CallTxOptions`](../type-aliases/Ledger9CallTxOptions.md)\<`C`, `PCK`\>
 
 Configuration.
 
 ### Returns
 
-`Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9SubmittedCallTx`](../interfaces/Ledger9SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
         or rejects with an error if the submission fails.
@@ -124,7 +124,7 @@ When `options.compiledContract` belongs to neither Compact
 
 ### Remarks
 
-The returned [SubmittedCallTx](../interfaces/SubmittedCallTx.md) is privacy-sensitive and carries the
+The returned [Ledger9SubmittedCallTx](../interfaces/Ledger9SubmittedCallTx.md) is privacy-sensitive and carries the
 unproven transaction and private state via `callTxData`. See that type for
 handling guidance before logging, serializing, or transmitting the result.
 
@@ -135,12 +135,12 @@ handling guidance before logging, serializing, or transmitting the result.
 const { txId, callTxData } = await submitCallTxAsync(providers, options);
 
 // 2. Watch (when ready). The read surface reports both ledger eras, so the
-//    record is version-tagged.
+//    record is era-tagged.
 const record = await providers.publicDataProvider.watchForTxData(txId);
 
 // 3. Narrow to the v9 variant. This flow submits v9 transactions only, so a v8
 //    record means the provider is pointed at the wrong network.
-if (record.version !== 'v9') {
+if (record.era !== 'v9') {
   throw new EraInvariantViolationError('watchForTxData', options.circuitId);
 }
 

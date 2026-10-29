@@ -124,7 +124,7 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
     (error: unknown) => error
   );
 
-// Spells the bytes out: `toEqual` compares a `LedgerState` by its public fields only.
+// Spells the bytes out: `toEqual` compares a `SerializedState` by its public fields only.
 const plainRecords = (records: readonly PositionedRecord<ContractStateRead>[]) =>
   records.map(({ value, ...position }) => ({
     ...position,

@@ -32,7 +32,7 @@ read only the `public` field or destructure specific non-sensitive fields
 
 > `readonly` **era**: `"v9"`
 
-The pipeline that produced this result: always the current era here.
+The pipeline that produced this result: always ledger 9 here.
 
 Read off the compiled artifact, NEVER off a transaction record — the two
 facts disagree after the fork, and only this one says which module the
@@ -58,7 +58,7 @@ The private data (data that will not be revealed upon tx submission) relevant to
 
 ### public
 
-> `readonly` **public**: [`FinalizedDeployTxPublicData`](FinalizedDeployTxPublicData.md)
+> `readonly` **public**: [`Ledger9FinalizedDeployTxPublicData`](Ledger9FinalizedDeployTxPublicData.md)
 
 The data of this transaction that is visible on the blockchain.
 

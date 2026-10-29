@@ -25,9 +25,9 @@ transaction and the chain recorded it as something other than success", in
 either era.
 
 It exists because the two eras cannot share a record TYPE. The current era
-submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
+submits and accepts only v9, so its record is `Ledger9FinalizedTxData`. A retained-era
 call is recorded by whichever era the network head is on, so its record is the
-version-tagged union `VersionedFinalizedTxData` — which is not assignable to the
+era-tagged union `FinalizedTxRead` — which is not assignable to the
 v9 variant. Narrowing the current era's member to the union would change a type
 consumers already read, so that was not available either. Hence a retained-era
 class of its own rather than an extension of `TxFailedError`, and a base that
@@ -36,7 +36,7 @@ declares the union.
 Each subclass keeps its own historical member — `finalizedTxData` on the current
 era's, `txData` on the retained one — so nothing reading those breaks.
 `AnyEraTxFailedError.record` is the member to write new code against, and it
-needs narrowing on `version` before `tx` is touched.
+needs narrowing on `era` before `tx` is touched.
 
 ### Why the shared code sits on the base
 
@@ -58,7 +58,7 @@ recorded-failure classes — `Ledger8CallTxFailedError`,
 `Ledger8ReplaceMaintenanceAuthorityTxFailedError` — carry none of their OWN:
 they inherit `TX_FAILED`. The three maintenance classes carry the narrower
 `Ledger8FinalizedTxData`, because a retained-era maintenance update runs only on
-a pre-fork head; the call and deploy classes carry `VersionedFinalizedTxData`.
+a pre-fork head; the call and deploy classes carry `FinalizedTxRead`.
 That era's record type is expected to converge with the current era's, and a
 finer code promised now would outlive the shape it describes. A caller branches
 on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
@@ -78,15 +78,23 @@ that no diagnosis of it could be made.
 
 ## Refuse before the caller pays
 
-Three refusals exist to convert a late, paid-for failure into an early, free
+Four refusals exist to convert a late, paid-for failure into an early, free
 one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
 
-`RawContractState.ledgerParameters` is optional: a provider that cannot serve
-them is still a usable provider, and the bundled indexer provider always does
-serve them. But this pipeline has just read the chain, so an absent parameter set
-*here* is a provider that did not serve them, not a caller with no read surface.
+`queryContractState` returns a `ContractStateAndParametersRead`, whose
+`ledgerParameters` is required, and the bundled indexer provider refuses a block
+that carries none. A provider written in JavaScript is out of reach of the
+types, though, and this pipeline has just read the chain, so an absent parameter
+set *here* is a provider that did not serve them, not a caller with no read
+surface.
+
+Only parameters that are absent (`undefined` or `null`) are taken as unserved.
+Parameters served in a shape that is not a `SerializedState` are refused with
+`UnrecognisedEraTagError` instead, because the provider did serve something, in
+the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
+fault.
 
 It is raised instead of substituting the ledger's initial parameters, which is
 what happened before and is the failure this class exists to replace: the
@@ -98,6 +106,32 @@ named the cost model, so the diagnosis was unreachable from the error.
 The compatibility path still exists for a caller that genuinely cannot read the
 chain, but it has to be selected by name — `INITIAL_LEDGER_PARAMETERS` in
 `midnight-js-protocol`.
+
+### `PublicStatesEraMismatchError`
+
+A call is built from the contract state, the ledger parameters and the zswap
+chain state of one read. A `PublicStatesRead` is typed as one era, but a
+provider written in JavaScript can serve parameters or a zswap state of another
+era, or none. The v8 pipeline composes for the head's era, and checks the era of
+the parameters it read against that era the same way, with `expected` the head. Decoding those would
+fail inside the runtime with a message that tells the dApp to pass a decoder it
+never passes. So the era of each state is checked before anything is decoded,
+and the refusal names the state and the provider as the fault.
+
+Before that check each state is rebuilt with `SerializedState.fromBytes` from its
+`era`, `kind` and `serialize()`. `SerializedState.isSerializedState` answers `false` for
+a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+and a dApp can end up with two copies the same way it ends up with two runtimes.
+Refusing such a state would name a provider fault where there is none. The
+rebuild checks the tag again, so forged bytes and a state of another kind are
+still refused, with `InvalidSerializedStateError` (`tag-mismatch`). A state that is
+present but names no known era is not "missing": it is refused with
+`UnrecognisedEraTagError`.
+
+A framework decoder that fails on the bytes after a valid tag throws its own
+`DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).
+`SerializedState.deserialize` rethrows it unchanged, so the error does not tell the
+dApp to pass a decoder it never passed.
 
 ### `Ledger8ShieldedSpendUnsupportedError`
 
