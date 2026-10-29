@@ -109,6 +109,8 @@ const describeEraTag = (era: unknown): string =>
 export const readEraTag = (record: unknown): string =>
   typeof record === 'object' && record !== null ? describeEraTag(Reflect.get(record, 'era')) : 'undefined';
 
+type StateReadMethod = 'queryContractState' | 'queryDeployContractState' | 'queryZSwapAndContractState';
+
 const isLedgerVersion = (value: unknown): value is LedgerVersion => LEDGER_VERSIONS.some((era) => era === value);
 
 /**
@@ -140,12 +142,13 @@ export const ownLedgerState = <K extends LedgerStateKind>(value: unknown, kind: 
 const requireLedger9Read = (
   read: ContractStateRead,
   contractAddress: string,
-  operation: string
+  operation: string,
+  servedBy: StateReadMethod
 ): LedgerState<'ContractState'> => {
   const contractState: unknown = read?.contractState;
   const state = ownLedgerState(contractState, 'ContractState');
   if (state === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(contractState), operation);
+    throw new UnknownLedgerVersionError(readEraTag(contractState), servedBy);
   }
   if (state.era === 'v8') {
     throw new EraMismatchError('ledger8-contract-state-unsupported', {
@@ -159,8 +162,7 @@ const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState
   read: PublicStatesRead,
   field: F,
   kind: PublicStatesRead[F]['kind'],
-  contractAddress: string,
-  operation: string
+  contractAddress: string
 ): LedgerState<PublicStatesRead[F]['kind']> => {
   const served: unknown = read[field];
   if (served === undefined || served === null) {
@@ -168,7 +170,7 @@ const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState
   }
   const state = ownLedgerState(served, kind);
   if (state === undefined) {
-    throw new UnknownLedgerVersionError(readEraTag(served), operation);
+    throw new UnknownLedgerVersionError(readEraTag(served), 'queryZSwapAndContractState');
   }
   if (state.era !== 'v9') {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', state.era);
@@ -200,9 +202,10 @@ export interface Ledger9ContractStates<PS> extends Ledger9PublicStates {
 export const decodeLedger9ContractState = (
   read: ContractStateRead,
   contractAddress: string,
-  operation: string
+  operation: string,
+  servedBy: StateReadMethod
 ): ContractState => {
-  const state = requireLedger9Read(read, contractAddress, operation);
+  const state = requireLedger9Read(read, contractAddress, operation, servedBy);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return state.deserialize({ v9: { deserialize: (bytes) => deserializeCompactContractState(bytes, { caller }) } });
 };
@@ -223,10 +226,10 @@ export const decodeLedger9PublicStates = (
   contractAddress: string,
   operation: string
 ): Ledger9PublicStates => {
-  requireLedger9Read(read, contractAddress, operation);
-  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress, operation);
-  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress, operation);
-  const contractState = decodeLedger9ContractState(read, contractAddress, operation);
+  requireLedger9Read(read, contractAddress, operation, 'queryZSwapAndContractState');
+  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress);
+  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress);
+  const contractState = decodeLedger9ContractState(read, contractAddress, operation, 'queryZSwapAndContractState');
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return {
     contractState,

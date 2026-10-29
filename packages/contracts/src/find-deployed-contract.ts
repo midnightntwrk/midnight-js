@@ -102,7 +102,7 @@ const queryFoundDeployTxPublicData = async (
       return {
         ...deployRecord,
         contractAddress,
-        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract')
+        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract', 'queryDeployContractState')
       };
     }
     default:
@@ -606,7 +606,8 @@ export async function findDeployedContract<C extends Contract.Any>(
   const currentContractState = decodeLedger9ContractState(
     requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
     contractAddress,
-    'findDeployedContract'
+    'findDeployedContract',
+    'queryContractState'
   );
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(

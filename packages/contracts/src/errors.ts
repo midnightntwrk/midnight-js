@@ -257,8 +257,7 @@ export interface EraMismatchOptions extends ErrorOptions {
  * execute — or to either era. The value is a contract, an artifact set, a transaction, a scope, a
  * result, or a contract state read from the chain.
  *
- * Raised before any pipeline is entered, so no proving, no provider round trip and no state decode
- * happens on a request that cannot succeed.
+ * Raised before anything is proved or submitted.
  *
  * @see {@link EraDispatch} for how the era is established and which pairings are refused.
  */
@@ -808,7 +807,7 @@ export type TxFailedOperation = 'call' | 'deploy' | 'insert-verifier-key' | 'rem
  * What a failed transaction was about, beyond its record.
  */
 export interface TxFailedDetails {
-  /** Every operation except a call scoped over several contracts. */
+  /** Set by a ledger 8 call, a deploy and the three maintenance operations. Not set by a ledger 9 call. */
   readonly contractAddress?: ContractAddress;
   /** A call, or an insert or removal of a verifier key. A list when a scope made several calls. */
   readonly circuitId?: string | readonly string[];
@@ -843,7 +842,9 @@ const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circu
       );
     case 'insert-verifier-key':
     case 'remove-verifier-key':
-      return `Read the contract's verifier key for ${circuits} before retrying: the update may have landed.`;
+      return fallible
+        ? `Read the contract's verifier key for ${circuits} before retrying: the update may have landed.`
+        : undefined;
     case 'replace-authority':
       return (
         "The new key was NOT stored; the store still holds the old one. Keep this error's 'signingKey': if the " +

@@ -634,14 +634,15 @@ export const findLedger8Contract = async (
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.
+ * @param contractAddress The contract the call targeted.
  * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
-const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string): void => {
+const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string, contractAddress: string): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
-  throw new TxFailedError('call', record, { circuitId });
+  throw new TxFailedError('call', record, { circuitId, contractAddress });
 };
 
 /**
@@ -991,7 +992,7 @@ export const submitLedger8CallTx = async (
   const txData = await providers.publicDataProvider.watchForTxData(txId);
   // Attribute the record BEFORE reading anything off it -- see the helper.
   assertLedger8RecordEra(txData, head, circuitId, 'watchForTxData');
-  assertLedger8TxSucceeded(txData, circuitId);
+  assertLedger8TxSucceeded(txData, circuitId, options.contractAddress);
 
   if (options.privateStateId !== undefined && providers.privateStateProvider !== undefined) {
     await providers.privateStateProvider.set(options.privateStateId, nextPrivateState);

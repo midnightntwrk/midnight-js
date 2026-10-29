@@ -535,7 +535,7 @@ describe('decodeLedger9ContractState: a corrupt body behind a valid tag', () => 
 
     let caught: unknown;
     try {
-      decodeLedger9ContractState(rawState(corruptBody, 2_000_000), 'contract-address', 'createUnprovenCallTx');
+      decodeLedger9ContractState(rawState(corruptBody, 2_000_000), 'contract-address', 'createUnprovenCallTx', 'queryContractState');
     } catch (error: unknown) {
       caught = error;
     }

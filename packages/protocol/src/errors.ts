@@ -886,8 +886,11 @@ export class UnknownLedgerVersionError extends MidnightJsError {
     super(
       `${context === undefined ? 'Unknown ledger version requested.' : `${context} returned a value with an unknown ledger version.`} ` +
         'Supported eras are v8 (node 1.x) and ' +
-        'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. Derive it with ' +
-        'protocolVersionToLedger rather than constructing the string by hand. A `requestedVersion` of ' +
+        'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. ' +
+        (context === undefined
+          ? 'Derive it with protocolVersionToLedger rather than constructing the string by hand. '
+          : '') +
+        'A `requestedVersion` of ' +
         "'undefined' or 'null' means the value carried no era, which is the shape of a pre-5.0.0 provider: " +
         'upgrade that provider.'
     );

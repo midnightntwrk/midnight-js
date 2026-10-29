@@ -163,7 +163,7 @@ describe('findDeployedContract', () => {
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
       expect(rejection.requestedVersion).toBe('undefined');
-      expect(rejection.context).toBe('findDeployedContract');
+      expect(rejection.context).toBe('queryDeployContractState');
     });
 
     it('rejects a deploy state that is not an object with the coded error naming the operation, not a TypeError', async () => {
@@ -177,7 +177,7 @@ describe('findDeployedContract', () => {
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
       expect(rejection.requestedVersion).toBe('undefined');
-      expect(rejection.context).toBe('findDeployedContract');
+      expect(rejection.context).toBe('queryDeployContractState');
     });
   });
 

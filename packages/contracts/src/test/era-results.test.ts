@@ -67,8 +67,43 @@ describe('isLedger8Result', () => {
         'a JSON boundary, a structured clone -- cannot be recovered here: narrow the result before it crosses that ' +
         "boundary, or carry the era beside it. A result stored under a 5.0.0 pre-release carries 'ledger9' or " +
         "'ledger8': map those to 'v9' and 'v8'. " +
-        'Received: "v7".'
+        'Received: v7.'
     );
+  });
+
+  it('refuses a BigInt era with EraMismatchError, not a TypeError from rendering it', () => {
+    const result = { era: 9n } as unknown as { readonly era: LedgerVersion };
+
+    const caught = (() => {
+      try {
+        isLedger8Result(result);
+        return undefined;
+      } catch (error: unknown) {
+        return error;
+      }
+    })();
+
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect(caught).toMatchObject({ reason: 'unrecognised-result-era' });
+  });
+
+  it('refuses a circular era with EraMismatchError, not a TypeError from rendering it', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const result = { era: circular } as unknown as { readonly era: LedgerVersion };
+
+    const caught = (() => {
+      try {
+        isLedger8Result(result);
+        return undefined;
+      } catch (error: unknown) {
+        return error;
+      }
+    })();
+
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect(caught).toMatchObject({ reason: 'unrecognised-result-era' });
+    expect((caught as EraMismatchError).message).toContain('Received: object.');
   });
 
   it('refuses a null or undefined result rather than reading a member off it', () => {

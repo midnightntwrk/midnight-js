@@ -236,6 +236,14 @@ describe('UnknownLedgerVersionError', () => {
     expect(error.message).toContain('watchForTxData');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
   });
+
+  it('gives the protocolVersionToLedger advice only when the caller passed the version', () => {
+    const passed = new UnknownLedgerVersionError('v10');
+    const served = new UnknownLedgerVersionError('v10', 'queryContractState');
+
+    expect(passed.message).toContain('protocolVersionToLedger');
+    expect(served.message).not.toContain('protocolVersionToLedger');
+  });
 });
 
 describe('ComposeFailedError', () => {

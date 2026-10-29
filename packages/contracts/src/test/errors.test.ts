@@ -150,6 +150,24 @@ describe('TxFailedError', () => {
     expect(error.contractAddress).toBe(TX_FAILED_ADDRESS);
     expect(error.circuitId).toBe('increment');
   });
+
+  it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
+    'does not say the update may have landed when the status is FailEntirely (%s)',
+    (operation) => {
+      const error = new TxFailedError(operation, failedRecord('v9', FailEntirely), detailsFor(operation));
+
+      expect(error.message).not.toContain('may have landed');
+    }
+  );
+
+  it.each(['insert-verifier-key', 'remove-verifier-key'] as const)(
+    'says the update may have landed when the status is FailFallible (%s)',
+    (operation) => {
+      const error = new TxFailedError(operation, failedRecord('v9', FailFallible), detailsFor(operation));
+
+      expect(error.message).toContain('may have landed');
+    }
+  );
 });
 
 describe('EraInvariantViolationError', () => {

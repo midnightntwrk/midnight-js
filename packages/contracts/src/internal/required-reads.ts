@@ -53,7 +53,7 @@ export const queryExistingContractState = async (
   if (state === undefined || state === null) {
     throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
   }
-  return decodeLedger9ContractState(state, contractAddress, 'queryExistingContractState');
+  return decodeLedger9ContractState(state, contractAddress, 'queryExistingContractState', 'queryContractState');
 };
 
 /**

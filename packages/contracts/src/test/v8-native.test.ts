@@ -2208,6 +2208,15 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       expect((caught as TxFailedError).record.era).toBe('v8');
     });
 
+    it('a recorded ledger 8 call failure carries the contract address', async () => {
+      const providers = preForkProviders(v6Envelope);
+      withStatus(providers, FailEntirely);
+
+      const caught = await callAndCatch(providers);
+
+      expect((caught as TxFailedError).contractAddress).toBe(recording.contractAddress);
+    });
+
     it('refuses FailFallible WITHOUT claiming the local state still matches the chain', async () => {
       const providers = preForkProviders(v6Envelope);
       withStatus(providers, FailFallible);
