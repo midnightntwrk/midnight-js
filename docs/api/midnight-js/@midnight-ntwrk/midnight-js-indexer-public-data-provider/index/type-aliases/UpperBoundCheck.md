@@ -8,7 +8,7 @@
 
 > **UpperBoundCheck** = `"check"` \| `"skip"`
 
-Whether the `protocolVersion` handed to [parseHexContractState](../functions/parseHexContractState.md) may be
+Whether the `protocolVersion` handed to toContractStateRead may be
 trusted as an upper bound on the ledger version in the state's version tag.
 
 `'check'` is the default and the case to reach for: the version is known

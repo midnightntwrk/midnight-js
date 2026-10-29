@@ -16,10 +16,10 @@ without composing a second transaction, so every era carries it.
 
 ## Extended by
 
-- [`SubmittedCallTx`](../../contracts/interfaces/SubmittedCallTx.md)
-- [`SubmittedCallTx`](../../contracts/namespaces/Ledger8/interfaces/SubmittedCallTx.md)
-- [`SubmittedCallTx`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/SubmittedCallTx.md)
-- [`SubmittedCallTx`](../../../midnight-js-contracts/index/interfaces/SubmittedCallTx.md)
+- [`Ledger8SubmittedCallTx`](../../contracts/interfaces/Ledger8SubmittedCallTx.md)
+- [`Ledger9SubmittedCallTx`](../../contracts/interfaces/Ledger9SubmittedCallTx.md)
+- [`Ledger8SubmittedCallTx`](../../../midnight-js-contracts/index/interfaces/Ledger8SubmittedCallTx.md)
+- [`Ledger9SubmittedCallTx`](../../../midnight-js-contracts/index/interfaces/Ledger9SubmittedCallTx.md)
 
 ## Type Parameters
 

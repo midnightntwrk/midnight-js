@@ -6,7 +6,7 @@
 
 # Type Alias: SubmitCallTxProviders\<C, PCK\>
 
-> **SubmitCallTxProviders**\<`C`, `PCK`\> = [`ContractProviders`](ContractProviders.md)\<`C`\> \| [`SubmitTxProviders`](SubmitTxProviders.md)\<`C`, `PCK`\>
+> **SubmitCallTxProviders**\<`C`, `PCK`\> = [`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\> \| [`SubmitTxProviders`](SubmitTxProviders.md)\<`C`, `PCK`\>
 
 The provider set a call entry point accepts.
 

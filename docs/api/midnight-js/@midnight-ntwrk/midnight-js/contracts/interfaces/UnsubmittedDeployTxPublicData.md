@@ -10,7 +10,7 @@ Base type for public data relevant to an unsubmitted deployment transaction.
 
 ## Extended by
 
-- [`FinalizedDeployTxPublicData`](FinalizedDeployTxPublicData.md)
+- [`Ledger9FinalizedDeployTxPublicData`](Ledger9FinalizedDeployTxPublicData.md)
 
 ## Properties
 

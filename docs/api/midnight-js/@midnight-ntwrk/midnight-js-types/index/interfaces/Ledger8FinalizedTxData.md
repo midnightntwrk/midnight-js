@@ -6,18 +6,18 @@
 
 # Interface: Ledger8FinalizedTxData
 
-The v8 variant of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md). Carries the same
-finalized-transaction metadata as [FinalizedTxData](FinalizedTxData.md) — both variants extend
+The v8 variant of [FinalizedTxRead](../type-aliases/FinalizedTxRead.md). Carries the same
+finalized-transaction metadata as [Ledger9FinalizedTxData](Ledger9FinalizedTxData.md) — both variants extend
 [FinalizedTxRecord](FinalizedTxRecord.md) — and the transaction as a [FinalizedTx](../type-aliases/FinalizedTx.md)
-handle whose era is v8: `record.tx.era === record.version`.
+handle whose era is v8: `record.tx.era === record.era`.
 
-`version` is derived from the record's own `protocolVersion` by the provider
+`era` is derived from the record's own `protocolVersion` by the provider
 that builds it, so this shape is only produced for a record that resolves to
 the v8 ledger runtime.
 
 A provider that decodes per era produces this variant for any record whose
 `protocolVersion` places it in the v8 era. A consumer that narrows on
-`version` therefore has to handle it: it is a value the read surface really
+`era` therefore has to handle it: it is a value the read surface really
 returns, not a placeholder.
 
 ## Extends
@@ -71,6 +71,12 @@ The timestamp of the block in which the transaction was included.
 #### Inherited from
 
 [`FinalizedTxRecord`](FinalizedTxRecord.md).[`blockTimestamp`](FinalizedTxRecord.md#blocktimestamp)
+
+***
+
+### era
+
+> `readonly` **era**: `"v8"`
 
 ***
 
@@ -189,9 +195,3 @@ involving data or values that are not encrypted or concealed.
 #### Inherited from
 
 [`FinalizedTxRecord`](FinalizedTxRecord.md).[`unshielded`](FinalizedTxRecord.md#unshielded)
-
-***
-
-### version
-
-> `readonly` **version**: `"v8"`

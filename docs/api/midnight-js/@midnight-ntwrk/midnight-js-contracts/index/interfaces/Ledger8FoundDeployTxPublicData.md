@@ -15,12 +15,12 @@ cannot be decoded by the current runtime. Read the current state with
 
 ## Remarks
 
-Published flat, not under the `Ledger8` namespace: it is part of the
-current era's `FoundDeployTxData`, and outlives the retained pipeline.
+Unlike the other `Ledger8*` types, it outlives the retained pipeline:
+it is part of `Ledger9FoundDeployTxData`.
 
 ## See
 
-[RetainedEraNamespace](../../documents/RetainedEraNamespace.md) for which names the namespace holds.
+[RetainedEraNamespace](../../documents/RetainedEraNamespace.md) for which names belong to the retained era.
 
 ## Extends
 
@@ -81,6 +81,16 @@ The timestamp of the block in which the transaction was included.
 > `readonly` **contractAddress**: `string`
 
 The ledger address of the contract that was deployed.
+
+***
+
+### era
+
+> `readonly` **era**: `"v8"`
+
+#### Inherited from
+
+[`Ledger8FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md).[`era`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md#era)
 
 ***
 
@@ -203,13 +213,3 @@ involving data or values that are not encrypted or concealed.
 #### Inherited from
 
 [`Ledger8FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md).[`unshielded`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md#unshielded)
-
-***
-
-### version
-
-> `readonly` **version**: `"v8"`
-
-#### Inherited from
-
-[`Ledger8FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md).[`version`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md#version)

@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger8Subpath
 
-> **Ledger8Subpath** = `"/v8"` \| `"/engine"`
+> **Ledger8Subpath** = `"/v8"` \| `"/v8/engine"`
 
 Which lazily-loaded subpath export [Ledger8RuntimeMissingError](../classes/Ledger8RuntimeMissingError.md) failed
 to acquire. Each chunk pulls a different set of ledger 8 dependencies, so

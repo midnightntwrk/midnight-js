@@ -6,10 +6,10 @@
 
 # Type Alias: AnyEraMaintenanceTxData
 
-> **AnyEraMaintenanceTxData** = [`FinalizedMaintenanceTxData`](../interfaces/FinalizedMaintenanceTxData.md) \| [`FinalizedMaintenanceTxData`](../namespaces/Ledger8/interfaces/FinalizedMaintenanceTxData.md)
+> **AnyEraMaintenanceTxData** = [`Ledger9FinalizedMaintenanceTxData`](../interfaces/Ledger9FinalizedMaintenanceTxData.md) \| [`Ledger8FinalizedMaintenanceTxData`](../interfaces/Ledger8FinalizedMaintenanceTxData.md)
 
 A contract maintenance update recorded on chain, in either era. Narrowing on `era` narrows
-`public` to that era's record; era-agnostic code reads `public` as a `VersionedFinalizedTxData`.
+`public` to that era's record; era-agnostic code reads `public` as a `FinalizedTxRead`.
 
 ## See
 

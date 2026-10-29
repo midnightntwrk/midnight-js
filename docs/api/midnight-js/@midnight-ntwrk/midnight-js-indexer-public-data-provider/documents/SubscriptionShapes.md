@@ -6,12 +6,12 @@
 
 # One subscription shape for every stream
 
-`contractStateObservable`, `rawContractStateObservable` and
-`unshieldedBalancesObservable` read one indexer feed on every branch:
+`contractStateObservable` and `unshieldedBalancesObservable` read one indexer
+feed on every branch:
 `contractActions(address, offset)`. The indexer filters it by address, so only
 this contract's actions cross the WebSocket. This document records how each
 branch is built on that feed, how a reconnect is kept from repeating values,
-and why the two contract-state streams share one implementation.
+and how the contract-state stream is put together.
 
 The code is `src/provider.ts` and `src/observables.ts`.
 
@@ -82,20 +82,15 @@ The rank is derived from the order the indexer serves a block's actions in; the
 indexer asserts no identifier per action. The guard is therefore exact only if a
 replay serves those actions in the same order.
 
-## Why one topology serves both contract-state members
+## How the contract-state stream is built
 
-The two public state streams differ in exactly one thing: what one served
-contract action becomes. Everything else — which offset each config subscribes
-from, where `ordinalWithinBlock` and `dropReplayed` sit, how each branch reads
-`inclusive` — is the part that is easy to get subtly wrong, and two copies of
-it would drift apart under maintenance.
-
-So the topology is written once, as the private `contractStates$<T>` with the
-branch routing in `contractStatesFeed$` and `fromBlock$`, and the mapper is
-threaded through it: `toVersionedContractState` for the decoded stream,
-`toRawContractState` for the raw one. Both public members are one-line binds.
-Because the type parameter is fixed once per stream, "the two streams cannot
-diverge branch by branch" is a fact the compiler holds, not a review habit.
+The branch routing — which offset each config subscribes from, where
+`ordinalWithinBlock` and `dropReplayed` sit, how each branch reads `inclusive` —
+is the part that is easy to get subtly wrong. It is written once, as the private
+`contractStates$<T>` with the routing in `contractStatesFeed$` and `fromBlock$`.
+The mapper that turns one served contract action into a stream element is
+passed in: `contractStateObservable` binds `toContractStateRead`, which builds
+the record from bytes and decodes nothing. Tests bind a mapper of their own.
 
 The balance stream reuses `fromBlock$` for `latest`, `blockHeight` and
 `blockHash`, and repeats the rest: its own `all` branch, the

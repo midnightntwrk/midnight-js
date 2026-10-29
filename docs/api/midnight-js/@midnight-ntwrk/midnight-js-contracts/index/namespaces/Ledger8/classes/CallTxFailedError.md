@@ -10,8 +10,8 @@ An error indicating that a retained-era call was recorded on chain with a
 status other than `SucceedEntirely`.
 
 The retained-era counterpart of [CallTxFailedError](../../../classes/CallTxFailedError.md), which cannot be
-reused because it carries a current-era `FinalizedTxData` where a retained
-call is recorded as a version-tagged [VersionedFinalizedTxData](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md).
+reused because it carries a `Ledger9FinalizedTxData` where a retained
+call is recorded as an era-tagged [FinalizedTxRead](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md).
 
 Carries no registered error code of its own. Branch on the class, or on the
 inherited [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#code), and read the record off
@@ -36,7 +36,7 @@ local-versus-chain consequence the message states per status.
 
 ##### txData
 
-[`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 ##### circuitId
 
@@ -90,7 +90,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### txData
 
-> `readonly` **txData**: [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **txData**: [`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 ## Accessors
 
@@ -98,21 +98,21 @@ process. Subclasses inherit it rather than each declaring their own.
 
 #### Get Signature
 
-> **get** **record**(): [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> **get** **record**(): [`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 
-[`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-`record.tx` is a `FinalizedTx` in the era `record.version` names.
-Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
-narrowing on `record.version`.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.
 
 #### Overrides
 

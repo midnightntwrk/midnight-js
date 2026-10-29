@@ -39,7 +39,7 @@ failed call, why no code of its own is registered, and why the key is never rend
 
 ##### txData
 
-[`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
 The record the read surface reported.
 
@@ -110,7 +110,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### txData
 
-> `readonly` **txData**: [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **txData**: [`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
 ## Accessors
 
@@ -118,21 +118,21 @@ process. Subclasses inherit it rather than each declaring their own.
 
 #### Get Signature
 
-> **get** **record**(): [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+> **get** **record**(): [`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
 See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 
-[`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-`record.tx` is a `FinalizedTx` in the era `record.version` names.
-Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
-narrowing on `record.version`.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.
 
 #### Overrides
 

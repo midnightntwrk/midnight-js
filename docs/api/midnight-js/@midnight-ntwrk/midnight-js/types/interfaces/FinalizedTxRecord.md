@@ -9,14 +9,14 @@
 The era-independent metadata every finalized-transaction record carries,
 whichever ledger runtime produced it.
 
-Both variants of [VersionedFinalizedTxData](../type-aliases/VersionedFinalizedTxData.md) extend this, so the two
-variants differ only in their era, carried by `version` and by the era of the
+Both variants of [FinalizedTxRead](../type-aliases/FinalizedTxRead.md) extend this, so the two
+variants differ only in their era, carried by `era` and by the era of the
 `tx` handle, and cannot drift apart as fields are added here.
 
 ## Extended by
 
-- [`FinalizedTxData`](FinalizedTxData.md)
 - [`Ledger8FinalizedTxData`](Ledger8FinalizedTxData.md)
+- [`Ledger9FinalizedTxData`](Ledger9FinalizedTxData.md)
 
 ## Properties
 
