@@ -256,6 +256,25 @@ describe('queryContractState', () => {
       });
     });
 
+    test('refuses ledger parameters newer than the block that carries them', async () => {
+      const parametersHex = toHex(ledger.LedgerParameters.initialParameters().serialize());
+
+      const rejection = await providerServing(await mintLedger8ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION, parametersHex)
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({
+        kind: 'parameters-era-disagreement',
+        protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
+        reportedVersion: 'v8',
+        parametersVersion: 'v9'
+      });
+    });
+
     test('refuses ledger parameters that are not hex-encoded', async () => {
       const rejection = await providerServing(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION, 'zz')
         .queryContractState(ADDRESS)

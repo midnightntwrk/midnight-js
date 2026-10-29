@@ -1035,10 +1035,9 @@ written by an era you passed no decoder for throws
 `LedgerStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
 A decoder that throws, for example the class of another kind, is reported as
 `LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`),
-with the decoder's error as `cause`. A decoder error that already has a
-midnight-js code is rethrown unchanged. When you pass no decoder for any era the
-state can be, `deserialize` returns `unknown`, so the mistake shows up where you
-use the result.
+with the decoder's error as `cause`. A decoder error that is already a
+`MidnightJsError` is rethrown unchanged. Passing no decoder for any era the
+state can be does not compile, so the mistake shows up where you make it.
 
 A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
 `postMessage` and JSON drop them. To hand one to a worker or store it, send
@@ -1147,15 +1146,19 @@ from the other reads. Build each state with
 `LedgerState.fromBytes(era, kind, bytes)`, and take `era` from the
 bytes' own version tag with `ledgerVersionOfContractState` /
 `ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`.
+A zswap chain state has the same tag in v8 and v9, so its tag cannot date it:
+give it the era of the ledger parameters of the same block.
 `fromBytes` refuses bytes that do not carry the tag of that era with
 `InvalidLedgerStateError`. Remove `queryRawContractState` and
 `rawContractStateObservable`.
 
 `contracts` accepts a `LedgerState` made by a second installed copy of
 `@midnight-ntwrk/midnight-js-types` too: it rebuilds each state from its bytes
-with `LedgerState.fromBytes`, which checks the tag again. Ledger parameters in a
-shape that is not a `LedgerState` are refused; the v8 pipeline refuses them with
-`UnrecognisedEraTagError`.
+with `LedgerState.fromBytes`, which checks the tag again. A state in a shape
+that names no known era is refused with `UnrecognisedEraTagError`; a state of
+another kind fails the tag check (`InvalidLedgerStateError`); ledger parameters
+or a zswap chain state that are missing, or of another era than the call, are
+refused with `PublicStatesEraMismatchError`.
 
 ### The finalized-transaction record is `FinalizedTxRead`, tagged `era`
 

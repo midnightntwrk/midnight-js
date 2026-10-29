@@ -312,7 +312,7 @@ const STREAM_WATCH_MS = 60_000;
  * Reports a contract-state read: the era of its bytes, how many there are, and the era of the
  * block's ledger parameters. Nothing is decoded: the read hands back bytes in both eras.
  */
-const describeVersionedState = (state) => ({
+const describeStateRead = (state) => ({
   version: state.contractState.era,
   stateBytes: state.contractState.serialize().length,
   ledgerParameters: state.ledgerParameters?.era ?? 'absent'
@@ -1589,7 +1589,7 @@ const MEASURES_READ_SURFACE = covers(SELECTED.current, 'simple') && deployment !
 
 if (covers(SELECTED.current, 'simple') && deployment === undefined) {
   // ONE honest row beats nine false refusals.
-  observed['decoded read surface'] = 'skipped: the pre-fork baseline deploy did not complete';
+  observed['read surface'] = 'skipped: the pre-fork baseline deploy did not complete';
 }
 
 // Opened BEFORE the boundary and deliberately not stopped here: what this
@@ -1605,10 +1605,10 @@ let streamHeldAcrossTheBoundary;
 let streamMarkBeforeTheFork;
 
 if (MEASURES_READ_SURFACE) {
-  await probe('pre-fork decoded read of the retained contract', () =>
+  await probe('pre-fork read of the retained contract', () =>
     decodeAnswer(async () => {
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      return state === null ? { note: 'the indexer served no state' } : describeVersionedState(state);
+      return state === null ? { note: 'the indexer served no state' } : describeStateRead(state);
     })
   );
 
@@ -2253,7 +2253,7 @@ if (MEASURES_READ_SURFACE) {
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeVersionedState(state) };
+      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeStateRead(state) };
     })
   );
 
@@ -2265,7 +2265,7 @@ if (MEASURES_READ_SURFACE) {
     if (state?.contractState.era !== 'v8') {
       throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.contractState.era ?? 'null'}'`);
     }
-    return describeVersionedState(state);
+    return describeStateRead(state);
   });
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
@@ -2424,7 +2424,7 @@ if (MEASURES_READ_SURFACE) {
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeVersionedState(state) };
+      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeStateRead(state) };
     })
   );
 

@@ -913,7 +913,8 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
 
       const snapshot = await snapshotWithParameters(lookAlike);
 
-      expect(snapshot.state.ledgerParameters).toEqual(retainedLedgerParameters);
+      expect(snapshot.state.ledgerParameters?.era).toBe('v8');
+      expect(snapshot.state.ledgerParameters?.serialize()).toEqual(retainedLedgerParameters);
     });
 
     it('passes against the real committed envelope, which declares the name once', async () => {

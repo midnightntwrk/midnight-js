@@ -100,7 +100,7 @@ get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
-It returns `FinalizedTxRead`, tagged with the network's era.
+It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
 
 ### Maintenance Operations
 

@@ -419,10 +419,9 @@ export class IndexerInconsistencyError extends MidnightJsError {
 }
 
 /**
- * An error indicating that the read surface served the public states of a contract whose ledger
- * parameters or zswap chain state were not written by the same ledger era as its v9 contract state,
- * or were missing. One read carries the states of one era, so the states cannot be combined into a
- * call.
+ * An error indicating that the read surface served the ledger parameters or the zswap chain state of
+ * a contract written by another ledger era than the one the call is built on, or did not serve them.
+ * One read carries the states of one era, so the states cannot be combined into a call.
  */
 export class PublicStatesEraMismatchError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.PUBLIC_STATES_ERA_MISMATCH;
@@ -430,20 +429,21 @@ export class PublicStatesEraMismatchError extends MidnightJsError {
 
   /**
    * @param contractAddress The contract whose public states were read.
-   * @param field The state that does not match the contract state.
+   * @param field The state that does not match the call.
+   * @param expected The ledger era the call is built on.
    * @param received The era of that state, or `undefined` when it was missing.
    */
   constructor(
     readonly contractAddress: string,
     readonly field: 'ledgerParameters' | 'zswapChainState',
+    readonly expected: LedgerVersion,
     readonly received: LedgerVersion | undefined
   ) {
     super(
-      `The read surface served the v9 contract state of the contract at '${contractAddress}' with ` +
-        `${received === undefined ? `no ${field}` : `a ${field} written by the ${received} ledger`}. ` +
+      `A call to the contract at '${contractAddress}' is built on the ${expected} ledger, but the read surface ` +
+        `served ${received === undefined ? `no ${field}` : `a ${field} written by the ${received} ledger`}. ` +
         `One read carries the states of one era, so they cannot be combined into a call. Use a ` +
-        `PublicDataProvider whose 'queryZSwapAndContractState' serves all three states of one era — the ` +
-        `bundled indexer provider does.`
+        `PublicDataProvider that serves the states of one block together — the bundled indexer provider does.`
     );
     this.name = 'PublicStatesEraMismatchError';
   }
@@ -951,7 +951,7 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.TX_FAILED];
 
   /**
-   * The finalized record the chain reported, version-tagged.
+   * The finalized record the chain reported, tagged with its era.
    *
    * @remarks `record.tx` is a `FinalizedTx` in the era `record.era` names.
    * Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
@@ -1353,7 +1353,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  *
  * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
  * reused because it carries a current-era `FinalizedTxData` where a retained
- * call is recorded as a version-tagged {@link FinalizedTxRead}.
+ * call is recorded as an era-tagged {@link FinalizedTxRead}.
  *
  * Carries no registered error code of its own. Branch on the class, or on the
  * inherited {@link AnyEraTxFailedError.code}, and read the record off

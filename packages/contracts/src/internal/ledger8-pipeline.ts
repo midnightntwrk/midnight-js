@@ -43,6 +43,7 @@ import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/mi
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type ContractStateAndParametersRead,
+  type LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
   type UnprovenTx
@@ -58,6 +59,7 @@ import {
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   LedgerParametersUnservedError,
+  PublicStatesEraMismatchError,
   VerifierKeyMismatchError
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
@@ -263,13 +265,16 @@ export type Ledger8PipelineReadSurface = Pick<
 >;
 
 /**
- * The bytes of one contract-state read, as the retained-era composer takes them.
+ * One contract-state read, as the retained-era composer takes it.
  */
 export interface Ledger8SnapshotBytes {
   /** The contract state, version tag included. */
   readonly raw: Uint8Array;
-  /** The ledger parameters of the block that dates the read, when the provider serves them. */
-  readonly ledgerParameters?: Uint8Array;
+  /**
+   * The ledger parameters of the block that dates the read, when the provider serves them. Kept with
+   * their era, which the composer checks against its own.
+   */
+  readonly ledgerParameters?: LedgerState<'LedgerParameters'>;
 }
 
 /**
@@ -300,13 +305,15 @@ export interface Ledger8Snapshot {
 }
 
 /**
- * The bytes of the ledger parameters served beside the state, or `undefined` when the provider
- * served none.
+ * The ledger parameters served beside the state, or `undefined` when the provider served none.
  *
  * @throws UnrecognisedEraTagError if the parameters are served in a shape that is not a
  * `LedgerState`.
+ * @throws InvalidLedgerStateError if they are not ledger parameters written by the era they name.
  */
-const servedLedgerParameters = (read: ContractStateAndParametersRead): Uint8Array | undefined => {
+const servedLedgerParameters = (
+  read: ContractStateAndParametersRead
+): LedgerState<'LedgerParameters'> | undefined => {
   const served: unknown = read.ledgerParameters;
   if (served === undefined || served === null) {
     return undefined;
@@ -315,7 +322,7 @@ const servedLedgerParameters = (read: ContractStateAndParametersRead): Uint8Arra
   if (parameters === undefined) {
     throw new UnrecognisedEraTagError('queryContractState', served);
   }
-  return parameters.serialize();
+  return parameters;
 };
 
 /**
@@ -643,6 +650,9 @@ export interface Ledger8CallPipelineResult<TState> {
  * @throws ContractNotFoundError if no contract is deployed at the address.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError, BlankVerifierKeySlotError,
  * VerifierKeyMismatchError from {@link readLedger8Snapshot}.
+ * @throws LedgerParametersUnservedError if the read served no ledger parameters.
+ * @throws PublicStatesEraMismatchError if the ledger parameters were written by another era than
+ * the head the call is composed for.
  * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a shielded
  * coin the contract already held — see {@link spendsHeldCoin}.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
@@ -667,8 +677,12 @@ export const runLedger8CallPipeline = async <TState>(
   // Checked before the circuit runs and before anything is proved: the alternative to refusing is
   // partitioning against a cost model the chain does not run, which the node rejects only after the
   // proof has been paid for.
-  if (snapshot.state.ledgerParameters === undefined) {
+  const ledgerParameters = snapshot.state.ledgerParameters;
+  if (ledgerParameters === undefined) {
     throw new LedgerParametersUnservedError(contractAddress);
+  }
+  if (ledgerParameters.era !== head) {
+    throw new PublicStatesEraMismatchError(contractAddress, 'ledgerParameters', head, ledgerParameters.era);
   }
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
@@ -740,7 +754,7 @@ export const runLedger8CallPipeline = async <TState>(
         // and must date from the block the call is built against. Composing against the ledger's
         // initial parameters partitions the transcript with a cost model the chain does not use,
         // and the node refuses the guaranteed segment for running out of gas.
-        ledgerParametersBytes: snapshot.state.ledgerParameters,
+        ledgerParametersBytes: ledgerParameters.serialize(),
         transcript: {
           kind: 'unpartitioned',
           preState: snapshot.encoded,

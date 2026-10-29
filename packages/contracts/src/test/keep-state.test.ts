@@ -43,6 +43,7 @@ import {
   type Ledger8Engine,
   type Ledger8EngineContract,
   type LedgerEra,
+  loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
@@ -61,7 +62,8 @@ import {
   EraInvariantViolationError,
   IndexerInconsistencyError,
   Ledger8ArtifactOnLedger9StateError,
-  LedgerParametersUnservedError,  NetworkVersionStateMismatchError} from '../errors';
+  LedgerParametersUnservedError,  NetworkVersionStateMismatchError,
+  PublicStatesEraMismatchError} from '../errors';
 import {
   type Ledger8ExecuteRequest,
   type Ledger8MaintenanceRequest,
@@ -567,6 +569,52 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect((caught as LedgerParametersUnservedError).contractAddress).toBe(recording.contractAddress);
     // Refused before the era was ever asked to compose, which is what makes this cheap rather than
     // a wasted proof.
+    expect(log).not.toContain('era.composeCallTx');
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses to compose against ledger parameters of another era than the head, before proving', async () => {
+    const providers = postForkProviders(v6Envelope);
+    const ledger8Parameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
+    providers.publicDataProvider.queryContractState = vi
+      .fn()
+      .mockResolvedValue(contractStateAndParametersRead(v6Envelope, POST_FORK_PROTOCOL_VERSION, ledger8Parameters));
+
+    const log: OrchestrationLog = [];
+    let caught: unknown;
+    try {
+      await runLedger8CallPipeline<ReplayState>({
+        era: recordEraCalls(currentEra, log),
+        retainedEra: recordEraCalls(retainedEra, log),
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v9',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(PublicStatesEraMismatchError);
+    expect(caught).toMatchObject({
+      contractAddress: recording.contractAddress,
+      field: 'ledgerParameters',
+      expected: 'v9',
+      received: 'v8'
+    });
     expect(log).not.toContain('era.composeCallTx');
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });

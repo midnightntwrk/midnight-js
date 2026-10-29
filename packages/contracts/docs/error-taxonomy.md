@@ -108,9 +108,10 @@ chain, but it has to be selected by name — `INITIAL_LEDGER_PARAMETERS` in
 ### `PublicStatesEraMismatchError`
 
 A call is built from the contract state, the ledger parameters and the zswap
-chain state of one read, decoded with the framework's v9 runtime. A
-`PublicStatesRead` is typed as one era, but a provider written in JavaScript can
-serve parameters or a zswap state of another era, or none. Decoding those would
+chain state of one read. A `PublicStatesRead` is typed as one era, but a
+provider written in JavaScript can serve parameters or a zswap state of another
+era, or none. The v8 pipeline composes for the head's era, and checks the era of
+the parameters it read against that era the same way, with `expected` the head. Decoding those would
 fail inside the runtime with a message that tells the dApp to pass a decoder it
 never passes. So the era of each state is checked before anything is decoded,
 and the refusal names the state and the provider as the fault.
@@ -120,8 +121,10 @@ Before that check each state is rebuilt with `LedgerState.fromBytes` from its
 a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
-rebuild checks the tag again, so forged bytes are still refused, with
-`InvalidLedgerStateError` (`tag-mismatch`).
+rebuild checks the tag again, so forged bytes and a state of another kind are
+still refused, with `InvalidLedgerStateError` (`tag-mismatch`). A state that is
+present but names no known era is not "missing": it is refused with
+`UnrecognisedEraTagError`.
 
 A framework decoder that fails on the bytes after a valid tag throws its own
 `DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).

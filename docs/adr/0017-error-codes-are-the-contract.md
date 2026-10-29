@@ -110,7 +110,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `TRANSACTION_ERA_MISMATCH` | USAGE | `TransactionEraMismatchError`* |
 | PR | `INVALID_LEDGER_STATE` | USAGE | `InvalidLedgerStateError`* |
 | PR | `LEDGER_STATE_DECODER_MISSING` | USAGE | `LedgerStateDecoderMissingError`* |
-| PR | `LEDGER_STATE_DECODE_FAILED` | USAGE | `LedgerStateDecodeFailedError`* |
+| PR | `LEDGER_STATE_DECODE_FAILED` | INTEGRITY | `LedgerStateDecodeFailedError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |

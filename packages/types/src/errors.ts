@@ -30,7 +30,7 @@ import { LEDGER_STATE_KINDS, type LedgerStateKind, type LedgerVersion } from '@m
 export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 
 /**
- * The {@link PublicDataProvider} methods that report a version-tagged
+ * The {@link PublicDataProvider} methods that report an era-tagged
  * finalized-transaction record.
  *
  * Declared here, alongside the interface that owns those methods, rather than
@@ -40,15 +40,15 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 
 /**
- * The {@link PublicDataProvider} methods that report a version-tagged contract
- * state.
+ * The {@link PublicDataProvider} methods that report a contract state with
+ * its era.
  */
 export type StateReadMethod = 'queryDeployContractState';
 
 /**
  * Every provider method at which a payload's ledger era is resolved or
  * narrowed — the three transaction methods, the two record reads and the
- * version-tagged state read.
+ * state read.
  *
  * This is the vocabulary to type a caught error's `method` against when the
  * error can come from either surface.
@@ -58,9 +58,10 @@ export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
 /**
  * Stable error-code strings for the providers.
  *
- * Most of the group belongs to the provider methods. `PRIVATE_STATE_NOT_SERIALIZABLE`
- * does not: it belongs to the private-state provider, and is here because this is
- * the one provider-scoped group there is.
+ * Most of the group belongs to the provider methods. Two sets do not, and are here
+ * because this is the one provider-scoped group there is: `PRIVATE_STATE_NOT_SERIALIZABLE`
+ * belongs to the private-state provider, and `INVALID_LEDGER_STATE`,
+ * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `LedgerState`.
  *
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
@@ -150,7 +151,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
-  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: USAGE
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY
 });
 
 const {
@@ -518,9 +519,10 @@ export class LedgerStateDecoderMissingError extends MidnightJsError {
 
 /**
  * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws an error
- * without a midnight-js code. The bytes carry the right tag, so either the decoder is the wrong one
- * (it decodes another kind, or comes from a runtime that cannot read this era) or the bytes after
- * the tag are corrupt. The decoder's failure is the `cause`.
+ * that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
+ * are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
+ * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
+ * decoder's failure is the `cause`.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */

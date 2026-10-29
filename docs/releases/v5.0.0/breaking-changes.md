@@ -1057,8 +1057,8 @@ era you can read. A state written by an era you passed no decoder for is
 refused with `LedgerStateDecoderMissingError`, whose message names the class to
 import. A decoder that throws, for example one for another kind, is reported as
 `LedgerStateDecodeFailedError`, with the decoder's error as `cause`. A decoder
-error that already has a midnight-js code is rethrown unchanged. When you pass
-no decoder for any era the state can be, `deserialize` returns `unknown`.
+error that is already a `MidnightJsError` is rethrown unchanged. Passing no
+decoder for any era the state can be does not compile.
 
 A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
 `postMessage` and JSON drop them. To send one to a worker or store it, send
@@ -1095,8 +1095,8 @@ New codes:
 |---|---|---|---|
 | `InvalidLedgerStateError` | `MIDNIGHT_JS_PR_INVALID_LEDGER_STATE` | USAGE | `LedgerState.fromBytes` got bytes that do not start with the tag the ledger of `era` writes for `kind` (`tag-mismatch`), a value that is not a `Uint8Array` (`not-bytes`), or an unknown `kind` (`unknown-kind`); or the constructor was called without `fromBytes` (`not-from-bytes`) |
 | `LedgerStateDecoderMissingError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING` | USAGE | `deserialize` got no decoder for the state's `era` |
-| `LedgerStateDecodeFailedError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED` | USAGE | the decoder for the state's `era` threw an error without a midnight-js code; its error is the `cause` |
-| `PublicStatesEraMismatchError` (`contracts`) | `MIDNIGHT_JS_C_PUBLIC_STATES_ERA_MISMATCH` | INTEGRITY | a `PublicStatesRead` served to build a call has ledger parameters or a zswap chain state that is missing or of another era than its v9 contract state |
+| `LedgerStateDecodeFailedError` | `MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED` | INTEGRITY | the decoder for the state's `era` threw an error that is not a `MidnightJsError`: the bytes are corrupt or the decoder is for another kind; its error is the `cause` |
+| `PublicStatesEraMismatchError` (`contracts`) | `MIDNIGHT_JS_C_PUBLIC_STATES_ERA_MISMATCH` | INTEGRITY | the ledger parameters or the zswap chain state served to build a call are missing or of another era than the call (`expected`); raised on the v9 path and in the v8 pipeline |
 
 Reading a v8 state no longer loads the ledger 8 runtime.
 

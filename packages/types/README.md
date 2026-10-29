@@ -160,9 +160,9 @@ if (read !== null) {
 
 `deserialize` calls only the decoder for the state's own `era`. It refuses a
 missing one with `LedgerStateDecoderMissingError`, and reports a decoder that
-throws as `LedgerStateDecodeFailedError` (a decoder error that already has a
-midnight-js code is rethrown unchanged). Its return type is `unknown` when you
-pass no decoder for any era the state can be. Only `LedgerState.fromBytes(era, kind, bytes)`
+throws as `LedgerStateDecodeFailedError` (a decoder error that is already a
+`MidnightJsError` is rethrown unchanged). A call with no decoder for any era the
+state can be does not compile. Only `LedgerState.fromBytes(era, kind, bytes)`
 makes a `LedgerState`; `LedgerState.isLedgerState(value)` checks one.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
@@ -388,6 +388,7 @@ import {
   type StateDecoder,
   type StateDecoders,
   type DecodedState,
+  type DecodersFor,
   type ContractStateRead,
   type ContractStateAndParametersRead,
   type PublicStatesRead,

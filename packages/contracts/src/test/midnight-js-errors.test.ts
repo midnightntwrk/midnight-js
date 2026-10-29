@@ -53,7 +53,7 @@ const cases: readonly Case[] = [
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
   [
     'PublicStatesEraMismatchError',
-    new errors.PublicStatesEraMismatchError('0'.repeat(64), 'ledgerParameters', 'v8'),
+    new errors.PublicStatesEraMismatchError('0'.repeat(64), 'ledgerParameters', 'v9', 'v8'),
     CONTRACTS_ERROR_CODES.PUBLIC_STATES_ERA_MISMATCH,
     'INTEGRITY'
   ],

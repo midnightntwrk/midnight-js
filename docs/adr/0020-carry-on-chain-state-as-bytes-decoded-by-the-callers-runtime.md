@@ -64,7 +64,7 @@ class LedgerState<K extends LedgerStateKind, E extends LedgerVersion = LedgerVer
   static fromBytes<E, K>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
   static isLedgerState(value: unknown): value is LedgerState;
   serialize(): Uint8Array;
-  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>;
+  deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>;
 }
 ```
 
@@ -75,14 +75,16 @@ The rules:
    dApp's own `compact-runtime`. Only the decoder of the value's own era is called. A missing
    decoder is refused with `LedgerStateDecoderMissingError`
    (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`), whose message names the class and the package to
-   import. A decoder that throws an error without a midnight-js code is reported as
-   `LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`) with its error as
-   `cause`: the tag was checked when the value was made, so either the decoder is the wrong one or
-   the bytes after the tag are corrupt. A coded error is rethrown unchanged, so a framework
-   decoder's `DeserializationError` keeps its code and its INTEGRITY category. When the decoders
-   hold none for any era the value can be, the return type is `unknown`, so the mistake is not
-   hidden behind a `never` that fits anywhere. There is no form without decoders, so the
-   framework's copy of the runtime is never used by accident.
+   import. A decoder that throws an error that is not a `MidnightJsError` is reported as
+   `LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`, INTEGRITY) with
+   its error as `cause`: the tag was checked when the value was made, so either the bytes after the
+   tag are corrupt or the decoder is the wrong one, and the data and its decoder do not match. A
+   `MidnightJsError` is rethrown unchanged, so a framework decoder's `DeserializationError` keeps
+   its code. When the decoders hold none for any era the value can be, the call does not compile:
+   a v8 value given only `{ v9: ContractState }` is a mistake the compiler can see. A value whose
+   era is not known when compiling still compiles with one decoder, and is refused at run time with
+   `LedgerStateDecoderMissingError` when its era has none. There is no form without decoders, so
+   the framework's copy of the runtime is never used by accident.
 2. **`fromBytes` checks the tag against the era.** `LEDGER_STATE_TAGS` in
    `@midnight-ntwrk/midnight-js-protocol/version` holds, for each kind and each ledger era, the
    tag that ledger writes. `fromBytes` refuses bytes that do not start with that tag with
@@ -101,8 +103,12 @@ The rules:
    there, and a dApp can end up with two copies the same way it ends up with two runtimes. So
    `contracts` does not refuse it: it rebuilds every state a provider served from its `era`,
    `kind` and `serialize()` with `fromBytes`, which checks the tag again and refuses forged bytes
-   (`tag-mismatch`). A value that has none of those is refused as the shape of a pre-5.0.0
-   provider (`UnrecognisedEraTagError`). The bytes are a private field, so `structuredClone`,
+   (`tag-mismatch`); a state of another kind fails the same tag check. A value whose
+   `serialize()` gives no bytes is refused as `not-bytes`. A value that names no known `era` is
+   refused as the shape of a pre-5.0.0 provider (`UnrecognisedEraTagError`). When building a call,
+   ledger parameters or a zswap chain state that are missing, or of another era than the call, are
+   refused with `PublicStatesEraMismatchError` (`MIDNIGHT_JS_C_PUBLIC_STATES_ERA_MISMATCH`), on the
+   v9 path and in the v8 pipeline alike. The bytes are a private field, so `structuredClone`,
    `postMessage` and JSON drop them: send `serialize()` and `era`.
 4. **One read record per method.**
    - `ContractStateRead { protocolVersion, contractState }` is returned by

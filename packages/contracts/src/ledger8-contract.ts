@@ -316,12 +316,12 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
 /**
  * The finalized data a retained-era call transaction resolves with.
  *
- * `txData` is version-tagged rather than single-era: the same retained-era
+ * `txData` is era-tagged rather than single-era: the same retained-era
  * contract is called as a v8 transaction before the fork and as a v9 keep-state
  * transaction after it, so the record it finalizes as carries the era that
  * produced it.
  *
- * @see {@link OverloadTyping} for the version-tagged provider methods that rule follows from.
+ * @see {@link OverloadTyping} for the era-tagged provider methods that rule follows from.
  */
 /**
  * What a retained-era circuit's own return value narrows to.

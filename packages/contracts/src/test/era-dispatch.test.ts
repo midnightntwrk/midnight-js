@@ -549,6 +549,9 @@ describe('decodeLedger9ContractState: a corrupt body behind a valid tag', () => 
     expect(caught).toBeInstanceOf(DeserializationError);
     expect(hasErrorCode(caught, UTILS_ERROR_CODES.DESERIALIZATION_FAILED)).toBe(true);
     expect(errorCategory(caught)).toBe('INTEGRITY');
+    expect(caught).toMatchObject({
+      context: { caller: '@midnight-ntwrk/midnight-js-contracts:createUnprovenCallTx' }
+    });
   });
 });
 

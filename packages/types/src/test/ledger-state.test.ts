@@ -201,6 +201,16 @@ describe('LedgerState.isLedgerState', () => {
   it.each([null, undefined, 'midnight:contract-state[v8]:'])('refuses %s', (value) => {
     expect(LedgerState.isLedgerState(value)).toBe(false);
   });
+
+  it('refuses a value made by a second loaded copy of the module', async () => {
+    vi.resetModules();
+    const secondCopy = await import('../ledger-state');
+    const fromSecondCopy = secondCopy.LedgerState.fromBytes('v9', 'ContractState', bytesOf.ContractState.v9);
+
+    expect(secondCopy.LedgerState).not.toBe(LedgerState);
+    expect(secondCopy.LedgerState.isLedgerState(fromSecondCopy)).toBe(true);
+    expect(LedgerState.isLedgerState(fromSecondCopy)).toBe(false);
+  });
 });
 
 describe('LedgerState.deserialize', () => {
@@ -240,7 +250,10 @@ describe('LedgerState.deserialize', () => {
     const otherEra = era === 'v9' ? 'v8' : 'v9';
     const state = LedgerState.fromBytes(era, kind, bytesOf[kind][era]);
 
-    const error = thrownBy(() => state.deserialize({ [otherEra]: { deserialize: () => 'wrong era' } }));
+    const error = thrownBy(() =>
+      // @ts-expect-error a value of a known era needs a decoder for that era
+      state.deserialize({ [otherEra]: { deserialize: () => 'wrong era' } })
+    );
 
     expect(error).toBeInstanceOf(LedgerStateDecoderMissingError);
     expect(error).toMatchObject({ code: PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING, kind, era });
@@ -290,6 +303,7 @@ describe('LedgerState.deserialize', () => {
     expect(error).toBeInstanceOf(LedgerStateDecodeFailedError);
     expect(error).toMatchObject({
       code: PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED,
+      category: 'INTEGRITY',
       kind: 'ContractState',
       era: 'v9',
       cause: failure

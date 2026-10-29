@@ -207,7 +207,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
   static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
   static isLedgerState(value: unknown): value is LedgerState;
   serialize(): Uint8Array;
-  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>; // unknown when D has no decoder for any era E can be
+  deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>; // does not compile when D has no decoder for any era E can be
 }
 
 export interface ContractStateRead {
@@ -244,6 +244,7 @@ interface TransactionContext<C, PCK> {
 export class PublicStatesEraMismatchError extends MidnightJsError {
   readonly contractAddress: string;
   readonly field: 'ledgerParameters' | 'zswapChainState';
+  readonly expected: LedgerVersion;
   readonly received: LedgerVersion | undefined;
 }
 ```
@@ -337,7 +338,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` returns `FinalizedTxRead`, tagged with the network's era (#1508).
+`submitTx` returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 

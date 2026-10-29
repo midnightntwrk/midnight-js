@@ -117,5 +117,7 @@ Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded
 `RawContractState` and the raw reads are removed. Every state read now returns a `LedgerState`
 whose `era` is read from the envelope of its bytes, so the amendment above applies to all of them:
 a `protocolVersion` this build cannot place withholds only the upper-bound check. The provider no
-longer decodes, so a decode failure of a state is reported where the caller decodes it, as
-`LedgerStateDecodeFailedError`, without attributing an era beyond the one the envelope names.
+longer decodes, so a decode failure of a state is reported where the caller decodes it, without
+attributing an era beyond the one the envelope names: as `LedgerStateDecodeFailedError` for a
+decoder error that is not a `MidnightJsError`, and as the decoder's own error otherwise, so a
+framework decoder's `DeserializationError` reaches the caller unchanged.

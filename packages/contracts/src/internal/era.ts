@@ -32,6 +32,7 @@ import {
   type ContractStateRead,
   type FinalizedTxData,
   type FinalizedTxRead,
+  InvalidLedgerStateError,
   LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
@@ -101,23 +102,28 @@ const isLedgerVersion = (value: unknown): value is LedgerVersion => LEDGER_VERSI
 
 /**
  * The `LedgerState` of this copy of the types package for a state a provider served, or `undefined`
- * when the value is not a `LedgerState` of `kind`. A `LedgerState` made by a second installed copy
+ * when the value names no era this build knows. A `LedgerState` made by a second installed copy
  * of the types package fails `LedgerState.isLedgerState`, so every state is rebuilt from its bytes,
- * which checks the tag again.
+ * which checks the tag again. The tag also tells the kinds apart, so a state of another kind is
+ * refused by it.
  *
- * @throws InvalidLedgerStateError if the bytes do not carry the tag of the era the value names.
+ * @throws InvalidLedgerStateError if the value does not serialize to bytes (`not-bytes`), or the
+ * bytes are not a `kind` written by the era the value names (`tag-mismatch`).
  */
 export const ownLedgerState = <K extends LedgerStateKind>(value: unknown, kind: K): LedgerState<K> | undefined => {
-  if (typeof value !== 'object' || value === null || Reflect.get(value, 'kind') !== kind) {
+  if (typeof value !== 'object' || value === null) {
     return undefined;
   }
   const era: unknown = Reflect.get(value, 'era');
-  const serialize: unknown = Reflect.get(value, 'serialize');
-  if (!isLedgerVersion(era) || typeof serialize !== 'function') {
+  if (!isLedgerVersion(era)) {
     return undefined;
   }
-  const bytes: unknown = Reflect.apply(serialize, value, []);
-  return bytes instanceof Uint8Array ? LedgerState.fromBytes(era, kind, bytes) : undefined;
+  const serialize: unknown = Reflect.get(value, 'serialize');
+  const bytes: unknown = typeof serialize === 'function' ? Reflect.apply(serialize, value, []) : undefined;
+  if (!(bytes instanceof Uint8Array)) {
+    throw new InvalidLedgerStateError(kind, era, 'not-bytes');
+  }
+  return LedgerState.fromBytes(era, kind, bytes);
 };
 
 const requireLedger9Read = (
@@ -133,9 +139,6 @@ const requireLedger9Read = (
   if (state.era === 'v8') {
     throw new Ledger8ContractStateUnsupportedError(contractAddress, operation);
   }
-  if (state.era !== 'v9') {
-    throw new UnrecognisedEraTagError(operation, contractState);
-  }
   return state;
 };
 
@@ -143,14 +146,19 @@ const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState
   read: PublicStatesRead,
   field: F,
   kind: PublicStatesRead[F]['kind'],
-  contractAddress: string
+  contractAddress: string,
+  operation: string
 ): LedgerState<PublicStatesRead[F]['kind']> => {
-  const state = ownLedgerState(read[field], kind);
+  const served: unknown = read[field];
+  if (served === undefined || served === null) {
+    throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', undefined);
+  }
+  const state = ownLedgerState(served, kind);
   if (state === undefined) {
-    throw new PublicStatesEraMismatchError(contractAddress, field, undefined);
+    throw new UnrecognisedEraTagError(operation, served);
   }
   if (state.era !== 'v9') {
-    throw new PublicStatesEraMismatchError(contractAddress, field, state.era);
+    throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', state.era);
   }
   return state;
 };
@@ -191,7 +199,9 @@ export const decodeLedger9ContractState = (
  * runtime. Only for building a transaction: a dApp decodes the states with its own runtime.
  *
  * @throws Ledger8ContractStateUnsupportedError if the v8 ledger wrote the contract state.
- * @throws UnrecognisedEraTagError if the record carries no contract state of a known era.
+ * @throws UnrecognisedEraTagError if a state names no era this build knows, such as a state in the
+ *   shape of a pre-5.0.0 provider.
+ * @throws InvalidLedgerStateError if a state does not serialize to bytes of its kind and era.
  * @throws PublicStatesEraMismatchError if the ledger parameters or the zswap chain state are missing
  *   or were not written by the v9 ledger.
  */
@@ -201,8 +211,8 @@ export const decodeLedger9PublicStates = (
   operation: string
 ): Ledger9PublicStates => {
   requireLedger9Read(read, contractAddress, operation);
-  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress);
-  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress);
+  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress, operation);
+  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress, operation);
   const contractState = decodeLedger9ContractState(read, contractAddress, operation);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return {

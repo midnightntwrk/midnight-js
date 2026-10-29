@@ -358,8 +358,9 @@ export interface PublicDataProvider {
    * address in the latest block is returned. Decode the state with your own runtime:
    * `read.contractState.deserialize({ v9: ContractState })`.
    * Immediately returns null if no matching data is found.
-   * @throws When the state or the ledger parameters are not well-formed bytes of a known era, or
-   * are of another era than the block that dates the read.
+   * @throws When the state or the ledger parameters are not well-formed bytes of a known era, when
+   * the state is newer than the block a pinned read names, or when the ledger parameters are of
+   * another era than their block.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -373,8 +374,8 @@ export interface PublicDataProvider {
    * Retrieves the zswap chain state (token balances), the contract state of the contract at the
    * given address, and the ledger parameters in effect on the associated block, each as bytes with
    * the era of the ledger that wrote them. All three are written by the ledger of one era. On a read
-   * with no block given, the block and the states are looked up separately, so near the hard fork
-   * the parameters can come from a block other than the one the states were read at.
+   * with no block given, the contract state is looked up separately from the block, so near the hard
+   * fork it can come from another block than the ledger parameters and the zswap chain state.
    * Immediately returns null if no matching data is found.
    * @throws When the contract state and the ledger parameters were written by different eras.
    * @param contractAddress The address of the contract of interest.

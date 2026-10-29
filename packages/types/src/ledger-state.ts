@@ -45,12 +45,15 @@ type DecodedByEra<D extends StateDecoders, E extends LedgerVersion> = E extends 
   : never;
 
 /**
- * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`: `unknown`
- * when `D` has no decoder for any era `E` can be.
+ * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`.
  */
-export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = [DecodedByEra<D, E>] extends [never]
-  ? unknown
-  : DecodedByEra<D, E>;
+export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = DecodedByEra<D, E>;
+
+/**
+ * Decoders `D` that can read a value of era `E`, or `never` when `D` has no decoder for any era `E`
+ * can be, so such a call does not compile.
+ */
+export type DecodersFor<D extends StateDecoders, E extends LedgerVersion> = [Extract<keyof D, E>] extends [never] ? never : D;
 
 const startsWithTag = (bytes: Uint8Array, tag: string): boolean => {
   const prefix = new TextEncoder().encode(`${tag}:`);
@@ -85,7 +88,7 @@ const FROM_BYTES: unique symbol = Symbol('LedgerState.fromBytes');
  * @typeParam K The kind of value.
  * @typeParam E The era of the ledger that wrote it.
  */
-export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+export class LedgerState<K extends LedgerStateKind = LedgerStateKind, out E extends LedgerVersion = LedgerVersion> {
   readonly #bytes: Uint8Array;
 
   private constructor(
@@ -147,13 +150,14 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
    * Decodes the value with the decoder for its own era.
    *
    * @param decoders One decoder per ledger era, from the caller's own runtime, e.g.
-   * `{ v9: ContractState }`.
-   * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link era}.
-   * @throws LedgerStateDecodeFailedError when the decoder throws an error without a midnight-js
-   * code, for example because it decodes another kind or the bytes after the tag are corrupt. A
-   * decoder error with a midnight-js code is rethrown unchanged.
+   * `{ v9: ContractState }`. Decoders with none for any era this value can be do not compile.
+   * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link era}, which only a
+   * value whose era is not known when compiling can reach.
+   * @throws LedgerStateDecodeFailedError when the decoder throws an error that is not a
+   * `MidnightJsError`, for example because it decodes another kind or the bytes after the tag are
+   * corrupt. A `MidnightJsError` from the decoder is rethrown unchanged.
    */
-  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E> {
+  deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E> {
     const decoder: StateDecoder | undefined =
       isDecoderMap(decoders) && Object.hasOwn(decoders, this.era) ? decoders[this.era] : undefined;
     if (typeof decoder?.deserialize !== 'function') {

@@ -150,7 +150,7 @@ export interface ComposeCallEntry {
   readonly contractStateBytes: Uint8Array;
   /**
    * The ledger parameters the chain held at the block this call is built against, serialized —
-   * `ContractStateRead.ledgerParameters`, serialized and passed through untouched — or
+   * `ContractStateAndParametersRead.ledgerParameters`, serialized and passed through untouched — or
    * {@link INITIAL_LEDGER_PARAMETERS} to partition against the ledger's initial cost model instead.
    *
    * Required, and deliberately so. See {@link LedgerParametersOption}.

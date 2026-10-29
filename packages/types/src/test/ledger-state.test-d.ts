@@ -37,7 +37,7 @@ describe('LedgerState.fromBytes', () => {
 
   it('cannot be bypassed with new', () => {
     // @ts-expect-error the constructor is private
-    expectTypeOf(new LedgerState('v9', 'ContractState', bytes)).not.toBeAny();
+    expectTypeOf(new LedgerState(Symbol('LedgerState.fromBytes'), 'v9', 'ContractState', bytes)).not.toBeAny();
   });
 });
 
@@ -57,8 +57,14 @@ describe('LedgerState.deserialize', () => {
     expectTypeOf(anyEraState.deserialize({ v9: ledger9Decoder })).toEqualTypeOf<Ledger9ContractState>();
   });
 
-  it('returns unknown, not never, when the decoders cannot read the value era', () => {
-    expectTypeOf(ledger8State.deserialize({ v9: ledger9Decoder })).toBeUnknown();
+  it('does not compile when the decoders cannot read the value era', () => {
+    // @ts-expect-error a v8 value needs a v8 decoder
+    ledger8State.deserialize({ v9: ledger9Decoder });
+  });
+
+  it('does not compile without a decoder', () => {
+    // @ts-expect-error no decoder at all
+    ledger9State.deserialize({});
   });
 
   it('returns the decoded type for a decoder under an optional key', () => {
@@ -67,6 +73,11 @@ describe('LedgerState.deserialize', () => {
 
   it('returns unknown, not never, for decoders typed as StateDecoders', () => {
     expectTypeOf(ledger9State.deserialize(typedDecoders)).toBeUnknown();
+  });
+
+  it('lets a state of one era stand where a state of any era is expected', () => {
+    expectTypeOf(ledger9State).toExtend<LedgerState<'ContractState'>>();
+    expectTypeOf(ledger8State).toExtend<LedgerState<'ContractState'>>();
   });
 
   it('keeps the kinds apart', () => {

@@ -101,8 +101,8 @@ and `contractStateObservable`, and `PublicStatesRead` from
   decoder is refused with `LedgerStateDecoderMissingError`, whose message names
   the class to import. A decoder that throws is reported as
   `LedgerStateDecodeFailedError`, with its error as `cause`, unless the error
-  already has a midnight-js code: that one is rethrown unchanged. When you pass
-  no decoder for any era the state can be, the return type is `unknown`.
+  is already a `MidnightJsError`: that one is rethrown unchanged. A call with no
+  decoder for any era the state can be does not compile.
 - The bytes are a private field, so `structuredClone`, `postMessage` and JSON
   drop them. Send `serialize()` and `era`, and rebuild with `fromBytes`.
 
@@ -177,10 +177,11 @@ refusal existed.
 They are a `LedgerState` for the same reason the contract state is: only the
 era that wrote them can read them, and the caller holds the runtime.
 
-The member is required on `ContractStateAndParametersRead`. A provider written
-in JavaScript can still leave it out, so the framework checks it where it needs
-the parameters: building a v9 call refuses a missing one with
-`PublicStatesEraMismatchError`, and the v8 pipeline refuses it with
-`LedgerParametersUnservedError`. Parameters served in a shape that is not a
-`LedgerState` are refused too: with `PublicStatesEraMismatchError` when building
-a v9 call, and with `UnrecognisedEraTagError` on the v8 pipeline.
+The member is required on `ContractStateAndParametersRead` and on
+`PublicStatesRead`. A provider written in JavaScript can still leave it out, so
+the framework checks it where it needs the parameters. Building a v9 call reads
+`queryZSwapAndContractState` and refuses a missing one with
+`PublicStatesEraMismatchError`; the v8 pipeline reads `queryContractState` and
+refuses it with `LedgerParametersUnservedError`. Both refuse parameters of
+another era than the call with `PublicStatesEraMismatchError`, and parameters in
+a shape that names no known era with `UnrecognisedEraTagError`.
