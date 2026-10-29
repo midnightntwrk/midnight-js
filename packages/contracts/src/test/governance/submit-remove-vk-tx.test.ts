@@ -183,8 +183,8 @@ describe('submitRemoveVerifierKeyTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
-      const { RemoveVerifierKeyTxFailedError } = await import('../../governance/errors');
+    it('should throw Ledger9RemoveVerifierKeyTxFailedError when transaction fails', async () => {
+      const { Ledger9RemoveVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
@@ -200,7 +200,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       await expect(
         submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
+      ).rejects.toThrow(Ledger9RemoveVerifierKeyTxFailedError);
     });
   });
 });

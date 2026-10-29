@@ -17,7 +17,7 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { DeployTxFailedError } from './errors';
+import { Ledger9DeployTxFailedError } from './errors';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitLedger9Payload } from './submit-tx';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
@@ -59,14 +59,14 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `DeployTxFailedError` is thrown with transaction data
+ * - `Ledger9DeployTxFailedError` is thrown with transaction data
  * - Private state (if `privateStateId` provided) is NOT stored
  * - Contract signing key is NOT stored in private state provider
  * - Contract is NOT deployed
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `DeployTxFailedError` is thrown with transaction data
+ * - `Ledger9DeployTxFailedError` is thrown with transaction data
  * - Private state (if `privateStateId` provided) is NOT stored
  * - Contract signing key is NOT stored in private state provider
  * - Transaction appears in blockchain history as partial success
@@ -78,7 +78,7 @@ export async function submitDeployTx<C extends Contract.Any>(
  * @returns A `Promise` that resolves with the finalized deployment transaction data;
  *          or rejects with an error if the deployment fails.
  *
- * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ * @throws {Ledger9DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
  *         `initialPrivateState`, or `initialPrivateState` holds a value without `privateStateId`.
@@ -102,7 +102,7 @@ export async function submitDeployTx<C extends Contract.Any>(
     unprovenTx: unprovenDeployTxData.private.unprovenTx
   });
   if (finalizedTxData.status !== SucceedEntirely) {
-    throw new DeployTxFailedError(finalizedTxData);
+    throw new Ledger9DeployTxFailedError(finalizedTxData);
   }
   providers.privateStateProvider.setContractAddress(unprovenDeployTxData.public.contractAddress);
   if ('privateStateId' in options) {

@@ -19,7 +19,7 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DeployTxFailedError, IncompleteDeployContractPrivateStateConfig } from '../errors';
+import { IncompleteDeployContractPrivateStateConfig,Ledger9DeployTxFailedError } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
@@ -136,7 +136,7 @@ describe('submit-deploy-tx', () => {
     });
 
     describe('failed deployment scenarios', () => {
-      it('should throw DeployTxFailedError when transaction fails with FailFallible', async () => {
+      it('should throw Ledger9DeployTxFailedError when transaction fails with FailFallible', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -149,13 +149,13 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
+        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(Ledger9DeployTxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
-      it('should throw DeployTxFailedError when transaction fails with FailEntirely', async () => {
+      it('should throw Ledger9DeployTxFailedError when transaction fails with FailEntirely', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -168,13 +168,13 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
+        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(Ledger9DeployTxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
-      it('should include failure data in DeployTxFailedError', async () => {
+      it('should include failure data in Ledger9DeployTxFailedError', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -189,10 +189,10 @@ describe('submit-deploy-tx', () => {
 
         try {
           await submitDeployTx(mockProviders, options);
-          expect.fail('Expected DeployTxFailedError to be thrown');
+          expect.fail('Expected Ledger9DeployTxFailedError to be thrown');
         } catch (error) {
-          expect(error).toBeInstanceOf(DeployTxFailedError);
-          expect((error as DeployTxFailedError).finalizedTxData).toEqual(mockFailedTxData);
+          expect(error).toBeInstanceOf(Ledger9DeployTxFailedError);
+          expect((error as Ledger9DeployTxFailedError).finalizedTxData).toEqual(mockFailedTxData);
         }
       });
     });

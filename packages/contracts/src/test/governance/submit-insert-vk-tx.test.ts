@@ -206,8 +206,8 @@ describe('submitInsertVerifierKeyTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
-      const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
+    it('should throw Ledger9InsertVerifierKeyTxFailedError when transaction fails', async () => {
+      const { Ledger9InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
@@ -222,7 +222,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
       await expect(
         submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
-      ).rejects.toThrow(InsertVerifierKeyTxFailedError);
+      ).rejects.toThrow(Ledger9InsertVerifierKeyTxFailedError);
     });
   });
 });

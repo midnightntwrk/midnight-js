@@ -463,6 +463,33 @@ type T = Ledger8FoundContract<C>;
 error instanceof Ledger8.CallTxFailedError;
 ```
 
+### Types for both eras carry no prefix (#1566)
+
+```ts
+// A flat name without a contract is the union of every era
+export type SmartContract = Ledger8Contract | Ledger9Contract;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+export type FinalizedCallTxData<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>>;
+export type SubmittedCallTx<C extends SmartContract = never, K extends CircuitIdOf<C> = CircuitIdOf<C>>;
+// `ContractProviders` requires its contract: `ContractProviders<C, K?>`
+
+// The base of every recorded-failure class, in both eras
+export abstract class TxFailedError extends MidnightJsError {
+  readonly code: 'MIDNIGHT_JS_C_TX_FAILED';
+  abstract readonly record: FinalizedTxRead;
+}
+export class Ledger9TxFailedError extends TxFailedError { readonly finalizedTxData: Ledger9FinalizedTxData; }
+export class Ledger9CallTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9DeployTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9InsertVerifierKeyTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9RemoveVerifierKeyTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9ReplaceMaintenanceAuthorityTxFailedError extends Ledger9TxFailedError {}
+```
+
+Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
+`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`,
+`AnyEraTxFailedError`. See breaking-changes.md section 24.
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`

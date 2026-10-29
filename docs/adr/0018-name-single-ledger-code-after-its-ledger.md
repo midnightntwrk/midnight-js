@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-16
 - Deciders: Szymon Paluchowski
-- Related: #1490, #1489, #1533, #1536
+- Related: #1490, #1489, #1533, #1536, #1566
 
 ## Context
 
@@ -75,3 +75,36 @@ broke the rule above: at the next fork it would have meant ledger 10. Two rules 
   branch. Without one it does not exist, and only the `Ledger9*` name remains.
 - Low-level functions serve one era each, so they are named after it (#1527).
 
+
+## Amendment — a name without a prefix is valid for every era (2026-10-29)
+
+Issue #1566. Types for both eras used two styles: an `AnyEra` prefix (`AnyEraFoundContract`,
+`AnyEraTxFailedError`) and no prefix (`FinalizedTxRead`, `FoundDeployTxPublicData`). A reader could
+not tell from the name which one was a union. One rule now applies:
+
+> A `Ledger8` / `Ledger9` prefix means bound to one ledger. No prefix means valid for every era: with
+> a contract parameter it picks the era from the contract; without one it is the union of all eras.
+
+This replaces "without one it does not exist" in the amendment above: a ledger 9 type without a
+contract keeps its `Ledger9*` name, and the flat name, where it exists, is the union.
+
+- No exported name carries the `AnyEra` prefix. `AnyEraContract` is `SmartContract`;
+  `AnyEraMaintenanceTxData` is `FinalizedMaintenanceTxData`; `AnyEraFoundContract<C, L8>` and
+  `AnyEraDeployedContract<C, L8>` are `FoundContract<C | L8>` and `DeployedContract<C | L8>`.
+- `FinalizedCallTxData` and `SubmittedCallTx` without type arguments are the unions of both eras. Their
+  ledger 9 member reads `result` and `nextPrivateState` as `unknown`: the widest ledger 9 instantiation
+  would type them `any`, which turns off checking in exactly the handlers that receive either era.
+- `ContractProviders` requires its contract. A provider set serves one contract, so a union of the
+  eras' sets has no use, and a ledger 9 default would break the rule.
+- `TxFailedError` is the base of every recorded-failure class, in both eras. The ledger 9 classes take
+  the prefix: `Ledger9TxFailedError`, `Ledger9CallTxFailedError`, `Ledger9DeployTxFailedError`,
+  `Ledger9InsertVerifierKeyTxFailedError`, `Ledger9RemoveVerifierKeyTxFailedError`,
+  `Ledger9ReplaceMaintenanceAuthorityTxFailedError`. The ledger 8 classes stay in the `Ledger8`
+  namespace.
+- `SmartContract` rather than `Contract`: a dApp also imports the `Contract` namespace from
+  compact-js, and our own tests already use `CompactContract` as an alias for it.
+- `FoundDeployTxPublicData` keeps its pair `Ledger8FoundDeployTxPublicData` |
+  `Ledger9FinalizedDeployTxPublicData`. The two shapes differ: the ledger 8 record is read from chain
+  and carries no `initialContractState`, so `Found` names it correctly.
+
+The renames are listed in section 24 of `docs/releases/v5.0.0/breaking-changes.md`.

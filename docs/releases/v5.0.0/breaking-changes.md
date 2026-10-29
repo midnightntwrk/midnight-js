@@ -1238,6 +1238,60 @@ always name it. See ADR 0013.
 
 ---
 
+## 24. Types for both eras carry no prefix (#1566)
+
+One rule for names: a `Ledger8` / `Ledger9` prefix means bound to one ledger. No prefix
+means valid for every era: with a contract parameter the name picks the era from the
+contract; without one it is the union of all eras. Earlier sections of this document use
+the names before this rename.
+
+**Types.**
+
+| Before | After |
+|---|---|
+| `AnyEraContract` | `SmartContract` |
+| `AnyEraFinalizedCallTxData` | `FinalizedCallTxData` (no type arguments) |
+| `AnyEraSubmittedCallTx` | `SubmittedCallTx` (no type arguments) |
+| `AnyEraFoundContract<C, L8>` | `FoundContract<C \| L8>` |
+| `AnyEraDeployedContract<C, L8>` | `DeployedContract<C \| L8>` |
+| `AnyEraMaintenanceTxData` | `FinalizedMaintenanceTxData` |
+| `ContractProviders` (no type arguments: the ledger 9 set) | `ContractProviders<C>` requires the contract; `Ledger9ContractProviders` for the ledger 9 set |
+
+`FinalizedMaintenanceTxData` was the ledger 9 type in `5.0.0-rc.5`; it is now the union of
+both eras. Code that reads `public.tx` or relies on `era: 'v9'` stops compiling until it
+narrows on `era` or names `Ledger9FinalizedMaintenanceTxData`. 4.x had no such type.
+
+**Error classes.** The base both eras extend is now `TxFailedError`, so the ledger 9
+classes take the `Ledger9` prefix:
+
+| Before (4.x and 5.0.0 pre-releases) | After |
+|---|---|
+| `AnyEraTxFailedError` (5.0.0 pre-releases) | `TxFailedError` (abstract) |
+| `TxFailedError` | `Ledger9TxFailedError` |
+| `CallTxFailedError` | `Ledger9CallTxFailedError` |
+| `DeployTxFailedError` | `Ledger9DeployTxFailedError` |
+| `InsertVerifierKeyTxFailedError` | `Ledger9InsertVerifierKeyTxFailedError` |
+| `RemoveVerifierKeyTxFailedError` | `Ledger9RemoveVerifierKeyTxFailedError` |
+| `ReplaceMaintenanceAuthorityTxFailedError` | `Ledger9ReplaceMaintenanceAuthorityTxFailedError` |
+
+**Impact:**
+
+- `error instanceof TxFailedError` still compiles, and now also catches the ledger 8
+  failures (`Ledger8.CallTxFailedError` and the rest). Read the record through `.record`,
+  which is era-tagged, or narrow to `Ledger9TxFailedError` to read `.finalizedTxData`.
+- `error instanceof CallTxFailedError` and the other old names stop compiling. Use the
+  `Ledger9*` name for the ledger 9 class only, or `TxFailedError` for both eras.
+- `new TxFailedError(...)` stops compiling: the class is abstract.
+- `error.name` of the five subclasses changes, for example `'CallTxFailedError'` is now
+  `'Ledger9CallTxFailedError'`. Code that compares `name` strings does not fail to compile:
+  branch on `code` (`MIDNIGHT_JS_C_TX_FAILED`) or on `instanceof` instead.
+- The `Ledger8` namespace members (`Ledger8.CallTxFailedError` and the rest) do not change.
+
+`FoundDeployTxPublicData` and `FinalizedTxRead` keep their names: they already follow the
+rule. See ADR 0018.
+
+---
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

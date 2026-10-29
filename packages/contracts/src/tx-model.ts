@@ -209,7 +209,7 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9Fi
  *
  * Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
  * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
- * are `AnyEraMaintenanceTxData`.
+ * are `FinalizedMaintenanceTxData`.
  */
 export interface Ledger9FinalizedMaintenanceTxData {
   /** The pipeline that produced this result: always ledger 9 here. */
@@ -332,7 +332,7 @@ export interface Ledger9FinalizedCallTxData<C extends Contract.Any, PCK extends 
    * In a scope that made several calls this names the LAST one, which is the
    * call `public`, `private` and `calls` also describe: this type is one
    * call's result, not the transaction's. The transaction may carry more, and
-   * a failure reports all of them -- `CallTxFailedError`'s `circuitId` is the
+   * a failure reports all of them -- `Ledger9CallTxFailedError`'s `circuitId` is the
    * accumulated list. The two are answering different questions, and a caller
    * routing on this one is routing on the call, not the transaction.
    *

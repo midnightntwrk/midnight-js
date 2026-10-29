@@ -226,9 +226,16 @@ const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
 ) => data.public;
 ```
 
-Types with no contract parameter have only their era-named form, for example
-`Ledger9FinalizedMaintenanceTxData`. To accept either era, use the `AnyEra*`
-unions.
+A flat name with no contract is the union of every era. Declare a parameter
+that accepts either era with it, and narrow it on `era` or with `isLedger8Result`:
+
+```typescript
+const onCall = (result: FinalizedCallTxData) =>
+  isLedger8Result(result) ? result.public.txId : result.public.logEvents;
+```
+
+`FinalizedMaintenanceTxData` and `SmartContract` work the same way. For a
+handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
 
 ## Exports
 
@@ -278,10 +285,10 @@ import {
   UnsubmittedDeployTxData,
 
   // Errors
-  CallTxFailedError,
-  DeployTxFailedError,
   ContractTypeError,
   EraInvariantViolationError,
+  Ledger9CallTxFailedError,
+  Ledger9DeployTxFailedError,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
