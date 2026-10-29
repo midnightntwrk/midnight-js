@@ -562,3 +562,15 @@ The rest of the decision stands: the read side keeps its `version`-tagged record
 is still derived, never asserted. On a finalized-transaction record, `tx` is a `FinalizedTx` of
 the record's era (`record.tx.era === record.version`), so point 3 of the amendment of 2026-10-16
 ("the v8 variant carries the stored bytes") does not apply to transaction records.
+
+## Amendment — on-chain state is carried as bytes (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+Point 3 of the amendment of 2026-10-16 no longer describes the state reads. A contract state,
+ledger parameters and a zswap chain state are now a `LedgerState`: bytes and the era of the
+ledger that wrote them, in both eras. The caller decodes them with its own runtime.
+`VersionedContractState`, `VersionedPublicStates`, `RawContractState` and their variants are
+removed; the reads return `ContractStateRead`, `ContractStateAndParametersRead` and
+`PublicStatesRead`. `LedgerState.era` is read from the bytes, never from the block. The
+finalized-transaction record keeps its shape but follows the same names:
+`VersionedFinalizedTxData` is now `FinalizedTxRead`, and its `version` is now `era`.

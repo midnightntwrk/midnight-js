@@ -132,6 +132,7 @@ describe('Protocol type ACL', () => {
       'Ledger8Subpath',
       'LedgerEra',
       'LedgerParametersOption',
+      'LedgerStateKind',
       'LedgerVersion',
       'MaintenanceAuthorityMismatchReason',
       'MidnightJsErrorCategory',

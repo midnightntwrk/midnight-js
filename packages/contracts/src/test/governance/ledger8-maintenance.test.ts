@@ -32,9 +32,9 @@ import {
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
+  type ContractStateAndParametersRead,
   FailFallible,
   LedgerTransaction,
-  type RawContractState,
   type UnboundTx,
   type UnprovenTx,
   type VerifierKey,
@@ -70,7 +70,7 @@ import type { Ledger8ContractProviders } from '../../ledger8-contract';
 import { finalizedLike, handles, unboundLike } from '../ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from '../ledger8-fixture-types';
 import { hfFixturePath, readHfHexFixture } from '../ledger8-replay';
-import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from '../test-mocks';
+import { contractStateAndParametersRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from '../test-mocks';
 
 vi.mock('@midnight-ntwrk/compact-runtime', () => import('../ledger8-runtime-stub'));
 
@@ -109,12 +109,8 @@ describe('contract maintenance through a retained-era artifact', () => {
   let composeMaintenanceTx: ReturnType<typeof vi.fn>;
   let composed: Uint8Array;
 
-  const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): RawContractState => ({
-    version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
-    protocolVersion,
-    raw,
-    ledgerParameters: retainedLedgerParameters
-  });
+  const rawState = (raw: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): ContractStateAndParametersRead =>
+    contractStateAndParametersRead(raw, protocolVersion, retainedLedgerParameters);
 
   const providersOn = (state: Uint8Array, protocolVersion = PRE_FORK_PROTOCOL_VERSION): Providers => {
     const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
@@ -128,7 +124,7 @@ describe('contract maintenance through a retained-era artifact', () => {
     };
     const providers: Providers = { ...createMockProviders(), zkConfigProvider };
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(protocolVersion);
-    providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue(rawState(state, protocolVersion));
+    providers.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(rawState(state, protocolVersion));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData());
     providers.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(STORED_KEY);
     providers.walletProvider.getCoinPublicKey = (): string => COIN_PUBLIC_KEY;
@@ -364,7 +360,7 @@ describe('contract maintenance through a retained-era artifact', () => {
     it('hands back the new key when the record carries no era tag', async () => {
       // Arrange
       const providers = providersOn(keyedState);
-      const { version: _version, ...untagged } = createMockLedger8FinalizedTxData();
+      const { era: _version, ...untagged } = createMockLedger8FinalizedTxData();
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       // Act & Assert

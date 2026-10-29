@@ -14,8 +14,8 @@
  */
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PositionedRecord, RawContractState } from '@midnight-ntwrk/midnight-js-types';
-import { fromHex, ledgerVersionOfContractState, requireLedger9, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractStateRead, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import { fromHex, ledgerVersionOfContractState, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
@@ -34,7 +34,6 @@ import {
   LEDGER8_ERA_PROTOCOL_VERSION,
   LEDGER9_ERA_PROTOCOL_VERSION,
   mintLedger8ContractStateHex,
-  mintLedger9ContractStateBytes,
   mintLedger9ContractStateHex,
   mintLedger9TransactionHex,
   UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
@@ -125,18 +124,29 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
     (error: unknown) => error
   );
 
-const envelopesOf = (records: readonly PositionedRecord<RawContractState>[]): string[] =>
-  records.map((record) => ledgerVersionOfContractState(record.value.raw));
+// Spells the bytes out: `toEqual` compares a `LedgerState` by its public fields only.
+const plainRecords = (records: readonly PositionedRecord<ContractStateRead>[]) =>
+  records.map(({ value, ...position }) => ({
+    ...position,
+    value: {
+      protocolVersion: value.protocolVersion,
+      contractState: { kind: value.contractState.kind, era: value.contractState.era, bytes: value.contractState.serialize() },
+      fields: Object.keys(value).sort()
+    }
+  }));
+
+const versionTagsOf = (records: readonly PositionedRecord<ContractStateRead>[]): string[] =>
+  records.map((record) => ledgerVersionOfContractState(record.value.contractState.serialize()));
 
 const positionsOf = (records: readonly PositionedRecord<unknown>[]) =>
   records.map(({ blockHeight, blockHash }) => ({ blockHeight, blockHash }));
 
-describe('rawContractStateObservable — latest', () => {
+describe('contractStateObservable — latest', () => {
   const latestPoll = new Map<DocumentNode, unknown>([
     [LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY, latestAt(10)]
   ]);
 
-  test('carries a pre-fork state through undecoded', async () => {
+  test('carries a pre-fork state through as bytes', async () => {
     const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
@@ -145,50 +155,22 @@ describe('rawContractStateObservable — latest', () => {
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    // The WHOLE record, not field by field: this is the one assertion that
-    // fails if the record grows a field, and the one that pins
-    // `ledgerParameters` as absent, which only the subscription's field list
-    // guarantees.
-    expect(seen).toEqual([
+    // The WHOLE record, not field by field: `fields` fails if the record grows
+    // a field, such as ledger parameters the subscription does not ask for.
+    expect(plainRecords(seen)).toEqual([
       {
         value: {
-          version: 'v8',
           protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
-          raw: new Uint8Array(fromHex(hexState)),
-          ledgerParameters: undefined
+          contractState: { kind: 'ContractState', era: 'v8', bytes: new Uint8Array(fromHex(hexState)) },
+          fields: ['contractState', 'protocolVersion']
         },
         blockHeight: 10,
         blockHash: '0x10'
       }
     ]);
-    expect(envelopesOf(seen)).toEqual(['v8']);
-  });
-
-  test('the decoded stream carries the same pre-fork state as v8 and keeps going across the fork', async () => {
-    const ledger8State = await mintLedger8ContractStateHex();
-    const ledger9State = mintLedger9ContractStateHex();
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(ledger8State, LEDGER8_ERA_PROTOCOL_VERSION, 10),
-        actionFrame(ledger9State, LEDGER9_ERA_PROTOCOL_VERSION, 11)
-      ])
-    });
-
-    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
-
-    expect(
-      seen.map(({ value, blockHeight }) =>
-        value.version === 'v8'
-          ? { blockHeight, version: 'v8', hex: Buffer.from(value.stateBytes).toString('hex') }
-          : { blockHeight, version: 'v9', hex: Buffer.from(value.state.serialize()).toString('hex') }
-      )
-    ).toEqual([
-      { blockHeight: 10, version: 'v8', hex: ledger8State },
-      { blockHeight: 11, version: 'v9', hex: ledger9State }
-    ]);
+    expect(versionTagsOf(seen)).toEqual(['v8']);
   });
 
   test('carries one contract across the fork boundary in a single stream', async () => {
@@ -202,15 +184,15 @@ describe('rawContractStateObservable — latest', () => {
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
-    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
+    expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
   });
 
   test('refuses a payload that is not a contract state at all', async () => {
-    // Fail-fast is what the raw stream keeps: it withholds the DECODE, not the
-    // envelope check. A transaction served where a state belongs is indexer
+    // Fail-fast is what the stream keeps: it withholds the DECODE, not the
+    // version tag check. A transaction served where a state belongs is indexer
     // corruption, and passing those bytes on as a "contract state" would move
     // the failure to a caller who has no way to attribute it.
     const provider = buildProvider({
@@ -220,26 +202,26 @@ describe('rawContractStateObservable — latest', () => {
       ])
     });
 
-    const rejection = await rejectionOf(collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' })));
+    const rejection = await rejectionOf(collect(provider.contractStateObservable(ADDRESS, { type: 'latest' })));
 
     expect(rejection).toBeInstanceOf(TagParseError);
   });
 
-  test('tags a record by its envelope when its protocol version cannot be placed, and keeps going', async () => {
+  test('tags a record by its version tag when its protocol version cannot be placed, and keeps going', async () => {
     const hexState = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [actionFrame(hexState, UNRESOLVABLE_PROTOCOL_VERSION, 10)])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map(({ value }) => value.version)).toEqual(['v9']);
+    expect(seen.map(({ value }) => value.contractState.era)).toEqual(['v9']);
   });
 
-  test('ends the stream on a record whose envelope is newer than the block that dates it', async () => {
+  test('ends the stream on a record whose version tag is newer than the block that dates it', async () => {
     // The stream dates each record by its own `stateAt`, the same resolution that produced the
-    // bytes, so a newer envelope is an indexer fault rather than a race.
+    // bytes, so a newer version tag is an indexer fault rather than a race.
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
@@ -247,7 +229,7 @@ describe('rawContractStateObservable — latest', () => {
       ])
     });
 
-    const rejection = await rejectionOf(collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' })));
+    const rejection = await rejectionOf(collect(provider.contractStateObservable(ADDRESS, { type: 'latest' })));
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
@@ -265,34 +247,16 @@ describe('rawContractStateObservable — latest', () => {
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [actionFrame(hexState, LEDGER9_ERA_PROTOCOL_VERSION, 10)])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(seen.map(({ value }) => ({ version: value.version, protocolVersion: value.protocolVersion }))).toEqual([
+    expect(seen.map(({ value }) => ({ version: value.contractState.era, protocolVersion: value.protocolVersion }))).toEqual([
       { version: 'v8', protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }
     ]);
   });
 
-  test('the decoded stream keeps going on that same unplaceable version', async () => {
-    // The contrast that makes the asymmetry a documented fact rather than an
-    // accident: the decoded path treats "cannot place this integer" as a
-    // withheld check, not a failure, and decodes on the envelope.
-    const hexState = mintLedger9ContractStateHex();
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
-        actionFrame(hexState, UNRESOLVABLE_PROTOCOL_VERSION, 10)
-      ])
-    });
-
-    const seen = await Rx.lastValueFrom(
-      provider.contractStateObservable(ADDRESS, { type: 'latest' }).pipe(Rx.toArray())
-    );
-
-    expect(seen).toHaveLength(1);
-  });
 });
 
-describe('rawContractStateObservable — address validation', () => {
+describe('contractStateObservable — address validation', () => {
   test('refuses an invalid address synchronously, issuing nothing', () => {
     const watchQuery = dispatchingWatchQuery(new Map());
     const subscribe = dispatchingSubscribe(CONTRACT_STATE_SUB, []);
@@ -301,7 +265,7 @@ describe('rawContractStateObservable — address validation', () => {
     // Matched on what the hex validator says, not merely on `TypeError`: a
     // missing member throws `TypeError` too, so a bare `.toThrow()` here would
     // pass against a provider that has no such method at all.
-    expect(() => provider.rawContractStateObservable(INVALID_ADDRESS, { type: 'latest' })).toThrow(
+    expect(() => provider.contractStateObservable(INVALID_ADDRESS, { type: 'latest' })).toThrow(
       /hex-digit/
     );
     expect(watchQuery).not.toHaveBeenCalled();
@@ -309,7 +273,7 @@ describe('rawContractStateObservable — address validation', () => {
   });
 });
 
-describe('rawContractStateObservable — every configuration branch', () => {
+describe('contractStateObservable — every configuration branch', () => {
   test('blockHeight: streams the blocks from the requested height', async () => {
     const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
@@ -320,10 +284,10 @@ describe('rawContractStateObservable — every configuration branch', () => {
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 })
     );
 
-    expect(envelopesOf(seen)).toEqual(['v8']);
+    expect(versionTagsOf(seen)).toEqual(['v8']);
   });
 
   test('blockHash: streams the blocks from the requested hash', async () => {
@@ -336,13 +300,13 @@ describe('rawContractStateObservable — every configuration branch', () => {
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHash', blockHash: '0x10' })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHash', blockHash: '0x10' })
     );
 
-    expect(envelopesOf(seen)).toEqual(['v8']);
+    expect(versionTagsOf(seen)).toEqual(['v8']);
   });
 
-  test('all: replays a pre-fork deploy state that the decoded stream can never get past', async () => {
+  test('all: replays a pre-fork deploy state and carries on past the fork', async () => {
     // The branch the README singles out as unrecoverable on the decoded
     // stream: it replays from the deploy, so a contract deployed before the
     // fork always hits its own pre-fork state, and no later write can change
@@ -361,10 +325,10 @@ describe('rawContractStateObservable — every configuration branch', () => {
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'all' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'all' }));
 
-    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
-    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
+    expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
   });
 
   test('txId: streams the states from the named transaction onward', async () => {
@@ -376,10 +340,10 @@ describe('rawContractStateObservable — every configuration branch', () => {
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
-    expect(seen.map((record) => toHex(record.value.raw))).toEqual([hexState]);
-    expect(envelopesOf(seen)).toEqual(['v8']);
+    expect(seen.map((record) => toHex(record.value.contractState.serialize()))).toEqual([hexState]);
+    expect(versionTagsOf(seen)).toEqual(['v8']);
   });
 
   test('txId: withholds the states of transactions that precede the named one', async () => {
@@ -396,9 +360,9 @@ describe('rawContractStateObservable — every configuration branch', () => {
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
-    expect(seen.map((record) => toHex(record.value.raw))).toEqual([named]);
+    expect(seen.map((record) => toHex(record.value.contractState.serialize()))).toEqual([named]);
   });
 
   test('txId: inclusive false drops the state of the named transaction itself', async () => {
@@ -413,10 +377,10 @@ describe('rawContractStateObservable — every configuration branch', () => {
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false })
+      provider.contractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false })
     );
 
-    expect(seen.map((record) => toHex(record.value.raw))).toEqual([second]);
+    expect(seen.map((record) => toHex(record.value.contractState.serialize()))).toEqual([second]);
   });
 
   test('blockHeight: inclusive false drops the requested block, not merely the first state', async () => {
@@ -435,14 +399,14 @@ describe('rawContractStateObservable — every configuration branch', () => {
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10, inclusive: false })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10, inclusive: false })
     );
 
-    expect(seen.map((record) => toHex(record.value.raw))).toEqual([kept]);
+    expect(seen.map((record) => toHex(record.value.contractState.serialize()))).toEqual([kept]);
   });
 });
 
-describe('rawContractStateObservable — every record carries the block that served it', () => {
+describe('contractStateObservable — every record carries the block that served it', () => {
   test.each([
     [
       'latest',
@@ -463,13 +427,13 @@ describe('rawContractStateObservable — every record carries the block that ser
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, config));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, config));
 
     expect(positionsOf(seen)).toEqual([
       { blockHeight: 10, blockHash: '0x10' },
       { blockHeight: 10, blockHash: '0x10' }
     ]);
-    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+    expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
   });
 
   test('all: each state carries the block of its own transaction', async () => {
@@ -487,13 +451,13 @@ describe('rawContractStateObservable — every record carries the block that ser
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'all' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'all' }));
 
     expect(positionsOf(seen)).toEqual([
       { blockHeight: 10, blockHash: '0x10' },
       { blockHeight: 11, blockHash: '0x11' }
     ]);
-    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+    expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
   });
 
   test('txId: the named transaction’s state carries its block', async () => {
@@ -505,26 +469,26 @@ describe('rawContractStateObservable — every record carries the block that ser
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID }));
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: 10, blockHash: '0x10' }]);
   });
 });
 
-describe('rawContractStateObservable — resume from an emitted position', () => {
+describe('contractStateObservable — resume from an emitted position', () => {
   const STUBBED_FAILURE = new Error('stubbed transport failure');
 
   const collectUntilError = async (
-    source: Rx.Observable<PositionedRecord<RawContractState>>
-  ): Promise<PositionedRecord<RawContractState>[]> => {
-    const seen: PositionedRecord<RawContractState>[] = [];
+    source: Rx.Observable<PositionedRecord<ContractStateRead>>
+  ): Promise<PositionedRecord<ContractStateRead>[]> => {
+    const seen: PositionedRecord<ContractStateRead>[] = [];
     const failure = await rejectionOf(Rx.lastValueFrom(source.pipe(Rx.tap((record) => seen.push(record)))));
     expect(failure).toBe(STUBBED_FAILURE);
     return seen;
   };
 
-  const trace = (records: readonly PositionedRecord<RawContractState>[]) =>
-    records.map((record) => `${record.blockHeight}:${ledgerVersionOfContractState(record.value.raw)}`);
+  const trace = (records: readonly PositionedRecord<ContractStateRead>[]) =>
+    records.map((record) => `${record.blockHeight}:${ledgerVersionOfContractState(record.value.contractState.serialize())}`);
 
   const arrange = async () => {
     const v8 = await mintLedger8ContractStateHex();
@@ -547,7 +511,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
       ),
       subscribe
     });
-    const first = await collectUntilError(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const first = await collectUntilError(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
     const last = first.at(-1);
     if (last === undefined) {
       throw new Error('test setup: the first run emitted nothing');
@@ -559,7 +523,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
     const { provider, subscribe, first, last } = await arrange();
 
     const resumed = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: last.blockHeight })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: last.blockHeight })
     );
 
     expect(trace([...first, ...resumed])).toEqual(['10:v8', '10:v9', '10:v8', '10:v9', '11:v8']);
@@ -570,7 +534,7 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
     const { provider, subscribe, last } = await arrange();
 
     const resumed = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHash', blockHash: last.blockHash })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHash', blockHash: last.blockHash })
     );
 
     expect(subscribedOffsets(subscribe)).toEqual([{ height: 10 }, { hash: '0x10' }]);
@@ -578,8 +542,8 @@ describe('rawContractStateObservable — resume from an emitted position', () =>
   });
 });
 
-describe('rawContractStateObservable — the bytes are the indexer’s, unchanged', () => {
-  test('hands back exactly the bytes served, envelope included', async () => {
+describe('contractStateObservable — the bytes are the indexer’s, unchanged', () => {
+  test('hands back exactly the bytes served, version tag included', async () => {
     const hexState = await mintLedger8ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(
@@ -592,50 +556,33 @@ describe('rawContractStateObservable — the bytes are the indexer’s, unchange
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'latest' }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
 
-    expect(Array.from(seen[0]!.value.raw)).toEqual(Array.from(new Uint8Array(fromHex(hexState))));
+    expect(Array.from(seen[0]!.value.contractState.serialize())).toEqual(Array.from(new Uint8Array(fromHex(hexState))));
   });
 });
 
 describe('contract-state streams — an action re-emitted at the fork block', () => {
-  test('the raw stream tags the re-emitted state with the fork block’s era', async () => {
+  test('the stream tags the re-emitted state with the fork block’s era', async () => {
     const translated = mintLedger9ContractStateHex();
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 11, hash: '0x11' } }]])),
       subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(translated)])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11 }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11 }));
 
-    expect(seen).toEqual([
+    expect(plainRecords(seen)).toEqual([
       {
         value: {
-          version: 'v9',
           protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
-          raw: new Uint8Array(fromHex(translated)),
-          ledgerParameters: undefined
+          contractState: { kind: 'ContractState', era: 'v9', bytes: new Uint8Array(fromHex(translated)) },
+          fields: ['contractState', 'protocolVersion']
         },
         blockHeight: FORK_HEIGHT,
         blockHash: `0x${FORK_HEIGHT}`
       }
     ]);
-  });
-
-  test('the decoded stream decodes the re-emitted state and stays open', async () => {
-    const provider = buildProvider({
-      watchQuery: dispatchingWatchQuery(new Map([[BLOCK_QUERY, { block: { height: 11, hash: '0x11' } }]])),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(mintLedger9ContractStateHex())])
-    });
-
-    const seen = await Rx.lastValueFrom(
-      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 11 }).pipe(Rx.toArray())
-    );
-
-    expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
-    expect(Array.from(requireLedger9(seen[0]!.value, 'test').state.serialize())).toEqual(
-      Array.from(mintLedger9ContractStateBytes())
-    );
   });
 
   test('carries the pre-fork action and its re-emission as two records in two blocks', async () => {
@@ -647,10 +594,10 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: 10 }));
 
-    expect(seen.map((record) => record.value.version)).toEqual(['v8', 'v9']);
-    expect(envelopesOf(seen)).toEqual(['v8', 'v9']);
+    expect(seen.map((record) => record.value.contractState.era)).toEqual(['v8', 'v9']);
+    expect(versionTagsOf(seen)).toEqual(['v8', 'v9']);
     expect(positionsOf(seen)).toEqual([
       { blockHeight: ACTION_HEIGHT, blockHash: `0x${ACTION_HEIGHT}` },
       { blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }
@@ -669,7 +616,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
     });
 
     const seen = await collect(
-      provider.rawContractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: ACTION_HEIGHT, inclusive: false })
+      provider.contractStateObservable(ADDRESS, { type: 'blockHeight', blockHeight: ACTION_HEIGHT, inclusive: false })
     );
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
@@ -686,7 +633,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
       ])
     });
 
-    const seen = await collect(provider.rawContractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false }));
+    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'txId', txId: TX_ID, inclusive: false }));
 
     expect(positionsOf(seen)).toEqual([{ blockHeight: FORK_HEIGHT, blockHash: `0x${FORK_HEIGHT}` }]);
   });
@@ -695,7 +642,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
 
   test.each<[string, OpenStream]>([
     ['contractStateObservable', (p) => p.contractStateObservable(ADDRESS, { type: 'latest' })],
-    ['rawContractStateObservable', (p) => p.rawContractStateObservable(ADDRESS, { type: 'latest' })]
+    ['contractStateObservable', (p) => p.contractStateObservable(ADDRESS, { type: 'latest' })]
   ])('%s latest: starts at the block the state is dated by, not the action’s', async (_name, open) => {
     const subscribe = dispatchingSubscribe(CONTRACT_STATE_SUB, [reEmittedFrame(mintLedger9ContractStateHex())]);
     const provider = buildProvider({

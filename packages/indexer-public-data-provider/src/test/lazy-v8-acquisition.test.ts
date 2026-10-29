@@ -52,7 +52,7 @@ describe('the v8 runtime is acquired on demand, not on import', () => {
   it('is still not acquired after a v9 record has been decoded end to end', async () => {
     const record = await toFinalizedTxData(TX_ID, ledger9RecordAt(mintLedger9TransactionHex()));
 
-    expect(record.version).toBe('v9');
+    expect(record.era).toBe('v9');
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 });

@@ -47,7 +47,7 @@ import { fileURLToPath } from 'node:url';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
@@ -71,7 +71,7 @@ import { resolveContractStateEra, resolveOperationEra } from '../internal/era';
 import { acquireLedger8Runtime, findLedger8Contract, type Ledger8RuntimeProviders } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import { resolveScopeEra } from '../internal/transaction';
-import { createMockContractAddress, createMockProviders } from './test-mocks';
+import { contractStateRead, createMockContractAddress, createMockProviders } from './test-mocks';
 
 // The retained ENGINE acquisition is replaced and only it: `loadLedgerEra`
 // stays the real thing, so every era name a breadcrumb reports here was
@@ -177,11 +177,7 @@ const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8Runtime
   };
 };
 
-const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersion): RawContractState => ({
-  version,
-  protocolVersion,
-  raw
-});
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead => contractStateRead(raw, protocolVersion);
 
 // The field surface each decision carries, split into what MUST be present and
 // what MAY be. Two lists rather than one allow-list, because the two failures
@@ -541,7 +537,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
       // breadcrumb. That keeps this test about the breadcrumb rather than
       // about a state fixture, and the refusal is what proves the breadcrumb
       // was written before it.
-      queryRawContractState: vi.fn().mockResolvedValue(undefined)
+      queryContractState: vi.fn().mockResolvedValue(undefined)
     };
 
     await expect(
@@ -575,7 +571,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
   it('reports the envelope era on an agreeing head, carrying none of the state bytes', async () => {
     const sink = createSink();
 
-    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD, 'v8'), headSource(), sink);
+    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD), headSource(), sink);
 
     const [breadcrumb] = emitted(sink);
     expect(breadcrumb).toBeDefined();
@@ -598,7 +594,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     // bytes went to.
     const sink = createSink();
 
-    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD, 'v9'), headSource(), sink);
+    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD), headSource(), sink);
 
     expect(emitted(sink)[0]).toStrictEqual({
       decision: 'encoding',
@@ -615,7 +611,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), headSource(LEDGER9_HEAD), sink)
     ).rejects.toThrow(NetworkVersionStateMismatchError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -634,7 +630,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const transportFailure = new Error('indexer unreachable');
     const failing = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(transportFailure) };
 
-    const error = await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), failing, createSink()).catch(
+    const error = await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), failing, createSink()).catch(
       (e: unknown) => e
     );
 
@@ -652,7 +648,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
 
     await expect(
-      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER9_HEAD, 'v9'), headSource(LEDGER8_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER9_HEAD), headSource(LEDGER8_HEAD), sink)
     ).rejects.toThrow(IndexerInconsistencyError);
 
     expect(emitted(sink)).toStrictEqual([
@@ -671,7 +667,7 @@ describe('the encoding breadcrumb dates the fetched state from its envelope tag'
     const sink = createSink();
     const pdp = headSource();
 
-    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD_MINOR_BUMP, 'v9'), pdp, sink);
+    await resolveContractStateEra('v9', rawState(ledger8Envelope, LEDGER9_HEAD_MINOR_BUMP), pdp, sink);
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['encoding']);
@@ -692,7 +688,7 @@ describe('no breadcrumb carries a payload, a key or decoded state', () => {
     // One breadcrumb of every kind, produced by real code paths rather than
     // hand-built, so this gate is over what actually ships.
     await acquireLedger8Runtime(retainedRuntime(LEDGER8_HEAD), 'call', { logger: sink, contractAddress: CONTRACT_ADDRESS });
-    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD, 'v8'), headSource(), sink);
+    await resolveContractStateEra('v8', rawState(ledger8Envelope, LEDGER8_HEAD), headSource(), sink);
     breadcrumbs = emitted(sink);
   });
 
@@ -925,7 +921,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
     const ledger9Envelope = readHexFixture('state-migrated-v9.hex');
 
     await expect(
-      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), headSource(LEDGER9_HEAD), sink)
+      resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), headSource(LEDGER9_HEAD), sink)
     ).rejects.toThrow(NetworkVersionStateMismatchError);
   });
 });

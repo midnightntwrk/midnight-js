@@ -25,7 +25,7 @@ import type {
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { PrivateStateId, UnprovenTx, VerifierKey, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxRead,PrivateStateId, UnprovenTx, VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the retained-era fixture. Imported TYPE-ONLY from the artifact's own
@@ -356,8 +356,8 @@ describe('an argument-taking retained-era contract works, not just a zero-argume
 });
 
 describe('every result names the pipeline that produced it', () => {
-  // The fact a caller cannot get anywhere else. `public.version` and
-  // `deployTxData.public.version` answer a DIFFERENT question -- which ledger recorded
+  // The fact a caller cannot get anywhere else. `public.era` and
+  // `deployTxData.public.era` answer a DIFFERENT question -- which ledger recorded
   // the transaction -- and after the fork they disagree with this one: a
   // retained-era call is recorded as a keep-state transaction tagged `'v9'`
   // while every object in its result comes from `onchain-runtime-v3`. A caller
@@ -472,10 +472,10 @@ describe('every result names the pipeline that produced it', () => {
 
   it('keeps the deploy record at deployTxData.public in both eras', () => {
     expectTypeOf<Ledger8FoundContract<Counter016Contract>['deployTxData']['public']>().toEqualTypeOf<
-      VersionedFinalizedTxData & { readonly contractAddress: ContractAddress }
+      FinalizedTxRead & { readonly contractAddress: ContractAddress }
     >();
     const recordEra = (found: AnyEraFoundContract<Twin018, Counter016Contract>): LedgerVersion =>
-      found.deployTxData.public.version;
+      found.deployTxData.public.era;
     expectTypeOf(recordEra).returns.toEqualTypeOf<LedgerVersion>();
   });
 
@@ -882,7 +882,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
     expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']>().toHaveProperty('status');
     // The one member that must NOT be narrowed to the current era's: a retained
     // call is recorded by whichever era the head is on, so the tag stays a union.
-    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']['version']>().toEqualTypeOf<
+    expectTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>['public']['era']>().toEqualTypeOf<
       'v8' | 'v9'
     >();
   });
@@ -962,7 +962,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
   });
 
   it('types a retained-era deploy record as a ledger 8 record, the only era that can make one', () => {
-    expectTypeOf<RetainedDeployed['deployTxData']['public']['version']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<RetainedDeployed['deployTxData']['public']['era']>().toEqualTypeOf<'v8'>();
   });
 
   it('admits an absent private state on a retained-era attach that named no private-state id', () => {
@@ -1269,18 +1269,18 @@ describe('a found contract may have been deployed in either ledger era', () => {
 
   it('tags the deploy record with the ledger era that recorded it', () => {
     expectTypeOf<FoundPublic>().toEqualTypeOf<FoundDeployTxPublicData>();
-    expectTypeOf<FoundPublic['version']>().toEqualTypeOf<'v8' | 'v9'>();
+    expectTypeOf<FoundPublic['era']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 
   it('exposes the contract address on both variants without narrowing', () => {
     expectTypeOf<FoundPublic['contractAddress']>().toEqualTypeOf<ContractAddress>();
   });
 
-  it('requires narrowing on `version` before the deploy-time state is read', () => {
+  it('requires narrowing on `era` before the deploy-time state is read', () => {
     expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
-    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
-    expectTypeOf<Extract<FoundPublic, { version: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
-    expectTypeOf<Extract<FoundPublic, { version: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
+    expectTypeOf<Extract<FoundPublic, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
     expectTypeOf<Ledger8FoundDeployTxPublicData>().not.toHaveProperty('initialContractState');
   });
 
@@ -1305,7 +1305,7 @@ describe('the maintenance functions select their era by the artifact, and answer
     expectTypeOf(
       submitReplaceAuthorityTx(providers016, contract016, contractAddress)(currentSigningKey)
     ).resolves.toEqualTypeOf<Ledger8FinalizedMaintenanceTxData>();
-    expectTypeOf<Ledger8FinalizedMaintenanceTxData['public']['version']>().toEqualTypeOf<'v8'>();
+    expectTypeOf<Ledger8FinalizedMaintenanceTxData['public']['era']>().toEqualTypeOf<'v8'>();
   });
 
   it('answers a current-era artifact with the current record', () => {
@@ -1338,11 +1338,11 @@ describe('the maintenance functions select their era by the artifact, and answer
 
   it('narrows the record by narrowing the era', () => {
     const result = anyEraMaintenance;
-    expectTypeOf(result.public).toEqualTypeOf<VersionedFinalizedTxData>();
+    expectTypeOf(result.public).toEqualTypeOf<FinalizedTxRead>();
     if (result.era === 'v8') {
-      expectTypeOf(result.public.version).toEqualTypeOf<'v8'>();
+      expectTypeOf(result.public.era).toEqualTypeOf<'v8'>();
     } else {
-      expectTypeOf(result.public.version).toEqualTypeOf<'v9'>();
+      expectTypeOf(result.public.era).toEqualTypeOf<'v9'>();
     }
   });
 });

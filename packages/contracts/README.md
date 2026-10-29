@@ -84,7 +84,7 @@ const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const record = await submitTx(providers, { unprovenTx });
 
 // The record's tx is a FinalizedTx handle of the record's era.
-const finalized = LedgerTransaction.unwrap(record.tx, record.version);
+const finalized = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
 `LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
@@ -100,7 +100,7 @@ get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
-It returns `VersionedFinalizedTxData`, tagged with the network's era.
+It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
 
 ### Maintenance Operations
 
@@ -146,38 +146,24 @@ const publicStates = await getPublicStates(providers.publicDataProvider, contrac
 const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 ```
 
-`getStates` and `getPublicStates` return the states tagged with the ledger era
-that wrote them (`version: 'v8' | 'v9'`). A v9 block's states are decoded; a v8
-block's contract state and ledger parameters come back as the stored bytes
-(`stateBytes`, `ledgerParametersBytes`). Narrow on `version`, or use
-`requireLedger9` from `@midnight-ntwrk/midnight-js-utils` when your code handles
-only v9:
+`getStates` and `getPublicStates` return the public states as bytes: each of
+`contractState`, `zswapChainState` and `ledgerParameters` is a `LedgerState`
+with the `era` of the ledger that wrote it. Decode one with your own
+runtime — the one your contract was compiled against — so your contract's
+`ledger()` accepts the result:
 
 ```typescript
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ledger } from './managed/counter/contract/index.js';
 
-const { contractState, ledgerParameters } = requireLedger9(publicStates, 'readCounter');
+// Throws LedgerStateDecoderMissingError if the state was written by the v8 ledger.
+const counter = ledger(publicStates.contractState.deserialize({ v9: ContractState }).data);
 ```
 
-To decode a contract state of either era, use `getAnyEraContractState`:
-
-```typescript
-import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
-// `StateValue` and the contract class both come from YOUR OWN generated contract
-// module and its Compact runtime — not from the framework. That is the point:
-// `read.state` is plain data precisely so your runtime can accept it.
-import { StateValue } from './managed/counter/contract/index.cjs';
-import { Counter } from './managed/counter/contract/index.cjs';
-
-const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
-
-if (read !== null) {
-  // `read.version` is the era that WROTE the bytes, read off the
-  // version tag of the bytes — not the era of the block that dated the read.
-  // `read.state` is encoded, so decode it with your own contract's runtime.
-  const ledgerState = Counter.ledger(StateValue.decode(read.state));
-}
-```
+A contract that may predate the fork passes a decoder per era: `v8` with the
+`ContractState` of the ledger 8 runtime, `v9` with the current one. See the indexer provider's
+README, "Reading a contract that may predate the fork", for a contract compiled
+with the ledger 8 toolchain.
 
 ### Transaction Interfaces
 
@@ -250,7 +236,6 @@ import {
   // State queries
   getStates,
   getPublicStates,
-  getAnyEraContractState,
   getUnshieldedBalances,
 
   // Transaction interfaces

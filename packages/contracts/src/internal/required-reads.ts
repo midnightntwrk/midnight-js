@@ -19,7 +19,7 @@ import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-pr
 import type { PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 
 import { ContractNotFoundError } from '../errors';
-import { requireLedger9ContractState } from './era';
+import { decodeLedger9ContractState } from './era';
 
 /**
  * Narrows a contract-state read to a deployed contract.
@@ -53,7 +53,7 @@ export const queryExistingContractState = async (
   if (state === undefined || state === null) {
     throw new ContractNotFoundError(`No contract state found on chain for contract address '${contractAddress}'`);
   }
-  return requireLedger9ContractState(state, contractAddress, 'queryExistingContractState').state;
+  return decodeLedger9ContractState(state, contractAddress, 'queryExistingContractState');
 };
 
 /**

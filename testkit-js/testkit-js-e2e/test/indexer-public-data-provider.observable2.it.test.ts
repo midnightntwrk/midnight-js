@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type All,
+  type ContractStateRead,
   type FinalizedTxData,
   type FinalizedTxRecord,
   type Latest,
   type PositionedRecord,
-  type PublicDataProvider,
-  type VersionedContractState
-} from '@midnight-ntwrk/midnight-js-types';
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+  type PublicDataProvider} from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
@@ -55,14 +54,14 @@ describe('Indexer API', () => {
   let incrementFinalizedTxData: FinalizedTxData;
 
   const expectObservedContractStatesToEqual = async (
-    observable$: Observable<PositionedRecord<VersionedContractState>>,
+    observable$: Observable<PositionedRecord<ContractStateRead>>,
     expected: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
   ): Promise<void> => {
     const records = await firstValueFrom(
       observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expected.length), toArray())
     );
     const states = records.map(({ value, blockHeight, blockHash }) => ({
-      state: requireLedger9(value, 'contractStateObservable').state,
+      state: value.contractState.deserialize({ v9: ContractState }),
       blockHeight,
       blockHash
     }));
@@ -77,9 +76,9 @@ describe('Indexer API', () => {
   };
 
   const observeFromFirstState = async (
-    observable$: Observable<PositionedRecord<VersionedContractState>>
-  ): Promise<{ observed$: Observable<PositionedRecord<VersionedContractState>>; stop: () => void }> => {
-    const observed = new ReplaySubject<PositionedRecord<VersionedContractState>>();
+    observable$: Observable<PositionedRecord<ContractStateRead>>
+  ): Promise<{ observed$: Observable<PositionedRecord<ContractStateRead>>; stop: () => void }> => {
+    const observed = new ReplaySubject<PositionedRecord<ContractStateRead>>();
     const subscription = observable$.subscribe(observed);
     try {
       await firstValueFrom(observed.pipe(timeout({ first: STATE_WAIT_MS })));

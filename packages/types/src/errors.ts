@@ -19,7 +19,7 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, type LedgerStateKind, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -30,7 +30,7 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version
 export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 
 /**
- * The {@link PublicDataProvider} methods that report a version-tagged
+ * The {@link PublicDataProvider} methods that report an era-tagged
  * finalized-transaction record.
  *
  * Declared here, alongside the interface that owns those methods, rather than
@@ -40,15 +40,15 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 
 /**
- * The {@link PublicDataProvider} methods that report a version-tagged contract
- * state.
+ * The {@link PublicDataProvider} methods that report a contract state with
+ * its era.
  */
 export type StateReadMethod = 'queryDeployContractState';
 
 /**
  * Every provider method at which a payload's ledger era is resolved or
  * narrowed — the three transaction methods, the two record reads and the
- * version-tagged state read.
+ * state read.
  *
  * This is the vocabulary to type a caught error's `method` against when the
  * error can come from either surface.
@@ -58,9 +58,10 @@ export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
 /**
  * Stable error-code strings for the providers.
  *
- * Most of the group belongs to the provider methods. `PRIVATE_STATE_NOT_SERIALIZABLE`
- * does not: it belongs to the private-state provider, and is here because this is
- * the one provider-scoped group there is.
+ * Most of the group belongs to the provider methods. Two sets do not, and are here
+ * because this is the one provider-scoped group there is: `PRIVATE_STATE_NOT_SERIALIZABLE`
+ * belongs to the private-state provider, and `INVALID_LEDGER_STATE`,
+ * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `LedgerState`.
  *
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
@@ -105,7 +106,10 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   UNUSABLE_ERA_ENTRY: 'MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY',
   FOREIGN_LEDGER_TRANSACTION: 'MIDNIGHT_JS_PR_FOREIGN_LEDGER_TRANSACTION',
   INVALID_TRANSACTION_HANDLE: 'MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE',
-  TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH'
+  TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH',
+  INVALID_LEDGER_STATE: 'MIDNIGHT_JS_PR_INVALID_LEDGER_STATE',
+  LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING',
+  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
@@ -144,7 +148,10 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.UNUSABLE_ERA_ENTRY]: USAGE,
   [PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE]: USAGE,
-  [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE
+  [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
+  [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY
 });
 
 const {
@@ -168,7 +175,10 @@ const {
   UNUSABLE_ERA_ENTRY,
   FOREIGN_LEDGER_TRANSACTION,
   INVALID_TRANSACTION_HANDLE,
-  TRANSACTION_ERA_MISMATCH
+  TRANSACTION_ERA_MISMATCH,
+  INVALID_LEDGER_STATE,
+  LEDGER_STATE_DECODER_MISSING,
+  LEDGER_STATE_DECODE_FAILED
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -413,6 +423,130 @@ export class TransactionEraMismatchError extends MidnightJsError {
         `Read the handle's era before unwrapping it, and route it to the code that serves that era.`
     );
     this.name = 'TransactionEraMismatchError';
+  }
+}
+
+/**
+ * Why {@link InvalidLedgerStateError} refused a value.
+ *
+ * - `'unknown-kind'`: the kind is not a {@link LedgerStateKind}.
+ * - `'not-bytes'`: the value is not a `Uint8Array`.
+ * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that era writes for that
+ *   kind.
+ * - `'not-from-bytes'`: the value was constructed without `LedgerState.fromBytes`.
+ */
+export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+
+const INVALID_LEDGER_STATE_MESSAGES: Readonly<
+  Record<InvalidLedgerStateReason, (kind: string, era: string) => string>
+> = {
+  'unknown-kind': (kind) =>
+    `Cannot build a LedgerState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
+  'not-bytes': (kind) => `Cannot build a ${kind} LedgerState: the value is not a Uint8Array.`,
+  'tag-mismatch': (kind, era) =>
+    `The bytes are not a ${kind} written by the ${era} ledger. ` +
+    `Pass the era of the ledger that wrote them, and check they hold a ${kind}.`,
+  'not-from-bytes': () => 'A LedgerState can only be made by LedgerState.fromBytes.'
+};
+
+/**
+ * Thrown by `LedgerState.fromBytes` when the bytes are not a value of the given kind written by the
+ * ledger of the given era, and by the `LedgerState` constructor when it is called without
+ * `LedgerState.fromBytes`. The bytes are never quoted in the message.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class InvalidLedgerStateError extends MidnightJsError {
+  readonly code = INVALID_LEDGER_STATE;
+  readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_LEDGER_STATE];
+
+  /**
+   * @param kind The kind the caller named, or `undefined` when the constructor was called directly.
+   * @param era The ledger era the caller named, or `undefined` when the constructor was called
+   *   directly.
+   * @param reason Why the value was refused.
+   */
+  constructor(
+    readonly kind: string | undefined,
+    readonly era: LedgerVersion | undefined,
+    readonly reason: InvalidLedgerStateReason
+  ) {
+    super(INVALID_LEDGER_STATE_MESSAGES[reason](String(kind), String(era)));
+    this.name = 'InvalidLedgerStateError';
+  }
+}
+
+const DECODER_SOURCE: Readonly<Record<LedgerStateKind, Readonly<Record<LedgerVersion, string>>>> = {
+  ContractState: {
+    v8: '`ContractState` from a ledger 8 `@midnight-ntwrk/compact-runtime` (0.16), such as the copy a ledger 8 contract was compiled against',
+    v9: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your contract was compiled against'
+  },
+  LedgerParameters: {
+    v8: '`LedgerParameters` from `@midnightntwrk/ledger-v8`',
+    v9: '`LedgerParameters` from `@midnightntwrk/ledger-v9`'
+  },
+  ZswapChainState: {
+    v8: '`ZswapChainState` from `@midnightntwrk/ledger-v8`',
+    v9: '`ZswapChainState` from `@midnightntwrk/ledger-v9`'
+  }
+};
+
+/**
+ * Thrown by `LedgerState.deserialize` when the decoders passed in have none for the era of the
+ * value. The message names the class to import.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class LedgerStateDecoderMissingError extends MidnightJsError {
+  readonly code = LEDGER_STATE_DECODER_MISSING;
+  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER_STATE_DECODER_MISSING];
+
+  /**
+   * @param kind The kind of the value.
+   * @param era The ledger era that wrote the value.
+   */
+  constructor(
+    readonly kind: LedgerStateKind,
+    readonly era: LedgerVersion
+  ) {
+    super(
+      `No decoder for a ${kind} written by the ${era} ledger. ` +
+        `Pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}.`
+    );
+    this.name = 'LedgerStateDecoderMissingError';
+  }
+}
+
+/**
+ * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws an error
+ * that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
+ * are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
+ * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
+ * decoder's failure is the `cause`.
+ *
+ * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class LedgerStateDecodeFailedError extends MidnightJsError {
+  readonly code = LEDGER_STATE_DECODE_FAILED;
+  readonly category = PROVIDER_ERROR_CATEGORIES[LEDGER_STATE_DECODE_FAILED];
+
+  /**
+   * @param kind The kind of the value.
+   * @param era The ledger era that wrote the value.
+   * @param options Carries the decoder's failure as `cause`.
+   */
+  constructor(
+    readonly kind: LedgerStateKind,
+    readonly era: LedgerVersion,
+    options: { readonly cause: unknown }
+  ) {
+    super(
+      `The decoder passed for ${era} could not decode a ${kind} written by the ${era} ledger. ` +
+        `Check that you pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}; ` +
+        `if you do, the bytes are corrupt.`,
+      options
+    );
+    this.name = 'LedgerStateDecodeFailedError';
   }
 }
 

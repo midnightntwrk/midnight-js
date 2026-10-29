@@ -199,7 +199,7 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
 
 /**
  * The public data of a deployment found on chain, discriminated by the ledger
- * era that recorded the deploy transaction. Narrow on `version` before reading
+ * era that recorded the deploy transaction. Narrow on `era` before reading
  * `tx` or `initialContractState`; `contractAddress` is present on both variants.
  */
 export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
@@ -230,7 +230,7 @@ export interface FinalizedMaintenanceTxData {
 export interface FoundDeployTxData<C extends Contract.Any> {
   /**
    * The pipeline this handle runs on: always the current era here. The era that
-   * recorded the deploy transaction is `public.version`.
+   * recorded the deploy transaction is `public.era`.
    */
   readonly era: CurrentLedgerVersion;
   /**

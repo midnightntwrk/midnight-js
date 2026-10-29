@@ -336,7 +336,7 @@ still byte-matches the local verifier key against the slot the chain holds —
 exactly the checks that make a later call against this contract safe, done once
 at attach time so a mis-dispatch is caught there instead of at the first call.
 
-The deploy record is returned version-tagged rather than narrowed: a retained-era
+The deploy record is returned era-tagged rather than narrowed: a retained-era
 contract's deployment record belongs to whichever era was current when it was
 deployed, and refusing the pre-fork variant here would refuse every contract this
 pipeline exists to keep callable.

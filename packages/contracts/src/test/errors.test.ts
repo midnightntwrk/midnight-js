@@ -49,7 +49,7 @@ import { createMockFinalizedTxData } from './test-mocks';
 // around it. One cast, in one place, rather than one per call site.
 const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
-  version: 'v8',
+  era: 'v8',
   tx: undefined as unknown as Ledger8FinalizedTxData['tx']
 });
 
@@ -131,10 +131,10 @@ describe('the era-agnostic failure base', () => {
   it('carries the retained era version-tagged record, which the v9-only member could not hold', () => {
     // The reason the two cannot share a record TYPE: a retained-era call is
     // recorded by whichever era the head is on, so its record is the tagged
-    // union. Reading it through `record` requires narrowing on `version`.
+    // union. Reading it through `record` requires narrowing on `era`.
     const retainedEra = new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment');
 
-    expect(retainedEra.record.version).toBe('v8');
+    expect(retainedEra.record.era).toBe('v8');
   });
 });
 
@@ -228,7 +228,7 @@ describe('Ledger8DeployTxFailedError', () => {
     expect(error.record).toBe(record);
     expect(error.txData).toBe(record);
     expect(error.contractAddress).toBe(ADDRESS);
-    expect(error.record.version).toBe('v8');
+    expect(error.record.era).toBe('v8');
   });
 
   it('states per STATUS what landed on chain, because the two statuses differ', () => {

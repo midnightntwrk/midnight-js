@@ -25,7 +25,7 @@ import {
   type UnprovenTx
 } from '../ledger-transaction';
 import type { FinalizedTxData } from '../midnight-types';
-import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
+import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 
 declare const unprovenTx: UnprovenTx;
 declare const unboundTx: UnboundTx;
@@ -83,22 +83,22 @@ describe('finalized transaction records', () => {
   it('carry the transaction as a finalized handle of the record era', () => {
     expectTypeOf<FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v9'>>();
     expectTypeOf<Ledger8FinalizedTxData['tx']>().toEqualTypeOf<LedgerTransaction<'Finalized', 'v8'>>();
-    expectTypeOf<VersionedFinalizedTxData['tx']>().toExtend<FinalizedTx>();
+    expectTypeOf<FinalizedTxRead['tx']>().toExtend<FinalizedTx>();
   });
 
   it('narrow the era of tx when narrowing on version', () => {
-    const txEraOf = (record: VersionedFinalizedTxData) => (record.version === 'v8' ? record.tx.era : undefined);
+    const txEraOf = (record: FinalizedTxRead) => (record.era === 'v8' ? record.tx.era : undefined);
 
     expectTypeOf(txEraOf).returns.toEqualTypeOf<'v8' | undefined>();
   });
 
   it('still narrow on version', () => {
-    const eraOf = (record: VersionedFinalizedTxData) => {
-      switch (record.version) {
+    const eraOf = (record: FinalizedTxRead) => {
+      switch (record.era) {
         case 'v8':
-          return record.version;
+          return record.era;
         case 'v9':
-          return record.version;
+          return record.era;
         default: {
           const unhandled: never = record;
           return unhandled;

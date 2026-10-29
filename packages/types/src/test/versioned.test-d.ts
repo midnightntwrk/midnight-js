@@ -18,7 +18,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type { LedgerTransaction } from '../ledger-transaction';
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
+import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -33,7 +33,7 @@ import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versio
 // instead of reflexively restating it. Keep in step with `FinalizedTxData`
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
 type Ledger9FinalizedTxDataFixture = {
-  readonly version: 'v9';
+  readonly era: 'v9';
   readonly tx: LedgerTransaction<'Finalized', 'v9'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
@@ -53,7 +53,7 @@ type Ledger9FinalizedTxDataFixture = {
 // The v8 mirror of the fixture above, pinned field for field rather than
 // covered only by the discriminant check.
 type Ledger8FinalizedTxDataFixture = {
-  readonly version: 'v8';
+  readonly era: 'v8';
   readonly tx: LedgerTransaction<'Finalized', 'v8'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
@@ -70,10 +70,10 @@ type Ledger8FinalizedTxDataFixture = {
   readonly unshielded: UnshieldedUtxos;
 };
 
-describe('VersionedFinalizedTxData', () => {
+describe('FinalizedTxRead', () => {
   it('is exhaustively narrowable, so the default branch receives never', () => {
-    const describeVersion = (data: VersionedFinalizedTxData) => {
-      switch (data.version) {
+    const describeVersion = (data: FinalizedTxRead) => {
+      switch (data.era) {
         case 'v8':
           return `v8:${data.txId}`;
         case 'v9':
@@ -107,7 +107,7 @@ describe('VersionedFinalizedTxData', () => {
     // the actual union; adding a third variant (with its own literal `version`)
     // or widening a variant's `version` to a non-literal grows it — either way
     // it stops equaling the hardcoded `'v8' | 'v9'`.
-    expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
+    expectTypeOf<FinalizedTxRead['era']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 
   it('pins the v8 variant field-for-field, so it cannot drift on its own', () => {

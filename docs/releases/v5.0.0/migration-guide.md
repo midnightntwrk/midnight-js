@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-version-tagged-records) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-era-tagged-records) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -238,7 +238,7 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ---
 
-## Step 13 — Pass transactions as handles, and narrow the version-tagged records
+## Step 13 — Pass transactions as handles, and narrow the era-tagged records
 
 In 5.0.0 a transaction is no longer a bare ledger object when it crosses a
 provider method or a `contracts` function. It is a **transaction handle**: an
@@ -305,14 +305,14 @@ import { contracts, types } from '@midnight-ntwrk/midnight-js';
 declare const providers: types.MidnightProviders;
 declare const ledgerUnprovenTx: types.LedgerTransactionTypes['v9']['Unproven'];
 
-const submitBuiltTransaction = async (): Promise<types.VersionedFinalizedTxData> => {
+const submitBuiltTransaction = async (): Promise<types.FinalizedTxRead> => {
   const unprovenTx = types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
   return contracts.submitTx(providers, { unprovenTx });
 };
 ```
 
 `submitTx` reads the network head and accepts only a transaction of the head's
-era; see [Step 18](#step-18--narrow-the-contract-state-reads-getpublicstates-and-submittx).
+era; see [Step 18](#step-18--rename-the-era-fields-and-pass-handles-to-submittx).
 
 ### `.private.unprovenTx`
 
@@ -358,11 +358,11 @@ to carry `txBytes`:
 
 ### Reading `record.tx`
 
-`watchForTxData` and `watchForDeployTxData` return a `version`-tagged record,
-`VersionedFinalizedTxData`. Both variants are records you will receive: a v8
+`watchForTxData` and `watchForDeployTxData` return an `era`-tagged record,
+`FinalizedTxRead`. Both variants are records you will receive: a v8
 record is one the provider decodes and returns, not an error. In both, `tx` is
 a `FinalizedTx` handle of the record's own era (`record.tx.era ===
-record.version`).
+record.era`).
 
 Before:
 
@@ -380,12 +380,12 @@ declare const publicDataProvider: types.PublicDataProvider;
 
 const readIdentifiers = async (txId: string): Promise<string[]> => {
   const record = await publicDataProvider.watchForTxData(txId);
-  const tx = types.LedgerTransaction.unwrap(record.tx, record.version);
+  const tx = types.LedgerTransaction.unwrap(record.tx, record.era);
   return tx.identifiers();
 };
 ```
 
-To treat the two eras differently, narrow on `version` and unwrap in each
+To treat the two eras differently, narrow on `era` and unwrap in each
 branch:
 
 ```ts
@@ -394,12 +394,12 @@ import { types, utils } from '@midnight-ntwrk/midnight-js';
 declare const describeNative: (tx: types.LedgerTransactionTypes['v9']['Finalized']) => string;
 declare const describeRetained: (tx: types.LedgerTransactionTypes['v8']['Finalized']) => string;
 
-const summarize = (record: types.VersionedFinalizedTxData): string => {
-  switch (record.version) {
+const summarize = (record: types.FinalizedTxRead): string => {
+  switch (record.era) {
     case 'v9':
-      return `native ${record.txId}: ${describeNative(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
+      return `native ${record.txId}: ${describeNative(types.LedgerTransaction.unwrap(record.tx, record.era))}`;
     case 'v8':
-      return `retained ${record.txId}: ${describeRetained(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
+      return `retained ${record.txId}: ${describeRetained(types.LedgerTransaction.unwrap(record.tx, record.era))}`;
     default:
       return utils.assertNever(record, 'summarize');
   }
@@ -436,14 +436,14 @@ and a dApp that reads its own pre-fork history will meet one.
 `findDeployedContract` reports the deploy record the same way. A contract deployed
 before the ledger fork keeps a ledger-8 deploy record forever, so
 `found.deployTxData.public` is tagged too. `contractAddress` is on both variants; narrow
-on `version` before reading `tx` or `initialContractState`. The `v8` variant has no
+on `era` before reading `tx` or `initialContractState`. The `v8` variant has no
 `initialContractState`, because the current runtime cannot decode a ledger-8
 deploy-time state — read the current state with `queryContractState` instead.
 
 ```ts
 const found = await findDeployedContract(providers, { compiledContract, contractAddress });
 const address = found.deployTxData.public.contractAddress; // both eras
-if (found.deployTxData.public.version === 'v9') {
+if (found.deployTxData.public.era === 'v9') {
   use(found.deployTxData.public.initialContractState);
 }
 ```
@@ -671,17 +671,17 @@ Six differences are worth knowing before you write a handler that has to accept
 either era.
 
 - **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
-  `LedgerVersion`, the same values as `public.version`), read off the compiled
+  `LedgerVersion`, the same values as `public.era`), read off the compiled
   artifact. Narrow with `isLedger8Result(result)`, and
   declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
   `AnyEraSubmittedCallTx`.
-- **`era` is not `public.version`.** `era` names the pipeline that produced the
-  objects; `public.version` names the ledger that recorded the transaction.
+- **`era` is not `public.era`.** `era` names the pipeline that produced the
+  objects; `public.era` names the ledger that recorded the transaction.
   After the fork they disagree for every retained-era call: `era: 'v8'`
-  with `version: 'v9'` is a keep-state transaction, and that is correct. Branch
-  on `era` to decide which module an object came from, on `version` before
-  touching `public.tx`.
-- **`public.version` is a union on the retained-era path.** A retained-era call is
+  with `public.era: 'v9'` is a keep-state transaction, and that is correct. Branch
+  on `era` to decide which module an object came from, and on `public.era`
+  before touching `public.tx`.
+- **`public.era` is a union on the retained-era path.** A retained-era call is
   recorded by whichever era the network is on, so narrow it. The current era's is
   pinned `'v9'`.
 - **`public.nextContractState` is a different KIND of object per era.** The
@@ -705,9 +705,8 @@ HANDLES differ in one place: the retained handle's
 recipient key mappings (see below). Both handles carry the maintenance
 interfaces; the retained one works only before the fork, and after it the same
 contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
-return the v8 variant, `{ version: 'v8', zswapChainState, stateBytes,
-ledgerParametersBytes }`, for a contract whose state the v8 ledger wrote: narrow
-on `version` before reading the state.
+return every state as bytes, with `era: 'v8'` for a contract whose state the
+v8 ledger wrote: decode it with the runtime that can read it (Step 19).
 
 `deployTxData` has the same shape, `{ era, public, private }`, in both eras, on
 a found handle and on a deployed one. The retained-era handle used to keep the
@@ -772,7 +771,7 @@ class differs per era: `CallTxFailedError` on the current era,
 record.
 
 Catch `AnyEraTxFailedError` to get both, and read the record through `.record`,
-which is version-tagged. Each class also keeps its own historical member
+which is era-tagged. Each class also keeps its own historical member
 (`finalizedTxData`, `txData`), so existing code does not change.
 
 ```typescript
@@ -781,7 +780,7 @@ try {
 } catch (error) {
   if (error instanceof AnyEraTxFailedError) {
     // Narrow before reading `tx`: the handle belongs to the era the tag names.
-    console.error(error.record.status, error.record.version);
+    console.error(error.record.status, error.record.era);
   }
   throw error;
 }
@@ -917,9 +916,8 @@ question to raise, not as an omission that implies "it just works".
 
 ## Step 15 — Read `record.value` from the contract-state and balance streams
 
-`contractStateObservable`, `rawContractStateObservable` and
-`unshieldedBalancesObservable` emit `PositionedRecord<T>` (#1399). Read the value
-from `record.value`:
+`contractStateObservable` and `unshieldedBalancesObservable` emit
+`PositionedRecord<T>` (#1399). Read the value from `record.value`:
 
 ```ts
 // Before
@@ -928,6 +926,8 @@ publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscrib
 // After
 publicDataProvider.contractStateObservable(address, { type: 'latest' }).subscribe((record) => render(record.value));
 ```
+
+`record.value` is a `ContractStateRead`; decode its state as in Step 19.
 
 To resume after a restart, keep the last record's `blockHeight` (or `blockHash`)
 and pass it back as `{ type: 'blockHeight', blockHeight }`. Leave `inclusive`
@@ -975,63 +975,204 @@ See [breaking-changes.md](./breaking-changes.md#11-midnightconfig-on-midnightpro
 
 ---
 
-## Step 17 — Run indexer `4.4.0-rc.6` or later, and narrow `queryDeployContractState`
+## Step 17 — Run indexer `4.4.0-rc.6` or later, and decode `queryDeployContractState`
 
 `indexerPublicDataProvider` requires indexer `4.4.0-rc.6` or later (#1452). If
 you pin the indexer image, move it to that version or later; the framework's own
 test environments use `4.4.0-rc.6-68702121`.
 
-`queryDeployContractState` now resolves to `VersionedContractState | null`.
-Narrow on `version`:
+`queryDeployContractState` now resolves to `ContractStateRead | null`. The
+state is bytes; decode it with your own runtime:
 
 ```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+
 // Before (4.x)
 const state = await publicDataProvider.queryDeployContractState(address);
 
 // After (5.0.0)
 const deployState = await publicDataProvider.queryDeployContractState(address);
-if (deployState?.version === 'v9') {
-  use(deployState.state);
-} else if (deployState?.version === 'v8') {
-  useBytes(deployState.stateBytes);
-}
+const state = deployState?.contractState.deserialize({ v9: ContractState });
 ```
 
-A `v8` result carries the stored bytes (`stateBytes`), not a decoded state.
+A deploy record keeps the encoding it was written in, so a contract deployed
+before the fork has a v8 deploy state. See Step 19 for reading one.
 See [breaking-changes.md](./breaking-changes.md#13-querydeploycontractstate-is-version-tagged-and-the-indexer-floor-is-440-rc6-1452).
 
 ---
 
-## Step 18 — Narrow the contract-state reads, `getPublicStates` and `submitTx`
+## Step 18 — Rename the era fields, and pass handles to `submitTx`
 
-The contract-state reads, `getPublicStates` / `getStates` and `submitTx` are version-tagged (#1508).
-In code that handles only v9, narrow with `requireLedger9`:
+`submitTx` takes an `UnprovenTx` handle and resolves `FinalizedTxRead` (#1508):
 
 ```ts
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
-
 // Before
-const state = await publicDataProvider.queryContractState(address);
-const [zswap, contractState, params] = (await publicDataProvider.queryZSwapAndContractState(address))!;
 await submitTx(providers, { unprovenTx });
 
 // After
-const { state } = requireLedger9(
-  (await publicDataProvider.queryContractState(address))!,
-  'readCounter'
-);
+await submitTx(providers, { unprovenTx: LedgerTransaction.seal('v9', 'Unproven', unprovenTx) }); // see Step 13
+```
+
+Rename `ContractEventBase.version` to `payloadVersion`, and read a retained-era deploy record at
+`deployTxData.public`. A provider rejection on
+any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
+match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
+[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-era-tagged-1508).
+
+---
+
+## Step 19 — Decode on-chain state with your own runtime
+
+Every state read returns bytes (#1550). A contract state, ledger parameters and a
+zswap chain state are each a `LedgerState` from `@midnight-ntwrk/midnight-js-types`:
+the bytes, plus the `era` of the ledger that wrote them. Decode one with the
+runtime your contract was compiled against. A state decoded by any other copy of
+the runtime — the framework's included — is refused by your contract's `ledger()`
+with `expected instance of ChargedState`.
+
+`deserialize` calls only the decoder for the state's own `era`. A state
+written by an era you passed no decoder for throws
+`LedgerStateDecoderMissingError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`).
+A decoder that throws, for example the class of another kind, is reported as
+`LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`),
+with the decoder's error as `cause`. A decoder error that is already a
+`MidnightJsError` is rethrown unchanged. Passing no decoder for any era the
+state can be does not compile, so the mistake shows up where you make it.
+
+A `LedgerState` keeps its bytes in a private field, so `structuredClone`,
+`postMessage` and JSON drop them. To hand one to a worker or store it, send
+`serialize()` and `era`, and rebuild it with `LedgerState.fromBytes(era, kind, bytes)`.
+
+### Reading a contract state
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ledger } from './managed/counter/contract/index.js';
+
+// Before (5.0.0 pre-releases)
+const read = await publicDataProvider.queryContractState(address);
+const counter = ledger(requireLedger9(read!, 'readCounter').state.data);
+
+// After
+const read = await publicDataProvider.queryContractState(address);
+const counter = read === null ? null : ledger(read.contractState.deserialize({ v9: ContractState }).data);
+```
+
+The same applies to `watchForContractState`, `queryDeployContractState` and to
+`record.value` on `contractStateObservable`. Those three carry no ledger
+parameters: only `queryContractState` returns them, as
+`ContractStateAndParametersRead`.
+
+### Reading `queryZSwapAndContractState`, `getPublicStates` and `getStates`
+
+The ledger parameters and the zswap chain state have no class in
+`compact-runtime`. Decode them with the ledger package:
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { LedgerParameters, ZswapChainState } from '@midnightntwrk/ledger-v9';
+
+// Before (5.0.0 pre-releases)
 const { zswapChainState, contractState, ledgerParameters } = requireLedger9(
   (await publicDataProvider.queryZSwapAndContractState(address))!,
   'readCounter'
 );
-await submitTx(providers, { unprovenTx }); // an UnprovenTx handle, see Step 13
+
+// After
+const states = await publicDataProvider.queryZSwapAndContractState(address);
+if (states !== null) {
+  const contractState = states.contractState.deserialize({ v9: ContractState });
+  const zswapChainState = states.zswapChainState.deserialize({ v9: ZswapChainState });
+  const ledgerParameters = states.ledgerParameters.deserialize({ v9: LedgerParameters });
+}
 ```
 
-Rename `ContractEventBase.version` to `payloadVersion`, `AnyEraContractState.envelopeVersion` to
-`version`, and read a retained-era deploy record at `deployTxData.public`. A provider rejection on
-any submit path now arrives as `ProviderFailedError`, with the provider's own failure on `cause`:
-match on `error.method` and `error.cause.message`, not on the provider's error class. The full list is in
-[breaking-changes.md](./breaking-changes.md#14-one-rule-for-era-dependent-values-every-read-and-submittx-are-version-tagged-1508).
+`getPublicStates` returns the same `PublicStatesRead`, and `getStates` adds
+`privateState`. Inside a scoped transaction, `TransactionContext.getCurrentStates()`
+returns a `PublicStatesRead` too, with the running contract state; decode it the
+same way.
+
+### Replacing `getAnyEraContractState` and `queryRawContractState`
+
+Both are removed. `queryContractState` serves the same bytes, the `era` of
+the ledger that wrote them, and the block's ledger parameters:
+
+```ts
+// Before (5.0.0 pre-releases)
+const raw = await publicDataProvider.queryRawContractState(address);
+const bytes = raw?.raw;
+const parameters = raw?.ledgerParameters;
+
+// After
+const read = await publicDataProvider.queryContractState(address);
+const bytes = read?.contractState.serialize();
+const parameters = read?.ledgerParameters.serialize();
+```
+
+`rawContractStateObservable` is removed too; `contractStateObservable` now
+emits bytes.
+
+### A contract compiled with the ledger 8 toolchain, after the fork
+
+Such a contract runs on `compact-runtime` 0.16. It reads a v8 state with its own
+`ContractState`. After the fork its state is v9, which that runtime cannot read:
+decode the bytes with the current `compact-runtime` and pass the state value to
+the old runtime as plain data.
+
+```ts
+import { ContractState } from '@midnight-ntwrk/compact-runtime'; // the current runtime
+// The runtime the contract was compiled against, installed under an alias:
+// "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0"
+import * as oldRuntime from 'compact-runtime-ledger8';
+import { ledger } from './managed/counter/contract/index.js';
+
+const read = await publicDataProvider.queryContractState(address);
+if (read !== null) {
+  const stateValue = read.contractState.deserialize({
+    v8: { deserialize: (bytes) => oldRuntime.ContractState.deserialize(bytes).data.state },
+    v9: {
+      deserialize: (bytes) => oldRuntime.StateValue.decode(ContractState.deserialize(bytes).data.state.encode())
+    }
+  });
+  const counter = ledger(stateValue);
+}
+```
+
+### Implementing `PublicDataProvider`
+
+Return a `ContractStateAndParametersRead` from `queryContractState`, a
+`PublicStatesRead` from `queryZSwapAndContractState` and a `ContractStateRead`
+from the other reads. Build each state with
+`LedgerState.fromBytes(era, kind, bytes)`, and take `era` from the
+bytes' own version tag with `ledgerVersionOfContractState` /
+`ledgerVersionOfLedgerParameters` from `@midnight-ntwrk/midnight-js-utils`.
+A zswap chain state has the same tag in v8 and v9, so its tag cannot date it:
+give it the era of the ledger parameters of the same block.
+`fromBytes` refuses bytes that do not carry the tag of that era with
+`InvalidLedgerStateError`. Remove `queryRawContractState` and
+`rawContractStateObservable`.
+
+`contracts` accepts a `LedgerState` made by a second installed copy of
+`@midnight-ntwrk/midnight-js-types` too: it rebuilds each state from its bytes
+with `LedgerState.fromBytes`, which checks the tag again. A state in a shape
+that names no known era is refused with `UnrecognisedEraTagError`; a state of
+another kind fails the tag check (`InvalidLedgerStateError`); ledger parameters
+or a zswap chain state that are missing, or of another era than the call, are
+refused with `PublicStatesEraMismatchError`.
+
+### The finalized-transaction record is `FinalizedTxRead`, tagged `era`
+
+If you built against a 5.0.0 pre-release: `VersionedFinalizedTxData` is now
+`FinalizedTxRead`, and its `version` is now `era`, the same name a handle and a
+state use. `requireLedger9` narrows on `era` too.
+
+```diff
+- switch (record.version) {
++ switch (record.era) {
+```
+
+See [breaking-changes.md](./breaking-changes.md#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)
+and ADR 0020.
 
 ## Verification checklist
 
@@ -1044,9 +1185,9 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Old-protocol contract state re-derived or guarded by `isDeserializationError`.
 - [ ] ZK artifacts recompiled with `compactc 0.33.0-rc.1`; `compiler/contract-manifest.json` shipped so integrity verification passes (`ZkArtifactIntegrityError` clean).
 - [ ] Every `proveTx` / `balanceTx` / `submitTx` call site passes a transaction handle (`LedgerTransaction.seal`), and unwraps a result only where it needs the ledger object.
-- [ ] Every read of `record.tx` goes through `LedgerTransaction.unwrap(record.tx, record.version)`, and every read of `.private.unprovenTx` treats it as a handle.
+- [ ] Every read of `record.tx` goes through `LedgerTransaction.unwrap(record.tx, record.era)`, and every read of `.private.unprovenTx` treats it as a handle.
 - [ ] Any in-house `ProofProvider` / `WalletProvider` / `MidnightProvider` implementation compiles against the handle interfaces (wrapped with the `create*Provider` adapters, or built from `{ v8, v9 }` handlers).
-- [ ] Every `switch` on `record.version` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
+- [ ] Every `switch` on `record.era` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
 - [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
@@ -1056,7 +1197,8 @@ match on `error.method` and `error.cause.message`, not on the provider's error c
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.
-- [ ] Every `contractStateObservable` / `rawContractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
+- [ ] Every `contractStateObservable` / `unshieldedBalancesObservable` subscriber reads `record.value`.
 - [ ] Every provider set carries `config: { networkId, ttlSeconds }`, and no code relies on `setNetworkId`.
-- [ ] The indexer is `4.4.0-rc.6` or later, and every `queryDeployContractState` call site narrows on `version`.
-- [ ] Every contract-state read and `getPublicStates` / `getStates` result is narrowed on `version` (`switch` + `assertNever`, or `requireLedger9`).
+- [ ] The indexer is `4.4.0-rc.6` or later.
+- [ ] Every contract-state read and `getPublicStates` / `getStates` result is decoded with `deserialize`, passing the `ContractState` of the runtime your contract was compiled against.
+- [ ] No code calls `queryRawContractState`, `rawContractStateObservable` or `getAnyEraContractState`.

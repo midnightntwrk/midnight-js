@@ -51,6 +51,12 @@ const cases: readonly Case[] = [
   ['Ledger8DeployOnLedger9Error', new errors.Ledger8DeployOnLedger9Error(), CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9, 'USAGE'],
   ['NetworkVersionStateMismatchError', new errors.NetworkVersionStateMismatchError('v9', 'v8'), CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH, 'TRANSIENT'],
   ['IndexerInconsistencyError', new errors.IndexerInconsistencyError('v9', 'v8'), CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY, 'INTEGRITY'],
+  [
+    'PublicStatesEraMismatchError',
+    new errors.PublicStatesEraMismatchError('0'.repeat(64), 'ledgerParameters', 'v9', 'v8'),
+    CONTRACTS_ERROR_CODES.PUBLIC_STATES_ERA_MISMATCH,
+    'INTEGRITY'
+  ],
   ['LedgerParametersUnservedError', new errors.LedgerParametersUnservedError(ADDRESS), CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED, 'ENVIRONMENT'],
   ['Ledger8ShieldedSpendUnsupportedError', new errors.Ledger8ShieldedSpendUnsupportedError('spend'), CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED, 'USAGE'],
   ['ProviderFailedError', new errors.ProviderFailedError('submitTx', 'increment', CAUSE), CONTRACTS_ERROR_CODES.PROVIDER_FAILED, 'ENVIRONMENT'],

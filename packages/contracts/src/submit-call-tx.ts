@@ -305,12 +305,12 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  * const { txId, callTxData } = await submitCallTxAsync(providers, options);
  *
  * // 2. Watch (when ready). The read surface reports both ledger eras, so the
- * //    record is version-tagged.
+ * //    record is era-tagged.
  * const record = await providers.publicDataProvider.watchForTxData(txId);
  *
  * // 3. Narrow to the v9 variant. This flow submits v9 transactions only, so a v8
  * //    record means the provider is pointed at the wrong network.
- * if (record.version !== 'v9') {
+ * if (record.era !== 'v9') {
  *   throw new EraInvariantViolationError('watchForTxData', options.circuitId);
  * }
  *

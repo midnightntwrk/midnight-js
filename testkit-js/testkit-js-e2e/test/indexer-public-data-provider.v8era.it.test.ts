@@ -104,11 +104,9 @@ describe('Indexer API on a pre-fork (ledger v8) network', () => {
   test('dates a state read on a pre-fork network without refusing it', async () => {
     // Arrange / Act: an absent contract is the read path's cheapest exercise --
     // it still resolves the era of the read before it can answer.
-    const raw = await publicDataProvider.queryRawContractState(UNDEPLOYED_CONTRACT_ADDRESS);
-    const parsed = await publicDataProvider.queryContractState(UNDEPLOYED_CONTRACT_ADDRESS);
+    const read = await publicDataProvider.queryContractState(UNDEPLOYED_CONTRACT_ADDRESS);
 
     // Assert: null, not a thrown era failure.
-    expect(raw).toBeNull();
-    expect(parsed).toBeNull();
+    expect(read).toBeNull();
   });
 });

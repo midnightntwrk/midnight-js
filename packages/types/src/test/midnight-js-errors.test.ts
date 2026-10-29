@@ -22,8 +22,11 @@ import {
   ForeignLedgerTransactionError,
   ImportConflictError,
   InvalidExportFormatError,
+  InvalidLedgerStateError,
   InvalidProtocolSchemeError,
   InvalidTransactionHandleError,
+  LedgerStateDecodeFailedError,
+  LedgerStateDecoderMissingError,
   PrivateStateDecryptionError,
   PrivateStateExportError,
   PrivateStateImportError,
@@ -68,7 +71,10 @@ describe('types error classes', () => {
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)],
     ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
     ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
-    ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')]
+    ['TransactionEraMismatchError', new TransactionEraMismatchError('v8', 'v9')],
+    ['InvalidLedgerStateError', new InvalidLedgerStateError('ContractState', 'v9', 'tag-mismatch')],
+    ['LedgerStateDecoderMissingError', new LedgerStateDecoderMissingError('ContractState', 'v8')],
+    ['LedgerStateDecodeFailedError', new LedgerStateDecodeFailedError('ContractState', 'v9', { cause: new Error('bad body') })]
   ];
 
   it('every exported error class extends MidnightJsError', () => {

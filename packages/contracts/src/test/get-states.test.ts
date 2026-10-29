@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { Ledger8PublicStates, Ledger9PublicStates, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { PrivateStateId, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,66 +22,63 @@ import { ContractNotFoundError, PrivateStateNotFoundError } from '../errors';
 import { getPublicStates, getStates } from '../get-states';
 import {
   createMockContractAddress,
-  createMockContractState,
   createMockPrivateStateId,
   createMockProviders,
-} from './test-mocks';
+  publicStatesRead,
+  publicStatesReadStub} from './test-mocks';
 
 describe('get-states', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
-  let mockContractState: ReturnType<typeof createMockContractState>;
-  let mockZswapChainState: ZswapChainState;
-  let mockLedgerParameters: LedgerParameters;
   let mockPrivateStateId: PrivateStateId;
   let mockPrivateState: { test: string };
 
-  const ledger9States = (): Ledger9PublicStates => ({
-    version: 'v9',
-    zswapChainState: mockZswapChainState,
-    contractState: mockContractState,
-    ledgerParameters: mockLedgerParameters
-  });
+  const ledger9States = (): PublicStatesRead =>
+    publicStatesRead({
+      zswapChainState: new ZswapChainState(),
+      ledgerParameters: LedgerParameters.initialParameters()
+    });
 
-  const ledger8States = (): Ledger8PublicStates => ({
-    version: 'v8',
-    zswapChainState: mockZswapChainState,
-    stateBytes: new Uint8Array([1, 2]),
-    ledgerParametersBytes: new Uint8Array([3, 4])
-  });
+  // `toEqual` compares a `LedgerState` by its public fields only, so the record is checked by identity.
+  const expectSameRecord = (actual: PublicStatesRead, expected: PublicStatesRead): void => {
+    expect(actual.protocolVersion).toBe(expected.protocolVersion);
+    expect(actual.contractState).toBe(expected.contractState);
+    expect(actual.zswapChainState).toBe(expected.zswapChainState);
+    expect(actual.ledgerParameters).toBe(expected.ledgerParameters);
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
-    mockContractState = createMockContractState();
-    mockZswapChainState = {} as ZswapChainState;
-    mockLedgerParameters = {} as LedgerParameters;
     mockPrivateStateId = createMockPrivateStateId();
     mockPrivateState = { test: 'mock-private-state' };
   });
 
   describe('getPublicStates', () => {
-    describe('happy path', () => {
-      it('should successfully retrieve public states', async () => {
-        mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
-          .mockResolvedValue(ledger9States());
+    it.each([
+      ['v9', ledger9States],
+      ['v8', () => publicStatesReadStub('v8')]
+    ] as const)('returns the %s record the provider served, as bytes', async (_era, states) => {
+      const served = states();
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(served);
 
-        const result = await getPublicStates(mockProviders.publicDataProvider, mockContractAddress);
+      const result = await getPublicStates(mockProviders.publicDataProvider, mockContractAddress, 'ab'.repeat(32));
 
-        expect(mockProviders.publicDataProvider.queryZSwapAndContractState)
-          .toHaveBeenCalledWith(mockContractAddress, undefined);
-        expect(result).toEqual(ledger9States());
+      expect(mockProviders.publicDataProvider.queryZSwapAndContractState).toHaveBeenCalledWith(mockContractAddress, {
+        type: 'blockHash',
+        blockHash: 'ab'.repeat(32)
       });
+      expect(result).toBe(served);
+    });
 
-      it('returns a v8 block\'s states as the stored bytes, tagged v8', async () => {
-        mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(ledger8States());
+    it('reads the latest states when no block is named', async () => {
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(ledger9States());
 
-        const result = await getPublicStates(mockProviders.publicDataProvider, mockContractAddress, 'ab'.repeat(32));
+      await getPublicStates(mockProviders.publicDataProvider, mockContractAddress);
 
-        expect(result).toEqual(ledger8States());
-      });
+      expect(mockProviders.publicDataProvider.queryZSwapAndContractState).toHaveBeenCalledWith(mockContractAddress, undefined);
     });
 
     it('refuses an address with no public state as ContractNotFoundError', async () => {
@@ -100,8 +97,7 @@ describe('get-states', () => {
 
   describe('getStates', () => {
     it('refuses a private state id under which nothing is stored as PrivateStateNotFoundError', async () => {
-      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
-        .mockResolvedValue(ledger9States());
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(ledger9States());
       mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(null);
 
       const rejection = getStates(
@@ -119,38 +115,24 @@ describe('get-states', () => {
       });
     });
 
-    describe('happy path', () => {
-      it('should successfully retrieve all states', async () => {
-        mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
-          .mockResolvedValue(ledger9States());
-        mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(mockPrivateState);
+    it.each([
+      ['v9', ledger9States],
+      ['v8', () => publicStatesReadStub('v8')]
+    ] as const)('returns the %s public states as bytes, with the private state', async (_era, states) => {
+      const served = states();
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(served);
+      mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(mockPrivateState);
 
-        const result = await getStates(
-          mockProviders.publicDataProvider,
-          mockProviders.privateStateProvider,
-          mockContractAddress,
-          mockPrivateStateId
-        );
+      const result = await getStates(
+        mockProviders.publicDataProvider,
+        mockProviders.privateStateProvider,
+        mockContractAddress,
+        mockPrivateStateId
+      );
 
-        expect(mockProviders.publicDataProvider.queryZSwapAndContractState)
-          .toHaveBeenCalledWith(mockContractAddress, undefined);
-        expect(mockProviders.privateStateProvider.get).toHaveBeenCalledWith(mockPrivateStateId);
-        expect(result).toEqual({ ...ledger9States(), privateState: mockPrivateState });
-      });
-
-      it('returns a v8 block\'s states as the stored bytes, tagged v8, with the private state', async () => {
-        mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(ledger8States());
-        mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(mockPrivateState);
-
-        const result = await getStates(
-          mockProviders.publicDataProvider,
-          mockProviders.privateStateProvider,
-          mockContractAddress,
-          mockPrivateStateId
-        );
-
-        expect(result).toEqual({ ...ledger8States(), privateState: mockPrivateState });
-      });
+      expect(mockProviders.privateStateProvider.get).toHaveBeenCalledWith(mockPrivateStateId);
+      expectSameRecord(result, served);
+      expect(result.privateState).toBe(mockPrivateState);
     });
   });
 });

@@ -15,11 +15,11 @@
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type Ledger9PublicStates, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig, type Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
+import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { type ContractStates } from './get-states';
+import type { Ledger9ContractStates, Ledger9PublicStates } from './internal/era';
 import * as Internal from './internal/transaction';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from './tx-model';
 
@@ -41,7 +41,8 @@ export interface TransactionContext<
     privateStateId?: PrivateStateId
   ) => void;
   readonly [Internal.CacheStates]: (
-    states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates,
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
+    read: PublicStatesRead,
     identity: Internal.CachedStateIdentity,
     blockHash: string
   ) => void;
@@ -58,15 +59,18 @@ export interface TransactionContext<
   getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined;
 
   /**
-   * Gets the current cached contract states within the transaction context.
+   * Gets the public states of the contract within the transaction context, as bytes. Decode them with
+   * your own runtime, as with `getStates`: `states.contractState.deserialize({ v9: ContractState })`.
    *
-   * @return A cached {@link ContractStates} instance, or `undefined` if circuit calls are yet to be made.
+   * @return The public states, or `undefined` if circuit calls are yet to be made.
    *
    * @remarks
-   * The returned states represent the unsubmitted _running_ state of the contract within the transaction context,
-   * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction.
+   * The contract state is the unsubmitted _running_ state of the contract within the transaction context,
+   * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction. The
+   * ledger parameters and the zswap chain state are those of the block the scope was first read at. The
+   * running private state is `getLastUnsubmittedCallTxDataToTransact()?.[0].private.nextPrivateState`.
    */
-  getCurrentStates(): Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates | undefined;
+  getCurrentStates(): PublicStatesRead | undefined;
 
   /**
    * Gets the last unsubmitted call transaction data.

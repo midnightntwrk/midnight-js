@@ -39,11 +39,9 @@ const buildProvider = (): { provider: IndexerPublicDataProvider; query: QueryMoc
 };
 
 describe('an invalid contract address is refused before any request is issued', () => {
-  // Every read that takes an address, with how it surfaces the refusal. The
-  // family throws synchronously; `queryRawContractState` is the one that
-  // rejects instead, because it is the one declared `async`. Both are pinned
-  // rather than harmonised: a caller's `try`/`catch` placement depends on
-  // which it is, so the shape is behaviour, not an implementation detail.
+  // Every read that takes an address throws synchronously. Pinned: a caller's
+  // `try`/`catch` placement depends on it, so the shape is behaviour, not an
+  // implementation detail.
   const throwsSynchronously: readonly [string, (p: IndexerPublicDataProvider) => unknown][] = [
     ['queryContractState', (p) => p.queryContractState(INVALID_ADDRESS)],
     ['queryZSwapAndContractState', (p) => p.queryZSwapAndContractState(INVALID_ADDRESS)],
@@ -53,7 +51,6 @@ describe('an invalid contract address is refused before any request is issued', 
     ['watchForUnshieldedBalances', (p) => p.watchForUnshieldedBalances(INVALID_ADDRESS)],
     ['watchForDeployTxData', (p) => p.watchForDeployTxData(INVALID_ADDRESS)],
     ['contractStateObservable', (p) => p.contractStateObservable(INVALID_ADDRESS, { type: 'all' })],
-    ['rawContractStateObservable', (p) => p.rawContractStateObservable(INVALID_ADDRESS, { type: 'all' })],
     ['unshieldedBalancesObservable', (p) => p.unshieldedBalancesObservable(INVALID_ADDRESS, { type: 'all' })]
   ];
 
@@ -61,14 +58,6 @@ describe('an invalid contract address is refused before any request is issued', 
     const { provider, query, watchQuery } = buildProvider();
 
     expect(() => call(provider)).toThrow();
-    expect(query).not.toHaveBeenCalled();
-    expect(watchQuery).not.toHaveBeenCalled();
-  });
-
-  test('queryRawContractState rejects instead, being the one async member of the family', async () => {
-    const { provider, query, watchQuery } = buildProvider();
-
-    await expect(provider.queryRawContractState(INVALID_ADDRESS)).rejects.toThrow();
     expect(query).not.toHaveBeenCalled();
     expect(watchQuery).not.toHaveBeenCalled();
   });

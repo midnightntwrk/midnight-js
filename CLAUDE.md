@@ -67,11 +67,23 @@ raw ledger objects; every package from `types` up speaks only handles in its
 public API.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
-version-tagged *record*, `VersionedFinalizedTxData`. Its `tx` is a `FinalizedTx`
-of the same era (`record.tx.era === record.version`); read it with
-`LedgerTransaction.unwrap(record.tx, record.version)`. To treat the eras
-differently, narrow with a `switch (record.version)` closed by
+era-tagged *record*, `FinalizedTxRead`. Its `tx` is a `FinalizedTx`
+of the same era (`record.tx.era === record.era`); read it with
+`LedgerTransaction.unwrap(record.tx, record.era)`. To treat the eras
+differently, narrow with a `switch (record.era)` closed by
 `assertNever(record, '<call site>')` from `utils`.
+
+On-chain state is bytes, never a decoded object. `watchForContractState`,
+`queryDeployContractState` and `contractStateObservable` return
+`ContractStateRead`; `queryContractState` returns
+`ContractStateAndParametersRead` (adds `ledgerParameters`);
+`queryZSwapAndContractState` and `TransactionContext.getCurrentStates()` return
+`PublicStatesRead`. Each state is a `LedgerState` from `types` (bytes + `era`,
+the ledger that wrote them), made only by `LedgerState.fromBytes(era, kind, bytes)`.
+The caller decodes it with its own runtime:
+`read.contractState.deserialize({ v9: ContractState })`. `contracts` decodes
+with the framework's copy only where it builds a transaction. See
+[ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
 
 Implementing `WalletProvider` or `MidnightProvider` for v9 only? Use
 `createWalletProvider` / `createMidnightProvider` from `types` rather than

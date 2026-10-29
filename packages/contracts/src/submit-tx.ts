@@ -19,11 +19,10 @@ import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
   type FinalizedTxData,
+  type FinalizedTxRead,
   LedgerTransaction,
   TransactionEraMismatchError,
-  type UnprovenTx,
-  type VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  type UnprovenTx} from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
@@ -189,15 +188,15 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
 export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
-): Promise<VersionedFinalizedTxData> => {
+): Promise<FinalizedTxRead> => {
   const { txId, head } = await submitOnHead(providers, options);
   const record = requireTaggedRecord(
     await providers.publicDataProvider.watchForTxData(txId),
     'watchForTxData',
     options.circuitId
   );
-  if (record.version !== head) {
-    throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.version, undefined, txId);
+  if (record.era !== head) {
+    throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.era, undefined, txId);
   }
   return record;
 };

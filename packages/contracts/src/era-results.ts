@@ -116,7 +116,7 @@ export type AnyEraDeployedContract<C extends Contract.Any, L8 extends Ledger8Con
 
 /**
  * A contract maintenance update recorded on chain, in either era. Narrowing on `era` narrows
- * `public` to that era's record; era-agnostic code reads `public` as a `VersionedFinalizedTxData`.
+ * `public` to that era's record; era-agnostic code reads `public` as a `FinalizedTxRead`.
  *
  * @see {@link isLedger8Result} to narrow it.
  */
@@ -145,10 +145,10 @@ type NarrowedToLedger8<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
  *
  * `era` names the PIPELINE that produced the objects in the result, read off
  * the compiled artifact. It is NOT the era that recorded the transaction:
- * `public.version` answers that, and the two disagree after the fork, when a
+ * `public.era` answers that, and the two disagree after the fork, when a
  * retained-era call is recorded as a keep-state transaction tagged `'v9'`.
  * Branch on this one to decide which module a result's objects came from, and
- * on `version` to decide which ledger recorded it.
+ * on `era` to decide which ledger recorded it.
  *
  * @param result Any result carrying an era tag.
  * @returns `true` when the retained pipeline produced it.

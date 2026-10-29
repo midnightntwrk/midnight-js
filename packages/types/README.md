@@ -135,13 +135,35 @@ Before that, `seal` cannot check a v8 object and refuses it with reason
 `ledger8-not-loaded`.
 
 A finalized-transaction record from the read side (`watchForTxData`,
-`watchForDeployTxData`) is still tagged with `version`, and its `tx` is a
-`FinalizedTx` of that same era. Read it like this:
+`watchForDeployTxData`) is a `FinalizedTxRead`. It names its era `era`, like a
+handle and a state, and its `tx` is a `FinalizedTx` of that same era. Read it
+like this:
 
 ```typescript
 const record = await publicDataProvider.watchForTxData(txId);
-const tx = LedgerTransaction.unwrap(record.tx, record.version);
+const tx = LedgerTransaction.unwrap(record.tx, record.era);
 ```
+
+A contract state, ledger parameters and a zswap chain state come back as a
+`LedgerState`: the bytes, plus the `era` of the ledger that wrote them.
+Decode one with the runtime your contract was compiled against, so its
+`ledger()` accepts the result:
+
+```typescript
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+
+const read = await publicDataProvider.queryContractState(contractAddress);
+if (read !== null) {
+  const state = ledger(read.contractState.deserialize({ v9: ContractState }).data);
+}
+```
+
+`deserialize` calls only the decoder for the state's own `era`. It refuses a
+missing one with `LedgerStateDecoderMissingError`, and reports a decoder that
+throws as `LedgerStateDecodeFailedError` (a decoder error that is already a
+`MidnightJsError` is rethrown unchanged). A call with no decoder for any era the
+state can be does not compile. Only `LedgerState.fromBytes(era, kind, bytes)`
+makes a `LedgerState`; `LedgerState.isLedgerState(value)` checks one.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
 implementation. Both adapters unwrap each handle for you, and the wallet adapter
@@ -246,8 +268,8 @@ type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 
 ```typescript
 interface FinalizedTxData {
-  version: 'v9';
-  tx: FinalizedTx;      // a handle of the same era: tx.era === version
+  era: 'v9';
+  tx: FinalizedTx;      // a handle of the same era: tx.era === era
   status: TxStatus;
   txId: TransactionId;
   identifiers: readonly TransactionId[];
@@ -294,6 +316,9 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
+  InvalidLedgerStateError,
+  LedgerStateDecoderMissingError,
+  LedgerStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,
@@ -357,15 +382,21 @@ import {
   type TransactionStage,
   type LedgerTransactionTypes,
 
-  // Version-tagged read results for the ledger-fork window
+  // On-chain state as bytes, decoded by the caller's own runtime
+  LedgerState,
+  type LedgerStateKind,
+  type StateDecoder,
+  type StateDecoders,
+  type DecodedState,
+  type DecodersFor,
+  type ContractStateRead,
+  type ContractStateAndParametersRead,
+  type PublicStatesRead,
+  type InvalidLedgerStateReason,
+
+  // Version-tagged transaction records for the ledger-fork window
   type Ledger8FinalizedTxData,
-  type VersionedFinalizedTxData,
-  type Ledger8ContractStateBytes,
-  type Ledger9ContractState,
-  type VersionedContractState,
-  type Ledger8PublicStates,
-  type Ledger9PublicStates,
-  type VersionedPublicStates,
+  type FinalizedTxRead,
   type TransactionMethod,
   type ReadMethod,
   type ProviderMethod,
@@ -385,6 +416,9 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
+  InvalidLedgerStateError,
+  LedgerStateDecoderMissingError,
+  LedgerStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,
@@ -423,7 +457,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a transaction crosses a provider method as a handle, what the guard in `seal` checks, the three things the `version` tag of a read result deliberately does not establish, and why ledger parameters travel with the state |
+| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a transaction crosses a provider method as a handle, what the guard in `seal` checks, the three things the `era` of a read result deliberately does not establish, and why ledger parameters travel with the state |
 | [Provider era declarations](./docs/provider-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
 | [Reading the network's ledger version](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
 

@@ -65,15 +65,14 @@ import type {
   CallResultPrivateBase,
   CallResultPublicBase,
   ContractCallPrivateBase,
+  FinalizedTxRead,
   Ledger8FinalizedTxData,
   MidnightProviders,
   PrivateStateId,
   SubmittedCallTxBase,
   UnprovenTx,
   UnsubmittedTxDataBase,
-  VerifierKey,
-  VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
 import type { Ledger8FoundDeployTxPublicData } from './tx-model';
@@ -317,12 +316,12 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
 /**
  * The finalized data a retained-era call transaction resolves with.
  *
- * `txData` is version-tagged rather than single-era: the same retained-era
+ * `txData` is era-tagged rather than single-era: the same retained-era
  * contract is called as a v8 transaction before the fork and as a v9 keep-state
  * transaction after it, so the record it finalizes as carries the era that
  * produced it.
  *
- * @see {@link OverloadTyping} for the version-tagged provider methods that rule follows from.
+ * @see {@link OverloadTyping} for the era-tagged provider methods that rule follows from.
  */
 /**
  * What a retained-era circuit's own return value narrows to.
@@ -399,13 +398,13 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends L
  * The public data of a finalized retained-era call: the execution's public half
  * combined with the finalized record.
  *
- * The record stays {@link VersionedFinalizedTxData} rather than being narrowed
+ * The record stays {@link FinalizedTxRead} rather than being narrowed
  * to the current era's `FinalizedTxData`. A retained-era call is recorded by
- * whichever era the network is on, so `version` is a union here where the
+ * whichever era the network is on, so `era` is a union here where the
  * current era pins `'v9'` -- narrowing it would refuse the very records this
  * pipeline exists to produce.
  */
-export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & VersionedFinalizedTxData;
+export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & FinalizedTxRead;
 
 /**
  * What a retained-era call transaction resolves with once finalized.
@@ -749,16 +748,16 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
 export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
   /**
    * The pipeline this handle runs on: always the retained era here. The era
-   * that recorded the deploy transaction is `public.version`.
+   * that recorded the deploy transaction is `public.era`.
    */
   readonly era: 'v8';
   /**
    * The record of the transaction that DEPLOYED the contract, and the address
    * it created. Version-tagged because a retained-era contract was deployed in
    * whichever era was current at the time — narrow it with
-   * `switch (deployTxData.public.version)`.
+   * `switch (deployTxData.public.era)`.
    */
-  readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+  readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
   /**
    * What this device holds for the contract.
    *

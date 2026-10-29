@@ -34,12 +34,12 @@ import { contracts, type protocol, PROTOCOL_ERROR_CODES, types, utils } from '..
 declare const describeNative: (tx: types.LedgerTransactionTypes['v9']['Finalized']) => string;
 declare const describeRetained: (tx: types.LedgerTransactionTypes['v8']['Finalized']) => string;
 
-const summarize = (record: types.VersionedFinalizedTxData): string => {
-  switch (record.version) {
+const summarize = (record: types.FinalizedTxRead): string => {
+  switch (record.era) {
     case 'v9':
-      return `native ${record.txId}: ${describeNative(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
+      return `native ${record.txId}: ${describeNative(types.LedgerTransaction.unwrap(record.tx, record.era))}`;
     case 'v8':
-      return `retained ${record.txId}: ${describeRetained(types.LedgerTransaction.unwrap(record.tx, record.version))}`;
+      return `retained ${record.txId}: ${describeRetained(types.LedgerTransaction.unwrap(record.tx, record.era))}`;
     default:
       return utils.assertNever(record, 'summarize');
   }
@@ -51,7 +51,7 @@ declare const publicDataProvider: types.PublicDataProvider;
 
 const readIdentifiers = async (txId: string): Promise<string[]> => {
   const record = await publicDataProvider.watchForTxData(txId);
-  const tx = types.LedgerTransaction.unwrap(record.tx, record.version);
+  const tx = types.LedgerTransaction.unwrap(record.tx, record.era);
   return tx.identifiers();
 };
 // #endregion guide:read-record-tx
@@ -60,7 +60,7 @@ const readIdentifiers = async (txId: string): Promise<string[]> => {
 declare const providers: types.MidnightProviders;
 declare const ledgerUnprovenTx: types.LedgerTransactionTypes['v9']['Unproven'];
 
-const submitBuiltTransaction = async (): Promise<types.VersionedFinalizedTxData> => {
+const submitBuiltTransaction = async (): Promise<types.FinalizedTxRead> => {
   const unprovenTx = types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
   return contracts.submitTx(providers, { unprovenTx });
 };
@@ -155,10 +155,10 @@ describe('migration guide recipes', () => {
 
     // Assert: both variants present, each unwrapping its own era's `tx`, closed by the
     // helper the chapter is about; and every other recipe reads or makes a handle.
-    expect(narrowing).toContain('describeNative(types.LedgerTransaction.unwrap(record.tx, record.version))');
-    expect(narrowing).toContain('describeRetained(types.LedgerTransaction.unwrap(record.tx, record.version))');
+    expect(narrowing).toContain('describeNative(types.LedgerTransaction.unwrap(record.tx, record.era))');
+    expect(narrowing).toContain('describeRetained(types.LedgerTransaction.unwrap(record.tx, record.era))');
     expect(narrowing).toContain("utils.assertNever(record, 'summarize')");
-    expect(regionSource('guide:read-record-tx')).toContain('types.LedgerTransaction.unwrap(record.tx, record.version)');
+    expect(regionSource('guide:read-record-tx')).toContain('types.LedgerTransaction.unwrap(record.tx, record.era)');
     expect(regionSource('guide:submit-tx')).toContain("types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx)");
     expect(regionSource('guide:private-unproven-tx')).toContain('callTx.private');
     expect(regionSource('guide:per-era-handlers')).toContain('v8: (tx) => proveOnLedger8(tx)');

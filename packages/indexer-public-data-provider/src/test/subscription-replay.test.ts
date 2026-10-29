@@ -15,7 +15,6 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
-import { ledgerVersionOfContractState } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
@@ -200,13 +199,13 @@ const heightsOf = async (source: Rx.Observable<PositionedRecord<unknown>>): Prom
   return records.map(({ blockHeight }) => blockHeight);
 };
 
-/** Names each record by its block and the envelope of its bytes, so a test can tell which records survived. */
-const tracedRaw = async (
+/** Names each record by its block and the version tag of its bytes, so a test can tell which records survived. */
+const tracedStates = async (
   provider: IndexerPublicDataProvider,
   config: ContractStateObservableConfig
 ): Promise<string[]> => {
-  const records = await Rx.lastValueFrom(provider.rawContractStateObservable(ADDRESS, config).pipe(Rx.toArray()));
-  return records.map(({ blockHeight, value }) => `${blockHeight}:${ledgerVersionOfContractState(value.raw)}`);
+  const records = await Rx.lastValueFrom(provider.contractStateObservable(ADDRESS, config).pipe(Rx.toArray()));
+  return records.map(({ blockHeight, value }) => `${blockHeight}:${value.contractState.era}`);
 };
 
 const NAMED_TX = 'tx-10' as TransactionId;
@@ -287,7 +286,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
     const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
     const subscription = reconnectingSubscription(served, served);
 
-    const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX });
+    const traced = await tracedStates(providerOver(subscription), { type: 'txId', txId: NAMED_TX });
 
     expect(traced).toEqual(['10:v9', '11:v9']);
   });
@@ -304,7 +303,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
         [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11', earlier)]
       );
 
-      const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
+      const traced = await tracedStates(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
 
       expect(traced).toEqual(expected);
     }
@@ -322,7 +321,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
         []
       );
 
-      const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
+      const traced = await tracedStates(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive });
 
       expect(traced).toEqual(expected);
     }
@@ -335,7 +334,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
       []
     );
 
-    const traced = await tracedRaw(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive: false });
+    const traced = await tracedStates(providerOver(subscription), { type: 'txId', txId: NAMED_TX, inclusive: false });
 
     expect(traced).toEqual(['10:v8']);
   });
@@ -343,7 +342,7 @@ describe('contract-state streams — a reconnect replays nothing already deliver
   test('txId: a second subscription to the same stream starts from the named transaction again', async () => {
     const earlier = await mintLedger8ContractStateHex();
     const served = [stateFrame(10, 'tx-earlier', earlier), stateFrame(10, 'tx-10'), stateFrame(11, 'tx-11')];
-    const stream = providerOver(reconnectingSubscription(served, [])).rawContractStateObservable(ADDRESS, {
+    const stream = providerOver(reconnectingSubscription(served, [])).contractStateObservable(ADDRESS, {
       type: 'txId',
       txId: NAMED_TX
     });
@@ -351,7 +350,8 @@ describe('contract-state streams — a reconnect replays nothing already deliver
     const first = await Rx.lastValueFrom(stream.pipe(Rx.toArray()));
     const second = await Rx.lastValueFrom(stream.pipe(Rx.toArray()));
 
-    expect(second).toEqual(first);
+    const traced = (records: typeof first) => records.map(({ blockHeight, value }) => [blockHeight, value.contractState.serialize()]);
+    expect(traced(second)).toEqual(traced(first));
     expect(second.map(({ blockHeight }) => blockHeight)).toEqual([10, 11]);
   });
 });

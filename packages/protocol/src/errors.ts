@@ -645,7 +645,7 @@ export class ComposeOptionError extends MidnightJsError {
       `Failed to compose a ${version} transaction: the supplied ledger parameters could not be read by the ` +
       `${version} ledger. They are era-tagged, so bytes read from a block of the other era will be refused ` +
       'here — read the wrapped cause for the tag the decoder found. Pass the parameters the block this call ' +
-      'is built against served, which is what `RawContractState.ledgerParameters` carries.',
+      'is built against served: the bytes of `ContractStateAndParametersRead.ledgerParameters`, from its `serialize()`.',
     networkId: () =>
       'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
       'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +

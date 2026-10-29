@@ -31,8 +31,8 @@ export class Ledger8ValueUnsupportedError extends MidnightJsError {
   constructor(readonly context: string) {
     super(
       `${context} handles only values written by the v9 ledger, but received one written by the v8 ledger ` +
-        `(version: 'v8'). This happens for a state read before the hard fork, or on a network that has not forked yet. ` +
-        `To handle both eras, switch on 'version' and close the switch with assertNever.`
+        `(era: 'v8'). This happens for a state read before the hard fork, or on a network that has not forked yet. ` +
+        `To handle both eras, switch on 'era' and close the switch with assertNever.`
     );
     this.name = 'Ledger8ValueUnsupportedError';
   }
@@ -42,26 +42,26 @@ const describeEraTag = (value: unknown): string => {
   if (value === null) {
     return 'null';
   }
-  if (typeof value !== 'object' || !('version' in value)) {
+  if (typeof value !== 'object' || !('era' in value)) {
     return 'undefined';
   }
-  return String(value.version);
+  return String(value.era);
 };
 
 /**
  * Raised by {@link requireLedger9} when the value carries no era tag this build recognises: `null`,
- * a value with no `version`, or an era newer than this build.
+ * a value with no `era`, or an era newer than this build.
  */
 export class UnrecognisedEraTagError extends MidnightJsError {
   readonly code = UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG;
   readonly category = UTILS_ERROR_CATEGORIES[UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG];
 
-  /** What the value's `version` held, or `'null'` / `'undefined'` when there was none. */
+  /** What the value's `era` held, or `'null'` / `'undefined'` when there was none. */
   readonly received: string;
 
   /**
    * @param context Names the call site that handles only v9 values.
-   * @param value The offending value. Only its `version` is read.
+   * @param value The offending value. Only its `era` is read.
    */
   constructor(
     readonly context: string,
@@ -69,7 +69,7 @@ export class UnrecognisedEraTagError extends MidnightJsError {
   ) {
     const received = describeEraTag(value);
     super(
-      `${context} expects a value tagged with a ledger era (version: 'v8' | 'v9'), but received version: ${received}. ` +
+      `${context} expects a value tagged with a ledger era (era: 'v8' | 'v9'), but received era: ${received}. ` +
         `A value with no era tag has the shape of a pre-5.0.0 provider; an unknown era means this midnight-js ` +
         `is older than the network or the provider that produced the value.`
     );
@@ -79,35 +79,35 @@ export class UnrecognisedEraTagError extends MidnightJsError {
 }
 
 
-/** The v9 variant of a version-tagged union. */
-export type Ledger9Variant<T> = Extract<T, { readonly version: 'v9' }>;
+/** The v9 variant of a era-tagged union. */
+export type Ledger9Variant<T> = Extract<T, { readonly era: 'v9' }>;
 
 /** `T` itself when it has a v9 variant to narrow to, `never` when it does not. */
 type WithLedger9Variant<T> = [Ledger9Variant<T>] extends [never] ? never : T;
 
-const isLedger9 = <T extends { readonly version: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
-  value.version === 'v9';
+const isLedger9 = <T extends { readonly era: LedgerVersion }>(value: T): value is Ledger9Variant<T> =>
+  value.era === 'v9';
 
 /**
- * Narrows any version-tagged union (`VersionedContractState`, `VersionedFinalizedTxData`, …)
+ * Narrows any era-tagged union (`FinalizedTxRead`, …)
  * to its v9 variant, for code that handles only the v9 era.
  *
- * Code that handles both eras should `switch (value.version)` and close the switch with
+ * Code that handles both eras should `switch (value.era)` and close the switch with
  * {@link assertNever} instead.
  *
- * @param value The version-tagged value.
+ * @param value The era-tagged value.
  * @param context Names the call site, so the error says where it came from.
  * @returns The whole v9 variant.
  * @throws Ledger8ValueUnsupportedError if the value was written by the v8 ledger.
- * @throws UnrecognisedEraTagError if the value is `null`, has no `version`, or carries an era this
+ * @throws UnrecognisedEraTagError if the value is `null`, has no `era`, or carries an era this
  *   build does not know.
  *
  * @example
  * ```ts
- * const { state } = requireLedger9(await publicDataProvider.watchForContractState(address), 'readCounter');
+ * const { tx } = requireLedger9(await publicDataProvider.watchForTxData(txId), 'readTx');
  * ```
  */
-export const requireLedger9 = <T extends { readonly version: LedgerVersion }>(
+export const requireLedger9 = <T extends { readonly era: LedgerVersion }>(
   value: WithLedger9Variant<T>,
   context: string
 ): Ledger9Variant<T> => {
@@ -117,7 +117,7 @@ export const requireLedger9 = <T extends { readonly version: LedgerVersion }>(
   if (isLedger9<T>(value)) {
     return value;
   }
-  if (value.version === 'v8') {
+  if (value.era === 'v8') {
     throw new Ledger8ValueUnsupportedError(context);
   }
   throw new UnrecognisedEraTagError(context, value);

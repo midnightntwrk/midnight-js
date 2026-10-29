@@ -93,6 +93,7 @@ export {
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   ProviderFailedError,
+  PublicStatesEraMismatchError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
   type SubmitRejectionUndiagnosedCause,
@@ -113,10 +114,7 @@ export {
   verifierKeysEqual,
   verifyContractState} from './find-deployed-contract';
 export {
-  AnyEraContractState,
-  AnyEraContractStateReadSurface,
   ContractStates,
-  getAnyEraContractState,
   getPublicStates,
   getStates} from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';

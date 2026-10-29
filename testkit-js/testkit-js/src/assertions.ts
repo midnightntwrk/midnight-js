@@ -23,7 +23,7 @@ import type {
   FoundDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState, type StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
@@ -32,7 +32,7 @@ import {
   type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
 export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);
@@ -46,8 +46,8 @@ const ledger9DeployPublicData = <C extends Contract.Any>(
   foundDeployTxData: FoundDeployTxData<C>
 ): FinalizedDeployTxPublicData => {
   const found = foundDeployTxData.public;
-  if (found.version !== 'v9') {
-    throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.version}'`);
+  if (found.era !== 'v9') {
+    throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.era}'`);
   }
   return found;
 };
@@ -100,7 +100,7 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
     deployTxData.public.contractAddress
   );
   assertDefined(deployedLedgerState);
-  const { state } = requireLedger9(deployedLedgerState, 'expectFoundAndDeployedStatesEqual');
+  const state = deployedLedgerState.contractState.deserialize({ v9: ContractState });
   expect(stateValueEqual(state.data.state, found.initialContractState.data.state)).toBeTruthy();
   if (privateStateId) {
     const privateState = await providers.privateStateProvider.get(privateStateId);
@@ -131,7 +131,7 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
     deployTxData.public.contractAddress
   );
   assertDefined(deployedLedgerState);
-  const { state } = requireLedger9(deployedLedgerState, 'expectSuccessfulDeployTx');
+  const state = deployedLedgerState.contractState.deserialize({ v9: ContractState });
   expect(stateValueEqual(deployTxData.public.initialContractState.data.state, state.data.state)).toBeTruthy();
   expect(deployTxData.public.initialContractState).toBeTruthy();
 

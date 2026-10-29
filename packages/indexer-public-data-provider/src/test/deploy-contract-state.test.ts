@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { VersionedContractState } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { assert, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
@@ -53,15 +53,8 @@ const providerAnswering = (data: unknown) => {
   return { provider: new IndexerPublicDataProvider(stubApolloHandle({ query }), 1000), query };
 };
 
-const serialized = (result: VersionedContractState | null): { version: string; bytes: number[] } | null => {
-  if (result === null) return null;
-  switch (result.version) {
-    case 'v8':
-      return { version: 'v8', bytes: Array.from(result.stateBytes) };
-    case 'v9':
-      return { version: 'v9', bytes: Array.from(result.state.serialize()) };
-  }
-};
+const serialized = (result: ContractStateRead | null): { version: string; bytes: number[] } | null =>
+  result === null ? null : { version: result.contractState.era, bytes: Array.from(result.contractState.serialize()) };
 
 const ARMS: readonly { arm: ActionArm; record: string }[] = [
   { arm: 'ContractDeploy', record: "the deploy's record" },
@@ -70,7 +63,7 @@ const ARMS: readonly { arm: ActionArm; record: string }[] = [
 ];
 
 describe('queryDeployContractState', () => {
-  test.each(ARMS)('$arm: $record from the v9 era comes back decoded, tagged v9', async ({ arm }) => {
+  test.each(ARMS)('$arm: $record from the v9 era comes back as bytes, tagged v9', async ({ arm }) => {
     const { provider, query } = providerAnswering(
       answer(arm, recordTransaction(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION))
     );
@@ -91,7 +84,7 @@ describe('queryDeployContractState', () => {
     expect(serialized(result)).toEqual({ version: 'v8', bytes: Array.from(await mintLedger8ContractStateBytes()) });
   });
 
-  test('refuses a deploy state whose envelope is newer than the block that dates it', async () => {
+  test('refuses a deploy state whose version tag is newer than the block that dates it', async () => {
     const { provider } = providerAnswering(
       answer('ContractCall', recordTransaction(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION))
     );
