@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@ Data for a finalized deploy transaction submitted in this process.
 ## Remarks
 
 **Privacy-sensitive type.** Inherits [UnsubmittedDeployTxData](UnsubmittedDeployTxData.md)'s
-`private` field, which transitively carries the `UnprovenTransaction`,
+`private` field, which transitively carries the unproven transaction,
 `newCoins`, signing key, initial private state, and `initialZswapState`.
 Treat as confidential when logging, serializing, or transmitting —
 destructure only the non-sensitive fields (`public.txId`,
@@ -37,7 +37,7 @@ not an intended use.
 
 ### era
 
-> `readonly` **era**: `"ledger9"`
+> `readonly` **era**: `"v9"`
 
 The pipeline that produced this result: always the current era here.
 

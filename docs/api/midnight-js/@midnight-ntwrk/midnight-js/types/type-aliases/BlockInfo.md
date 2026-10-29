@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -41,8 +41,8 @@ this type satisfies that function's `VersionedRecord` parameter, so
 `UnknownProtocolVersionError` for a version this build cannot place on the
 era timeline.
 
-Implementations MUST report the era of *this* block, never the network
-head's, so a block read from before a hard fork keeps reporting the era it
+Implementations MUST report the era of *this* block, never that of the
+network's latest block, so a block read from before a hard fork keeps reporting the era it
 was produced in.
 
 Implementations carry the integer through as the network reported it, and

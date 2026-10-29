@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -13,6 +13,6 @@ combined with the finalized record.
 
 The record stays [VersionedFinalizedTxData](../../../../types/type-aliases/VersionedFinalizedTxData.md) rather than being narrowed
 to the current era's `FinalizedTxData`. A retained-era call is recorded by
-whichever era the network head is on, so `version` is a union here where the
+whichever era the network is on, so `version` is a union here where the
 current era pins `'v9'` -- narrowing it would refuse the very records this
 pipeline exists to produce.

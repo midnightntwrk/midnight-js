@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,12 +6,12 @@
 
 # Class: IndexerInconsistencyError
 
-An error indicating that the read surface reported a network head and a contract state whose eras
-disagree, and that the disagreement survived a fresh head read.
+An error indicating that the read surface reported a network ledger version and a contract state whose eras
+disagree, and that the disagreement survived a fresh read of the network's ledger version.
 
-Distinct from [HeadStateEraMismatchError](HeadStateEraMismatchError.md), and the distinction is the point: there the head
-reading was merely stale and re-running fixes it. Here the head is confirmed, so the served state
-and the served head cannot both describe one chain — which is a fault in the data served, not a
+Distinct from [NetworkVersionStateMismatchError](NetworkVersionStateMismatchError.md), and the distinction is the point: there the network
+version reading was merely stale and re-running fixes it. Here the network version is confirmed, so the served
+state and the served network version cannot both describe one chain — which is a fault in the data served, not a
 timing artefact the caller can correct. Deliberately NOT reported as a fork in progress: nothing
 observed here establishes that one is under way, and telling a caller to wait out a fork that is
 not happening is worse than telling it to retry.
@@ -24,21 +24,21 @@ not happening is worse than telling it to retry.
 
 ### Constructor
 
-> **new IndexerInconsistencyError**(`head`, `stateEra`): `IndexerInconsistencyError`
+> **new IndexerInconsistencyError**(`networkVersion`, `stateEra`): `IndexerInconsistencyError`
 
 #### Parameters
 
-##### head
+##### networkVersion
 
 `"v8"` \| `"v9"`
 
-The era the network head reported, confirmed by a fresh read.
+The ledger version the network reported, confirmed by a second read.
 
 ##### stateEra
 
 `"v8"` \| `"v9"`
 
-The era the fetched state's own envelope was written by.
+The ledger era that wrote the fetched state.
 
 #### Returns
 
@@ -70,9 +70,9 @@ The era the fetched state's own envelope was written by.
 
 ***
 
-### head
+### networkVersion
 
-> `readonly` **head**: `"v8"` \| `"v9"`
+> `readonly` **networkVersion**: `"v8"` \| `"v9"`
 
 ***
 

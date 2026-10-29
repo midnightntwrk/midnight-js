@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -80,7 +80,7 @@ Construct via the static factory methods to ensure the message and
 
 ### eraDisagreement()
 
-> `static` **eraDisagreement**(`protocolVersion`, `reportedVersion`, `envelopeVersion`): `IndexerDataError`
+> `static` **eraDisagreement**(`protocolVersion`, `reportedVersion`, `stateVersion`): `IndexerDataError`
 
 #### Parameters
 
@@ -92,7 +92,7 @@ Construct via the static factory methods to ensure the message and
 
 `"v8"` \| `"v9"`
 
-##### envelopeVersion
+##### stateVersion
 
 `"v8"` \| `"v9"`
 
@@ -105,6 +105,26 @@ Construct via the static factory methods to ensure the message and
 ### malformedParametersEncoding()
 
 > `static` **malformedParametersEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedProtocolVersion()
+
+> `static` **malformedProtocolVersion**(`protocolVersion`, `cause`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### cause
+
+`unknown`
 
 #### Returns
 
@@ -168,16 +188,6 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
-### missingHeadBlock()
-
-> `static` **missingHeadBlock**(): `IndexerDataError`
-
-#### Returns
-
-`IndexerDataError`
-
-***
-
 ### missingIdentifier()
 
 > `static` **missingIdentifier**(`contractAddress`, `actionIndex`, `identifiersLength`): `IndexerDataError`
@@ -195,6 +205,36 @@ Construct via the static factory methods to ensure the message and
 ##### identifiersLength
 
 `number`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### missingLatestBlock()
+
+> `static` **missingLatestBlock**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### mixedEraPublicStates()
+
+> `static` **mixedEraPublicStates**(`stateVersion`, `parametersVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### stateVersion
+
+`"v8"` \| `"v9"`
+
+##### parametersVersion
+
+`"v8"` \| `"v9"`
 
 #### Returns
 
@@ -261,29 +301,6 @@ Construct via the static factory methods to ensure the message and
 ##### value
 
 `string`
-
-#### Returns
-
-`IndexerDataError`
-
-***
-
-### unresolvableEra()
-
-> `static` **unresolvableEra**(`protocolVersion`, `cause`): `IndexerDataError`
-
-#### Parameters
-
-##### protocolVersion
-
-`number`
-
-##### cause
-
-`unknown`
-
-The protocol-layer failure, preserved so the resolution path
-             that refused the integer is still readable.
 
 #### Returns
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: SubmitRejectionUndiagnosedCause
 
-> **SubmitRejectionUndiagnosedCause** = \{ `headReadFailure`: `unknown`; `reason`: `"head-read-failed"`; \} \| \{ `freshEra`: `LedgerVersion`; `reason`: `"head-moved-backwards"`; \}
+> **SubmitRejectionUndiagnosedCause** = \{ `networkVersionReadFailure`: `unknown`; `reason`: `"network-version-read-failed"`; \} \| \{ `freshEra`: `LedgerVersion`; `reason`: `"network-version-went-backwards"`; \}
 
 Why a submit rejection could NOT be diagnosed as a fork crossing or ruled out
 as one.
@@ -20,15 +20,15 @@ tells it which of the two happened.
 
 ### Type Literal
 
-\{ `headReadFailure`: `unknown`; `reason`: `"head-read-failed"`; \}
+\{ `networkVersionReadFailure`: `unknown`; `reason`: `"network-version-read-failed"`; \}
 
-The fresh head read itself rejected, so no reading is available to compare.
+Reading the network's ledger version again itself failed, so no reading is available to compare.
 
 ***
 
 ### Type Literal
 
-\{ `freshEra`: `LedgerVersion`; `reason`: `"head-moved-backwards"`; \}
+\{ `freshEra`: `LedgerVersion`; `reason`: `"network-version-went-backwards"`; \}
 
 The fresh read reported an EARLIER era than the operation started against.
 A ledger era only ever moves forward, so the two readings cannot both

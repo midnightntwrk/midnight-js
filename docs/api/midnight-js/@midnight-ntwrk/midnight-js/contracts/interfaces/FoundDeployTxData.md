@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -24,7 +24,7 @@ only the `public` field or destructure specific non-sensitive fields.
 
 ### era
 
-> `readonly` **era**: `"ledger9"`
+> `readonly` **era**: `"v9"`
 
 The pipeline this handle runs on: always the current era here. The era that
 recorded the deploy transaction is `public.version`.

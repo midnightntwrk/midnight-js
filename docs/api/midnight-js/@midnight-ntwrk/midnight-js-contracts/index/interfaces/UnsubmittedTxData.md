@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@ Data relevant to any unsubmitted transaction.
 ## Remarks
 
 **Privacy-sensitive type.** Every field on this type is private: the
-`unprovenTx` field carries the `UnprovenTransaction` that the underlying
+`unprovenTx` field carries the unproven transaction that the underlying
 zero-knowledge proofs were designed to keep confidential, and `newCoins`
 includes shielded coin material that must not leak.
 
@@ -48,6 +48,7 @@ transaction. Empty when the call minted nothing to the caller's own key.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTransaction`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
 
-The unproven ledger transaction produced.
+The unproven transaction produced, as a v9 handle. Read it with
+`LedgerTransaction.unwrap(unprovenTx, 'v9')`.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,9 +6,11 @@
 
 # Function: getPublicStates()
 
-> **getPublicStates**(`publicDataProvider`, `contractAddress`, `blockHash?`): `Promise`\<[`PublicContractStates`](../interfaces/PublicContractStates.md)\>
+> **getPublicStates**(`publicDataProvider`, `contractAddress`, `blockHash?`): `Promise`\<[`VersionedPublicStates`](../../../midnight-js/types/type-aliases/VersionedPublicStates.md)\>
 
-Fetches only the public visible (Zswap and ledger) states of a contract.
+Fetches only the public visible (Zswap and ledger) states of a contract, tagged with the ledger
+era that wrote them. Narrow on `version`, or use `requireLedger9` from
+`@midnight-ntwrk/midnight-js-utils` when only the v9 era is handled.
 
 ## Parameters
 
@@ -29,6 +31,8 @@ The ledger address of the contract.
 
 `string`
 
+The block to read the states at. If `undefined`, the latest states are read.
+
 ## Returns
 
-`Promise`\<[`PublicContractStates`](../interfaces/PublicContractStates.md)\>
+`Promise`\<[`VersionedPublicStates`](../../../midnight-js/types/type-aliases/VersionedPublicStates.md)\>

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,26 +8,23 @@
 
 > `const` **createProofProvider**: (`provingProvider`, `costModel?`) => [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](https://github.com/midnightntwrk/midnight-ledger).
+Creates a [ProofProvider](../interfaces/ProofProvider.md) from a v9 ProvingProvider.
 The returned provider proves transactions using the initial cost model.
 
-The returned provider serves v9 payloads only — `supportedEras` says so — and
-that is permanent rather than a gap: it lifts a single current-era
-`ProvingProvider`. It rejects a v8 payload with `V8PayloadUnsupportedError`,
-and an untagged one with `UntaggedPayloadError`. It also rejects any
+The returned provider serves v9 only — `supportedEras` says so — and refuses
+a v8 handle with `ProviderEraUnsupportedError`. It also rejects any
 `proveTxConfig.timeout`, including `0`, with `InvalidArgumentError` before
 proving starts: a `ProvingProvider` takes no per-request configuration. To
-bound proving time, use `httpClientProofProvider`. To serve a retained era as
-well, pass that era's own proving provider to
-[createProofProviderForEras](createProofProviderForEras.md), or, where the proving itself is not a
-`ProvingProvider` call, write the handlers directly with
-[createProofProviderFromHandlers](createProofProviderFromHandlers.md).
+bound proving time, use `httpClientProofProvider`. To serve v8 as well, pass
+a v8 proving provider to [createProofProviderFromProvingProviders](createProofProviderFromProvingProviders.md), or,
+where the proving itself is not a `ProvingProvider` call, write the handlers
+directly with [createProofProviderFromHandlers](createProofProviderFromHandlers.md).
 
 ## Parameters
 
 ### provingProvider
 
-[`ProvingProvider`](https://github.com/midnightntwrk/midnight-ledger)
+[`ProvingProvider$1`](https://github.com/midnightntwrk/midnight-ledger)
 
 The underlying proving provider used to generate proofs.
 

@@ -112,6 +112,7 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import { createCallTxOptions } from '../tx-interfaces';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type {
   CoinReceiver016Circuits,
@@ -1061,6 +1062,23 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const ttl = vi.mocked(providers.walletProvider.balanceTx).mock.calls[0]?.[1];
     expect(ttl?.getTime()).toBeGreaterThanOrEqual(before + 30_000);
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
+  });
+
+  it('completes a call through submitCallTx with options built by createCallTxOptions', async () => {
+    const providers = preForkProviders(v6Envelope);
+    const options = createCallTxOptions(
+      contract,
+      CIRCUIT_ID,
+      recording.contractAddress,
+      undefined,
+      undefined,
+      [recording.receivedCoin]
+    );
+
+    const finalized = await submitCallTx(providers, options);
+
+    expect(finalized.circuitId).toBe(CIRCUIT_ID);
+    expect(finalized.public.status).toBe('SucceedEntirely');
   });
 
   it('completes a call through submitCallTx, reading the head ONCE and the state ONCE', async () => {
