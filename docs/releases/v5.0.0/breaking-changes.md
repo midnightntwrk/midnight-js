@@ -2,7 +2,7 @@
 
 v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
-> Sections 12 to 23 name error classes as they were during the pre-releases. [Section 24](#24-one-error-class-per-fault-1557) maps every one of them to its final class.
+> Sections 12 to 20 name error classes as they were during the pre-releases. Those names shipped only in 5.0.0 pre-releases, so if you upgrade from v4, use section 24. [Section 24](#24-one-error-class-per-fault-1557) maps every one of them to its final class.
 
 ---
 
@@ -1242,7 +1242,7 @@ removed and the errors are merged, see [section 24](#24-one-error-class-per-faul
 ## 24. One error class per fault (#1557)
 
 There is no `Ledger8` namespace any more. The 12 error classes below replace about 40. Each fault is one
-class, and a field says which case it was. Sections 8 to 23 above name classes as they were during the
+class, and a field says which case it was. Sections 12 to 20 above name classes as they were during the
 pre-releases. Use this section for the final names.
 
 ### 24a. Failed transactions: one `TxFailedError`

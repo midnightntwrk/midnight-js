@@ -11,8 +11,7 @@ network — a contract state, ledger parameters, a zswap chain state — is a `L
 and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
 finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
 `FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
-narrows it with `switch (record.era)` closed by `assertNever`, or with `requireLedger9` when only v9
-is handled. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
+narrows it with `switch (record.era)` closed by `assertNever`. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
 its `public.era` names the ledger that recorded the transaction.
 
 ## The defect class

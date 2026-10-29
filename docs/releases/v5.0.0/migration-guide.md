@@ -1170,7 +1170,7 @@ refused with `PublicStatesEraMismatchError`.
 
 If you built against a 5.0.0 pre-release: `VersionedFinalizedTxData` is now
 `FinalizedTxRead`, and its `version` is now `era`, the same name a handle and a
-state use. `requireLedger9` narrows on `era` too.
+state use. `requireLedger9` was removed: narrow with `switch (record.era)` closed by `assertNever` (see Step 23).
 
 ```diff
 - switch (record.version) {
