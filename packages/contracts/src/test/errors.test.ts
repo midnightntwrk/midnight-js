@@ -316,10 +316,13 @@ describe('Ledger8NotStoredError', () => {
     expect(error.message).not.toContain('Do NOT deploy again');
   });
 
-  it.each(['deploy', 'replace-authority'] as const)(
+  it.each([
+    ['deploy', (): Ledger8NotStoredError => new Ledger8NotStoredError('deploy', ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'))],
+    ['replace-authority', (): Ledger8NotStoredError => new Ledger8NotStoredError('replace-authority', ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'))]
+  ])(
     'carries the %s signing key and says where to read it, without printing the key itself',
-    (operation) => {
-      const error = new Ledger8NotStoredError(operation, ADDRESS, SIGNING_KEY, 'signing-key', new Error('refused'));
+    (_operation, build) => {
+      const error = build();
 
       expect(error.signingKey).toBe(SIGNING_KEY);
       expect(error.contractAddress).toBe(ADDRESS);
@@ -327,6 +330,13 @@ describe('Ledger8NotStoredError', () => {
       expect(error.message).not.toContain(SIGNING_KEY.value);
     }
   );
+
+  it('refuses at compile time a replacement stage the replacement cannot have', () => {
+    // @ts-expect-error a replacement only ever stores the signing key
+    const error = new Ledger8NotStoredError('replace-authority', ADDRESS, SIGNING_KEY, 'private-state', new Error('x'));
+
+    expect(error.operation).toBe('replace-authority');
+  });
 });
 
 describe('Ledger8SigningKeyError', () => {
@@ -415,5 +425,12 @@ describe('Ledger8CallUnsupportedError', () => {
     expect(error.recipientCoinPublicKey).toBeUndefined();
     expect(error.message).toContain("Circuit 'spend' spends a shielded coin the contract already holds on chain");
     expect(error.message).toContain('Zswap chain state');
+  });
+
+  it('refuses at compile time an unmappable-recipient call that names no recipient', () => {
+    // @ts-expect-error the recipient is required for this reason, because the message names it
+    const error = new Ledger8CallUnsupportedError('unmappable-recipient', 'mint');
+
+    expect(error.reason).toBe('unmappable-recipient');
   });
 });

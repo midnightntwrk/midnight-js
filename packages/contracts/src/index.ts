@@ -121,7 +121,7 @@ export {
   type AnyEraSubmittedCallTx,
   isLedger8Result
 } from './era-results';
-// The RETAINED era's refusals under one name: `Ledger8.DeployUnconfirmedError`. Only error classes;
+// The RETAINED era's refusals under one name: `Ledger8.UnconfirmedError`. Only error classes;
 // see `docs/retained-era-namespace.md` for what qualifies and how the surface is withdrawn.
 export * as Ledger8 from './ledger8';
 // The retained era's types, flat. The entry-point overloads return them by these names, and a

@@ -1399,6 +1399,20 @@ export class Ledger8NotStoredError extends MidnightJsError {
    * @param cause What the private-state provider rejected with.
    */
   constructor(
+    operation: 'deploy',
+    contractAddress: string,
+    signingKey: SigningKey,
+    stage: Ledger8NotStoredStage,
+    cause: unknown
+  );
+  constructor(
+    operation: 'replace-authority',
+    contractAddress: string,
+    signingKey: SigningKey,
+    stage: 'signing-key',
+    cause: unknown
+  );
+  constructor(
     readonly operation: Ledger8KeyedOperation,
     readonly contractAddress: string,
     readonly signingKey: SigningKey,
@@ -1473,6 +1487,8 @@ export class Ledger8CallUnsupportedError extends MidnightJsError {
    * @param recipientCoinPublicKey The recipient that could not be resolved. Set for
    * `'unmappable-recipient'`.
    */
+  constructor(reason: 'shielded-spend', circuitId: string);
+  constructor(reason: 'unmappable-recipient', circuitId: string, recipientCoinPublicKey: string);
   constructor(
     readonly reason: Ledger8CallUnsupportedReason,
     readonly circuitId: string,
