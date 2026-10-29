@@ -1223,7 +1223,7 @@ export with the `Ledger8` prefix, like the `Ledger9*` types:
 |---|---|
 | `Ledger8.FoundContract<C>` | `Ledger8FoundContract<C>` |
 | `Ledger8.DeployedContract<C>` | `Ledger8DeployedContract<C>` |
-| `Ledger8.FinalizedCallTxData<C, K>` | `Ledger8FinalizedCallTxData<C, K>` |
+| `Ledger8.FinalizedCallTxData<C, PCK>` | `Ledger8FinalizedCallTxData<C, PCK>` |
 | `Ledger8.Contract` | `Ledger8Contract` |
 | `Ledger8.X` (any of the 37 types) | `Ledger8X` |
 

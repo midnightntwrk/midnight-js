@@ -54,7 +54,7 @@ A type reachable only through a namespace re-export fails with TS4023
 
 The types are not optional decoration either. Inference alone does not let a
 caller NAME a type: a consumer can make a retained-era call and still not write
-`function handle(r: Ledger8FinalizedCallTxData<C, K>)` or constrain a helper of
+`function handle(r: Ledger8FinalizedCallTxData<C, PCK>)` or constrain a helper of
 its own by `Ledger8Contract`. Two things look like substitutes and are not:
 
 - **A name in the emitted `.d.ts` is not an export.** This package publishes

@@ -79,10 +79,10 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
-export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
-  providers: Ledger8ContractProviders<C, K>,
-  options: Ledger8CallTxOptions<C, K>
-): Promise<Ledger8FinalizedCallTxData<C, K>>;
+export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8FinalizedCallTxData<C, PCK>>;
 
 /**
  * Calls a circuit on a contract that declares no private state.
@@ -241,10 +241,10 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
-export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
-  providers: Ledger8ContractProviders<C, K>,
-  options: Ledger8CallTxOptions<C, K>
-): Promise<Ledger8SubmittedCallTx<C, K>>;
+export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8SubmittedCallTx<C, PCK>>;
 
 /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
