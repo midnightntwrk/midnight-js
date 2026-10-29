@@ -25,7 +25,7 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 
 ## Breaking Changes (high level)
 
-1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now re-export the v9 / v4 packages (#970).
+1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnight-ntwrk/midnight-js-protocol/v9` and `/v9/onchain-runtime` re-export the v9 / v4 packages (#970); the unnamed 4.x subpaths are removed (#1536).
 2. **`SigningKey` is now a structured object** — `{ tag: 'schnorr' | 'ecdsa', value: <hex> }` instead of a plain hex string. Affects `ContractExecutableRuntimeOptions.signingKey`, signing-key import/export validation, and the DApp-connector wallet adapter (#970).
 3. **`ContractState` structural version bumped `[v6]` → `[v8]`** — state persisted/serialized under the old protocol is rejected by the version canary (#970).
 4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).
@@ -35,6 +35,7 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 8. **Transactions are handles, finalized records are era-tagged** — `proveTx`, `balanceTx` and `submitTx` take and return `UnprovenTx` / `UnboundTx` / `FinalizedTx` handles that carry their ledger era, and `watchForTxData` / `watchForDeployTxData` report a `FinalizedTxRead`, an `era`-discriminated record whose `tx` is a handle. Seal with `LedgerTransaction.seal`, read with `LedgerTransaction.unwrap`. External `ProofProvider` / `WalletProvider` / `MidnightProvider` implementations must be updated (#1204, #1533).
 9. **`MidnightProviders.config` is required** — `{ networkId, ttlSeconds }` replaces the global `setNetworkId()` and the fixed one-hour TTL. Every provider literal must add it; `@midnight-ntwrk/midnight-js-network-id` is deprecated (#982).
 10. **On-chain state is bytes, decoded by your own runtime** — every state read returns a `*Read` record whose states are `LedgerState` values (bytes plus the `era` that wrote them) instead of decoded objects. Decode with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed (#1550).
+11. **Protocol subpaths name their ledger** — `@midnight-ntwrk/midnight-js-protocol/v9`, `/v9/compact-runtime`, `/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and `/v9/onchain-runtime` replace the unnamed `/ledger`, `/compact-runtime`, `/compact-js*` and `/onchain-runtime`, which are removed together with the root `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` namespaces (#1536).
 
 See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
 

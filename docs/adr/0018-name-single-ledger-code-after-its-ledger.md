@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-16
 - Deciders: Szymon Paluchowski
-- Related: #1490, #1489
+- Related: #1490, #1489, #1533, #1536
 
 ## Context
 
@@ -46,16 +46,21 @@ Issue #1533. The examples above (`currentEra` / `retainedEras`, `RetainedEraEntr
 factories take one handler per ledger era, keyed `v8` / `v9`
 ([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)). The rule itself stands.
 
-## Amendment — the rule reaches the protocol subpaths (2026-10-28)
+## Amendment — the rule reaches the protocol subpaths (2026-10-29)
 
 Issue #1536. The rule above covered names; one level down, the import paths did not follow it.
-`@midnight-ntwrk/midnight-js-protocol/ledger` and its siblings meant "the current era", so every type
-typed through them would describe ledger 10 objects after the next fork.
+`@midnight-ntwrk/midnight-js-protocol/ledger` and its siblings meant "the current era": in 4.x they
+served ledger 8, in 5.0.0 ledger 9, and after the next fork they would serve ledger 10. A type imported
+through them changes meaning at every fork.
 
 - Ledger 9 gets era-named subpaths symmetric with `./v8`: `./v9`, `./v9/compact-runtime`,
   `./v9/compact-js`, `./v9/compact-js/effect`, `./v9/compact-js/effect/Contract` and
-  `./v9/onchain-runtime`. The scheme is `./vN`, because `./v8` already exists. Ledger 10 adds `./v10/*`.
-- The unnamed subpaths and the root namespaces stay as frozen, `@deprecated` aliases of ledger 9.
-  They are never re-pointed at a fork.
-- `no-restricted-imports` blocks the unnamed subpaths in `packages/` and `testkit-js/`.
+  `./v9/onchain-runtime`. The scheme is `./vN`, because `./v8` already exists. Ledger 10 adds `./v10`
+  and `./v10/*`.
+- 5.0.0 removes the unnamed subpaths (`./ledger`, `./compact-runtime`, `./compact-js`,
+  `./compact-js/effect`, `./compact-js/effect/Contract`, `./onchain-runtime`) and the root namespaces
+  `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime`. Their meaning already changes between
+  4.x and 5.0.0, so an alias would keep the name but not the objects behind it; a build error tells the
+  consumer to pick a ledger. A `@deprecated` alias would also not warn: the declaration bundler drops
+  module-level JSDoc, and TypeScript does not flag a deprecated module path.
 - `./compact-js/v8/effect` keeps its path: renaming it would break consumers for no gain.

@@ -15,7 +15,7 @@ const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig
 
 - **No address registration.** The binding from a call to its artifacts is *derived* by joining on the verifier key: each key location embeds the SHA-256 of the call's deployed verifier key (known at assembly from the contract's resolved on-chain state), and resolution selects the source whose local verifier key for that circuit matches. The join is exactly the predicate the chain enforces (a proof must verify against the deployed key), so it is immune to redeploys, multiple deployments of one contract, and circuit-name collisions across contracts. Resolutions are memoized.
 - `resolveKeyLocation()` returns `undefined` for non-contract key locations (e.g. a `midnight/` protocol builtin) and throws `ZKArtifactNotFoundError` when a contract location's embedded hash matches no source.
-- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
+- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/v9/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
 
 Cross-contract call assembly resolves on-chain state at a chosen block via the new **"as-of" endpoint** on `PublicDataProvider`:
 

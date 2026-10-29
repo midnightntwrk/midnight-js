@@ -101,33 +101,6 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
   });
 });
 
-describe('unnamed ledger 9 subpath canaries', () => {
-  it.each([
-    ['./ledger', CONSUMER_PATH],
-    ['./compact-runtime', CONSUMER_PATH],
-    ['./compact-js', CONSUMER_PATH],
-    ['./compact-js/effect', CONSUMER_PATH],
-    ['./compact-js/effect/Contract', CONSUMER_PATH],
-    ['./onchain-runtime', CONSUMER_PATH],
-    ['./ledger', PACKAGE_TEST_PATH],
-    ['./ledger', TESTKIT_PATH],
-    ['./ledger', 'testkit-js/testkit-js-e2e/src/test/some.test.ts']
-  ])('flags an import of the unnamed subpath %s in %s', async (subpath, filePath) => {
-    const messages = await lintMessagesFor(importStatement(`${ACL_REPLACEMENT_PREFIX}${subpath.slice(1)}`), filePath, RULE_ID);
-
-    expect(messages).toHaveLength(1);
-  });
-
-  it.each(['/v9', '/v9/compact-runtime', '/v9/compact-js/effect/Contract', '/compact-js/v8/effect'])(
-    'allows an import of the era-named subpath %s',
-    async (subpath) => {
-      const messages = await lintMessagesFor(typeImportStatement(`${ACL_REPLACEMENT_PREFIX}${subpath}`), CONSUMER_PATH, RULE_ID);
-
-      expect(messages).toEqual([]);
-    }
-  );
-});
-
 describe('protocol/v8 gate canaries', () => {
   it('flags a runtime import of protocol/v8 from a consumer package', async () => {
     const messages = await lintMessagesFor(importStatement(LEDGER8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);

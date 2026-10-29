@@ -1,6 +1,6 @@
 # Protocol
 
-Version-agnostic re-exports of Midnight protocol packages. Decouples framework consumers from specific protocol version numbers, so that protocol upgrades require changes only in this package.
+Era-named re-exports of the Midnight protocol packages (`./v8`, `./v9`, `./v9/*`). A subpath always serves the same ledger; a new ledger adds a new `./vN` family next to the old one.
 
 ## Versioning Contract
 
@@ -8,7 +8,7 @@ Version-agnostic re-exports of Midnight protocol packages. Decouples framework c
 
 Protocol version changes are handled through:
 - **semver** (npm package version): major bump when underlying protocol packages change in a breaking way
-- **internal re-exports**: this package updates which concrete protocol packages it re-exports
+- **era-named subpaths**: a new ledger gets its own `./vN` subpaths; an existing subpath never changes the ledger it serves
 
 ## Installation
 
@@ -21,27 +21,26 @@ yarn add @midnight-ntwrk/midnight-js-protocol
 Import ledger 9 through the era-named subpaths:
 
 ```typescript
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type CompactRuntime } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { type OnChainRuntime } from '@midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime';
-import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
+import { type ContractAddress, CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { entryPointHash } from '@midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime';
+import { Configuration } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 ```
 
 An era-named subpath always means the same ledger. At the next fork, a new
 `./v10` family is added next to it, and `./v9` keeps meaning ledger 9.
 
-The unnamed subpaths (`./ledger`, `./compact-runtime`, `./compact-js`,
-`./compact-js/effect`, `./compact-js/effect/Contract`, `./onchain-runtime`) and
-the root namespaces (`ledger`, `compactRuntime`, `compactJs`, `onchainRuntime`)
-are deprecated. They are frozen aliases of ledger 9 and do not move to a later
-ledger at a fork.
+5.0.0 removed the unnamed subpaths (`./ledger`, `./compact-runtime`,
+`./compact-js`, `./compact-js/effect`, `./compact-js/effect/Contract`,
+`./onchain-runtime`) and the root namespaces (`ledger`, `compactRuntime`,
+`compactJs`, `onchainRuntime`). Import the `./v9` counterpart instead.
 
 ## Sub-path Exports
 
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
-| `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces. `protocol-acl.test.ts` pins the exact list |
+| `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the root barrel. `protocol-acl.test.ts` pins the exact list |
 | `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./v9` | `@midnightntwrk/ledger-v9` | Ledger 9 types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Ledger 8 — do not import at runtime; use `loadLedger8Protocol()` |
@@ -52,7 +51,6 @@ ledger at a fork.
 | `./v9/compact-js/effect/Contract` | `@midnight-ntwrk/compact-js/effect/Contract` | Effect-based Contract module for ledger 9 |
 | `./compact-js/v8/effect` | `@midnight-ntwrk/compact-js/v8/effect` | Effect-based Compact bindings for ledger 8 |
 | `./v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4` | On-chain runtime (Impact VM) for ledger 9 |
-| `./ledger`, `./compact-runtime`, `./compact-js`, `./compact-js/effect`, `./compact-js/effect/Contract`, `./onchain-runtime` | the `./v9` counterpart | Deprecated aliases of ledger 9 |
 | `./platform-js` | `@midnight-ntwrk/platform-js` | Platform services |
 | `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` | Effect-based configuration |
 | `./platform-js/effect/ContractAddress` | `@midnight-ntwrk/platform-js/effect/ContractAddress` | Effect-based contract address resolution |
@@ -264,11 +262,11 @@ Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/nod
 
 ## ESLint Enforcement
 
-Four rules in the repo's `eslint.config.mjs` govern how other packages reach protocol internals.
+Three rules in the repo's `eslint.config.mjs` govern how other packages reach protocol internals.
 
 **1. The protocol ACL** — a `no-restricted-imports` rule prevents direct imports of the underlying protocol packages outside of this package. If you see an error like:
 
-> Import from `@midnight-ntwrk/midnight-js-protocol/v9` (or /v8 for ledger 8) instead.
+> Import from `@midnight-ntwrk/midnight-js-protocol/v9` (or `import type` from /v8 for ledger 8) instead.
 
 Replace the direct protocol import with the corresponding subpath from this package. For the v8 era specifically, the error
 
@@ -279,8 +277,6 @@ means: replace the direct `./v8` runtime import with `loadLedger8Protocol()` (ty
 **2. The v8 static-import gate** — `@typescript-eslint/no-restricted-imports` blocks runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` outside `packages/protocol/src/`. Type-only imports (`import type`) are allowed.
 
 **3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnight-ntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
-
-**4. The era-named subpath gate** — `no-restricted-imports` blocks the deprecated unnamed subpaths (`./ledger`, `./compact-runtime`, ...) in `packages/` and `testkit-js/`. Use the `./v9/*` counterpart.
 
 Both v8 gates point at `loadLedger8Protocol()`, the accessor on the root barrel — the only sanctioned runtime path to the v8 era.
 

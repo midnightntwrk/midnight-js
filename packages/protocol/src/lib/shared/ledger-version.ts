@@ -27,7 +27,7 @@ export const LEDGER_VERSIONS = Object.freeze(['v8', 'v9'] as const);
 export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
 
 /**
- * The era whose objects this build hands out live, through `./ledger`.
+ * The era whose objects this build links eagerly, today through `./v9`.
  *
  * "Current" is relative: today it is ledger 9 (`'v9'`). At the next hard fork it
  * moves to the new ledger and ledger 9 joins {@link RetainedLedgerVersion}. Code

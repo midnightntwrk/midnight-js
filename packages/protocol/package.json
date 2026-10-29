@@ -25,10 +25,6 @@
       "types": "./dist/transaction.d.ts",
       "default": "./dist/transaction.js"
     },
-    "./ledger": {
-      "types": "./dist/ledger.d.ts",
-      "default": "./dist/ledger.js"
-    },
     "./v8": {
       "types": "./dist/v8.d.ts",
       "default": "./dist/v8.js"
@@ -61,29 +57,9 @@
       "types": "./dist/engine.d.ts",
       "default": "./dist/engine.js"
     },
-    "./compact-runtime": {
-      "types": "./dist/compact-runtime.d.ts",
-      "default": "./dist/compact-runtime.js"
-    },
-    "./compact-js": {
-      "types": "./dist/compact-js.d.ts",
-      "default": "./dist/compact-js.js"
-    },
-    "./compact-js/effect": {
-      "types": "./dist/compact-js-effect.d.ts",
-      "default": "./dist/compact-js-effect.js"
-    },
-    "./compact-js/effect/Contract": {
-      "types": "./dist/compact-js-effect-contract.d.ts",
-      "default": "./dist/compact-js-effect-contract.js"
-    },
     "./compact-js/v8/effect": {
       "types": "./dist/compact-js-v8-effect.d.ts",
       "default": "./dist/compact-js-v8-effect.js"
-    },
-    "./onchain-runtime": {
-      "types": "./dist/onchain-runtime.d.ts",
-      "default": "./dist/onchain-runtime.js"
     },
     "./platform-js": {
       "types": "./dist/platform.d.ts",
