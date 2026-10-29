@@ -1227,13 +1227,13 @@ Generic code names the era:
 
 ```ts
 // Before
-const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: FinalizedCallTxData<C, K>
+const check = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: FinalizedCallTxData<C, PCK>
 ) => data.public;
 
 // After
-const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: Ledger9FinalizedCallTxData<C, K>
+const check = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
 ) => data.public;
 ```
 
@@ -1253,7 +1253,7 @@ Rename the types that have no contract parameter: `FinalizedTxData` →
 `Ledger9CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` →
 `Ledger9ContractMaintenanceTxInterface`. Import `Transaction` from
 `@midnight-ntwrk/midnight-js-protocol/v9` instead of `types`. A third type argument to
-`ContractProviders` moves to `Ledger9ContractProviders<C, K, PS>`.
+`ContractProviders` moves to `Ledger9ContractProviders<C, PCK, PS>`.
 
 See [breaking-changes.md](./breaking-changes.md#22-ledger-9-types-carry-the-ledger9-prefix-flat-names-pick-the-era-1536).
 

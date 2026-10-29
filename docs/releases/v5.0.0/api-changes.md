@@ -472,7 +472,7 @@ export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Led
 // A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
 export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
-// `ContractProviders` requires its contract: `ContractProviders<C, K?>`
+// `ContractProviders` requires its contract: `ContractProviders<C, PCK?>`
 
 // The base of every recorded-failure class, in both eras
 export abstract class TxFailedError extends MidnightJsError {

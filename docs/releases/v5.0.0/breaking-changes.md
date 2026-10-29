@@ -1180,13 +1180,13 @@ This applies to `FoundContract`, `DeployedContract`, `FinalizedCallTxData`,
 
 Code with a concrete contract (`FoundContract<typeof MyContract>`) does not
 change. Generic code must name the era: a circuit id of a generic contract
-(`K extends Contract.ProvableCircuitId<C>`) does not satisfy the alias, so
-write `Ledger9FinalizedCallTxData<C, K>`, `Ledger9CallTxOptions<C, K>` and so
+(`PCK extends Contract.ProvableCircuitId<C>`) does not satisfy the alias, so
+write `Ledger9FinalizedCallTxData<C, PCK>`, `Ledger9CallTxOptions<C, PCK>` and so
 on. The entry points return the `Ledger9*` type, which is also what an editor
 shows.
 
 `ContractProviders` lost its third parameter (`PS`): the private state type comes
-from the contract. Use `Ledger9ContractProviders<C, K, PS>` to pass it.
+from the contract. Use `Ledger9ContractProviders<C, PCK, PS>` to pass it.
 
 **Types without a contract parameter.** Renamed, with no flat alias, because
 nothing tells the eras apart:

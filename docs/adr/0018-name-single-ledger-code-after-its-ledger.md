@@ -91,7 +91,7 @@ contract keeps its `Ledger9*` name, and the flat name, where it exists, is the u
 - No exported name carries the `AnyEra` prefix. `AnyEraContract` is `SmartContract`;
   `AnyEraMaintenanceTxData` is `FinalizedMaintenanceTxData`; `AnyEraFoundContract<C, L8>` and
   `AnyEraDeployedContract<C, L8>` are `FoundContract<C | L8>` and `DeployedContract<C | L8>`.
-- `FinalizedCallTxData<C, K>` and `SubmittedCallTx<C, K>` keep both type arguments required, as in
+- `FinalizedCallTxData<C, PCK>` and `SubmittedCallTx<C, PCK>` keep both type arguments required, as in
   4.x. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`: it is a
   weaker type, not the same one for every era, because without a contract `result` and
   `nextPrivateState` are `unknown` (the widest ledger 9 instantiation would type them `any`, which

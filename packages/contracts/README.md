@@ -221,8 +221,8 @@ era-named type: `Ledger9FoundContract<C>` or `Ledger8FoundContract<C>`.
 In generic code the contract is unknown, so name the era:
 
 ```typescript
-const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: Ledger9FinalizedCallTxData<C, K>
+const read = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
 ) => data.public;
 ```
 
