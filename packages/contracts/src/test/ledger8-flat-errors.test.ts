@@ -100,17 +100,19 @@ describe('the retained-era errors are published flat', () => {
     }
   });
 
-  it('gives every class the name it is exported under', () => {
-    const exported: Record<string, { name: string }> = {
-      Ledger8AmbiguousEntryPointError: barrel.Ledger8AmbiguousEntryPointError,
-      Ledger8CallUnsupportedError: barrel.Ledger8CallUnsupportedError,
-      Ledger8NotStoredError: barrel.Ledger8NotStoredError,
-      Ledger8SigningKeyError: barrel.Ledger8SigningKeyError,
-      Ledger8UnconfirmedError: barrel.Ledger8UnconfirmedError
+  it('gives every instance the name the class is exported under', () => {
+    const signingKey = { tag: 'schnorr' as const, value: '11'.repeat(32) };
+    const address = 'ab'.repeat(32);
+    const instances: Record<string, { name: string }> = {
+      Ledger8AmbiguousEntryPointError: new barrel.Ledger8AmbiguousEntryPointError('increment', 2),
+      Ledger8CallUnsupportedError: new barrel.Ledger8CallUnsupportedError('shielded-spend', 'increment'),
+      Ledger8NotStoredError: new barrel.Ledger8NotStoredError('deploy', address, signingKey, 'signing-key', new Error('store down')),
+      Ledger8SigningKeyError: new barrel.Ledger8SigningKeyError('unusable'),
+      Ledger8UnconfirmedError: new barrel.Ledger8UnconfirmedError('deploy', address, signingKey, new Error('unconfirmed'))
     };
 
     for (const name of LEDGER8_ERRORS) {
-      expect(exported[name].name).toBe(name);
+      expect(instances[name].name).toBe(name);
     }
   });
 
