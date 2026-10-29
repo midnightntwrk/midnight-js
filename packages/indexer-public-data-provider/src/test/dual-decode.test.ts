@@ -377,7 +377,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
     const FORBIDDEN = [
       '@midnightntwrk/ledger-v8',
       '@midnight-ntwrk/midnight-js-protocol/v8',
-      '@midnight-ntwrk/midnight-js-protocol/engine'
+      '@midnight-ntwrk/midnight-js-protocol/v8/engine'
     ];
 
     const linked = runtimeSpecifiers();

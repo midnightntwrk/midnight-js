@@ -15,7 +15,6 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   Ledger8FinalizedTxData,
   Ledger9FinalizedTxData,
@@ -102,13 +101,13 @@ export interface UnsubmittedDeployTxPrivateData<C extends Contract.Any> {
  */
 export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -213,8 +212,8 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9Fi
  * are `AnyEraMaintenanceTxData`.
  */
 export interface Ledger9FinalizedMaintenanceTxData {
-  /** The pipeline that produced this result: always the current era here. */
-  readonly era: CurrentLedgerVersion;
+  /** The pipeline that produced this result: always ledger 9 here. */
+  readonly era: 'v9';
   /** The finalized record of the maintenance transaction. */
   readonly public: Ledger9FinalizedTxData;
 }
@@ -229,10 +228,10 @@ export interface Ledger9FinalizedMaintenanceTxData {
  */
 export interface Ledger9FoundDeployTxData<C extends Contract.Any> {
   /**
-   * The pipeline this handle runs on: always the current era here. The era that
+   * The pipeline this handle runs on: always ledger 9 here. The era that
    * recorded the deploy transaction is `public.era`.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
   /**
    * The data of the deploy transaction that is visible on the blockchain.
    */
@@ -377,11 +376,11 @@ export interface Ledger9SubmittedCallTx<C extends Contract.Any, PCK extends Cont
   /** See {@link Ledger9FinalizedCallTxData.circuitId}. */
   readonly circuitId: PCK;
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
 }

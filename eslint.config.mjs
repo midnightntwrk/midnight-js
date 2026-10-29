@@ -77,30 +77,30 @@ const LEDGER8_RUNTIME_MESSAGE =
 // interpolation cannot be matched statically and is not covered here.
 const ledger8DynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
     message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(?!\\/engine(\\/|$))(\\/|$)/]",
     message: `${LEDGER8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
   }
 ];
 
 // The engine's heavy chunk is reachable only through loadLedger8Engine(); the
-// gate mirrors the v8 pair above, on the `./engine` subpath.
+// gate mirrors the v8 pair above, on the `./v8/engine` subpath.
 const ENGINE_RUNTIME_MESSAGE =
   'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol.';
 
 const engineDynamicImportSelectors = [
   {
-    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
-    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
+    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
+    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/v8/engine are not allowed outside packages/protocol/src/.`
   },
   {
     selector:
-      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
-    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8\\/engine(\\/|$)/]",
+    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/v8/engine are not allowed outside packages/protocol/src/.`
   }
 ];
 
@@ -367,14 +367,14 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
+              regex: '^@midnight-ntwrk/midnight-js-protocol/v8(?!/engine(/|$))(/|$)',
               allowTypeImports: true,
               message: `${LEDGER8_RUNTIME_MESSAGE} Type-only imports are allowed.`
             },
             {
               group: [
-                '@midnight-ntwrk/midnight-js-protocol/engine',
-                '@midnight-ntwrk/midnight-js-protocol/engine/*'
+                '@midnight-ntwrk/midnight-js-protocol/v8/engine',
+                '@midnight-ntwrk/midnight-js-protocol/v8/engine/*'
               ],
               allowTypeImports: true,
               message: `${ENGINE_RUNTIME_MESSAGE} Type-only imports are allowed.`

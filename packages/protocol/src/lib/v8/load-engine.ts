@@ -49,7 +49,7 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  *
  * @returns The engine's public surface, memoised after the first successful
  *   load.
- * @throws Ledger8RuntimeMissingError If the retained runtime, or the `./engine`
+ * @throws Ledger8RuntimeMissingError If the retained runtime, or the `./v8/engine`
  *   chunk itself, cannot be acquired.
  * @see {@link ModuleGraphAndLazyLoading}
  * @see {@link EraBoundary}
@@ -59,5 +59,5 @@ export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
     .then((engineModule) => engineModule.createLedger8Engine())
     .catch((error: unknown) => {
       enginePromise = undefined;
-      throw error instanceof Ledger8RuntimeMissingError ? error : new Ledger8RuntimeMissingError('/engine', error);
+      throw error instanceof Ledger8RuntimeMissingError ? error : new Ledger8RuntimeMissingError('/v8/engine', error);
     }));

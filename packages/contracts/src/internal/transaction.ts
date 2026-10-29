@@ -17,7 +17,6 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerState,
@@ -252,7 +251,7 @@ export class TransactionContextImpl<
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       circuitId,
       private: unprovenCallTxData.private,
       public: {
@@ -440,7 +439,7 @@ const runScope = async <
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
     const nestedCallResult: CallResult<C, PCK> = {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,

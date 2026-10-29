@@ -17,7 +17,6 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -139,5 +138,5 @@ export async function submitInsertVerifierKeyTx<C extends Contract.Any>(
   if (submitTxResult.status !== SucceedEntirely) {
     throw new InsertVerifierKeyTxFailedError(submitTxResult);
   }
-  return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
+  return { era: 'v9', public: submitTxResult };
 }

@@ -16,7 +16,6 @@
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -326,7 +325,7 @@ export async function deployContract<C extends Contract.Any>(
   }
   const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
   return {
-    era: CURRENT_LEDGER_VERSION,
+    era: 'v9',
     compiledContract: options.compiledContract,
     contractAddress: deployTxData.public.contractAddress,
     deployTxData,

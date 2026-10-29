@@ -16,7 +16,6 @@
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
@@ -377,7 +376,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   });
 
   return {
-    era: CURRENT_LEDGER_VERSION,
+    era: 'v9',
     circuitId: options.circuitId,
     txId,
     callTxData: unprovenCallTxData

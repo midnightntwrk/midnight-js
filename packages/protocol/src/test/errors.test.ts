@@ -133,11 +133,11 @@ describe('Ledger8RuntimeMissingError', () => {
   // The two chunks pull different retained-era dependencies, so a message that
   // names the wrong one sends an operator to an entry point that loaded fine.
   it('names the engine subpath, not the v8 one, when the engine chunk is what failed', () => {
-    const error = new Ledger8RuntimeMissingError('/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
+    const error = new Ledger8RuntimeMissingError('/v8/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
 
-    expect(error.subpath).toBe('/engine');
-    expect(error.message).toContain('midnight-js-protocol/engine');
-    expect(error.message).not.toContain('midnight-js-protocol/v8');
+    expect(error.subpath).toBe('/v8/engine');
+    expect(error.message).toContain('midnight-js-protocol/v8/engine');
+    expect(error.message).not.toMatch(/midnight-js-protocol\/v8(?!\/engine)/);
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 });

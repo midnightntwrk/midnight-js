@@ -1210,7 +1210,8 @@ import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
 ```
 
 `platform` and the `./platform-js` subpaths do not depend on the ledger and stay
-as they are. `./compact-js/v8/effect` also stays.
+as they are. `./compact-js/v8/effect` also stays. A type import from `./engine`
+moves to `./v8/engine`.
 
 See [breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536).
 
@@ -1246,13 +1247,14 @@ A flat name given `any` as the contract is a union of both eras: `FoundContract<
 `era: 'v8' | 'v9'`. Name the contract, or use `Ledger9FoundContract<any>`.
 
 Rename the types that have no contract parameter: `FinalizedTxData` →
-`Ledger9FinalizedTxData`, `FinalizedMaintenanceTxData` →
+`Ledger9FinalizedTxData`, `UnboundTransaction` → `Ledger9UnboundTransaction`, `FinalizedMaintenanceTxData` →
 `Ledger9FinalizedMaintenanceTxData`, `FinalizedCallTxPublicData` →
 `Ledger9FinalizedCallTxPublicData`, `FinalizedDeployTxPublicData` →
 `Ledger9FinalizedDeployTxPublicData`, `CallResultPublic` →
 `Ledger9CallResultPublic`, `CircuitMaintenanceTxInterface` →
 `Ledger9CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` →
-`Ledger9ContractMaintenanceTxInterface`. A third type argument to
+`Ledger9ContractMaintenanceTxInterface`. Import `Transaction` from
+`@midnight-ntwrk/midnight-js-protocol/v9` instead of `types`. A third type argument to
 `ContractProviders` moves to `Ledger9ContractProviders<C, K, PS>`.
 
 See [breaking-changes.md](./breaking-changes.md#22-ledger-9-types-carry-the-ledger9-prefix-flat-names-pick-the-era-1536).

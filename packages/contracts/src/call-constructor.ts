@@ -19,7 +19,6 @@ import {
   type ContractState,
   type ZswapLocalState
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * Describes the target of a circuit invocation.
@@ -98,11 +97,11 @@ export interface ContractConstructorResult<C extends Contract.Any> {
    */
   readonly nextZswapLocalState: ZswapLocalState;
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
 }

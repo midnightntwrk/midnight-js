@@ -14,7 +14,6 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type Ledger9ContractProviders } from './contract-providers';
@@ -114,7 +113,7 @@ export async function submitDeployTx<C extends Contract.Any>(
     unprovenDeployTxData.private.signingKey
   );
   return {
-    era: CURRENT_LEDGER_VERSION,
+    era: 'v9',
     private: unprovenDeployTxData.private,
     public: {
       ...finalizedTxData,

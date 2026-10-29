@@ -18,10 +18,10 @@ import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors'
 import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   InvalidTransactionHandleError,
+  type Ledger9UnboundTransaction,
   LedgerTransaction,
   type ProverKey,
   type ProveTxConfig,
-  type UnboundTransaction,
   type UnprovenTx,
   type VerifierKey,
   ZKConfigProvider,
@@ -130,7 +130,7 @@ const unprovenLedger9Handle = (): UnprovenTx => LedgerTransaction.seal('v9', 'Un
  * drives no circuit, so without this the per-call timeout would never reach
  * the underlying provider.
  */
-const proveThroughProvider = (proven: UnboundTransaction): void => {
+const proveThroughProvider = (proven: Ledger9UnboundTransaction): void => {
   vi.spyOn(Transaction.prototype, 'prove').mockImplementation(async (provingProvider: ProvingProvider) => {
     await provingProvider.prove(new Uint8Array(), 'test-circuit');
     return proven;
@@ -144,7 +144,7 @@ const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
   );
 
 describe('httpClientProofProvider', () => {
-  let provenLedger9Tx: UnboundTransaction;
+  let provenLedger9Tx: Ledger9UnboundTransaction;
 
   beforeAll(async () => {
     provenLedger9Tx = await Transaction.fromParts('undeployed').prove(inertProvingProvider, CostModel.initialCostModel());

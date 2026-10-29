@@ -53,7 +53,7 @@
       "types": "./dist/v9-onchain-runtime.d.ts",
       "default": "./dist/v9-onchain-runtime.js"
     },
-    "./engine": {
+    "./v8/engine": {
       "types": "./dist/engine.d.ts",
       "default": "./dist/engine.js"
     },

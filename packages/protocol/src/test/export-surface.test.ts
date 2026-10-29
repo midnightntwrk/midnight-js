@@ -88,7 +88,8 @@ const REMOVED_SUBPATHS = [
   './compact-js',
   './compact-js/effect',
   './compact-js/effect/Contract',
-  './onchain-runtime'
+  './onchain-runtime',
+  './engine'
 ];
 
 const sourceEntryNames = (): string[] =>
@@ -130,6 +131,10 @@ describe('protocol export surface', () => {
     const subpaths = [...entryNamesBySubpath().keys()];
 
     expect(REMOVED_SUBPATHS.filter((removed) => subpaths.includes(removed))).toEqual([]);
+  });
+
+  it('serves the ledger 8 engine from ./v8/engine', () => {
+    expect(entryNamesBySubpath().get('./v8/engine')).toEqual(['engine']);
   });
 
   it.each(LEDGER9_SUBPATHS)('serves exactly the ledger 9 package from %s', async (subpath, load) => {

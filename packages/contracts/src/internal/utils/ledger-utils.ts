@@ -23,6 +23,7 @@ import {
   type EncPublicKey,
   Intent,
   QueryContext as LedgerQueryContext,
+  Transaction,
   type Transcript,
   type UnprovenOffer,
   type UnprovenTransaction,
@@ -40,8 +41,7 @@ import {
 import {
   encodeContractKeyLocation,
   hashVerifierKey,
-  type MidnightConfig,
-  Transaction
+  type MidnightConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertDefined,

@@ -16,7 +16,6 @@
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -137,6 +136,6 @@ export function submitReplaceAuthorityTx<C extends Contract.Any>(
     // TODO: What if machine crashes right before the following set executes? How to recover?
     //       Likely will need a history of pending transactions.
     await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
-    return { era: CURRENT_LEDGER_VERSION, public: submitTxResult };
+    return { era: 'v9', public: submitTxResult };
   };
 }

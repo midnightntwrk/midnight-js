@@ -33,11 +33,10 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
+  type Ledger9UnboundTransaction,
   LedgerTransaction,
   type ProofProvider,
-  type ProveTxConfig,
-  type UnboundTransaction
-} from '@midnight-ntwrk/midnight-js-types';
+  type ProveTxConfig} from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -70,7 +69,7 @@ describe('Proof server integration', () => {
   // ever sends v9 transactions, so it seals the request and unwraps the v9
   // response once here, keeping every assertion below written against the
   // plain ledger transaction.
-  const proveLedger9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<UnboundTransaction> =>
+  const proveLedger9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<Ledger9UnboundTransaction> =>
     LedgerTransaction.unwrap(
       await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config),
       'v9'

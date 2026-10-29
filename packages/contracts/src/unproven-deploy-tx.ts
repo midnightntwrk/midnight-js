@@ -18,7 +18,6 @@ import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   exitResultOrError,
   LedgerTransaction,
@@ -160,7 +159,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     );
 
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       public: {
         contractAddress,
         initialContractState

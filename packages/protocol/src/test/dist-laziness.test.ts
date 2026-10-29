@@ -34,7 +34,7 @@ const DIST_TRANSACTION_PATH = 'dist/transaction.js';
 // v8-surface.test.ts keeps matching only lib/v8/load.ts.
 const LEDGER8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
 const LEDGER8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
-// The `./engine` entry chunk, named the same way and for the same reason: the
+// The `./v8/engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/v8/load-engine.ts comes
 // out as an output-relative specifier too, at whatever depth the chunk that
 // imports it sits.
