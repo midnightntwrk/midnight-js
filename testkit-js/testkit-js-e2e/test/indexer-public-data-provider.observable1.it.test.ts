@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateRead,
   type FinalizedTxData,

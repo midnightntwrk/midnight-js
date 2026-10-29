@@ -18,7 +18,7 @@ import path from 'node:path';
 
 import { deployContract, type Ledger8, ProviderFailedError, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
 import {

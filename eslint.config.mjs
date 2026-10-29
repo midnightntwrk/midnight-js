@@ -139,22 +139,22 @@ const protocolImportPatterns = [
   {
     group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9 (or `import type` from /v8 for ledger 8) instead. Only packages/protocol/src/ may import from ledger directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-runtime'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
   },
   {
     group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
     message:
-      'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+      'Import from @midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
   },
   {
     group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],

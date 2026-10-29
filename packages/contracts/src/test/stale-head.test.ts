@@ -40,7 +40,7 @@ import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type ContractStateAndParametersRead,
   type FinalizedTx,

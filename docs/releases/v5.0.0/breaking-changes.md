@@ -15,7 +15,7 @@ v5.0.0 is a protocol-level major release. The breaking surface concentrates in f
 
 Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, `compactc 0.33.0-rc.1`.
 
-**Impact:** Any code importing ledger / onchain-runtime types should do so **only** through the protocol package's subpath re-exports — direct imports of the old-scope packages are flagged by ESLint (`no-restricted-imports`) and resolve to incompatible type shapes.
+**Impact:** Any code importing ledger / onchain-runtime types should do so **only** through the protocol package's subpath re-exports (`/v9`, `/v9/onchain-runtime`; the unnamed subpaths in the table above are removed, see [section 21](#21-unnamed-protocol-subpaths-removed-1536)) — direct imports of the old-scope packages are flagged by ESLint (`no-restricted-imports`) and resolve to incompatible type shapes.
 
 **Note on scope:** the protocol packages now live under `@midnightntwrk/*` (no hyphen), distinct from the framework packages which remain `@midnight-ntwrk/midnight-js-*` (hyphenated). Mixing a transitively-resolved copy of ledger-v9 from a different publication causes duplicate-major type clashes — pin a single version (see the migration guide's resolutions).
 
@@ -151,8 +151,9 @@ JavaScript build per entry. The `main` / `module` fields are gone and each
 }
 ```
 
-Subpath **keys** are unchanged, so no import specifier in your code has to move.
-`@midnight-ntwrk/midnight-js-protocol/ledger` and friends still resolve.
+This change keeps every subpath **key**, so it moves no import specifier in your
+code. [Section 21](#21-unnamed-protocol-subpaths-removed-1536) removes the
+unnamed protocol subpaths separately.
 
 **Impact — you need both of these:**
 
@@ -164,7 +165,7 @@ Subpath **keys** are unchanged, so no import specifier in your code has to move.
 A CommonJS TypeScript consumer keeps working at runtime, but only some `module`
 settings **compile**. Verified against tsc 6.0.3 with a CommonJS consumer file
 importing `@midnight-ntwrk/midnight-js/utils` and
-`@midnight-ntwrk/midnight-js-protocol/ledger`:
+`@midnight-ntwrk/midnight-js-protocol/ledger` (now `/v9`, see section 21):
 
 | `module` | `moduleResolution` | Result |
 |----------|--------------------|--------|
@@ -1121,6 +1122,33 @@ The v8 pipeline (keep-state and ledger 8 maintenance) refuses ledger parameters
 served in a shape that is not a `LedgerState` with `UnrecognisedEraTagError`,
 instead of taking them as absent. Parameters not served at all still give
 `LedgerParametersUnservedError`.
+
+## 21. Unnamed protocol subpaths removed (#1536)
+
+`@midnight-ntwrk/midnight-js-protocol` names the ledger in each subpath that
+depends on one. These 4.x subpaths and root namespaces are removed:
+
+| Removed | Use instead |
+|---|---|
+| `/ledger` | `/v9` |
+| `/compact-runtime` | `/v9/compact-runtime` |
+| `/compact-js` | `/v9/compact-js` |
+| `/compact-js/effect` | `/v9/compact-js/effect` |
+| `/compact-js/effect/Contract` | `/v9/compact-js/effect/Contract` |
+| `/onchain-runtime` | `/v9/onchain-runtime` |
+| root `ledger` namespace | `import * as ledger from '…/v9'` |
+| root `compactRuntime` namespace | `import * as compactRuntime from '…/v9/compact-runtime'` |
+| root `compactJs` namespace | `import * as compactJs from '…/v9/compact-js'` |
+| root `onchainRuntime` namespace | `import * as onchainRuntime from '…/v9/onchain-runtime'` |
+
+**Why:** the unnamed subpaths served ledger 8 in 4.x and ledger 9 in 5.0.0, and
+would serve ledger 10 after the next fork. A `./vN` subpath always serves the
+same ledger; the next ledger adds `./v10` and `./v10/*` next to it.
+
+**Impact:** each old import fails to resolve at build time. Replace it as the
+table shows — see Step 20 of the [migration guide](./migration-guide.md).
+`platform`, the `./platform-js` subpaths and `./compact-js/v8/effect` are
+unchanged.
 
 ---
 

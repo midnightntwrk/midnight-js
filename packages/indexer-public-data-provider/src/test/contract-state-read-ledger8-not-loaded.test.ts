@@ -14,7 +14,7 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test, vi } from 'vitest';

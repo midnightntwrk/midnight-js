@@ -22,18 +22,17 @@ import { namingViolations, publishedNames } from '../../../../build-tools/publis
 const names = publishedNames(resolve(__dirname, '../..'), {
     // These entry points re-export the ledger, runtime and platform packages under their own names.
     skipSubpaths: [
-      './ledger',
-      './compact-runtime',
-      './compact-js',
-      './compact-js/effect',
-      './compact-js/effect/Contract',
+      './v9',
+      './v9/compact-runtime',
+      './v9/compact-js',
+      './v9/compact-js/effect',
+      './v9/compact-js/effect/Contract',
       './compact-js/v8/effect',
-      './onchain-runtime',
+      './v9/onchain-runtime',
       './platform-js',
       './platform-js/effect/Configuration',
       './platform-js/effect/ContractAddress'
-    ],
-    skipNamespaces: ['ledger', 'compactRuntime', 'onchainRuntime']
+    ]
   });
 
 describe('published names', () => {

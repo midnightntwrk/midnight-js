@@ -18,8 +18,4 @@ export * from './lib/era/load-era';
 export { type Ledger8Protocol, loadLedger8Protocol } from './lib/v8/load';
 export * from './lib/v8/load-engine';
 export * from './version';
-export * as compactJs from '@midnight-ntwrk/compact-js';
-export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 export * as platform from '@midnight-ntwrk/platform-js';
-export * as ledger from '@midnightntwrk/ledger-v9';
-export * as onchainRuntime from '@midnightntwrk/onchain-runtime-v4';

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 

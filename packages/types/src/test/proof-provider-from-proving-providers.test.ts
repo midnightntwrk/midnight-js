@@ -15,8 +15,8 @@
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';

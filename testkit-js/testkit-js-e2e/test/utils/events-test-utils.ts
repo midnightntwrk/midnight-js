@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { type ContractEvent, type ContractEventType, type PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { getTestEnvironment, initializeMidnightProviders, type TestEnvironment } from '@midnight-ntwrk/testkit-js';
 import type { Logger } from 'pino';

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { ChargedState, ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ChargedState, ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,

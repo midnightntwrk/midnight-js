@@ -44,10 +44,10 @@ describe('LEDGER_VERSIONS', () => {
 });
 
 // Which era is CURRENT is a protocol fact — it is the era whose objects
-// `./ledger` hands out live — so it is declared beside the era set rather than
+// the package links eagerly — so it is declared beside the era set rather than
 // restated by every package that has to split "now" from "still supported".
 describe('CURRENT_LEDGER_VERSION', () => {
-  it('is the era whose live objects the ledger subpath serves', () => {
+  it('is ledger 9, the era the package links eagerly', () => {
     expect(CURRENT_LEDGER_VERSION).toBe('v9');
   });
 

@@ -14,7 +14,7 @@
  */
 
 import { createUnprovenCallTx, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractConfiguration,

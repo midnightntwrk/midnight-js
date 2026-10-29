@@ -113,6 +113,16 @@ is a `FinalizedTx` of the record's era; read it with
 Layer rule: `@midnight-ntwrk/midnight-js-protocol` speaks raw ledger objects; every
 package from `types` up speaks only handles in its public API.
 
+Import ledger 9 objects through the era-named subpaths: `/v9`, `/v9/compact-runtime`,
+`/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and
+`/v9/onchain-runtime` of `@midnight-ntwrk/midnight-js-protocol`. The unnamed 4.x
+subpaths (`/ledger`, `/compact-runtime`, ...) and the root `ledger`,
+`compactRuntime`, `compactJs` and `onchainRuntime` namespaces are removed.
+
+```typescript
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+```
+
 ## Main APIs
 
 ### Contract Deployment

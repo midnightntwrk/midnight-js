@@ -15,7 +15,7 @@
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

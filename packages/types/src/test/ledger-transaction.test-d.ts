@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { UnprovenTransaction as Ledger9UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { UnprovenTransaction as Ledger8UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { UnprovenTransaction as Ledger9UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import {

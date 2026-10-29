@@ -15,7 +15,7 @@
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   InvalidTransactionHandleError,
   type KeyMaterialProvider,

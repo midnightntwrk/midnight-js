@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
-  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractExecutionError, findCodedCause } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
+import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
+  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
 import { type ManagedRuntime } from 'effect/ManagedRuntime';
 

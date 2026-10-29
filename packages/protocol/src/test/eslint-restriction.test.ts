@@ -83,7 +83,7 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
   });
 
   it('allows a consumer package to import via the protocol ACL subpath', async () => {
-    const messages = await lintMessagesFor(importStatement(`${ACL_REPLACEMENT_PREFIX}/ledger`), CONSUMER_PATH, RULE_ID);
+    const messages = await lintMessagesFor(importStatement(`${ACL_REPLACEMENT_PREFIX}/v9`), CONSUMER_PATH, RULE_ID);
 
     expect(messages).toEqual([]);
   });

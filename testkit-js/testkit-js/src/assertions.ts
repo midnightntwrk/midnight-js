@@ -22,9 +22,9 @@ import type {
   FinalizedDeployTxPublicData,
   FoundDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { ContractState, type StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { ContractState, type StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type FinalizedTxData,
   LedgerTransaction,

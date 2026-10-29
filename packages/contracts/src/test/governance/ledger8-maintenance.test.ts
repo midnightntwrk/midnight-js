@@ -29,8 +29,8 @@ import {
   loadLedger8Protocol,
   MaintenanceAuthorityMismatchError
 } from '@midnight-ntwrk/midnight-js-protocol';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
   FailFallible,

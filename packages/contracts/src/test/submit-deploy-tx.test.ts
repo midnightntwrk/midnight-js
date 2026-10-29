@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,7 +36,7 @@ import {
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
-vi.mock('@midnight-ntwrk/midnight-js-protocol/compact-runtime');
+vi.mock('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
 
 describe('submit-deploy-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any

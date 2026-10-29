@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { deployContract } from '../deploy-contract';

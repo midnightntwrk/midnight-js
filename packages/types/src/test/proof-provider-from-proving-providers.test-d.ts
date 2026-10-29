@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import { createProofProviderFromProvingProviders, type ProofProvider } from '../proof-provider';

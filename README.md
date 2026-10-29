@@ -89,7 +89,7 @@ import {
   dappConnectorProofProvider,
   dappConnectorWalletProviders
 } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
 
 const connectedAPI = await initialAPI.connect('preview');
 
@@ -145,7 +145,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Deprecated global network id (use `MidnightProviders.config`) |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
-| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
+| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |
 | [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture

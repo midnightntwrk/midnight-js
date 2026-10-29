@@ -30,7 +30,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
 | `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id; the framework reads `MidnightProviders.config` since 5.0.0 |
-| `@midnight-ntwrk/midnight-js-protocol` | Version-agnostic re-exports of Midnight protocol packages |
+| `@midnight-ntwrk/midnight-js-protocol` | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
 
 ### Providers

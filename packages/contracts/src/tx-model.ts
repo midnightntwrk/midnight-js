@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type {
   FinalizedTxData,

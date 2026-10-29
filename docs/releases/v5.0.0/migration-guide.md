@@ -82,7 +82,7 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 # .yarnrc.yml — @midnightntwrk resolves from the default public npm registry
 ```
 
-> Import ledger / onchain-runtime types **only** through `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime`. Direct imports of the old-scope packages resolve to incompatible shapes.
+> Import ledger / onchain-runtime types **only** through `@midnight-ntwrk/midnight-js-protocol/v9` and `/v9/onchain-runtime` (see Step 20). Direct imports of the old-scope packages resolve to incompatible shapes.
 
 ---
 
@@ -1174,6 +1174,46 @@ state use. `requireLedger9` narrows on `era` too.
 See [breaking-changes.md](./breaking-changes.md#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)
 and ADR 0020.
 
+## Step 20 — Import ledger 9 from the era-named subpaths
+
+`@midnight-ntwrk/midnight-js-protocol` now names the ledger in its subpaths (#1536).
+5.0.0 removes the unnamed subpaths and the root namespaces. In 4.x they served
+ledger 8; keeping them would hand you ledger 9 objects under a name your code
+wrote for ledger 8. Your build now fails on each old import until you pick the
+ledger:
+
+| 4.x import | 5.0.0 import |
+|---|---|
+| `…/ledger` | `…/v9` |
+| `…/compact-runtime` | `…/v9/compact-runtime` |
+| `…/compact-js` | `…/v9/compact-js` |
+| `…/compact-js/effect` | `…/v9/compact-js/effect` |
+| `…/compact-js/effect/Contract` | `…/v9/compact-js/effect/Contract` |
+| `…/onchain-runtime` | `…/v9/onchain-runtime` |
+| `import { ledger } from '@midnight-ntwrk/midnight-js-protocol'` | `import * as ledger from '…/v9'` |
+| `import { compactRuntime } from '@midnight-ntwrk/midnight-js-protocol'` | `import * as compactRuntime from '…/v9/compact-runtime'` |
+| `import { compactJs } from '@midnight-ntwrk/midnight-js-protocol'` | `import * as compactJs from '…/v9/compact-js'` |
+| `import { onchainRuntime } from '@midnight-ntwrk/midnight-js-protocol'` | `import * as onchainRuntime from '…/v9/onchain-runtime'` |
+
+`…` stands for `@midnight-ntwrk/midnight-js-protocol`.
+
+```ts
+// Before
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { ledger } from '@midnight-ntwrk/midnight-js-protocol';
+
+// After
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+```
+
+`platform` and the `./platform-js` subpaths do not depend on the ledger and stay
+as they are. `./compact-js/v8/effect` also stays.
+
+See [breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -1202,3 +1242,4 @@ and ADR 0020.
 - [ ] The indexer is `4.4.0-rc.6` or later.
 - [ ] Every contract-state read and `getPublicStates` / `getStates` result is decoded with `deserialize`, passing the `ContractState` of the runtime your contract was compiled against.
 - [ ] No code calls `queryRawContractState`, `rawContractStateObservable` or `getAnyEraContractState`.
+- [ ] No import of `@midnight-ntwrk/midnight-js-protocol/ledger`, `/compact-runtime`, `/compact-js*` or `/onchain-runtime`, and no use of the root `ledger`, `compactRuntime`, `compactJs` or `onchainRuntime` namespaces.

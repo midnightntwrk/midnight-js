@@ -25,8 +25,8 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { MaintenanceAuthorityMismatchError, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
 import {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractModuleProvider } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractModuleProvider } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 
 import type { LoggerProvider } from './logger-provider';
 import type { MidnightConfig } from './midnight-config';

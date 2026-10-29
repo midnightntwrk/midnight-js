@@ -23,13 +23,13 @@ import {
   findDeployedContract,
   submitCallTx,
   submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
+import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   ContractState,
   decodeZswapLocalState,
   emptyZswapLocalState,
   sampleSigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type {

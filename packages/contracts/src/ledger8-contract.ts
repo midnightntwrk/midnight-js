@@ -54,13 +54,13 @@ import type {
 type Ledger8StateValue = TranscriptPojo['postContractState'];
 type Ledger8SerializableContractState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
 
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type {
   CommunicationCommitmentData,
   ContractAddress,
   SigningKey,
   ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,

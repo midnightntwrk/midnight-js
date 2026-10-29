@@ -45,7 +45,7 @@ import {
   type LedgerEra,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type ContractStateAndParametersRead,
   type ContractStateRead,

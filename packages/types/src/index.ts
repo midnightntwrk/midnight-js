@@ -33,4 +33,4 @@ export * from './wallet-provider';
 export * from './zk-config-provider';
 export * from './zk-config-registry';
 export * from './zk-key-location';
-export { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+export { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';

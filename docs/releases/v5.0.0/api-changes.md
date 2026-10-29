@@ -119,7 +119,7 @@ export class ZKConfigRegistry {
 }
 export class ZKArtifactNotFoundError extends Error { readonly keyLocation: ContractKeyLocation; }
 
-// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/compact-js
+// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/v9/compact-js
 export type ContractKeyLocation = /* { contractAddress, circuitId, ... } */;
 export const encodeContractKeyLocation: (loc: ContractKeyLocation) => string;
 export const parseContractKeyLocation: (s: string) => ContractKeyLocation | undefined;
@@ -613,15 +613,34 @@ export function withDeserializationContext<T>(/* ... */): T;
 
 ## `@midnight-ntwrk/midnight-js-protocol`
 
-Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md)):
+Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md)). The ledger-bound subpaths are now named after ledger 9, see the next section:
 
 | Subpath | Now resolves to |
 |---------|-----------------|
-| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
-| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
-| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
-| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
+| `/v9` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| `/v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
+| `/v9/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
+| `/v9/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
+
+### Era-named ledger 9 subpaths (#1536)
+
+New subpaths name ledger 9 and keep that meaning at every later fork. The
+unnamed subpaths they replace are removed (see
+[breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536)):
+
+| New subpath | Replaces (removed) |
+|---|---|
+| `/v9` | `/ledger` |
+| `/v9/compact-runtime` | `/compact-runtime` |
+| `/v9/compact-js` | `/compact-js` |
+| `/v9/compact-js/effect` | `/compact-js/effect` |
+| `/v9/compact-js/effect/Contract` | `/compact-js/effect/Contract` |
+| `/v9/onchain-runtime` | `/onchain-runtime` |
+
+The root namespaces `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime`
+are removed too. Import the matching `/v9` subpath as a namespace instead
+(`import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9'`).
 
 ## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
 

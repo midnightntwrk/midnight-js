@@ -15,7 +15,7 @@
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   InvalidTransactionHandleError,
   LedgerTransaction,

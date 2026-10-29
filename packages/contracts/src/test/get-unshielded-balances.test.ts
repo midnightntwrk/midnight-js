@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import type { UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';

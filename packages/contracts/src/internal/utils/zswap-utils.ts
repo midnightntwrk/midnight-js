@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
@@ -35,7 +34,8 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput,
-  ZswapTransient} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+  ZswapTransient} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { NetworkId } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertDefined,

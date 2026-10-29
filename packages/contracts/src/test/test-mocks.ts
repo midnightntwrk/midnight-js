@@ -13,20 +13,7 @@
  * limitations under the License.
  */
 
-import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import {
-  assert as compactAssert,
-  ChargedState,
-  CompactError,
-  type ContractState,
-  emptyZswapLocalState,
-  finalizeCallProofData,  type Op,
-  QueryContext,
-  sampleSigningKey,
-  type SigningKey,
-  StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -44,8 +31,21 @@ import {
   type TokenType,
   type ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import {
+  assert as compactAssert,
+  ChargedState,
+  CompactError,
+  type ContractState,
+  emptyZswapLocalState,
+  finalizeCallProofData,  type Op,
+  QueryContext,
+  sampleSigningKey,
+  type SigningKey,
+  StateValue,
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { CURRENT_LEDGER_VERSION, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {

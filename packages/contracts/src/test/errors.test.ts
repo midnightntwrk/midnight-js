@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyProvableCircuitId,
   FailEntirely,

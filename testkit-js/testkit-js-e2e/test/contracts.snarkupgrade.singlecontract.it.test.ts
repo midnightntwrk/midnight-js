@@ -21,8 +21,8 @@ import {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,

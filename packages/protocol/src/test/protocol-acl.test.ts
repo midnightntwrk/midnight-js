@@ -15,28 +15,15 @@
 
 import { describe, expect, it } from 'vitest';
 
-import * as compactJs from '../compact-js';
-import * as compactJsEffect from '../compact-js-effect';
-import * as compactJsEffectContract from '../compact-js-effect-contract';
-import * as compactRuntime from '../compact-runtime';
 import * as protocol from '../index';
-import * as ledger from '../ledger';
-import * as onchainRuntime from '../onchain-runtime';
 import * as platform from '../platform';
 import * as platformEffectConfiguration from '../platform-effect-configuration';
 import * as platformEffectContractAddress from '../platform-effect-contract-address';
-
-// Pairings of a subpath module and the matching top-level namespace. The two
-// must expose identical member sets — otherwise consumers see different
-// surfaces depending on import style and tree-shaking breaks.
-type ModuleRecord = Readonly<Record<string, unknown>>;
-const subpathNamespacePairs: readonly [name: string, subpath: ModuleRecord, namespace: ModuleRecord][] = [
-  ['ledger', ledger, protocol.ledger],
-  ['compact-runtime', compactRuntime, protocol.compactRuntime],
-  ['compact-js', compactJs, protocol.compactJs],
-  ['onchain-runtime', onchainRuntime, protocol.onchainRuntime],
-  ['platform-js', platform, protocol.platform],
-];
+import * as ledger from '../v9';
+import * as compactJsEffect from '../v9-compact-js-effect';
+import * as compactJsEffectContract from '../v9-compact-js-effect-contract';
+import * as compactRuntime from '../v9-compact-runtime';
+import * as onchainRuntime from '../v9-onchain-runtime';
 
 const expectCallable = (value: unknown): void => {
   expect(typeof value).toBe('function');
@@ -48,29 +35,19 @@ const sortedKeys = (m: object): string[] => Object.keys(m).sort((a, b) => a.loca
 
 describe('Protocol ACL package', () => {
   describe('barrel namespace exports', () => {
-    it.each([
-      ['ledger', protocol.ledger],
-      ['compactRuntime', protocol.compactRuntime],
-      ['compactJs', protocol.compactJs],
-      ['onchainRuntime', protocol.onchainRuntime],
-      ['platform', protocol.platform],
-    ])('exposes the %s namespace as a non-empty object', (_name, ns) => {
-      expect(ns).toBeDefined();
-      expect(typeof ns).toBe('object');
-      expect(Object.keys(ns).length).toBeGreaterThan(0);
+    it('exposes the platform namespace with the same members as the platform-js subpath', () => {
+      expect(sortedKeys(protocol.platform)).toEqual(sortedKeys(platform));
     });
 
     it('exposes exactly the full barrel export surface, including ./errors, ./version and lib/v8/load', () => {
-      // Strict sorted-key equality over the whole barrel: the five pre-existing
-      // namespace exports (unchanged) plus every value exported from ./errors,
+      // Strict sorted-key equality over the whole barrel: the platform
+      // namespace plus every value exported from ./errors,
       // ./version, lib/era/load-era and lib/v8/load. If this fails after adding/removing a
       // protocol export, update the expected list. `Ledger8Protocol` is a
       // type-only export and does not appear here (types have no runtime key).
       expect(sortedKeys(protocol)).toEqual([
         'COMMON_ERROR_CATEGORIES',
         'COMMON_ERROR_CODES',
-        'compactJs',
-        'compactRuntime',
         'ComposeFailedError',
         'ComposeOptionError',
         'ConfigurationError',
@@ -82,7 +59,6 @@ describe('Protocol ACL package', () => {
         'InvalidArgumentError',
         'InvariantViolationError',
         'latestNetworkLedgerVersion',
-        'ledger',
         'LEDGER_STATE_KINDS',
         'LEDGER_STATE_TAGS',
         'LEDGER_VERSIONS',
@@ -95,7 +71,6 @@ describe('Protocol ACL package', () => {
         'MIDNIGHT_JS_ERROR_CATEGORIES',
         'MidnightJsError',
         'NO_CIRCUIT',
-        'onchainRuntime',
         'PayloadNotATransactionError',
         'platform',
         'PROTOCOL_ERROR_CATEGORIES',
@@ -113,30 +88,21 @@ describe('Protocol ACL package', () => {
     });
   });
 
-  describe('subpath / namespace parity', () => {
-    it.each(subpathNamespacePairs)(
-      '%s subpath has identical members to the barrel namespace',
-      (_name, subpath, namespace) => {
-        expect(sortedKeys(subpath)).toEqual(sortedKeys(namespace));
-      }
-    );
-  });
-
   describe('representative symbols resolve via subpath', () => {
     // Asserting well-known public symbols from each upstream package confirms
     // the subpath wires through to real content, not an empty/stub module.
-    it('ledger subpath re-exports representative sample-* functions', () => {
+    it('v9 subpath re-exports representative sample-* functions', () => {
       expectCallable(ledger.sampleSigningKey);
       expectCallable(ledger.sampleContractAddress);
       expectCallable(ledger.sampleRawTokenType);
     });
 
-    it('compact-runtime subpath re-exports representative state values', () => {
+    it('v9/compact-runtime subpath re-exports representative state values', () => {
       expect(compactRuntime.StateValue).toBeDefined();
       expect(compactRuntime.ChargedState).toBeDefined();
     });
 
-    it('onchain-runtime subpath re-exports sampleSigningKey and entryPointHash', () => {
+    it('v9/onchain-runtime subpath re-exports sampleSigningKey and entryPointHash', () => {
       expectCallable(onchainRuntime.sampleSigningKey);
       expectCallable(onchainRuntime.entryPointHash);
     });
@@ -150,14 +116,14 @@ describe('Protocol ACL package', () => {
   describe('effect submodule subpaths', () => {
     // These submodule subpaths are not reachable through the index namespace,
     // so only structural resolution is asserted.
-    it('compact-js/effect subpath resolves and exposes CompiledContract and Contract namespaces', () => {
+    it('v9/compact-js/effect subpath resolves and exposes CompiledContract and Contract namespaces', () => {
       expect(compactJsEffect).toBeDefined();
       expect(compactJsEffect.CompiledContract).toBeDefined();
       expect(compactJsEffect.Contract).toBeDefined();
       expect(Object.keys(compactJsEffect).length).toBeGreaterThan(0);
     });
 
-    it('compact-js/effect/Contract subpath resolves to a non-empty module', () => {
+    it('v9/compact-js/effect/Contract subpath resolves to a non-empty module', () => {
       expect(compactJsEffectContract).toBeDefined();
       expect(Object.keys(compactJsEffectContract).length).toBeGreaterThan(0);
     });

@@ -14,16 +14,16 @@
  */
 
 import type { ConstructorResultPojo, Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type {
   CoinPublicKey,
   ContractAddress,
   ContractState,
   LogEvent,
   SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { CurrentLedgerVersion, LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { FinalizedTxRead,PrivateStateId, UnprovenTx, VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';

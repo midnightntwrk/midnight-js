@@ -14,6 +14,9 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CostModel,
   type PreBinding,
@@ -21,10 +24,7 @@ import {
   type ProvingProvider,
   type SignatureEnabled,
   type Transaction
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';

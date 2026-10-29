@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { LedgerTransaction } from '../ledger-transaction';

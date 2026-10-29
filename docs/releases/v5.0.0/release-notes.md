@@ -50,7 +50,7 @@ See [breaking-changes.md section 8](./breaking-changes.md) and
 - `@midnight-ntwrk/ledger-v8@8.1.0` → `@midnightntwrk/ledger-v9@1.0.0-rc.3`
 - `@midnight-ntwrk/onchain-runtime-v3@3.0.0` → `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`
 
-The subpath re-exports `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
+The v9 / v4 packages are re-exported from `@midnight-ntwrk/midnight-js-protocol/v9` and `/v9/onchain-runtime`; the unnamed 4.x subpaths `/ledger` and `/onchain-runtime` are removed (#1536). The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
 
 This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, and `compactc 0.33.0-rc.1` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.1).
 
@@ -91,6 +91,10 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 
 `MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is deprecated and is removed in 6.0. `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
 
+### Protocol subpaths name their ledger (#1536)
+
+`@midnight-ntwrk/midnight-js-protocol` serves ledger 9 from `/v9`, `/v9/compact-runtime`, `/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and `/v9/onchain-runtime`. The unnamed 4.x subpaths and the root `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` namespaces are removed: their meaning changed with every ledger. See [breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536).
+
 ## New Features
 
 ### Cross-contract call support (#967)
@@ -98,7 +102,7 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 The framework can now assemble, prove, and submit **cross-contract call** transactions — a call whose tree spans several deployed contracts, each carrying its own proof:
 
 - `ZKConfigRegistry` (in `@midnight-ntwrk/midnight-js-types`) resolves ZK artifacts across a *set* of compiled-contract sources. It requires **no address registration**: the binding is derived by joining a call's deployed verifier-key hash against each source's local verifier key, which makes resolution immune to redeploys, multiple deployments of one contract, and circuit-name collisions.
-- The canonical `ContractKeyLocation` grammar (`contract:<address>/<circuitId>?vk=<sha-256>`) is re-exported from `@midnight-ntwrk/midnight-js-protocol/compact-js`, so transaction assemblers and provers share one definition.
+- The canonical `ContractKeyLocation` grammar (`contract:<address>/<circuitId>?vk=<sha-256>`) is re-exported from `@midnight-ntwrk/midnight-js-protocol/v9/compact-js`, so transaction assemblers and provers share one definition.
 - `PublicDataProvider` gains an "as-of" `queryBlock(config?)` endpoint returning `BlockInfo { hash, height, protocolVersion }` (latest block when called with no argument), used to resolve on-chain state at transaction-assembly time. `protocolVersion` dates the block to a ledger era, so a caller can tell which side of a hard fork a block sits on without a second request (#1395).
 
 ### MIP-0002 contract events via `PublicDataProvider` (#988)

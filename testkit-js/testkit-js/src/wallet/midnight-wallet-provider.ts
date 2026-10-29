@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
+import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type CoinPublicKey,
   DustSecretKey,
   type EncPublicKey,
   ZswapSecretKeys
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
