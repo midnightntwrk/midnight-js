@@ -31,7 +31,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isLedger8Result } from '../era-results';
-import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
+import { IncompleteCallTxPrivateStateConfig, TxFailedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitLedger9Payload, submitLedger9PayloadAsync } from '../submit-tx';
@@ -319,7 +319,7 @@ describe('submit-call-tx', () => {
     });
 
     describe('failed call scenarios', () => {
-      it('should throw CallTxFailedError when transaction fails with FailEntirely', async () => {
+      it('should throw TxFailedError when transaction fails with FailEntirely', async () => {
         const options = createBasicCallOptions();
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -327,11 +327,11 @@ describe('submit-call-tx', () => {
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
-      it('should throw CallTxFailedError when scoped transaction fails with FailEntirely', async () => {
+      it('should throw TxFailedError when scoped transaction fails with FailEntirely', async () => {
         const options = createBasicCallOptions();
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -341,12 +341,12 @@ describe('submit-call-tx', () => {
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
           await submitCallTx(mockProviders, options, txCtx);
-        })).rejects.toThrow(CallTxFailedError);
+        })).rejects.toThrow(TxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
-      it('should include failure data and circuit ID in CallTxFailedError', async () => {
+      it('should include failure data and circuit ID in TxFailedError', async () => {
         const circuitId = 'testCircuit' as AnyProvableCircuitId;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
@@ -357,15 +357,15 @@ describe('submit-call-tx', () => {
 
         try {
           await submitCallTx(mockProviders, options);
-          expect.fail('Expected CallTxFailedError to be thrown');
+          expect.fail('Expected TxFailedError to be thrown');
         } catch (error) {
-          expect(error).toBeInstanceOf(CallTxFailedError);
-          expect((error as CallTxFailedError).finalizedTxData).toEqual(mockFailedTxData);
-          expect((error as CallTxFailedError).circuitId).toEqual(circuitId);
+          expect(error).toBeInstanceOf(TxFailedError);
+          expect((error as TxFailedError).record).toEqual(mockFailedTxData);
+          expect((error as TxFailedError).circuitId).toEqual(circuitId);
         }
       });
 
-      it('should throw CallTxFailedError when transaction fails with FailFallible', async () => {
+      it('should throw TxFailedError when transaction fails with FailFallible', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
@@ -373,11 +373,11 @@ describe('submit-call-tx', () => {
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
-      it('should throw CallTxFailedError when scoped transaction fails with FailFallible', async () => {
+      it('should throw TxFailedError when scoped transaction fails with FailFallible', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
@@ -387,12 +387,12 @@ describe('submit-call-tx', () => {
 
         await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
           await submitCallTx(mockProviders, options, txCtx);
-        })).rejects.toThrow(CallTxFailedError);
+        })).rejects.toThrow(TxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
-      it('should expose FailFallible status in CallTxFailedError finalizedTxData', async () => {
+      it('should expose FailFallible status in TxFailedError record', async () => {
         const circuitId = 'testCircuit' as AnyProvableCircuitId;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
@@ -403,17 +403,17 @@ describe('submit-call-tx', () => {
 
         try {
           await submitCallTx(mockProviders, options);
-          expect.fail('Expected CallTxFailedError to be thrown');
+          expect.fail('Expected TxFailedError to be thrown');
         } catch (error) {
-          expect(error).toBeInstanceOf(CallTxFailedError);
-          const callError = error as CallTxFailedError;
-          expect(callError.finalizedTxData.status).toBe(FailFallible);
-          expect(callError.finalizedTxData).toEqual(mockFailedTxData);
+          expect(error).toBeInstanceOf(TxFailedError);
+          const callError = error as TxFailedError;
+          expect(callError.record.status).toBe(FailFallible);
+          expect(callError.record).toEqual(mockFailedTxData);
           expect(callError.circuitId).toEqual(circuitId);
         }
       });
 
-      it('should preserve segmentStatusMap in CallTxFailedError for FailFallible', async () => {
+      it('should preserve segmentStatusMap in TxFailedError for FailFallible', async () => {
         const circuitId = 'testCircuit' as AnyProvableCircuitId;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
@@ -431,13 +431,13 @@ describe('submit-call-tx', () => {
 
         try {
           await submitCallTx(mockProviders, options);
-          expect.fail('Expected CallTxFailedError to be thrown');
+          expect.fail('Expected TxFailedError to be thrown');
         } catch (error) {
-          expect(error).toBeInstanceOf(CallTxFailedError);
-          const callError = error as CallTxFailedError;
-          expect(callError.finalizedTxData.segmentStatusMap).toBeDefined();
-          expect(callError.finalizedTxData.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
-          expect(callError.finalizedTxData.segmentStatusMap!.get(1)).toBe(SegmentFail);
+          expect(error).toBeInstanceOf(TxFailedError);
+          const callError = error as TxFailedError;
+          expect(callError.record.segmentStatusMap).toBeDefined();
+          expect(callError.record.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
+          expect(callError.record.segmentStatusMap!.get(1)).toBe(SegmentFail);
         }
       });
     });
@@ -792,10 +792,10 @@ describe('submit-call-tx', () => {
 
       try {
         await submitCallTx(mockProviders, options);
-        expect.fail('Expected CallTxFailedError to be thrown');
+        expect.fail('Expected TxFailedError to be thrown');
       } catch (error) {
-        expect(error).toBeInstanceOf(CallTxFailedError);
-        const finalizedTxData = (error as CallTxFailedError).finalizedTxData;
+        expect(error).toBeInstanceOf(TxFailedError);
+        const finalizedTxData = (error as TxFailedError).record;
         expect(finalizedTxData.status).toBe(FailFallible);
         expect(finalizedTxData.unshielded.created).toHaveLength(2);
         expect(finalizedTxData.unshielded.created[0].value).toBe(100n);

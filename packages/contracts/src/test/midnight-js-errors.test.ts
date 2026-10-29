@@ -25,10 +25,9 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import * as errors from '../errors';
-import * as governance from '../governance/errors';
-import { createMockFinalizedTxData, createMockLedger8FinalizedTxData } from './test-mocks';
+import { createMockFinalizedTxData } from './test-mocks';
 
-const exported: unknown[] = [...Object.values(errors), ...Object.values(governance)];
+const exported: unknown[] = Object.values(errors);
 const errorClasses = exported.filter(
   (value): value is abstract new (...args: never[]) => Error =>
     typeof value === 'function' && value.prototype instanceof Error
@@ -38,7 +37,6 @@ const ADDRESS = '0200'.repeat(8);
 const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
 const CAUSE = new Error('root cause');
 const finalizedTxData = createMockFinalizedTxData(FailFallible);
-const ledger8Record = createMockLedger8FinalizedTxData(FailFallible);
 const noMismatch = { missing: [], keyless: [], mismatched: [] };
 
 type Case = readonly [string, Error, ContractsErrorCode, MidnightJsErrorCategory];
@@ -63,14 +61,7 @@ const cases: readonly Case[] = [
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
   ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
-  ['TxFailedError', new errors.TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['DeployTxFailedError', new errors.DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['CallTxFailedError', new errors.CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(ledger8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['ReplaceMaintenanceAuthorityTxFailedError', new governance.ReplaceMaintenanceAuthorityTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['RemoveVerifierKeyTxFailedError', new governance.RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['InsertVerifierKeyTxFailedError', new governance.InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['TxFailedError', new errors.TxFailedError('call', finalizedTxData, { circuitId: 'increment' }), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
   ['ScopedTransactionEraUnsupportedError', new errors.ScopedTransactionEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED, 'USAGE'],
   ['MixedEraScopeError', new errors.MixedEraScopeError('increment'), CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE, 'USAGE'],
@@ -89,9 +80,6 @@ const cases: readonly Case[] = [
   ['Ledger8SigningKeyUnavailableError', new errors.Ledger8SigningKeyUnavailableError(ADDRESS, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_UNAVAILABLE, 'USAGE'],
   ['Ledger8SigningKeyNotStoredError', new errors.Ledger8SigningKeyNotStoredError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_SIGNING_KEY_NOT_STORED, 'ENVIRONMENT'],
   ['Ledger8ReplaceAuthorityUnconfirmedError', new errors.Ledger8ReplaceAuthorityUnconfirmedError(ADDRESS, SIGNING_KEY, CAUSE), CONTRACTS_ERROR_CODES.LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED, 'UNCERTAIN'],
-  ['Ledger8InsertVerifierKeyTxFailedError', new governance.Ledger8InsertVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8RemoveVerifierKeyTxFailedError', new governance.Ledger8RemoveVerifierKeyTxFailedError(ledger8Record, ADDRESS, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['Ledger8ReplaceMaintenanceAuthorityTxFailedError', new governance.Ledger8ReplaceMaintenanceAuthorityTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['NetworkVersionReadFailedError', new errors.NetworkVersionReadFailedError('network version read failed', { cause: CAUSE }), CONTRACTS_ERROR_CODES.NETWORK_VERSION_READ_FAILED, 'TRANSIENT'],
   ['ZswapOutputResolutionError', new errors.ZswapOutputResolutionError('unresolved', { cause: CAUSE }), CONTRACTS_ERROR_CODES.ZSWAP_OUTPUT_UNRESOLVED, 'USAGE'],
   ['ContractNotFoundError', new errors.ContractNotFoundError('no contract'), CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND, 'USAGE'],
@@ -99,7 +87,7 @@ const cases: readonly Case[] = [
 ];
 
 describe('contracts error classes', () => {
-  it('every error class in errors.ts and governance/errors.ts extends MidnightJsError', () => {
+  it('every error class in errors.ts extends MidnightJsError', () => {
     expect(errorClasses.length).toBeGreaterThan(30);
     expect(errorClasses.filter((c) => !(c.prototype instanceof MidnightJsError)).map((c) => c.name)).toEqual([]);
   });

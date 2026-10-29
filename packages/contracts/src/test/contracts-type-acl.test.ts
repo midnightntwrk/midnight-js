@@ -213,6 +213,8 @@ describe('Contracts type ACL', () => {
       'SubmitTxOptions',
       'SubmitTxProviders',
       'TransactionContext',
+      'TxFailedDetails',
+      'TxFailedOperation',
       'UnprovenCallTxProvidersBase',
       'UnprovenCallTxProvidersWithPrivateState',
       'UnprovenDeployTxOptions',

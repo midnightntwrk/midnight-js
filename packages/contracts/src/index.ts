@@ -39,8 +39,7 @@ export {
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The era errors that serve BOTH eras. The retained era's own classes are published under the
-// `Ledger8` namespace below -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError`
-// here, so a handler written against the base keeps catching it.
+// `Ledger8` namespace below. `TxFailedError` is the one failed-transaction error of both eras.
 //
 // The fork-window refusals are the other group. `ForkCrossedDuringOperationError` is raised when a submission was
 // rejected and a fresh head read confirms the network crossed the fork under the operation, and it
@@ -63,13 +62,10 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
-  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
-  CallTxFailedError,
   ContractNotFoundError,
   ContractTypeError,
   ContractTypeMismatch,
-  DeployTxFailedError,
   EraArtifactMismatchError,
   type EraArtifactMismatchOptions,
   type EraArtifactMismatchReason,
@@ -92,7 +88,9 @@ export {
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   type SubmittedOperationKind,
+  type TxFailedDetails,
   TxFailedError,
+  type TxFailedOperation,
   UnknownResultEraError,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
@@ -112,9 +110,6 @@ export {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface,
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError,
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
@@ -130,7 +125,7 @@ export {
   type AnyEraSubmittedCallTx,
   isLedger8Result
 } from './era-results';
-// The RETAINED era's refusals under one name: `Ledger8.CallTxFailedError`. Only error classes;
+// The RETAINED era's refusals under one name: `Ledger8.DeployUnconfirmedError`. Only error classes;
 // see `docs/retained-era-namespace.md` for what qualifies and how the surface is withdrawn.
 export * as Ledger8 from './ledger8';
 // The retained era's types, flat. The entry-point overloads return them by these names, and a

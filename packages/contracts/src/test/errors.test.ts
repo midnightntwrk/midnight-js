@@ -15,31 +15,26 @@
 
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
-  type AnyProvableCircuitId,
   FailEntirely,
   FailFallible,
+  type FinalizedTxRead,
   type Ledger8FinalizedTxData,
-  type Ledger9FinalizedTxData,
-  SegmentFail,
-  SegmentSuccess,
   type TxStatus
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import {
-  AnyEraTxFailedError,
-  CallTxFailedError,
   EraInvariantViolationError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SigningKeyUnusableError,
-  TxFailedError
+  type TxFailedDetails,
+  TxFailedError,
+  type TxFailedOperation
 } from '../errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
@@ -53,109 +48,107 @@ const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedT
   tx: undefined as unknown as Ledger8FinalizedTxData['tx']
 });
 
+const TX_FAILED_OPERATIONS: readonly TxFailedOperation[] = [
+  'call',
+  'deploy',
+  'insert-verifier-key',
+  'remove-verifier-key',
+  'replace-authority'
+];
+const TX_FAILED_ERAS = ['v8', 'v9'] as const;
+const TX_FAILED_STATUSES = [FailFallible, FailEntirely] as const;
+const TX_FAILED_ADDRESS = '0200'.repeat(8);
+const TX_FAILED_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
+
+const failedRecord = (era: 'v8' | 'v9', status: TxStatus): FinalizedTxRead =>
+  era === 'v8' ? ledger8FailedRecord(status) : createMockFinalizedTxData(status);
+
+const detailsFor = (operation: TxFailedOperation): TxFailedDetails => {
+  switch (operation) {
+    case 'call':
+      return { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' };
+    case 'deploy':
+      return { contractAddress: TX_FAILED_ADDRESS, signingKey: TX_FAILED_KEY };
+    case 'insert-verifier-key':
+    case 'remove-verifier-key':
+      return { contractAddress: TX_FAILED_ADDRESS, circuitId: 'increment' };
+    case 'replace-authority':
+      return { contractAddress: TX_FAILED_ADDRESS, signingKey: TX_FAILED_KEY };
+  }
+};
+
+const txFailedCases = TX_FAILED_OPERATIONS.flatMap((operation) =>
+  TX_FAILED_ERAS.flatMap((era) =>
+    TX_FAILED_STATUSES.map((status) => ({ operation, era, status }))
+  )
+);
+
 describe('TxFailedError', () => {
-  it('should serialize segmentStatusMap in error message', () => {
-    const segmentStatusMap = new Map([
-      [0, SegmentSuccess],
-      [1, SegmentFail]
-    ]);
-    const finalizedTxData: Ledger9FinalizedTxData = {
-      ...createMockFinalizedTxData(FailFallible),
-      segmentStatusMap
-    };
+  it.each(txFailedCases)(
+    'is a TxFailedError with code MIDNIGHT_JS_C_TX_FAILED and the record\'s era ($operation, $era, $status)',
+    ({ operation, era, status }) => {
+      const record = failedRecord(era, status);
 
-    const error = new TxFailedError(finalizedTxData);
+      const error = new TxFailedError(operation, record, detailsFor(operation));
 
-    const parsed = JSON.parse(error.message);
-    expect(parsed.segmentStatusMap).toBeDefined();
-    expect(parsed.segmentStatusMap['0']).toBe(SegmentSuccess);
-    expect(parsed.segmentStatusMap['1']).toBe(SegmentFail);
+      expect(error).toBeInstanceOf(TxFailedError);
+      expect(error.operation).toBe(operation);
+      expect(error.record.era).toBe(era);
+      expect(error.record).toBe(record);
+      expect(error.name).toBe('TxFailedError');
+      expect(error.code).toBe(CONTRACTS_ERROR_CODES.TX_FAILED);
+      expect(error.category).toBe('REJECTED');
+    }
+  );
+
+  it.each(txFailedCases)(
+    'names the status and the transaction id ($operation, $era, $status)',
+    ({ operation, era, status }) => {
+      const record = failedRecord(era, status);
+
+      const error = new TxFailedError(operation, record, detailsFor(operation));
+
+      expect(error.message).toContain(status);
+      expect(error.message).toContain(record.txId);
+    }
+  );
+
+  it.each(
+    txFailedCases.filter(({ operation }) => operation === 'deploy' || operation === 'replace-authority')
+  )('never renders the signing key ($operation, $era, $status)', ({ operation, era, status }) => {
+    const error = new TxFailedError(operation, failedRecord(era, status), detailsFor(operation));
+
+    expect(error.signingKey).toBe(TX_FAILED_KEY);
+    expect(error.message).not.toContain(TX_FAILED_KEY.value);
   });
 
-  it('should handle undefined segmentStatusMap', () => {
-    const finalizedTxData = createMockFinalizedTxData(FailFallible);
+  it.each(TX_FAILED_ERAS)('names every circuit of a multi-call scope (%s)', (era) => {
+    const error = new TxFailedError('call', failedRecord(era, FailFallible), { circuitId: ['a', 'b'] });
 
-    const error = new TxFailedError(finalizedTxData);
-
-    expect(() => JSON.parse(error.message)).not.toThrow();
+    expect(error.circuitId).toEqual(['a', 'b']);
+    expect(error.message).toContain("'a'");
+    expect(error.message).toContain("'b'");
   });
 
-  it('should serialize empty segmentStatusMap as empty object', () => {
-    const finalizedTxData: Ledger9FinalizedTxData = {
-      ...createMockFinalizedTxData(FailFallible),
-      segmentStatusMap: new Map()
-    };
+  it.each(TX_FAILED_OPERATIONS)('does not claim the contract state advanced on FailFallible (%s)', (operation) => {
+    const error = new TxFailedError(operation, failedRecord('v9', FailFallible), detailsFor(operation));
 
-    const error = new TxFailedError(finalizedTxData);
-
-    const parsed = JSON.parse(error.message);
-    expect(parsed.segmentStatusMap).toEqual({});
-  });
-});
-
-describe('the era-agnostic failure base', () => {
-  // Before this base existed a caller had to know that the current era throws
-  // `CallTxFailedError extends TxFailedError` carrying `finalizedTxData` and
-  // the retained era throws `Ledger8CallTxFailedError extends Error` carrying
-  // `txData`. So `instanceof CallTxFailedError` missed every retained-era
-  // failure -- silently, which is the part that matters -- and a caller that
-  // caught both still read the record through two different member names.
-
-  it('catches a failure from EITHER era with one instanceof', () => {
-    const currentEra = new CallTxFailedError(createMockFinalizedTxData(FailFallible), 'testCircuit');
-    const retainedEra = new Ledger8CallTxFailedError(createMockFinalizedTxData(FailFallible), 'increment');
-
-    expect(currentEra).toBeInstanceOf(AnyEraTxFailedError);
-    expect(retainedEra).toBeInstanceOf(AnyEraTxFailedError);
-    // And the pre-existing hierarchy is untouched: the retained-era class is
-    // still NOT a `CallTxFailedError`, because it cannot carry that class's
-    // v9-only record. The base is what the two now share, not that one.
-    expect(retainedEra).not.toBeInstanceOf(CallTxFailedError);
-    expect(currentEra).toBeInstanceOf(TxFailedError);
+    expect(error.message).not.toMatch(/state advanced/);
+    expect(error.message).toContain('guaranteed');
   });
 
-  it('reads the record through ONE member in either era, without dropping the old names', () => {
-    const record = createMockFinalizedTxData(FailFallible);
-    const currentEra = new CallTxFailedError(record, 'testCircuit');
-    const retainedEra = new Ledger8CallTxFailedError(record, 'increment');
+  it('tells a caller not to deploy again before checking the address', () => {
+    const error = new TxFailedError('deploy', failedRecord('v9', FailFallible), detailsFor('deploy'));
 
-    // The era-agnostic read path...
-    expect(currentEra.record).toBe(record);
-    expect(retainedEra.record).toBe(record);
-    // ...alongside each era's own historical member, so nothing reading those
-    // breaks.
-    expect(currentEra.finalizedTxData).toBe(record);
-    expect(retainedEra.txData).toBe(record);
+    expect(error.message).toContain('before deploying again');
+    expect(error.message).toContain(TX_FAILED_ADDRESS);
   });
 
-  it('carries the retained era version-tagged record, which the v9-only member could not hold', () => {
-    // The reason the two cannot share a record TYPE: a retained-era call is
-    // recorded by whichever era the head is on, so its record is the tagged
-    // union. Reading it through `record` requires narrowing on `era`.
-    const retainedEra = new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment');
+  it('carries the contract address and circuit id it was given', () => {
+    const error = new TxFailedError('remove-verifier-key', failedRecord('v8', FailEntirely), detailsFor('remove-verifier-key'));
 
-    expect(retainedEra.record.era).toBe('v8');
-  });
-});
-
-describe('CallTxFailedError', () => {
-  it('should include circuitId and serialized segmentStatusMap', () => {
-    const circuitId = 'testCircuit' as AnyProvableCircuitId;
-    const segmentStatusMap = new Map([
-      [0, SegmentSuccess],
-      [1, SegmentFail]
-    ]);
-    const finalizedTxData: Ledger9FinalizedTxData = {
-      ...createMockFinalizedTxData(FailFallible),
-      segmentStatusMap
-    };
-
-    const error = new CallTxFailedError(finalizedTxData, circuitId);
-
-    const parsed = JSON.parse(error.message);
-    expect(parsed.circuitId).toBe(circuitId);
-    expect(parsed.segmentStatusMap['0']).toBe(SegmentSuccess);
-    expect(parsed.segmentStatusMap['1']).toBe(SegmentFail);
+    expect(error.contractAddress).toBe(TX_FAILED_ADDRESS);
+    expect(error.circuitId).toBe('increment');
   });
 });
 
@@ -215,47 +208,6 @@ describe('the incomplete private-state configuration refusals', () => {
   });
 });
 
-describe('Ledger8DeployTxFailedError', () => {
-  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
-  const ADDRESS = '0200'.repeat(8);
-
-  it('reads the record through the era-agnostic member and names the address it composed', () => {
-    const record = ledger8FailedRecord();
-
-    const error = new Ledger8DeployTxFailedError(record, ADDRESS, SIGNING_KEY);
-
-    expect(error).toBeInstanceOf(AnyEraTxFailedError);
-    expect(error.record).toBe(record);
-    expect(error.txData).toBe(record);
-    expect(error.contractAddress).toBe(ADDRESS);
-    expect(error.record.era).toBe('v8');
-  });
-
-  it('states per STATUS what landed on chain, because the two statuses differ', () => {
-    // A `ContractDeploy` sits in the Intent -- the GUARANTEED part -- so on `FailFallible` the
-    // contract DID land, under the authority this key built. One message for both statuses told
-    // that caller nothing local refers to the address, and it never went looking for the
-    // deployment it now owns and cannot maintain.
-    const fallible = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailFallible), ADDRESS, SIGNING_KEY);
-    const entirely = new Ledger8DeployTxFailedError(ledger8FailedRecord(FailEntirely), ADDRESS, SIGNING_KEY);
-
-    expect(fallible.message).toContain('LANDED');
-    expect(entirely.message).toContain('Nothing was deployed');
-    expect(fallible.message).not.toBe(entirely.message);
-  });
-
-  it('carries the signing key, and says where to read it, without printing the key itself', () => {
-    const error = new Ledger8DeployTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY);
-
-    expect(error.signingKey).toBe(SIGNING_KEY);
-    expect(error.message).toContain('signingKey');
-    // The key is a SECRET. Named as a member to read, never rendered: an error message reaches
-    // logs, crash reporters and issue trackers, and this one is the only copy of the authority
-    // over the deployed contract.
-    expect(error.message).not.toContain(SIGNING_KEY.value);
-  });
-});
-
 describe('Ledger8DeployUnconfirmedError', () => {
   const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'b2'.repeat(32) };
   const ADDRESS = '0300'.repeat(8);
@@ -312,27 +264,6 @@ describe('Ledger8DeployUnconfirmedError', () => {
     // The key is a SECRET, and after submission this error holds the only copy. Named as a member
     // to read, never rendered into text that reaches a log or an issue tracker.
     expect(error.message).not.toContain(SIGNING_KEY.value);
-  });
-});
-
-describe('the recorded-failure code', () => {
-  // The class hierarchy is the ergonomic route; the code is the one that
-  // survives a second copy of this package in the process, which is a live
-  // condition here for the ledger packages.
-  it('is carried by both eras and by the subclasses that extend them', () => {
-    const record = createMockFinalizedTxData(FailFallible);
-
-    const errors: AnyEraTxFailedError[] = [
-      new TxFailedError(record),
-      new CallTxFailedError(record, 'increment'),
-      new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')
-    ];
-
-    expect(errors.map((error) => error.code)).toEqual([
-      CONTRACTS_ERROR_CODES.TX_FAILED,
-      CONTRACTS_ERROR_CODES.TX_FAILED,
-      CONTRACTS_ERROR_CODES.TX_FAILED
-    ]);
   });
 });
 

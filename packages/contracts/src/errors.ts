@@ -20,7 +20,6 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import type {
   AnyProvableCircuitId,
   FinalizedTxRead,
-  Ledger9FinalizedTxData,
   PrivateStateId,
   ProviderMethod} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
@@ -927,110 +926,111 @@ export class UnknownResultEraError extends MidnightJsError {
 }
 
 /**
- * A transaction this framework submitted that the chain recorded with a
- * non-success status, in EITHER era. The one class to catch.
- *
- * Each subclass keeps its own historical member -- `finalizedTxData` on the
- * current era's, `txData` on the retained one -- so nothing reading those
- * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
- * against, and it needs narrowing on `era` before `tx` is touched.
- *
- * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
+ * The operations whose transaction the chain can record as failed.
  */
-export abstract class AnyEraTxFailedError extends MidnightJsError {
-  /**
-   * The one code every recorded-failure class in this package answers to.
-   *
-   * Branch on this rather than `instanceof` where these classes cannot be
-   * imported, or where there may be more than one copy of this package in the
-   * process. Subclasses inherit it rather than each declaring their own.
-   *
-   * @see {@link ErrorTaxonomy} for why the code sits on the base.
-   */
+export type TxFailedOperation = 'call' | 'deploy' | 'insert-verifier-key' | 'remove-verifier-key' | 'replace-authority';
+
+/**
+ * What a failed transaction was about, beyond its record.
+ */
+export interface TxFailedDetails {
+  /** Every operation except a call scoped over several contracts. */
+  readonly contractAddress?: ContractAddress;
+  /** A call, or an insert or removal of a verifier key. A list when a scope made several calls. */
+  readonly circuitId?: string | readonly string[];
+  /** A deploy (the authority the contract was built with) or a replacement (the new authority). */
+  readonly signingKey?: SigningKey;
+}
+
+const TX_FAILED_NOUNS: Readonly<Record<TxFailedOperation, string>> = {
+  call: 'call',
+  deploy: 'deployment',
+  'insert-verifier-key': 'verifier key insertion',
+  'remove-verifier-key': 'verifier key removal',
+  'replace-authority': 'maintenance authority replacement'
+};
+
+const FAIL_FALLIBLE_OUTCOME =
+  "The guaranteed effects were kept, so some of this operation's effects may be on chain. No private state " +
+  'was stored locally. Read the record and the chain before repeating the operation.';
+
+const txFailedFollowUp = (operation: TxFailedOperation, fallible: boolean, circuits: string): string | undefined => {
+  switch (operation) {
+    case 'call':
+      return fallible
+        ? undefined
+        : 'No private state was stored, and no effect of this call landed on chain, so the local state still matches it.';
+    case 'deploy':
+      return (
+        (fallible
+          ? "A contract deployment sits in the guaranteed phase, so the contract may exist on chain, under the maintenance authority built from this error's 'signingKey'. Keep that key: nothing else holds a copy, and without it the contract can never be maintained."
+          : "Nothing was deployed and no private state was stored. This error's 'signingKey' carries the key this attempt would have used, so an address that turns out to hold a contract after all is still maintainable.") +
+        ' Check the contract address before deploying again: a deploy mints a fresh nonce, so a second attempt lands at a different address and would leave two copies of the contract on chain.'
+      );
+    case 'insert-verifier-key':
+    case 'remove-verifier-key':
+      return `Read the contract's verifier key for ${circuits} before retrying: the update may have landed.`;
+    case 'replace-authority':
+      return (
+        "The new key was NOT stored; the store still holds the old one. Keep this error's 'signingKey': if the " +
+        'replacement landed after all, it is the only key that authorizes the contract. Try a maintenance ' +
+        'update with the stored key; if it is refused with MaintenanceAuthorityMismatchError, store this ' +
+        "error's 'signingKey' with `privateStateProvider.setSigningKey(address, error.signingKey)`."
+      );
+  }
+};
+
+const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead, details: TxFailedDetails): string => {
+  const fallible = record.status === 'FailFallible';
+  const circuitClause = formatCircuitClause(details.circuitId) ?? '';
+  const contractClause = details.contractAddress === undefined ? '' : ` on the contract at '${details.contractAddress}'`;
+  const circuits = [details.circuitId ?? []].flat().map((id) => `'${id}'`).join(', ');
+  const head =
+    `The ${TX_FAILED_NOUNS[operation]}${circuitClause}${contractClause} was recorded on chain with status ` +
+    `'${record.status}' rather than 'SucceedEntirely' (transaction id '${record.txId}').`;
+  return [head, fallible ? FAIL_FALLIBLE_OUTCOME : undefined, txFailedFollowUp(operation, fallible, circuits)]
+    .filter((part): part is string => part !== undefined)
+    .join(' ');
+};
+
+/**
+ * A transaction this framework submitted that the chain recorded with a
+ * non-success status, in either ledger era. The one class to catch.
+ *
+ * Read {@link TxFailedError.operation} for which operation failed, and
+ * {@link TxFailedError.record} for what the chain recorded. `record.tx` is a
+ * `FinalizedTx` in the era `record.era` names; read it with
+ * `LedgerTransaction.unwrap(record.tx, record.era)` after narrowing on `era`.
+ *
+ * {@link TxFailedError.signingKey} is NAMED in the message but never rendered
+ * into it: after a failed deploy or replacement it may be the only copy of the
+ * authority over a contract that landed.
+ *
+ * Branch on the registered code rather than `instanceof` where more than one
+ * copy of this package may be loaded.
+ */
+export class TxFailedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.TX_FAILED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.TX_FAILED];
+  readonly contractAddress?: ContractAddress;
+  readonly circuitId?: string | readonly string[];
+  readonly signingKey?: SigningKey;
 
   /**
-   * The finalized record the chain reported, tagged with its era.
-   *
-   * @remarks `record.tx` is a `FinalizedTx` in the era `record.era` names.
-   * Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
-   * narrowing on `record.era`.
-   */
-  abstract readonly record: FinalizedTxRead;
-}
-
-/**
- * An error indicating that a transaction submitted to a consensus node failed.
- *
- * The current era's subclass of {@link AnyEraTxFailedError}: its record is always
- * the v9 one. Catch the base to catch both eras.
- */
-export class TxFailedError extends AnyEraTxFailedError {
-  /**
-   * @param finalizedTxData The finalization data of the transaction that failed.
-   * @param circuitId The name of the circuit that was called to create the call
-   *                  transaction that failed. Only defined if a call transaction
-   *                  failed.
+   * @param operation The operation whose transaction failed.
+   * @param record The finalized record the chain reported, tagged with its era.
+   * @param details What the operation was about. Each member is set by the operations that have it.
    */
   constructor(
-    public readonly finalizedTxData: Ledger9FinalizedTxData,
-    public readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[]
+    readonly operation: TxFailedOperation,
+    readonly record: FinalizedTxRead,
+    details: TxFailedDetails
   ) {
-    super('Transaction failed');
-    this.message = JSON.stringify(
-      {
-        ...(circuitId && { circuitId }),
-        ...finalizedTxData
-      },
-      (_key, value) => {
-        if (typeof value === 'bigint') return value.toString();
-        if (value instanceof Map) return Object.fromEntries(value);
-        return value;
-      },
-      '\t'
-    );
-  }
-
-  /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
-  get record(): FinalizedTxRead {
-    return this.finalizedTxData;
-  }
-}
-
-/**
- * An error indicating that a deploy transaction was not successfully applied by the consensus node.
- */
-export class DeployTxFailedError extends TxFailedError {
-  /**
-   * @param finalizedTxData The finalization data of the deployment transaction that failed.
-   */
-  constructor(finalizedTxData: Ledger9FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'DeployTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a call transaction was not successfully applied by the consensus node.
- *
- * `circuitId` names every circuit the failed TRANSACTION carried, so in a
- * scope that made several calls it is the whole list. That is deliberately
- * wider than {@link Ledger9FinalizedCallTxData.circuitId}, which names the one call
- * its result describes: nothing about a transaction-level failure attributes
- * it to a single call within the transaction.
- */
-export class CallTxFailedError extends TxFailedError {
-  /**
-   * @param finalizedTxData The finalization data of the call transaction that failed.
-   * @param circuitId The name of the circuit that was called to build the transaction.
-   */
-  constructor(
-    finalizedTxData: Ledger9FinalizedTxData,
-    circuitId: AnyProvableCircuitId | AnyProvableCircuitId[]
-  ) {
-    super(finalizedTxData, circuitId);
-    this.name = 'CallTxFailedError';
+    super(describeTxFailure(operation, record, details));
+    this.name = 'TxFailedError';
+    this.contractAddress = details.contractAddress;
+    this.circuitId = details.circuitId;
+    this.signingKey = details.signingKey;
   }
 }
 
@@ -1344,98 +1344,6 @@ export class VerifierKeyMismatchError extends MidnightJsError {
         `artifact was compiled for, or rebuild against the deployed contract's source.`
     );
     this.name = 'VerifierKeyMismatchError';
-  }
-}
-
-/**
- * An error indicating that a retained-era call was recorded on chain with a
- * status other than `SucceedEntirely`.
- *
- * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
- * reused because it carries a `Ledger9FinalizedTxData` where a retained
- * call is recorded as an era-tagged {@link FinalizedTxRead}.
- *
- * Carries no registered error code of its own. Branch on the class, or on the
- * inherited {@link AnyEraTxFailedError.code}, and read the record off
- * {@link txData} rather than out of the message.
- *
- * @see {@link ErrorTaxonomy} for why this retained-era class registers no code, and for the
- * local-versus-chain consequence the message states per status.
- */
-export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
-  constructor(
-    readonly txData: FinalizedTxRead,
-    readonly circuitId: string
-  ) {
-    super(
-      `The ledger 8 call to circuit '${circuitId}' was recorded on chain with status ` +
-        `'${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
-        (txData.status === 'FailFallible'
-          ? 'The guaranteed phase LANDED, so the contract state advanced on chain, but no private state ' +
-            'was stored locally - reconcile the local state against the chain before calling again.'
-          : 'No private state was stored, and no effect of this call landed on chain, so the local ' +
-            'state still matches it.')
-    );
-    this.name = 'Ledger8CallTxFailedError';
-  }
-
-  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
-  get record(): FinalizedTxRead {
-    return this.txData;
-  }
-}
-
-/**
- * An error indicating that a retained-era DEPLOY was recorded on chain with a
- * status other than `SucceedEntirely`.
- *
- * DO NOT DEPLOY AGAIN on seeing this. A `ContractDeploy` sits in the Intent —
- * the GUARANTEED part — so on `FailFallible` the contract DID land, under the
- * maintenance authority built from
- * {@link Ledger8DeployTxFailedError.signingKey}. Check the address first.
- *
- * {@link Ledger8DeployTxFailedError.signingKey} is NAMED but never rendered
- * into the message: it is the only copy of the authority over a deployment that
- * may have landed.
- *
- * Carries no registered error code of its own; it inherits {@link AnyEraTxFailedError.code}.
- *
- * @see {@link ErrorTaxonomy} for why a failed deploy is a separate class from a
- * failed call, why no code of its own is registered, and why the key is never rendered.
- */
-export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
-  /**
-   * @param txData The record the read surface reported.
-   * @param contractAddress The address this deployment composed.
-   * @param signingKey The key the deployment's maintenance authority was built
-   * from — sampled when the caller named none, and then this is its only copy.
-   */
-  constructor(
-    readonly txData: FinalizedTxRead,
-    readonly contractAddress: string,
-    readonly signingKey: SigningKey
-  ) {
-    super(
-      `The ledger 8 deployment of the contract at '${contractAddress}' was recorded on chain with ` +
-        `status '${txData.status}' rather than 'SucceedEntirely' (transaction id '${txData.txId}'). ` +
-        (txData.status === 'FailFallible'
-          ? 'The deployment itself LANDED - a contract deployment sits in the guaranteed phase - so the ' +
-            'contract exists on chain, under the maintenance authority built from this error\'s ' +
-            "'signingKey'. Keep that key: nothing else holds a copy, and without it the contract can never " +
-            'be maintained. No private state was stored locally, so reconcile the local state against the ' +
-            'chain before calling this contract.'
-          : "Nothing was deployed and no private state was stored. This error's 'signingKey' carries the " +
-            'key this attempt would have used, so an address that turns out to hold a contract after all ' +
-            'is still maintainable.') +
-        ' Check that address before deploying again: a deploy mints a fresh nonce, so a second attempt ' +
-        'lands at a different address and would leave two copies of the contract on chain.'
-    );
-    this.name = 'Ledger8DeployTxFailedError';
-  }
-
-  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
-  get record(): FinalizedTxRead {
-    return this.txData;
   }
 }
 

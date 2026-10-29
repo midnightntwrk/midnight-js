@@ -40,14 +40,11 @@ const DIST_INDEX_PATH = 'dist/index.js';
  * list of the names a consumer imports.
  */
 const RUNTIME_EXPORTS: readonly string[] = [
-  'AnyEraTxFailedError',
   'BlankVerifierKeySlotError',
-  'CallTxFailedError',
   'ContractLog',
   'ContractNotFoundError',
   'ContractTypeError',
   'DISPATCH_BREADCRUMB_MESSAGE',
-  'DeployTxFailedError',
   'EraArtifactMismatchError',
   'EraInvariantViolationError',
   'ForkCrossedDuringOperationError',
@@ -56,7 +53,6 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'IncompleteFindContractPrivateStateConfig',
   'IndexerInconsistencyError',
   'PublicStatesEraMismatchError',
-  'InsertVerifierKeyTxFailedError',
   'Ledger8',
   'LedgerParametersUnservedError',
   'MixedEraScopeError',
@@ -64,8 +60,6 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'NetworkVersionStateMismatchError',
   'PrivateStateNotFoundError',
   'ProviderFailedError',
-  'RemoveVerifierKeyTxFailedError',
-  'ReplaceMaintenanceAuthorityTxFailedError',
   'ScopedTransactionIdentityMismatchError',
   'ScopedTransactionEraUnsupportedError',
   'SubmitRejectionUndiagnosedError',

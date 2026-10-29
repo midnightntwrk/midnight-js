@@ -15,11 +15,12 @@
 
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DeployTxFailedError, IncompleteDeployContractPrivateStateConfig } from '../errors';
+import { IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
@@ -136,7 +137,7 @@ describe('submit-deploy-tx', () => {
     });
 
     describe('failed deployment scenarios', () => {
-      it('should throw DeployTxFailedError when transaction fails with FailFallible', async () => {
+      it('should throw TxFailedError when transaction fails with FailFallible', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -149,13 +150,13 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
+        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
-      it('should throw DeployTxFailedError when transaction fails with FailEntirely', async () => {
+      it('should throw TxFailedError when transaction fails with FailEntirely', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -168,13 +169,13 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
-        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
+        await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
 
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
-      it('should include failure data in DeployTxFailedError', async () => {
+      it('should include failure data in TxFailedError', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -189,11 +190,34 @@ describe('submit-deploy-tx', () => {
 
         try {
           await submitDeployTx(mockProviders, options);
-          expect.fail('Expected DeployTxFailedError to be thrown');
+          expect.fail('Expected TxFailedError to be thrown');
         } catch (error) {
-          expect(error).toBeInstanceOf(DeployTxFailedError);
-          expect((error as DeployTxFailedError).finalizedTxData).toEqual(mockFailedTxData);
+          expect(error).toBeInstanceOf(TxFailedError);
+          expect((error as TxFailedError).record).toEqual(mockFailedTxData);
         }
+      });
+    });
+
+    describe('a failed ledger 9 deploy', () => {
+      it('a failed ledger 9 deploy carries the contract address and signing key', async () => {
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey
+        };
+        const deployedKey: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
+        const base = createMockUnprovenDeployTxData();
+        const mockUnprovenDeployTxData = { ...base, private: { ...base.private, signingKey: deployedKey } };
+        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData(FailFallible));
+
+        const caught = await submitDeployTx(mockProviders, options).catch((error: unknown) => error);
+
+        expect(caught).toBeInstanceOf(TxFailedError);
+        expect((caught as TxFailedError).operation).toBe('deploy');
+        expect((caught as TxFailedError).contractAddress).toBe(mockUnprovenDeployTxData.public.contractAddress);
+        expect((caught as TxFailedError).signingKey).toBe(deployedKey);
+        expect((caught as TxFailedError).message).not.toContain(deployedKey.value);
       });
     });
 

@@ -239,10 +239,9 @@ export async function deployContract<C extends Contract.Any>(
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
  *
- * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
- *                             when executed by the node. Current-era overloads only; the retained-era one
- *                             raises `Ledger8DeployTxFailedError`, which carries a version-tagged
- *                             record and the signing key, instead.
+ * @throws TxFailedError If the transaction is submitted successfully but produces an error
+ *                       when executed by the node, in either era. Carries the contract address and
+ *                       the signing key, because a `FailFallible` deployment landed.
  * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, is
  *                                  a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
@@ -256,9 +255,6 @@ export async function deployContract<C extends Contract.Any>(
  * @throws Ledger8DeployOnLedger9Error If a retained-era artifact is deployed after the fork.
  *                                Raised before the constructor runs and before any verifier key is
  *                                fetched.
- * @throws Ledger8DeployTxFailedError If the retained-era deployment was recorded with a non-success
- *                                    status. Carries the signing key, because a `FailFallible`
- *                                    deployment landed.
  * @throws Ledger8DeployUnconfirmedError If what the chain did with a submitted retained-era
  *                                        deployment cannot be confirmed - the record unreadable, or
  *                                        back from an era the head it composed on cannot have

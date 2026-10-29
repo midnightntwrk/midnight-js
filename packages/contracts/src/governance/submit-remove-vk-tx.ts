@@ -22,6 +22,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { BlankVerifierKeySlotError } from '../errors';
+import { TxFailedError } from '../errors';
 import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
@@ -33,7 +34,6 @@ import type {
 } from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
-import { RemoveVerifierKeyTxFailedError } from './errors';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
 
 /**
@@ -50,13 +50,13 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Verifier key remains on the contract (unchanged)
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Verifier key may be partially removed but contract state is inconsistent
  * - Transaction appears in blockchain history as partial success
  *
@@ -69,9 +69,9 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  * @returns A promise that resolves with the finalized transaction data under `public`, tagged
  *          with the pipeline's `era`, or rejects if an error occurs along the way.
  *
- * @throws {RemoveVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
- *         The error contains the finalized transaction data for debugging. The retained-era overload
- *         raises `Ledger8RemoveVerifierKeyTxFailedError` instead.
+ * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data for debugging. Raised by both eras;
+ *         `record.era` tells which.
  * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used after the fork.
  * @throws {Ledger8SigningKeyUnavailableError} When the retained-era overload finds no usable key.
  * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
@@ -138,7 +138,7 @@ export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
   );
   const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
-    throw new RemoveVerifierKeyTxFailedError(submitTxResult);
+    throw new TxFailedError('remove-verifier-key', submitTxResult, { contractAddress, circuitId });
   }
   return { era: 'v9', public: submitTxResult };
 }

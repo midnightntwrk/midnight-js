@@ -145,8 +145,8 @@ describe('submitReplaceAuthorityTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
-      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
+    it('should throw TxFailedError when transaction fails', async () => {
+      const { TxFailedError } = await import('../../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const failedTxData = createMockFinalizedTxData(FailEntirely);
@@ -160,7 +160,7 @@ describe('submitReplaceAuthorityTx', () => {
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
 
-      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
+      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(TxFailedError);
     });
   });
 });

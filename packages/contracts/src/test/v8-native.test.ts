@@ -73,21 +73,19 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deployContract } from '../deploy-contract';
 import { isLedger8Result } from '../era-results';
 import {
-  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
-  Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
   Ledger8DeployOnLedger9Error,
-  Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
   ProviderFailedError,
+  TxFailedError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
@@ -1657,7 +1655,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // field of the very record whose provenance is in doubt, so a record this
     // operation cannot have produced is refused before anything is read off
     // it -- including a failing status, which on an attributable record
-    // produces the typed `Ledger8CallTxFailedError` asserted further down.
+    // produces the typed `TxFailedError` asserted further down.
     providers.publicDataProvider.watchForTxData = vi
       .fn()
       .mockResolvedValue({ ...createMockFinalizedTxData(FailEntirely), era: 'v9' });
@@ -1669,7 +1667,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     expect(rejection).toBeInstanceOf(EraInvariantViolationError);
     // The point of the test: the status fault is NOT what surfaced.
-    expect(rejection).not.toBeInstanceOf(Ledger8CallTxFailedError);
+    expect(rejection).not.toBeInstanceOf(TxFailedError);
   });
 
   it('SANITIZES a provider rejection: no transaction or witness material survives onto the error', async () => {
@@ -2186,22 +2184,24 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
       const caught = await callAndCatch(providers);
 
-      // TYPED, and carrying the record: the current era throws
-      // `CallTxFailedError` with the record on it, and a caller narrowing on a
-      // failed call must be able to read the status off this path too rather
-      // than parse it out of a message.
-      expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
-      // And a caller that catches the era-agnostic base gets this one too --
-      // asserted on the object the pipeline really threw rather than on a
-      // constructed instance, because the claim is about the throw path.
-      expect(caught).toBeInstanceOf(AnyEraTxFailedError);
-      expect((caught as Ledger8CallTxFailedError).record.status).toBe(FailEntirely);
-      expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailEntirely);
-      expect((caught as Ledger8CallTxFailedError).circuitId).toBe(CIRCUIT_ID);
+      expect(caught).toBeInstanceOf(TxFailedError);
+      expect((caught as TxFailedError).record.status).toBe(FailEntirely);
+      expect((caught as TxFailedError).circuitId).toBe(CIRCUIT_ID);
       // Nothing landed on chain either, so saying the local state still matches
       // it is TRUE for this status.
       expect((caught as Error).message).toContain('still matches');
       expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('a recorded ledger 8 call failure is a TxFailedError', async () => {
+      const providers = preForkProviders(v6Envelope);
+      withStatus(providers, FailEntirely);
+
+      const caught = await callAndCatch(providers);
+
+      expect(caught).toBeInstanceOf(TxFailedError);
+      expect((caught as TxFailedError).operation).toBe('call');
+      expect((caught as TxFailedError).record.era).toBe('v8');
     });
 
     it('refuses FailFallible WITHOUT claiming the local state still matches the chain', async () => {
@@ -2210,16 +2210,17 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
       const caught = await callAndCatch(providers);
 
-      expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
-      expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailFallible);
+      expect(caught).toBeInstanceOf(TxFailedError);
+      expect((caught as TxFailedError).record.status).toBe(FailFallible);
       // THE DISTINCTION. `FailFallible` keeps every GUARANTEED effect, and this
       // pipeline places every movement it makes in the guaranteed segment, so
       // the contract state advanced on chain while no private state was stored.
       // Telling the caller their local state still matches the chain would send
       // them past a reconciliation they now need.
       expect((caught as Error).message).not.toContain('still matches');
-      expect((caught as Error).message).toMatch(/guaranteed phase LANDED/i);
-      expect((caught as Error).message).toMatch(/reconcile/i);
+      expect((caught as Error).message).toContain('guaranteed');
+      expect((caught as Error).message).not.toMatch(/state advanced/);
+      expect((caught as Error).message).toMatch(/before repeating/i);
       expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     });
   });
@@ -2679,9 +2680,9 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
-    expect(caught).toBeInstanceOf(AnyEraTxFailedError);
-    expect((caught as Ledger8DeployTxFailedError).txData.status).toBe(FailEntirely);
+    expect(caught).toBeInstanceOf(TxFailedError);
+    expect((caught as TxFailedError).operation).toBe('deploy');
+    expect((caught as TxFailedError).record.status).toBe(FailEntirely);
     // The whole point of checking the record before storing: a deploy the chain
     // refused must leave no local private state ahead of it.
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
@@ -3048,11 +3049,11 @@ describe('deploying a retained-era contract through deployContract', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
-    expect((caught as Ledger8DeployTxFailedError).signingKey).toEqual(SAMPLED_KEY);
+    expect(caught).toBeInstanceOf(TxFailedError);
+    expect((caught as TxFailedError).signingKey).toEqual(SAMPLED_KEY);
     // And the message has to say the contract landed. A caller told "nothing local refers to this
     // address" concludes nothing happened and never looks for the deployment.
-    expect((caught as Ledger8DeployTxFailedError).message).toContain('LANDED');
+    expect((caught as TxFailedError).message).toContain('guaranteed');
   });
 
   it('carries the signing key when the record cannot be attributed to the head it composed on', async () => {
@@ -3146,7 +3147,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(retainedEraRecord(FailEntirely));
 
     await expect(deployContract(providers, { compiledContract: contract })).rejects.toBeInstanceOf(
-      Ledger8DeployTxFailedError
+      TxFailedError
     );
 
     // The same order the private-state write already holds to: a deploy the chain refused must

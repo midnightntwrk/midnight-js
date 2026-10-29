@@ -13,11 +13,6 @@
  * limitations under the License.
  */
 
-export {
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError
-} from './errors';
 export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';

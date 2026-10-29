@@ -26,11 +26,9 @@ import { describe, expect, it } from 'vitest';
 import {
   Ledger8AmbiguousEntryPointError,
   Ledger8ArtifactOnLedger9StateError,
-  Ledger8CallTxFailedError,
   Ledger8ContractStateUnsupportedError,
   Ledger8DeployNotStoredError,
   Ledger8DeployOnLedger9Error,
-  Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError,
@@ -40,15 +38,10 @@ import {
   Ledger8SigningKeyUnavailableError,
   Ledger8SigningKeyUnusableError
 } from '../errors';
-import {
-  Ledger8InsertVerifierKeyTxFailedError,
-  Ledger8RemoveVerifierKeyTxFailedError,
-  Ledger8ReplaceMaintenanceAuthorityTxFailedError
-} from '../governance/errors';
 // Imported from the package BARREL, because the barrel is what this suite is about: the retained
 // era reaches a consumer through ONE name, and everything it publishes is reachable under it.
 import * as barrel from '../index';
-import { AnyEraTxFailedError, Ledger8 } from '../index';
+import { Ledger8 } from '../index';
 
 /**
  * Every runtime member the retained-era namespace publishes.
@@ -59,18 +52,13 @@ import { AnyEraTxFailedError, Ledger8 } from '../index';
 const LEDGER8_MEMBERS = [
   'AmbiguousEntryPointError',
   'ArtifactOnLedger9StateError',
-  'CallTxFailedError',
   'ContractStateUnsupportedError',
   'DeployNotStoredError',
   'DeployOnLedger9Error',
-  'DeployTxFailedError',
   'DeployUnconfirmedError',
-  'InsertVerifierKeyTxFailedError',
   'MaintenanceOnLedger9Error',
   'RecipientUnmappableError',
-  'RemoveVerifierKeyTxFailedError',
   'ReplaceAuthorityUnconfirmedError',
-  'ReplaceMaintenanceAuthorityTxFailedError',
   'ShieldedSpendUnsupportedError',
   'SigningKeyNotStoredError',
   'SigningKeyUnavailableError',
@@ -85,7 +73,7 @@ const LEDGER8_MEMBERS = [
  * transitional one.
  */
 const ERA_NEUTRAL_MEMBERS = [
-  'AnyEraTxFailedError',
+  'TxFailedError',
   'isLedger8Result',
   'UnknownResultEraError'
 ];
@@ -138,11 +126,9 @@ describe('the retained era is published as one namespace', () => {
     // points a member at the wrong declaration -- the one failure mode the key list cannot see.
     expect(Ledger8.AmbiguousEntryPointError).toBe(Ledger8AmbiguousEntryPointError);
     expect(Ledger8.ArtifactOnLedger9StateError).toBe(Ledger8ArtifactOnLedger9StateError);
-    expect(Ledger8.CallTxFailedError).toBe(Ledger8CallTxFailedError);
     expect(Ledger8.ContractStateUnsupportedError).toBe(Ledger8ContractStateUnsupportedError);
     expect(Ledger8.DeployNotStoredError).toBe(Ledger8DeployNotStoredError);
     expect(Ledger8.DeployOnLedger9Error).toBe(Ledger8DeployOnLedger9Error);
-    expect(Ledger8.DeployTxFailedError).toBe(Ledger8DeployTxFailedError);
     expect(Ledger8.DeployUnconfirmedError).toBe(Ledger8DeployUnconfirmedError);
     expect(Ledger8.RecipientUnmappableError).toBe(Ledger8RecipientUnmappableError);
     expect(Ledger8.ShieldedSpendUnsupportedError).toBe(Ledger8ShieldedSpendUnsupportedError);
@@ -151,9 +137,6 @@ describe('the retained era is published as one namespace', () => {
     expect(Ledger8.SigningKeyUnavailableError).toBe(Ledger8SigningKeyUnavailableError);
     expect(Ledger8.SigningKeyNotStoredError).toBe(Ledger8SigningKeyNotStoredError);
     expect(Ledger8.ReplaceAuthorityUnconfirmedError).toBe(Ledger8ReplaceAuthorityUnconfirmedError);
-    expect(Ledger8.InsertVerifierKeyTxFailedError).toBe(Ledger8InsertVerifierKeyTxFailedError);
-    expect(Ledger8.RemoveVerifierKeyTxFailedError).toBe(Ledger8RemoveVerifierKeyTxFailedError);
-    expect(Ledger8.ReplaceMaintenanceAuthorityTxFailedError).toBe(Ledger8ReplaceMaintenanceAuthorityTxFailedError);
   });
 
   it('ships the same members in the built bundle', async () => {
@@ -174,17 +157,5 @@ describe('the retained era is published as one namespace', () => {
     const error = new Ledger8.DeployOnLedger9Error();
 
     expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
-  });
-
-  it('keeps the retained failure class under the era-neutral base a consumer catches', () => {
-    // A handler written as `catch (e) { if (e instanceof AnyEraTxFailedError) }` must keep catching
-    // the retained-era failure. Asserted on the class rather than an instance: the constructor
-    // takes a finalized record, and what is at stake here is the hierarchy, not a message.
-    //
-    // `prototype instanceof` rather than the DIRECT prototype: what a consumer relies on is that
-    // the base catches it, at any depth. `TxFailedError extends AnyEraTxFailedError` shows an
-    // intermediate base is an established shape here, and inserting one must not fail this test.
-    expect(Ledger8.CallTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
-    expect(Ledger8.DeployTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
   });
 });

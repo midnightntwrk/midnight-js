@@ -73,9 +73,7 @@ import {
   EraInvariantViolationError,
   ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
-  Ledger8CallTxFailedError,
   Ledger8DeployNotStoredError,
-  Ledger8DeployTxFailedError,
   Ledger8DeployUnconfirmedError,
   Ledger8ReplaceAuthorityUnconfirmedError,
   Ledger8SigningKeyNotStoredError,
@@ -83,12 +81,9 @@ import {
   PrivateStateNotFoundError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
-  type SubmittedOperationKind} from '../errors';
-import {
-  Ledger8InsertVerifierKeyTxFailedError,
-  Ledger8RemoveVerifierKeyTxFailedError,
-  Ledger8ReplaceMaintenanceAuthorityTxFailedError
-} from '../governance/errors';
+  type SubmittedOperationKind,
+  TxFailedError
+} from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import type {
   AnyLedger8CallTxOptions,
@@ -637,19 +632,18 @@ export const findLedger8Contract = async (
  * Refuses a retained-era transaction the node recorded with a non-success
  * status.
  *
- * Raises the retained-era path's own class rather than {@link CallTxFailedError},
- * which carries a `Ledger9FinalizedTxData`.
+ * Raises {@link TxFailedError} with the era-tagged record.
  *
  * @param record The finalized record the read surface reported.
  * @param circuitId The circuit this flow ran.
- * @throws Ledger8CallTxFailedError if the recorded status is not `SucceedEntirely`.
+ * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
 const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
-  throw new Ledger8CallTxFailedError(record, circuitId);
+  throw new TxFailedError('call', record, { circuitId });
 };
 
 /**
@@ -668,7 +662,7 @@ const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string): v
  * from. Carried onto the refusal because a `FailFallible` deployment LANDED -
  * a contract deployment sits in the guaranteed phase - and a sampled key
  * discarded there leaves an address nobody can maintain.
- * @throws Ledger8DeployTxFailedError if the recorded status is not `SucceedEntirely`.
+ * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  */
 const assertLedger8DeploySucceeded = (
   record: FinalizedTxRead,
@@ -678,7 +672,7 @@ const assertLedger8DeploySucceeded = (
   if (record.status === SucceedEntirely) {
     return;
   }
-  throw new Ledger8DeployTxFailedError(record, contractAddress, signingKey);
+  throw new TxFailedError('deploy', record, { contractAddress, signingKey });
 };
 
 /**
@@ -982,7 +976,7 @@ export const submitLedger8CallTxAsync = async (
  * @param providers The provider set.
  * @param options The call the entry point received.
  * @returns The circuit, the next private state, and the finalized record.
- * @throws Ledger8CallTxFailedError if the node recorded a non-success status —
+ * @throws TxFailedError if the node recorded a non-success status —
  * see {@link assertLedger8TxSucceeded}. Raised BEFORE the private state is
  * stored, so a failed call never leaves the local state ahead of the chain.
  * @throws Every error {@link submitLedger8CallTxAsync} raises.
@@ -1072,7 +1066,7 @@ export interface Ledger8DeployedState {
  * @param options The deployment the entry point received.
  * @returns The minted address, the finalized record, the signing key now stored
  * against that address, and everything the constructor produced.
- * @throws Ledger8DeployTxFailedError if the node recorded a non-success status.
+ * @throws TxFailedError if the node recorded a non-success status.
  * @throws Ledger8DeployUnconfirmedError if the record cannot be read back and
  * attributed to the head at all, the record's era included.
  * @throws Ledger8DeployNotStoredError if the deployment was CONFIRMED and the
@@ -1265,8 +1259,7 @@ const toLedger8MaintenanceUpdate = (
  * Refuses a retained-era maintenance update the node recorded with a non-success status, with the
  * class that names the update.
  *
- * @throws Ledger8InsertVerifierKeyTxFailedError, Ledger8RemoveVerifierKeyTxFailedError,
- * Ledger8ReplaceMaintenanceAuthorityTxFailedError if the recorded status is not `SucceedEntirely`.
+ * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  */
 const assertLedger8MaintenanceSucceeded = (
   record: Ledger8FinalizedTxData,
@@ -1278,11 +1271,11 @@ const assertLedger8MaintenanceSucceeded = (
   }
   switch (update.kind) {
     case 'insert-verifier-key':
-      throw new Ledger8InsertVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
+      throw new TxFailedError('insert-verifier-key', record, { contractAddress, circuitId: update.circuitId });
     case 'remove-verifier-key':
-      throw new Ledger8RemoveVerifierKeyTxFailedError(record, contractAddress, update.circuitId);
+      throw new TxFailedError('remove-verifier-key', record, { contractAddress, circuitId: update.circuitId });
     case 'replace-authority':
-      throw new Ledger8ReplaceMaintenanceAuthorityTxFailedError(record, contractAddress, update.newSigningKey);
+      throw new TxFailedError('replace-authority', record, { contractAddress, signingKey: update.newSigningKey });
     default:
       return assertNever(update, 'assertLedger8MaintenanceSucceeded');
   }
@@ -1315,8 +1308,7 @@ const mayHaveLanded = (error: unknown): boolean =>
  * @throws MaintenanceAuthorityMismatchError if the held key is not the contract's authority. Raised
  * before anything is proven.
  * @throws EraInvariantViolationError if the record comes back from an era other than ledger 8.
- * @throws Ledger8InsertVerifierKeyTxFailedError, Ledger8RemoveVerifierKeyTxFailedError,
- * Ledger8ReplaceMaintenanceAuthorityTxFailedError if the node recorded a non-success status.
+ * @throws TxFailedError if the node recorded a non-success status.
  * @throws Ledger8SigningKeyNotStoredError if a replacement was CONFIRMED and the store then refused
  * the new key. It carries the key.
  * @throws Every error {@link runLedger8MaintenancePipeline} and {@link submitLedger8Tx} raise.

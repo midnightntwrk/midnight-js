@@ -17,7 +17,7 @@
  * The refusals the RETAINED era raises, under one name.
  *
  * The barrel re-exports this module as `Ledger8`, so a caller writes
- * `Ledger8.CallTxFailedError`. The era prefix is dropped inside, because the namespace already
+ * `Ledger8.DeployUnconfirmedError`. The era prefix is dropped inside, because the namespace already
  * carries it -- so a declaration this reference calls `Ledger8X` is the member published as
  * `Ledger8.X`.
  *
@@ -33,11 +33,9 @@
 export {
   Ledger8AmbiguousEntryPointError as AmbiguousEntryPointError,
   Ledger8ArtifactOnLedger9StateError as ArtifactOnLedger9StateError,
-  Ledger8CallTxFailedError as CallTxFailedError,
   Ledger8ContractStateUnsupportedError as ContractStateUnsupportedError,
   Ledger8DeployNotStoredError as DeployNotStoredError,
   Ledger8DeployOnLedger9Error as DeployOnLedger9Error,
-  Ledger8DeployTxFailedError as DeployTxFailedError,
   Ledger8DeployUnconfirmedError as DeployUnconfirmedError,
   Ledger8MaintenanceOnLedger9Error as MaintenanceOnLedger9Error,
   Ledger8RecipientUnmappableError as RecipientUnmappableError,
@@ -47,8 +45,3 @@ export {
   Ledger8SigningKeyUnavailableError as SigningKeyUnavailableError,
   Ledger8SigningKeyUnusableError as SigningKeyUnusableError
 } from './errors';
-export {
-  Ledger8InsertVerifierKeyTxFailedError as InsertVerifierKeyTxFailedError,
-  Ledger8RemoveVerifierKeyTxFailedError as RemoveVerifierKeyTxFailedError,
-  Ledger8ReplaceMaintenanceAuthorityTxFailedError as ReplaceMaintenanceAuthorityTxFailedError
-} from './governance/errors';

@@ -278,8 +278,6 @@ import {
   UnsubmittedDeployTxData,
 
   // Errors
-  CallTxFailedError,
-  DeployTxFailedError,
   ContractTypeError,
   EraInvariantViolationError,
   TxFailedError

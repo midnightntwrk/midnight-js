@@ -20,6 +20,7 @@ import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
+import { TxFailedError } from '../errors';
 import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
@@ -31,7 +32,6 @@ import type {
 } from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
-import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
 
 /**
@@ -50,13 +50,13 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Signing key in private state provider is NOT updated (remains as current authority)
  * - Contract authority on-chain remains unchanged
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Signing key in private state provider is NOT updated (remains as current authority)
  * - Contract authority on-chain may be partially updated but inconsistent
  * - Transaction appears in blockchain history as partial success
@@ -70,9 +70,9 @@ import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
  *          resolves with the finalized transaction data under `public`, tagged with the pipeline's
  *          `era`, or rejects if an error occurs along the way.
  *
- * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
- *         The error contains the finalized transaction data for debugging. The retained-era overload
- *         raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
+ * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data for debugging. Raised by both eras;
+ *         `record.era` tells which. The error carries the new key as `signingKey`.
  * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used after the fork.
  * @throws {Ledger8SigningKeyUnusableError} When the retained-era overload is given a new key that era
  *         cannot sign with. Raised before anything is composed.
@@ -131,7 +131,7 @@ export function submitReplaceAuthorityTx<C extends Contract.Any>(
     );
     const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
     if (submitTxResult.status !== SucceedEntirely) {
-      throw new ReplaceMaintenanceAuthorityTxFailedError(submitTxResult);
+      throw new TxFailedError('replace-authority', submitTxResult, { contractAddress, signingKey: newAuthority });
     }
     // TODO: What if machine crashes right before the following set executes? How to recover?
     //       Likely will need a history of pending transactions.
