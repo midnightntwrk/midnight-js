@@ -197,6 +197,6 @@ versions, and a later ledger may share a tag for another kind too.
 
 ## Amendment — the error for a value with no era (2026-10-29)
 
-`UnrecognisedEraTagError` is now `UnknownLedgerVersionError`, with a `requestedVersion` of `'undefined'` or
-`'null'` when the value carried no era. See the 2026-10-29 amendment of
-[ADR 0017](./0017-error-codes-are-the-contract.md).
+`UnrecognisedEraTagError` is now `UnknownLedgerVersionError`, with a `requestedVersion` of `undefined`
+when the value carried no era. `requireLedger9` is removed: narrow with `switch (value.era)`, closed by
+`assertNever`. See the 2026-10-29 amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).

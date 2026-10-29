@@ -75,3 +75,8 @@ broke the rule above: at the next fork it would have meant ledger 10. Two rules 
   branch. Without one it does not exist, and only the `Ledger9*` name remains.
 - Low-level functions serve one era each, so they are named after it (#1527).
 
+## Amendment — the example class is a reason now (2026-10-29)
+
+`Ledger8DeployOnLedger9Error`, the example in the decision, is removed. The same fault is
+`EraMismatchError` with reason `'ledger8-deploy-on-ledger9-network'`, and the rule holds for the reason
+string. See the 2026-10-29 amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).

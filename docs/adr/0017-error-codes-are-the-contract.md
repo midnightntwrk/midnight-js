@@ -155,7 +155,7 @@ Issue #1557. The decision is unchanged. It changes how classes are cut.
   served does not agree with itself.
 - (c) A value with no era moves to ENVIRONMENT. It means an outdated provider or an outdated midnight-js,
   so the fix is in the installation. `UnknownLedgerVersionError` now covers it, with a
-  `requestedVersion` of `'undefined'` or `'null'`.
+  `requestedVersion` of `undefined`.
 - (d) Codes renamed: `ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`. Codes removed: `UNKNOWN_RESULT_ERA`,
   `SCOPED_TRANSACTION_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE`, `LEDGER8_DEPLOY_ON_LEDGER9`,
   `LEDGER8_MAINTENANCE_ON_LEDGER9`, `LEDGER8_ARTIFACT_ON_LEDGER9_STATE`,

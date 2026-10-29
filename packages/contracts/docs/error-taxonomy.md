@@ -44,11 +44,15 @@ Its constructor is `TxFailedError(operation, record, details)`:
 - `operation` is `'call'`, `'deploy'`, `'insert-verifier-key'`,
   `'remove-verifier-key'` or `'replace-authority'`.
 - `record` is the era-tagged `FinalizedTxRead` the chain reported. Narrow on
-  `record.era` before `record.tx` is touched. The status and the
-  `segmentStatusMap` are read from `record`; the message does not repeat them.
-- `contractAddress`, `circuitId` and `signingKey` are optional. Each operation
-  sets the ones it has. A call scoped over several contracts has no single
-  `contractAddress`, and `circuitId` is then a list.
+  `record.era` before `record.tx` is touched. The message names the status, the
+  transaction id and hash, the block height and the failed segments; every
+  other field is read from `record`.
+- `contractAddress`, `circuitId` and `signingKey` are optional members. The
+  constructor requires the ones each operation always has: `contractAddress`
+  and `signingKey` for a deploy or a replacement, `contractAddress` and
+  `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
+  call never sets `contractAddress`, because a scope can call several
+  contracts; `circuitId` is then a list.
 
 ### Why the shared code sits on the class
 
@@ -230,10 +234,9 @@ referenced in their classes' documentation but never interpolated into a
 message. An error message reaches logs and issue trackers, and each may be the
 only copy of the authority over a deployment or a replacement that landed.
 
-The key is an enumerable property. A logger that serializes the properties of an
-error writes it out. This was true for ledger 8 and is now true for ledger 9
-too, so do not pass these errors whole to a logger that ships its output
-anywhere.
+The key is not enumerable either. `Object.keys`, object spread, `JSON.stringify`
+and a logger that serializes the properties of an error leave it out; the
+caller reads it as `error.signingKey`.
 
 ## Why a failed deploy is not a failed call
 

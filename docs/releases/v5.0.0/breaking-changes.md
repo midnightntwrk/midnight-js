@@ -1260,12 +1260,12 @@ pre-releases. Use this section for the final names.
 | `RemoveVerifierKeyTxFailedError`, `Ledger8.RemoveVerifierKeyTxFailedError` | `TxFailedError`, `operation: 'remove-verifier-key'` |
 | `ReplaceMaintenanceAuthorityTxFailedError`, `Ledger8.ReplaceMaintenanceAuthorityTxFailedError` | `TxFailedError`, `operation: 'replace-authority'` |
 | `error.finalizedTxData` (ledger 9), `error.txData` (ledger 8) | `error.record`, a `FinalizedTxRead`; narrow on `record.era` |
-| the ledger 9 message, a JSON dump of the record | a sentence; read `segmentStatusMap` and the other record fields from `error.record` |
-| `contractAddress`, `circuitId`, `signingKey` always present on the class that had them | optional fields, set per operation |
+| the ledger 9 message, a JSON dump of the record | a sentence naming the status, the transaction id and hash, the block height and the failed segments; read the other record fields from `error.record` |
+| `contractAddress`, `circuitId`, `signingKey` always present on the class that had them | optional fields, set per operation. The constructor requires the ones each operation always has: `contractAddress` and `signingKey` for `'deploy'` and `'replace-authority'`, `contractAddress` and `circuitId` for a verifier key update, `circuitId` for `'call'`. A ledger 9 call never sets `contractAddress`, because a scope can call several contracts |
 
-`signingKey` is an enumerable property, so a logger that serializes the properties of an error writes
-it out. This was already true for ledger 8 and is now also true for ledger 9. The key is never in the
-message. Do not pass a failed deploy or replacement whole to a logger.
+`signingKey` is not enumerable, so `Object.keys`, object spread, `JSON.stringify` and a logger that
+serializes the properties of an error leave it out. Read it as `error.signingKey`. The key is never in the
+message. The same holds for `Ledger8UnconfirmedError` and `Ledger8NotStoredError`.
 
 ### 24b. Wrong era: one `EraMismatchError`
 
@@ -1283,8 +1283,9 @@ message. Do not pass a failed deploy or replacement whole to a logger.
 | `MixedEraScopeError` (`MIXED_ERA_SCOPE`) | `'ledger8-call-in-scope'` | `circuitId` |
 | `UnknownResultEraError` (`UNKNOWN_RESULT_ERA`) | `'unrecognised-result-era'` | `received` |
 
-These fields are gone as typed members. Read them from the message, or from the call you made. An
-exhaustive `switch` on `reason` must handle the seven new members.
+`contractAddress` and `circuitId` stay typed members, set for the reasons that have them. `detail`, the
+sentence added to the message, is a member too. `networkVersion`, `operation` and `received` are only in
+the message. An exhaustive `switch` on `reason` must handle the seven new members.
 
 `EraInvariantViolationError` is unchanged, except that `requireLedger9Record` now names `received`.
 `PublicStatesEraMismatchError`, `IndexerInconsistencyError` and `TransactionEraMismatchError` are
@@ -1294,8 +1295,11 @@ unchanged.
 
 | Before | After |
 |---|---|
-| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerVersionError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`, ENVIRONMENT). `requestedVersion` is `'undefined'` or `'null'` when the value carried no era |
+| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerVersionError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`, ENVIRONMENT). `requestedVersion` is `undefined` when the value carried no era |
 | `Ledger8ValueUnsupportedError` (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`), `requireLedger9` | removed. Narrow with `switch (value.era)`, closed by `assertNever` |
+
+`UnknownLedgerVersionError.requestedVersion` is now `string | undefined`, and the constructor takes the
+raw value. A value that is an object or a function is reported by its kind, `'object'` or `'function'`.
 
 The category changes from USAGE to ENVIRONMENT. A value with no era means a provider written for a
 release before 5.0.0, or an outdated midnight-js. The fix is in the installation. A state with a
@@ -1313,13 +1317,15 @@ known era but no `serialize()` still raises `InvalidLedgerStateError`.
 | `Ledger8.SigningKeyNotStoredError` (`LEDGER8_SIGNING_KEY_NOT_STORED`) | `Ledger8NotStoredError`, `operation: 'replace-authority'`, `stage: 'signing-key'` |
 | `Ledger8.ShieldedSpendUnsupportedError` (`LEDGER8_SHIELDED_SPEND_UNSUPPORTED`) | `Ledger8CallUnsupportedError`, `reason: 'shielded-spend'` |
 | `Ledger8.RecipientUnmappableError` (`LEDGER8_RECIPIENT_UNMAPPABLE`) | `Ledger8CallUnsupportedError`, `reason: 'unmappable-recipient'` |
-| `Ledger8.AmbiguousEntryPointError` | `Ledger8AmbiguousEntryPointError`, unchanged |
+| `Ledger8.AmbiguousEntryPointError` | `Ledger8AmbiguousEntryPointError`, which now also carries `contractAddress` (the first constructor argument) |
 
 The new codes are `MIDNIGHT_JS_C_LEDGER8_SIGNING_KEY` (USAGE), `MIDNIGHT_JS_C_LEDGER8_UNCONFIRMED`
 (UNCERTAIN), `MIDNIGHT_JS_C_LEDGER8_NOT_STORED` (ENVIRONMENT) and `MIDNIGHT_JS_C_LEDGER8_CALL_UNSUPPORTED`
 (USAGE). A `Ledger8NotStoredError` with `operation: 'deploy'` means the contract exists: do not deploy
 again. With `operation: 'replace-authority'` the old key no longer authorizes anything: keep
 `error.signingKey`.
+
+`Ledger8SigningKeyError` with `reason: 'unavailable'` requires the contract address.
 
 Four types are exported flat for the fields: `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`,
 `Ledger8NotStoredStage` and `Ledger8CallUnsupportedReason`.

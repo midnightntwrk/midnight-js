@@ -768,10 +768,11 @@ it too. `error.operation` says which operation failed (`'call'`, `'deploy'`,
 `error.record` is what the chain recorded, tagged with its era.
 
 `finalizedTxData` and `txData` are gone: read `error.record`. The ledger 9 message
-used to be a JSON dump of the record. It is a sentence now, so read
-`segmentStatusMap` and the other record fields from `error.record`.
-`contractAddress`, `circuitId` and `signingKey` are optional fields, set by the
-operations that have them.
+used to be a JSON dump of the record. It is a sentence now that names the status,
+the transaction id and hash, the block height and the failed segments; read the
+other record fields from `error.record`. `contractAddress`, `circuitId` and
+`signingKey` are optional fields, set by the operations that have them. A ledger 9
+call never sets `contractAddress`, because a scope can call several contracts.
 
 ```typescript
 try {
@@ -785,12 +786,12 @@ try {
 }
 ```
 
-**Do not log the error whole after a failed deploy or replacement.** `signingKey` is an
-enumerable property, and it may be the only copy of the contract's maintenance
-authority. A logger that serializes the properties of an error writes it out. This was
-already true for ledger 8 and is now true for ledger 9 too. The key is never in the
-message. Store it with `privateStateProvider.setSigningKey(address, error.signingKey)`,
-and log the message and the `record` instead.
+**Keep `error.signingKey` after a failed deploy or replacement.** It may be the only
+copy of the contract's maintenance authority. It is not enumerable and never in the
+message, so a logger that serializes the properties of an error leaves it out. After a
+failed replacement, read the contract state with `queryContractState` and compare its
+`maintenanceAuthority` committee with `signatureVerifyingKey(error.signingKey)`. If the
+new key is there, store it with `privateStateProvider.setSigningKey(address, error.signingKey)`.
 
 ### Maintaining a contract in either era
 
@@ -1296,11 +1297,13 @@ has the full table.
 | `AnyEraTxFailedError`, `CallTxFailedError`, `DeployTxFailedError`, a verifier-key or authority `*TxFailedError`, or any `Ledger8.*TxFailedError` | `TxFailedError`; branch on `error.operation` |
 | `error.finalizedTxData` or `error.txData` | `error.record` |
 | `EraArtifactMismatchError`, `Ledger8.DeployOnLedger9Error`, `Ledger8.MaintenanceOnLedger9Error`, `Ledger8.ArtifactOnLedger9StateError`, `Ledger8.ContractStateUnsupportedError`, `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`, `UnknownResultEraError` | `EraMismatchError`; branch on `error.reason` |
-| `UnrecognisedEraTagError`, `Ledger8ValueUnsupportedError`, `requireLedger9` | `UnknownLedgerVersionError`; a `requestedVersion` of `'undefined'` means the value had no era |
+| `UnrecognisedEraTagError` | `UnknownLedgerVersionError`; a `requestedVersion` of `undefined` means the value had no era |
+| `Ledger8ValueUnsupportedError`, `requireLedger9` | nothing: narrow with `switch (value.era)`, closed by `assertNever` |
 | `Ledger8.SigningKeyUnusableError`, `Ledger8.SigningKeyUnavailableError` | `Ledger8SigningKeyError`; `reason` is `'unusable'` or `'unavailable'` |
 | `Ledger8.DeployUnconfirmedError`, `Ledger8.ReplaceAuthorityUnconfirmedError` | `Ledger8UnconfirmedError`; `operation` is `'deploy'` or `'replace-authority'` |
 | `Ledger8.DeployNotStoredError`, `Ledger8.SigningKeyNotStoredError` | `Ledger8NotStoredError`; branch on `operation` and `stage` |
 | `Ledger8.ShieldedSpendUnsupportedError`, `Ledger8.RecipientUnmappableError` | `Ledger8CallUnsupportedError`; `reason` is `'shielded-spend'` or `'unmappable-recipient'` |
+| `Ledger8.AmbiguousEntryPointError` | `Ledger8AmbiguousEntryPointError`; it now carries `contractAddress` |
 
 ```ts
 // Before
@@ -1314,8 +1317,12 @@ if (error instanceof Ledger8UnconfirmedError && error.operation === 'deploy') {
 }
 ```
 
-`EraMismatchError` no longer has `networkVersion`, `circuitId`, `received`, `contractAddress` or `operation` as
-typed members. Their values are in the message. If you branched on a code, the codes changed too:
+`EraMismatchError` no longer has `networkVersion`, `received` or `operation` as typed members. Their
+values are in the message. `contractAddress` and `circuitId` are still members, set for the reasons that
+have them.
+
+`signingKey` on `TxFailedError`, `Ledger8UnconfirmedError` and `Ledger8NotStoredError` is not
+enumerable. Read it as `error.signingKey`; object spread and `JSON.stringify` leave it out. If you branched on a code, the codes changed too:
 `ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`, and the other removed codes are listed in
 [ADR 0017](../../adr/0017-error-codes-are-the-contract.md).
 
@@ -1341,7 +1348,7 @@ See [breaking-changes.md](./breaking-changes.md#24-one-error-class-per-fault-155
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
 - [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8UnconfirmedError` or `Ledger8NotStoredError` keeps the `signingKey` it carries.
-- [ ] Every `catch` names `TxFailedError`, `EraMismatchError`, `UnknownLedgerVersionError` or a flat `Ledger8*Error`, and no error is logged whole after a failed deploy or replacement, because `signingKey` is an enumerable property.
+- [ ] Every `catch` names `TxFailedError`, `EraMismatchError`, `UnknownLedgerVersionError` or a flat `Ledger8*Error`, and a failed deploy or replacement saves `error.signingKey`, which object spread and `JSON.stringify` leave out.
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.

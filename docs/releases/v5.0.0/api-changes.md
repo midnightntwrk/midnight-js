@@ -471,27 +471,47 @@ The `Ledger8` namespace is removed. These are the final classes; see
 ```ts
 // contracts
 class TxFailedError extends MidnightJsError {
-  constructor(operation: TxFailedOperation, record: FinalizedTxRead, details: TxFailedDetails);
+  constructor(operation: 'deploy' | 'replace-authority', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; signingKey: SigningKey });
+  constructor(operation: 'insert-verifier-key' | 'remove-verifier-key', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; circuitId: string });
+  constructor(operation: 'call', record: FinalizedTxRead,
+    details: { circuitId: string | readonly string[]; contractAddress?: ContractAddress });
   readonly operation: TxFailedOperation; // 'call' | 'deploy' | 'insert-verifier-key' | 'remove-verifier-key' | 'replace-authority'
   readonly record: FinalizedTxRead;
-  readonly contractAddress?: ContractAddress;
+  readonly contractAddress?: ContractAddress; // never set by a ledger 9 call
   readonly circuitId?: string | readonly string[];
-  readonly signingKey?: SigningKey; // enumerable; never in the message
+  readonly signingKey?: SigningKey; // not enumerable; never in the message
 }
 class EraMismatchError extends MidnightJsError {
-  constructor(reason: EraMismatchReason, options?: EraMismatchOptions); // options: { detail?, cause? }
+  constructor(reason: EraMismatchReason, options?: EraMismatchOptions); // options: { detail?, contractAddress?, circuitId?, cause? }
   readonly reason: EraMismatchReason;
+  readonly detail?: string;
+  readonly contractAddress?: ContractAddress;
+  readonly circuitId?: string;
 }
-class Ledger8SigningKeyError { readonly reason: 'unusable' | 'unavailable'; readonly contractAddress?: string }
-class Ledger8UnconfirmedError { readonly operation: Ledger8KeyedOperation; readonly signingKey: SigningKey }
-class Ledger8NotStoredError { readonly operation: Ledger8KeyedOperation; readonly stage: Ledger8NotStoredStage; readonly signingKey: SigningKey }
-class Ledger8CallUnsupportedError { readonly reason: Ledger8CallUnsupportedReason; readonly circuitId: string }
+class Ledger8SigningKeyError {
+  constructor(reason: 'unusable', contractAddress?: string);
+  constructor(reason: 'unavailable', contractAddress: string, options?: ErrorOptions);
+  readonly reason: 'unusable' | 'unavailable';
+  readonly contractAddress?: string;
+}
+class Ledger8UnconfirmedError { readonly operation: Ledger8KeyedOperation; readonly contractAddress: string; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8NotStoredError { readonly operation: Ledger8KeyedOperation; readonly stage: Ledger8NotStoredStage; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8CallUnsupportedError { readonly reason: Ledger8CallUnsupportedReason; readonly circuitId: string; readonly recipientCoinPublicKey?: string }
+class Ledger8AmbiguousEntryPointError {
+  constructor(contractAddress: string, circuitId: string, matchCount: number);
+  readonly contractAddress: string;
+  readonly circuitId: string;
+  readonly matchCount: number;
+}
 // Types exported with them: TxFailedOperation, TxFailedDetails, EraMismatchReason, EraMismatchOptions,
 //   Ledger8SigningKeyReason, Ledger8KeyedOperation, Ledger8NotStoredStage, Ledger8CallUnsupportedReason.
 ```
 
 `UnknownLedgerVersionError` (protocol) now also covers a value with no era, with a `requestedVersion` of
-`'undefined'` or `'null'`. It is ENVIRONMENT. Removed from `utils`: `UnrecognisedEraTagError`,
+`undefined`. It is ENVIRONMENT. Its constructor takes the raw value (`unknown`), and `requestedVersion` is
+`string | undefined`. Removed from `utils`: `UnrecognisedEraTagError`,
 `Ledger8ValueUnsupportedError`, `requireLedger9`, and the codes `LEDGER8_VALUE_UNSUPPORTED` and
 `UNRECOGNISED_ERA_TAG`. Removed from `contracts`: `AnyEraTxFailedError`, `CallTxFailedError`,
 `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`,

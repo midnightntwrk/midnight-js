@@ -182,13 +182,16 @@ Issue #1557. The decision changes for errors. There is no `Ledger8` namespace an
 |---|---|---|---|
 | `TxFailedError` | contracts | REJECTED | `AnyEraTxFailedError`, `TxFailedError`, `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`, `ReplaceMaintenanceAuthorityTxFailedError`, and the five `Ledger8.*TxFailedError` classes |
 | `EraMismatchError` | contracts | USAGE | `EraArtifactMismatchError`, `Ledger8.DeployOnLedger9Error`, `Ledger8.MaintenanceOnLedger9Error`, `Ledger8.ArtifactOnLedger9StateError`, `Ledger8.ContractStateUnsupportedError`, `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`, `UnknownResultEraError` |
-| `UnknownLedgerVersionError` | protocol | ENVIRONMENT | itself, `UnrecognisedEraTagError`, `Ledger8ValueUnsupportedError` (with `requireLedger9`) |
+| `UnknownLedgerVersionError` | protocol | ENVIRONMENT | itself, `UnrecognisedEraTagError` |
 | `Ledger8SigningKeyError` | contracts | USAGE | `Ledger8.SigningKeyUnusableError`, `Ledger8.SigningKeyUnavailableError` |
 | `Ledger8UnconfirmedError` | contracts | UNCERTAIN | `Ledger8.DeployUnconfirmedError`, `Ledger8.ReplaceAuthorityUnconfirmedError` |
 | `Ledger8NotStoredError` | contracts | ENVIRONMENT | `Ledger8.DeployNotStoredError`, `Ledger8.SigningKeyNotStoredError` |
 | `Ledger8CallUnsupportedError` | contracts | USAGE | `Ledger8.ShieldedSpendUnsupportedError`, `Ledger8.RecipientUnmappableError` |
-| `Ledger8AmbiguousEntryPointError` | contracts | INTEGRITY | unchanged |
+| `Ledger8AmbiguousEntryPointError` | contracts | INTEGRITY | itself; it now carries `contractAddress` |
 | `EraInvariantViolationError`, `PublicStatesEraMismatchError`, `IndexerInconsistencyError`, `TransactionEraMismatchError` | contracts, types | INTERNAL, INTEGRITY, USAGE | unchanged |
+
+`Ledger8ValueUnsupportedError` and `requireLedger9` are removed with no replacement. Code that handles
+one era narrows with `switch (value.era)`, closed by `assertNever`.
 
 Why: the namespace existed so the retained era could be withdrawn in one step. The errors were the
 only members left, and 18 classes for two eras was more than a caller could tell apart. A merged class
