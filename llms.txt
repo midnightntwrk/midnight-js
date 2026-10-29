@@ -37,7 +37,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js` | Barrel package for Midnight.js core framework |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
-| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof, wallet and midnight providers delegating to a DApp Connector wallet |
+| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof, wallet and midnight providers delegating to a DApp Connector wallet, and the network endpoints the wallet uses |
 | `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
 | `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
@@ -369,6 +369,22 @@ const provingProvider = await dappConnectorProvingProvider(
 );
 ```
 
+### DApp Connector Network
+
+A browser dApp with a DApp Connector wallet takes its network id and endpoints from the wallet, not from
+`networks`: the user picks the network and the services in the wallet, and no API token ends up in the dApp.
+
+```typescript
+import { dappConnectorNetwork } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+const network = await dappConnectorNetwork(walletConnectedAPI);
+const publicDataProvider = indexerPublicDataProvider(network.indexer);
+// config: { networkId: network.networkId, ttlSeconds: 3600 }
+```
+
+- The wallet reports one node URI; `nodeURL` and `nodeWsURL` are that URI with the http and ws scheme.
+- `InvalidArgumentError`: the wallet's `substrateNodeUri` is not an http, https, ws or wss URL.
+
 ### DApp Connector Balancing and Submission
 
 ```typescript
@@ -507,7 +523,8 @@ The network id is not global state: it travels on the provider set as
 `@midnight-ntwrk/midnight-js-utils`. `preview` is hosted by Midnight. `preprod`
 and `mainnet` are served by Blockfrost and take a Blockfrost project token for
 that network, which ends up in every URL — remove it before you log a URL. For
-other endpoints, pass your own `MidnightNetwork`:
+other endpoints, pass your own `MidnightNetwork`. A browser dApp with a DApp
+Connector wallet uses `dappConnectorNetwork` instead (see DApp Connector Network):
 
 ```typescript
 import { networks } from '@midnight-ntwrk/midnight-js-utils';

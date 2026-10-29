@@ -60,7 +60,8 @@ const blockfrostNetwork = (
  * The URLs then carry the token: remove it before you log them.
  *
  * These are defaults that can change between releases. To use other endpoints, pass your own
- * {@link MidnightNetwork}.
+ * {@link MidnightNetwork}. A browser dApp with a DApp Connector wallet takes its endpoints from the wallet
+ * with `dappConnectorNetwork` from `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider`.
  *
  * @example
  * ```typescript
