@@ -930,10 +930,10 @@ export class UnknownResultEraError extends MidnightJsError {
  * A transaction this framework submitted that the chain recorded with a
  * non-success status, in EITHER era. The one class to catch.
  *
- * Each subclass keeps its own historical member -- `finalizedTxData` on the
- * current era's, `txData` on the retained one -- so nothing reading those
- * breaks. {@link TxFailedError.record} is the member to write new code
- * against, and it needs narrowing on `era` before `tx` is touched.
+ * The record has a different member on each ledger -- `finalizedTxData` on
+ * {@link Ledger9TxFailedError}, `txData` on the ledger 8 classes.
+ * {@link TxFailedError.record} is the member both share, and it needs
+ * narrowing on `era` before `tx` is touched.
  *
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
@@ -978,6 +978,7 @@ export class Ledger9TxFailedError extends TxFailedError {
     public readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super('Transaction failed');
+    this.name = 'Ledger9TxFailedError';
     this.message = JSON.stringify(
       {
         ...(circuitId && { circuitId }),

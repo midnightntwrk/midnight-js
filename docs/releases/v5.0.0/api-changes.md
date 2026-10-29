@@ -399,7 +399,7 @@ export interface Ledger9FinalizedMaintenanceTxData {
   readonly era: 'v9';
   readonly public: Ledger9FinalizedTxData;
 }
-export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
 export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -409,7 +409,7 @@ export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   newVk: VerifierKey
 ): Promise<Ledger8FinalizedMaintenanceTxData>;
 export function submitInsertVerifierKeyTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>,
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>,
@@ -479,7 +479,10 @@ export abstract class TxFailedError extends MidnightJsError {
   readonly code: 'MIDNIGHT_JS_C_TX_FAILED';
   abstract readonly record: FinalizedTxRead;
 }
-export class Ledger9TxFailedError extends TxFailedError { readonly finalizedTxData: Ledger9FinalizedTxData; }
+export class Ledger9TxFailedError extends TxFailedError {
+  readonly finalizedTxData: Ledger9FinalizedTxData;
+  readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[];
+}
 export class Ledger9CallTxFailedError extends Ledger9TxFailedError {}
 export class Ledger9DeployTxFailedError extends Ledger9TxFailedError {}
 export class Ledger9InsertVerifierKeyTxFailedError extends Ledger9TxFailedError {}

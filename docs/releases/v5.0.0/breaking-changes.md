@@ -1189,7 +1189,8 @@ shows.
 from the contract. Use `Ledger9ContractProviders<C, PCK, PS>` to pass it.
 
 **Types without a contract parameter.** Renamed, with no flat alias, because
-nothing tells the eras apart:
+nothing tells the eras apart (section 24 adds `FinalizedMaintenanceTxData` back as the
+union of both eras):
 
 | Before | After |
 |---|---|
@@ -1243,7 +1244,7 @@ always name it. See ADR 0013.
 One rule for names: a `Ledger8` / `Ledger9` prefix means bound to one ledger. No prefix
 means valid for every era: with a contract parameter the name picks the era from the
 contract; without one it is the union of all eras. An `Any` prefix keeps its meaning of
-any contract and any circuit (`AnyProvableCircuitId`). Earlier sections of this document use
+any contract and any circuit. Earlier sections of this document use
 the names before this rename.
 
 **Types.**
@@ -1256,7 +1257,7 @@ the names before this rename.
 | `AnyEraFoundContract<C, L8>` | `FoundContract<C \| L8>` |
 | `AnyEraDeployedContract<C, L8>` | `DeployedContract<C \| L8>` |
 | `AnyEraMaintenanceTxData` | `FinalizedMaintenanceTxData` |
-| `ContractProviders` (no type arguments: the ledger 9 set) | `ContractProviders<C>` requires the contract; `Ledger9ContractProviders` for the ledger 9 set |
+| `ContractProviders` without type arguments (4.x: any contract; pre-releases: the ledger 9 set) | `ContractProviders<C>` requires the contract; `Ledger9ContractProviders` for the ledger 9 set |
 
 `FinalizedMaintenanceTxData` was the ledger 9 type in `5.0.0-rc.5`; it is now the union of
 both eras. Code that reads `public.tx` or relies on `era: 'v9'` stops compiling until it
@@ -1280,11 +1281,18 @@ classes take the `Ledger9` prefix:
 - `error instanceof TxFailedError` still compiles, and now also catches the ledger 8
   failures (`Ledger8.CallTxFailedError` and the rest). Read the record through `.record`,
   which is era-tagged, or narrow to `Ledger9TxFailedError` to read `.finalizedTxData`.
+  TypeScript stops code that reads `.finalizedTxData` after the check; JavaScript code and
+  code that branches on the class alone get no warning. Never retry on this class: it now
+  also catches `Ledger8.DeployTxFailedError` and
+  `Ledger8.ReplaceMaintenanceAuthorityTxFailedError`, whose `signingKey` can be the only
+  copy of the contract's maintenance key, and a deploy that failed in the fallible phase
+  may still have created the contract.
 - `error instanceof CallTxFailedError` and the other old names stop compiling. Use the
   `Ledger9*` name for the ledger 9 class only, or `TxFailedError` for both eras.
 - `new TxFailedError(...)` stops compiling: the class is abstract.
-- `error.name` of the five subclasses changes, for example `'CallTxFailedError'` is now
-  `'Ledger9CallTxFailedError'`. Code that compares `name` strings does not fail to compile:
+- `error.name` changes on every ledger 9 class, for example `'CallTxFailedError'` is now
+  `'Ledger9CallTxFailedError'`, and `Ledger9TxFailedError` reports `'Ledger9TxFailedError'`
+  instead of `'Error'`. Code that compares `name` strings does not fail to compile:
   branch on `code` (`MIDNIGHT_JS_C_TX_FAILED`) or on `instanceof` instead.
 - The `Ledger8` namespace members (`Ledger8.CallTxFailedError` and the rest) do not change.
 

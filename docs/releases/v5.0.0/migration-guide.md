@@ -769,8 +769,8 @@ class differs per era: `Ledger9CallTxFailedError` on ledger 9,
 record.
 
 Catch `TxFailedError` to get both, and read the record through `.record`,
-which is era-tagged. Each class also keeps its own historical member
-(`finalizedTxData`, `txData`), so existing code does not change.
+which is era-tagged. `Ledger9TxFailedError` also has `finalizedTxData` and the
+ledger 8 classes have `txData`; Step 23 lists the renamed classes.
 
 ```typescript
 try {
@@ -1288,21 +1288,36 @@ base both eras' failure classes extend; the ledger 9 classes carry the `Ledger9`
 // Before (4.x)
 import { CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
 if (error instanceof CallTxFailedError) log(error.finalizedTxData.txId);
-if (error instanceof TxFailedError) retry();
+if (error instanceof TxFailedError) report(error.finalizedTxData.status);
 
 // After
 import { Ledger9CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
 if (error instanceof Ledger9CallTxFailedError) log(error.finalizedTxData.txId);
-if (error instanceof TxFailedError) retry(); // now also catches the ledger 8 failures
+if (error instanceof TxFailedError) report(error.record.status); // both ledgers
 ```
 
-Rename `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`,
-`RemoveVerifierKeyTxFailedError` and `ReplaceMaintenanceAuthorityTxFailedError` to their
-`Ledger9*` names. A `TxFailedError` that reads `.finalizedTxData` stops compiling: read
-`.record` (era-tagged) or narrow to `Ledger9TxFailedError`. If you compare `error.name`
-strings, update them too: nothing warns you about these.
+Rename `TxFailedError`, `CallTxFailedError`, `DeployTxFailedError`,
+`InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` and
+`ReplaceMaintenanceAuthorityTxFailedError` to their `Ledger9*` names where you mean
+ledger 9 only. Keep `TxFailedError` where you mean both ledgers. A `TxFailedError` that
+reads `.finalizedTxData` stops compiling: read `.record` (era-tagged) or narrow to
+`Ledger9TxFailedError`. If you compare `error.name` strings, update them too: nothing
+warns you about these.
 
-From a 5.0.0 pre-release, also rename the `AnyEra*` types:
+> **Never retry on `TxFailedError`.** The chain recorded the transaction, so a retry
+> sends a second one. The base now also catches `Ledger8.DeployTxFailedError` and
+> `Ledger8.ReplaceMaintenanceAuthorityTxFailedError`. A ledger 8 deploy that failed in
+> the fallible phase may still have created the contract, and the error's `signingKey`
+> can be the only copy of its maintenance key. Keep that key; do not deploy again.
+
+`ContractProviders` needs its contract. In 4.x a bare `ContractProviders` meant the
+providers of any contract; write `ContractProviders<typeof MyContract>` or
+`Ledger9ContractProviders`.
+
+From a 5.0.0 pre-release, rename in this order, so that the two failure classes do not
+merge into one name: first `TxFailedError` → `Ledger9TxFailedError` (check that each use
+meant ledger 9 only), then `AnyEraTxFailedError` → `TxFailedError`. Then rename the
+`AnyEra*` types:
 
 ```ts
 // Before (5.0.0 pre-release)
@@ -1316,10 +1331,9 @@ const onFound = (found: FoundContract<MyContract | MyLedger8Contract>) => ...;
 
 `AnyEraContract` → `SmartContract`, `AnyEraSubmittedCallTx` → `AnySubmittedCallTx`,
 `AnyEraDeployedContract<C, L8>` → `DeployedContract<C | L8>`, `AnyEraMaintenanceTxData` →
-`FinalizedMaintenanceTxData`, `AnyEraTxFailedError` → `TxFailedError`. In `5.0.0-rc.5`,
-`FinalizedMaintenanceTxData` was the ledger 9 type; it is now the union, so narrow it on
-`era` or write `Ledger9FinalizedMaintenanceTxData`. `ContractProviders` needs its contract:
-write `ContractProviders<typeof MyContract>` or `Ledger9ContractProviders`.
+`FinalizedMaintenanceTxData`. In `5.0.0-rc.5`, `FinalizedMaintenanceTxData` was the
+ledger 9 type; it is now the union, so narrow it on `era` or write
+`Ledger9FinalizedMaintenanceTxData`.
 
 See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
 
@@ -1353,3 +1367,4 @@ See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-
 - [ ] No code calls `queryRawContractState`, `rawContractStateObservable` or `getAnyEraContractState`.
 - [ ] No import of `@midnight-ntwrk/midnight-js-protocol/ledger`, `/compact-runtime`, `/compact-js*` or `/onchain-runtime`, and no use of the root `ledger`, `compactRuntime`, `compactJs` or `onchainRuntime` namespaces.
 - [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
+- [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.

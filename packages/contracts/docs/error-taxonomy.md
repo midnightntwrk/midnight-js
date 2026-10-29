@@ -31,10 +31,9 @@ consumers already read, so that was not available either. Hence a retained-era
 class of its own rather than an extension of `Ledger9TxFailedError`, and a base that
 declares the union.
 
-Each subclass keeps its own historical member — `finalizedTxData` on the current
-era's, `txData` on the retained one — so nothing reading those breaks.
-`TxFailedError.record` is the member to write new code against, and it
-needs narrowing on `era` before `tx` is touched.
+The record has a different member on each ledger — `finalizedTxData` on
+`Ledger9TxFailedError`, `txData` on the ledger 8 classes. `TxFailedError.record`
+is the member both share, and it needs narrowing on `era` before `tx` is touched.
 
 ### Why the shared code sits on the base
 

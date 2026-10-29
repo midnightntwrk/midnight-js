@@ -66,6 +66,10 @@ export type Ledger9Contract = Contract.Any;
 
 /**
  * A contract compiled with the toolchain of any ledger era this release serves.
+ *
+ * Use it as a constraint (`C extends SmartContract`). Instantiated with itself, a flat name such
+ * as `FinalizedCallTxData<SmartContract, …>` types the circuit values as `any`; for a call of any
+ * contract use `AnyFinalizedCallTxData`.
  */
 export type SmartContract = Ledger8Contract | Ledger9Contract;
 

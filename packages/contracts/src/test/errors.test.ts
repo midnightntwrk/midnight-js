@@ -38,8 +38,17 @@ import {
   Ledger8RecipientUnmappableError,
   Ledger8SigningKeyUnusableError,
   Ledger9CallTxFailedError,
+  Ledger9DeployTxFailedError,
   Ledger9TxFailedError,
   TxFailedError} from '../errors';
+import {
+  Ledger8InsertVerifierKeyTxFailedError,
+  Ledger8RemoveVerifierKeyTxFailedError,
+  Ledger8ReplaceMaintenanceAuthorityTxFailedError,
+  Ledger9InsertVerifierKeyTxFailedError,
+  Ledger9RemoveVerifierKeyTxFailedError,
+  Ledger9ReplaceMaintenanceAuthorityTxFailedError
+} from '../governance/errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
 // The v8 variant of the record union. Its `tx` is a live `Ledger8FinalizedTransaction` handle
@@ -93,10 +102,10 @@ describe('Ledger9TxFailedError', () => {
 });
 
 describe('the era-agnostic failure base', () => {
-  // Before this base existed a caller had to know that the current era throws
-  // `Ledger9CallTxFailedError extends Ledger9TxFailedError` carrying `finalizedTxData` and
-  // the retained era throws `Ledger8CallTxFailedError extends Error` carrying
-  // `txData`. So `instanceof Ledger9CallTxFailedError` missed every retained-era
+  // Before this base existed a caller had to know that ledger 9 throws
+  // `CallTxFailedError extends TxFailedError` (now `Ledger9CallTxFailedError`) carrying
+  // `finalizedTxData` and ledger 8 throws `Ledger8CallTxFailedError extends Error` carrying
+  // `txData`. So `instanceof CallTxFailedError` missed every ledger 8
   // failure -- silently, which is the part that matters -- and a caller that
   // caught both still read the record through two different member names.
 
@@ -332,6 +341,42 @@ describe('the recorded-failure code', () => {
       CONTRACTS_ERROR_CODES.TX_FAILED,
       CONTRACTS_ERROR_CODES.TX_FAILED
     ]);
+  });
+});
+
+describe('the recorded-failure classes', () => {
+  const ADDRESS = '0200'.repeat(8);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
+  const record = createMockFinalizedTxData(FailFallible);
+
+  const ledger9: readonly (readonly [string, TxFailedError])[] = [
+    ['Ledger9TxFailedError', new Ledger9TxFailedError(record)],
+    ['Ledger9CallTxFailedError', new Ledger9CallTxFailedError(record, 'increment')],
+    ['Ledger9DeployTxFailedError', new Ledger9DeployTxFailedError(record)],
+    ['Ledger9InsertVerifierKeyTxFailedError', new Ledger9InsertVerifierKeyTxFailedError(record)],
+    ['Ledger9RemoveVerifierKeyTxFailedError', new Ledger9RemoveVerifierKeyTxFailedError(record)],
+    ['Ledger9ReplaceMaintenanceAuthorityTxFailedError', new Ledger9ReplaceMaintenanceAuthorityTxFailedError(record)]
+  ];
+
+  const ledger8: readonly (readonly [string, TxFailedError])[] = [
+    ['Ledger8CallTxFailedError', new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')],
+    ['Ledger8DeployTxFailedError', new Ledger8DeployTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY)],
+    ['Ledger8InsertVerifierKeyTxFailedError', new Ledger8InsertVerifierKeyTxFailedError(ledger8FailedRecord(), ADDRESS, 'increment')],
+    ['Ledger8RemoveVerifierKeyTxFailedError', new Ledger8RemoveVerifierKeyTxFailedError(ledger8FailedRecord(), ADDRESS, 'increment')],
+    ['Ledger8ReplaceMaintenanceAuthorityTxFailedError', new Ledger8ReplaceMaintenanceAuthorityTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY)]
+  ];
+
+  it.each([...ledger9, ...ledger8])('%s carries its own class name and is caught by the base', (name, error) => {
+    expect(error.name).toBe(name);
+    expect(error).toBeInstanceOf(TxFailedError);
+  });
+
+  it.each(ledger9)('%s is a ledger 9 failure', (_name, error) => {
+    expect(error).toBeInstanceOf(Ledger9TxFailedError);
+  });
+
+  it.each(ledger8)('%s is never a ledger 9 failure', (_name, error) => {
+    expect(error).not.toBeInstanceOf(Ledger9TxFailedError);
   });
 });
 

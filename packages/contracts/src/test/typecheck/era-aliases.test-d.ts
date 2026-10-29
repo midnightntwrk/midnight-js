@@ -227,6 +227,12 @@ describe('a flat name without a contract is the union of every era', () => {
     type _NoCircuitSubmitted = SubmittedCallTx<V9>;
   });
 
+  it('types the circuit values as any when instantiated with SmartContract itself', () => {
+    // Known limit: SmartContract is a constraint. The widest ledger 9 contract is `Contract<any>`,
+    // so a value of any contract is `AnyFinalizedCallTxData`, not `FinalizedCallTxData<SmartContract, …>`.
+    expectTypeOf<FinalizedCallTxData<SmartContract, CircuitIdOf<SmartContract>>['private']['result']>().toBeAny();
+  });
+
   it('reads the circuit values of a call of either era as unknown, never any', () => {
     expectTypeOf<AnyFinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
     expectTypeOf<AnyFinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
