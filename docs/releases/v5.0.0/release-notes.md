@@ -8,7 +8,7 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 ## Breaking Changes
 
-### Transaction handles at the provider methods, version-tagged records on the read surface (#1204, #1533)
+### Transaction handles at the provider methods, era-tagged records on the read surface (#1204, #1533)
 
 Every transaction crossing `proveTx`, `balanceTx` and `submitTx`, and every
 transaction a `contracts` function takes or returns, is now an opaque handle:
@@ -20,10 +20,10 @@ unproven transaction to `MidnightProvider.submitTx` is a compile error. Make a h
 copy of the ledger package, so a duplicate install fails with a coded error
 instead of corrupting a WASM call.
 
-`watchForTxData` / `watchForDeployTxData` report a `version`-discriminated
-record whose `tx` is a `FinalizedTx` of the same era. Read it with
-`LedgerTransaction.unwrap(record.tx, record.version)`, or narrow with a plain
-`switch (record.version)` when the eras need different code.
+`watchForTxData` / `watchForDeployTxData` report a `FinalizedTxRead`, an
+`era`-discriminated record whose `tx` is a `FinalizedTx` of the same era. Read it with
+`LedgerTransaction.unwrap(record.tx, record.era)`, or narrow with a plain
+`switch (record.era)` when the eras need different code.
 
 Implementations of `ProofProvider`, `WalletProvider` and `MidnightProvider`
 must be updated. `createWalletProvider` and `createMidnightProvider` wrap a

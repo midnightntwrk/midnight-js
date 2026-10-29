@@ -23,10 +23,9 @@ import { type ContractAddress, type IntentHash, type RawTokenType } from '@midni
 import type {
   ContractStateAndParametersRead,
   ContractStateRead,
+  FinalizedTxRead,
   PublicStatesRead,
-  ReadMethod,
-  VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  ReadMethod} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -89,10 +88,7 @@ export const parseHexTransaction = <E extends LedgerVersion>(
 const parametersBytesAndLedgerVersion = (
   hexParameters: string
 ): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerVersion } => {
-  // Hex first, for the reason `stateBytesAndLedgerVersion` does it first: `toByteArray` keeps only
-  // the leading run of whole hex bytes `parseHex` finds and discards the rest, so an only-partly-hex
-  // payload would otherwise be silently truncated into a shorter, still plausible-looking byte
-  // string — and a truncated tag prefix would then be dated rather than refused.
+  // Hex first, as in `stateBytesAndLedgerVersion`.
   if (!isHex(hexParameters)) {
     throw IndexerDataError.malformedParametersEncoding();
   }
@@ -102,15 +98,15 @@ const parametersBytesAndLedgerVersion = (
 
 /**
  * A decoded finalized transaction paired with the era whose runtime produced
- * it — the two fields {@link VersionedFinalizedTxData} discriminates on.
+ * it — the two fields {@link FinalizedTxRead} discriminates on.
  *
  * `DistributivePick` rather than a bare `Pick`: distributed over the union it
- * yields one variant per era, each pairing `version` with a `tx` handle of
+ * yields one variant per era, each pairing `era` with a `tx` handle of
  * that same era.
  */
 type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : never;
 
-export type DecodedRecordTransaction = DistributivePick<VersionedFinalizedTxData, 'version' | 'tx'>;
+export type DecodedRecordTransaction = DistributivePick<FinalizedTxRead, 'era' | 'tx'>;
 
 /**
  * One decoder per {@link LedgerVersion}, each returning only its own variant of
@@ -126,16 +122,16 @@ type TransactionDecoders = {
   readonly [V in LedgerVersion]: (
     hexTransaction: string,
     details: ReadDetails
-  ) => Promise<Extract<DecodedRecordTransaction, { version: V }>>;
+  ) => Promise<Extract<DecodedRecordTransaction, { era: V }>>;
 };
 
 const transactionDecoders = {
   v8: async (hexTransaction: string, details: ReadDetails) => ({
-    version: 'v8' as const,
+    era: 'v8' as const,
     tx: await parseHexTransaction('v8', hexTransaction, details)
   }),
   v9: async (hexTransaction: string, details: ReadDetails) => ({
-    version: 'v9' as const,
+    era: 'v9' as const,
     tx: await parseHexTransaction('v9', hexTransaction, details)
   })
 } satisfies TransactionDecoders;
@@ -159,7 +155,7 @@ export interface TransactionDecodeContext {
  *
  * `era` is the authority on which decoder runs, and it is derived from the
  * record's own `protocolVersion` by `resolveReadEra` (`./era.ts`) before this
- * is called. Nothing here re-derives it: the era and the `version` on the
+ * is called. Nothing here re-derives it: the era and the `era` on the
  * returned record are the same fact.
  *
  * A payload that will not decode leaves as the `DeserializationError` the

@@ -517,9 +517,10 @@ export class LedgerStateDecoderMissingError extends MidnightJsError {
 }
 
 /**
- * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws. The bytes
- * carry the right tag, so the decoder is the wrong one: it decodes another kind, or comes from a
- * runtime that cannot read this era. The decoder's failure is the `cause`.
+ * Thrown by `LedgerState.deserialize` when the decoder for the era of the value throws an error
+ * without a midnight-js code. The bytes carry the right tag, so either the decoder is the wrong one
+ * (it decodes another kind, or comes from a runtime that cannot read this era) or the bytes after
+ * the tag are corrupt. The decoder's failure is the `cause`.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
@@ -539,7 +540,8 @@ export class LedgerStateDecodeFailedError extends MidnightJsError {
   ) {
     super(
       `The decoder passed for ${era} could not decode a ${kind} written by the ${era} ledger. ` +
-        `Pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}.`,
+        `Check that you pass { ${era}: ${kind} }, with ${DECODER_SOURCE[kind][era]}; ` +
+        `if you do, the bytes are corrupt.`,
       options
     );
     this.name = 'LedgerStateDecodeFailedError';

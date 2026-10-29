@@ -19,22 +19,22 @@ import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
- * The v8 variant of {@link VersionedFinalizedTxData}. Carries the same
+ * The v8 variant of {@link FinalizedTxRead}. Carries the same
  * finalized-transaction metadata as {@link FinalizedTxData} — both variants extend
  * {@link FinalizedTxRecord} — and the transaction as a {@link FinalizedTx}
- * handle whose era is v8: `record.tx.era === record.version`.
+ * handle whose era is v8: `record.tx.era === record.era`.
  *
- * `version` is derived from the record's own `protocolVersion` by the provider
+ * `era` is derived from the record's own `protocolVersion` by the provider
  * that builds it, so this shape is only produced for a record that resolves to
  * the v8 ledger runtime.
  *
  * A provider that decodes per era produces this variant for any record whose
  * `protocolVersion` places it in the v8 era. A consumer that narrows on
- * `version` therefore has to handle it: it is a value the read surface really
+ * `era` therefore has to handle it: it is a value the read surface really
  * returns, not a placeholder.
  */
 export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
-  readonly version: 'v8';
+  readonly era: 'v8';
   /** The finalized transaction, as a v8 handle. */
   readonly tx: LedgerTransaction<'Finalized', 'v8'>;
 }
@@ -42,16 +42,16 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
 /**
  * A finalized transaction record, discriminated by which ledger runtime
  * produced it. Both variants carry identical metadata and a {@link FinalizedTx}
- * handle of their own era, so narrowing on `version` narrows `tx.era` with it.
- * Read the transaction with `LedgerTransaction.unwrap(record.tx, record.version)`.
+ * handle of their own era, so narrowing on `era` narrows `tx.era` with it.
+ * Read the transaction with `LedgerTransaction.unwrap(record.tx, record.era)`.
  *
- * The providers in this framework resolve `version` from the record's own
+ * The providers in this framework resolve `era` from the record's own
  * `protocolVersion` at the one construction point per provider, and throw
  * rather than mislabel a record from an era they cannot decode. Nothing in the
  * type system obliges a third-party `PublicDataProvider` to do the same, so the
  * discriminant is exactly as trustworthy as the provider that produced it.
  */
-export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
+export type FinalizedTxRead = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
@@ -69,8 +69,8 @@ export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
 // compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
 type _EveryEraHasAReadVariant = Assert<
-  [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false
+  [Exclude<LedgerVersion, FinalizedTxRead['era']>] extends [never] ? true : false
 >;
 type _NoReadVariantOutsideTheEraSet = Assert<
-  [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
+  [Exclude<FinalizedTxRead['era'], LedgerVersion>] extends [never] ? true : false
 >;

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LEDGER_STATE_KINDS,
   LEDGER_STATE_TAGS,
@@ -38,14 +38,19 @@ export interface StateDecoder<T = unknown> {
  */
 export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
 
-/**
- * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`.
- */
-export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = E extends keyof D
+type DecodedByEra<D extends StateDecoders, E extends LedgerVersion> = E extends keyof D
   ? D[E] extends StateDecoder<infer T> | undefined
     ? T
     : never
   : never;
+
+/**
+ * What {@link LedgerState.deserialize} returns for decoders `D` and a value of era `E`: `unknown`
+ * when `D` has no decoder for any era `E` can be.
+ */
+export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = [DecodedByEra<D, E>] extends [never]
+  ? unknown
+  : DecodedByEra<D, E>;
 
 const startsWithTag = (bytes: Uint8Array, tag: string): boolean => {
   const prefix = new TextEncoder().encode(`${tag}:`);
@@ -144,8 +149,9 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
    * @param decoders One decoder per ledger era, from the caller's own runtime, e.g.
    * `{ v9: ContractState }`.
    * @throws LedgerStateDecoderMissingError when `decoders` has none for {@link era}.
-   * @throws LedgerStateDecodeFailedError when the decoder throws, for example because it decodes
-   * another kind.
+   * @throws LedgerStateDecodeFailedError when the decoder throws an error without a midnight-js
+   * code, for example because it decodes another kind or the bytes after the tag are corrupt. A
+   * decoder error with a midnight-js code is rethrown unchanged.
    */
   deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E> {
     const decoder: StateDecoder | undefined =
@@ -156,6 +162,9 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
     try {
       return decoder.deserialize(this.serialize()) as DecodedState<D, E>;
     } catch (cause: unknown) {
+      if (cause instanceof MidnightJsError) {
+        throw cause;
+      }
       throw new LedgerStateDecodeFailedError(this.kind, this.era, { cause });
     }
   }

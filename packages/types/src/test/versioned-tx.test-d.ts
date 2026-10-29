@@ -17,7 +17,7 @@ import type { CoinPublicKey, ContractAddress, EncPublicKey, TransactionId } from
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { PublicDataProvider } from '../public-data-provider';
-import type { VersionedFinalizedTxData } from '../versioned';
+import type { FinalizedTxRead } from '../versioned';
 import type { WalletProvider } from '../wallet-provider';
 
 // Compile-level tests, verified by vitest's typecheck pass for this package.
@@ -35,13 +35,13 @@ describe('WalletProvider key readers', () => {
 describe('read-surface provider members', () => {
   it('watchForTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForTxData']>().toEqualTypeOf<
-      (txId: TransactionId) => Promise<VersionedFinalizedTxData>
+      (txId: TransactionId) => Promise<FinalizedTxRead>
     >();
   });
 
   it('watchForDeployTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForDeployTxData']>().toEqualTypeOf<
-      (contractAddress: ContractAddress) => Promise<VersionedFinalizedTxData>
+      (contractAddress: ContractAddress) => Promise<FinalizedTxRead>
     >();
   });
 });

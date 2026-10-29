@@ -20,10 +20,9 @@ import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/ver
 import type {
   AnyProvableCircuitId,
   FinalizedTxData,
+  FinalizedTxRead,
   PrivateStateId,
-  ProviderMethod,
-  VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  ProviderMethod} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
@@ -70,7 +69,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * {@link EraInvariantViolationError.received} names the era that actually came
  * back. An answer that is not a transaction handle at all is a different
  * fault and raises `InvalidTransactionHandleError` instead; a read-surface
- * record whose `version` is missing or unrecognised raises
+ * record whose `era` is missing or unrecognised raises
  * `UnknownLedgerVersionError`.
  */
 export class EraInvariantViolationError extends MidnightJsError {
@@ -934,7 +933,7 @@ export class UnknownResultEraError extends MidnightJsError {
  * Each subclass keeps its own historical member -- `finalizedTxData` on the
  * current era's, `txData` on the retained one -- so nothing reading those
  * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
- * against, and it needs narrowing on `version` before `tx` is touched.
+ * against, and it needs narrowing on `era` before `tx` is touched.
  *
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
@@ -954,11 +953,11 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
   /**
    * The finalized record the chain reported, version-tagged.
    *
-   * @remarks `record.tx` is a `FinalizedTx` in the era `record.version` names.
-   * Read it with `LedgerTransaction.unwrap(record.tx, record.version)`, after
-   * narrowing on `record.version`.
+   * @remarks `record.tx` is a `FinalizedTx` in the era `record.era` names.
+   * Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+   * narrowing on `record.era`.
    */
-  abstract readonly record: VersionedFinalizedTxData;
+  abstract readonly record: FinalizedTxRead;
 }
 
 /**
@@ -994,7 +993,7 @@ export class TxFailedError extends AnyEraTxFailedError {
   }
 
   /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
-  get record(): VersionedFinalizedTxData {
+  get record(): FinalizedTxRead {
     return this.finalizedTxData;
   }
 }
@@ -1354,7 +1353,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  *
  * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
  * reused because it carries a current-era `FinalizedTxData` where a retained
- * call is recorded as a version-tagged {@link VersionedFinalizedTxData}.
+ * call is recorded as a version-tagged {@link FinalizedTxRead}.
  *
  * Carries no registered error code of its own. Branch on the class, or on the
  * inherited {@link AnyEraTxFailedError.code}, and read the record off
@@ -1365,7 +1364,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  */
 export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
   constructor(
-    readonly txData: VersionedFinalizedTxData,
+    readonly txData: FinalizedTxRead,
     readonly circuitId: string
   ) {
     super(
@@ -1381,7 +1380,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
   }
 
   /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
-  get record(): VersionedFinalizedTxData {
+  get record(): FinalizedTxRead {
     return this.txData;
   }
 }
@@ -1412,7 +1411,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
    * from — sampled when the caller named none, and then this is its only copy.
    */
   constructor(
-    readonly txData: VersionedFinalizedTxData,
+    readonly txData: FinalizedTxRead,
     readonly contractAddress: string,
     readonly signingKey: SigningKey
   ) {
@@ -1435,7 +1434,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
   }
 
   /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
-  get record(): VersionedFinalizedTxData {
+  get record(): FinalizedTxRead {
     return this.txData;
   }
 }

@@ -266,7 +266,7 @@ describe('submit-tx', () => {
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(unboundTx);
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(finalizedTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
-        const { version: _dropped, ...untaggedRecord } = createMockFinalizedTxData();
+        const { era: _dropped, ...untaggedRecord } = createMockFinalizedTxData();
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untaggedRecord);
 
         const rejection = await rejectionOf(submitTx(mockProviders, { unprovenTx }));
@@ -613,7 +613,7 @@ describe('submit-tx', () => {
     });
 
     it('refuses an untagged record', async () => {
-      const { version: _dropped, ...untagged } = createMockFinalizedTxData();
+      const { era: _dropped, ...untagged } = createMockFinalizedTxData();
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       await expect(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() })).rejects.toBeInstanceOf(

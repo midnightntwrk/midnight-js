@@ -88,7 +88,7 @@ describe('findDeployedContract', () => {
     expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
-    assert(result.deployTxData.public.version === 'v9');
+    assert(result.deployTxData.public.era === 'v9');
     expect(result.deployTxData.public.initialContractState).toBe(contractState);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
@@ -121,7 +121,7 @@ describe('findDeployedContract', () => {
       );
 
     it('rejects an untagged deploy record, the pre-5.0.0 shape', async () => {
-      const { version: _dropped, ...untaggedRecord } = finalizedTxData;
+      const { era: _dropped, ...untaggedRecord } = finalizedTxData;
       // @ts-expect-error the pre-5.0.0 record carries no version
       vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(untaggedRecord);
 
@@ -192,7 +192,7 @@ describe('findDeployedContract', () => {
       const result = await findDeployedContract(providers, { compiledContract, contractAddress });
 
       expect(result.contractAddress).toBe(contractAddress);
-      expect(result.deployTxData.public.version).toBe('v8');
+      expect(result.deployTxData.public.era).toBe('v8');
       expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
       expect(result.deployTxData.public.txId).toBe(ledger8DeployRecord.txId);
       expect(result.deployTxData.public).not.toHaveProperty('initialContractState');

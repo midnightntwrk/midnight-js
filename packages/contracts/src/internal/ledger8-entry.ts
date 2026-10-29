@@ -46,6 +46,7 @@ import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/m
 import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertProvidersSupportEra,
+  type FinalizedTxRead,
   type Ledger8FinalizedTxData,
   type MidnightConfig,
   type MidnightProvider,
@@ -57,7 +58,6 @@ import {
   SucceedEntirely,
   type TransactionProviders,
   type UnprovenTx,
-  type VersionedFinalizedTxData,
   type WalletProvider,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
@@ -544,7 +544,7 @@ export interface Ledger8FindRequest {
 
 /** The result of attaching to an already-deployed retained-era contract. */
 export interface Ledger8FoundState {
-  readonly deployTxData: VersionedFinalizedTxData;
+  readonly deployTxData: FinalizedTxRead;
 }
 
 /**
@@ -645,7 +645,7 @@ export const findLedger8Contract = async (
  * @throws Ledger8CallTxFailedError if the recorded status is not `SucceedEntirely`.
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
-const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: string): void => {
+const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
@@ -671,7 +671,7 @@ const assertLedger8TxSucceeded = (record: VersionedFinalizedTxData, circuitId: s
  * @throws Ledger8DeployTxFailedError if the recorded status is not `SucceedEntirely`.
  */
 const assertLedger8DeploySucceeded = (
-  record: VersionedFinalizedTxData,
+  record: FinalizedTxRead,
   contractAddress: string,
   signingKey: SigningKey
 ): void => {
@@ -686,8 +686,8 @@ const assertLedger8DeploySucceeded = (
  * recorded.
  *
  * Compares the record against the HEAD, not against a fixed era. It does NOT
- * assert that the result's `era` and the record's `version` agree: those
- * legitimately disagree, since `era: 'v8'` with `version: 'v9'` IS a
+ * assert that the result's `era` and the record's `public.era` agree: those
+ * legitimately disagree, since `era: 'v8'` with `public.era: 'v9'` IS a
  * keep-state transaction.
  *
  * KEEP THIS AHEAD OF THE STATUS CHECK. `status` is a field of the very record
@@ -705,7 +705,7 @@ const assertLedger8DeploySucceeded = (
  * this, and why the check precedes the status read.
  */
 const assertLedger8RecordEra = (
-  record: VersionedFinalizedTxData,
+  record: FinalizedTxRead,
   head: LedgerVersion,
   circuitId: string,
   method: ReadMethod
@@ -716,10 +716,10 @@ const assertLedger8RecordEra = (
   // in points them away from the fault. This is the same split the
   // current era's `requireLedger9Record` makes in its own default branch.
   const tagged = requireTaggedRecord(record, method, circuitId);
-  if (tagged.version === head) {
+  if (tagged.era === head) {
     return;
   }
-  throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
+  throw new EraInvariantViolationError(method, circuitId, head, tagged.era);
 };
 
 /**
@@ -730,14 +730,14 @@ const assertLedger8RecordEra = (
  * @throws EraInvariantViolationError if the record is not a ledger 8 one.
  */
 const requireLedger8Record = (
-  record: VersionedFinalizedTxData,
+  record: FinalizedTxRead,
   head: LedgerVersion,
   circuitId: string,
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
   const tagged = requireTaggedRecord(record, method, circuitId);
-  if (tagged.version !== 'v8') {
-    throw new EraInvariantViolationError(method, circuitId, head, tagged.version);
+  if (tagged.era !== 'v8') {
+    throw new EraInvariantViolationError(method, circuitId, head, tagged.era);
   }
   return tagged;
 };

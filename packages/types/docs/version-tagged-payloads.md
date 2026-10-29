@@ -20,14 +20,16 @@ This package handles that fact in three ways:
   parameters, a zswap chain state — is a **`LedgerState`**: the bytes, plus the
   era of the ledger that wrote them. The caller decodes it with its own
   runtime.
-- A finalized-transaction record (`VersionedFinalizedTxData`) carries a
-  `version` discriminant.
+- A finalized-transaction record (`FinalizedTxRead`) carries an `era`
+  discriminant.
+
+All three name the era of the ledger that wrote them `era`.
 
 Two families of names, and the word that tells them apart. A `*Tx` name with no
 `Data` is a transaction handle (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). A
 `*TxData` name is data about a transaction, kept from 4.x: the record a read
 method returns (`FinalizedTxData`, `Ledger8FinalizedTxData`,
-`VersionedFinalizedTxData`). Its `tx` field is a `FinalizedTx`.
+`FinalizedTxRead`). Its `tx` field is a `FinalizedTx`.
 
 What each provider declares about the eras it serves is covered in
 [ProviderEraDeclarations](./provider-era-declarations.md). The
@@ -86,7 +88,10 @@ and `contractStateObservable`, and `PublicStatesRead` from
   refuses other bytes with `InvalidLedgerStateError`. A zswap chain state has the
   same tag in v8 and v9, so the check accepts it under either era.
 - `LedgerState.isLedgerState(value)` tells a `LedgerState` of this copy of the
-  package from a look-alike object.
+  package from a look-alike object. A `LedgerState` made by a second installed
+  copy of this package gives `false`. The `contracts` package does not refuse
+  such a state: it rebuilds it from its bytes with `fromBytes`, which checks the
+  tag again.
 - `state.serialize()` returns a copy of the bytes. `fromBytes` copies too, so a
   Node `Buffer` passed in shares no memory with the state.
 - `state.deserialize({ v9: ContractState })` decodes with the decoder for the
@@ -95,15 +100,17 @@ and `contractStateObservable`, and `PublicStatesRead` from
   your contract's `ledger()` with `expected instance of ChargedState`. A missing
   decoder is refused with `LedgerStateDecoderMissingError`, whose message names
   the class to import. A decoder that throws is reported as
-  `LedgerStateDecodeFailedError`, with its error as `cause`.
+  `LedgerStateDecodeFailedError`, with its error as `cause`, unless the error
+  already has a midnight-js code: that one is rethrown unchanged. When you pass
+  no decoder for any era the state can be, the return type is `unknown`.
 - The bytes are a private field, so `structuredClone`, `postMessage` and JSON
   drop them. Send `serialize()` and `era`, and rebuild with `fromBytes`.
 
 The shape is the same in every era, so the next fork changes no read type.
 
-A finalized-transaction record keeps `version` too, and its `tx` is a
-`FinalizedTx` of that same era: `record.tx.era === record.version`. Read it with
-`LedgerTransaction.unwrap(record.tx, record.version)`.
+A finalized-transaction record names its era `era` too, and its `tx` is a
+`FinalizedTx` of that same era: `record.tx.era === record.era`. Read it with
+`LedgerTransaction.unwrap(record.tx, record.era)`.
 
 ## Three things the tag does not establish
 
@@ -113,28 +120,28 @@ reporting a real disagreement, not a bug in the reader.
 
 **It is only as true as the provider that set it.** See the next section.
 
-**On a transaction record, the type cannot check it.** `record.version` is
+**On a transaction record, the type cannot check it.** `record.era` is
 derived from the block by the provider; nothing in this package re-derives it.
 
-## Where `version` comes from, and who is obliged to get it right
+## Where `era` comes from, and who is obliged to get it right
 
-On every value, `version` is the ledger era that WROTE it.
+On every value, `era` is the ledger era that WROTE it.
 
-- A finalized-transaction record is written in its own block, so its `version`
+- A finalized-transaction record is written in its own block, so its `era`
   is derived from that block's `protocolVersion`, resolved the same way the
   `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol` resolves it.
 - A contract state can be older than the block that dates the read: a record
-  keeps the encoding it was written in. Its `version` is read from the state's
-  own version tag. `protocolVersion` dates the block and only bounds that tag
-  from above.
+  keeps the encoding it was written in. Its `era` (`contractState.era`) is read
+  from the state's own version tag. `protocolVersion` dates the block and only
+  bounds that tag from above.
 
 The derivation is never asserted in this package. The obligation sits with
-implementations instead: a provider and its mocks must set `version` at exactly
+implementations instead: a provider and its mocks must set `era` at exactly
 ONE construction point, by the rule above, and never independently.
 
-The providers in this framework do that, and throw rather than mislabel a record
-from an era they cannot decode — so from them, `version` is a statement about the
-record rather than an assumption. **A third-party `PublicDataProvider` is not
+The providers in this framework do that. They refuse a record from an era they
+cannot decode, and refuse state bytes whose version tag they cannot place — so
+from them, `era` is a statement about the value rather than an assumption. **A third-party `PublicDataProvider` is not
 obliged to do the same.** Code reading a record from an arbitrary provider should
 treat the tag as a claim.
 
@@ -144,21 +151,23 @@ A provider that decodes per era returns the v8 variant as an ordinary value for
 any record whose `protocolVersion` places it in that era. It is not an error
 path, and it is not rare.
 
-So narrow a `VersionedFinalizedTxData` on `version` when your code treats the
+So narrow a `FinalizedTxRead` on `era` when your code treats the
 eras differently, and close the `switch` with `assertNever` from
 `@midnight-ntwrk/midnight-js-utils`, so a further era becomes a compile error
 rather than a fall-through. To read the transaction itself, pass
-`record.version` to `LedgerTransaction.unwrap`.
+`record.era` to `LedgerTransaction.unwrap`.
 
 ## Ledger parameters travel with the state
 
-`ContractStateRead.ledgerParameters` is on the state record rather than fetched
-separately, and that placement is the point.
+`ContractStateAndParametersRead.ledgerParameters` is on the state record rather
+than fetched separately, and that placement is the point.
 
-They are needed to build a transaction against this state, and they must come
-from the SAME block: they are dynamic — prices adjust per block — and they are
-era-tagged, `ledger-parameters[v5]` before the fork and `[v8]` after it. Reading
-them separately would let the two answers come from different blocks.
+They are needed to build a transaction against this state. They come from the
+block that dates the read: they are dynamic — prices adjust per block — and they
+are era-tagged, `ledger-parameters[v5]` before the fork and `[v8]` after it. On a
+read pinned to a block, the state and the parameters come from that one block. On
+an unpinned read, that block is looked up separately from the state, so near the
+fork it can be a block other than the one the state was read at.
 
 Substituting the ledger's own `initialParameters()` is a cost model the chain
 does not use. That is wrong on any chain that has been running, not only across a
@@ -168,5 +177,10 @@ refusal existed.
 They are a `LedgerState` for the same reason the contract state is: only the
 era that wrote them can read them, and the caller holds the runtime.
 
-The member is optional because a provider that cannot serve them is still a
-usable provider. A consumer that needs them has to say what it does without them.
+The member is required on `ContractStateAndParametersRead`. A provider written
+in JavaScript can still leave it out, so the framework checks it where it needs
+the parameters: building a v9 call refuses a missing one with
+`PublicStatesEraMismatchError`, and the v8 pipeline refuses it with
+`LedgerParametersUnservedError`. Parameters served in a shape that is not a
+`LedgerState` are refused too: with `PublicStatesEraMismatchError` when building
+a v9 call, and with `UnrecognisedEraTagError` on the v8 pipeline.

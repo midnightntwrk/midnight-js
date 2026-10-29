@@ -22,8 +22,11 @@ import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,
+  DeserializationError,
+  errorCategory,
   hasErrorCode,
-  UnrecognisedEraTagError
+  UnrecognisedEraTagError,
+  UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -34,6 +37,7 @@ import {
   Ledger8MaintenanceOnLedger9Error,  NetworkVersionStateMismatchError} from '../errors';
 import {
   assertEraCompatible,
+  decodeLedger9ContractState,
   ERA_PAIRING,
   resolveArtifactEra,
   resolveContractStateEra,
@@ -528,6 +532,23 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
 
     expect(resolved.head).toBe<LedgerVersion>('v9');
     expect(resolved.headProtocolVersion).toBe(2_001_000);
+  });
+});
+
+describe('decodeLedger9ContractState: a corrupt body behind a valid tag', () => {
+  it("reports the framework decoder's DeserializationError, not a decoder the caller never passed", () => {
+    const corruptBody = readHexFixture('state-tampered-bytes.hex');
+
+    let caught: unknown;
+    try {
+      decodeLedger9ContractState(rawState(corruptBody, 2_000_000), 'contract-address', 'createUnprovenCallTx');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DeserializationError);
+    expect(hasErrorCode(caught, UTILS_ERROR_CODES.DESERIALIZATION_FAILED)).toBe(true);
+    expect(errorCategory(caught)).toBe('INTEGRITY');
   });
 });
 

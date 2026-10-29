@@ -20,18 +20,18 @@ import { hasErrorCode, UTILS_ERROR_CODES } from '../error-codes';
 import { Ledger8ValueUnsupportedError, requireLedger9, UnrecognisedEraTagError } from '../require-ledger9';
 
 interface Ledger8Sample {
-  readonly version: 'v8';
+  readonly era: 'v8';
   readonly stateBytes: Uint8Array;
 }
 
 interface Ledger9Sample {
-  readonly version: 'v9';
+  readonly era: 'v9';
   readonly state: number;
 }
 
-type VersionedSample = Ledger8Sample | Ledger9Sample;
+type EraTaggedSample = Ledger8Sample | Ledger9Sample;
 
-const served = (value: VersionedSample): VersionedSample => value;
+const served = (value: EraTaggedSample): EraTaggedSample => value;
 
 const catchError = (act: () => unknown): unknown => {
   try {
@@ -45,7 +45,7 @@ const catchError = (act: () => unknown): unknown => {
 describe('requireLedger9', () => {
   test('returns the whole v9 variant, narrowed to its type', () => {
     // Arrange.
-    const value: VersionedSample = { version: 'v9', state: 7 };
+    const value: EraTaggedSample = { era: 'v9', state: 7 };
 
     // Act.
     const narrowed: Ledger9Sample = requireLedger9(value, 'getPublicStates');
@@ -58,7 +58,7 @@ describe('requireLedger9', () => {
 
   test('refuses a v8 value with a coded error that names the call site', () => {
     // Arrange.
-    const value = served({ version: 'v8', stateBytes: new Uint8Array([1, 2, 3]) });
+    const value = served({ era: 'v8', stateBytes: new Uint8Array([1, 2, 3]) });
 
     // Act.
     const thrown = catchError(() => requireLedger9(value, 'getPublicStates'));
@@ -72,7 +72,7 @@ describe('requireLedger9', () => {
 
   test('refuses an era the build does not know with a coded error that names what it received', () => {
     // Arrange.
-    const grown = { version: 'v10', state: 1 };
+    const grown = { era: 'v10', state: 1 };
 
     // Act.
     const thrown = catchError(() => requireLedger9(grown as never, 'getPublicStates'));
@@ -108,14 +108,14 @@ describe('requireLedger9', () => {
 
   test('does not compile for a type that has no v9 variant to narrow to', () => {
     // Arrange.
-    const wideTag: { readonly version: LedgerVersion; readonly raw: Uint8Array } = {
-      version: 'v9',
+    const wideTag: { readonly era: LedgerVersion; readonly raw: Uint8Array } = {
+      era: 'v9',
       raw: new Uint8Array()
     };
-    const ledger8Only: Ledger8Sample = { version: 'v8', stateBytes: new Uint8Array() };
+    const ledger8Only: Ledger8Sample = { era: 'v8', stateBytes: new Uint8Array() };
 
     // Assert.
-    // @ts-expect-error `version` is the whole era set, not a discriminant, so there is no v9 variant
+    // @ts-expect-error `era` is the whole era set, not a discriminant, so there is no v9 variant
     expect(() => requireLedger9(wideTag, 'readRaw')).not.toThrow();
     // @ts-expect-error a v8-only type has no v9 variant
     expect(() => requireLedger9(ledger8Only, 'readLedger8')).toThrow(Ledger8ValueUnsupportedError);

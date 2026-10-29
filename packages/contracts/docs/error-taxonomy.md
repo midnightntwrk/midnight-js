@@ -25,7 +25,7 @@ either era.
 It exists because the two eras cannot share a record TYPE. The current era
 submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
 call is recorded by whichever era the network head is on, so its record is the
-version-tagged union `VersionedFinalizedTxData` — which is not assignable to the
+era-tagged union `FinalizedTxRead` — which is not assignable to the
 v9 variant. Narrowing the current era's member to the union would change a type
 consumers already read, so that was not available either. Hence a retained-era
 class of its own rather than an extension of `TxFailedError`, and a base that
@@ -34,7 +34,7 @@ declares the union.
 Each subclass keeps its own historical member — `finalizedTxData` on the current
 era's, `txData` on the retained one — so nothing reading those breaks.
 `AnyEraTxFailedError.record` is the member to write new code against, and it
-needs narrowing on `version` before `tx` is touched.
+needs narrowing on `era` before `tx` is touched.
 
 ### Why the shared code sits on the base
 
@@ -56,7 +56,7 @@ recorded-failure classes — `Ledger8CallTxFailedError`,
 `Ledger8ReplaceMaintenanceAuthorityTxFailedError` — carry none of their OWN:
 they inherit `TX_FAILED`. The three maintenance classes carry the narrower
 `Ledger8FinalizedTxData`, because a retained-era maintenance update runs only on
-a pre-fork head; the call and deploy classes carry `VersionedFinalizedTxData`.
+a pre-fork head; the call and deploy classes carry `FinalizedTxRead`.
 That era's record type is expected to converge with the current era's, and a
 finer code promised now would outlive the shape it describes. A caller branches
 on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
@@ -88,6 +88,12 @@ types, though, and this pipeline has just read the chain, so an absent parameter
 set *here* is a provider that did not serve them, not a caller with no read
 surface.
 
+Only parameters that are absent (`undefined` or `null`) are taken as unserved.
+Parameters served in a shape that is not a `LedgerState` are refused with
+`UnrecognisedEraTagError` instead, because the provider did serve something, in
+the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
+fault.
+
 It is raised instead of substituting the ledger's initial parameters, which is
 what happened before and is the failure this class exists to replace: the
 partitioner drew the guaranteed/fallible boundary from a cost model the chain
@@ -108,6 +114,19 @@ serve parameters or a zswap state of another era, or none. Decoding those would
 fail inside the runtime with a message that tells the dApp to pass a decoder it
 never passes. So the era of each state is checked before anything is decoded,
 and the refusal names the state and the provider as the fault.
+
+Before that check each state is rebuilt with `LedgerState.fromBytes` from its
+`era`, `kind` and `serialize()`. `LedgerState.isLedgerState` answers `false` for
+a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+and a dApp can end up with two copies the same way it ends up with two runtimes.
+Refusing such a state would name a provider fault where there is none. The
+rebuild checks the tag again, so forged bytes are still refused, with
+`InvalidLedgerStateError` (`tag-mismatch`).
+
+A framework decoder that fails on the bytes after a valid tag throws its own
+`DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).
+`LedgerState.deserialize` rethrows it unchanged, so the error does not tell the
+dApp to pass a decoder it never passed.
 
 ### `Ledger8ShieldedSpendUnsupportedError`
 

@@ -43,12 +43,11 @@ import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/mi
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type ContractStateAndParametersRead,
-  LedgerState,
   LedgerTransaction,
   type PublicDataProvider,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
@@ -64,7 +63,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { resolveContractStateEra } from './era';
+import { ownLedgerState, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -301,6 +300,25 @@ export interface Ledger8Snapshot {
 }
 
 /**
+ * The bytes of the ledger parameters served beside the state, or `undefined` when the provider
+ * served none.
+ *
+ * @throws UnrecognisedEraTagError if the parameters are served in a shape that is not a
+ * `LedgerState`.
+ */
+const servedLedgerParameters = (read: ContractStateAndParametersRead): Uint8Array | undefined => {
+  const served: unknown = read.ledgerParameters;
+  if (served === undefined || served === null) {
+    return undefined;
+  }
+  const parameters = ownLedgerState(served, 'LedgerParameters');
+  if (parameters === undefined) {
+    throw new UnrecognisedEraTagError('queryContractState', served);
+  }
+  return parameters.serialize();
+};
+
+/**
  * Fetches the one contract-state snapshot an operation runs against and dates
  * it against the head era.
  *
@@ -323,6 +341,8 @@ export interface Ledger8Snapshot {
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
+ * @throws UnrecognisedEraTagError if the ledger parameters are served in a shape that is not a
+ * `LedgerState`.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
@@ -339,10 +359,9 @@ export const readLedger8Snapshot = async (
   );
 
   const stateEra = await resolveContractStateEra(head, read, pdp, logger);
-  const parameters: unknown = read.ledgerParameters;
   const state: Ledger8SnapshotBytes = {
     raw: read.contractState.serialize(),
-    ledgerParameters: LedgerState.isLedgerState(parameters) ? parameters.serialize() : undefined
+    ledgerParameters: servedLedgerParameters(read)
   };
 
   // Read with the era the ENVELOPE names, never with the head's and never with

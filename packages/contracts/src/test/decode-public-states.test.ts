@@ -14,7 +14,7 @@
  */
 
 import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { LedgerState, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidLedgerStateError, LedgerState, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -56,8 +56,20 @@ const rejectionOf = (act: () => unknown): unknown => {
   throw new Error('expected the call to throw');
 };
 
+// What a LedgerState made by a second installed copy of the types package looks like to this copy:
+// the same fields and methods, without this copy's private field.
+const fromAnotherTypesCopy = <K extends keyof typeof LEDGER_STATE_TAGS>(state: LedgerState<K>) => ({
+  era: state.era,
+  kind: state.kind,
+  serialize: () => state.serialize(),
+  deserialize: () => {
+    throw new Error('not called: the state is rebuilt from its bytes first');
+  }
+});
+
 describe('decodeLedger9PublicStates', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     decode.deserializeCompactContractState.mockReturnValue('contract state');
     decode.deserializeLedgerParameters.mockReturnValue('ledger parameters');
     decode.deserializeZswapChainState.mockReturnValue('zswap chain state');
@@ -122,6 +134,65 @@ describe('decodeLedger9PublicStates', () => {
     const error = rejectionOf(() => decodeLedger9PublicStates(withoutParameters, contractAddress, 'createUnprovenCallTx'));
 
     expect(error).toBeInstanceOf(PublicStatesEraMismatchError);
-    expect(error).toMatchObject({ field: 'ledgerParameters', received: undefined });
+    expect(error).toHaveProperty('received', undefined);
+    expect(error).toMatchObject({ field: 'ledgerParameters' });
+    expect(String(error)).toContain('ledgerParameters');
+  });
+
+  it('refuses a record served without its zswap chain state', () => {
+    const { zswapChainState: _omitted, ...withoutZswap } = ledger9Read();
+
+    // @ts-expect-error a provider written in JavaScript can still leave the zswap chain state out
+    const error = rejectionOf(() => decodeLedger9PublicStates(withoutZswap, contractAddress, 'createUnprovenCallTx'));
+
+    expect(error).toBeInstanceOf(PublicStatesEraMismatchError);
+    expect(error).toHaveProperty('received', undefined);
+    expect(error).toMatchObject({ field: 'zswapChainState' });
+    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+  });
+
+  it('decodes states made by a second installed copy of the types package, rebuilt from their bytes', () => {
+    const own = ledger9Read();
+    const read = {
+      protocolVersion: own.protocolVersion,
+      contractState: fromAnotherTypesCopy(own.contractState),
+      ledgerParameters: fromAnotherTypesCopy(own.ledgerParameters),
+      zswapChainState: fromAnotherTypesCopy(own.zswapChainState)
+    };
+
+    // @ts-expect-error the states are LedgerStates of another copy of the types package
+    const states = decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx');
+
+    expect(states).toEqual({
+      contractState: 'contract state',
+      ledgerParameters: 'ledger parameters',
+      zswapChainState: 'zswap chain state'
+    });
+    expect(decode.deserializeCompactContractState).toHaveBeenCalledWith(own.contractState.serialize(), CALLER);
+  });
+
+  it('refuses a state from another copy of the types package whose bytes do not carry the tag of its era', () => {
+    const read = {
+      ...ledger9Read(),
+      contractState: { era: 'v9', kind: 'ContractState', serialize: () => tagged('v8', 'ContractState', 'state') }
+    };
+
+    // @ts-expect-error the contract state is a look-alike of another copy of the types package
+    const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
+
+    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'tag-mismatch' });
+    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+  });
+
+  it('refuses a state of another kind in the contract-state field', () => {
+    const own = ledger9Read();
+    const read = { ...own, contractState: fromAnotherTypesCopy(own.ledgerParameters) };
+
+    // @ts-expect-error the contract-state field holds ledger parameters
+    const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
+
+    expect(error).toBeInstanceOf(UnrecognisedEraTagError);
+    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });
 });

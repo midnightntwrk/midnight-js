@@ -267,6 +267,37 @@ describe('queryContractState', () => {
       expect(rejection).toBeInstanceOf(IndexerDataError);
       expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-parameters-encoding' });
     });
+
+    test('refuses hex ledger parameters followed by junk, rather than serving the hex prefix', async () => {
+      const rejection = await providerServing(
+        mintLedger9ContractStateHex(),
+        LEDGER9_ERA_PROTOCOL_VERSION,
+        `${mintLedger9LedgerParametersHex()}zz`
+      )
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-parameters-encoding' });
+    });
+
+    test('refuses contract-state bytes served as the ledger parameters', async () => {
+      const rejection = await providerServing(
+        mintLedger9ContractStateHex(),
+        LEDGER9_ERA_PROTOCOL_VERSION,
+        mintLedger9ContractStateHex()
+      )
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.TAG_PARSE_FAILED)).toBe(true);
+    });
   });
 
   describe('both version tags round-trip', () => {
@@ -364,7 +395,7 @@ describe('queryContractState', () => {
       ['a tag prefix longer than the scan window', async () => retagged(mintLedger9ContractStateHex(), `${'x'.repeat(70)}:v8`)]
     ];
 
-    test.each(rejections)('rejects %s', async (_name, buildStateHex) => {
+    test.each(rejections)('rejects %s on its tag, with the shared tag-parse code', async (_name, buildStateHex) => {
       const provider = providerServing(await buildStateHex(), LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryContractState(ADDRESS).then(
@@ -372,21 +403,20 @@ describe('queryContractState', () => {
         (error: unknown) => error
       );
 
-      // Rejected on the version tag, before anything reached a deserializer — a
-      // `DeserializationError` here would mean the bytes got that far.
       expect(rejection).not.toBeInstanceOf(DeserializationError);
-      expect(rejection).toBeInstanceOf(Error);
+      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.TAG_PARSE_FAILED)).toBe(true);
     });
 
-    test.each(rejections)('reports %s with the shared tag-parse code', async (_name, buildStateHex) => {
-      const provider = providerServing(await buildStateHex(), LEDGER9_ERA_PROTOCOL_VERSION);
+    test('rejects a hex state followed by junk, rather than serving the hex prefix', async () => {
+      const provider = providerServing(`${mintLedger9ContractStateHex()}zz`, LEDGER9_ERA_PROTOCOL_VERSION);
 
       const rejection = await provider.queryContractState(ADDRESS).then(
         () => undefined,
         (error: unknown) => error
       );
 
-      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.TAG_PARSE_FAILED)).toBe(true);
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-state-encoding' });
     });
 
     test('rejects a state that is not hex-encoded at all, before it can be silently truncated', async () => {

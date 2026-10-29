@@ -143,7 +143,7 @@ describe('head protocol-version freshness', () => {
 
     const finalized = await provider.watchForTxData(TX_ID);
 
-    expect(finalized.version).toBe('v9');
+    expect(finalized.era).toBe('v9');
     expect(headRequestCount(query)).toBe(0);
   });
 
@@ -160,7 +160,7 @@ describe('head protocol-version freshness', () => {
 
     const finalized = await provider.watchForTxData(TX_ID);
 
-    expect(finalized.version).toBe('v8');
+    expect(finalized.era).toBe('v8');
     expect(headRequestCount(query)).toBe(0);
   });
 });

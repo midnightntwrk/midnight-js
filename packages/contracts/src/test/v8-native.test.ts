@@ -56,6 +56,7 @@ import {
   FailEntirely,
   FailFallible,
   type FinalizedTx,
+  type FinalizedTxRead,
   InvalidTransactionHandleError,
   LedgerTransaction,
   ProofServerError,
@@ -63,10 +64,9 @@ import {
   type TxStatus,
   type UnboundTx,
   type UnprovenTx,
-  type VersionedFinalizedTxData,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -282,7 +282,7 @@ const recordingPayingUser = (recording: CoinReceiverRecording, coinPublicKey: st
  * expectation in this file has to start from a record the head could have
  * recorded, or it asserts against a record the framework rightly rejects.
  */
-const retainedEraRecord = (status?: TxStatus): VersionedFinalizedTxData => ({
+const retainedEraRecord = (status?: TxStatus): FinalizedTxRead => ({
   ...createMockLedger8FinalizedTxData(status),
   protocolVersion: PRE_FORK_PROTOCOL_VERSION
 });
@@ -889,6 +889,32 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
         recording.contractAddress
       );
     };
+
+    const snapshotWithParameters = async (ledgerParameters: unknown): Promise<Ledger8Snapshot> => {
+      const providers = createMockProviders();
+      providers.publicDataProvider.queryContractState = vi
+        .fn()
+        .mockResolvedValue({ ...rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION), ledgerParameters });
+      return readLedger8Snapshot(retainedEra, retainedEra, 'v8', providers.publicDataProvider, recording.contractAddress);
+    };
+
+    it('takes ledger parameters a provider did not serve as absent', async () => {
+      const snapshot = await snapshotWithParameters(undefined);
+
+      expect(snapshot.state.ledgerParameters).toBeUndefined();
+    });
+
+    it('refuses ledger parameters served in a shape that is not a LedgerState, rather than taking them as absent', async () => {
+      await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnrecognisedEraTagError);
+    });
+
+    it('keeps the bytes of ledger parameters made by a second installed copy of the types package', async () => {
+      const lookAlike = { era: 'v8', kind: 'LedgerParameters', serialize: () => retainedLedgerParameters };
+
+      const snapshot = await snapshotWithParameters(lookAlike);
+
+      expect(snapshot.state.ledgerParameters).toEqual(retainedLedgerParameters);
+    });
 
     it('passes against the real committed envelope, which declares the name once', async () => {
       const snapshot = await snapshotFor(v6Envelope);
@@ -1570,7 +1596,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const finalized = await submitCallTx(providers, callOptions());
 
-    expect(finalized.public.version).toBe('v8');
+    expect(finalized.public.era).toBe('v8');
     // The record is handed back AS REPORTED, not rebuilt: asserting the shape
     // of the literal above would only restate the fixture.
     expect(finalized.public).toMatchObject(retainedRecord);
@@ -1592,7 +1618,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // retained-era call is legitimately recorded by EITHER era.
     providers.publicDataProvider.watchForTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v9' });
+      .mockResolvedValue({ ...createMockFinalizedTxData(), era: 'v9' });
 
     const rejection = await submitCallTx(providers, callOptions()).then(
       () => undefined,
@@ -1633,7 +1659,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // produces the typed `Ledger8CallTxFailedError` asserted further down.
     providers.publicDataProvider.watchForTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(FailEntirely), version: 'v9' });
+      .mockResolvedValue({ ...createMockFinalizedTxData(FailEntirely), era: 'v9' });
 
     const rejection = await submitCallTx(providers, callOptions()).then(
       () => undefined,
@@ -2476,7 +2502,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.deployTxData.private.initialPrivateState).toBeUndefined();
     expect(deployed.deployTxData.private.initialZswapState.outputs).toEqual([]);
     expect(deployed.deployTxData.era).toBe('v8');
-    expect(deployed.deployTxData.public.version).toBe('v8');
+    expect(deployed.deployTxData.public.era).toBe('v8');
     expect(deployed.deployTxData.public.txId).toBe(retainedEraRecord().txId);
     expect(deployed.deployTxData.public.contractAddress).toBe(deployed.contractAddress);
     expect(Object.keys(deployed).sort()).toEqual([
@@ -3079,7 +3105,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // while the other two did not.
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version: undefined });
+      .mockResolvedValue({ ...createMockFinalizedTxData(), era: undefined });
 
     let caught: unknown;
     try {
@@ -3257,7 +3283,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     // and refusing the pre-fork variant would refuse the contracts this path exists
     // to keep callable.
     expect(found.deployTxData.era).toBe('v8');
-    expect(found.deployTxData.public.version).toBe('v9');
+    expect(found.deployTxData.public.era).toBe('v9');
     expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
     expect(found.deployTxData.public.contractAddress).toBe(recording.contractAddress);
     expect(Object.keys(found).sort()).toEqual([
@@ -3552,7 +3578,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
   // Both tags are legitimate on this path -- the test above pins that -- so
   // there is no era to compare the record against. What IS refusable is a
-  // record carrying no usable tag at all. `version` selects the runtime of the
+  // record carrying no usable tag at all. `era` selects the runtime of the
   // live `tx` handle beside it, so an unreadable tag hands a caller a handle it
   // cannot attribute, which is the failure the current era's path refuses
   // through `requireLedger9Record`'s own default branch.
@@ -3560,11 +3586,11 @@ describe('attaching to a retained-era contract already on chain', () => {
     ['absent', undefined],
     ['unrecognised', 'v10'],
     ['mis-cased', 'V8']
-  ])('refuses a deploy record whose version tag is %s', async (_label, version) => {
+  ])('refuses a deploy record whose era tag is %s', async (_label, version) => {
     const providers = attachProviders(v6Envelope);
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version });
+      .mockResolvedValue({ ...createMockFinalizedTxData(), era: version });
 
     await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UnknownLedgerVersionError);
   });
@@ -3573,7 +3599,7 @@ describe('attaching to a retained-era contract already on chain', () => {
     const providers = attachProviders(v6Envelope);
     providers.publicDataProvider.watchForDeployTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v10' });
+      .mockResolvedValue({ ...createMockFinalizedTxData(), era: 'v10' });
 
     const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
 
@@ -3582,7 +3608,7 @@ describe('attaching to a retained-era contract already on chain', () => {
   });
 
   it('still accepts BOTH legitimate tags, which is what makes the refusal above about the shape', async () => {
-    for (const [version, record] of [
+    for (const [era, record] of [
       ['v8', createMockLedger8FinalizedTxData()],
       ['v9', createMockFinalizedTxData()]
     ] as const) {
@@ -3591,7 +3617,7 @@ describe('attaching to a retained-era contract already on chain', () => {
 
       const found = await findDeployedContract(providers, attachOptions());
 
-      expect(found.deployTxData.public.version).toBe(version);
+      expect(found.deployTxData.public.era).toBe(era);
     }
   });
 

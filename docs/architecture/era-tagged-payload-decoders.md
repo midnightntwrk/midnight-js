@@ -5,14 +5,15 @@ runtime, and states which era each of those decoders is allowed to be.
 
 ## The rule every public value follows
 
-`version: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
-envelope; `protocolVersion` is the era of the block that dated the read. A value whose shape depends
-on the era is a `Versioned*` union whose v8 variant carries the stored bytes and whose v9 variant
-carries the decoded object. The exception is a finalized-transaction record: both of its variants
-carry a `FinalizedTx` handle of the record's era, `record.tx.era === record.version` (ADR 0019). A
-consumer narrows it with `switch (value.version)` closed by
-`assertNever`, or with `requireLedger9` when only v9 is handled. `era` appears only on `contracts`
-pipeline results. See ADR 0006, amendment of 2026-10-16.
+`era: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
+envelope; `protocolVersion` is the era of the block that dated the read. A value read from the
+network — a contract state, ledger parameters, a zswap chain state — is a `LedgerState`: the bytes
+and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
+finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
+`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
+narrows it with `switch (record.era)` closed by `assertNever`, or with `requireLedger9` when only v9
+is handled. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
+its `public.era` names the ledger that recorded the transaction.
 
 ## The defect class
 

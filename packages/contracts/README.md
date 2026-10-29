@@ -84,7 +84,7 @@ const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const record = await submitTx(providers, { unprovenTx });
 
 // The record's tx is a FinalizedTx handle of the record's era.
-const finalized = LedgerTransaction.unwrap(record.tx, record.version);
+const finalized = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
 `LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
@@ -100,7 +100,7 @@ get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
 | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
 
-It returns `VersionedFinalizedTxData`, tagged with the network's era.
+It returns `FinalizedTxRead`, tagged with the network's era.
 
 ### Maintenance Operations
 

@@ -67,10 +67,10 @@ raw ledger objects; every package from `types` up speaks only handles in its
 public API.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
-version-tagged *record*, `VersionedFinalizedTxData`. Its `tx` is a `FinalizedTx`
-of the same era (`record.tx.era === record.version`); read it with
-`LedgerTransaction.unwrap(record.tx, record.version)`. To treat the eras
-differently, narrow with a `switch (record.version)` closed by
+era-tagged *record*, `FinalizedTxRead`. Its `tx` is a `FinalizedTx`
+of the same era (`record.tx.era === record.era`); read it with
+`LedgerTransaction.unwrap(record.tx, record.era)`. To treat the eras
+differently, narrow with a `switch (record.era)` closed by
 `assertNever(record, '<call site>')` from `utils`.
 
 On-chain state is bytes, never a decoded object. `watchForContractState`,

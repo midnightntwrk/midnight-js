@@ -360,7 +360,7 @@ describe('contract maintenance through a retained-era artifact', () => {
     it('hands back the new key when the record carries no era tag', async () => {
       // Arrange
       const providers = providersOn(keyedState);
-      const { version: _version, ...untagged } = createMockLedger8FinalizedTxData();
+      const { era: _version, ...untagged } = createMockLedger8FinalizedTxData();
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       // Act & Assert

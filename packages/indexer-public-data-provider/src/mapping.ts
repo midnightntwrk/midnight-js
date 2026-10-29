@@ -15,7 +15,7 @@
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { FinalizedTxRecord, ReadMethod, VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxRead,FinalizedTxRecord, ReadMethod } from '@midnight-ntwrk/midnight-js-types';
 
 import {
   correlateDeployTxId,
@@ -104,19 +104,19 @@ const toFinalizedTxRecord = (
 });
 
 /**
- * Builds one version-tagged finalized-transaction record, decoding the payload
+ * Builds one era-tagged finalized-transaction record, decoding the payload
  * with the runtime of the era the record itself reports.
  *
- * `version` is whatever the decode returned, never a literal: it is the same
+ * `era` is whatever the decode returned, never a literal: it is the same
  * fact as the `protocolVersion` beside it.
  */
-const toVersionedFinalizedTxData = async (
+const toFinalizedTxRead = async (
   transaction: RegularTransaction & { hash: string; identifiers: string[] },
   txId: TransactionId,
   era: LedgerVersion,
   method: ReadMethod,
   recordRef: string
-): Promise<VersionedFinalizedTxData> => {
+): Promise<FinalizedTxRead> => {
   const decoded = await decodeRecordTransaction(transaction.raw, era, {
     method,
     protocolVersion: transaction.protocolVersion,
@@ -137,11 +137,11 @@ const toVersionedFinalizedTxData = async (
 export const toFinalizedDeployTxData = async (
   contractAddress: ContractAddress,
   transaction: RegularTransaction & { hash: string; identifiers: string[] }
-): Promise<VersionedFinalizedTxData> => {
+): Promise<FinalizedTxRead> => {
   const recordRef = `contractAddress ${contractAddress}`;
   const era = resolveReadEra(transaction, 'watchForDeployTxData', recordRef);
   const txId = correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers);
-  return toVersionedFinalizedTxData(transaction, txId, era, 'watchForDeployTxData', recordRef);
+  return toFinalizedTxRead(transaction, txId, era, 'watchForDeployTxData', recordRef);
 };
 
 /**
@@ -152,8 +152,8 @@ export const toFinalizedDeployTxData = async (
 export const toFinalizedTxData = async (
   txId: TransactionId,
   transaction: RegularTransaction & { hash: string; identifiers: string[] }
-): Promise<VersionedFinalizedTxData> => {
+): Promise<FinalizedTxRead> => {
   const recordRef = `txId ${txId}`;
   const era = resolveReadEra(transaction, 'watchForTxData', recordRef);
-  return toVersionedFinalizedTxData(transaction, txId, era, 'watchForTxData', recordRef);
+  return toFinalizedTxRead(transaction, txId, era, 'watchForTxData', recordRef);
 };

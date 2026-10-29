@@ -22,16 +22,8 @@ export const LEDGER_STATE_KINDS = Object.freeze(['ContractState', 'LedgerParamet
  */
 export type LedgerStateKind = (typeof LEDGER_STATE_KINDS)[number];
 
-// The bracketed number is the FORMAT version of one kind, not the ledger era, and the kinds number
-// independently: never derive an era from it by arithmetic or by analogy with another kind. Two eras
-// share a tag when the later ledger kept the format (a zswap chain state in v8 and v9).
-//
-// DO NOT COPY THIS TABLE. It decides which era's decoder is handed network-supplied bytes; see
-// `packages/protocol/docs/shared-table-discipline.md`. `satisfies` makes a new `LedgerVersion` with
-// no row here a build failure. Every entry is pinned against what the runtimes write by
-// `test/state-tags.test.ts`. A contract state and ledger parameters are dated from their tag alone
-// (`ledgerVersionOf*` in `utils`), so the asserts below make a tag shared by two eras of either kind a
-// build failure.
+// The bracketed number is the format version of one kind, not the ledger era. Pinned by
+// test/state-tags.test.ts; see docs/architecture/era-tagged-payload-decoders.md.
 export const LEDGER_STATE_TAGS = Object.freeze({
   ContractState: Object.freeze({
     v8: 'midnight:contract-state[v6]',

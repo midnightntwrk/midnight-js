@@ -73,7 +73,7 @@ describe('submitTx on a pre-fork (ledger v8) network', () => {
       const record = await submitTx(providers, { unprovenTx });
 
       // Assert.
-      expect({ version: record.version, status: record.status }).toEqual({ version: 'v8', status: SucceedEntirely });
+      expect({ era: record.era, status: record.status }).toEqual({ era: 'v8', status: SucceedEntirely });
     },
     SLOW_TEST_TIMEOUT
   );

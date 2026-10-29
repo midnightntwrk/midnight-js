@@ -152,6 +152,8 @@ The rules:
     run time, for a provider outside the type system. Read it with
     `LedgerTransaction.unwrap(record.tx, record.version)`. Contract states and public states are not
     transactions and stay as ADR 0006 left them.
+    *Amended by [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md):
+    the record is now `FinalizedTxRead` and its tag is `era`.*
 12. **A decode failure at a boundary is the caller's error.** `deserializeTransactionAtStage`
     refuses bytes that are not a transaction of the requested era and stage with
     `PayloadNotATransactionError` (`MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION`, category USAGE),
@@ -209,7 +211,7 @@ remove.
 
 Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
 The last sentence of point 11 ("Contract states and public states are not transactions and stay as
-ADR 0006 left them") no longer holds. They are now a `LedgerState`: bytes and the version of the
+ADR 0006 left them") no longer holds. They are now a `LedgerState`: bytes and the era of the
 ledger that wrote them, decoded by the caller's own runtime. Transactions are unchanged: a
 `LedgerTransaction` still holds a live object. The #1525 follow-up is closed by ADR 0020: a v8
-state is decoded with the caller's `onchain-runtime-v3` `ContractState`.
+state is decoded with `ContractState` from a ledger 8 `compact-runtime` (0.16).

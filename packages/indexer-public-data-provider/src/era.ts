@@ -27,7 +27,7 @@ import { UnknownRecordEraError } from './errors';
  * Resolves the ledger era of a record read from the indexer, so the read path
  * can dispatch the decode to the runtime that wrote the bytes.
  *
- * The `version` discriminant on a finalized-transaction record is derived from
+ * The `era` discriminant on a finalized-transaction record is derived from
  * the record's own `protocolVersion`, never asserted: stamping a literal
  * `'v9'` would let the discriminant disagree with the `protocolVersion` in the
  * same record, and a consumer that narrows on it would be misled.

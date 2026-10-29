@@ -29,12 +29,11 @@ import type {
   ContractStateAndParametersRead,
   ContractStateObservableConfig,
   ContractStateRead,
+  FinalizedTxRead,
   PositionedRecord,
   PublicDataProvider,
   PublicStatesRead,
-  UnshieldedBalances,
-  VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  UnshieldedBalances} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
@@ -356,7 +355,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * record itself is built after the poll resolves, because the era's runtime
    * may still have to be acquired.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxRead> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       pollUntilPresent(
@@ -378,7 +377,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     ).then((transaction) => toFinalizedDeployTxData(contractAddress, transaction));
   }
 
-  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData> {
+  watchForTxData(txId: TransactionId): Promise<FinalizedTxRead> {
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -409,7 +408,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    *
    * @param contractAddress Validated here, so the public member refuses an
    *   invalid address synchronously.
-   * @param config Selects the branch; required here, defaulted by the callers.
+   * @param config Selects the branch; required here, defaulted by the caller.
    * @param mapState Turns one served contract action into a stream element.
    * @returns One element per contract action the selected branch delivers.
    */

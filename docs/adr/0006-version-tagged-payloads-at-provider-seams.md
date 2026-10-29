@@ -567,8 +567,10 @@ the record's era (`record.tx.era === record.version`), so point 3 of the amendme
 
 Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
 Point 3 of the amendment of 2026-10-16 no longer describes the state reads. A contract state,
-ledger parameters and a zswap chain state are now a `LedgerState`: bytes and the version of the
+ledger parameters and a zswap chain state are now a `LedgerState`: bytes and the era of the
 ledger that wrote them, in both eras. The caller decodes them with its own runtime.
 `VersionedContractState`, `VersionedPublicStates`, `RawContractState` and their variants are
-removed; the reads return `ContractStateRead` and `PublicStatesRead`. `version` is still read from
-the bytes, never from the block. `VersionedFinalizedTxData` is unchanged.
+removed; the reads return `ContractStateRead`, `ContractStateAndParametersRead` and
+`PublicStatesRead`. `LedgerState.era` is read from the bytes, never from the block. The
+finalized-transaction record keeps its shape but follows the same names:
+`VersionedFinalizedTxData` is now `FinalizedTxRead`, and its `version` is now `era`.

@@ -135,12 +135,13 @@ Before that, `seal` cannot check a v8 object and refuses it with reason
 `ledger8-not-loaded`.
 
 A finalized-transaction record from the read side (`watchForTxData`,
-`watchForDeployTxData`) is still tagged with `version`, and its `tx` is a
-`FinalizedTx` of that same era. Read it like this:
+`watchForDeployTxData`) is a `FinalizedTxRead`. It names its era `era`, like a
+handle and a state, and its `tx` is a `FinalizedTx` of that same era. Read it
+like this:
 
 ```typescript
 const record = await publicDataProvider.watchForTxData(txId);
-const tx = LedgerTransaction.unwrap(record.tx, record.version);
+const tx = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
 A contract state, ledger parameters and a zswap chain state come back as a
@@ -159,7 +160,9 @@ if (read !== null) {
 
 `deserialize` calls only the decoder for the state's own `era`. It refuses a
 missing one with `LedgerStateDecoderMissingError`, and reports a decoder that
-throws as `LedgerStateDecodeFailedError`. Only `LedgerState.fromBytes(era, kind, bytes)`
+throws as `LedgerStateDecodeFailedError` (a decoder error that already has a
+midnight-js code is rethrown unchanged). Its return type is `unknown` when you
+pass no decoder for any era the state can be. Only `LedgerState.fromBytes(era, kind, bytes)`
 makes a `LedgerState`; `LedgerState.isLedgerState(value)` checks one.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
@@ -265,8 +268,8 @@ type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 
 ```typescript
 interface FinalizedTxData {
-  version: 'v9';
-  tx: FinalizedTx;      // a handle of the same era: tx.era === version
+  era: 'v9';
+  tx: FinalizedTx;      // a handle of the same era: tx.era === era
   status: TxStatus;
   txId: TransactionId;
   identifiers: readonly TransactionId[];
@@ -392,7 +395,7 @@ import {
 
   // Version-tagged transaction records for the ledger-fork window
   type Ledger8FinalizedTxData,
-  type VersionedFinalizedTxData,
+  type FinalizedTxRead,
   type TransactionMethod,
   type ReadMethod,
   type ProviderMethod,
@@ -453,7 +456,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a transaction crosses a provider method as a handle, what the guard in `seal` checks, the three things the `version` tag of a read result deliberately does not establish, and why ledger parameters travel with the state |
+| [Version-tagged payloads](./docs/version-tagged-payloads.md) | Why a transaction crosses a provider method as a handle, what the guard in `seal` checks, the three things the `era` of a read result deliberately does not establish, and why ledger parameters travel with the state |
 | [Provider era declarations](./docs/provider-era-declarations.md) | Why `supportedEras` is read before an operation starts and still not trusted, why the two era refusals stay distinct, and what the lifting adapters exist to avoid |
 | [Reading the network's ledger version](./docs/reading-the-head-era.md) | The caching rule `queryLatestProtocolVersion` imposes, why it takes no force-refresh option, and when to prefer the `protocolVersion` a read already carries |
 

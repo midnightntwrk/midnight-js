@@ -1164,7 +1164,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   return {
     circuitId: call.circuitId,
     status: submitted.public.status,
-    version: submitted.public.version,
+    version: submitted.public.era,
     txId: submitted.public.txId,
     ...(submitted.private.result === undefined ? {} : { result: String(submitted.private.result) })
   };
@@ -1722,15 +1722,15 @@ if (MAINTAINS_ACROSS_THE_FORK) {
       new Contract(retainedWitnesses('simple')),
       deployed.contractAddress
     )(newKey);
-    if (replaced.era !== 'v8' || replaced.public.version !== 'v8') {
-      throw new Error(`expected a v8 result on a v8 record; got '${replaced.era}' on '${replaced.public.version}'`);
+    if (replaced.era !== 'v8' || replaced.public.era !== 'v8') {
+      throw new Error(`expected a v8 result on a v8 record; got '${replaced.era}' on '${replaced.public.era}'`);
     }
     if (!sameSigningKey(await providers.privateStateProvider.getSigningKey(deployed.contractAddress), newKey)) {
       throw new Error('the store does not hold the key the authority was replaced with');
     }
     // The key (c3) asserts survived the fork is now this one, not the deploy's.
     deployed.signingKey = newKey;
-    return { era: replaced.era, version: replaced.public.version, status: replaced.public.status, txId: replaced.public.txId };
+    return { era: replaced.era, version: replaced.public.era, status: replaced.public.status, txId: replaced.public.txId };
   });
 } else {
   await leg('pre-fork retained simple, maintenance authority replaced', () =>
@@ -2388,10 +2388,10 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       contractAddress: deployed.contractAddress
     });
 
-    if (found.deployTxData.public.version !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    if (found.deployTxData.public.era !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
     }
-    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.version };
+    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.era };
   });
 }
 
@@ -2873,8 +2873,8 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       contractAddress: deployed.contractAddress
     });
 
-    if (found.deployTxData.public.version !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    if (found.deployTxData.public.era !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
     }
     if (found.deployTxData.public.contractAddress !== deployed.contractAddress) {
       failures.push(`${name}: the deploy record names a different contract address`);
@@ -2887,7 +2887,7 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       failures.push(`${name}: ledger ${state.label} went from ${before} to ${after}, expected ${before + 1n}`);
     }
     return {
-      deployRecordVersion: found.deployTxData.public.version,
+      deployRecordVersion: found.deployTxData.public.era,
       afterFindCall: { circuitId: called.circuitId, txId: called.public.txId },
       [state.label]: { before: before.toString(), after: after.toString() }
     };

@@ -57,8 +57,8 @@ describe('LedgerState.deserialize', () => {
     expectTypeOf(anyEraState.deserialize({ v9: ledger9Decoder })).toEqualTypeOf<Ledger9ContractState>();
   });
 
-  it('returns never when the decoders cannot read the value era', () => {
-    expectTypeOf(ledger8State.deserialize({ v9: ledger9Decoder })).toBeNever();
+  it('returns unknown, not never, when the decoders cannot read the value era', () => {
+    expectTypeOf(ledger8State.deserialize({ v9: ledger9Decoder })).toBeUnknown();
   });
 
   it('returns the decoded type for a decoder under an optional key', () => {

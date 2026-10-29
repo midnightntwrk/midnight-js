@@ -298,7 +298,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
 });
 
 export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
-  version: 'v9',
+  era: 'v9',
   status: status,
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],
@@ -326,7 +326,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 
 export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
-  version: 'v8',
+  era: 'v8',
   tx: MOCK_LEDGER8_FINALIZED_TX,
   // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
   protocolVersion: 1_000_000

@@ -24,10 +24,9 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import { CURRENT_LEDGER_VERSION, type CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  type PrivateStateId,
+  type FinalizedTxRead,  type PrivateStateId,
   type PrivateStateProvider,
-  type VerifierKey,
-  type VersionedFinalizedTxData} from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
@@ -88,10 +87,10 @@ const setOrGetInitialSigningKey = async <C extends Contract.Any>(
 
 const queryFoundDeployTxPublicData = async (
   publicDataProvider: ContractProviders['publicDataProvider'],
-  deployRecord: VersionedFinalizedTxData,
+  deployRecord: FinalizedTxRead,
   contractAddress: ContractAddress
 ): Promise<FoundDeployTxPublicData> => {
-  switch (deployRecord.version) {
+  switch (deployRecord.era) {
     case 'v8':
       return { ...deployRecord, contractAddress };
     case 'v9': {
@@ -406,7 +405,7 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractAddress: ContractAddress;
   /**
    * Data for the finalized deploy transaction corresponding to this contract. The deploy record is
-   * tagged with the ledger era that recorded it: narrow on `public.version` before reading `tx` or
+   * tagged with the ledger era that recorded it: narrow on `public.era` before reading `tx` or
    * `initialContractState`.
    */
   readonly deployTxData: FoundDeployTxData<C>;
@@ -449,14 +448,14 @@ export interface FoundContract<C extends Contract.Any> {
  * is writing `privateStateId` with an undefined value. Naming an id the provider holds nothing
  * under is refused too, rather than attaching against a state the contract never had.
  *
- * The deploy record is returned VERSION-TAGGED rather than narrowed to the current era, so it needs
- * narrowing on `version` before `tx` is touched.
+ * The deploy record is returned ERA-TAGGED rather than narrowed to the current era, so it needs
+ * narrowing on `era` before `tx` is touched.
  *
  * @throws IncompleteFindContractPrivateStateConfig if an `initialPrivateState` is supplied with no
  *         `privateStateId` to store it under.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated, and why the record is
- * version-tagged.
+ * era-tagged.
  */
 export async function findDeployedContract<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,

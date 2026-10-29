@@ -250,9 +250,9 @@ An earlier, provisional check tested for `impureCircuits` alone. It lived here,
 answered `true` for a raw current-era contract instance, and could not close that
 blind spot; `resolveArtifactEra` replaced it.
 
-## Why a retained-era result is version-tagged
+## Why a retained-era result is era-tagged
 
-`Ledger8FinalizedCallTxData.txData` is a `VersionedFinalizedTxData` rather than
+`Ledger8FinalizedCallTxData.txData` is a `FinalizedTxRead` rather than
 a single-era record: the same retained-era contract is called as a v8
 transaction before the fork and as a v9 keep-state transaction after it, so the
 record it finalizes as carries the era that produced it. Providers take the

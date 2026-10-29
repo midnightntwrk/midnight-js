@@ -32,9 +32,9 @@ import type { LedgerState } from './ledger-state';
 export interface ContractStateRead {
   /**
    * The protocol-version integer of the block that dates the read. A state keeps the era of the
-   * ledger that wrote it, so this era can be newer than `contractState.era`. On a read with no block
-   * given, the block and the state are looked up separately, so near the hard fork this era can also
-   * be older than `contractState.era`.
+   * ledger that wrote it, so the era of this block can be newer than `contractState.era`. On a read
+   * with no block given, the block and the state are looked up separately, so near the hard fork the
+   * era of this block can also be older than `contractState.era`.
    */
   readonly protocolVersion: number;
   /** The contract state. */

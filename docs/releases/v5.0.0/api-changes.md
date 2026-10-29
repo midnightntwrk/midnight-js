@@ -155,10 +155,10 @@ interface ProofProvider    { readonly supportedEras: readonly LedgerVersion[]; p
 interface WalletProvider   { readonly supportedEras: readonly LedgerVersion[]; balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>; /* key readers */ }
 interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; submitTx(tx: FinalizedTx): Promise<TransactionId>; }
 
-// Read surface: version-tagged records whose `tx` is a handle of the same era.
+// Read surface: era-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: LedgerTransaction<'Finalized', 'v8'>; }
-export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly era: 'v8'; readonly tx: LedgerTransaction<'Finalized', 'v8'>; }
+export type FinalizedTxRead = Ledger8FinalizedTxData | FinalizedTxData;
 
 // Refusals.
 export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
@@ -176,13 +176,13 @@ export const createWalletProviderFromHandlers: (handlers: WalletProviderHandlers
 export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHandlers) => MidnightProvider;
 ```
 
-`FinalizedTxData` gained a required `version: 'v9'`, and its `tx` is a
-`LedgerTransaction<'Finalized', 'v9'>`, so narrowing a record on `version`
+`FinalizedTxData` gained a required `era: 'v9'`, and its `tx` is a
+`LedgerTransaction<'Finalized', 'v9'>`, so narrowing a record on `era`
 narrows `tx.era` with it. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
 `MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
 a bare `TransactionId`. `PublicDataProvider.watchForTxData` /
-`watchForDeployTxData` now resolve `VersionedFinalizedTxData`; read its
-transaction with `LedgerTransaction.unwrap(record.tx, record.version)`.
+`watchForDeployTxData` now resolve `FinalizedTxRead`; read its
+transaction with `LedgerTransaction.unwrap(record.tx, record.era)`.
 
 `@midnight-ntwrk/midnight-js-protocol/transaction` (new subpath) publishes
 `deserializeTransactionAtStage(era, stage, bytes)`, which reads bytes into the
@@ -207,7 +207,7 @@ export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends 
   static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
   static isLedgerState(value: unknown): value is LedgerState;
   serialize(): Uint8Array;
-  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>;
+  deserialize<D extends StateDecoders>(decoders: D): DecodedState<D, E>; // unknown when D has no decoder for any era E can be
 }
 
 export interface ContractStateRead {
@@ -337,7 +337,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` returns `VersionedFinalizedTxData`, tagged with the network's era (#1508).
+`submitTx` returns `FinalizedTxRead`, tagged with the network's era (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 
@@ -355,7 +355,7 @@ export interface FoundDeployTxData<C extends Contract.Any> {
 ```
 
 `findDeployedContract` accepts a contract deployed before the ledger fork and
-reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` or
+reports its deploy record tagged `v8`. Narrow on `era` before reading `tx` or
 `initialContractState`.
 
 ### Retained-era deploy data and signing key (#1514)
@@ -364,7 +364,7 @@ reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` o
 export namespace Ledger8 {
   export interface FoundDeployTxData<C extends Contract> {
     readonly era: 'v8';
-    readonly public: VersionedFinalizedTxData & { readonly contractAddress: ContractAddress };
+    readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
     readonly private: {
       readonly signingKey: SigningKey | undefined;
       readonly initialPrivateState: PrivateState<C>;
@@ -484,10 +484,10 @@ export function isRegularTransaction(/* ... */): boolean;
 
 New typed error variants accompany the event surface (e.g. `IndexerDataError.unknownAddressKind` for an unrecognized address kind; unknown `__typename` / missing-field cases continue to fail fast).
 
-Era resolution (#1204) — the `version` on a finalized record is derived from the
+Era resolution (#1204) — the `era` on a finalized record is derived from the
 record's own `protocolVersion`, never asserted, and that answer also selects the
 ledger runtime the record is decoded with. `watchForTxData` and
-`watchForDeployTxData` therefore resolve `VersionedFinalizedTxData` and really
+`watchForDeployTxData` therefore resolve `FinalizedTxRead` and really
 do produce both variants; the pre-fork runtime is acquired lazily, so a session that
 meets no v8-era record never instantiates it.
 
@@ -513,7 +513,8 @@ export class DecoderEraUnsupportedError extends IndexerError {
 On-chain state as bytes (#1550) — `parseHexContractState`,
 `parseHexLedgerParameters` and `parseHexZswapState` are removed: the provider
 decodes no state. `IndexerDataError` kinds `unsupported-decode-era` and
-`unsupported-parameters-era` are removed, and `malformed-zswap-encoding` is new.
+`unsupported-parameters-era` are removed, and `malformed-zswap-encoding`,
+`malformed-zswap-state` and `parameters-era-disagreement` are new.
 `queryContractState` now serves the block's ledger parameters too.
 
 Internally the provider was split into 7 layered files (#960): `config.ts`, `transport.ts` (`ApolloHandle = { client, dispose }`), `provider.ts` (`class IndexerPublicDataProvider`), `observables.ts`, `events-filter.ts`, `events-mapping.ts`, and `index.ts`.
@@ -560,7 +561,7 @@ export function hasForeignErrorCode<C extends string>(
   error: unknown, code: C extends MidnightJsErrorCode ? never : C
 ): error is Error & { code: C };
 
-// Exhaustiveness guard for the version-tagged unions (#1254). Closes the
+// Exhaustiveness guard for the era-tagged unions (#1254). Closes the
 // `default` case of a `switch` so a future era variant cannot fall through unhandled.
 // Never renders `value` into its message; `context` is required and locates the throw.
 export function assertNever(value: never, context: string): never;

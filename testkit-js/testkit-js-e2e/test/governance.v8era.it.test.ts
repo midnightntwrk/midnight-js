@@ -120,7 +120,7 @@ describe('Contract maintenance through a retained-era artifact on a pre-fork (le
       const removed = await submitRemoveVerifierKeyTx(providers, contract, contractAddress, CIRCUIT_ID);
 
       // Assert.
-      expect([removed.era, removed.public.version, removed.public.status]).toEqual(['v8', 'v8', SucceedEntirely]);
+      expect([removed.era, removed.public.era, removed.public.status]).toEqual(['v8', 'v8', SucceedEntirely]);
       await expect(callCircuit()).rejects.toThrow(BlankVerifierKeySlotError);
     },
     VERY_SLOW_TEST_TIMEOUT

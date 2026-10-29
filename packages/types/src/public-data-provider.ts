@@ -18,7 +18,7 @@ import type { Observable } from 'rxjs';
 
 import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from './contract-state-read';
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
-import type { VersionedFinalizedTxData } from './versioned';
+import type { FinalizedTxRead } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -358,7 +358,8 @@ export interface PublicDataProvider {
    * address in the latest block is returned. Decode the state with your own runtime:
    * `read.contractState.deserialize({ v9: ContractState })`.
    * Immediately returns null if no matching data is found.
-   * @throws When the state or the ledger parameters are not well-formed bytes of a known era.
+   * @throws When the state or the ledger parameters are not well-formed bytes of a known era, or
+   * are of another era than the block that dates the read.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -434,7 +435,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxRead>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
@@ -455,7 +456,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
+  watchForTxData(txId: TransactionId): Promise<FinalizedTxRead>;
 
   /**
    * Creates a stream of contract states, each as bytes with the era of the ledger that wrote

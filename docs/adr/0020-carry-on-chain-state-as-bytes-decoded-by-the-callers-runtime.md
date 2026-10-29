@@ -6,7 +6,8 @@
 - Related: amends [0006](./0006-version-tagged-payloads-at-provider-seams.md),
   [0007](./0007-never-latch-the-network-head-version.md),
   [0008](./0008-report-decode-failures-without-attributing-an-era.md),
-  [0010](./0010-publish-era-handles-alongside-their-plain-data.md) and
+  [0010](./0010-publish-era-handles-alongside-their-plain-data.md),
+  [0017](./0017-error-codes-are-the-contract.md) and
   [0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md); issue #1550, supersedes #1525
 
 ## Context
@@ -74,9 +75,13 @@ The rules:
    dApp's own `compact-runtime`. Only the decoder of the value's own era is called. A missing
    decoder is refused with `LedgerStateDecoderMissingError`
    (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING`), whose message names the class and the package to
-   import. A decoder that throws is reported as `LedgerStateDecodeFailedError`
-   (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`) with its error as `cause`: the tag was checked when
-   the value was made, so the decoder is the wrong one. There is no form without decoders, so the
+   import. A decoder that throws an error without a midnight-js code is reported as
+   `LedgerStateDecodeFailedError` (`MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED`) with its error as
+   `cause`: the tag was checked when the value was made, so either the decoder is the wrong one or
+   the bytes after the tag are corrupt. A coded error is rethrown unchanged, so a framework
+   decoder's `DeserializationError` keeps its code and its INTEGRITY category. When the decoders
+   hold none for any era the value can be, the return type is `unknown`, so the mistake is not
+   hidden behind a `never` that fits anywhere. There is no form without decoders, so the
    framework's copy of the runtime is never used by accident.
 2. **`fromBytes` checks the tag against the era.** `LEDGER_STATE_TAGS` in
    `@midnight-ntwrk/midnight-js-protocol/version` holds, for each kind and each ledger era, the
@@ -92,8 +97,13 @@ The rules:
    `serialize()` copy into a plain `Uint8Array` (a Node `Buffer` would share memory), so no
    caller can change a value it was handed. The constructor refuses a call that does not come
    from `fromBytes` (`not-from-bytes`), and `isLedgerState` tells a value of this copy of the
-   package from a look-alike. `contracts` checks it before it reads `era`. The bytes are a private
-   field, so `structuredClone`, `postMessage` and JSON drop them: send `serialize()` and `era`.
+   package from a look-alike. A value made by a second installed copy of `types` gives `false`
+   there, and a dApp can end up with two copies the same way it ends up with two runtimes. So
+   `contracts` does not refuse it: it rebuilds every state a provider served from its `era`,
+   `kind` and `serialize()` with `fromBytes`, which checks the tag again and refuses forged bytes
+   (`tag-mismatch`). A value that has none of those is refused as the shape of a pre-5.0.0
+   provider (`UnrecognisedEraTagError`). The bytes are a private field, so `structuredClone`,
+   `postMessage` and JSON drop them: send `serialize()` and `era`.
 4. **One read record per method.**
    - `ContractStateRead { protocolVersion, contractState }` is returned by
      `watchForContractState`, `queryDeployContractState` and `contractStateObservable`.
@@ -115,7 +125,10 @@ The rules:
    records from bytes.
 6. **The framework decodes only to build a transaction.** `contracts` decodes a read with its own
    copy, through `utils`, where it builds a transaction: the call path, cross-contract calls,
-   `findDeployedContract` and the maintenance flows. `getAnyEraContractState` is removed.
+   `findDeployedContract` and the maintenance flows. `getAnyEraContractState` is removed. The v8
+   pipeline (keep-state and ledger 8 maintenance) refuses ledger parameters served in a shape
+   that is not a `LedgerState` with `UnrecognisedEraTagError`, rather than taking them as absent;
+   parameters not served at all still give `LedgerParametersUnservedError`.
 7. **The scoped transaction hands out bytes too.** `TransactionContext.getCurrentStates()` returns a
    `PublicStatesRead` whose contract state is the running state of the scope. The decoded states
    the scope builds calls from stay inside `contracts`.
@@ -152,6 +165,14 @@ the fork its state is v9, which its runtime cannot read: it decodes the bytes wi
   after the fork needs the current runtime too. The indexer provider no longer exports
   `parseHexContractState`, `parseHexLedgerParameters` and `parseHexZswapState`.
 - **Follow-ups:** move `LedgerTransaction` and the state on the transaction API to the same model.
+
+## Notes
+
+The finalized-transaction record follows the same names. `VersionedFinalizedTxData` is now
+`FinalizedTxRead`, and its `version` is now `era`: `record.tx.era === record.era`, narrowed with
+`switch (record.era)`. So every read result is a `*Read`, and every value — a record, a handle, a
+state — names the era of the ledger that wrote it `era`. `requireLedger9` in `utils` narrows on
+`era` too. The shape of the record does not change.
 
 ## Alternatives considered
 

@@ -15,11 +15,10 @@
 
 import { PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
+  type FinalizedTxRead,
   InvalidTransactionHandleError,
   LedgerTransaction,
-  type ReadMethod,
-  type VersionedFinalizedTxData
-} from '@midnight-ntwrk/midnight-js-types';
+  type ReadMethod} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -37,10 +36,10 @@ const thrownBy = (read: () => unknown): unknown => {
 };
 
 const HELPERS = [
-  ['requireTaggedRecord', (record: VersionedFinalizedTxData, method: ReadMethod) => requireTaggedRecord(record, method)],
+  ['requireTaggedRecord', (record: FinalizedTxRead, method: ReadMethod) => requireTaggedRecord(record, method)],
   [
     'requireLedger9Record',
-    (record: VersionedFinalizedTxData, method: ReadMethod) => requireLedger9Record(record, method, 'testCircuit')
+    (record: FinalizedTxRead, method: ReadMethod) => requireLedger9Record(record, method, 'testCircuit')
   ]
 ] as const;
 
@@ -49,7 +48,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     'refuses a raw ledger transaction in tx, the pre-handle shape, naming %s',
     (method) => {
       const v9 = createMockFinalizedTxData();
-      const record: VersionedFinalizedTxData = {
+      const record: FinalizedTxRead = {
         ...v9,
         // @ts-expect-error a record from before the handle carries the raw ledger transaction
         tx: LedgerTransaction.unwrap(v9.tx, 'v9')
@@ -68,7 +67,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     'refuses a v9 record whose tx is a v8 handle, naming %s',
     (method) => {
       // @ts-expect-error the types tie tx to version; an untyped provider can still mismatch them
-      const record: VersionedFinalizedTxData = { ...createMockFinalizedTxData(), tx: createMockLedger8FinalizedTxData().tx };
+      const record: FinalizedTxRead = { ...createMockFinalizedTxData(), tx: createMockLedger8FinalizedTxData().tx };
 
       const error = thrownBy(() => read(record, method));
 
@@ -82,7 +81,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
   it.each(['watchForTxData', 'watchForDeployTxData'] as const)(
     'refuses a record with no version, naming %s',
     (method) => {
-      const { version: _dropped, ...untagged } = createMockFinalizedTxData();
+      const { era: _dropped, ...untagged } = createMockFinalizedTxData();
 
       // @ts-expect-error the pre-5.0.0 record carries no version
       const error = thrownBy(() => read(untagged, method));
@@ -103,7 +102,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
   });
 
   it('refuses a version that cannot be turned into text with the coded error, not a TypeError', () => {
-    const record = { ...createMockFinalizedTxData(), version: { __proto__: null } };
+    const record = { ...createMockFinalizedTxData(), era: { __proto__: null } };
 
     // @ts-expect-error an RPC bridge can hand back a null-prototype object as the tag
     const error = thrownBy(() => read(record, 'watchForTxData'));
@@ -116,7 +115,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
 describe('requireTaggedRecord', () => {
   it('refuses a v8 record whose tx is a v9 handle', () => {
     // @ts-expect-error the types tie tx to version; an untyped provider can still mismatch them
-    const record: VersionedFinalizedTxData = { ...createMockLedger8FinalizedTxData(), tx: createMockFinalizedTxData().tx };
+    const record: FinalizedTxRead = { ...createMockLedger8FinalizedTxData(), tx: createMockFinalizedTxData().tx };
 
     const error = thrownBy(() => requireTaggedRecord(record, 'watchForDeployTxData'));
 

@@ -15,6 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
+import * as compactRuntime from '../compact-runtime';
 import * as ledger9 from '../ledger';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, LEDGER_VERSIONS, type LedgerStateKind, type LedgerVersion } from '../version';
@@ -50,6 +51,16 @@ describe('LEDGER_STATE_TAGS', () => {
       expect(leadingTag(bytes, LEDGER_STATE_TAGS[kind][era])).toBe(`${LEDGER_STATE_TAGS[kind][era]}:`);
     }
   );
+
+  it.each([
+    ['v9', async () => compactRuntime.ContractState],
+    ['v8', async () => (await import('compact-runtime-ledger8')).ContractState]
+  ] as const)('holds the tag the compact-runtime ContractState of %s writes, the class dApps decode with', async (era, load) => {
+    const ContractState = await load();
+    const bytes = new ContractState().serialize();
+
+    expect(leadingTag(bytes, LEDGER_STATE_TAGS.ContractState[era])).toBe(`${LEDGER_STATE_TAGS.ContractState[era]}:`);
+  });
 
   it('tells the eras apart by tag for a contract state and for ledger parameters', () => {
     expect(LEDGER_STATE_TAGS.ContractState.v8).not.toBe(LEDGER_STATE_TAGS.ContractState.v9);

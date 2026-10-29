@@ -46,8 +46,8 @@ const ledger9DeployPublicData = <C extends Contract.Any>(
   foundDeployTxData: FoundDeployTxData<C>
 ): FinalizedDeployTxPublicData => {
   const found = foundDeployTxData.public;
-  if (found.version !== 'v9') {
-    throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.version}'`);
+  if (found.era !== 'v9') {
+    throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.era}'`);
   }
   return found;
 };

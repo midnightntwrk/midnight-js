@@ -55,7 +55,7 @@ provider.contractStateObservable(contractAddress).subscribe(({ value, blockHeigh
 queryContractState(
   contractAddress: ContractAddress,
   config?: BlockHeightConfig | BlockHashConfig
-): Promise<ContractStateRead | null>
+): Promise<ContractStateAndParametersRead | null>
 
 // Query contract state at deployment, as bytes
 queryDeployContractState(
@@ -120,9 +120,9 @@ as an `IndexerDataError` (`malformed-parameters-encoding`,
 runtime.
 
 `queryZSwapAndContractState` returns a `PublicStatesRead`: the contract state,
-the zswap chain state and the ledger parameters, all from one block, all as
-bytes. The zswap chain state has the same format in v8 and v9, so it takes the
-era of the ledger parameters; one that is not hex or not a zswap chain state is
+the zswap chain state and the ledger parameters, from one block when the read
+is pinned, all as bytes. The zswap chain state has the same format in v8 and
+v9, so it takes the era of the ledger parameters; one that is not hex or not a zswap chain state is
 refused as an `IndexerDataError` (`malformed-zswap-encoding`,
 `malformed-zswap-state`). If the contract state and the ledger
 parameters come from different eras, the call fails with an `IndexerDataError`
@@ -160,12 +160,12 @@ The `all` branch replays every contract action from the deploy onward, so for a
 contract deployed before the fork the replay always reaches its pre-fork deploy
 state. A `blockHeight` or `blockHash` start before the fork does the same.
 Those pre-fork records keep their v8 encoding, so `contractStateObservable`
-emits them with version `'v8'` and keeps going; the records after the fork
-arrive with version `'v9'` in the same stream.
+emits them with `contractState.era === 'v8'` and keeps going; the records after
+the fork arrive with `contractState.era === 'v9'` in the same stream.
 
 #### Reading a contract that may predate the fork
 
-Pass one decoder per version. For a contract compiled with the current
+Pass one decoder per era. For a contract compiled with the current
 toolchain, a v8 state is one written before the fork; decode it with the
 ledger 8 runtime if you need it. A contract compiled with the ledger 8
 toolchain (`compact-runtime` 0.16) reads a v8 state with its own runtime. After
@@ -460,9 +460,9 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 ## Transaction Data
 
 `IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` resolve
-`Promise<VersionedFinalizedTxData>` — the closed union of `FinalizedTxData`
+`Promise<FinalizedTxRead>` — the closed union of `FinalizedTxData`
 (v9) and `Ledger8FinalizedTxData` — exactly as the `PublicDataProvider` interface
-they satisfy does. Narrow on `version` before reading `tx`: the two variants carry
+they satisfy does. Narrow on `era` before reading `tx`: the two variants carry
 transaction objects from different ledger runtimes, and neither runtime's
 object can be handed to the other.
 
@@ -496,9 +496,9 @@ The v9 record includes:
 
 ```typescript
 type FinalizedTxData = {
-  version: 'v9';                      // Ledger-runtime discriminant, derived
+  era: 'v9';                          // Ledger-era discriminant, derived
                                       // from protocolVersion
-  tx: Transaction;                    // Deserialized ledger transaction
+  tx: FinalizedTx;                    // Transaction handle of the same era
   txId: TransactionId;                // Transaction identifier
   txHash: string;                     // Transaction hash
   status: TxStatus;                   // SucceedEntirely | FailFallible | FailEntirely
