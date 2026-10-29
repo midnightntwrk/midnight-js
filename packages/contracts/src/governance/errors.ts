@@ -52,7 +52,7 @@ export class InsertVerifierKeyTxFailedError extends TxFailedError {
  * The retained-era counterpart of the three classes above: a maintenance update composed by the
  * ledger 8 pipeline that the chain recorded with a status other than `SucceedEntirely`.
  *
- * Not a subclass of {@link TxFailedError}, which carries a current-era `Ledger9FinalizedTxData`; the record
+ * Not a subclass of {@link TxFailedError}, which carries a `Ledger9FinalizedTxData`; the record
  * here is the ledger 8 one. Carries no registered error code of its own, exactly as
  * `Ledger8CallTxFailedError` does: branch on the class, or on the inherited
  * {@link AnyEraTxFailedError.code}.

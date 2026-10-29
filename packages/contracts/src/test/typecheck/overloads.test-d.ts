@@ -103,10 +103,10 @@ import type { SubmitTxProviders } from '../../submit-tx';
 import type { TransactionContext } from '../../transaction';
 import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
-  FinalizedDeployTxPublicData,
   FoundDeployTxPublicData,
   Ledger8FoundDeployTxPublicData,
   Ledger9FinalizedCallTxData,
+  Ledger9FinalizedDeployTxPublicData,
   Ledger9FinalizedMaintenanceTxData,
   Ledger9SubmittedCallTx
 } from '../../tx-model';
@@ -1190,7 +1190,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
     >();
   });
 
-  it('leaves ReturnType<typeof submitCallTxAsync> reporting the current-era Ledger9SubmittedCallTx', () => {
+  it('leaves ReturnType<typeof submitCallTxAsync> reporting Ledger9SubmittedCallTx', () => {
     expectTypeOf<ReturnType<typeof submitCallTxAsync>>().toEqualTypeOf<Promise<Ledger9SubmittedCallTx<Contract.Any, string>>>();
   });
 
@@ -1200,7 +1200,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
     >();
   });
 
-  it('leaves ReturnType<typeof deployContract> reporting the current-era Ledger9DeployedContract', () => {
+  it('leaves ReturnType<typeof deployContract> reporting Ledger9DeployedContract', () => {
     expectTypeOf<ReturnType<typeof deployContract>>().toEqualTypeOf<Promise<Ledger9DeployedContract<Contract.Any>>>();
   });
 
@@ -1210,7 +1210,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
     >();
   });
 
-  it('leaves ReturnType<typeof findDeployedContract> reporting the current-era Ledger9FoundContract', () => {
+  it('leaves ReturnType<typeof findDeployedContract> reporting Ledger9FoundContract', () => {
     expectTypeOf<ReturnType<typeof findDeployedContract>>().toEqualTypeOf<Promise<Ledger9FoundContract<Contract.Any>>>();
   });
 
@@ -1278,7 +1278,7 @@ describe('a found contract may have been deployed in either ledger era', () => {
 
   it('requires narrowing on `era` before the deploy-time state is read', () => {
     expectTypeOf<FoundPublic>().not.toHaveProperty('initialContractState');
-    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Extract<FoundPublic, { era: 'v9' }>>().toEqualTypeOf<Ledger9FinalizedDeployTxPublicData>();
     expectTypeOf<Extract<FoundPublic, { era: 'v9' }>['initialContractState']>().toEqualTypeOf<ContractState>();
     expectTypeOf<Extract<FoundPublic, { era: 'v8' }>>().toEqualTypeOf<Ledger8FoundDeployTxPublicData>();
     expectTypeOf<Ledger8FoundDeployTxPublicData>().not.toHaveProperty('initialContractState');
@@ -1286,7 +1286,7 @@ describe('a found contract may have been deployed in either ledger era', () => {
 
   it('keeps a deployed contract usable wherever a found contract is expected', () => {
     expectTypeOf<Ledger9DeployedContract<Twin018>>().toMatchTypeOf<Ledger9FoundContract<Twin018>>();
-    expectTypeOf<Ledger9DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<FinalizedDeployTxPublicData>();
+    expectTypeOf<Ledger9DeployedContract<Twin018>['deployTxData']['public']>().toEqualTypeOf<Ledger9FinalizedDeployTxPublicData>();
   });
 });
 

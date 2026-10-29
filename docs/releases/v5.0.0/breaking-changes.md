@@ -1152,10 +1152,11 @@ unchanged.
 
 ---
 
-## 21. Ledger 9 types carry the `Ledger9` prefix; flat names pick the era (#1536)
+## 22. Ledger 9 types carry the `Ledger9` prefix; flat names pick the era (#1536)
 
-Every type with a `Ledger8` variant now has a `Ledger9*` variant, and the flat
-name picks the variant from the contract type. A flat name no longer silently
+Every ledger 9 result, option and interface type that has a `Ledger8`
+counterpart is now `Ledger9*`, and the flat name picks the variant from the
+contract type. A flat name no longer silently
 moves to the next ledger at a fork.
 
 **Types with a contract parameter.** The flat name stays and becomes an alias:
@@ -1192,11 +1193,12 @@ nothing tells the eras apart:
 | `FinalizedTxData` (types) | `Ledger9FinalizedTxData` |
 | `FinalizedMaintenanceTxData` | `Ledger9FinalizedMaintenanceTxData` |
 | `FinalizedCallTxPublicData` | `Ledger9FinalizedCallTxPublicData` |
+| `FinalizedDeployTxPublicData` | `Ledger9FinalizedDeployTxPublicData` |
 | `CallResultPublic` | `Ledger9CallResultPublic` |
 | `CircuitMaintenanceTxInterface` | `Ledger9CircuitMaintenanceTxInterface` |
 | `ContractMaintenanceTxInterface` | `Ledger9ContractMaintenanceTxInterface` |
 
-For a value of either era, use the unions: `VersionedFinalizedTxData`,
+For a value of either era, use the unions: `FinalizedTxRead`,
 `AnyEraMaintenanceTxData`. Earlier sections of this document use the names
 before this rename.
 

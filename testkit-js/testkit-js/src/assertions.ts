@@ -15,11 +15,11 @@
 
 import type {
   DeployTxOptions,
-  FinalizedDeployTxPublicData,
   Ledger9CallTxOptions,
   Ledger9DeployContractOptions,
   Ledger9FinalizedCallTxData,
   Ledger9FinalizedDeployTxData,
+  Ledger9FinalizedDeployTxPublicData,
   Ledger9FoundDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
 import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -44,7 +44,7 @@ export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bi
 
 const ledger9DeployPublicData = <C extends Contract.Any>(
   foundDeployTxData: Ledger9FoundDeployTxData<C>
-): FinalizedDeployTxPublicData => {
+): Ledger9FinalizedDeployTxPublicData => {
   const found = foundDeployTxData.public;
   if (found.era !== 'v9') {
     throw new Error(`expected a contract deployed in ledger 9, found one recorded in '${found.era}'`);

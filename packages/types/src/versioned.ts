@@ -16,7 +16,7 @@
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
-import type { FinalizedTxRecord,Ledger9FinalizedTxData } from './midnight-types';
+import type { FinalizedTxRecord, Ledger9FinalizedTxData } from './midnight-types';
 
 /**
  * The v8 variant of {@link FinalizedTxRead}. Carries the same

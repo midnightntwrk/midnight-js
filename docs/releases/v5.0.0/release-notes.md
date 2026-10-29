@@ -122,8 +122,8 @@ The mapper fails fast on an unknown `__typename` or a missing required field, an
 
 The **local-execution path** now surfaces the MIP-0002 contract log events that `compact-js` already computes — `midnight-js` was previously discarding them:
 
-- `Ledger9CallResultPublic.events` — a new `readonly LogEvent[]` field carrying the single execution-wide event list across the whole call tree, in emission order, each event tagged with its emitting contract's address. Carried **raw** (no eager decode).
-- `ContractLog` is re-exported from `compact-js` through the barrel (`contracts.ContractLog`), so consumers decode with `ContractLog.decodeAll(result.public.events)` (lenient, never throws) **without** taking a direct dependency on `compact-js`.
+- `Ledger9CallResultPublic.logEvents` — a new `readonly LogEvent[]` field carrying the single execution-wide event list across the whole call tree, in emission order, each event tagged with its emitting contract's address. Carried **raw** (no eager decode).
+- `ContractLog` is re-exported from `compact-js` through the barrel (`contracts.ContractLog`), so consumers decode with `ContractLog.decodeAll(result.public.logEvents)` (lenient, never throws) **without** taking a direct dependency on `compact-js`.
 
 This complements the indexer-sourced querying/streaming from #988: #988 reads events off-chain from the indexer, while this exposes them synchronously on the result of a local call.
 

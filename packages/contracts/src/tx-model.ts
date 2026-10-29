@@ -168,13 +168,13 @@ export interface UnsubmittedDeployTxData<C extends Contract.Any> extends Unsubmi
  * public data ({@link UnsubmittedDeployTxPublicData}) combined with the
  * finalized transaction data ({@link Ledger9FinalizedTxData}).
  */
-export interface FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, Ledger9FinalizedTxData {}
+export interface Ledger9FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, Ledger9FinalizedTxData {}
 
 export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends UnsubmittedDeployTxDataBase<C> {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedDeployTxPublicData;
+  readonly public: Ledger9FinalizedDeployTxPublicData;
 }
 
 /**
@@ -185,8 +185,8 @@ export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends Unsub
  * cannot be decoded by the current runtime. Read the current state with
  * `PublicDataProvider.queryContractState`.
  *
- * @remarks Published flat, not under the `Ledger8` namespace: it is part of the
- * current era's `Ledger9FoundDeployTxData`, and outlives the retained pipeline.
+ * @remarks Published flat, not under the `Ledger8` namespace: it is part of
+ * `Ledger9FoundDeployTxData`, and outlives the retained pipeline.
  *
  * @see {@link RetainedEraNamespace} for which names the namespace holds.
  */
@@ -202,7 +202,7 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
  * era that recorded the deploy transaction. Narrow on `era` before reading
  * `tx` or `initialContractState`; `contractAddress` is present on both variants.
  */
-export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 
 /**
  * What a contract maintenance update -- a verifier key inserted or removed, or the maintenance
@@ -264,7 +264,7 @@ export interface Ledger9FinalizedDeployTxData<C extends Contract.Any> extends Un
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedDeployTxPublicData;
+  readonly public: Ledger9FinalizedDeployTxPublicData;
 }
 
 /**

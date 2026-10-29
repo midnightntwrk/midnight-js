@@ -23,6 +23,7 @@ import type {
   CallTxOptionsBase,
   CallTxOptionsWithPrivateStateId,
   CircuitCallTxInterface,
+  CircuitIdOf,
   CircuitMaintenanceTxInterfaces,
   ContractProviders,
   DeployContractOptions,
@@ -119,6 +120,53 @@ describe('a flat name picks the variant of the era that compiled the contract', 
     expectTypeOf<FinalizedCallTxData<V9, 'decrement'>>().toBeObject();
     // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
     expectTypeOf<FinalizedCallTxData<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<SubmittedCallTx<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<SubmittedCallTx<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<UnsubmittedCallTxData<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<UnsubmittedCallTxData<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<CallResultPrivate<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<CallResultPrivate<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<CallTxOptions<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<CallTxOptions<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<CallTxOptionsBase<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<CallTxOptionsBase<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<CallTxOptionsWithPrivateStateId<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<CallTxOptionsWithPrivateStateId<V8, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 9 twin
+    expectTypeOf<ContractProviders<V9, 'decrement'>>().toBeObject();
+    // @ts-expect-error 'decrement' is not a circuit of the ledger 8 counter
+    expectTypeOf<ContractProviders<V8, 'decrement'>>().toBeObject();
+  });
+
+  it('refuses a type that is not a contract', () => {
+    // @ts-expect-error a string is not a contract of any era
+    expectTypeOf<FoundContract<string>>().toBeNever();
+  });
+
+  it('picks the era of each member of a union of contracts', () => {
+    expectTypeOf<FoundContract<V8 | V9>>().toEqualTypeOf<Ledger8.FoundContract<V8> | Ledger9FoundContract<V9>>();
+  });
+});
+
+describe('the circuit ids of a contract', () => {
+  it('are the circuits the ledger 9 artifact declares', () => {
+    expectTypeOf<CircuitIdOf<V9>>().toEqualTypeOf<K>();
+  });
+
+  it('are the circuits the ledger 8 artifact declares', () => {
+    expectTypeOf<CircuitIdOf<V8>>().toEqualTypeOf<K>();
   });
 });
 

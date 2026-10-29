@@ -194,6 +194,7 @@ export type {
   Ledger9FinalizedCallTxData,
   Ledger9FinalizedCallTxPublicData,
   Ledger9FinalizedDeployTxData,
+  Ledger9FinalizedDeployTxPublicData,
   Ledger9FinalizedMaintenanceTxData,
   Ledger9FoundDeployTxData,
   Ledger9SubmittedCallTx,
@@ -201,7 +202,6 @@ export type {
 } from './tx-model';
 export {
   FinalizedDeployTxDataBase,
-  FinalizedDeployTxPublicData,
   FoundDeployTxPublicData,
   type Ledger8FoundDeployTxPublicData,
   UnsubmittedCallTxPrivateData,
@@ -231,7 +231,7 @@ export {
   DeployTxOptionsWithPrivateStateId,
   UnprovenDeployTxOptions,
   UnprovenDeployTxProviders} from './unproven-deploy-tx';
-// Event type and decoder for `CallResultPublic.events` (MIP-0002), re-exported so consumers can name
+// Event type and decoder for `Ledger9CallResultPublic.logEvents` (MIP-0002), re-exported so consumers can name
 // the events (`LogEvent`) and decode them (`ContractLog.decodeAll`) without depending on
 // compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
 // `ContractLog.ContractEvent`.

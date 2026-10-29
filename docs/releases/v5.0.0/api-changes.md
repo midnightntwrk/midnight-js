@@ -303,12 +303,12 @@ interface MidnightProviders {
 | `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
 
 
-### `Ledger9CallResultPublic.events` + `ContractLog` re-export (#1083)
+### `Ledger9CallResultPublic.logEvents` + `ContractLog` re-export (#1083)
 
 ```ts
 interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
+  readonly logEvents: readonly LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
 }
 
 // re-exported from compact-js through the barrel — reachable as contracts.ContractLog
@@ -317,7 +317,7 @@ export const ContractLog: {
 };
 ```
 
-The single `events` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.events)`.
+The single `logEvents` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.logEvents)`.
 
 ### Era-invariant error (#1204)
 
@@ -346,7 +346,7 @@ export class EraInvariantViolationError extends Error {
 export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   readonly contractAddress: ContractAddress; // no initialContractState
 }
-export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
   readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;

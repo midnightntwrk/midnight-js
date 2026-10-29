@@ -132,8 +132,8 @@ removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised b
 
 ## Amendment — ledger 9 gets flat `Ledger9*` names, and flat names pick the era (2026-10-28)
 
-Issue #1536. Every type with a `Ledger8` member now has a ledger 9 variant named `Ledger9*`
-(`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract parameter is an alias
+Issue #1536. Every ledger 9 result, option and interface type that has a `Ledger8` member is now
+named `Ledger9*` (`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract parameter is an alias
 that picks the variant from the contract type, `Ledger8` branch first. A type without a contract
 parameter keeps only its `Ledger9*` name.
 

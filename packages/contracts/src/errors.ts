@@ -1352,7 +1352,7 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * status other than `SucceedEntirely`.
  *
  * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
- * reused because it carries a current-era `Ledger9FinalizedTxData` where a retained
+ * reused because it carries a `Ledger9FinalizedTxData` where a retained
  * call is recorded as an era-tagged {@link FinalizedTxRead}.
  *
  * Carries no registered error code of its own. Branch on the class, or on the

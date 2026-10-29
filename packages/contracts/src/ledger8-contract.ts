@@ -339,8 +339,8 @@ export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger
 /**
  * The public, non-sensitive half of a retained-era circuit execution.
  *
- * Carries {@link CallResultPublicBase} plus the post-call state. Against the
- * current era's `Ledger9CallResultPublic` exactly ONE member is missing: `logEvents`,
+ * Carries {@link CallResultPublicBase} plus the post-call state. Against
+ * `Ledger9CallResultPublic` exactly ONE member is missing: `logEvents`,
  * because the retained toolchain has no log-event concept at any layer, so
  * there is no value to carry rather than a value being dropped. That absence is
  * named in the era key-set parity gate's allow-list, which is what keeps a
@@ -399,7 +399,7 @@ export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends L
  * combined with the finalized record.
  *
  * The record stays {@link FinalizedTxRead} rather than being narrowed
- * to the current era's `Ledger9FinalizedTxData`. A retained-era call is recorded by
+ * to `Ledger9FinalizedTxData`. A retained-era call is recorded by
  * whichever era the network is on, so `era` is a union here where the
  * current era pins `'v9'` -- narrowing it would refuse the very records this
  * pipeline exists to produce.
@@ -725,7 +725,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  * Lifts every circuit a retained-era contract declares to a function that
  * builds and submits a call transaction against one address.
  *
- * ONE signature per circuit, where the current era's `Ledger9CircuitCallTxInterface`
+ * ONE signature per circuit, where `Ledger9CircuitCallTxInterface`
  * has two: the retained era cannot join a scoped transaction — a scope refuses
  * a retained-era call with `MixedEraScopeError` — so there is no context-taking
  * overload to declare.
@@ -738,7 +738,7 @@ export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
 
 /**
  * The deploy data of a retained-era contract found on chain: the same
- * `{ era, public, private }` structure the current era's `Ledger9FoundDeployTxData`
+ * `{ era, public, private }` structure `Ledger9FoundDeployTxData`
  * has, so a caller reads `deployTxData.public.txId` and
  * `deployTxData.private.signingKey` identically in both eras.
  *
@@ -876,7 +876,7 @@ export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8F
 
 /**
  * What a retained-era maintenance update resolves with once the chain has recorded it: the
- * retained era's counterpart of the current era's `Ledger9FinalizedMaintenanceTxData`.
+ * retained era's counterpart of `Ledger9FinalizedMaintenanceTxData`.
  *
  * `public` is always the ledger 8 record. A retained-era artifact maintains a contract only before
  * the fork, so no other era can record the update.
@@ -926,11 +926,11 @@ export interface Ledger8ContractMaintenanceTxInterface {
 /**
  * A retained-era contract found on the blockchain.
  *
- * Carries a {@link Ledger8CircuitCallTxInterface} for the same reason the
- * current era's `Ledger9FoundContract` carries one: a caller that has just supplied
+ * Carries a {@link Ledger8CircuitCallTxInterface} for the same reason
+ * `Ledger9FoundContract` carries one: a caller that has just supplied
  * the contract and its address should not have to supply them again to call it.
  *
- * It carries the maintenance interfaces the current era's `Ledger9FoundContract` carries,
+ * It carries the maintenance interfaces `Ledger9FoundContract` carries,
  * for the same reason. They work only before the fork; after it, the same contract
  * is maintained through a handle built from the recompiled artifact.
  */

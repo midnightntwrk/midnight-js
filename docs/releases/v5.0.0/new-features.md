@@ -135,10 +135,10 @@ import { contracts } from '@midnight-ntwrk/midnight-js';
 const result = await callTx(/* ... */);
 
 // lenient: never throws — undecodable entries are skipped
-const logs = contracts.ContractLog.decodeAll(result.public.events);
+const logs = contracts.ContractLog.decodeAll(result.public.logEvents);
 ```
 
-The single `events` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
+The single `logEvents` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
 
 ---
 
