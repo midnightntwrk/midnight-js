@@ -35,7 +35,8 @@ export {
   type LedgerVersion,
   RETAINED_LEDGER_VERSIONS,
   type RetainedLedgerVersion,
-  type StateKind};
+  type StateKind
+};
 
 /**
  * Anything that can report the network's latest protocol version —

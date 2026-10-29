@@ -20,7 +20,8 @@ import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type PrivateStateId,
-  SerializedState} from '@midnight-ntwrk/midnight-js-types';
+  SerializedState
+} from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ScopedTransactionIdentityMismatchError } from '../errors';

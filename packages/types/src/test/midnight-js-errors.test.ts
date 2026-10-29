@@ -86,6 +86,10 @@ describe('types error classes', () => {
     expect(exportedClasses.map((c) => c.name).sort()).toEqual(instances.map(([name]) => name).sort());
   });
 
+  it.each(instances)('%s reports its class name', (name, error) => {
+    expect(error.name).toBe(name);
+  });
+
   it.each(instances)('%s carries a registered code and the category the table gives that code', (_name, error) => {
     const category = Object.entries(PROVIDER_ERROR_CATEGORIES).find(([code]) => code === error.code)?.[1];
 

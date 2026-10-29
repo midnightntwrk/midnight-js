@@ -693,7 +693,7 @@ the value. The era of the block that dated a read stays in `protocolVersion`. A 
 record is the `FinalizedTxRead` union; narrow it with `switch (value.era)` closed by `assertNever`, or,
 in code that handles only v9, with `requireLedger9(value, '<call site>')` from
 `@midnight-ntwrk/midnight-js-utils`, which throws `Ledger8ValueUnsupportedError` on a v8 value. An
-on-chain state is a `SerializedState` of bytes with the same shape in both eras
+on-chain state is a `SerializedState` (its bytes and the `era` that wrote them), the same shape in both eras
 ([section 20](#20-on-chain-state-is-bytes-decoded-by-your-own-runtime-1550)).
 
 ### 14a. Changed signatures
@@ -1085,7 +1085,7 @@ A `SerializedState` keeps its bytes in a private field, so `structuredClone`,
 | `utils` | `requireLedger9`, `Ledger9Variant`, `UnrecognisedEraTagError` read `version` | they read `era`; `UnrecognisedEraTagError.received` is what `era` held |
 
 New in `types`: `SerializedState`, `StateKind`, `StateDecoder`,
-`StateDecoders`, `DecodedState`, `ContractStateRead`,
+`StateDecoders`, `DecodedState`, `DecodersFor`, `ContractStateRead`,
 `ContractStateAndParametersRead`, `PublicStatesRead`, `InvalidSerializedStateReason`.
 New in `protocol` (`./version`): `LEDGER_STATE_TAGS`, `LEDGER_STATE_KINDS`,
 `StateKind`.

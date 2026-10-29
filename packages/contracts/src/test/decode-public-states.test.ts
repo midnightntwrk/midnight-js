@@ -14,7 +14,7 @@
  */
 
 import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { InvalidSerializedStateError, type PublicStatesRead,SerializedState } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidSerializedStateError, type PublicStatesRead, SerializedState } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

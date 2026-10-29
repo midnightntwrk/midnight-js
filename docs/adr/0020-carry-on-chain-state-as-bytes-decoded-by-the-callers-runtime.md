@@ -203,5 +203,7 @@ is `SerializedState`, `LedgerState.isLedgerState` is `SerializedState.isSerializ
 `LedgerStateKind` is `StateKind`. The errors are `InvalidSerializedStateError` (with
 `InvalidSerializedStateReason`), `SerializedStateDecoderMissingError` and
 `SerializedStateDecodeFailedError`; the shorter `StateDecodeFailedError` is already a `protocol`
-error. The error codes are unchanged. The decision is unchanged, and the sections above keep the
-names that were current when they were written.
+error. The error codes are unchanged. `LEDGER_STATE_KINDS` and `LEDGER_STATE_TAGS` in `protocol`
+keep their names: they describe what the ledger writes, not the class. The decision is unchanged.
+The sections above, and ADRs 0006, 0007, 0008, 0010 and 0019, keep the names that were current
+when they were written.

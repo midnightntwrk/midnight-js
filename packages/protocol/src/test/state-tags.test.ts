@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import * as ledger9 from '../v9';
 import * as compactRuntime from '../v9-compact-runtime';
-import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, LEDGER_VERSIONS, type LedgerVersion,type StateKind } from '../version';
+import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, LEDGER_VERSIONS, type LedgerVersion, type StateKind } from '../version';
 
 type Serializable = { serialize(): Uint8Array };
 type Runtime = {

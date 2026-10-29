@@ -19,7 +19,8 @@ import {
   LEDGER_STATE_TAGS,
   LEDGER_VERSIONS,
   type LedgerVersion,
-  type StateKind} from '@midnight-ntwrk/midnight-js-protocol/version';
+  type StateKind
+} from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { InvalidSerializedStateError, SerializedStateDecodeFailedError, SerializedStateDecoderMissingError } from './errors';
 

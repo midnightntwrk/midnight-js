@@ -16,14 +16,15 @@
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerVersion,type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   InvalidSerializedStateError,
   PROVIDER_ERROR_CODES,
   SerializedStateDecodeFailedError,
-  SerializedStateDecoderMissingError} from '../errors';
+  SerializedStateDecoderMissingError
+} from '../errors';
 import { SerializedState } from '../serialized-state';
 
 type Runtime = {
@@ -106,14 +107,20 @@ describe('SerializedState.fromBytes', () => {
     const error = thrownBy(() => SerializedState.fromBytes('v9', 'Transaction', bytesOf.ContractState.v9));
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
-    expect(error).toMatchObject({ reason: 'unknown-kind' });
+    expect(error).toMatchObject({
+      reason: 'unknown-kind',
+      message: "Cannot build a SerializedState of kind 'Transaction'. Use one of 'ContractState', 'LedgerParameters', 'ZswapChainState'."
+    });
   });
 
   it('refuses a value that is not a Uint8Array', () => {
     // @ts-expect-error the bytes are a string
     const error = thrownBy(() => SerializedState.fromBytes('v9', 'ContractState', 'midnight:contract-state[v8]:'));
 
-    expect(error).toMatchObject({ reason: 'not-bytes' });
+    expect(error).toMatchObject({
+      reason: 'not-bytes',
+      message: 'Cannot build a ContractState SerializedState: the value is not a Uint8Array.'
+    });
   });
 
   it('refuses an unknown ledger era', () => {
@@ -177,7 +184,11 @@ describe('SerializedState.fromBytes', () => {
     const error = thrownBy(() => Reflect.construct(SerializedState, ['v9', 'ContractState', bytesOf.ContractState.v9]));
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
-    expect(error).toMatchObject({ code: PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE, reason: 'not-from-bytes' });
+    expect(error).toMatchObject({
+      code: PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE,
+      reason: 'not-from-bytes',
+      message: 'A SerializedState can only be made by SerializedState.fromBytes.'
+    });
   });
 });
 

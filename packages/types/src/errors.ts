@@ -19,7 +19,7 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { LEDGER_STATE_KINDS, type LedgerVersion,type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_STATE_KINDS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -566,6 +566,7 @@ export class InvalidProtocolSchemeError extends MidnightJsError {
     public readonly allowableSchemes: string[]
   ) {
     super(`Invalid protocol scheme: '${invalidScheme}'. Allowable schemes are one of: ${allowableSchemes.join(',')}`);
+    this.name = 'InvalidProtocolSchemeError';
   }
 }
 
