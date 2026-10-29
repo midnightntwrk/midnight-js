@@ -35,7 +35,24 @@ import type {
   FindDeployedContractOptions,
   FoundContract,
   FoundDeployTxData,
-  Ledger8,
+  Ledger8CallResultPrivate,
+  Ledger8CallTxOptions,
+  Ledger8CallTxOptionsBase,
+  Ledger8CallTxOptionsWithPrivateStateId,
+  Ledger8CircuitCallTxInterface,
+  Ledger8CircuitMaintenanceTxInterfaces,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8DeployContractOptionsBase,
+  Ledger8DeployContractOptionsWithPrivateState,
+  Ledger8DeployedContract,
+  Ledger8DeployTxData,
+  Ledger8FinalizedCallTxData,
+  Ledger8FindDeployedContractOptions,
+  Ledger8FoundContract,
+  Ledger8FoundDeployTxData,
+  Ledger8SubmittedCallTx,
+  Ledger8UnsubmittedCallTxData,
   Ledger9CallResultPrivate,
   Ledger9CallTxOptions,
   Ledger9CallTxOptionsBase,
@@ -88,26 +105,26 @@ describe('a flat name picks the variant of the era that compiled the contract', 
   });
 
   it('resolves to the ledger 8 variant for a ledger 8 artifact', () => {
-    expectTypeOf<FoundContract<V8>>().toEqualTypeOf<Ledger8.FoundContract<V8>>();
-    expectTypeOf<DeployedContract<V8>>().toEqualTypeOf<Ledger8.DeployedContract<V8>>();
-    expectTypeOf<FinalizedCallTxData<V8, K>>().toEqualTypeOf<Ledger8.FinalizedCallTxData<V8, K>>();
-    expectTypeOf<SubmittedCallTx<V8, K>>().toEqualTypeOf<Ledger8.SubmittedCallTx<V8, K>>();
-    expectTypeOf<UnsubmittedCallTxData<V8, K>>().toEqualTypeOf<Ledger8.UnsubmittedCallTxData<V8, K>>();
-    expectTypeOf<FoundDeployTxData<V8>>().toEqualTypeOf<Ledger8.FoundDeployTxData<V8>>();
-    expectTypeOf<FinalizedDeployTxData<V8>>().toEqualTypeOf<Ledger8.DeployTxData<V8>>();
-    expectTypeOf<CallResultPrivate<V8, K>>().toEqualTypeOf<Ledger8.CallResultPrivate<V8, K>>();
-    expectTypeOf<CallTxOptions<V8, K>>().toEqualTypeOf<Ledger8.CallTxOptions<V8, K>>();
-    expectTypeOf<CallTxOptionsBase<V8, K>>().toEqualTypeOf<Ledger8.CallTxOptionsBase<V8, K>>();
-    expectTypeOf<CallTxOptionsWithPrivateStateId<V8, K>>().toEqualTypeOf<Ledger8.CallTxOptionsWithPrivateStateId<V8, K>>();
-    expectTypeOf<DeployContractOptions<V8>>().toEqualTypeOf<Ledger8.DeployContractOptions<V8>>();
-    expectTypeOf<DeployContractOptionsBase<V8>>().toEqualTypeOf<Ledger8.DeployContractOptionsBase<V8>>();
+    expectTypeOf<FoundContract<V8>>().toEqualTypeOf<Ledger8FoundContract<V8>>();
+    expectTypeOf<DeployedContract<V8>>().toEqualTypeOf<Ledger8DeployedContract<V8>>();
+    expectTypeOf<FinalizedCallTxData<V8, K>>().toEqualTypeOf<Ledger8FinalizedCallTxData<V8, K>>();
+    expectTypeOf<SubmittedCallTx<V8, K>>().toEqualTypeOf<Ledger8SubmittedCallTx<V8, K>>();
+    expectTypeOf<UnsubmittedCallTxData<V8, K>>().toEqualTypeOf<Ledger8UnsubmittedCallTxData<V8, K>>();
+    expectTypeOf<FoundDeployTxData<V8>>().toEqualTypeOf<Ledger8FoundDeployTxData<V8>>();
+    expectTypeOf<FinalizedDeployTxData<V8>>().toEqualTypeOf<Ledger8DeployTxData<V8>>();
+    expectTypeOf<CallResultPrivate<V8, K>>().toEqualTypeOf<Ledger8CallResultPrivate<V8, K>>();
+    expectTypeOf<CallTxOptions<V8, K>>().toEqualTypeOf<Ledger8CallTxOptions<V8, K>>();
+    expectTypeOf<CallTxOptionsBase<V8, K>>().toEqualTypeOf<Ledger8CallTxOptionsBase<V8, K>>();
+    expectTypeOf<CallTxOptionsWithPrivateStateId<V8, K>>().toEqualTypeOf<Ledger8CallTxOptionsWithPrivateStateId<V8, K>>();
+    expectTypeOf<DeployContractOptions<V8>>().toEqualTypeOf<Ledger8DeployContractOptions<V8>>();
+    expectTypeOf<DeployContractOptionsBase<V8>>().toEqualTypeOf<Ledger8DeployContractOptionsBase<V8>>();
     expectTypeOf<DeployContractOptionsWithPrivateState<V8>>().toEqualTypeOf<
-      Ledger8.DeployContractOptionsWithPrivateState<V8>
+      Ledger8DeployContractOptionsWithPrivateState<V8>
     >();
-    expectTypeOf<FindDeployedContractOptions<V8>>().toEqualTypeOf<Ledger8.FindDeployedContractOptions<V8>>();
-    expectTypeOf<CircuitCallTxInterface<V8>>().toEqualTypeOf<Ledger8.CircuitCallTxInterface<V8>>();
-    expectTypeOf<CircuitMaintenanceTxInterfaces<V8>>().toEqualTypeOf<Ledger8.CircuitMaintenanceTxInterfaces<V8>>();
-    expectTypeOf<ContractProviders<V8, K>>().toEqualTypeOf<Ledger8.ContractProviders<V8, K>>();
+    expectTypeOf<FindDeployedContractOptions<V8>>().toEqualTypeOf<Ledger8FindDeployedContractOptions<V8>>();
+    expectTypeOf<CircuitCallTxInterface<V8>>().toEqualTypeOf<Ledger8CircuitCallTxInterface<V8>>();
+    expectTypeOf<CircuitMaintenanceTxInterfaces<V8>>().toEqualTypeOf<Ledger8CircuitMaintenanceTxInterfaces<V8>>();
+    expectTypeOf<ContractProviders<V8, K>>().toEqualTypeOf<Ledger8ContractProviders<V8, K>>();
   });
 
   it('keeps the ledger 9 provider set when no contract is named', () => {
@@ -155,7 +172,7 @@ describe('a flat name picks the variant of the era that compiled the contract', 
   });
 
   it('picks the era of each member of a union of contracts', () => {
-    expectTypeOf<FoundContract<V8 | V9>>().toEqualTypeOf<Ledger8.FoundContract<V8> | Ledger9FoundContract<V9>>();
+    expectTypeOf<FoundContract<V8 | V9>>().toEqualTypeOf<Ledger8FoundContract<V8> | Ledger9FoundContract<V9>>();
   });
 });
 
@@ -215,35 +232,35 @@ describe('a concrete contract with a generic circuit id', () => {
   });
 
   it('converts both ways between the flat name and the ledger 8 name', () => {
-    const finalizedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8.FinalizedCallTxData<V8, PCK>): Ledger8.FinalizedCallTxData<V8, PCK> => {
+    const finalizedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8FinalizedCallTxData<V8, PCK>): Ledger8FinalizedCallTxData<V8, PCK> => {
       const flat: FinalizedCallTxData<V8, PCK> = value;
       return flat;
     };
-    const submittedCallTx = <PCK extends CircuitIdOf<V8>>(value: Ledger8.SubmittedCallTx<V8, PCK>): Ledger8.SubmittedCallTx<V8, PCK> => {
+    const submittedCallTx = <PCK extends CircuitIdOf<V8>>(value: Ledger8SubmittedCallTx<V8, PCK>): Ledger8SubmittedCallTx<V8, PCK> => {
       const flat: SubmittedCallTx<V8, PCK> = value;
       return flat;
     };
-    const unsubmittedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8.UnsubmittedCallTxData<V8, PCK>): Ledger8.UnsubmittedCallTxData<V8, PCK> => {
+    const unsubmittedCallTxData = <PCK extends CircuitIdOf<V8>>(value: Ledger8UnsubmittedCallTxData<V8, PCK>): Ledger8UnsubmittedCallTxData<V8, PCK> => {
       const flat: UnsubmittedCallTxData<V8, PCK> = value;
       return flat;
     };
-    const callResultPrivate = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallResultPrivate<V8, PCK>): Ledger8.CallResultPrivate<V8, PCK> => {
+    const callResultPrivate = <PCK extends CircuitIdOf<V8>>(value: Ledger8CallResultPrivate<V8, PCK>): Ledger8CallResultPrivate<V8, PCK> => {
       const flat: CallResultPrivate<V8, PCK> = value;
       return flat;
     };
-    const callTxOptions = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptions<V8, PCK>): Ledger8.CallTxOptions<V8, PCK> => {
+    const callTxOptions = <PCK extends CircuitIdOf<V8>>(value: Ledger8CallTxOptions<V8, PCK>): Ledger8CallTxOptions<V8, PCK> => {
       const flat: CallTxOptions<V8, PCK> = value;
       return flat;
     };
-    const callTxOptionsBase = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptionsBase<V8, PCK>): Ledger8.CallTxOptionsBase<V8, PCK> => {
+    const callTxOptionsBase = <PCK extends CircuitIdOf<V8>>(value: Ledger8CallTxOptionsBase<V8, PCK>): Ledger8CallTxOptionsBase<V8, PCK> => {
       const flat: CallTxOptionsBase<V8, PCK> = value;
       return flat;
     };
-    const callTxOptionsWithPrivateStateId = <PCK extends CircuitIdOf<V8>>(value: Ledger8.CallTxOptionsWithPrivateStateId<V8, PCK>): Ledger8.CallTxOptionsWithPrivateStateId<V8, PCK> => {
+    const callTxOptionsWithPrivateStateId = <PCK extends CircuitIdOf<V8>>(value: Ledger8CallTxOptionsWithPrivateStateId<V8, PCK>): Ledger8CallTxOptionsWithPrivateStateId<V8, PCK> => {
       const flat: CallTxOptionsWithPrivateStateId<V8, PCK> = value;
       return flat;
     };
-    const contractProviders = <PCK extends CircuitIdOf<V8>>(value: Ledger8.ContractProviders<V8, PCK>): Ledger8.ContractProviders<V8, PCK> => {
+    const contractProviders = <PCK extends CircuitIdOf<V8>>(value: Ledger8ContractProviders<V8, PCK>): Ledger8ContractProviders<V8, PCK> => {
       const flat: ContractProviders<V8, PCK> = value;
       return flat;
     };

@@ -362,29 +362,27 @@ reports its deploy record tagged `v8`. Narrow on `era` before reading `tx` or
 ### Retained-era deploy data and signing key (#1514)
 
 ```ts
-export namespace Ledger8 {
-  export interface FoundDeployTxData<C extends Contract> {
-    readonly era: 'v8';
-    readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
-    readonly private: {
-      readonly signingKey: SigningKey | undefined;
-      readonly initialPrivateState: PrivateState<C>;
-    };
-  }
-  export interface DeployTxData<C extends Contract> extends FoundDeployTxData<C> {
-    readonly public: FoundDeployTxData<C>['public'] & {
-      readonly initialContractState: { serialize(): Uint8Array };
-      readonly initialContractStateBytes: Uint8Array;
-    };
-    readonly private: {
-      readonly signingKey: SigningKey;
-      readonly initialPrivateState: PrivateState<C>;
-      readonly initialZswapState: ZswapLocalState;
-    };
-  }
+export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
+  readonly era: 'v8';
+  readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
+  readonly private: {
+    readonly signingKey: SigningKey | undefined;
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+  };
 }
-// Ledger8.FoundContract<C>['deployTxData'] is FoundDeployTxData<C>;
-// Ledger8.DeployedContract<C>['deployTxData'] is DeployTxData<C>.
+export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+  readonly public: Ledger8FoundDeployTxData<C>['public'] & {
+    readonly initialContractState: { serialize(): Uint8Array };
+    readonly initialContractStateBytes: Uint8Array;
+  };
+  readonly private: {
+    readonly signingKey: SigningKey;
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+    readonly initialZswapState: ZswapLocalState;
+  };
+}
+// Ledger8FoundContract<C>['deployTxData'] is Ledger8FoundDeployTxData<C>;
+// Ledger8DeployedContract<C>['deployTxData'] is Ledger8DeployTxData<C>.
 // The top-level signingKey / initial* members are removed.
 ```
 
@@ -401,15 +399,15 @@ export interface Ledger9FinalizedMaintenanceTxData {
   readonly era: 'v9';
   readonly public: Ledger9FinalizedTxData;
 }
-export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8.FinalizedMaintenanceTxData;
+export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
-export function submitInsertVerifierKeyTx<C extends Ledger8.Contract>(
-  providers: Ledger8.ContractProviders<C, Ledger8.CircuitId<C>>,
+export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
   compiledContract: C,
   contractAddress: ContractAddress,
-  circuitId: Ledger8.CircuitId<C>,
+  circuitId: Ledger8CircuitId<C>,
   newVk: VerifierKey
-): Promise<Ledger8.FinalizedMaintenanceTxData>;
+): Promise<Ledger8FinalizedMaintenanceTxData>;
 export function submitInsertVerifierKeyTx<C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>,
@@ -420,26 +418,27 @@ export function submitInsertVerifierKeyTx<C extends Contract.Any>(
 // submitRemoveVerifierKeyTx and submitReplaceAuthorityTx take the same two overloads;
 // so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
 
-export namespace Ledger8 {
-  export interface FinalizedMaintenanceTxData {
-    readonly era: 'v8';
-    readonly public: Ledger8FinalizedTxData;
-  }
-  export interface CircuitMaintenanceTxInterface {
-    removeVerifierKey(): Promise<FinalizedMaintenanceTxData>;
-    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedMaintenanceTxData>;
-  }
-  export type CircuitMaintenanceTxInterfaces<C extends Contract> = Record<CircuitId<C>, CircuitMaintenanceTxInterface>;
-  export interface ContractMaintenanceTxInterface {
-    replaceAuthority(newAuthority: SigningKey): Promise<FinalizedMaintenanceTxData>;
-  }
-  // FoundContract<C> and DeployedContract<C> gain
-  //   circuitMaintenanceTx: CircuitMaintenanceTxInterfaces<C>
-  //   contractMaintenanceTx: ContractMaintenanceTxInterface
-  // New classes: MaintenanceOnLedger9Error, SigningKeyUnavailableError, SigningKeyNotStoredError,
-  //   ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
-  //   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.
+export interface Ledger8FinalizedMaintenanceTxData {
+  readonly era: 'v8';
+  readonly public: Ledger8FinalizedTxData;
 }
+export interface Ledger8CircuitMaintenanceTxInterface {
+  removeVerifierKey(): Promise<Ledger8FinalizedMaintenanceTxData>;
+  insertVerifierKey(newVk: VerifierKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+export type Ledger8CircuitMaintenanceTxInterfaces<C extends Ledger8Contract> = Record<
+  Ledger8CircuitId<C>,
+  Ledger8CircuitMaintenanceTxInterface
+>;
+export interface Ledger8ContractMaintenanceTxInterface {
+  replaceAuthority(newAuthority: SigningKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+// Ledger8FoundContract<C> and Ledger8DeployedContract<C> gain
+//   circuitMaintenanceTx: Ledger8CircuitMaintenanceTxInterfaces<C>
+//   contractMaintenanceTx: Ledger8ContractMaintenanceTxInterface
+// New classes under the Ledger8 namespace: MaintenanceOnLedger9Error, SigningKeyUnavailableError,
+//   SigningKeyNotStoredError, ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
+//   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.
 ```
 
 `SubmittedOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
@@ -450,6 +449,19 @@ export namespace Ledger8 {
   `PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH`;
 - `'maintenance-update'` on `ComposeStage` and `'newSigningKey'` on `ComposeOption`. Both unions are
   closed, so an exhaustive `switch` over either must handle the new member (see breaking-changes.md).
+
+### Ledger 8 types are flat exports (#1561)
+
+```ts
+// Before: types only through the namespace
+import { type Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+type T = Ledger8.FoundContract<C>;
+
+// After: 37 flat Ledger8* types; the namespace keeps the 18 error classes
+import { type Ledger8FoundContract, Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+type T = Ledger8FoundContract<C>;
+error instanceof Ledger8.CallTxFailedError;
+```
 
 ---
 

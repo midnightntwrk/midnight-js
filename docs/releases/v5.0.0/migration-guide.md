@@ -348,7 +348,7 @@ const proveCall = async (): Promise<types.UnboundTx> => {
 ```
 
 If you built against a 5.0.0 pre-release: the retained-era call result,
-`Ledger8.CallResultPrivate`, carries the same `unprovenTx` handle where it used
+`Ledger8CallResultPrivate`, carries the same `unprovenTx` handle where it used
 to carry `txBytes`:
 
 ```diff
@@ -648,16 +648,14 @@ artifacts it ships take a release cycle to replace.
 
 ### What a retained-era call answers with
 
-Everything the retained era publishes is reached through ONE import, the
-`Ledger8` namespace of `midnight-js-contracts`: `Ledger8.FinalizedCallTxData`
-is the result type below, `Ledger8.Contract` the constraint for a helper of
-your own, `Ledger8.CallTxFailedError` the failure class. The era prefix is
-dropped inside, so each member is the retained twin of the flat current-era
-name it mirrors, where one exists. The half that serves BOTH eras --
-`AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError` -- stays flat, so a handler that only receives
-results imports nothing era-specific. When the fork window closes, the whole
-namespace goes in one step; the fork-window refusals (`ForkCrossedDuringOperationError` and the
-rest of that group) are published flat and go in a separate one.
+The retained era's types are flat `Ledger8*` names in `midnight-js-contracts`:
+`Ledger8FinalizedCallTxData` is the result type below, `Ledger8Contract` the
+constraint for a helper of your own. Its error classes are under the `Ledger8`
+namespace: `Ledger8.CallTxFailedError` is the failure class. The half that serves
+BOTH eras -- `AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`
+-- carries no era prefix, so a handler that only receives results imports nothing
+era-specific. The fork-window refusals (`ForkCrossedDuringOperationError` and the
+rest of that group) are published flat and are removed in a separate step.
 
 A call against a contract you compiled with the previous toolchain still goes
 through `submitCallTx` / `submitCallTxAsync` / `findDeployedContract`
@@ -1258,6 +1256,28 @@ Rename the types that have no contract parameter: `FinalizedTxData` →
 `ContractProviders` moves to `Ledger9ContractProviders<C, K, PS>`.
 
 See [breaking-changes.md](./breaking-changes.md#22-ledger-9-types-carry-the-ledger9-prefix-flat-names-pick-the-era-1536).
+
+## Step 22 — Import the ledger 8 types by their flat names
+
+Replace `Ledger8.X` with `Ledger8X` for every ledger 8 type (#1561). Error classes
+do not change.
+
+```ts
+// Before
+import { Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+const handle = (data: Ledger8.FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
+const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
+
+// After: the type is flat; the error class is unchanged, so keep the `Ledger8` value import
+import { Ledger8, type Ledger8FinalizedCallTxData } from '@midnight-ntwrk/midnight-js-contracts';
+const handle = (data: Ledger8FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
+const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
+```
+
+A package that emits declarations can now export a value inferred from a ledger 8
+call without an explicit type annotation.
+
+See [breaking-changes.md](./breaking-changes.md#23-ledger-8-types-are-flat-ledger8-names-1561).
 
 ## Verification checklist
 

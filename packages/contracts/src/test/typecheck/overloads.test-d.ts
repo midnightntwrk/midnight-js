@@ -1075,9 +1075,9 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
   });
 
   // The retained DEPLOYED-contract type, not `never`: the path composes and
-  // submits, so there is a value to describe -- and the type is reachable by
-  // name through the `Ledger8` namespace, so a caller that receives one by
-  // inference can also annotate it.
+  // submits, so there is a value to describe -- and the type is exported flat
+  // as `Ledger8DeployedContract`, so a caller that receives one by inference
+  // can also annotate it.
   it('resolves a retained-era deployContract to the retained-era deployed-contract type', () => {
     const deployOptions: Ledger8DeployContractOptions<Counter016Contract> = { compiledContract: contract016 };
 

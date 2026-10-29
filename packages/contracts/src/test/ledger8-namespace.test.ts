@@ -125,10 +125,8 @@ describe('the retained era is published as one namespace', () => {
     // Matched on CONTAINING the era name rather than starting with it, so a helper named
     // `createLedger8...` is caught too.
     //
-    // RUNTIME names only: `Object.keys` sees bindings, and 37 of the 55 members are types, which
-    // have none. A flat retained-era TYPE re-export is caught by the strict list in
-    // `contracts-type-acl.test.ts` instead -- that suite is the other half of this guard, and
-    // narrowing it would reopen the larger half of the hole.
+    // RUNTIME names only: `Object.keys` sees bindings. The retained-era TYPES are flat by design
+    // (TS4023), and the strict list in `contracts-type-acl.test.ts` pins them.
     const allowedFlat = ['Ledger8', 'isLedger8Result'];
     const leaked = Object.keys(barrel).filter((name) => name.includes('Ledger8') && !allowedFlat.includes(name));
 

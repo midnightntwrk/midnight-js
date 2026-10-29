@@ -39,9 +39,8 @@ export {
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The era errors that serve BOTH eras. The retained era's own classes are published under the
-// `Ledger8` namespace below, together with the rest of the surface that goes when the fork window
-// closes -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError` here, so a handler
-// written against the base keeps catching it.
+// `Ledger8` namespace below -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError`
+// here, so a handler written against the base keeps catching it.
 //
 // The fork-window refusals are the other group. `ForkCrossedDuringOperationError` is raised when a submission was
 // rejected and a fresh head read confirms the network crossed the fork under the operation, and it
@@ -131,16 +130,52 @@ export {
   type AnyEraSubmittedCallTx,
   isLedger8Result
 } from './era-results';
-// The RETAINED era, whole, under one name. The entry-point overloads select these types by
-// inference, and inference alone does not let a consumer NAME one -- `Ledger8.FinalizedCallTxData`
-// is how a caller declares the result it was handed, and `Ledger8.Contract` how it constrains a
-// helper of its own.
-//
-// One export rather than the forty it re-exports, because the retained era is transitional
-// and a flat family is not: see `docs/retained-era-namespace.md` for what qualifies for membership,
-// what deliberately stays flat, and how the whole surface is withdrawn in one step.
+// The RETAINED era's refusals under one name: `Ledger8.CallTxFailedError`. Only error classes;
+// see `docs/retained-era-namespace.md` for what qualifies and how the surface is withdrawn.
 export * as Ledger8 from './ledger8';
-// The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*` names.
+// The retained era's types, flat. The entry-point overloads return them by these names, and a
+// dApp's declaration emit can name only what the package exports flat (TS4023).
+export type {
+  Ledger8CallResultPrivate,
+  Ledger8CallResultPublic,
+  Ledger8CallTxOptions,
+  Ledger8CallTxOptionsBase,
+  Ledger8CallTxOptionsWithPrivateStateId,
+  Ledger8CallTxTarget,
+  Ledger8Circuit,
+  Ledger8CircuitCallTxInterface,
+  Ledger8CircuitContext,
+  Ledger8CircuitId,
+  Ledger8CircuitMaintenanceTxInterface,
+  Ledger8CircuitMaintenanceTxInterfaces,
+  Ledger8CircuitParameters,
+  Ledger8CircuitResult,
+  Ledger8CircuitReturnType,
+  Ledger8ConstructorParameters,
+  Ledger8Contract,
+  Ledger8ContractCall,
+  Ledger8ContractCallPublic,
+  Ledger8ContractMaintenanceTxInterface,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8DeployContractOptionsBase,
+  Ledger8DeployContractOptionsWithPrivateState,
+  Ledger8DeployedContract,
+  Ledger8DeployTxData,
+  Ledger8FinalizedCallTxData,
+  Ledger8FinalizedCallTxPublicData,
+  Ledger8FinalizedMaintenanceTxData,
+  Ledger8FindDeployedContractOptions,
+  Ledger8FoundContract,
+  Ledger8FoundDeployTxData,
+  Ledger8InitialStateResult,
+  Ledger8PrivateState,
+  Ledger8SubmittedCallTx,
+  Ledger8UnsubmittedCallTxData,
+  Ledger8Witness
+} from './ledger8-contract';
+// The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*`
+// names, like the ledger 8 ones above.
 export type { Ledger9CallResultPrivate, Ledger9CallResultPublic } from './call';
 export type { Ledger9ContractProviders } from './contract-providers';
 export type {
