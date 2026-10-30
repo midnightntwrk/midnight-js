@@ -17,7 +17,7 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { namingViolations, publishedNames } from '../../../../build-tools/published-names.mjs';
+import { namingViolations, publishedNames, unprefixedLedger9Types } from '../../../../build-tools/published-names.mjs';
 
 const names = publishedNames(resolve(__dirname, '../..'));
 
@@ -189,6 +189,10 @@ describe('published names', () => {
 
   it('follow the naming rules of the public API', () => {
     expect(namingViolations(names)).toEqual([]);
+  });
+
+  it('name every exported type bound to ledger 9 after its ledger', () => {
+    expect(unprefixedLedger9Types(resolve(__dirname, '../..'), { aliasFiles: [] })).toEqual([]);
   });
 
   it('applies each rule to the names it exists for, and only to those', () => {
