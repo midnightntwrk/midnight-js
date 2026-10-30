@@ -27,7 +27,7 @@ import {
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
-import { submitLedger8DeployTx } from './internal/ledger8-entry';
+import { deployLedger8Contract, toLedger8DeployEntryOptions } from './internal/ledger8-entry';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import {
   type AnyLedger8DeployContractOptions,
@@ -279,44 +279,23 @@ export async function deployContract<C extends Contract.Any>(
   assertDeployPrivateStatePairing(options);
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
-    // `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the caller's
-    // type -- a nullary constructor carries no `args` at all, and the no-private-state variant admits
-    // only `undefined` for the other two -- so each is read with an `in` check rather than accessed.
-    const deployed = await submitLedger8DeployTx(providers, {
-      compiledContract: options.compiledContract,
-      args: 'args' in options ? options.args : [],
-      ...('privateStateId' in options ? { privateStateId: options.privateStateId } : {}),
-      ...('initialPrivateState' in options ? { initialPrivateState: options.initialPrivateState } : {}),
-      signingKey: options.signingKey
-    });
+    const deployTxData = await deployLedger8Contract(providers, toLedger8DeployEntryOptions(options));
+    const { contractAddress } = deployTxData.public;
     return {
       era: 'v8',
       compiledContract: options.compiledContract,
-      contractAddress: deployed.contractAddress,
-      deployTxData: {
-        era: 'v8',
-        public: {
-          ...deployed.deployTxData,
-          contractAddress: deployed.contractAddress,
-          initialContractState: deployed.initialContractState,
-          initialContractStateBytes: deployed.initialContractStateBytes
-        },
-        private: {
-          signingKey: deployed.signingKey,
-          initialPrivateState: deployed.initialPrivateState,
-          initialZswapState: deployed.initialZswapState
-        }
-      },
+      contractAddress,
+      deployTxData,
       // Built AFTER the chain has recorded the deployment, so a handle a caller receives names an
       // address the chain actually holds a contract at.
       callTx: createLedger8CircuitCallTxInterface(
         providers,
         options.compiledContract,
-        deployed.contractAddress,
+        contractAddress,
         'privateStateId' in options ? options.privateStateId : undefined
       ),
-      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, deployed.contractAddress),
-      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, deployed.contractAddress)
+      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, contractAddress),
+      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, contractAddress)
     };
   }
   const deployTxData = await submitLedger9DeployTx(providers, createDeployTxOptions(options));

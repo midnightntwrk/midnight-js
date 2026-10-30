@@ -31,8 +31,23 @@ import { assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
-import { requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
+import { requireLedger8Contract, requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
+import {
+  buildLedger8DeployTx,
+  buildLedger8DeployTxFromVerifierKeys,
+  toLedger8DeployEntryOptions,
+  toLedger8UnsubmittedDeployTxData
+} from './internal/ledger8-entry';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
+import type {
+  AnyLedger8UnprovenDeployTxOptions,
+  AnyLedger8UnsubmittedDeployTxData,
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8UnprovenDeployTxOptions,
+  Ledger8UnsubmittedDeployTxData
+} from './ledger8-contract';
 import type { Ledger9UnsubmittedDeployTxData } from './tx-model';
 
 /**
@@ -240,6 +255,90 @@ export async function createLedger9UnprovenDeployTx<C extends Contract.Any>(
     providers.walletProvider.getEncryptionPublicKey(),
     providers.config
   );
+}
+
+export function createLedger8UnprovenDeployTxFromVerifierKeys<C extends Ledger8Contract>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  coinPublicKey: CoinPublicKey,
+  options: Ledger8UnprovenDeployTxOptions<C>,
+  encryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+
+/**
+ * Runs the constructor of a ledger 8 contract and creates an unproven, unsubmitted deploy
+ * transaction from what the caller holds. Reads nothing from the network and stores nothing.
+ *
+ * The transaction is a ledger 8 one. After the fork a ledger 8 contract cannot be deployed:
+ * `submitTx` then refuses the transaction before proving it.
+ *
+ * @param zkConfigProvider The source of the artifact era and of a verifier key per circuit.
+ * @param coinPublicKey The deploying wallet's coin public key.
+ * @param options Configuration.
+ * @param encryptionPublicKey The deploying wallet's encryption key.
+ * @param config Network and transaction settings, normally `providers.config`.
+ *
+ * @returns Everything the constructor produced and the unproven transaction.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, before anything else.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If `signingKey` is not a `schnorr` key of
+ *         64 hex characters.
+ *
+ * @remarks
+ * The returned {@link Ledger8UnsubmittedDeployTxData} is privacy-sensitive: it carries the signing
+ * key, which exists nowhere else when it was sampled. Store it once the deploy is final.
+ */
+export async function createLedger8UnprovenDeployTxFromVerifierKeys(
+  zkConfigProvider: ZKConfigProvider<string>,
+  coinPublicKey: CoinPublicKey,
+  options: AnyLedger8UnprovenDeployTxOptions,
+  encryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<AnyLedger8UnsubmittedDeployTxData> {
+  await requireLedger8Contract(options.compiledContract, zkConfigProvider, 'createLedger8UnprovenDeployTxFromVerifierKeys');
+  return toLedger8UnsubmittedDeployTxData(
+    await buildLedger8DeployTxFromVerifierKeys(
+      zkConfigProvider,
+      coinPublicKey,
+      toLedger8DeployEntryOptions(options),
+      encryptionPublicKey,
+      config
+    )
+  );
+}
+
+export async function createLedger8UnprovenDeployTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8UnprovenDeployTxOptions<C>
+): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+
+/**
+ * Runs the constructor of a ledger 8 contract and creates an unproven, unsubmitted deploy
+ * transaction. Reads the network head once, and stores nothing. Works only before the fork.
+ *
+ * @param providers The providers used to read the head and the verifier keys.
+ * @param options Configuration.
+ *
+ * @returns Everything the constructor produced and the unproven transaction.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, before anything else, and with reason
+ *         `'ledger8-deploy-on-ledger9-network'` after the fork, before any verifier key is fetched.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If `signingKey` is not a `schnorr` key of
+ *         64 hex characters. Raised before the head is read.
+ *
+ * @remarks
+ * The returned {@link Ledger8UnsubmittedDeployTxData} is privacy-sensitive: it carries the signing
+ * key, which exists nowhere else when it was sampled. Store it once the deploy is final.
+ */
+export async function createLedger8UnprovenDeployTx(
+  providers: Ledger8ContractProviders<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>,
+  options: AnyLedger8UnprovenDeployTxOptions
+): Promise<AnyLedger8UnsubmittedDeployTxData> {
+  await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger8UnprovenDeployTx');
+  const { deploy } = await buildLedger8DeployTx(providers, toLedger8DeployEntryOptions(options));
+  return toLedger8UnsubmittedDeployTxData(deploy);
 }
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(

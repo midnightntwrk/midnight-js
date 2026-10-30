@@ -89,7 +89,7 @@ import {
 import { findDeployedContract } from '../find-deployed-contract';
 import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
-import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
+import { buildLedger8DeployTx, findLedger8Contract, submitLedger8CallTx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
   type Ledger8Snapshot,
@@ -108,9 +108,11 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import { submitLedger8DeployTx } from '../submit-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { createCallTxOptions } from '../tx-interfaces';
 import { createLedger8UnprovenCallTx } from '../unproven-call-tx';
+import { createLedger8UnprovenDeployTx, createLedger8UnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type {
   CoinReceiver016Circuits,
@@ -305,6 +307,14 @@ const callOrder = (mock: (...args: never[]) => unknown): number => {
   // being made about it. Caught here instead, so the report says which ordering went unmeasured.
   assertDefined(first, 'expected the mock to have been called at least once');
   return first;
+};
+
+const withVerifierKeys = (
+  providers: RetainedProviders,
+  keys: readonly (readonly [string, Uint8Array])[] = [[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]
+): RetainedProviders => {
+  providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue(keys);
+  return providers;
 };
 
 const retainedProviders = (recording: CoinReceiverRecording, envelope: Uint8Array): RetainedProviders => {
@@ -1299,14 +1309,11 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('composes and submits a retained-era DEPLOY, with the verifier keys the state declares', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    const deployed = await runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-    });
+    const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
-    expect(deployed.txId).toBe('retained-era-tx-id');
+    await submitTx(providers, { unprovenTx: deployed.deploy.unprovenTx });
+
+    expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
     // READ OFF the composition record, never derived: a deploy mints a fresh
     // nonce, so the same initial state deploys to a different address each time.
     expect(typeof deployed.deploy.contractAddress).toBe('string');
@@ -1318,13 +1325,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('hands the constructor the caller own signing key, and reports the key the authority was built from', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    const deployed = await runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]])),
-      signingKey: CALLER_OWN_SIGNING_KEY
-    });
+    const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {}, signingKey: { tag: 'schnorr', value: CALLER_OWN_SIGNING_KEY } });
 
     // The key the caller named, not a sampled one: a caller supplies its own
     // precisely so two contracts can share one maintenance authority, and a
@@ -1336,12 +1337,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('reports the SAMPLED signing key when the caller named none, which exists nowhere else', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    const deployed = await runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-    });
+    const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
     // Dropping this member would leave the deployment as unmaintainable as the
     // empty committee the retained constructor writes: the only copy of a
@@ -1364,12 +1360,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       }
     });
 
-    const deploying = runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-    });
+    const deploying = buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
     await expect(deploying).rejects.toMatchObject({
       name: 'Ledger8CallUnsupportedError',
@@ -1403,12 +1394,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       }
     });
 
-    const deployed = await runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-    });
+    const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
     expect(deployed.deploy.guaranteedZswapOfferBytes).toBeInstanceOf(Uint8Array);
     // The constructor's own post-state, published rather than discarded.
@@ -1418,12 +1404,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('composes a deploy with NO offer when the constructor minted nothing', async () => {
     const providers = preForkProviders(v6Envelope);
 
-    const deployed = await runLedger8Deploy(providers, {
-      contract,
-      args: [],
-      privateState: {},
-      resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-    });
+    const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
     // Absent rather than an empty offer: an offer with no outputs is a
     // different thing to compose against than no offer at all.
@@ -1441,12 +1422,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // simply be left out.
     let caught: unknown;
     try {
-      await runLedger8Deploy(providers, {
-        contract,
-        args: [],
-        privateState: {},
-        resolveVerifierKeys: () => Promise.resolve(new Map())
-      });
+      await buildLedger8DeployTx(withVerifierKeys(providers, []), { compiledContract: contract, initialPrivateState: {} });
     } catch (error) {
       caught = error;
     }
@@ -1463,12 +1439,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     engineSlot.engine = createReplayEngine(recording, log, v6Envelope);
 
     await expect(
-      runLedger8Deploy(providers, {
-        contract,
-        args: [],
-        privateState: {},
-        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-      })
+      buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} })
     ).rejects.toMatchObject({ name: 'EraMismatchError', reason: 'ledger8-deploy-on-ledger9-network' });
     // Refused before ANY work: no constructor executed, nothing composed.
     expect(log).toEqual([]);
@@ -3058,6 +3029,121 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  describe('the ledger 8 deploy low-level functions', () => {
+    it('createLedger8UnprovenDeployTx builds a v8 deploy, and proves, submits and stores nothing', async () => {
+      const providers = deployProviders();
+
+      const built = await createLedger8UnprovenDeployTx(providers, { compiledContract: contract });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(built.public.contractAddress.length).toBeGreaterThan(0);
+      expect(built.public.initialContractStateBytes).toBeInstanceOf(Uint8Array);
+      expect(built.private.signingKey).toEqual(SAMPLED_KEY);
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('createLedger8UnprovenDeployTx takes an initial private state with no id to store it under', async () => {
+      const providers = deployProviders();
+
+      const built = await createLedger8UnprovenDeployTx(providers, { compiledContract: contract, initialPrivateState: {} });
+
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('createLedger8UnprovenDeployTx refuses a POST-FORK head before asking for a single key', async () => {
+      const providers = deployProviders();
+      providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+
+      await expect(createLedger8UnprovenDeployTx(providers, { compiledContract: contract })).rejects.toMatchObject({
+        name: 'EraMismatchError',
+        reason: 'ledger8-deploy-on-ledger9-network'
+      });
+      expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+    });
+
+    it('builds a deploy that submitTx proves, balances and submits', async () => {
+      const providers = deployProviders();
+
+      const built = await createLedger8UnprovenDeployTx(providers, { compiledContract: contract });
+      await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+
+      expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+      expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('createLedger8UnprovenDeployTxFromVerifierKeys builds a v8 deploy without reading the network', async () => {
+      const providers = deployProviders();
+
+      const built = await createLedger8UnprovenDeployTxFromVerifierKeys(
+        providers.zkConfigProvider,
+        recording.coinPublicKey,
+        { compiledContract: contract, signingKey: { tag: 'schnorr', value: CALLER_OWN_SIGNING_KEY } },
+        providers.walletProvider.getEncryptionPublicKey(),
+        providers.config
+      );
+
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(built.private.signingKey).toEqual({ tag: 'schnorr', value: CALLER_OWN_SIGNING_KEY });
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    });
+
+    it('submitLedger8DeployTx deploys, stores the key and the state, and answers with the finalized data', async () => {
+      const providers = deployProviders();
+
+      const deployed = await submitLedger8DeployTx(providers, {
+        compiledContract: contract,
+        privateStateId: 'ledger8-private-state',
+        initialPrivateState: {}
+      });
+
+      expect(deployed.era).toBe('v8');
+      expect(deployed.public.status).toBe('SucceedEntirely');
+      expect(deployed.private.signingKey).toEqual(SAMPLED_KEY);
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
+        deployed.public.contractAddress,
+        SAMPLED_KEY
+      );
+      expect(providers.privateStateProvider.set).toHaveBeenCalledWith(
+        'ledger8-private-state',
+        deployed.private.initialPrivateState
+      );
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('submitLedger8DeployTx refuses a privateStateId written as undefined before touching a provider', async () => {
+      const providers = deployProviders();
+
+      const deploying = submitLedger8DeployTx(
+        providers,
+        // @ts-expect-error - an undefined id beside a state
+        { compiledContract: contract, privateStateId: undefined, initialPrivateState: {} }
+      );
+
+      await expect(deploying).rejects.toMatchObject({ name: 'InvalidArgumentError' });
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    });
+
+    it('submitLedger8DeployTx refuses a privateStateId without an initial private state', async () => {
+      const providers = deployProviders();
+
+      const deploying = submitLedger8DeployTx(
+        providers,
+        // @ts-expect-error - an id with no state to store under it
+        { compiledContract: contract, privateStateId: 'ledger8-private-state' }
+      );
+
+      await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    });
   });
 
   it('refuses a POST-FORK head before the ZK config provider is asked for a single key', async () => {

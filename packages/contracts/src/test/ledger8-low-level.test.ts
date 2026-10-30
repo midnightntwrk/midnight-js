@@ -16,7 +16,9 @@
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
+import { submitLedger8DeployTx } from '../submit-deploy-tx';
 import { createLedger8UnprovenCallTx, createLedger8UnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import { createLedger8UnprovenDeployTx, createLedger8UnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -57,6 +59,28 @@ const LEDGER8_FUNCTIONS: readonly (readonly [string, (providers: Providers) => P
         },
         createMockEncryptionPublicKey()
       )
+  ],
+  [
+    'createLedger8UnprovenDeployTx',
+    // @ts-expect-error a ledger 9 contract is not a ledger 8 contract
+    (providers) => createLedger8UnprovenDeployTx(providers, { compiledContract: createMockCompiledContract() })
+  ],
+  [
+    'createLedger8UnprovenDeployTxFromVerifierKeys',
+    (providers) =>
+      createLedger8UnprovenDeployTxFromVerifierKeys(
+        providers.zkConfigProvider,
+        createMockCoinPublicKey(),
+        // @ts-expect-error a ledger 9 contract is not a ledger 8 contract
+        { compiledContract: createMockCompiledContract() },
+        createMockEncryptionPublicKey(),
+        providers.config
+      )
+  ],
+  [
+    'submitLedger8DeployTx',
+    // @ts-expect-error a ledger 9 contract is not a ledger 8 contract
+    (providers) => submitLedger8DeployTx(providers, { compiledContract: createMockCompiledContract() })
   ]
 ];
 

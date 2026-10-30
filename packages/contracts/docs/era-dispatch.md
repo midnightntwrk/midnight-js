@@ -451,7 +451,7 @@ neither is refused naming `'v9'`.
 
 One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
 the single funnel every retained-era operation passes through — `buildLedger8CallTx`
-and `runLedger8Deploy` both — so the check sits there rather than being spread
+and `buildLedger8DeployTx` both — so the check sits there rather than being spread
 across its callers, where a third caller would eventually forget it. That is also
 why acquisition takes the provider set (`Ledger8RuntimeProviders`) rather than
 just the read surface. That type is deliberately narrow: the head source plus the

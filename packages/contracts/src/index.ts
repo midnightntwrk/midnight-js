@@ -164,7 +164,10 @@ export type {
   Ledger8PrivateState,
   Ledger8Serializable,
   Ledger8SubmittedCallTx,
+  Ledger8UnprovenDeployTxOptions,
+  Ledger8UnprovenDeployTxOptionsBase,
   Ledger8UnsubmittedCallTxData,
+  Ledger8UnsubmittedDeployTxData,
   Ledger8Witness
 } from './ledger8-contract';
 // The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*`
@@ -212,7 +215,7 @@ export type {
   Ledger9ContractMaintenanceTxInterface
 } from './governance';
 export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from './submit-call-tx';
-export { Ledger9DeployTxOptions, submitDeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
+export { Ledger9DeployTxOptions, submitDeployTx, submitLedger8DeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
 export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
   isLedger9TransactionContext,
@@ -261,6 +264,8 @@ export {
   Ledger9UnprovenCallTxProvidersWithPrivateState,
   UnprovenCallTxProvidersBase} from './unproven-call-tx';
 export {
+  createLedger8UnprovenDeployTx,
+  createLedger8UnprovenDeployTxFromVerifierKeys,
   createLedger9UnprovenDeployTx,
   createLedger9UnprovenDeployTxFromVerifierKeys,
   createUnprovenDeployTx,

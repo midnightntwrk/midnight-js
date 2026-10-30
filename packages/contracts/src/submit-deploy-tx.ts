@@ -15,12 +15,22 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
+import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { TxFailedError } from './errors';
-import { requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
+import { requireLedger8Contract, requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
+import { deployLedger8Contract, toLedger8DeployEntryOptions } from './internal/ledger8-entry';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
+import type {
+  AnyLedger8DeployContractOptions,
+  AnyLedger8FinalizedDeployTxData,
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8DeployContractOptions,
+  Ledger8FinalizedDeployTxData
+} from './ledger8-contract';
 import { submitLedger9Payload } from './submit-tx';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
 import type { Ledger9DeployTxOptionsBase, Ledger9DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
@@ -128,6 +138,49 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
       ...unprovenDeployTxData.public
     }
   };
+}
+
+export async function submitLedger8DeployTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8DeployContractOptions<C>
+): Promise<Ledger8FinalizedDeployTxData<C>>;
+
+/**
+ * Creates and submits a deploy transaction for a ledger 8 contract, waits for the chain to record
+ * it, and only then stores the signing key and, when `privateStateId` is given, the private state
+ * the constructor produced. Works only before the fork.
+ *
+ * @param providers The providers used to deploy the contract.
+ * @param options Configuration.
+ *
+ * @returns The finalized deploy data, including the minted contract address and the signing key now
+ *          stored against it.
+ *
+ * @throws InvalidArgumentError If `privateStateId` is present with an undefined value, or the
+ *         config is invalid. Raised before any provider is touched.
+ * @throws IncompleteDeployContractPrivateStateConfig If `privateStateId` and `initialPrivateState`
+ *         are not given together. Raised before any provider is touched.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, and with reason `'ledger8-deploy-on-ledger9-network'` after the
+ *         fork, before the constructor runs.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If `signingKey` is not a `schnorr` key of
+ *         64 hex characters.
+ * @throws TxFailedError If the node recorded a non-success status. Nothing is stored.
+ * @throws Ledger8UnconfirmedError, Ledger8NotStoredError If the deploy may have landed but could not
+ *         be confirmed or stored. Both carry the signing key.
+ *
+ * @remarks
+ * The returned {@link Ledger8FinalizedDeployTxData} is privacy-sensitive: it carries the signing key
+ * and the private state.
+ */
+export async function submitLedger8DeployTx(
+  providers: Ledger8ContractProviders<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>,
+  options: AnyLedger8DeployContractOptions
+): Promise<AnyLedger8FinalizedDeployTxData> {
+  assertValidMidnightConfig(providers.config);
+  assertDeployPrivateStatePairing(options);
+  await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'submitLedger8DeployTx');
+  return deployLedger8Contract(providers, toLedger8DeployEntryOptions(options));
 }
 
 export async function submitDeployTx<C extends Contract<undefined>>(
