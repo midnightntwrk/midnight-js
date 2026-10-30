@@ -99,7 +99,7 @@
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@midnightntwrk/onchain-runtime-v4": "^4.0.0-rc.3",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
-    "effect": "^3.22.1"
+    "effect": "^4.0.6"
   },
   "devDependencies": {
     "@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.2",
