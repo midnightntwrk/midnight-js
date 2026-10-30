@@ -40,7 +40,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 // `initialState`), so the shape they discriminate on is the current era's. If the twin is ever
 // regenerated, the identifiers named `Twin018*` should be renamed with it.
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
-import type { CallResult } from '../../call';
+import type { Ledger9CallResult } from '../../call';
 import type { Ledger9ContractProviders } from '../../contract-providers';
 import {
   deployContract,
@@ -57,8 +57,8 @@ import type {
 import { isLedger8Result } from '../../era-results';
 import {
   findDeployedContract,
-  type FindDeployedContractOptionsBase,
-  type FindDeployedContractOptionsStorePrivateState,
+  type Ledger9FindDeployedContractOptionsBase,
+  type Ledger9FindDeployedContractOptionsStorePrivateState,
   type Ledger9FoundContract
 } from '../../find-deployed-contract';
 import {
@@ -98,9 +98,9 @@ import {
   type NeitherContractShape,
   type NeitherEraContractOptions
 } from '../../ledger8-contract';
-import { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from '../../submit-call-tx';
+import { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from '../../submit-call-tx';
 import type { SubmitTxProviders } from '../../submit-tx';
-import type { TransactionContext } from '../../transaction';
+import type { Ledger9TransactionContext } from '../../transaction';
 import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
   FoundDeployTxPublicData,
@@ -830,10 +830,10 @@ describe('both eras resolve a call to the SAME result structure', () => {
     // and on the retained era the last overload is the only one.
     expectTypeOf(currentCallTx).toBeCallableWith();
     expectTypeOf<ReturnType<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
-      Promise<CallResult<Twin018, 'increment'>>
+      Promise<Ledger9CallResult<Twin018, 'increment'>>
     >();
     expectTypeOf<Parameters<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
-      [txCtx: TransactionContext<Twin018, 'increment'>]
+      [txCtx: Ledger9TransactionContext<Twin018, 'increment'>]
     >();
 
     // The retained era's ONE overload takes the circuit's own args with no context
@@ -981,7 +981,7 @@ describe('both eras answer with the SAME contract-handle structure', () => {
     // current era's container carries an unconstrained second parameter that a
     // restatement here would have to either widen or misreport.
     expectTypeOf<CurrentFound['compiledContract']>().toEqualTypeOf<
-      FindDeployedContractOptionsBase<Twin018>['compiledContract']
+      Ledger9FindDeployedContractOptionsBase<Twin018>['compiledContract']
     >();
     expectTypeOf<RetainedFound['compiledContract']>().toEqualTypeOf<
       Ledger8FindDeployedContractOptions<Counter016Contract>['compiledContract']
@@ -1176,8 +1176,8 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
   // `[providers: unknown, options: ...]` off a trailing catch-all overload that instantiated
   // `providers` to `unknown`, with nothing watching. That overload is gone; these pins are why its
   // return could not come back unnoticed.
-  it('leaves ReturnType<typeof submitCallTx> reporting the current-era CallResult', () => {
-    expectTypeOf<ReturnType<typeof submitCallTx>>().toEqualTypeOf<Promise<CallResult<Contract<undefined>, string>>>();
+  it('leaves ReturnType<typeof submitCallTx> reporting the current-era Ledger9CallResult', () => {
+    expectTypeOf<ReturnType<typeof submitCallTx>>().toEqualTypeOf<Promise<Ledger9CallResult<Contract<undefined>, string>>>();
   });
 
   it('leaves Parameters<typeof submitCallTx> reporting the scoped current-era call', () => {
@@ -1185,7 +1185,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
       [
         providers: SubmitTxProviders<Contract<undefined>, string>,
         options: Ledger9CallTxOptionsBase<Contract<undefined>, string>,
-        transactionContext: TransactionContext<Contract<undefined>, string>
+        transactionContext: Ledger9TransactionContext<Contract<undefined>, string>
       ]
     >();
   });
@@ -1196,7 +1196,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
 
   it('leaves Parameters<typeof submitCallTxAsync> reporting the current-era call', () => {
     expectTypeOf<Parameters<typeof submitCallTxAsync>>().toEqualTypeOf<
-      [providers: SubmitCallTxProviders<Contract.Any, string>, options: Ledger9CallTxOptions<Contract.Any, string>]
+      [providers: Ledger9SubmitCallTxProviders<Contract.Any, string>, options: Ledger9CallTxOptions<Contract.Any, string>]
     >();
   });
 
@@ -1216,7 +1216,7 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
 
   it('leaves Parameters<typeof findDeployedContract> reporting the current-era store-private-state find', () => {
     expectTypeOf<Parameters<typeof findDeployedContract>>().toEqualTypeOf<
-      [providers: Ledger9ContractProviders<Contract.Any>, options: FindDeployedContractOptionsStorePrivateState<Contract.Any>]
+      [providers: Ledger9ContractProviders<Contract.Any>, options: Ledger9FindDeployedContractOptionsStorePrivateState<Contract.Any>]
     >();
   });
 });

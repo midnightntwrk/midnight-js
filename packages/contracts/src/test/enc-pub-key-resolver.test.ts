@@ -71,7 +71,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
     );
   });
 
-  it('createCircuitCallTxInterface includes additional mappings from TransactionContext in call options', async () => {
+  it('createCircuitCallTxInterface includes additional mappings from Ledger9TransactionContext in call options', async () => {
     const { submitCallTx } = await import('../submit-call-tx');
     vi.mocked(submitCallTx).mockResolvedValue(
       { public: {}, private: {}, calls: [] } as unknown as Awaited<ReturnType<typeof submitCallTx>>

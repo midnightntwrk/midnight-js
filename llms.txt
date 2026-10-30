@@ -424,13 +424,13 @@ does not require installing a second package:
 
 ```typescript
 import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol';
-import type { CallOptions, FoundContract } from '@midnight-ntwrk/midnight-js/contracts';
+import type { FoundContract, Ledger9CallOptions } from '@midnight-ntwrk/midnight-js/contracts';
 
 type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
 type MyHandle = FoundContract<Contract.Any>;
 
 declare const findContract: (compiled: MyCompiled) => Promise<MyHandle>;
-declare const optionsFor: (handle: MyHandle) => CallOptions<Contract.Any, string>;
+declare const optionsFor: (handle: MyHandle) => Ledger9CallOptions<Contract.Any, string>;
 
 const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
   optionsFor(await findContract(compiled)).circuitId;

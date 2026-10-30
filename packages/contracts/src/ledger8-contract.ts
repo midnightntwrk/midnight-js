@@ -167,13 +167,13 @@ export type Ledger8Witness<PS = unknown> = (...args: never[]) => readonly [PS, u
  * the era discriminable at the type level -- the current era's `initialState`
  * answers with a `Promise`.
  *
- * Deliberately NOT the retained counterpart of `ContractConstructorResult`,
+ * Deliberately NOT the retained counterpart of `Ledger9ContractConstructorResult`,
  * which is a framework result carrying `era` and `next*` members. There is no
  * retained counterpart of that type: the constructor output a retained deploy
  * would publish is spread across `Ledger8DeployedContract`'s `initial*`
  * members, and nothing constructs one today. This type was called
  * `Ledger8ConstructorResult`, which put a false pairing next to
- * `ContractConstructorResult` on the published surface.
+ * `Ledger9ContractConstructorResult` on the published surface.
  */
 export interface Ledger8InitialStateResult<PS = unknown> {
   readonly currentContractState: unknown;
@@ -277,7 +277,7 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, PCK extends Ledg
 /**
  * Base configuration for a retained-era call transaction.
  *
- * `args` is CONDITIONAL, mirroring the current era's `CallOptionsWithArguments`: a circuit that
+ * `args` is CONDITIONAL, mirroring the current era's `Ledger9CallOptionsWithArguments`: a circuit that
  * takes no arguments of its own has no `args` member at all, rather than one the caller has to
  * satisfy with an empty array, so the two eras do not disagree about the same zero-argument
  * circuit.
@@ -525,7 +525,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, PCK ext
   readonly private: Ledger8CallResultPrivate<C, PCK>;
   /**
    * Proof data for every contract call this circuit made, as the current era's
-   * `CallResult.calls` carries. Always exactly ONE entry, the root call: a
+   * `Ledger9CallResult.calls` carries. Always exactly ONE entry, the root call: a
    * pre-fork contract cannot make a cross-contract call.
    */
   readonly calls: readonly Ledger8ContractCall[];
@@ -767,7 +767,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
      * `undefined` when it holds none it can use.
      *
      * ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
-     * {@link Ledger8DeployTxData}: a deploy always has a key, because it built
+     * {@link Ledger8FinalizedDeployTxData}: a deploy always has a key, because it built
      * the authority; an attach has one only if a deploy on this machine stored
      * it, or the caller supplied one through
      * {@link Ledger8FindDeployedContractOptions.signingKey}.
@@ -817,7 +817,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
  * @remarks **Privacy-sensitive.** `private` carries signing-key material,
  * private state and shielded coin material.
  */
-export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
   /**
    * The record of the deploy transaction, always a ledger 8 one: a retained-era
    * deploy runs only before the fork.
@@ -975,8 +975,8 @@ export interface Ledger8FoundContract<C extends Ledger8Contract> {
  * retained-era overload answers with.
  */
 export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledger8FoundContract<C> {
-  /** See {@link Ledger8DeployTxData}. */
-  readonly deployTxData: Ledger8DeployTxData<C>;
+  /** See {@link Ledger8FinalizedDeployTxData}. */
+  readonly deployTxData: Ledger8FinalizedDeployTxData<C>;
 }
 
 /**

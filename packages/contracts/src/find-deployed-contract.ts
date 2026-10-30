@@ -318,7 +318,7 @@ export const verifyContractState = (
 /**
  * Base type for the configuration options for {@link findDeployedContract}.
  */
-export interface FindDeployedContractOptionsBase<C extends Contract.Any> {
+export interface Ledger9FindDeployedContractOptionsBase<C extends Contract.Any> {
   /**
    * The compiled contract to use to execute circuits.
    */
@@ -346,8 +346,8 @@ export interface FindDeployedContractOptionsBase<C extends Contract.Any> {
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export interface FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any>
-  extends FindDeployedContractOptionsBase<C> {
+export interface Ledger9FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any>
+  extends Ledger9FindDeployedContractOptionsBase<C> {
   /**
    * An identifier for the private state of the contract being found.
    */
@@ -360,8 +360,8 @@ export interface FindDeployedContractOptionsExistingPrivateState<C extends Contr
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export interface FindDeployedContractOptionsStorePrivateState<C extends Contract.Any>
-  extends FindDeployedContractOptionsExistingPrivateState<C> {
+export interface Ledger9FindDeployedContractOptionsStorePrivateState<C extends Contract.Any>
+  extends Ledger9FindDeployedContractOptionsExistingPrivateState<C> {
   /**
    * For types of contract that make no use of private state and or witnesses that operate upon it, this
    * property may be `undefined`. Otherwise, the value provided via this property should be same initial
@@ -374,9 +374,9 @@ export interface FindDeployedContractOptionsStorePrivateState<C extends Contract
  * Configuration for {@link findDeployedContract}.
  */
 export type Ledger9FindDeployedContractOptions<C extends Contract.Any> =
-  | FindDeployedContractOptionsBase<C>
-  | FindDeployedContractOptionsExistingPrivateState<C>
-  | FindDeployedContractOptionsStorePrivateState<C>;
+  | Ledger9FindDeployedContractOptionsBase<C>
+  | Ledger9FindDeployedContractOptionsExistingPrivateState<C>
+  | Ledger9FindDeployedContractOptionsStorePrivateState<C>;
 
 /**
  * Base type for a deployed contract that has been found on the blockchain.
@@ -464,7 +464,7 @@ export async function findDeployedContract<C extends Ledger8Contract>(
  */
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
-  options: FindDeployedContractOptionsBase<C>
+  options: Ledger9FindDeployedContractOptionsBase<C>
 ): Promise<Ledger9FoundContract<C>>;
 
 /**
@@ -472,7 +472,7 @@ export async function findDeployedContract<C extends Contract<undefined>>(
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
-  options: FindDeployedContractOptionsExistingPrivateState<C>
+  options: Ledger9FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<Ledger9FoundContract<C>>;
 
 /**
@@ -480,7 +480,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
-  options: FindDeployedContractOptionsStorePrivateState<C>
+  options: Ledger9FindDeployedContractOptionsStorePrivateState<C>
 ): Promise<Ledger9FoundContract<C>>;
 
 /**

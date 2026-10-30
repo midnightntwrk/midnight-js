@@ -24,7 +24,7 @@ import { type Ledger9ContractProviders } from '../contract-providers';
 import { deployContract, type Ledger9DeployContractOptionsBase, type Ledger9DeployedContract } from '../deploy-contract';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
 import type { submitDeployTx } from '../submit-deploy-tx';
-import { type Ledger9FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { type Ledger9FinalizedDeployTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -54,13 +54,13 @@ describe('deployContract', () => {
   // The tests resolve unsubmitted-level tx data where the real function
   // returns finalized-level data; the code under test forwards the value
   // opaquely, so the missing finalized fields are never read.
-  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
+  const asFinalized = (data: Ledger9UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
     data as Ledger9FinalizedDeployTxData<Contract.Any>;
-  let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
+  let mockDeployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>;
   let providers: Ledger9ContractProviders;
   let baseOptions: Ledger9DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
+  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       ...createMockFinalizedTxData(),
@@ -78,7 +78,7 @@ describe('deployContract', () => {
 
   const assertDeployResult = (
     result: Ledger9DeployedContract<Contract.Any>,
-    deployTxData: UnsubmittedDeployTxData<Contract.Any>,
+    deployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>,
     options: Ledger9DeployContractOptionsBase<Contract.Any> = baseOptions
   ) => {
     expect(result).toBeDefined();

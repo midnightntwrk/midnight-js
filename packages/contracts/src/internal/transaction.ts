@@ -27,7 +27,7 @@ import {
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
-import { type CallResult } from '../call';
+import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
 import {
   EraMismatchError,
@@ -154,7 +154,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
 export class TransactionContextImpl<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.TransactionContext<C, PCK> {
+> implements Transaction.Ledger9TransactionContext<C, PCK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
@@ -310,7 +310,7 @@ export const mergeUnsubmittedCallTxData = <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 >(
-  txCtx: Transaction.TransactionContext<C, PCK>,
+  txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
   circuitId: PCK,
   callData: Ledger9UnsubmittedCallTxData<C, PCK>,
   privateStateId?: PrivateStateId
@@ -334,7 +334,7 @@ export const isTransactionContext = <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   u: unknown
-): u is Transaction.TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
+): u is Transaction.Ledger9TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
 
 /**
  * Refuses a retained-era call that was handed a scope to join.
@@ -410,8 +410,8 @@ const runScope = async <
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  outerTxCtx: Transaction.TransactionContext<C, PCK> | undefined,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  outerTxCtx: Transaction.Ledger9TransactionContext<C, PCK> | undefined,
   txOptions: Transaction.ScopedTransactionOptions | undefined,
   scopeEra: ResolvedOperationEra | undefined
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -429,7 +429,7 @@ const runScope = async <
       return await innerTxCtx[Submit]();
     }
 
-    // ...otherwise, return the `CallResult` from the last submitted call within the scope of the transaction context.
+    // ...otherwise, return the `Ledger9CallResult` from the last submitted call within the scope of the transaction context.
     const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
       //disable-next-line: no-throw-literal
@@ -438,7 +438,7 @@ const runScope = async <
     // ANNOTATED, not asserted: this function answers both scope cases and so
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
-    const nestedCallResult: CallResult<C, PCK> = {
+    const nestedCallResult: Ledger9CallResult<C, PCK> = {
       era: 'v9',
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
@@ -478,22 +478,22 @@ const runScope = async <
 export const scoped: {
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
     providers: Ledger9ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
   ): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
     providers: Ledger9ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-    txCtx: Transaction.TransactionContext<C, PCK>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+    txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
     options?: Transaction.ScopedTransactionOptions
-  ): Promise<CallResult<C, PCK>>
+  ): Promise<Ledger9CallResult<C, PCK>>
 } = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
@@ -521,8 +521,8 @@ export const scopedTransaction = async <
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
@@ -536,7 +536,7 @@ export const scopedTransaction = async <
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,
     // which is what keeps it at one read per scope, and the outer scope is the
-    // one that submits -- so this returns that scope's `CallResult`, exactly as
+    // one that submits -- so this returns that scope's `Ledger9CallResult`, exactly as
     // it did before.
     return runScope<C, PCK>(providers, fn, outerTxCtx, undefined, undefined);
   }

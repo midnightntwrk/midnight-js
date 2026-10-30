@@ -165,11 +165,11 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
-      it('forwards logEvents through the nested scoped CallResult rebuild', async () => {
+      it('forwards logEvents through the nested scoped Ledger9CallResult rebuild', async () => {
         const options = createBasicCallOptions();
         const { mockUnprovenCallTxData } = setupSuccessfulMocks();
 
-        // Nesting a call inside an outer scope returns via the hand-rolled `CallResult` rebuild
+        // Nesting a call inside an outer scope returns via the hand-rolled `Ledger9CallResult` rebuild
         // (internal/transaction.ts), not the root `[Submit]` spread. Reference identity proves the
         // rebuild forwards the executor's actual logEvents array rather than a fresh/hardcoded default.
         let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
@@ -192,7 +192,7 @@ describe('submit-call-tx', () => {
         expect(result.era).toBe('v9');
       });
 
-      it('forwards calls through the nested scoped CallResult rebuild', async () => {
+      it('forwards calls through the nested scoped Ledger9CallResult rebuild', async () => {
         const options = createBasicCallOptions();
         const rootCall = createMockContractCall({ circuitId: 'testCircuit' });
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({ calls: [rootCall] });
@@ -200,7 +200,7 @@ describe('submit-call-tx', () => {
         vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
 
         // `calls` is a caller's only route to callee proof data for a cross-contract circuit, and
-        // the nested path rebuilds `CallResult` member by member rather than spreading the
+        // the nested path rebuilds `Ledger9CallResult` member by member rather than spreading the
         // executor's data. Reference identity proves the rebuild forwards the executor's own array
         // instead of a fresh or defaulted one.
         let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;

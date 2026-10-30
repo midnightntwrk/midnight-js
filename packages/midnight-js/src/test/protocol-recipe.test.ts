@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import type { CallOptions, FoundContract } from '../contracts';
+import type { FoundContract, Ledger9CallOptions } from '../contracts';
 import type { CompiledContract, Contract } from '../protocol';
 
 // The positive compile assertion for the protocol-annotation recipe in
@@ -36,7 +36,7 @@ type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
 type MyHandle = FoundContract<Contract.Any>;
 
 declare const findContract: (compiled: MyCompiled) => Promise<MyHandle>;
-declare const optionsFor: (handle: MyHandle) => CallOptions<Contract.Any, string>;
+declare const optionsFor: (handle: MyHandle) => Ledger9CallOptions<Contract.Any, string>;
 
 const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
   optionsFor(await findContract(compiled)).circuitId;
@@ -80,7 +80,7 @@ describe('llms.txt protocol annotation recipe', () => {
     const name = packageName();
     const importLines = [
       `import type { CompiledContract, Contract } from '${name}/protocol';`,
-      `import type { CallOptions, FoundContract } from '${name}/contracts';`
+      `import type { FoundContract, Ledger9CallOptions } from '${name}/contracts';`
     ].join('\n');
 
     // Act.
@@ -99,7 +99,7 @@ describe('llms.txt protocol annotation recipe', () => {
     // on the value it produces.
     expect(compiled).toContain('CompiledContract.CompiledContract<Contract.Any, unknown>');
     expect(compiled).toContain('FoundContract<Contract.Any>');
-    expect(compiled).toContain("CallOptions<Contract.Any, string>");
+    expect(compiled).toContain("Ledger9CallOptions<Contract.Any, string>");
     expect(typeof circuitCalledOn).toBe('function');
   });
 });

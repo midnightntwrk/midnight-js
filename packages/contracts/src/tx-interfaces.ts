@@ -19,7 +19,7 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type CallResult } from './call';
+import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
 import { hasLedger8ContractShape } from './internal/era';
 import type {
@@ -42,7 +42,7 @@ import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } fro
 export type Ledger9CircuitCallTxInterface<C extends Contract.Any> = {
   [PCK in Contract.ProvableCircuitId<C>]: {
     (...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
-    (txCtx: Transaction.TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>>
+    (txCtx: Transaction.Ledger9TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<Ledger9CallResult<C, PCK>>
   };
 };
 

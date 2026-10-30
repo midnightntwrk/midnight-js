@@ -21,7 +21,7 @@ import { TxFailedError } from './errors';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitLedger9Payload } from './submit-tx';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
-import type { DeployTxOptionsBase, DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
+import type { Ledger9DeployTxOptionsBase, Ledger9DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
 import { createUnprovenDeployTx } from './unproven-deploy-tx';
 
 /**
@@ -34,16 +34,16 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 /**
  * Configuration for creating deploy transactions.
  */
-export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
+export type Ledger9DeployTxOptions<C extends Contract.Any> = Ledger9DeployTxOptionsBase<C> | Ledger9DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitDeployTx<C extends Contract<undefined>>(
   providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
-  options: DeployTxOptionsBase<C>
+  options: Ledger9DeployTxOptionsBase<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>>;
 
 export async function submitDeployTx<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
-  options: DeployTxOptionsWithPrivateStateId<C>
+  options: Ledger9DeployTxOptionsWithPrivateStateId<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>>;
 
 /**
@@ -94,7 +94,7 @@ export async function submitDeployTx<C extends Contract.Any>(
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
-  options: DeployTxOptions<C>
+  options: Ledger9DeployTxOptions<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>> {
   assertDeployPrivateStatePairing(options);
   const unprovenDeployTxData = await createUnprovenDeployTx(providers, options);

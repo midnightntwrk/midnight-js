@@ -29,7 +29,7 @@ export type TypeId = typeof TypeId;
 /**
  * Encapsulates the context for managing a scoped contract transaction.
  */
-export interface TransactionContext<
+export interface Ledger9TransactionContext<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 > {
@@ -98,12 +98,12 @@ export interface ScopedTransactionOptions {
 }
 
 /**
- * Type guard to determine if a value is a TransactionContext.
+ * Type guard to determine if a value is a Ledger9TransactionContext.
  *
  * @param u The value to check.
- * @returns `true` if `u` is a {@link TransactionContext}, otherwise `false`.
+ * @returns `true` if `u` is a {@link Ledger9TransactionContext}, otherwise `false`.
  */
-export const isTransactionContext: (u: unknown) => u is TransactionContext<Contract.Any> =
+export const isTransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any> =
   Internal.isTransactionContext;
 
   /**
@@ -133,7 +133,7 @@ export const withContractScopedTransaction: <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: TransactionContext<C, PCK>) => Promise<void>,
+  fn: (txCtx: Ledger9TransactionContext<C, PCK>) => Promise<void>,
   options?: ScopedTransactionOptions
 ) => Promise<Ledger9FinalizedCallTxData<C, PCK>> =
   async (providers, fn, options?) => {

@@ -52,8 +52,8 @@ import type {
   Ledger8DeployContractOptionsBase,
   Ledger8DeployContractOptionsWithPrivateState,
   Ledger8DeployedContract,
-  Ledger8DeployTxData,
   Ledger8FinalizedCallTxData,
+  Ledger8FinalizedDeployTxData,
   Ledger8FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
@@ -65,6 +65,7 @@ import type {
   Ledger9CallTxOptionsBase,
   Ledger9CallTxOptionsWithPrivateStateId,
   Ledger9CircuitCallTxInterface,
+  Ledger9CircuitId,
   Ledger9CircuitMaintenanceTxInterfaces,
   Ledger9Contract,
   Ledger9ContractProviders,
@@ -120,7 +121,7 @@ describe('a flat name picks the variant of the era that compiled the contract', 
     expectTypeOf<SubmittedCallTx<V8, K>>().toEqualTypeOf<Ledger8SubmittedCallTx<V8, K>>();
     expectTypeOf<UnsubmittedCallTxData<V8, K>>().toEqualTypeOf<Ledger8UnsubmittedCallTxData<V8, K>>();
     expectTypeOf<FoundDeployTxData<V8>>().toEqualTypeOf<Ledger8FoundDeployTxData<V8>>();
-    expectTypeOf<FinalizedDeployTxData<V8>>().toEqualTypeOf<Ledger8DeployTxData<V8>>();
+    expectTypeOf<FinalizedDeployTxData<V8>>().toEqualTypeOf<Ledger8FinalizedDeployTxData<V8>>();
     expectTypeOf<CallResultPrivate<V8, K>>().toEqualTypeOf<Ledger8CallResultPrivate<V8, K>>();
     expectTypeOf<CallTxOptions<V8, K>>().toEqualTypeOf<Ledger8CallTxOptions<V8, K>>();
     expectTypeOf<CallTxOptionsBase<V8, K>>().toEqualTypeOf<Ledger8CallTxOptionsBase<V8, K>>();
@@ -248,6 +249,11 @@ describe('the circuit ids of a contract', () => {
 
   it('are the circuits the ledger 8 artifact declares', () => {
     expectTypeOf<CircuitIdOf<V8>>().toEqualTypeOf<K>();
+  });
+
+  it('are named per era by Ledger9CircuitId and Ledger8CircuitId', () => {
+    expectTypeOf<Ledger9CircuitId<V9>>().toEqualTypeOf<CircuitIdOf<V9>>();
+    expectTypeOf<Ledger8CircuitId<V8>>().toEqualTypeOf<CircuitIdOf<V8>>();
   });
 });
 

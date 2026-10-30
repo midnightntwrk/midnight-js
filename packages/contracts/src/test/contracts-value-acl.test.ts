@@ -40,7 +40,7 @@ const DIST_INDEX_PATH = 'dist/index.js';
  */
 const RUNTIME_EXPORTS: readonly string[] = [
   'BlankVerifierKeySlotError',
-  'ContractLog',
+  'Ledger9ContractLog',
   'ContractNotFoundError',
   'ContractTypeError',
   'DISPATCH_BREADCRUMB_MESSAGE',

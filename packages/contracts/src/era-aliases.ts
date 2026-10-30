@@ -39,8 +39,8 @@ import type {
   Ledger8DeployContractOptionsBase,
   Ledger8DeployContractOptionsWithPrivateState,
   Ledger8DeployedContract,
-  Ledger8DeployTxData,
   Ledger8FinalizedCallTxData,
+  Ledger8FinalizedDeployTxData,
   Ledger8FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
@@ -63,6 +63,11 @@ import type { Ledger9CallTxOptions, Ledger9CallTxOptionsBase, Ledger9CallTxOptio
  * A contract compiled with the ledger 9 Compact toolchain.
  */
 export type Ledger9Contract = Contract.Any;
+
+/**
+ * The circuit ids of a contract compiled with the ledger 9 Compact toolchain.
+ */
+export type Ledger9CircuitId<C extends Ledger9Contract> = Contract.ProvableCircuitId<C>;
 
 /**
  * A contract compiled with the toolchain of any ledger era this release serves.
@@ -168,9 +173,9 @@ export type FoundDeployTxData<C extends AnyContract> = C extends Ledger8Contract
     ? Ledger9FoundDeployTxData<C>
     : never;
 
-/** A finalized deploy. Generic code names an era: `Ledger9FinalizedDeployTxData<C>` or `Ledger8DeployTxData<C>`. */
+/** A finalized deploy. Generic code names an era: `Ledger9FinalizedDeployTxData<C>` or `Ledger8FinalizedDeployTxData<C>`. */
 export type FinalizedDeployTxData<C extends AnyContract> = C extends Ledger8Contract
-  ? Ledger8DeployTxData<C>
+  ? Ledger8FinalizedDeployTxData<C>
   : C extends Ledger9Contract
     ? Ledger9FinalizedDeployTxData<C>
     : never;
