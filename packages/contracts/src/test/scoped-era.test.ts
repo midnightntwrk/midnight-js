@@ -315,8 +315,8 @@ describe('per-scope era resolution', () => {
     const message = (caught as Error).message;
     // Way one: drop the batching and submit each call on its own.
     expect(message).toContain('submitCallTx');
-    // Way two: keep the batching and run the scope after the fork.
-    expect(message).toMatch(/crossed the fork|after the fork/);
+    // Way two: keep the batching and run the scope once the network is on ledger 9.
+    expect(message).toContain('once the network is on the ledger 9 era');
     // And it says WHY, so the refusal does not read as an arbitrary limitation.
     expect(message).toContain('one call');
   });

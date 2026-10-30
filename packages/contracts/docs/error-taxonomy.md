@@ -149,7 +149,7 @@ Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are
 still refused, with `InvalidSerializedStateError` (`tag-mismatch`). A state that is
 present but names no known era is not "missing": it is refused with
-`UnknownLedgerVersionError`. Its `requestedVersion` is `'undefined'` when the
+`UnknownLedgerVersionError`. Its `requestedVersion` is `undefined` when the
 value carried no era at all, and the message points to an outdated provider. A
 state with a known era but no `serialize()` still gives `InvalidSerializedStateError`.
 

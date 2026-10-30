@@ -25,7 +25,7 @@ const DETAIL_CASES: readonly (readonly [EraMismatchReason, string])[] = [
   ['ledger8-contract-state-unsupported', 'Contract address: ab12. Operation: findDeployedContract.'],
   ['scope-on-ledger8-network', "Network version: 'v8'."],
   ['ledger8-call-in-scope', "Circuit: 'increment'."],
-  ['unrecognised-result-era', 'Received: "v7".']
+  ['unrecognised-result-era', 'Received: v7.']
 ];
 
 describe('EraMismatchError reasons that carry a detail', () => {
@@ -35,6 +35,13 @@ describe('EraMismatchError reasons that carry a detail', () => {
     expect(error.reason).toBe(reason);
     expect(error.message).toContain(detail);
     expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+  });
+
+  it('does not name the network era in the scope refusal, so the message holds for any head that is not ledger 9', () => {
+    const error = new EraMismatchError('scope-on-ledger8-network', { detail: "Network version: 'v10'." });
+
+    expect(error.message).not.toContain('ledger 8');
+    expect(error.message).toContain("Network version: 'v10'.");
   });
 
   it('keeps the pre-fork and indexer-upgrade advice on a state the v8 ledger wrote', () => {

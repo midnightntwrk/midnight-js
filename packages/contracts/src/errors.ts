@@ -19,6 +19,7 @@ import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
+  FailFallible,
   type FinalizedTxRead,
   type PrivateStateId,
   type ProviderMethod,
@@ -233,11 +234,11 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'indexer serves every contract\'s state translated to v9 from version 4.4.0-rc.6 on: upgrade an ' +
     'older indexer.',
   'scope-on-ledger8-network':
-    'A contract-scoped transaction cannot be created while the network is on the ledger 8 era. ' +
-    'A scope batches several circuit calls into one transaction, and this era composes exactly ' +
-    'one call per transaction and refuses a longer list, so there is nothing for a scope to batch ' +
-    'into. Either submit each call as its own transaction with submitCallTx, or run the scope once ' +
-    'the network has crossed the fork.',
+    'A contract-scoped transaction cannot be created on the era the network is on, named below. ' +
+    'A scope batches several circuit calls into one transaction, and only the ledger 9 era composes ' +
+    'more than one call per transaction, so there is nothing for a scope to batch into. Either submit ' +
+    'each call as its own transaction with submitCallTx, or run the scope once the network is on the ' +
+    'ledger 9 era.',
   'ledger8-call-in-scope':
     'A circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain cannot ' +
     'join a contract-scoped transaction: a scope merges its calls into one ledger 9 transaction, ' +
@@ -890,7 +891,7 @@ const describeFailedSegments = (record: FinalizedTxRead): string | undefined => 
 };
 
 const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead, details: TxFailedDetails): string => {
-  const fallible = record.status === 'FailFallible';
+  const fallible = record.status === FailFallible;
   const circuitClause = formatCircuitClause(details.circuitId) ?? '';
   const contractClause = details.contractAddress === undefined ? '' : ` on the contract at '${details.contractAddress}'`;
   const circuits = [details.circuitId ?? []].flat().map((id) => `'${id}'`).join(', ');
@@ -1378,6 +1379,8 @@ export class Ledger8UnconfirmedError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED;
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.LEDGER8_UNCONFIRMED];
 
+  declare readonly signingKey: SigningKey;
+
   /**
    * @param operation Which submitted operation could not be confirmed.
    * @param contractAddress The address the submitted deployment composed, or the contract whose
@@ -1386,8 +1389,6 @@ export class Ledger8UnconfirmedError extends MidnightJsError {
    * replacement would install. Sampled when the caller named none, and then this is its only copy.
    * @param cause Why the operation could not be confirmed.
    */
-  declare readonly signingKey: SigningKey;
-
   constructor(
     readonly operation: Ledger8KeyedOperation,
     readonly contractAddress: string,
