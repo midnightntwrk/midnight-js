@@ -19,7 +19,7 @@ import type { PublicDataProvider, PublicStatesRead } from '@midnight-ntwrk/midni
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError } from '../../errors';
+import { EraMismatchError } from '../../errors';
 import { makeCalleeStateResolver } from '../../internal/utils';
 import { publicStatesReadStub } from '../test-mocks';
 
@@ -132,8 +132,12 @@ describe('makeCalleeStateResolver', () => {
 
     const rejection = resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ contractAddress: ADDRESS, operation: 'makeCalleeStateResolver' });
+    await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
+    await expect(rejection).rejects.toMatchObject({
+      reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+      message: expect.stringContaining(String(ADDRESS))
+    });
+    await expect(rejection).rejects.toMatchObject({ message: expect.stringContaining('makeCalleeStateResolver') });
     expect(resolver.resolvedStates.has(String(ADDRESS))).toBe(false);
   });
 

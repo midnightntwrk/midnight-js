@@ -18,7 +18,7 @@ import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKe
 import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
-import { EraArtifactMismatchError } from '../errors';
+import { EraMismatchError } from '../errors';
 import { type ArtifactRuntimeVersionSource, resolveArtifactEra } from '../internal/era';
 import { createMockCompiledContract } from './test-mocks';
 
@@ -81,7 +81,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     const source = declaring('0.20.0');
 
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toBeInstanceOf(
-      EraArtifactMismatchError
+      EraMismatchError
     );
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toMatchObject({
       reason: 'unwrapped-ledger9-contract'
@@ -111,9 +111,9 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
     const error = await resolveArtifactEra(retainedShape(), source).catch((thrown: unknown) => thrown);
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
-    expect((error as EraArtifactMismatchError).cause).toBe(unavailable);
+    expect((error as EraMismatchError).cause).toBe(unavailable);
   });
 
   it('separates a provider that CANNOT declare an era from artifacts that do not', async () => {
@@ -138,11 +138,11 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       (thrown: unknown) => thrown
     );
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'provider-cannot-declare-era' });
-    expect((error as EraArtifactMismatchError).cause).toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
+    expect((error as EraMismatchError).cause).toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
     // The base class names the provider that could not answer; that naming must survive the wrap.
-    expect(((error as EraArtifactMismatchError).cause as Error).message).toMatch(/ArtifactOnlyProvider/);
+    expect(((error as EraMismatchError).cause as Error).message).toMatch(/ArtifactOnlyProvider/);
   });
 
   it.each([

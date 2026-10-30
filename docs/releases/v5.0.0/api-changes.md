@@ -388,8 +388,8 @@ export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8F
 
 Every retained-era signing key on the public surface is the structured `SigningKey`:
 the `signingKey` deploy and find options, `deployTxData.private.signingKey`, and the
-`signingKey` member of `Ledger8.DeployTxFailedError`, `Ledger8.DeployUnconfirmedError`
-and `Ledger8.DeployNotStoredError`. `Ledger8.SigningKeyUnusableError.contractAddress`
+`signingKey` member of `TxFailedError`, `Ledger8UnconfirmedError`
+and `Ledger8NotStoredError`. `Ledger8SigningKeyError.contractAddress`
 is optional: a refused deploy key has no address yet.
 
 ### Contract maintenance in both eras (#1514)
@@ -436,9 +436,10 @@ export interface Ledger8ContractMaintenanceTxInterface {
 // Ledger8FoundContract<C> and Ledger8DeployedContract<C> gain
 //   circuitMaintenanceTx: Ledger8CircuitMaintenanceTxInterfaces<C>
 //   contractMaintenanceTx: Ledger8ContractMaintenanceTxInterface
-// New classes under the Ledger8 namespace: MaintenanceOnLedger9Error, SigningKeyUnavailableError,
-//   SigningKeyNotStoredError, ReplaceAuthorityUnconfirmedError, InsertVerifierKeyTxFailedError,
-//   RemoveVerifierKeyTxFailedError, ReplaceMaintenanceAuthorityTxFailedError.
+// Its refusals are EraMismatchError (reason 'ledger8-maintenance-on-ledger9-network'),
+//   Ledger8SigningKeyError ('unavailable'), Ledger8NotStoredError ('replace-authority'),
+//   Ledger8UnconfirmedError ('replace-authority') and TxFailedError ('insert-verifier-key',
+//   'remove-verifier-key', 'replace-authority').
 ```
 
 `SubmittedOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
@@ -457,10 +458,9 @@ export interface Ledger8ContractMaintenanceTxInterface {
 import { type Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
 type T = Ledger8.FoundContract<C>;
 
-// After: 37 flat Ledger8* types; the namespace keeps the 18 error classes
-import { type Ledger8FoundContract, Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+// After: 37 flat Ledger8* types
+import { type Ledger8FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
 type T = Ledger8FoundContract<C>;
-error instanceof Ledger8.CallTxFailedError;
 ```
 
 ### Types for both eras carry no prefix (#1566)
@@ -473,26 +473,67 @@ export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Led
 export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 // `ContractProviders` requires its contract: `ContractProviders<C, PCK?>`
-
-// The base of every recorded-failure class, in both eras
-export abstract class TxFailedError extends MidnightJsError {
-  readonly code: 'MIDNIGHT_JS_C_TX_FAILED';
-  abstract readonly record: FinalizedTxRead;
-}
-export class Ledger9TxFailedError extends TxFailedError {
-  readonly finalizedTxData: Ledger9FinalizedTxData;
-  readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[];
-}
-export class Ledger9CallTxFailedError extends Ledger9TxFailedError {}
-export class Ledger9DeployTxFailedError extends Ledger9TxFailedError {}
-export class Ledger9InsertVerifierKeyTxFailedError extends Ledger9TxFailedError {}
-export class Ledger9RemoveVerifierKeyTxFailedError extends Ledger9TxFailedError {}
-export class Ledger9ReplaceMaintenanceAuthorityTxFailedError extends Ledger9TxFailedError {}
 ```
 
 Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
-`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`,
-`AnyEraTxFailedError`. See breaking-changes.md section 24.
+`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`. See
+breaking-changes.md section 24. The error classes are in the next section.
+
+### One error class per fault (#1557)
+
+The `Ledger8` namespace is removed. These are the final classes; see
+[breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557) for the old name of each one.
+
+```ts
+// contracts
+class TxFailedError extends MidnightJsError {
+  constructor(operation: 'deploy' | 'replace-authority', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; signingKey: SigningKey });
+  constructor(operation: 'insert-verifier-key' | 'remove-verifier-key', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; circuitId: string });
+  constructor(operation: 'call', record: FinalizedTxRead,
+    details: { circuitId: string | readonly string[]; contractAddress?: ContractAddress });
+  readonly operation: TxFailedOperation; // 'call' | 'deploy' | 'insert-verifier-key' | 'remove-verifier-key' | 'replace-authority'
+  readonly record: FinalizedTxRead;
+  readonly contractAddress?: ContractAddress; // never set by a ledger 9 call
+  readonly circuitId?: string | readonly string[];
+  readonly signingKey?: SigningKey; // not enumerable; never in the message
+}
+class EraMismatchError extends MidnightJsError {
+  constructor(reason: EraMismatchReason, options?: EraMismatchOptions); // options: { detail?, contractAddress?, circuitId?, cause? }
+  readonly reason: EraMismatchReason;
+  readonly detail?: string;
+  readonly contractAddress?: ContractAddress;
+  readonly circuitId?: string;
+}
+class Ledger8SigningKeyError {
+  constructor(reason: 'unusable', contractAddress?: string);
+  constructor(reason: 'unavailable', contractAddress: string, options?: ErrorOptions);
+  readonly reason: 'unusable' | 'unavailable';
+  readonly contractAddress?: string;
+}
+class Ledger8UnconfirmedError { readonly operation: Ledger8KeyedOperation; readonly contractAddress: string; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8NotStoredError { readonly operation: Ledger8KeyedOperation; readonly stage: Ledger8NotStoredStage; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8CallUnsupportedError { readonly reason: Ledger8CallUnsupportedReason; readonly circuitId: string; readonly recipientCoinPublicKey?: string }
+class Ledger8AmbiguousEntryPointError {
+  constructor(contractAddress: string, circuitId: string, matchCount: number);
+  readonly contractAddress: string;
+  readonly circuitId: string;
+  readonly matchCount: number;
+}
+// Types exported with them: TxFailedOperation, TxFailedDetails, EraMismatchReason, EraMismatchOptions,
+//   Ledger8SigningKeyReason, Ledger8KeyedOperation, Ledger8NotStoredStage, Ledger8CallUnsupportedReason.
+```
+
+`UnknownLedgerVersionError` (protocol) now also covers a value with no era, with a `requestedVersion` of
+`undefined`. It is ENVIRONMENT. Its constructor takes the raw value (`unknown`), and `requestedVersion` is
+`string | undefined`. Removed from `utils`: `UnrecognisedEraTagError`,
+`Ledger8ValueUnsupportedError`, `requireLedger9`, and the codes `LEDGER8_VALUE_UNSUPPORTED` and
+`UNRECOGNISED_ERA_TAG`. Removed from `contracts`: `AnyEraTxFailedError`, `CallTxFailedError`,
+`DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`,
+`ReplaceMaintenanceAuthorityTxFailedError`, `EraArtifactMismatchError`, `ScopedTransactionEraUnsupportedError`,
+`MixedEraScopeError`, `UnknownResultEraError`, and the `Ledger8` namespace with every member.
+`CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`.
 
 ---
 

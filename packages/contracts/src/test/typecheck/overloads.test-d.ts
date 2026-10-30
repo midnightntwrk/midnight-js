@@ -838,7 +838,7 @@ describe('both eras resolve a call to the SAME result structure', () => {
 
     // The retained era's ONE overload takes the circuit's own args with no context
     // prepended: a scope refuses a retained-era call outright with
-    // `MixedEraScopeError`, so there is nothing for a second overload to reach. Add
+    // `EraMismatchError`, so there is nothing for a second overload to reach. Add
     // a context overload here and this equality is what fails.
     expectTypeOf<Parameters<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>>().toEqualTypeOf<
       Ledger8CircuitParameters<Counter016Contract, 'increment'>

@@ -25,7 +25,8 @@
 
 import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { UnknownResultEraError } from './errors';
+import { EraMismatchError } from './errors';
+import { readEraTag } from './internal/era';
 
 /**
  * What the guard narrows a result to.
@@ -68,7 +69,9 @@ export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
       return false;
     default: {
       const unhandled: never = result?.era;
-      throw new UnknownResultEraError(unhandled);
+      throw new EraMismatchError('unrecognised-result-era', {
+        detail: `Received: ${readEraTag({ era: unhandled })}.`
+      });
     }
   }
 };

@@ -88,7 +88,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
 
       expect(error).toBeInstanceOf(UnknownLedgerVersionError);
       expect(hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(error).toMatchObject({ requestedVersion: 'undefined', context: method });
+      expect(error).toMatchObject({ requestedVersion: undefined, context: method });
       expect(String(error)).toContain(method);
     }
   );
@@ -98,7 +98,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     const error = thrownBy(() => read('v9', 'watchForTxData'));
 
     expect(error).toBeInstanceOf(UnknownLedgerVersionError);
-    expect(error).toMatchObject({ requestedVersion: 'undefined', context: 'watchForTxData' });
+    expect(error).toMatchObject({ requestedVersion: undefined, context: 'watchForTxData' });
   });
 
   it('refuses a version that cannot be turned into text with the coded error, not a TypeError', () => {
@@ -138,5 +138,15 @@ describe('requireLedger9Record', () => {
     const record = createMockFinalizedTxData();
 
     expect(requireLedger9Record(record, 'watchForTxData')).toBe(record);
+  });
+
+  it('names the v8 era it received and the v9 era it expected', () => {
+    const record = createMockLedger8FinalizedTxData();
+
+    const error = thrownBy(() => requireLedger9Record(record, 'watchForTxData'));
+
+    expect(error).toBeInstanceOf(EraInvariantViolationError);
+    expect(error).toMatchObject({ expected: 'v9', received: 'v8' });
+    expect((error as EraInvariantViolationError).message).not.toContain("'other'");
   });
 });

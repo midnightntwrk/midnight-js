@@ -207,3 +207,9 @@ error. The error codes are unchanged. `LEDGER_STATE_KINDS` and `LEDGER_STATE_TAG
 keep their names: they describe what the ledger writes, not the class. The decision is unchanged.
 The sections above, and ADRs 0006, 0007, 0008, 0010 and 0019, keep the names that were current
 when they were written.
+
+## Amendment — the error for a value with no era (2026-10-29)
+
+`UnrecognisedEraTagError` is now `UnknownLedgerVersionError`, with a `requestedVersion` of `undefined`
+when the value carried no era. `requireLedger9` is removed: narrow with `switch (value.era)`, closed by
+`assertNever`. See the 2026-10-29 amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).

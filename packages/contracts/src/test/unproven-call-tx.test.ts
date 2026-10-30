@@ -27,7 +27,7 @@ import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError,NetworkVersionReadFailedError } from '../errors';
+import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -489,10 +489,10 @@ describe('unproven-call-tx', () => {
 
       const rejection = createUnprovenCallTx(providers, options);
 
-      await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
       await expect(rejection).rejects.toMatchObject({
-        contractAddress: options.contractAddress,
-        operation: 'createUnprovenCallTx'
+        reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+        message: expect.stringContaining(options.contractAddress)
       });
     });
 
@@ -520,10 +520,10 @@ describe('unproven-call-tx', () => {
 
       const rejection = createUnprovenCallTx(providers, options);
 
-      await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
+      await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
       await expect(rejection).rejects.toMatchObject({
-        contractAddress: options.contractAddress,
-        operation: 'createUnprovenCallTx'
+        reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+        message: expect.stringContaining(options.contractAddress)
       });
     });
 

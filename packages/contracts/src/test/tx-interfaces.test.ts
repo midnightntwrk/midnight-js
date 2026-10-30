@@ -15,7 +15,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EraArtifactMismatchError } from '../errors';
+import { EraMismatchError } from '../errors';
 import type { Ledger8Contract, Ledger8ContractProviders } from '../ledger8-contract';
 import {
   createCallTxOptions,
@@ -173,7 +173,7 @@ describe('tx-interfaces', () => {
       const act = () =>
         createCallTxOptions({ nonsense: true } as never, 'increment', mockContractAddress, undefined, undefined, [] as never);
 
-      expect(act).toThrow(EraArtifactMismatchError);
+      expect(act).toThrow(EraMismatchError);
       expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
     });
 
@@ -188,7 +188,7 @@ describe('tx-interfaces', () => {
       const act = () =>
         createCallTxOptions(unwrappedLedger9Contract as never, 'increment', mockContractAddress, undefined, undefined, [] as never);
 
-      expect(act).toThrow(EraArtifactMismatchError);
+      expect(act).toThrow(EraMismatchError);
       expect(act).toThrow(expect.objectContaining({ reason: 'unwrapped-ledger9-contract' }));
     });
   });
@@ -352,7 +352,7 @@ describe('tx-interfaces', () => {
       const act = () =>
         createCircuitCallTxInterface(mockProviders, { nonsense: true } as never, mockContractAddress, undefined);
 
-      expect(act).toThrow(EraArtifactMismatchError);
+      expect(act).toThrow(EraMismatchError);
       expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
     });
   });

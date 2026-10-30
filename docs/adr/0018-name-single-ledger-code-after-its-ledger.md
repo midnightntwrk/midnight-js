@@ -126,3 +126,13 @@ Not yet under the rule: `CallResult`, `CallOptions`, `UnsubmittedDeployTxData`, 
 only. They are lower-level types outside this change.
 
 The renames are listed in section 24 of `docs/releases/v5.0.0/breaking-changes.md`.
+
+## Amendment — the example class is a reason now (2026-10-29)
+
+`Ledger8DeployOnLedger9Error`, the example in the decision, is removed. The same fault is
+`EraMismatchError` with reason `'ledger8-deploy-on-ledger9-network'`, and the rule holds for the reason
+string. See the 2026-10-29 amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).
+
+The `Ledger9*TxFailedError` classes named in the amendment above are gone too: every failed
+transaction, in either era, is one `TxFailedError` with an `operation`, and no class has a
+`Ledger8` or `Ledger9` failure subclass. The naming rule is unchanged.

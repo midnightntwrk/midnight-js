@@ -45,20 +45,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  EraMismatchError,
   ForkCrossedDuringOperationError,
-  Ledger8MaintenanceOnLedger9Error,
-  Ledger8ReplaceAuthorityUnconfirmedError,
-  Ledger8SigningKeyNotStoredError,
-  Ledger8SigningKeyUnavailableError,
-  Ledger8SigningKeyUnusableError,
+  Ledger8NotStoredError,
+  Ledger8UnconfirmedError,
   ProviderFailedError,
-  SubmitRejectionUndiagnosedError
+  SubmitRejectionUndiagnosedError,
+  TxFailedError
 } from '../../errors';
-import {
-  Ledger8InsertVerifierKeyTxFailedError,
-  Ledger8RemoveVerifierKeyTxFailedError,
-  Ledger8ReplaceMaintenanceAuthorityTxFailedError
-} from '../../governance/errors';
 import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
 import { submitRemoveVerifierKeyTx } from '../../governance/submit-remove-vk-tx';
 import { submitReplaceAuthorityTx } from '../../governance/submit-replace-authority-tx';
@@ -274,12 +268,17 @@ describe('contract maintenance through a retained-era artifact', () => {
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     });
 
-    it('refuses a post-fork head with the recompile remediation, before the key is read', async () => {
+    it.each([
+      ['insert', (providers: Providers) => submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK)],
+      ['remove', (providers: Providers) => submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)],
+      ['replace authority', (providers: Providers) => submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY)]
+    ])('refuses a %s on a post-fork head with the recompile remediation, before the key is read', async (_name, run) => {
       const providers = providersOn(keyedState, POST_FORK_PROTOCOL_VERSION);
 
-      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
-        Ledger8MaintenanceOnLedger9Error
-      );
+      const failure = await run(providers).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(EraMismatchError);
+      expect(failure).toMatchObject({ reason: 'ledger8-maintenance-on-ledger9-network', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
       expect(providers.privateStateProvider.getSigningKey).not.toHaveBeenCalled();
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
     });
@@ -289,7 +288,7 @@ describe('contract maintenance through a retained-era artifact', () => {
 
       await expect(
         submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)({ tag: 'ecdsa', value: NEW_KEY.value })
-      ).rejects.toThrow(Ledger8SigningKeyUnusableError);
+      ).rejects.toMatchObject({ name: 'Ledger8SigningKeyError', reason: 'unusable' });
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
@@ -302,9 +301,11 @@ describe('contract maintenance through a retained-era artifact', () => {
       const providers = providersOn(keyedState);
       providers.privateStateProvider.getSigningKey = vi.fn(read);
 
-      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toThrow(
-        Ledger8SigningKeyUnavailableError
-      );
+      await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toMatchObject({
+        name: 'Ledger8SigningKeyError',
+        reason: 'unavailable',
+        contractAddress: CONTRACT_ADDRESS
+      });
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
     });
 
@@ -314,7 +315,8 @@ describe('contract maintenance through a retained-era artifact', () => {
       providers.privateStateProvider.getSigningKey = vi.fn().mockRejectedValue(readFailure);
 
       await expect(submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)).rejects.toMatchObject({
-        name: 'Ledger8SigningKeyUnavailableError',
+        name: 'Ledger8SigningKeyError',
+        reason: 'unavailable',
         cause: readFailure
       });
       expect(composeMaintenanceTx).not.toHaveBeenCalled();
@@ -341,8 +343,12 @@ describe('contract maintenance through a retained-era artifact', () => {
       );
 
       // Assert
-      expect(failure).toBeInstanceOf(Ledger8ReplaceAuthorityUnconfirmedError);
-      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY });
+      expect(failure).toBeInstanceOf(Ledger8UnconfirmedError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        contractAddress: CONTRACT_ADDRESS,
+        signingKey: NEW_KEY
+      });
       expect((failure as Error).cause).toBeInstanceOf(causeClass);
       expect((failure as Error).message).not.toContain(NEW_KEY.value);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
@@ -458,45 +464,47 @@ describe('contract maintenance through a retained-era artifact', () => {
       [
         'an insert',
         (providers: Providers) => submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK),
-        Ledger8InsertVerifierKeyTxFailedError,
+        'insert-verifier-key',
         true
       ],
       [
         'a remove',
         (providers: Providers) => submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID),
-        Ledger8RemoveVerifierKeyTxFailedError,
+        'remove-verifier-key',
         false
       ],
       [
         'a replacement',
         (providers: Providers) => submitReplaceAuthorityTx(providers, contract, CONTRACT_ADDRESS)(NEW_KEY),
-        Ledger8ReplaceMaintenanceAuthorityTxFailedError,
+        'replace-authority',
         false
       ]
-    ] as const)('refuses %s the chain recorded as failed, carrying the record', async (_case, run, errorClass, blank) => {
+    ] as const)('refuses %s the chain recorded as failed, carrying the record', async (_case, run, operation, blank) => {
       const providers = providersOn(blank ? blankState : keyedState);
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));
 
       const failure = await run(providers).catch((error: unknown) => error);
 
-      expect(failure).toBeInstanceOf(errorClass);
-      expect(failure).toMatchObject({ record: createMockLedger8FinalizedTxData(FailFallible) });
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({ operation, record: createMockLedger8FinalizedTxData(FailFallible) });
       expect((failure as Error).message).toContain(CONTRACT_ADDRESS);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
 
-    it('names the circuit on a failed verifier key update', async () => {
+    it.each([
+      ['an insert', true, (providers: Providers) => submitInsertVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID, NEW_VK)],
+      ['a remove', false, (providers: Providers) => submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID)]
+    ] as const)('names the circuit on %s the chain recorded as failed', async (_case, blank, run) => {
       // Arrange
-      const providers = providersOn(keyedState);
+      const providers = providersOn(blank ? blankState : keyedState);
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockLedger8FinalizedTxData(FailFallible));
 
       // Act
-      const failure = await submitRemoveVerifierKeyTx(providers, contract, CONTRACT_ADDRESS, CIRCUIT_ID).catch(
-        (error: unknown) => error
-      );
+      const failure = await run(providers).catch((error: unknown) => error);
 
       // Assert
-      expect(failure).toBeInstanceOf(Ledger8RemoveVerifierKeyTxFailedError);
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({ circuitId: CIRCUIT_ID });
       expect((failure as Error).message).toContain(`'${CIRCUIT_ID}'`);
     });
 
@@ -511,7 +519,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       );
 
       // Assert
-      expect(failure).toBeInstanceOf(Ledger8ReplaceMaintenanceAuthorityTxFailedError);
+      expect(failure).toBeInstanceOf(TxFailedError);
       expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY });
       expect((failure as Error).message).not.toContain(NEW_KEY.value);
     });
@@ -534,8 +542,14 @@ describe('contract maintenance through a retained-era artifact', () => {
         (error: unknown) => error
       );
 
-      expect(failure).toBeInstanceOf(Ledger8SigningKeyNotStoredError);
-      expect(failure).toMatchObject({ contractAddress: CONTRACT_ADDRESS, signingKey: NEW_KEY, cause: storeFailure });
+      expect(failure).toBeInstanceOf(Ledger8NotStoredError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        stage: 'signing-key',
+        contractAddress: CONTRACT_ADDRESS,
+        signingKey: NEW_KEY,
+        cause: storeFailure
+      });
       expect((failure as Error).message).not.toContain(NEW_KEY.value);
     });
   });

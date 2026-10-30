@@ -20,7 +20,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 
 import { type CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
-import { IncompleteCallTxPrivateStateConfig,Ledger9CallTxFailedError } from './errors';
+import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
@@ -132,13 +132,13 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `Ledger9CallTxFailedError` is thrown with transaction data and circuit ID
+ * - `TxFailedError` is thrown with transaction data and circuit ID
  * - Private state updates are NOT stored (state remains unchanged)
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `Ledger9CallTxFailedError` is thrown with transaction data and circuit ID
+ * - `TxFailedError` is thrown with transaction data and circuit ID
  * - Private state updates are NOT stored (state remains unchanged)
  * - Transaction appears in blockchain history as partial success
  *
@@ -150,9 +150,9 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  * @returns A `Promise` that resolves with the finalized transaction data for the invocation of
  *         `circuitId` on `contract` with the given `args`; or rejects with an error if the invocation fails.
  *
- * @throws {Ledger9CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
- * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
  *         container, or its artifacts declare no toolchain this framework can place. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'
@@ -286,7 +286,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends L
  * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
  *         or rejects with an error if the submission fails.
  *
- * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
+ * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
  *         container, or its artifacts declare no toolchain this framework can place. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'
@@ -314,7 +314,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends L
  *
  * // 4. Check status
  * if (record.status !== SucceedEntirely) {
- *   throw new Ledger9CallTxFailedError(record, options.circuitId);
+ *   throw new TxFailedError('call', record, { circuitId: options.circuitId });
  * }
  *
  * // 5. Update private state manually if needed

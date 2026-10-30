@@ -574,3 +574,10 @@ removed; the reads return `ContractStateRead`, `ContractStateAndParametersRead` 
 `PublicStatesRead`. `LedgerState.era` is read from the bytes, never from the block. The
 finalized-transaction record keeps its shape but follows the same names:
 `VersionedFinalizedTxData` is now `FinalizedTxRead`, and its `version` is now `era`.
+
+## Amendment — `requireLedger9` is removed (2026-10-29)
+
+Point 5 of the 2026-10-16 amendment no longer holds. `requireLedger9`, `Ledger8ValueUnsupportedError`
+and `UnrecognisedEraTagError` are removed. Code that handles only v9 narrows with `switch (value.era)`,
+closed by `assertNever`. A value with no era raises `UnknownLedgerVersionError`. See the 2026-10-29
+amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).

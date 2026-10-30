@@ -184,4 +184,4 @@ the framework checks it where it needs the parameters. Building a v9 call reads
 `PublicStatesEraMismatchError`; the v8 pipeline reads `queryContractState` and
 refuses it with `LedgerParametersUnservedError`. Both refuse parameters of
 another era than the call with `PublicStatesEraMismatchError`, and parameters in
-a shape that names no known era with `UnrecognisedEraTagError`.
+a shape that names no known era with `UnknownLedgerVersionError`.

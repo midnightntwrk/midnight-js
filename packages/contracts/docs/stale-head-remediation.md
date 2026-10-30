@@ -109,7 +109,7 @@ The second step differs by operation kind:
   key for the circuit, or its maintenance authority, already reflects the
   update. Then recompile with the current Compact toolchain and run the same
   maintenance function with that artifact. An authority replacement arrives
-  wrapped in `Ledger8ReplaceAuthorityUnconfirmedError`, which carries the new
+  wrapped in `Ledger8UnconfirmedError` (`operation` `'replace-authority'`), which carries the new
   key, because the replacement may have landed.
 
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
@@ -187,7 +187,7 @@ had been batched with the rest.
 The three outcomes are kept apart on purpose:
 
 - **No third argument** is the normal case.
-- **A real scope** is the mixed-era refusal, `MixedEraScopeError`.
+- **A real scope** is the mixed-era refusal, `EraMismatchError` with reason `'ledger8-call-in-scope'`.
 - **Anything else** — `null`, or a stray value a JavaScript caller passed by
   mistake — is a malformed argument and gets an `InvalidArgumentError`
   (`MIDNIGHT_JS_G_INVALID_ARGUMENT`, category `USAGE`). Reporting it as

@@ -145,8 +145,8 @@ describe('submitReplaceAuthorityTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw Ledger9ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
-      const { Ledger9ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
+    it('should throw TxFailedError when transaction fails', async () => {
+      const { TxFailedError } = await import('../../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const failedTxData = createMockFinalizedTxData(FailEntirely);
@@ -160,7 +160,18 @@ describe('submitReplaceAuthorityTx', () => {
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
 
-      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(Ledger9ReplaceMaintenanceAuthorityTxFailedError);
+      const failure = await replaceAuthorityFn(mockNewAuthority).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        record: failedTxData
+      });
+      expect((failure as InstanceType<typeof TxFailedError>).signingKey).toBe(mockNewAuthority);
+      expect((failure as Error).message).not.toContain(mockNewAuthority.value);
+      expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
   });
 });

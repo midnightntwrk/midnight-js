@@ -117,7 +117,7 @@ export class SerializedState<K extends StateKind = StateKind, out E extends Ledg
     bytes: Uint8Array
   ): SerializedState<K, E> {
     if (!LEDGER_VERSIONS.includes(era)) {
-      throw new UnknownLedgerVersionError(String(era));
+      throw new UnknownLedgerVersionError(era);
     }
     if (!LEDGER_STATE_KINDS.includes(kind)) {
       throw new InvalidSerializedStateError(String(kind), era, 'unknown-kind');

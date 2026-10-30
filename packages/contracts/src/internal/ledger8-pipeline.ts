@@ -36,7 +36,7 @@ import type {
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { ComposeFailedError } from '@midnight-ntwrk/midnight-js-protocol';
+import { ComposeFailedError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -48,16 +48,15 @@ import {
   type SerializedState,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, UnrecognisedEraTagError } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
   BlankVerifierKeySlotError,
+  EraMismatchError,
   LEDGER8_CONSTRUCTOR_ENTRY_POINT,
   Ledger8AmbiguousEntryPointError,
-  Ledger8ArtifactOnLedger9StateError,
-  Ledger8RecipientUnmappableError,
-  Ledger8ShieldedSpendUnsupportedError,
+  Ledger8CallUnsupportedError,
   LedgerParametersUnservedError,
   PublicStatesEraMismatchError,
   VerifierKeyMismatchError
@@ -65,7 +64,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { ownSerializedState, resolveContractStateEra } from './era';
+import { eraTagOf, ownSerializedState, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -307,7 +306,7 @@ export interface Ledger8Snapshot {
 /**
  * The ledger parameters served beside the state, or `undefined` when the provider served none.
  *
- * @throws UnrecognisedEraTagError if the parameters are served in a shape that is not a
+ * @throws UnknownLedgerVersionError if the parameters are served in a shape that is not a
  * `SerializedState`.
  * @throws InvalidSerializedStateError if they are not ledger parameters written by the era they name.
  */
@@ -320,7 +319,7 @@ const servedLedgerParameters = (
   }
   const parameters = ownSerializedState(served, 'LedgerParameters');
   if (parameters === undefined) {
-    throw new UnrecognisedEraTagError('queryContractState', served);
+    throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }
   return parameters;
 };
@@ -348,7 +347,7 @@ const servedLedgerParameters = (
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
- * @throws UnrecognisedEraTagError if the ledger parameters are served in a shape that is not a
+ * @throws UnknownLedgerVersionError if the ledger parameters are served in a shape that is not a
  * `SerializedState`.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
@@ -396,11 +395,12 @@ export const readLedger8Snapshot = async (
  */
 const snapshotEntryPoint = (
   snapshot: Ledger8Snapshot,
-  circuitId: string
+  circuitId: string,
+  contractAddress: string
 ): ContractStatePojo['entryPoints'][number] | undefined => {
   const matches = snapshot.decoded.entryPoints.filter((candidate) => candidate.circuitId === circuitId);
   if (matches.length > 1) {
-    throw new Ledger8AmbiguousEntryPointError(circuitId, matches.length);
+    throw new Ledger8AmbiguousEntryPointError(contractAddress, circuitId, matches.length);
   }
   return matches[0];
 };
@@ -423,7 +423,7 @@ const snapshotEntryPoint = (
  * @param contractAddress The contract being operated on, named in the era-level refusal.
  * @throws Ledger8AmbiguousEntryPointError if the state declares the name twice.
  * @throws BlankVerifierKeySlotError if the chain declares no key for it.
- * @throws Ledger8ArtifactOnLedger9StateError if the keys differ byte for byte AND the state
+ * @throws EraMismatchError with reason `'ledger8-artifact-on-ledger9-contract'` if the keys differ byte for byte AND the state
  * carries a ledger 9 envelope, which together mean the contract was built with ledger 9 toolchain
  * artifacts — carrying the byte-level mismatch on `cause`.
  * @throws VerifierKeyMismatchError if the two keys differ byte for byte on a ledger 8 state.
@@ -435,7 +435,7 @@ export const assertSnapshotVerifierKey = (
   localVerifierKey: Uint8Array,
   contractAddress: string
 ): void => {
-  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId, contractAddress);
   try {
     assertVerifierKeyMatches(localVerifierKey, entryPoint?.verifierKey, circuitId);
   } catch (cause) {
@@ -447,7 +447,11 @@ export const assertSnapshotVerifierKey = (
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
-      throw new Ledger8ArtifactOnLedger9StateError(contractAddress, { cause });
+      throw new EraMismatchError('ledger8-artifact-on-ledger9-contract', {
+        detail: `Contract address: ${contractAddress}.`,
+        contractAddress,
+        cause
+      });
     }
     throw cause;
   }
@@ -491,7 +495,7 @@ const spendsHeldCoin = (zswapLocalState: Ledger8Transcript['zswapLocalState']): 
  * @param zswapLocalState The call's post-execution Zswap local state.
  * @param resolve The resolver this call will build its offer with.
  * @param circuitId The circuit this flow is running, for the refusal.
- * @throws Ledger8RecipientUnmappableError for the first unresolvable recipient.
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` for the first unresolvable recipient.
  */
 const assertRecipientsResolvable = (
   zswapLocalState: Ledger8Transcript['zswapLocalState'],
@@ -500,7 +504,7 @@ const assertRecipientsResolvable = (
 ): void => {
   for (const { recipient } of zswapLocalState.outputs) {
     if (recipient.is_left && resolve(recipient.left) === undefined) {
-      throw new Ledger8RecipientUnmappableError(circuitId, recipient.left);
+      throw new Ledger8CallUnsupportedError('unmappable-recipient', circuitId, recipient.left);
     }
   }
 };
@@ -653,7 +657,7 @@ export interface Ledger8CallPipelineResult<TState> {
  * @throws LedgerParametersUnservedError if the read served no ledger parameters.
  * @throws PublicStatesEraMismatchError if the ledger parameters were written by another era than
  * the head the call is composed for.
- * @throws Ledger8ShieldedSpendUnsupportedError if the circuit spends a shielded
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a shielded
  * coin the contract already held — see {@link spendsHeldCoin}.
  * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
  */
@@ -712,7 +716,7 @@ export const runLedger8CallPipeline = async <TState>(
   // state is the real fix and is tracked separately; until then this refuses in
   // the caller's own test run rather than in production.
   if (spendsHeldCoin(transcript.zswapLocalState)) {
-    throw new Ledger8ShieldedSpendUnsupportedError(circuitId);
+    throw new Ledger8CallUnsupportedError('shielded-spend', circuitId);
   }
 
   // Also before the offer is built, and for the same reason: a recipient this
@@ -1059,7 +1063,7 @@ const assertMaintenanceSlot = (
     return;
   }
   const { circuitId } = update;
-  const entryPoint = snapshotEntryPoint(snapshot, circuitId);
+  const entryPoint = snapshotEntryPoint(snapshot, circuitId, contractAddress);
   if (update.kind === 'insert-verifier-key') {
     if (entryPoint?.verifierKey !== undefined) {
       throw new InvalidArgumentError(

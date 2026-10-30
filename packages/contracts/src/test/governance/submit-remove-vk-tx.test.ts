@@ -183,8 +183,8 @@ describe('submitRemoveVerifierKeyTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw Ledger9RemoveVerifierKeyTxFailedError when transaction fails', async () => {
-      const { Ledger9RemoveVerifierKeyTxFailedError } = await import('../../governance/errors');
+    it('should throw TxFailedError when transaction fails', async () => {
+      const { TxFailedError } = await import('../../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
@@ -198,9 +198,21 @@ describe('submitRemoveVerifierKeyTx', () => {
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
-      await expect(
-        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(Ledger9RemoveVerifierKeyTxFailedError);
+      const failure = await submitRemoveVerifierKeyTx(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId
+      ).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'remove-verifier-key',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        circuitId,
+        record: failedTxData
+      });
     });
   });
 });

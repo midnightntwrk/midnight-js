@@ -23,11 +23,11 @@ import { describe, expect, it } from 'vitest';
 import {
   BlankVerifierKeySlotError,
   ContractNotFoundError,
-  EraArtifactMismatchError,
-  type EraArtifactMismatchReason,
   EraInvariantViolationError,
+  EraMismatchError,
+  type EraMismatchReason,
   IndexerInconsistencyError,
-  Ledger8,
+  Ledger8NotStoredError,
   LedgerParametersUnservedError,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
@@ -39,8 +39,7 @@ import {
 describe('the era and verification-path errors a caller has to catch are reachable from the barrel', () => {
   it('carries the registered code on an instance built through the barrel export', () => {
     const cases = [
-      { error: new EraArtifactMismatchError('unrecognised-contract-shape'), code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH },
-      { error: new Ledger8.DeployOnLedger9Error(), code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9 },
+      { error: new EraMismatchError('unrecognised-contract-shape'), code: CONTRACTS_ERROR_CODES.ERA_MISMATCH },
       { error: new NetworkVersionStateMismatchError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH },
       { error: new IndexerInconsistencyError('v9', 'v8'), code: CONTRACTS_ERROR_CODES.INDEXER_INCONSISTENCY },
       { error: new BlankVerifierKeySlotError('increment'), code: CONTRACTS_ERROR_CODES.BLANK_VERIFIER_KEY_SLOT },
@@ -51,10 +50,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       { error: new LedgerParametersUnservedError('addr'), code: CONTRACTS_ERROR_CODES.LEDGER_PARAMETERS_UNSERVED },
       { error: new ContractNotFoundError('no contract'), code: CONTRACTS_ERROR_CODES.CONTRACT_NOT_FOUND },
       { error: new PrivateStateNotFoundError('no private state'), code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND },
-      {
-        error: new Ledger8.ArtifactOnLedger9StateError('addr'),
-        code: CONTRACTS_ERROR_CODES.LEDGER8_ARTIFACT_ON_LEDGER9_STATE
-      }
+      { error: new Ledger8NotStoredError('deploy', 'addr', { tag: 'schnorr', value: '11'.repeat(32) }, 'signing-key', new Error('store down')), code: CONTRACTS_ERROR_CODES.LEDGER8_NOT_STORED }
     ];
 
     // Both directions: the code the class registers, and that the class is the one `instanceof`
@@ -66,12 +62,12 @@ describe('the era and verification-path errors a caller has to catch are reachab
   });
 
   it('lets a consumer branch on the mismatch reason using the exported discriminant type', () => {
-    // The capability `EraArtifactMismatchError`'s own docstring promises: `reason` is "the
+    // The capability `EraMismatchError`'s own docstring promises: `reason` is "the
     // discriminant a caller branches on". Branching needs the TYPE exported too, not just the class
     // -- without it a consumer is reduced to comparing `error.name` strings.
     // A `Record` keyed by the union rather than a `switch`: total by construction, so a reason
     // added upstream without a branch here is a compile error rather than a fall-through.
-    const REMEDIATION: Readonly<Record<EraArtifactMismatchReason, string>> = {
+    const REMEDIATION: Readonly<Record<EraMismatchReason, string>> = {
       'unwrapped-ledger9-contract': 'wrap-it',
       'unrecognised-contract-shape': 'recompile',
       'ledger9-artifact-on-ledger8-network': 'wait-for-fork',
@@ -79,24 +75,34 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'ledger8-transaction-on-ledger9-network': 'recompose-on-v9',
       'artifact-era-undeclared': 'serve-contract-info',
       'provider-cannot-declare-era': 'implement-the-member',
-      'unknown-artifact-runtime-version': 'upgrade-midnight-js'
+      'unknown-artifact-runtime-version': 'upgrade-midnight-js',
+      'ledger8-deploy-on-ledger9-network': 'recompile-and-deploy',
+      'ledger8-maintenance-on-ledger9-network': 'recompile-and-maintain',
+      'ledger8-artifact-on-ledger9-contract': 'pass-ledger9-artifacts',
+      'ledger8-contract-state-unsupported': 'upgrade-indexer',
+      'scope-on-ledger8-network': 'submit-each-call',
+      'ledger8-call-in-scope': 'call-outside-scope',
+      'unrecognised-result-era': 'carry-the-era'
     };
 
-    expect(REMEDIATION[new EraArtifactMismatchError('unwrapped-ledger9-contract').reason]).toBe('wrap-it');
-    expect(REMEDIATION[new EraArtifactMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-artifact-on-ledger8-network').reason]).toBe('wait-for-fork');
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger9-transaction-on-ledger8-network').reason]).toBe(
+    expect(REMEDIATION[new EraMismatchError('unwrapped-ledger9-contract').reason]).toBe('wrap-it');
+    expect(REMEDIATION[new EraMismatchError('unrecognised-contract-shape').reason]).toBe('recompile');
+    expect(REMEDIATION[new EraMismatchError('ledger9-artifact-on-ledger8-network').reason]).toBe('wait-for-fork');
+    expect(REMEDIATION[new EraMismatchError('ledger9-transaction-on-ledger8-network').reason]).toBe(
       'submit-v8-bytes'
     );
-    expect(REMEDIATION[new EraArtifactMismatchError('ledger8-transaction-on-ledger9-network').reason]).toBe(
+    expect(REMEDIATION[new EraMismatchError('ledger8-transaction-on-ledger9-network').reason]).toBe(
       'recompose-on-v9'
     );
-    expect(REMEDIATION[new EraArtifactMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
-    expect(REMEDIATION[new EraArtifactMismatchError('provider-cannot-declare-era').reason]).toBe(
+    expect(REMEDIATION[new EraMismatchError('artifact-era-undeclared').reason]).toBe('serve-contract-info');
+    expect(REMEDIATION[new EraMismatchError('provider-cannot-declare-era').reason]).toBe(
       'implement-the-member'
     );
-    expect(REMEDIATION[new EraArtifactMismatchError('unknown-artifact-runtime-version').reason]).toBe(
+    expect(REMEDIATION[new EraMismatchError('unknown-artifact-runtime-version').reason]).toBe(
       'upgrade-midnight-js'
+    );
+    expect(REMEDIATION[new EraMismatchError('ledger8-call-in-scope', { detail: 'Circuit: increment.' }).reason]).toBe(
+      'call-outside-scope'
     );
   });
 

@@ -118,7 +118,7 @@ This is the byte-level answer: `contractState.era` on the read record. Only
 `SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
 does not match `era`, so the era is the era of these exact bytes. A record whose
 contract state is not a `SerializedState` is refused before this breadcrumb, as
-`UnrecognisedEraTagError`.
+`UnknownLedgerVersionError`.
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the

@@ -102,7 +102,7 @@ const queryFoundDeployTxPublicData = async (
       return {
         ...deployRecord,
         contractAddress,
-        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract')
+        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract', 'queryDeployContractState')
       };
     }
     default:
@@ -127,7 +127,7 @@ const queryFoundDeployTxPublicData = async (
  * @param signingKey The key the caller supplied on the attach options, if any.
  * @param sink The configured logger, or `undefined`.
  * @returns The key now held for that address, or `undefined` when none usable is.
- * @throws Ledger8SigningKeyUnusableError If a supplied key is not one this framework can store and
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If a supplied key is not one this framework can store and
  * read back. Raised BEFORE the write, so a refused key replaces nothing.
  * @see {@link KeepStatePipeline} for the three ways this diverges from the current era's rule, and
  * why each divergence is one.
@@ -496,12 +496,12 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws PrivateStateNotFoundError `privateStateId` is named, no `initialPrivateState` is given, and
  *                                   nothing is stored under it.
  * @throws ContractNotFoundError No contract state could be found at `contractAddress`.
- * @throws Ledger8ContractStateUnsupportedError The current contract state was written by the v8
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` The current contract state was written by the v8
  * ledger, and these artifacts come from the current toolchain.
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
  * @throws UnknownLedgerVersionError The deploy record carries no readable era tag.
- * @throws UnrecognisedEraTagError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
+ * @throws UnknownLedgerVersionError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
  *                                 provider.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
@@ -509,7 +509,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  *                           have mis-matched verifier keys.
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
- * @throws EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
+ * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, or
  *                                  is a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
  *                                  toolchain this framework can place. Raised before anything is
@@ -606,7 +606,8 @@ export async function findDeployedContract<C extends Contract.Any>(
   const currentContractState = decodeLedger9ContractState(
     requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
     contractAddress,
-    'findDeployedContract'
+    'findDeployedContract',
+    'queryContractState'
   );
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(

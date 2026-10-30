@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-era-tagged-records) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with a different error class; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-era-tagged-records) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with the same `TxFailedError`; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -616,8 +616,8 @@ For a **maintenance** update, the two steps match the deploy case:
 
 ### Runtime-deploy chapter: factory patterns
 
-This section is linked from `Ledger8.DeployOnLedger9Error`
-(`MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_LEDGER9`).
+This section is linked from `EraMismatchError` with reason `'ledger8-deploy-on-ledger9-network'`
+(`MIDNIGHT_JS_C_ERA_MISMATCH`).
 
 If your dApp deploys contract instances **at runtime** — a factory that stands
 up a new contract per user, per market, per game — read this before the fork.
@@ -625,7 +625,7 @@ up a new contract per user, per market, per game — read this before the fork.
 The retained era stays supported for **calls against contracts deployed before
 the fork**. New deployments of a ledger 8 (pre-fork) toolchain artifact work **only before
 the fork**. After the fork `deployContract` refuses one with
-`Ledger8.DeployOnLedger9Error`, before the constructor runs and before any verifier
+`EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), before the constructor runs and before any verifier
 key is fetched.
 
 A retained deploy registers a maintenance authority of one key, either
@@ -652,11 +652,10 @@ artifacts it ships take a release cycle to replace.
 
 The retained era's types are flat `Ledger8*` names in `midnight-js-contracts`:
 `Ledger8FinalizedCallTxData` is the result type below, `Ledger8Contract` the
-constraint for a helper of your own. Its error classes are under the `Ledger8`
-namespace: `Ledger8.CallTxFailedError` is the failure class. The half that serves
-BOTH eras -- `AnyFinalizedCallTxData`, `isLedger8Result`, `TxFailedError`
--- carries no era prefix, so a handler that only receives results imports nothing
-era-specific. The fork-window refusals (`ForkCrossedDuringOperationError` and the
+constraint for a helper of your own. A failed call is a `TxFailedError`, the same
+class in both eras. The half that serves BOTH eras -- `AnyFinalizedCallTxData`,
+`isLedger8Result` -- carries no era prefix, so a handler that only receives results
+imports nothing era-specific. The fork-window refusals (`ForkCrossedDuringOperationError` and the
 rest of that group) are published flat and are removed in a separate step.
 
 A call against a contract you compiled with the previous toolchain still goes
@@ -725,10 +724,10 @@ deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 The retained era's signing key is now the same `SigningKey` the current era
 uses, `{ tag, value }`, on `deployTxData.private.signingKey`, on the
 `signingKey` option of `deployContract` and `findDeployedContract`, and on the
-`signingKey` member of `Ledger8.DeployTxFailedError`,
-`Ledger8.DeployUnconfirmedError` and `Ledger8.DeployNotStoredError`. The retained
+`signingKey` member of `TxFailedError` (a failed deploy),
+`Ledger8UnconfirmedError` and `Ledger8NotStoredError`. The retained
 era signs with `schnorr` only: an `ecdsa` key, or a value that is not exactly 64
-hexadecimal characters, is refused with `Ledger8.SigningKeyUnusableError` before
+hexadecimal characters, is refused with `Ledger8SigningKeyError` (`reason: 'unusable'`) before
 anything is composed or stored.
 
 ```diff
@@ -757,22 +756,25 @@ shielded coin to a recipient other than the calling wallet needs that
 recipient's encryption public key. Pass it in
 `additionalCoinEncPublicKeyMappings` on the `submitCallTx` or
 `submitCallTxAsync` options, as you would for a current-era call. Without it
-the call is refused with `Ledger8RecipientUnmappableError` before anything is
+the call is refused with `Ledger8CallUnsupportedError` (`reason: 'unmappable-recipient'`) before anything is
 proven. The `callTx.<circuit>(...)` handle on a deployed or found retained
 contract cannot carry mappings; call `submitCallTx` or `submitCallTxAsync`
 directly for these circuits.
 
 ### Catching a failure in either era
 
-A call the chain recorded with a non-success status throws by class, and the
-class differs per era: `Ledger9CallTxFailedError` on ledger 9,
-`Ledger8.CallTxFailedError` on ledger 8. The ledger 8 class is NOT a
-`Ledger9CallTxFailedError` — it cannot be, because that class carries a v9-only
-record.
+A transaction the chain recorded with a non-success status throws `TxFailedError`,
+in either era. A v4-style `instanceof TxFailedError` around a ledger 8 call catches
+it too. `error.operation` says which operation failed (`'call'`, `'deploy'`,
+`'insert-verifier-key'`, `'remove-verifier-key'` or `'replace-authority'`), and
+`error.record` is what the chain recorded, tagged with its era.
 
-Catch `TxFailedError` to get both, and read the record through `.record`,
-which is era-tagged. `Ledger9TxFailedError` also has `finalizedTxData` and the
-ledger 8 classes have `txData`; Step 23 lists the renamed classes.
+`finalizedTxData` and `txData` are gone: read `error.record`. The ledger 9 message
+used to be a JSON dump of the record. It is a sentence now that names the status,
+the transaction id and hash, the block height and the failed segments; read the
+other record fields from `error.record`. `contractAddress`, `circuitId` and
+`signingKey` are optional fields, set by the operations that have them. A ledger 9
+call never sets `contractAddress`, because a scope can call several contracts.
 
 ```typescript
 try {
@@ -780,11 +782,18 @@ try {
 } catch (error) {
   if (error instanceof TxFailedError) {
     // Narrow before reading `tx`: the handle belongs to the era the tag names.
-    console.error(error.record.status, error.record.era);
+    console.error(error.operation, error.record.status, error.record.era);
   }
   throw error;
 }
 ```
+
+**Keep `error.signingKey` after a failed deploy or replacement.** It may be the only
+copy of the contract's maintenance authority. It is not enumerable and never in the
+message, so a logger that serializes the properties of an error leaves it out. After a
+failed replacement, read the contract state with `queryContractState` and compare its
+`maintenanceAuthority` committee with `signatureVerifyingKey(error.signingKey)`. If the
+new key is there, store it with `privateStateProvider.setSigningKey(address, error.signingKey)`.
 
 ### Maintaining a contract in either era
 
@@ -799,7 +808,7 @@ result is now nested like every other result, so read the record under `public`:
 
 Before the fork, a contract deployed with ledger 8 artifacts is maintained with
 those artifacts and the key the deploy stored. After the fork, the retained
-artifact is refused with `Ledger8.MaintenanceOnLedger9Error`: recompile the
+artifact is refused with `EraMismatchError` (`reason: 'ledger8-maintenance-on-ledger9-network'`): recompile the
 contract with the ledger 9 Compact toolchain and call the same function with
 that artifact. The stored key is unchanged, and the fork keeps the contract's
 maintenance authority, so that key still signs for the migrated contract. Keep
@@ -808,12 +817,12 @@ and nowhere else.
 
 A retained-era update reads the stored key before it composes anything, and
 refuses a missing, foreign-kind or unreadable entry with
-`Ledger8.SigningKeyUnavailableError`, and a key that is not the contract's
+`Ledger8SigningKeyError` (`reason: 'unavailable'`), and a key that is not the contract's
 authority with `MaintenanceAuthorityMismatchError`, before anything is proven.
 
 An authority replacement whose outcome cannot be confirmed - the submission was
 rejected while the network crossed the fork, or the record could not be read back - is raised
-as `Ledger8.ReplaceAuthorityUnconfirmedError`. It carries the new key, which was
+as `Ledger8UnconfirmedError` (`operation: 'replace-authority'`). It carries the new key, which was
 NOT stored: keep it, and store it once a maintenance update with the old key is
 refused with `MaintenanceAuthorityMismatchError`.
 
@@ -1155,7 +1164,7 @@ give it the era of the ledger parameters of the same block.
 `contracts` accepts a `SerializedState` made by a second installed copy of
 `@midnight-ntwrk/midnight-js-types` too: it rebuilds each state from its bytes
 with `SerializedState.fromBytes`, which checks the tag again. A state in a shape
-that names no known era is refused with `UnrecognisedEraTagError`; a state of
+that names no known era is refused with `UnknownLedgerVersionError`; a state of
 another kind fails the tag check (`InvalidSerializedStateError`); ledger parameters
 or a zswap chain state that are missing, or of another era than the call, are
 refused with `PublicStatesEraMismatchError`.
@@ -1164,7 +1173,7 @@ refused with `PublicStatesEraMismatchError`.
 
 If you built against a 5.0.0 pre-release: `VersionedFinalizedTxData` is now
 `FinalizedTxRead`, and its `version` is now `era`, the same name a handle and a
-state use. `requireLedger9` narrows on `era` too.
+state use. `requireLedger9` was removed: narrow with `switch (record.era)` closed by `assertNever` (see Step 24).
 
 ```diff
 - switch (record.version) {
@@ -1262,18 +1271,16 @@ See [breaking-changes.md](./breaking-changes.md#22-ledger-9-types-carry-the-ledg
 ## Step 22 — Import the ledger 8 types by their flat names
 
 Replace `Ledger8.X` with `Ledger8X` for every ledger 8 type (#1561). Error classes
-do not change.
+changed too, in [Step 24](#step-24--catch-one-error-class-per-fault).
 
 ```ts
 // Before
 import { Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
 const handle = (data: Ledger8.FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
-const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
 
-// After: the type is flat; the error class is unchanged, so keep the `Ledger8` value import
-import { Ledger8, type Ledger8FinalizedCallTxData } from '@midnight-ntwrk/midnight-js-contracts';
+// After
+import { type Ledger8FinalizedCallTxData } from '@midnight-ntwrk/midnight-js-contracts';
 const handle = (data: Ledger8FinalizedCallTxData<typeof MyContract, 'increment'>) => data.public;
-const failed = (error: unknown) => error instanceof Ledger8.CallTxFailedError;
 ```
 
 A package that emits declarations can now export a value inferred from a ledger 8
@@ -1281,45 +1288,16 @@ call without an explicit type annotation.
 
 See [breaking-changes.md](./breaking-changes.md#23-ledger-8-types-are-flat-ledger8-names-1561).
 
-## Step 23 — Name the ledger 9 failure classes, and drop the `AnyEra` prefix
+## Step 23 — Drop the `AnyEra` prefix
 
-A name without a ledger prefix is valid for every era (#1566). `TxFailedError` is now the
-base both eras' failure classes extend; the ledger 9 classes carry the `Ledger9` prefix.
-
-```ts
-// Before (4.x)
-import { CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
-if (error instanceof CallTxFailedError) log(error.finalizedTxData.txId);
-if (error instanceof TxFailedError) report(error.finalizedTxData.status);
-
-// After
-import { Ledger9CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
-if (error instanceof Ledger9CallTxFailedError) log(error.finalizedTxData.txId);
-if (error instanceof TxFailedError) report(error.record.status); // both ledgers
-```
-
-Rename `TxFailedError`, `CallTxFailedError`, `DeployTxFailedError`,
-`InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` and
-`ReplaceMaintenanceAuthorityTxFailedError` to their `Ledger9*` names where you mean
-ledger 9 only. Keep `TxFailedError` where you mean both ledgers. A `TxFailedError` that
-reads `.finalizedTxData` stops compiling: read `.record` (era-tagged) or narrow to
-`Ledger9TxFailedError`. If you compare `error.name` strings, update them too: nothing
-warns you about these.
-
-> **Never retry on `TxFailedError`.** The chain recorded the transaction, so a retry
-> sends a second one. The base now also catches `Ledger8.DeployTxFailedError` and
-> `Ledger8.ReplaceMaintenanceAuthorityTxFailedError`. A ledger 8 deploy that failed in
-> the fallible phase may still have created the contract, and the error's `signingKey`
-> can be the only copy of its maintenance key. Keep that key; do not deploy again.
+A name without a ledger prefix is valid for every era (#1566). The failure classes are
+covered in [Step 24](#step-24--catch-one-error-class-per-fault).
 
 `ContractProviders` needs its contract. In 4.x a bare `ContractProviders` meant the
 providers of any contract; write `ContractProviders<typeof MyContract>` or
 `Ledger9ContractProviders`.
 
-From a 5.0.0 pre-release, rename in this order, so that the two failure classes do not
-merge into one name: first `TxFailedError` → `Ledger9TxFailedError` (check that each use
-meant ledger 9 only), then `AnyEraTxFailedError` → `TxFailedError`. Then rename the
-`AnyEra*` types:
+From a 5.0.0 pre-release, rename the `AnyEra*` types:
 
 ```ts
 // Before (5.0.0 pre-release)
@@ -1338,6 +1316,48 @@ ledger 9 type; it is now the union, so narrow it on `era` or write
 `Ledger9FinalizedMaintenanceTxData`.
 
 See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
+
+## Step 24 — Catch one error class per fault
+
+The `Ledger8` namespace is gone, and about 40 error classes are 12 (#1557). Each fault is one class,
+and a field says which case it was. [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557)
+has the full table.
+
+| If you caught | Catch now |
+|---|---|
+| `AnyEraTxFailedError`, `CallTxFailedError`, `DeployTxFailedError`, a verifier-key or authority `*TxFailedError`, or any `Ledger8.*TxFailedError` | `TxFailedError`; branch on `error.operation` |
+| `error.finalizedTxData` or `error.txData` | `error.record` |
+| `EraArtifactMismatchError`, `Ledger8.DeployOnLedger9Error`, `Ledger8.MaintenanceOnLedger9Error`, `Ledger8.ArtifactOnLedger9StateError`, `Ledger8.ContractStateUnsupportedError`, `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`, `UnknownResultEraError` | `EraMismatchError`; branch on `error.reason` |
+| `UnrecognisedEraTagError` | `UnknownLedgerVersionError`; a `requestedVersion` of `undefined` means the value had no era |
+| `Ledger8ValueUnsupportedError`, `requireLedger9` | nothing: narrow with `switch (value.era)`, closed by `assertNever` |
+| `Ledger8.SigningKeyUnusableError`, `Ledger8.SigningKeyUnavailableError` | `Ledger8SigningKeyError`; `reason` is `'unusable'` or `'unavailable'` |
+| `Ledger8.DeployUnconfirmedError`, `Ledger8.ReplaceAuthorityUnconfirmedError` | `Ledger8UnconfirmedError`; `operation` is `'deploy'` or `'replace-authority'` |
+| `Ledger8.DeployNotStoredError`, `Ledger8.SigningKeyNotStoredError` | `Ledger8NotStoredError`; branch on `operation` and `stage` |
+| `Ledger8.ShieldedSpendUnsupportedError`, `Ledger8.RecipientUnmappableError` | `Ledger8CallUnsupportedError`; `reason` is `'shielded-spend'` or `'unmappable-recipient'` |
+| `Ledger8.AmbiguousEntryPointError` | `Ledger8AmbiguousEntryPointError`; it now carries `contractAddress` |
+
+```ts
+// Before
+if (error instanceof Ledger8.DeployUnconfirmedError) {
+  keep(error.signingKey);
+}
+
+// After
+if (error instanceof Ledger8UnconfirmedError && error.operation === 'deploy') {
+  keep(error.signingKey);
+}
+```
+
+`EraMismatchError` no longer has `networkVersion`, `received` or `operation` as typed members. Their
+values are in the message. `contractAddress` and `circuitId` are still members, set for the reasons that
+have them.
+
+`signingKey` on `TxFailedError`, `Ledger8UnconfirmedError` and `Ledger8NotStoredError` is not
+enumerable. Read it as `error.signingKey`; object spread and `JSON.stringify` leave it out. If you branched on a code, the codes changed too:
+`ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`, and the other removed codes are listed in
+[ADR 0017](../../adr/0017-error-codes-are-the-contract.md).
+
+See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557).
 
 ## Verification checklist
 
@@ -1358,7 +1378,8 @@ See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-
 - [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
-- [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8ReplaceAuthorityUnconfirmedError` or `Ledger8SigningKeyNotStoredError` keeps the `signingKey` it carries.
+- [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8UnconfirmedError` or `Ledger8NotStoredError` keeps the `signingKey` it carries.
+- [ ] Every `catch` names `TxFailedError`, `EraMismatchError`, `UnknownLedgerVersionError` or a flat `Ledger8*Error`, and a failed deploy or replacement saves `error.signingKey`, which object spread and `JSON.stringify` leave out.
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.

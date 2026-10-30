@@ -16,7 +16,7 @@
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError } from '../errors';
+import { EraMismatchError } from '../errors';
 import {
   getExistingSigningKey,
   queryExistingContractState,
@@ -80,8 +80,12 @@ describe('queryExistingContractState', () => {
 
     const rejection = queryExistingContractState({ queryContractState }, contractAddress);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ contractAddress, operation: 'queryExistingContractState' });
+    await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
+    await expect(rejection).rejects.toMatchObject({
+      reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+      message: expect.stringContaining(contractAddress)
+    });
+    await expect(rejection).rejects.toMatchObject({ message: expect.stringContaining('queryExistingContractState') });
   });
 
   it('refuses an address with no state as ContractNotFoundError', async () => {

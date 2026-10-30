@@ -41,8 +41,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 // `src/protocol.ts` for the published set.
 import {
   deployContract,
+  EraMismatchError,
   findDeployedContract,
-  Ledger8,
   ForkCrossedDuringOperationError,
   SubmitRejectionUndiagnosedError,
   submitCallTx,
@@ -1519,7 +1519,7 @@ await leg('pre-fork head era', () => latestNetworkLedgerVersion(session.provider
 // pre-fork dApp that would already have deployed on the previous framework
 // major, and it is now also the run's only coverage of that path: the path is
 // reachable ONLY against a pre-fork head, and refuses a post-fork one with
-// `Ledger8DeployOnLedger9Error`, so nothing after the boundary can exercise it.
+// `EraMismatchError`, so nothing after the boundary can exercise it.
 //
 // This leg used to compose the deploy by hand against protocol's era facade,
 // because the path refused before reading any head. That made the deploy a
@@ -2941,8 +2941,11 @@ if (MAINTAINS_ACROSS_THE_FORK) {
       () => undefined,
       (refusal) => refusal
     );
-    if (!(error instanceof Ledger8.MaintenanceOnLedger9Error)) {
-      throw new Error(`expected Ledger8.MaintenanceOnLedger9Error; got ${describeError(error)}`, { cause: error });
+    if (!(error instanceof EraMismatchError) || error.reason !== 'ledger8-maintenance-on-ledger9-network') {
+      throw new Error(
+        `expected EraMismatchError with reason 'ledger8-maintenance-on-ledger9-network'; got ${describeError(error)}`,
+        { cause: error }
+      );
     }
     if (reached.length > 0) {
       throw new Error(`the refused update still reached ${reached.join(', ')}`);

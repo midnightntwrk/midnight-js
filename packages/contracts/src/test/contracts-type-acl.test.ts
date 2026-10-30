@@ -31,24 +31,6 @@ const compilerOptions = (): ts.CompilerOptions => {
 };
 
 /**
- * Resolves a namespace re-export (`export * as Ledger8 from ...`) to the module
- * it stands for, so its members can be pinned the same way the barrel's own
- * are.
- *
- * Throws rather than returning the barrel when the name is absent: a namespace
- * silently swapped for the module itself would compare the retained era's
- * member list against the whole package and report a difference nobody can
- * read.
- */
-const namespaceSymbol = (checker: ts.TypeChecker, moduleSymbol: ts.Symbol, name: string): ts.Symbol => {
-  const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.getName() === name);
-  if (!exported) {
-    throw new Error(`${BARREL} exports no namespace named '${name}'`);
-  }
-  return exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
-};
-
-/**
  * The names the barrel exports that carry NO runtime meaning, read from the
  * source with the compiler's own resolution.
  *
@@ -62,7 +44,7 @@ const namespaceSymbol = (checker: ts.TypeChecker, moduleSymbol: ts.Symbol, name:
  * `packages/protocol/src/test/protocol-type-acl.test.ts`. Deliberately
  * duplicated rather than shared: neither package depends on the other's tests.
  */
-const typeOnlyExportNames = (namespaceExport?: string): string[] => {
+const typeOnlyExportNames = (): string[] => {
   const program = ts.createProgram([BARREL], compilerOptions());
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(BARREL);
@@ -73,10 +55,8 @@ const typeOnlyExportNames = (namespaceExport?: string): string[] => {
   if (!moduleSymbol) {
     throw new Error(`${BARREL} resolves to no module symbol`);
   }
-  const container = namespaceExport === undefined ? moduleSymbol : namespaceSymbol(checker, moduleSymbol, namespaceExport);
-
   return checker
-    .getExportsOfModule(container)
+    .getExportsOfModule(moduleSymbol)
     .filter((exported) => {
       const resolved = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
       return (resolved.flags & ts.SymbolFlags.Value) === 0;
@@ -125,8 +105,8 @@ describe('Contracts type ACL', () => {
       'DeployTxOptionsBase',
       'DeployTxOptionsWithPrivateState',
       'DeployTxOptionsWithPrivateStateId',
-      'EraArtifactMismatchOptions',
-      'EraArtifactMismatchReason',
+      'EraMismatchOptions',
+      'EraMismatchReason',
       'FinalizedCallTxData',
       'FinalizedDeployTxData',
       'FinalizedDeployTxDataBase',
@@ -144,6 +124,7 @@ describe('Contracts type ACL', () => {
       'Ledger8CallTxOptionsBase',
       'Ledger8CallTxOptionsWithPrivateStateId',
       'Ledger8CallTxTarget',
+      'Ledger8CallUnsupportedReason',
       'Ledger8Circuit',
       'Ledger8CircuitCallTxInterface',
       'Ledger8CircuitContext',
@@ -172,7 +153,10 @@ describe('Contracts type ACL', () => {
       'Ledger8FoundDeployTxData',
       'Ledger8FoundDeployTxPublicData',
       'Ledger8InitialStateResult',
+      'Ledger8KeyedOperation',
+      'Ledger8NotStoredStage',
       'Ledger8PrivateState',
+      'Ledger8SigningKeyReason',
       'Ledger8SubmittedCallTx',
       'Ledger8UnsubmittedCallTxData',
       'Ledger8Witness',
@@ -211,6 +195,8 @@ describe('Contracts type ACL', () => {
       'SubmitTxOptions',
       'SubmitTxProviders',
       'TransactionContext',
+      'TxFailedDetails',
+      'TxFailedOperation',
       'UnprovenCallTxProvidersBase',
       'UnprovenCallTxProvidersWithPrivateState',
       'UnprovenDeployTxOptions',
@@ -224,18 +210,5 @@ describe('Contracts type ACL', () => {
       'UnsubmittedDeployTxPublicData',
       'UnsubmittedTxData'
     ]);
-  });
-
-  /**
-   * @given the `Ledger8` namespace the barrel re-exports
-   * @when its type-only members are read with the compiler's own resolution
-   * @then there are none
-   *
-   * A type reachable only through the namespace cannot be named in a dApp's declaration emit
-   * (TS4023), so the retained-era types are flat `Ledger8*` names and the namespace keeps only
-   * the error classes.
-   */
-  it('publishes no type under the retained-era namespace', () => {
-    expect(typeOnlyExportNames('Ledger8')).toEqual([]);
   });
 });

@@ -53,7 +53,7 @@ import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 
-import { Ledger8SigningKeyUnusableError } from '../errors';
+import { Ledger8SigningKeyError } from '../errors';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './breadcrumbs';
 
 /**
@@ -160,7 +160,7 @@ const unusableLedger8SigningKey = (key: SigningKey): 'other-signature-kind' | 'm
  * fail every attach to the address — circuit calls included — over a value
  * none of them reads. The maintenance interfaces on the same handle DO read it,
  * and there a missing, unusable or unreadable entry is a refusal,
- * `Ledger8SigningKeyUnavailableError`, not an absence. The caller's remedy is
+ * `Ledger8SigningKeyError` with reason `'unavailable'`, not an absence. The caller's remedy is
  * unchanged: supply the retained key on the attach options, or remove the entry
  * with `privateStateProvider.removeSigningKey(address)`.
  *
@@ -200,7 +200,7 @@ export const fromStoredLedger8SigningKey = (
  * @param contractAddress The address it was supplied for, or `undefined` for a
  * deploy, which has none yet.
  * @returns The retained-era key.
- * @throws Ledger8SigningKeyUnusableError If the key is not a `schnorr` key of
+ * @throws Ledger8SigningKeyError with reason `'unusable'` If the key is not a `schnorr` key of
  * {@link LEDGER8_SIGNING_KEY_HEX_LENGTH} hex characters. The key is not rendered.
  */
 export const requireLedger8SigningKey = (
@@ -208,7 +208,7 @@ export const requireLedger8SigningKey = (
   contractAddress: string | undefined
 ): Ledger8SigningKey => {
   if (unusableLedger8SigningKey(signingKey) !== undefined) {
-    throw new Ledger8SigningKeyUnusableError(contractAddress);
+    throw new Ledger8SigningKeyError('unusable', contractAddress);
   }
   return signingKey.value;
 };

@@ -38,9 +38,8 @@ export {
 // the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
-// The era errors that serve BOTH eras. The retained era's own classes are published under the
-// `Ledger8` namespace below -- `Ledger8.CallTxFailedError` still extends `TxFailedError`
-// here, so a handler written against the base keeps catching it.
+// The era errors that serve BOTH eras. `TxFailedError` is the one failed-transaction error of both
+// eras.
 //
 // The fork-window refusals are the other group. `ForkCrossedDuringOperationError` is raised when a submission was
 // rejected and a fresh head read confirms the network crossed the fork under the operation, and it
@@ -48,17 +47,15 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // the other half of that diagnosis, for a head that could not be re-read or that reported an
 // EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
-// behaves the same whichever failure came first. `ScopedTransactionEraUnsupportedError` and
-// `MixedEraScopeError` are the scoped-transaction era rules -- a scope is refused outright on a
-// head era that composes only one call per transaction, and a retained-toolchain call cannot join
-// a scope at all.
+// behaves the same whichever failure came first. The scoped-transaction era rules are reasons of
+// `EraMismatchError` -- a scope is refused outright on a head era that composes only one call per
+// transaction, and a retained-toolchain call cannot join a scope at all.
 //
 // The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
 // per entry point -- call, deploy, find -- and they stay together on the flat surface; the deploy
 // one is raised by `deployContract` on both eras and by `submitDeployTx`. Client-side private-state
 // storage is era-independent, which is why the find rule is already one rule serving both eras; splitting
-// the family across the flat surface and the `Ledger8` namespace would make three related refusals
-// importable from two places.
+// the family would make three related refusals importable from two places.
 //
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
@@ -67,33 +64,29 @@ export {
   ContractNotFoundError,
   ContractTypeError,
   ContractTypeMismatch,
-  EraArtifactMismatchError,
-  type EraArtifactMismatchOptions,
-  type EraArtifactMismatchReason,
   EraInvariantViolationError,
+  EraMismatchError,
+  type EraMismatchOptions,
+  type EraMismatchReason,
   ForkCrossedDuringOperationError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
-  Ledger9CallTxFailedError,
-  Ledger9DeployTxFailedError,
-  Ledger9TxFailedError,
   LedgerParametersUnservedError,
-  MixedEraScopeError,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   ProviderFailedError,
   PublicStatesEraMismatchError,
-  ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError,
   type SubmitRejectionUndiagnosedCause,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
   type SubmittedOperationKind,
+  type TxFailedDetails,
   TxFailedError,
-  UnknownResultEraError,
+  type TxFailedOperation,
   VerifierKeyMismatchError,
   ZswapOutputResolutionError} from './errors';
 export {
@@ -112,9 +105,6 @@ export {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface,
-  Ledger9InsertVerifierKeyTxFailedError,
-  Ledger9RemoveVerifierKeyTxFailedError,
-  Ledger9ReplaceMaintenanceAuthorityTxFailedError,
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
@@ -122,9 +112,18 @@ export {
 // The receiving half of the era surface: a caller who RECEIVES a result of either era declares
 // it with a flat name and narrows it with this guard.
 export { isLedger8Result } from './era-results';
-// The RETAINED era's refusals under one name: `Ledger8.CallTxFailedError`. Only error classes;
-// see `docs/retained-era-namespace.md` for what qualifies and how the surface is withdrawn.
-export * as Ledger8 from './ledger8';
+// The RETAINED era's refusals and the types on their public fields, flat.
+export {
+  Ledger8AmbiguousEntryPointError,
+  Ledger8CallUnsupportedError,
+  type Ledger8CallUnsupportedReason,
+  type Ledger8KeyedOperation,
+  Ledger8NotStoredError,
+  type Ledger8NotStoredStage,
+  Ledger8SigningKeyError,
+  type Ledger8SigningKeyReason,
+  Ledger8UnconfirmedError
+} from './errors';
 // The retained era's types, flat. The entry-point overloads return them by these names, and a
 // dApp's declaration emit can name only what the package exports flat (TS4023).
 export type {

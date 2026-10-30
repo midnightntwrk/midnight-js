@@ -281,8 +281,7 @@ describe('error categories', () => {
   it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
     expect(codesIn('UNCERTAIN')).toEqual([
       'MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION',
-      'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
-      'MIDNIGHT_JS_C_LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED',
+      'MIDNIGHT_JS_C_LEDGER8_UNCONFIRMED',
       'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED'
     ]);
   });

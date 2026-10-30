@@ -18,10 +18,10 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, UnrecognisedEraTagError, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
@@ -129,7 +129,7 @@ describe('findDeployedContract', () => {
 
       assert(rejection instanceof UnknownLedgerVersionError);
       expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
-      expect(rejection.requestedVersion).toBe('undefined');
+      expect(rejection.requestedVersion).toBeUndefined();
     });
   });
 
@@ -160,9 +160,10 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnrecognisedEraTagError);
-      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG)).toBe(true);
-      expect(rejection.context).toBe('findDeployedContract');
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBeUndefined();
+      expect(rejection.context).toBe('queryDeployContractState');
     });
 
     it('rejects a deploy state that is not an object with the coded error naming the operation, not a TypeError', async () => {
@@ -173,9 +174,10 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnrecognisedEraTagError);
-      expect(hasErrorCode(rejection, UTILS_ERROR_CODES.UNRECOGNISED_ERA_TAG)).toBe(true);
-      expect(rejection.context).toBe('findDeployedContract');
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBeUndefined();
+      expect(rejection.context).toBe('queryDeployContractState');
     });
   });
 
@@ -277,8 +279,11 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
+      expect(rejection).toBeInstanceOf(EraMismatchError);
+      expect(rejection).toMatchObject({ reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+      expect((rejection as EraMismatchError).message).toContain(contractAddress);
+      expect((rejection as EraMismatchError).contractAddress).toBe(contractAddress);
+      expect((rejection as EraMismatchError).message).toContain('findDeployedContract');
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 

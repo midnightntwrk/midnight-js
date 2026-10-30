@@ -51,9 +51,9 @@ import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
+  EraMismatchError,
   ForkCrossedDuringOperationError,
   IndexerInconsistencyError,
-  Ledger8DeployOnLedger9Error,
   NetworkVersionReadFailedError,
   NetworkVersionStateMismatchError,
   ProviderFailedError,
@@ -522,7 +522,7 @@ describe('pipeline selection pairs the artifact pipeline with the head era', () 
 
     await expect(
       acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
-    ).rejects.toThrow(Ledger8DeployOnLedger9Error);
+    ).rejects.toThrow(EraMismatchError);
 
     expect(emitted(sink).map((breadcrumb) => breadcrumb.decision)).toEqual(['network-version-read']);
   });
@@ -898,7 +898,7 @@ describe('a faulty logger cannot fail an operation that otherwise succeeds', () 
 
     await expect(
       acquireLedger8Runtime(retainedRuntime(LEDGER9_HEAD), 'deploy', { logger: sink })
-    ).rejects.toThrow(Ledger8DeployOnLedger9Error);
+    ).rejects.toThrow(EraMismatchError);
   });
 
   it('still completes the pipeline selection that follows a failed emission', async () => {

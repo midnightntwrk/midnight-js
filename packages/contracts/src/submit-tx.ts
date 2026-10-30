@@ -26,7 +26,7 @@ import {
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { EraArtifactMismatchError, type EraArtifactMismatchReason, EraInvariantViolationError } from './errors';
+import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
 import { proveBalanceSubmit } from './internal/submit-payload';
 
@@ -103,7 +103,7 @@ export const submitLedger9Payload = async <C extends Contract.Any, PCK extends C
 const transactionEra = (unprovenTx: UnprovenTx): LedgerVersion =>
   LedgerTransaction.require(unprovenTx, 'Unproven', 'submitTx').era;
 
-const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraArtifactMismatchReason>> = {
+const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraMismatchReason>> = {
   v8: 'ledger8-transaction-on-ledger9-network',
   v9: 'ledger9-transaction-on-ledger8-network'
 };
@@ -118,7 +118,7 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
   assertProvidersSupportEra(era, providers);
   const { head } = await readHeadEra(providers.publicDataProvider);
   if (era !== head) {
-    throw new EraArtifactMismatchError(ERA_MISMATCH_REASON[era]);
+    throw new EraMismatchError(ERA_MISMATCH_REASON[era]);
   }
   const txId = await proveBalanceSubmit(providers, unprovenTx, circuitId);
   return { txId, head };
@@ -136,8 +136,8 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  * |---|---|---|
  * | v9 | v9 | proved, balanced and submitted as v9 handles |
  * | v8 | v8 | proved, balanced and submitted as v8 handles |
- * | v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
- * | v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+ * | v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
+ * | v9 | v8 | refused with `EraMismatchError` before proving |
  *
  * The head is read before proving, not again. If the network crosses the hard fork while the
  * transaction is being proved, the node refuses it and the refusal arrives as
@@ -179,7 +179,7 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  *          the head it ran on, or rejects if an error occurs along the way.
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
- * @throws EraArtifactMismatchError for a transaction whose era is not the head's.
+ * @throws EraMismatchError for a transaction whose era is not the head's.
  * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
  * @throws EraInvariantViolationError if a provider answers in the other era, or the record's era
  *         differs from the head's. In the record's case the
@@ -215,7 +215,7 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
  *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
- * @throws EraArtifactMismatchError for a transaction whose era is not the head's.
+ * @throws EraMismatchError for a transaction whose era is not the head's.
  * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
  */
 export const submitTxAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(

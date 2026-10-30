@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { deployContract } from '../deploy-contract';
-import { EraArtifactMismatchError, Ledger8DeployOnLedger9Error } from '../errors';
+import { EraMismatchError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import type { Ledger8ContractProviders } from '../ledger8-contract';
 import type {
@@ -333,7 +333,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // is refused before the bundle is read. A build that erased that `async` is refused too, by
       // the runtime version the bundle declares -- see `era-artifact-declaration.test.ts`.
       await expect(resolveArtifactEra(rawCurrentEraContract, zkConfigProvider)).rejects.toBeInstanceOf(
-        EraArtifactMismatchError
+        EraMismatchError
       );
     });
 
@@ -341,10 +341,10 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // The changed failure mode, and the reason the provisional check was replaced rather than
       // patched: it answered `false` here and let the request fall into the current-era pipeline,
       // to fail later on something unrelated to the era.
-      await expect(resolveArtifactEra(undefined, zkConfigProvider)).rejects.toBeInstanceOf(EraArtifactMismatchError);
-      await expect(resolveArtifactEra(null, zkConfigProvider)).rejects.toBeInstanceOf(EraArtifactMismatchError);
+      await expect(resolveArtifactEra(undefined, zkConfigProvider)).rejects.toBeInstanceOf(EraMismatchError);
+      await expect(resolveArtifactEra(null, zkConfigProvider)).rejects.toBeInstanceOf(EraMismatchError);
       await expect(resolveArtifactEra('not a contract', zkConfigProvider)).rejects.toBeInstanceOf(
-        EraArtifactMismatchError
+        EraMismatchError
       );
     });
 
@@ -362,7 +362,8 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
       // The CLASS, not the message constant: asserting against the same string the production code
       // throws can only fail if one file disagrees with itself, which it cannot.
-      expect(caught).toBeInstanceOf(Ledger8DeployOnLedger9Error);
+      expect(caught).toBeInstanceOf(EraMismatchError);
+      expect((caught as EraMismatchError).reason).toBe('ledger8-deploy-on-ledger9-network');
       // POSITIVE evidence that the path REACHED the era gate rather than refusing in front of it:
       // the head was read. A refusal raised before any provider was touched -- which is what stood
       // here -- would leave this untouched.
@@ -371,7 +372,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
 
     it('does NOT refuse a current-era deploy, so the era machinery cannot fire on the common path', async () => {
       // The regression guard for the fork itself: a real container must reach the current-era
-      // pipeline. Asserted POSITIVELY -- `not.toBeInstanceOf(EraArtifactMismatchError)` would also
+      // pipeline. Asserted POSITIVELY -- `not.toBeInstanceOf(EraMismatchError)` would also
       // pass if the current-era path broke for some entirely unrelated reason. This mock provider
       // set configures no network id, so reaching the current-era pipeline is exactly what the
       // network-id guard reports.
@@ -389,8 +390,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // reason that has nothing to do with the fork.
       expect((caught as Error).message).toMatch(/sampleSigningKey/);
       // And it is not an era refusal of any kind.
-      expect(caught).not.toBeInstanceOf(EraArtifactMismatchError);
-      expect(caught).not.toBeInstanceOf(Ledger8DeployOnLedger9Error);
+      expect(caught).not.toBeInstanceOf(EraMismatchError);
     });
 
   });

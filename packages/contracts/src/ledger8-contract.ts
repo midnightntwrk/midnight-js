@@ -119,7 +119,7 @@ export interface Ledger8CircuitContext<PS = unknown> {
  *
  * @see {@link OverloadTyping} for what this buys, and what broke when the
  *      circuit took {@link Ledger8CircuitContext} here instead.
- * @see {@link RetainedEraNamespace} for the membership rule.
+ * @see {@link ErrorTaxonomy} for how the `Ledger8` names are used.
  */
 export type Ledger8CircuitContextArgument = { readonly [K in keyof Ledger8CircuitContext]: never };
 
@@ -269,7 +269,7 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, PCK extends Ledg
    * encrypt shielded coins the circuit pays to a recipient other than the
    * calling wallet. A user-owned recipient that is neither the calling wallet,
    * the burn address, nor a key in this map is refused with
-   * `Ledger8RecipientUnmappableError` before anything is proven.
+   * `Ledger8CallUnsupportedError` (reason `'unmappable-recipient'`) before anything is proven.
    */
   readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
@@ -581,7 +581,7 @@ interface Ledger8DeployContractOptionsShared<C extends Ledger8Contract> {
    * The same `{ tag, value }` shape the current era takes. The retained era
    * signs with `schnorr` only, so any other key -- or a value that is not
    * exactly 64 hexadecimal characters -- is refused with
-   * `Ledger8SigningKeyUnusableError` before anything is composed.
+   * `Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.
    */
   readonly signingKey?: SigningKey;
 }
@@ -699,7 +699,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    * VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
    * value is exactly 64 hexadecimal characters, which is what that era's
    * `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
-   * length, and those are refused with `Ledger8SigningKeyUnusableError`.
+   * length, and those are refused with `Ledger8SigningKeyError` (reason `'unusable'`).
    * Nothing is written when it is refused.
    *
    * Stored against {@link Ledger8FindDeployedContractOptions.contractAddress}
@@ -725,7 +725,7 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  *
  * ONE signature per circuit, where `Ledger9CircuitCallTxInterface`
  * has two: the retained era cannot join a scoped transaction — a scope refuses
- * a retained-era call with `MixedEraScopeError` — so there is no context-taking
+ * a retained-era call with `EraMismatchError` (reason `'ledger8-call-in-scope'`) — so there is no context-taking
  * overload to declare.
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
@@ -1016,7 +1016,7 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * one the rest of this package uses.
  *
  * DO NOT DELETE AS UNUSED, and do not inline it either. It is consumed by
- * `EraArtifactMismatchError` in `./errors`, which is what `resolveArtifactEra` in `./internal/era`
+ * `EraMismatchError` in `./errors`, which is what `resolveArtifactEra` in `./internal/era`
  * raises when it is handed an object belonging to neither era.
  * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim, and it is not re-exported
  * from the package index.
