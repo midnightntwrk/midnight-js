@@ -37,10 +37,14 @@ import {
   type Ledger9PublicStates,
   requireLedger8Contract,
   requireLedger9Contract,
-  resolveArtifactEra,
-  unsupportedContractEra
+  resolveEraRequest
 } from './internal/era';
-import { buildLedger8CallTx, buildLedger8CallTxFromStates, toLedger8CallEntryOptions } from './internal/ledger8-entry';
+import {
+  assertLedger8TransactionProviders,
+  buildLedger8CallTx,
+  buildLedger8CallTxFromStates,
+  toLedger8CallEntryOptions
+} from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -605,6 +609,12 @@ export async function createLedger8UnprovenCallTxFromInitialStates(
   return buildLedger8CallTxFromStates(zkConfigProvider, options, walletEncryptionPublicKey);
 }
 
+export function createUnprovenCallTxFromInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger8CallOptionsWithInitialStates<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: Ledger9CallOptionsWithProviderDataDependencies<C, PCK>,
@@ -621,31 +631,38 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
 
 /**
  * Creates an unproven call transaction from the provided initial states, for a contract of the era
- * its artifacts declare. A ledger 9 contract runs {@link createLedger9UnprovenCallTxFromInitialStates}, whose documentation covers
+ * its artifacts declare. A ledger 9 contract runs {@link createLedger9UnprovenCallTxFromInitialStates}, a
+ * ledger 8 contract {@link createLedger8UnprovenCallTxFromInitialStates}; their documentation covers
  * the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
- *         function does not serve, after the artifact era is read and before anything else, and with
- *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
  *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
  */
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptions<C, PCK>,
+  options: Ledger9CallOptions<C, PCK> | AnyLedger8CallOptionsWithInitialStates,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  const era = await resolveArtifactEra(options.compiledContract, zkConfigProvider);
-  switch (era) {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
+  const request = await resolveEraRequest<AnyLedger8CallOptionsWithInitialStates, Ledger9CallOptions<C, PCK>>(
+    options,
+    zkConfigProvider
+  );
+  switch (request.era) {
     case 'v9':
-      return createLedger9UnprovenCallTxFromInitialStates(zkConfigProvider, options, walletEncryptionPublicKey, crossContract);
+      return createLedger9UnprovenCallTxFromInitialStates(zkConfigProvider, request.options, walletEncryptionPublicKey, crossContract);
     case 'v8':
-      throw unsupportedContractEra('createUnprovenCallTxFromInitialStates', era);
+      return buildLedger8CallTxFromStates(zkConfigProvider, request.options, walletEncryptionPublicKey);
     default:
-      return assertNever(era, 'createUnprovenCallTxFromInitialStates');
+      return assertNever(request, 'createUnprovenCallTxFromInitialStates');
   }
 }
+
+export async function createUnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 export async function createUnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
@@ -661,27 +678,35 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
 
 /**
  * Creates an unproven call transaction for a contract of the era its artifacts declare. A ledger 9
- * contract runs {@link createLedger9UnprovenCallTx}, whose documentation covers
- * the parameters and the privacy-sensitive result.
+ * contract runs {@link createLedger9UnprovenCallTx}, a ledger 8 contract {@link createLedger8UnprovenCallTx};
+ * their documentation covers the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
- *         function does not serve, after the artifact era is read and before anything else, and with
- *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 8 contract called with a
+ *         transaction context: a ledger 8 call cannot join a scoped transaction.
+ * @throws InvalidArgumentError for a ledger 8 contract given without `publicDataProvider`,
+ *         `proofProvider` or `midnightProvider`, before the network is read.
+ *
+ * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
  *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
  */
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
-  options: Ledger9CallTxOptions<C, PCK>,
+  options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: Ledger9TransactionContext<C, PCK>
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  const era = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  switch (era) {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
+  const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
     case 'v9':
-      return createLedger9UnprovenCallTx(providers, options, transactionContext);
+      return createLedger9UnprovenCallTx(providers, request.options, transactionContext);
     case 'v8':
-      throw unsupportedContractEra('createUnprovenCallTx', era);
+      Transaction.assertScopeAdmitsLedger8Call(request.options.circuitId, transactionContext);
+      assertLedger8TransactionProviders(providers, 'createUnprovenCallTx');
+      return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(request.options))).data;
     default:
-      return assertNever(era, 'createUnprovenCallTx');
+      return assertNever(request, 'createUnprovenCallTx');
   }
 }

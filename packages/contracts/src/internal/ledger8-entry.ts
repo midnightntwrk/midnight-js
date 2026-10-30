@@ -237,6 +237,31 @@ export const acquireLedger8Runtime = async (
 };
 
 /**
+ * Refuses a provider set that cannot carry a retained-era operation. The retained-era path reads the
+ * head and checks the transaction providers before it builds anything, and a router's ledger 9
+ * overloads take a narrower set, so a caller the compiler never checked can reach it without them.
+ *
+ * @param providers The provider set a router received.
+ * @param functionName The router, for the message.
+ * @throws InvalidArgumentError naming every missing provider.
+ */
+export function assertLedger8TransactionProviders<P extends object>(
+  providers: P,
+  functionName: string
+): asserts providers is P & Pick<Ledger8EntryProviders, 'publicDataProvider' | 'proofProvider' | 'midnightProvider'> {
+  const missing = (['publicDataProvider', 'proofProvider', 'midnightProvider'] as const).filter(
+    (name) => !(name in providers)
+  );
+  if (missing.length > 0) {
+    throw new InvalidArgumentError(
+      `${functionName} was given a ledger 8 contract without ${missing.map((name) => `'${name}'`).join(', ')}. ` +
+        'A ledger 8 contract is built with the full provider set: it reads the network head and checks ' +
+        'the transaction providers before anything is built.'
+    );
+  }
+}
+
+/**
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *

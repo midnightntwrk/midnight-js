@@ -15,8 +15,17 @@
 
 import { describe, expectTypeOf, it } from 'vitest';
 
-import { type Ledger8CallOptionsWithInitialStates, type Ledger8UnsubmittedCallTxData } from '../../index';
-import { createLedger8UnprovenCallTxFromInitialStates } from '../../index';
+import {
+  createLedger8UnprovenCallTxFromInitialStates,
+  createUnprovenCallTx,
+  createUnprovenDeployTx,
+  type Ledger8CallOptionsWithInitialStates,
+  type Ledger8ContractProviders,
+  type Ledger8FinalizedDeployTxData,
+  type Ledger8UnsubmittedCallTxData,
+  type Ledger8UnsubmittedDeployTxData,
+  submitDeployTx
+} from '../../index';
 import type { CoinReceiver016Coin, CoinReceiver016Contract, Counter016Contract } from '../ledger8-fixture-types';
 
 declare const zkConfigProvider: Parameters<typeof createLedger8UnprovenCallTxFromInitialStates>[0];
@@ -91,5 +100,27 @@ describe('createLedger8UnprovenCallTxFromInitialStates', () => {
       },
       encryptionPublicKey
     );
+  });
+});
+
+declare const counterProviders: Ledger8ContractProviders<Counter016Contract, 'increment'>;
+
+describe('the unprefixed routers answer a ledger 8 contract with the ledger 8 result types', () => {
+  it('createUnprovenCallTx', () => {
+    expectTypeOf(
+      createUnprovenCallTx(counterProviders, { compiledContract: counter, contractAddress: '00'.repeat(32), circuitId: 'increment' })
+    ).resolves.toEqualTypeOf<Ledger8UnsubmittedCallTxData<Counter016Contract, 'increment'>>();
+  });
+
+  it('createUnprovenDeployTx', () => {
+    expectTypeOf(createUnprovenDeployTx(counterProviders, { compiledContract: counter })).resolves.toEqualTypeOf<
+      Ledger8UnsubmittedDeployTxData<Counter016Contract>
+    >();
+  });
+
+  it('submitDeployTx', () => {
+    expectTypeOf(submitDeployTx(counterProviders, { compiledContract: counter })).resolves.toEqualTypeOf<
+      Ledger8FinalizedDeployTxData<Counter016Contract>
+    >();
   });
 });

@@ -19,7 +19,7 @@ import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { TxFailedError } from './errors';
-import { requireLedger8Contract, requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
+import { requireLedger8Contract, requireLedger9Contract, resolveEraRequest } from './internal/era';
 import { deployLedger8Contract, toLedger8DeployEntryOptions } from './internal/ledger8-entry';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import type {
@@ -183,6 +183,11 @@ export async function submitLedger8DeployTx(
   return deployLedger8Contract(providers, toLedger8DeployEntryOptions(options));
 }
 
+export async function submitDeployTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8DeployContractOptions<C>
+): Promise<Ledger8FinalizedDeployTxData<C>>;
+
 export async function submitDeployTx<C extends Contract<undefined>>(
   providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: Ledger9DeployTxOptionsBase<C>
@@ -195,27 +200,31 @@ export async function submitDeployTx<C extends Contract.Any>(
 
 /**
  * Creates and submits a deploy transaction for a contract of the era its artifacts declare. A
- * ledger 9 contract runs {@link submitLedger9DeployTx}, whose documentation covers
- * the parameters and the privacy-sensitive result.
+ * ledger 9 contract runs {@link submitLedger9DeployTx}, a ledger 8 contract {@link submitLedger8DeployTx};
+ * their documentation covers the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
- *         function does not serve, after the artifact era is read and before anything else, and with
- *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ * @throws InvalidArgumentError, IncompleteDeployContractPrivateStateConfig If `privateStateId` and
+ *         `initialPrivateState` are not given together. Raised before any provider is touched.
+ *
+ * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
  *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
- *         `deployContract` deploys contracts of both eras.
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
-  options: Ledger9DeployTxOptions<C>
-): Promise<Ledger9FinalizedDeployTxData<C>> {
-  const era = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  switch (era) {
+  options: Ledger9DeployTxOptions<C> | AnyLedger8DeployContractOptions
+): Promise<Ledger9FinalizedDeployTxData<C> | AnyLedger8FinalizedDeployTxData> {
+  assertDeployPrivateStatePairing(options);
+  const request = await resolveEraRequest<AnyLedger8DeployContractOptions, Ledger9DeployTxOptions<C>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
     case 'v9':
-      return submitLedger9DeployTx(providers, options);
+      return submitLedger9DeployTx(providers, request.options);
     case 'v8':
-      throw unsupportedContractEra('submitDeployTx', era);
+      return deployLedger8Contract(providers, toLedger8DeployEntryOptions(request.options));
     default:
-      return assertNever(era, 'submitDeployTx');
+      return assertNever(request, 'submitDeployTx');
   }
 }

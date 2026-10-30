@@ -108,11 +108,16 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
-import { submitLedger8DeployTx } from '../submit-deploy-tx';
+import { submitDeployTx, submitLedger8DeployTx } from '../submit-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { createCallTxOptions } from '../tx-interfaces';
-import { createLedger8UnprovenCallTx } from '../unproven-call-tx';
-import { createLedger8UnprovenDeployTx, createLedger8UnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
+import { createLedger8UnprovenCallTx, createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import {
+  createLedger8UnprovenDeployTx,
+  createLedger8UnprovenDeployTxFromVerifierKeys,
+  createUnprovenDeployTx,
+  createUnprovenDeployTxFromVerifierKeys
+} from '../unproven-deploy-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type {
   CoinReceiver016Circuits,
@@ -3029,6 +3034,96 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
     expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
     expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+  });
+
+  describe('the unprefixed low-level routers send a ledger 8 contract to its ledger 8 function', () => {
+    const callOptions = (): Ledger8CallTxOptions<CoinReceiver016Contract, typeof CIRCUIT_ID> => ({
+      compiledContract: contract,
+      contractAddress: recording.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: [recording.receivedCoin]
+    });
+
+    it('createUnprovenCallTx', async () => {
+      const providers = deployProviders();
+
+      const built = await createUnprovenCallTx(providers, callOptions());
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('createUnprovenCallTx refuses a ledger 8 call inside a scoped transaction', async () => {
+      const providers = deployProviders();
+      const notAContext = { scope: 'not a transaction context' };
+
+      // @ts-expect-error - the ledger 8 overload takes no transaction context
+      const building = createUnprovenCallTx(providers, callOptions(), notAContext);
+
+      await expect(building).rejects.toBeInstanceOf(InvalidArgumentError);
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    });
+
+    it('createUnprovenCallTxFromInitialStates', async () => {
+      const providers = deployProviders();
+      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+
+      const built = await createUnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          head: 'v8',
+          initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+          ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() },
+          coinPublicKey: recording.coinPublicKey,
+          config: providers.config
+        },
+        providers.walletProvider.getEncryptionPublicKey()
+      );
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('createUnprovenDeployTx', async () => {
+      const providers = deployProviders();
+
+      const built = await createUnprovenDeployTx(providers, { compiledContract: contract });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('createUnprovenDeployTxFromVerifierKeys', async () => {
+      const providers = deployProviders();
+
+      const built = await createUnprovenDeployTxFromVerifierKeys(
+        providers.zkConfigProvider,
+        recording.coinPublicKey,
+        { compiledContract: contract },
+        providers.walletProvider.getEncryptionPublicKey(),
+        providers.config
+      );
+
+      expect(built.era).toBe('v8');
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('submitDeployTx', async () => {
+      const providers = deployProviders();
+
+      const deployed = await submitDeployTx(providers, { compiledContract: contract });
+
+      expect(deployed.era).toBe('v8');
+      expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
+        deployed.public.contractAddress,
+        deployed.private.signingKey
+      );
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('the ledger 8 deploy low-level functions', () => {
