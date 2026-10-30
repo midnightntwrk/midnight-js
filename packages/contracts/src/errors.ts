@@ -930,14 +930,14 @@ export class UnknownResultEraError extends MidnightJsError {
  * A transaction this framework submitted that the chain recorded with a
  * non-success status, in EITHER era. The one class to catch.
  *
- * Each subclass keeps its own historical member -- `finalizedTxData` on the
- * current era's, `txData` on the retained one -- so nothing reading those
- * breaks. {@link AnyEraTxFailedError.record} is the member to write new code
- * against, and it needs narrowing on `era` before `tx` is touched.
+ * The record has a different member on each ledger -- `finalizedTxData` on
+ * {@link Ledger9TxFailedError}, `txData` on the ledger 8 classes.
+ * {@link TxFailedError.record} is the member both share, and it needs
+ * narrowing on `era` before `tx` is touched.
  *
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
-export abstract class AnyEraTxFailedError extends MidnightJsError {
+export abstract class TxFailedError extends MidnightJsError {
   /**
    * The one code every recorded-failure class in this package answers to.
    *
@@ -963,10 +963,10 @@ export abstract class AnyEraTxFailedError extends MidnightJsError {
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  *
- * The current era's subclass of {@link AnyEraTxFailedError}: its record is always
+ * The ledger 9 subclass of {@link TxFailedError}: its record is always
  * the v9 one. Catch the base to catch both eras.
  */
-export class TxFailedError extends AnyEraTxFailedError {
+export class Ledger9TxFailedError extends TxFailedError {
   /**
    * @param finalizedTxData The finalization data of the transaction that failed.
    * @param circuitId The name of the circuit that was called to create the call
@@ -978,6 +978,7 @@ export class TxFailedError extends AnyEraTxFailedError {
     public readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super('Transaction failed');
+    this.name = 'Ledger9TxFailedError';
     this.message = JSON.stringify(
       {
         ...(circuitId && { circuitId }),
@@ -992,7 +993,7 @@ export class TxFailedError extends AnyEraTxFailedError {
     );
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Always the v9 variant on this class. */
+  /** See {@link TxFailedError.record}. Always the v9 variant on this class. */
   get record(): FinalizedTxRead {
     return this.finalizedTxData;
   }
@@ -1001,13 +1002,13 @@ export class TxFailedError extends AnyEraTxFailedError {
 /**
  * An error indicating that a deploy transaction was not successfully applied by the consensus node.
  */
-export class DeployTxFailedError extends TxFailedError {
+export class Ledger9DeployTxFailedError extends Ledger9TxFailedError {
   /**
    * @param finalizedTxData The finalization data of the deployment transaction that failed.
    */
   constructor(finalizedTxData: Ledger9FinalizedTxData) {
     super(finalizedTxData);
-    this.name = 'DeployTxFailedError';
+    this.name = 'Ledger9DeployTxFailedError';
   }
 }
 
@@ -1020,7 +1021,7 @@ export class DeployTxFailedError extends TxFailedError {
  * its result describes: nothing about a transaction-level failure attributes
  * it to a single call within the transaction.
  */
-export class CallTxFailedError extends TxFailedError {
+export class Ledger9CallTxFailedError extends Ledger9TxFailedError {
   /**
    * @param finalizedTxData The finalization data of the call transaction that failed.
    * @param circuitId The name of the circuit that was called to build the transaction.
@@ -1030,7 +1031,7 @@ export class CallTxFailedError extends TxFailedError {
     circuitId: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super(finalizedTxData, circuitId);
-    this.name = 'CallTxFailedError';
+    this.name = 'Ledger9CallTxFailedError';
   }
 }
 
@@ -1351,18 +1352,18 @@ export class VerifierKeyMismatchError extends MidnightJsError {
  * An error indicating that a retained-era call was recorded on chain with a
  * status other than `SucceedEntirely`.
  *
- * The retained-era counterpart of {@link CallTxFailedError}, which cannot be
+ * The retained-era counterpart of {@link Ledger9CallTxFailedError}, which cannot be
  * reused because it carries a `Ledger9FinalizedTxData` where a retained
  * call is recorded as an era-tagged {@link FinalizedTxRead}.
  *
  * Carries no registered error code of its own. Branch on the class, or on the
- * inherited {@link AnyEraTxFailedError.code}, and read the record off
+ * inherited {@link TxFailedError.code}, and read the record off
  * {@link txData} rather than out of the message.
  *
  * @see {@link ErrorTaxonomy} for why this retained-era class registers no code, and for the
  * local-versus-chain consequence the message states per status.
  */
-export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
+export class Ledger8CallTxFailedError extends TxFailedError {
   constructor(
     readonly txData: FinalizedTxRead,
     readonly circuitId: string
@@ -1379,7 +1380,7 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8CallTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
+  /** See {@link TxFailedError.record}. Either variant on this class. */
   get record(): FinalizedTxRead {
     return this.txData;
   }
@@ -1398,12 +1399,12 @@ export class Ledger8CallTxFailedError extends AnyEraTxFailedError {
  * into the message: it is the only copy of the authority over a deployment that
  * may have landed.
  *
- * Carries no registered error code of its own; it inherits {@link AnyEraTxFailedError.code}.
+ * Carries no registered error code of its own; it inherits {@link TxFailedError.code}.
  *
  * @see {@link ErrorTaxonomy} for why a failed deploy is a separate class from a
  * failed call, why no code of its own is registered, and why the key is never rendered.
  */
-export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
+export class Ledger8DeployTxFailedError extends TxFailedError {
   /**
    * @param txData The record the read surface reported.
    * @param contractAddress The address this deployment composed.
@@ -1433,7 +1434,7 @@ export class Ledger8DeployTxFailedError extends AnyEraTxFailedError {
     this.name = 'Ledger8DeployTxFailedError';
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Either variant on this class. */
+  /** See {@link TxFailedError.record}. Either variant on this class. */
   get record(): FinalizedTxRead {
     return this.txData;
   }

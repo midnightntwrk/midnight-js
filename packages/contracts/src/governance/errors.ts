@@ -16,35 +16,35 @@
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { Ledger8FinalizedTxData,Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
-import { AnyEraTxFailedError, TxFailedError } from '../errors';
+import { Ledger9TxFailedError,TxFailedError } from '../errors';
 
 /**
  * An error indicating that a contract maintenance authority replacement transaction failed.
  */
-export class ReplaceMaintenanceAuthorityTxFailedError extends TxFailedError {
+export class Ledger9ReplaceMaintenanceAuthorityTxFailedError extends Ledger9TxFailedError {
   constructor(finalizedTxData: Ledger9FinalizedTxData) {
     super(finalizedTxData);
-    this.name = 'ReplaceMaintenanceAuthorityTxFailedError';
+    this.name = 'Ledger9ReplaceMaintenanceAuthorityTxFailedError';
   }
 }
 
 /**
  * An error indicating that a verifier key removal transaction failed.
  */
-export class RemoveVerifierKeyTxFailedError extends TxFailedError {
+export class Ledger9RemoveVerifierKeyTxFailedError extends Ledger9TxFailedError {
   constructor(finalizedTxData: Ledger9FinalizedTxData) {
     super(finalizedTxData);
-    this.name = 'RemoveVerifierKeyTxFailedError';
+    this.name = 'Ledger9RemoveVerifierKeyTxFailedError';
   }
 }
 
 /**
  * An error indicating that a verifier key insertion transaction failed.
  */
-export class InsertVerifierKeyTxFailedError extends TxFailedError {
+export class Ledger9InsertVerifierKeyTxFailedError extends Ledger9TxFailedError {
   constructor(finalizedTxData: Ledger9FinalizedTxData) {
     super(finalizedTxData);
-    this.name = 'InsertVerifierKeyTxFailedError';
+    this.name = 'Ledger9InsertVerifierKeyTxFailedError';
   }
 }
 
@@ -52,15 +52,15 @@ export class InsertVerifierKeyTxFailedError extends TxFailedError {
  * The retained-era counterpart of the three classes above: a maintenance update composed by the
  * ledger 8 pipeline that the chain recorded with a status other than `SucceedEntirely`.
  *
- * Not a subclass of {@link TxFailedError}, which carries a `Ledger9FinalizedTxData`; the record
+ * Not a subclass of {@link Ledger9TxFailedError}, which carries a `Ledger9FinalizedTxData`; the record
  * here is the ledger 8 one. Carries no registered error code of its own, exactly as
  * `Ledger8CallTxFailedError` does: branch on the class, or on the inherited
- * {@link AnyEraTxFailedError.code}.
+ * {@link TxFailedError.code}.
  *
  * A maintenance update sits in the guaranteed part of the transaction, so on `FailFallible` it may
  * have landed: the message says what to read before acting.
  */
-abstract class Ledger8MaintenanceTxFailedError extends AnyEraTxFailedError {
+abstract class Ledger8MaintenanceTxFailedError extends TxFailedError {
   constructor(
     readonly txData: Ledger8FinalizedTxData,
     readonly contractAddress: string,
@@ -73,7 +73,7 @@ abstract class Ledger8MaintenanceTxFailedError extends AnyEraTxFailedError {
     );
   }
 
-  /** See {@link AnyEraTxFailedError.record}. Always the ledger 8 variant on this class. */
+  /** See {@link TxFailedError.record}. Always the ledger 8 variant on this class. */
   get record(): Ledger8FinalizedTxData {
     return this.txData;
   }

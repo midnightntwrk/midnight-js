@@ -32,7 +32,7 @@ import type {
 } from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
-import { InsertVerifierKeyTxFailedError } from './errors';
+import { Ledger9InsertVerifierKeyTxFailedError } from './errors';
 import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
 
 /**
@@ -49,13 +49,13 @@ import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `InsertVerifierKeyTxFailedError` is thrown with transaction data
+ * - `Ledger9InsertVerifierKeyTxFailedError` is thrown with transaction data
  * - Verifier key is NOT added to the contract
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `InsertVerifierKeyTxFailedError` is thrown with transaction data
+ * - `Ledger9InsertVerifierKeyTxFailedError` is thrown with transaction data
  * - Verifier key may be partially added but not usable
  * - Transaction appears in blockchain history as partial success
  *
@@ -69,7 +69,7 @@ import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
  * @returns A promise that resolves with the finalized transaction data under `public`, tagged
  *          with the pipeline's `era`, or rejects if an error occurs along the way.
  *
- * @throws {InsertVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ * @throws {Ledger9InsertVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging. The retained-era overload
  *         raises `Ledger8InsertVerifierKeyTxFailedError` instead.
  * @throws {Ledger8MaintenanceOnLedger9Error} When a retained-era artifact is used after the fork.
@@ -136,7 +136,7 @@ export async function submitInsertVerifierKeyTx<C extends Contract.Any>(
   );
   const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
-    throw new InsertVerifierKeyTxFailedError(submitTxResult);
+    throw new Ledger9InsertVerifierKeyTxFailedError(submitTxResult);
   }
   return { era: 'v9', public: submitTxResult };
 }

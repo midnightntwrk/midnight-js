@@ -30,7 +30,7 @@ import {
 import { type CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
 import {
-  CallTxFailedError,
+  Ledger9CallTxFailedError,
   MixedEraScopeError,
   ScopedTransactionEraUnsupportedError,
   ScopedTransactionIdentityMismatchError} from '../errors';
@@ -245,7 +245,7 @@ export class TransactionContextImpl<
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
-      throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
+      throw new Ledger9CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
     }
     if (privateStateId) {
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);

@@ -18,7 +18,7 @@ sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
 ## One class to catch, two record types underneath
 
-`AnyEraTxFailedError` is the class to catch for "this framework submitted a
+`TxFailedError` is the class to catch for "this framework submitted a
 transaction and the chain recorded it as something other than success", in
 either era.
 
@@ -28,20 +28,19 @@ call is recorded by whichever era the network head is on, so its record is the
 era-tagged union `FinalizedTxRead` — which is not assignable to the
 v9 variant. Narrowing the current era's member to the union would change a type
 consumers already read, so that was not available either. Hence a retained-era
-class of its own rather than an extension of `TxFailedError`, and a base that
+class of its own rather than an extension of `Ledger9TxFailedError`, and a base that
 declares the union.
 
-Each subclass keeps its own historical member — `finalizedTxData` on the current
-era's, `txData` on the retained one — so nothing reading those breaks.
-`AnyEraTxFailedError.record` is the member to write new code against, and it
-needs narrowing on `era` before `tx` is touched.
+The record has a different member on each ledger — `finalizedTxData` on
+`Ledger9TxFailedError`, `txData` on the ledger 8 classes. `TxFailedError.record`
+is the member both share, and it needs narrowing on `era` before `tx` is touched.
 
 ### Why the shared code sits on the base
 
 The code is the contract (ADR 0017); `instanceof` is a convenience. It is
 identity-based: with two copies of this package resolved in one process it
 returns `false`, and a failed transaction walks past a correctly written handler.
-`AnyEraTxFailedError.code` is the branch that always works.
+`TxFailedError.code` is the branch that always works.
 
 Subclasses inherit that code rather than each declaring their own. What a caller
 needs to distinguish is WHICH transaction failed — which the class and the

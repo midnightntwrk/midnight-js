@@ -67,8 +67,10 @@ const submitBuiltTransaction = async (): Promise<types.FinalizedTxRead> => {
 // #endregion guide:submit-tx
 
 // #region guide:private-unproven-tx
-type AnyContract = protocol.Contract.Any;
-declare const callTx: contracts.UnsubmittedCallTxData<AnyContract, protocol.Contract.ProvableCircuitId<AnyContract>>;
+declare const callTx: contracts.UnsubmittedCallTxData<
+  contracts.Ledger9Contract,
+  protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+>;
 declare const proofProvider: types.ProofProvider;
 declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;
 

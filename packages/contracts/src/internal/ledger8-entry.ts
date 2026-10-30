@@ -637,7 +637,7 @@ export const findLedger8Contract = async (
  * Refuses a retained-era transaction the node recorded with a non-success
  * status.
  *
- * Raises the retained-era path's own class rather than {@link CallTxFailedError},
+ * Raises the retained-era path's own class rather than {@link Ledger9CallTxFailedError},
  * which carries a `Ledger9FinalizedTxData`.
  *
  * @param record The finalized record the read surface reported.

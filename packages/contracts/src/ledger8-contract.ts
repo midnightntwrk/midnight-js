@@ -214,7 +214,7 @@ export type Ledger8PrivateState<C extends Ledger8Contract> =
 export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircuits'] & string;
 
 /**
- * The arguments a caller supplies for circuit `K` on a retained-era contract.
+ * The arguments a caller supplies for circuit `PCK` on a retained-era contract.
  *
  * The leading {@link Ledger8CircuitContext} is stripped, exactly as the current
  * era's `Contract.CircuitParameters` strips its own leading `CircuitContext`:
@@ -229,8 +229,8 @@ export type Ledger8CircuitId<C extends Ledger8Contract> = keyof C['provableCircu
  * @see {@link OverloadTyping} for why a caller may not be handed the raw
  *      `Parameters<...>`.
  */
-export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Parameters<C['provableCircuits'][K]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
+export type Ledger8CircuitParameters<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  Parameters<C['provableCircuits'][PCK]> extends [Ledger8CircuitContext, ...infer A] ? A : never[];
 
 /**
  * The providers a retained-era call transaction needs.
@@ -241,8 +241,8 @@ export type Ledger8CircuitParameters<C extends Ledger8Contract, K extends Ledger
  * @see {@link OverloadTyping} for why there is no separate retained-era provider
  *      surface.
  */
-export type Ledger8ContractProviders<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> = MidnightProviders<
-  K,
+export type Ledger8ContractProviders<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> = MidnightProviders<
+  PCK,
   PrivateStateId,
   Ledger8PrivateState<C>
 >;
@@ -250,7 +250,7 @@ export type Ledger8ContractProviders<C extends Ledger8Contract, K extends Ledger
 /**
  * The target of a retained-era circuit invocation, without its arguments.
  */
-export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+export interface Ledger8CallTxTarget<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
    * The retained-era contract instance, passed raw — there is no
    * `CompiledContract` container for this era.
@@ -263,7 +263,7 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
   /**
    * The identifier of the circuit to call.
    */
-  readonly circuitId: K;
+  readonly circuitId: PCK;
   /**
    * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} used to
    * encrypt shielded coins the circuit pays to a recipient other than the
@@ -282,22 +282,22 @@ export interface Ledger8CallTxTarget<C extends Ledger8Contract, K extends Ledger
  * satisfy with an empty array, so the two eras do not disagree about the same zero-argument
  * circuit.
  */
-export type Ledger8CallTxOptionsBase<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Ledger8CircuitParameters<C, K> extends []
-    ? Ledger8CallTxTarget<C, K>
-    : Ledger8CallTxTarget<C, K> & {
+export type Ledger8CallTxOptionsBase<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  Ledger8CircuitParameters<C, PCK> extends []
+    ? Ledger8CallTxTarget<C, PCK>
+    : Ledger8CallTxTarget<C, PCK> & {
         /**
          * Arguments to pass to the circuit being called.
          */
-        readonly args: Ledger8CircuitParameters<C, K>;
+        readonly args: Ledger8CircuitParameters<C, PCK>;
       };
 
 /**
  * A retained-era call transaction configuration that also names where to store
  * the private state the call produces.
  */
-export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  Ledger8CallTxOptionsBase<C, K> & {
+export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  Ledger8CallTxOptionsBase<C, PCK> & {
     /**
      * The identifier for the private state of the contract.
      */
@@ -307,9 +307,9 @@ export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, K 
 /**
  * Retained-era call transaction configuration.
  */
-export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  | Ledger8CallTxOptionsBase<C, K>
-  | Ledger8CallTxOptionsWithPrivateStateId<C, K>;
+export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  | Ledger8CallTxOptionsBase<C, PCK>
+  | Ledger8CallTxOptionsWithPrivateStateId<C, PCK>;
 
 /**
  * The finalized data a retained-era call transaction resolves with.
@@ -331,8 +331,8 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, K extends Ledger8Cir
  * falls to `unknown` rather than to `never`, so a caller is handed a value it
  * has to check instead of one it cannot use.
  */
-export type Ledger8CircuitReturnType<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> =
-  ReturnType<C['provableCircuits'][K]> extends { readonly result: infer R } ? R : unknown;
+export type Ledger8CircuitReturnType<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  ReturnType<C['provableCircuits'][PCK]> extends { readonly result: infer R } ? R : unknown;
 
 /**
  * The public, non-sensitive half of a retained-era circuit execution.
@@ -381,8 +381,8 @@ export interface Ledger8CallResultPublic extends CallResultPublicBase {
  * and shielded coin material. Treat as confidential when logging, serializing
  * or transmitting.
  */
-export interface Ledger8CallResultPrivate<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
-  extends CallResultPrivateBase<Ledger8CircuitReturnType<C, K>, Ledger8PrivateState<C>>,
+export interface Ledger8CallResultPrivate<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>
+  extends CallResultPrivateBase<Ledger8CircuitReturnType<C, PCK>, Ledger8PrivateState<C>>,
     UnsubmittedTxDataBase {
   /**
    * The UNPROVEN transaction this call composed, in the era of the network
@@ -415,7 +415,7 @@ export type Ledger8FinalizedCallTxPublicData = Ledger8CallResultPublic & Finaliz
  * {@link Ledger8CallResultPublic} and {@link Ledger8CallResultPrivate} for what
  * they are, what stands in for them, and why.
  */
-export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
    * The pipeline that produced this result: always the retained era here, even
    * when the transaction that recorded it is a keep-state transaction tagged
@@ -423,9 +423,9 @@ export interface Ledger8FinalizedCallTxData<C extends Ledger8Contract, K extends
    * produced the objects below.
    */
   readonly era: 'v8';
-  readonly circuitId: K;
+  readonly circuitId: PCK;
   readonly public: Ledger8FinalizedCallTxPublicData;
-  readonly private: Ledger8CallResultPrivate<C, K>;
+  readonly private: Ledger8CallResultPrivate<C, PCK>;
   /** See {@link Ledger8UnsubmittedCallTxData.calls}. */
   readonly calls: readonly Ledger8ContractCall[];
 }
@@ -513,7 +513,7 @@ export interface Ledger8ContractCall<TState = Ledger8StateValue> {
  * finalized record — which is the one thing a submission that does not wait
  * for finalization cannot answer with.
  */
-export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K extends Ledger8CircuitId<C>> {
+export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> {
   /**
    * The pipeline that produced this result: always the retained era here, even
    * when the transaction that recorded it is a keep-state transaction tagged
@@ -522,7 +522,7 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
    */
   readonly era: 'v8';
   readonly public: Ledger8CallResultPublic;
-  readonly private: Ledger8CallResultPrivate<C, K>;
+  readonly private: Ledger8CallResultPrivate<C, PCK>;
   /**
    * Proof data for every contract call this circuit made, as the current era's
    * `CallResult.calls` carries. Always exactly ONE entry, the root call: a
@@ -540,8 +540,8 @@ export interface Ledger8UnsubmittedCallTxData<C extends Ledger8Contract, K exten
  * private state is reachable at `callTxData.private.nextPrivateState`, the one
  * path both eras publish it on.
  */
-export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>
-  extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, K>> {
+export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>
+  extends SubmittedCallTxBase<Ledger8UnsubmittedCallTxData<C, PCK>> {
   /**
    * The pipeline that produced this result: always the retained era here, even
    * when the transaction that recorded it is a keep-state transaction tagged
@@ -549,7 +549,7 @@ export interface Ledger8SubmittedCallTx<C extends Ledger8Contract, K extends Led
    * produced the objects below.
    */
   readonly era: 'v8';
-  readonly circuitId: K;
+  readonly circuitId: PCK;
 }
 
 /**
@@ -729,9 +729,9 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  * overload to declare.
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
-  [K in Ledger8CircuitId<C>]: (
-    ...args: Ledger8CircuitParameters<C, K>
-  ) => Promise<Ledger8FinalizedCallTxData<C, K>>;
+  [PCK in Ledger8CircuitId<C>]: (
+    ...args: Ledger8CircuitParameters<C, PCK>
+  ) => Promise<Ledger8FinalizedCallTxData<C, PCK>>;
 };
 
 /**

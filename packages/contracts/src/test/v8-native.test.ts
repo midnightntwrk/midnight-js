@@ -73,7 +73,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deployContract } from '../deploy-contract';
 import { isLedger8Result } from '../era-results';
 import {
-  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
   IncompleteDeployContractPrivateStateConfig,
@@ -88,6 +87,7 @@ import {
   Ledger8ShieldedSpendUnsupportedError,
   Ledger8SigningKeyUnusableError,
   ProviderFailedError,
+  TxFailedError,
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
@@ -2187,14 +2187,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
       const caught = await callAndCatch(providers);
 
       // TYPED, and carrying the record: the current era throws
-      // `CallTxFailedError` with the record on it, and a caller narrowing on a
+      // `Ledger9CallTxFailedError` with the record on it, and a caller narrowing on a
       // failed call must be able to read the status off this path too rather
       // than parse it out of a message.
       expect(caught).toBeInstanceOf(Ledger8CallTxFailedError);
       // And a caller that catches the era-agnostic base gets this one too --
       // asserted on the object the pipeline really threw rather than on a
       // constructed instance, because the claim is about the throw path.
-      expect(caught).toBeInstanceOf(AnyEraTxFailedError);
+      expect(caught).toBeInstanceOf(TxFailedError);
       expect((caught as Ledger8CallTxFailedError).record.status).toBe(FailEntirely);
       expect((caught as Ledger8CallTxFailedError).txData.status).toBe(FailEntirely);
       expect((caught as Ledger8CallTxFailedError).circuitId).toBe(CIRCUIT_ID);
@@ -2680,7 +2680,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     }
 
     expect(caught).toBeInstanceOf(Ledger8DeployTxFailedError);
-    expect(caught).toBeInstanceOf(AnyEraTxFailedError);
+    expect(caught).toBeInstanceOf(TxFailedError);
     expect((caught as Ledger8DeployTxFailedError).txData.status).toBe(FailEntirely);
     // The whole point of checking the record before storing: a deploy the chain
     // refused must leave no local private state ahead of it.
