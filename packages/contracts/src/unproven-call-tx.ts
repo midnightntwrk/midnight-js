@@ -19,7 +19,7 @@ import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { exitResultOrError, LedgerTransaction, makeContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
@@ -112,7 +112,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   }
 
   const contractExec = ContractExecutable.make(compiledContract);
-  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+  const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: options.coinPublicKey
   });
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;

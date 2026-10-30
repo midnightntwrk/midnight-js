@@ -21,7 +21,7 @@ import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-proto
 import {
   exitResultOrError,
   LedgerTransaction,
-  makeContractExecutableRuntime,
+  makeLedger9ContractExecutableRuntime,
   type MidnightConfig,
   type PrivateStateId,
   type ZKConfigProvider
@@ -129,7 +129,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
 ): Promise<UnsubmittedDeployTxData<C>> {
   assertValidMidnightConfig(config, 'config');
   const contractExec = ContractExecutable.make(options.compiledContract);
-  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+  const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: coinPublicKey,
     signingKey: options.signingKey
   });

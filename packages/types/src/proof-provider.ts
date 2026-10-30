@@ -45,7 +45,7 @@ export interface ProveTxConfig {
    * retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
    *
    * Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
-   * `InvalidArgumentError` instead of ignoring it: {@link createProofProvider},
+   * `InvalidArgumentError` instead of ignoring it: {@link createLedger9ProofProvider},
    * {@link createProofProviderFromProvingProviders} and `dappConnectorProofProvider`.
    */
   readonly timeout?: number;
@@ -81,14 +81,14 @@ export interface ProofProvider {
    *          `LedgerTransaction.unwrap(proven, proven.era)`.
    * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package.
    * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
-   *         {@link createProofProvider} serves v9 only; `httpClientProofProvider` and
+   *         {@link createLedger9ProofProvider} serves v9 only; `httpClientProofProvider` and
    *         `dappConnectorProofProvider` serve both eras.
    * @throws ForeignLedgerTransactionError if the proven transaction is not an object of the
    *         ledger copy this framework loaded for its era.
    * @throws InvalidTransactionHandleError if the proven transaction is not a ledger transaction
    *         object (`not-a-transaction`) or is not at the Unbound stage (`stage-mismatch`).
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-   *         apply it. {@link createProofProvider}, {@link createProofProviderFromProvingProviders} and
+   *         apply it. {@link createLedger9ProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
    *         `httpClientProofProvider` honours it.
    */
@@ -181,7 +181,7 @@ export interface ProvingProvidersByEra {
 const refuseTimeout = (config: ProveTxConfig | undefined): void => {
   if (config?.timeout !== undefined) {
     throw new InvalidArgumentError(
-      'proveTxConfig.timeout is not supported by createProofProvider or createProofProviderFromProvingProviders: ' +
+      'proveTxConfig.timeout is not supported by createLedger9ProofProvider or createProofProviderFromProvingProviders: ' +
         'a ProvingProvider takes no per-request configuration, so the timeout could not reach the proving call. ' +
         'Omit it, or use httpClientProofProvider, which honours it.'
     );
@@ -263,7 +263,7 @@ export const createProofProviderFromProvingProviders = (provingProviders: Provin
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
  * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
  */
-export const createProofProvider = (
+export const createLedger9ProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
 ): ProofProvider => createProofProviderFromProvingProviders({ v8: undefined, v9: provingProvider, costModel });
