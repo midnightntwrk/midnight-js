@@ -121,9 +121,8 @@ contract keeps its `Ledger9*` name, and the flat name, where it exists, is the u
   `Ledger9FinalizedDeployTxPublicData`. The two shapes differ: the ledger 8 record is read from chain
   and carries no `initialContractState`, so `Found` names it correctly.
 
-Not yet under the rule: `CallResult`, `CallOptions`, `UnsubmittedDeployTxData`, `DeployTxOptions`,
-`SubmitTxProviders`, `AnyProvableCircuitId` and `AnyPrivateState` have no prefix but serve ledger 9
-only. They are lower-level types outside this change.
+The lower-level names this change left without a prefix are under the rule since the
+2026-10-30 amendment below.
 
 The renames are listed in section 24 of `docs/releases/v5.0.0/breaking-changes.md`.
 
@@ -136,3 +135,34 @@ string. See the 2026-10-29 amendment of [ADR 0017](./0017-error-codes-are-the-co
 The `Ledger9*TxFailedError` classes named in the amendment above are gone too: every failed
 transaction, in either era, is one `TxFailedError` with an `operation`, and no class has a
 `Ledger8` or `Ledger9` failure subclass. The naming rule is unchanged.
+
+## Amendment — every public name bound to ledger 9 (2026-10-30)
+
+The rule now covers the whole public surface of `contracts`, `types`, `utils` and the
+`midnight-js` barrel (#1574):
+
+- A type bound to ledger 9 has the `Ledger9` prefix: one constrained to `Contract.Any`, one that
+  holds a ledger 9 object, or one re-exported from `protocol/v9`. The build-tools check
+  `unprefixedLedger9Types` flags an exported type alias or interface with a type parameter
+  constrained to `Contract.Any` that has no ledger prefix and is declared outside `era-aliases.ts`.
+- A low-level function exists once per era, named after it (`createLedger9UnprovenCallTx`), and once
+  as an unprefixed router per role (`createUnprovenCallTx`). The router reads the era once (the
+  artifact's declared runtime, or the network head for a scoped transaction), runs the function of
+  that era, and refuses an era it cannot serve with `EraMismatchError` before any other work. Its
+  `switch` is closed by `assertNever`, so a new ledger version fails the build at every router.
+  Internal pipelines call the per-era function, never the router, so the era is still read once per
+  operation.
+- A provider set is `MidnightProviders` in both eras. `SubmitTxProviders<C, PCK>` picks the era from
+  its contract. `submitTx` and `submitTxAsync` take a transaction of either era, so they take a
+  provider set of either era and no contract type parameter: TypeScript cannot infer a contract
+  from a conditional type, and per-era overloads would make `flag ? submitTx : submitTxAsync`
+  uncallable.
+- The barrel publishes the ledger 9 runtime names under `./protocol/v9` and the namespace
+  `ledger9Protocol`, as the `protocol` package names its subpaths.
+
+Without a prefix stay `AnyProvableCircuitId` and `AnyPrivateState` (they reduce to `string` and
+`any`, pinned by a type test), the every-era bases in `types`, and era-neutral names that have no
+contract parameter and hold no ledger object. `UnsubmittedDeployTxPublicData` holds a live ledger 9
+`ContractState` and is left for the follow-up of ADR 0020.
+
+The renames are listed in section 26 of `docs/releases/v5.0.0/breaking-changes.md`.

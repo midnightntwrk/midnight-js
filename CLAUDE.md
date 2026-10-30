@@ -77,7 +77,7 @@ On-chain state is bytes, never a decoded object. `watchForContractState`,
 `queryDeployContractState` and `contractStateObservable` return
 `ContractStateRead`; `queryContractState` returns
 `ContractStateAndParametersRead` (adds `ledgerParameters`);
-`queryZSwapAndContractState` and `TransactionContext.getCurrentStates()` return
+`queryZSwapAndContractState` and `Ledger9TransactionContext.getCurrentStates()` return
 `PublicStatesRead`. Each state is a `SerializedState` from `types` (bytes + `era`,
 the ledger that wrote them), made only by `SerializedState.fromBytes(era, kind, bytes)`.
 The caller decodes it with its own runtime:
@@ -86,7 +86,7 @@ with the framework's copy only where it builds a transaction. See
 [ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
 
 Implementing `WalletProvider` or `MidnightProvider` for v9 only? Use
-`createWalletProvider` / `createMidnightProvider` from `types` rather than
+`createLedger9WalletProvider` / `createLedger9MidnightProvider` from `types` rather than
 sealing by hand.
 
 Serving more than one era? Use `createProofProviderFromHandlers` /

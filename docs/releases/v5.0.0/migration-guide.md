@@ -93,7 +93,7 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ### Constructing a signing key
 
 ```diff
-  const options: ContractExecutableRuntimeOptions = {
+  const options: Ledger9ContractExecutableRuntimeOptions = {
     // ...
 -   signingKey: keyHex, // 64 hex characters (32 bytes)
 +   signingKey: { tag: 'schnorr', value: keyHex },
@@ -213,14 +213,14 @@ If you make calls that span multiple deployed contracts, resolve proving artifac
 
 ---
 
-## Step 11 — Read MIP-0002 log events from `CallResult` (optional)
+## Step 11 — Read MIP-0002 log events from `Ledger9CallResult` (optional)
 
-Local call results now surface their MIP-0002 log events on `Ledger9CallResultPublic.logEvents` (previously dropped). No change is required — the field is additive. To consume them, decode with the `ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
+Local call results now surface their MIP-0002 log events on `Ledger9CallResultPublic.logEvents` (previously dropped). No change is required — the field is additive. To consume them, decode with the `Ledger9ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
 
 ```ts
 import { contracts } from '@midnight-ntwrk/midnight-js';
 
-const logs = contracts.ContractLog.decodeAll(result.public.logEvents); // lenient — never throws
+const logs = contracts.Ledger9ContractLog.decodeAll(result.public.logEvents); // lenient — never throws
 ```
 
 ---
@@ -453,7 +453,7 @@ if (found.deployTxData.public.era === 'v9') {
 ### Implementing a provider
 
 If you *implement* `WalletProvider` or `MidnightProvider` for v9 only, wrap the
-implementation with `createWalletProvider` / `createMidnightProvider` rather
+implementation with `createLedger9WalletProvider` / `createLedger9MidnightProvider` rather
 than sealing by hand — see [breaking-changes.md 8e](./breaking-changes.md). The
 adapter unwraps each handle on the way in and seals your answer on the way out.
 
@@ -700,7 +700,7 @@ either era.
 Two limits to plan around. Both eras now name the circuit on the result, and
 both handles carry `compiledContract` and `contractAddress`, so the contract
 HANDLES differ in one place: the retained handle's
-`callTx.<circuit>(...)` takes no `TransactionContext`, so it cannot carry
+`callTx.<circuit>(...)` takes no `Ledger9TransactionContext`, so it cannot carry
 recipient key mappings (see below). Both handles carry the maintenance
 interfaces; the retained one works only before the fork, and after it the same
 contract is maintained through a handle built from the recompiled artifact. And `getStates` / `getPublicStates`
@@ -1097,7 +1097,7 @@ if (states !== null) {
 ```
 
 `getPublicStates` returns the same `PublicStatesRead`, and `getStates` adds
-`privateState`. Inside a scoped transaction, `TransactionContext.getCurrentStates()`
+`privateState`. Inside a scoped transaction, `Ledger9TransactionContext.getCurrentStates()`
 returns a `PublicStatesRead` too, with the running contract state; decode it the
 same way.
 
@@ -1359,6 +1359,33 @@ enumerable. Read it as `error.signingKey`; object spread and `JSON.stringify` le
 
 See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557).
 
+## Step 25 — Add `Ledger9` to the names bound to ledger 9
+
+Every public name that serves only ledger 9 now carries the ledger number (#1574). Rename
+your imports; nothing else changes for ledger 9 code.
+
+```ts
+// Before
+import type { CallOptions, CallResult, DeployTxOptions } from '@midnight-ntwrk/midnight-js/contracts';
+import { createWalletProvider } from '@midnight-ntwrk/midnight-js/types';
+import type { CompiledContract } from '@midnight-ntwrk/midnight-js/protocol';
+
+// After
+import type { Ledger9CallOptions, Ledger9CallResult, Ledger9DeployTxOptions } from '@midnight-ntwrk/midnight-js/contracts';
+import { createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js/types';
+import type { CompiledContract } from '@midnight-ntwrk/midnight-js/protocol/v9';
+```
+
+`createUnprovenCallTx`, `createUnprovenDeployTx`, `submitDeployTx`,
+`withContractScopedTransaction` and their siblings keep their names: they route on the era
+and refuse a ledger 8 contract with `EraMismatchError`. To call the ledger 9 body directly,
+use `createLedger9UnprovenCallTx` and the other `Ledger9` functions. Replace
+`isTransactionContext` with `isLedger9TransactionContext`, and `submitTx<C, PCK>(…)` with
+`submitTx<PCK>(…)`. The barrel namespace `protocol` is `ledger9Protocol`.
+
+The full table is in
+[breaking-changes.md](./breaking-changes.md#26-every-name-bound-to-ledger-9-carries-the-ledger-number-1574).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -1391,3 +1418,4 @@ See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-155
 - [ ] No import of `@midnight-ntwrk/midnight-js-protocol/ledger`, `/compact-runtime`, `/compact-js*` or `/onchain-runtime`, and no use of the root `ledger`, `compactRuntime`, `compactJs` or `onchainRuntime` namespaces.
 - [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
 - [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.
+- [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from `@midnight-ntwrk/midnight-js/protocol`.

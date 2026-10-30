@@ -279,11 +279,11 @@ import {
 
   // Types
   ContractProviders,
-  CallOptions,
-  CallResult,
+  Ledger9CallOptions,
+  Ledger9CallResult,
   FinalizedDeployTxData,
   UnsubmittedCallTxData,
-  UnsubmittedDeployTxData,
+  Ledger9UnsubmittedDeployTxData,
 
   // Errors
   ContractTypeError,

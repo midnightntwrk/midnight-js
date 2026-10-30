@@ -106,7 +106,7 @@ type SigningKey = string; // hex
 type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ```
 
-`ContractExecutableRuntimeOptions.signingKey` now uses the structured `SigningKey`.
+`Ledger9ContractExecutableRuntimeOptions.signingKey` now uses the structured `SigningKey`.
 
 ### Cross-contract call — new exports (#967)
 
@@ -167,8 +167,8 @@ export class TransactionEraMismatchError extends MidnightJsError { readonly expe
 
 // Adapters: lift a v9-only implementation into the handle interfaces.
 export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, on v9 ledger objects */ }
-export const createWalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
-export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+export const createLedger9WalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
+export const createLedger9MidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
 
 // Per-era factories: one handler per ledger era, `undefined` for an era not served.
 export const createProofProviderFromHandlers: (handlers: ProofProviderHandlers) => ProofProvider;
@@ -238,7 +238,7 @@ export class SerializedStateDecodeFailedError extends MidnightJsError { readonly
 In `contracts`:
 
 ```ts
-interface TransactionContext<C, PCK> {
+interface Ledger9TransactionContext<C, PCK> {
   getCurrentStates(): PublicStatesRead | undefined; // the running contract state, as bytes
 }
 export class PublicStatesEraMismatchError extends MidnightJsError {
@@ -297,27 +297,27 @@ interface MidnightProviders {
 
 | Symbol | Change |
 |--------|--------|
-| `CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
+| `Ledger9CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
 | `createUnprovenDeployTxFromVerifierKeys` | new last parameter `config: MidnightConfig` |
-| `UnprovenCallTxProvidersBase`, `UnprovenDeployTxProviders` | now include `config` |
+| `UnprovenCallTxProvidersBase`, `Ledger9UnprovenDeployTxProviders` | now include `config` |
 | `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
 
 
-### `Ledger9CallResultPublic.logEvents` + `ContractLog` re-export (#1083)
+### `Ledger9CallResultPublic.logEvents` + `Ledger9ContractLog` re-export (#1083)
 
 ```ts
 interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly logEvents: readonly LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
+  readonly logEvents: readonly Ledger9LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
 }
 
-// re-exported from compact-js through the barrel — reachable as contracts.ContractLog
-export const ContractLog: {
-  decodeAll(events: readonly LogEvent[]): DecodedLog[]; // lenient — never throws
+// re-exported from compact-js through the barrel — reachable as contracts.Ledger9ContractLog
+export const Ledger9ContractLog: {
+  decodeAll(events: readonly Ledger9LogEvent[]): DecodedLog[]; // lenient — never throws
 };
 ```
 
-The single `logEvents` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.logEvents)`.
+The single `logEvents` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.Ledger9ContractLog.decodeAll(result.public.logEvents)`.
 
 ### Era-invariant error (#1204)
 
@@ -350,7 +350,7 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9Fi
 export interface FoundDeployTxData<C extends Contract.Any> {
   readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;
-  readonly private: UnsubmittedDeployTxPrivateData<C>;
+  readonly private: Ledger9UnsubmittedDeployTxPrivateData<C>;
 }
 // FoundContract<C>['deployTxData'] is now FoundDeployTxData<C>
 ```
@@ -370,7 +370,7 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
     readonly initialPrivateState: Ledger8PrivateState<C>;
   };
 }
-export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
   readonly public: Ledger8FoundDeployTxData<C>['public'] & {
     readonly initialContractState: { serialize(): Uint8Array };
     readonly initialContractStateBytes: Uint8Array;
@@ -382,7 +382,7 @@ export interface Ledger8DeployTxData<C extends Ledger8Contract> extends Ledger8F
   };
 }
 // Ledger8FoundContract<C>['deployTxData'] is Ledger8FoundDeployTxData<C>;
-// Ledger8DeployedContract<C>['deployTxData'] is Ledger8DeployTxData<C>.
+// Ledger8DeployedContract<C>['deployTxData'] is Ledger8FinalizedDeployTxData<C>.
 // The top-level signingKey / initial* members are removed.
 ```
 
@@ -478,6 +478,32 @@ export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | 
 Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
 `AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`. See
 breaking-changes.md section 24. The error classes are in the next section.
+
+### Every name bound to ledger 9 carries the ledger number (#1574)
+
+```ts
+// contracts: the old low-level names route on the era; the ledger 9 bodies are named after it
+export function createUnprovenCallTx(/* unchanged overloads */): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>; // refuses ledger 8
+export function createLedger9UnprovenCallTx(/* same overloads */): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+// likewise createLedger9UnprovenCallTxFromInitialStates, createLedger9UnprovenDeployTx,
+// createLedger9UnprovenDeployTxFromVerifierKeys, submitLedger9DeployTx, withLedger9ContractScopedTransaction
+export const isLedger9TransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any>;
+export type Ledger9CircuitId<C extends Ledger9Contract> = Contract.ProvableCircuitId<C>;
+export type SubmitTxProviders<C extends AnyContract, PCK extends CircuitIdOf<C>> = /* the provider set of C's era, without privateStateProvider */;
+export function submitTx<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
+  options: SubmitTxOptions<PCK>
+): Promise<FinalizedTxRead>;
+// new EraMismatchReason: 'ledger8-contract-unsupported'
+```
+
+Renamed with the `Ledger9` prefix or infix: the ledger 9 call, constructor, deploy, find and
+unsubmitted-data types, `TransactionContext`, `CrossContractConfig`, `ContractLog`,
+`LogEvent`, `createProofProvider`, `createWalletProvider`, `createMidnightProvider`,
+`makeContractExecutableRuntime`, `ContractExecutableRuntimeOptions` and the five `utils`
+state deserializers. `Ledger8DeployTxData` is `Ledger8FinalizedDeployTxData`. The barrel
+subpath `./protocol` is `./protocol/v9` and its namespace `ledger9Protocol`. See
+breaking-changes.md section 26.
 
 ### One error class per fault (#1557)
 
@@ -686,8 +712,8 @@ export class DeserializationError extends Error {
 export function isDeserializationError(value: unknown): value is DeserializationError;
 
 // 6 typed wrappers (primary API)
-export function deserializeContractState(/* ... */): /* ... */;
-// ... decodeLedgerStateValue, etc.
+export function deserializeLedger9ContractState(/* ... */): /* ... */;
+// ... decodeLedger9StateValue, etc.
 
 // Escape hatch (sync-only)
 export function withDeserializationContext<T>(/* ... */): T;
