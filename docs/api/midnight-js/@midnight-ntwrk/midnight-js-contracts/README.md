@@ -13,7 +13,6 @@
 - [ErrorTaxonomy](documents/ErrorTaxonomy.md)
 - [KeepStatePipeline](documents/KeepStatePipeline.md)
 - [OverloadTyping](documents/OverloadTyping.md)
-- [RetainedEraNamespace](documents/RetainedEraNamespace.md)
 - [ForkCrossedRemediation](documents/ForkCrossedRemediation.md)
 - [VerificationPath](documents/VerificationPath.md)
 

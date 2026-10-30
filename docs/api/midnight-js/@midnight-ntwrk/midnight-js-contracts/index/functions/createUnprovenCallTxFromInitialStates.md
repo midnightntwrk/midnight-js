@@ -6,48 +6,13 @@
 
 # Function: createUnprovenCallTxFromInitialStates()
 
-Calls a circuit using the provided initial `states` and creates an unbalanced,
-unproven, unsubmitted, call transaction.
-
-## Param
-
-**zkConfigProvider**
-
-## Param
-
-**options**
-
-Configuration.
-
-## Param
-
-**walletEncryptionPublicKey**
-
-## Param
-
-**crossContract**
-
-Enables cross-contract calls; required for circuits that make them.
+Creates an unproven call transaction from the provided initial states, for a contract of the era
+its artifacts declare. A ledger 9 contract runs [createLedger9UnprovenCallTxFromInitialStates](createLedger9UnprovenCallTxFromInitialStates.md).
 
 ## Throws
 
-ConfigurationError If `options.config` is missing.
-
-## Throws
-
-InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
-        whitespace.
-
-## Throws
-
-InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
-
-## Remarks
-
-The returned [Ledger9UnsubmittedCallTxData](../interfaces/Ledger9UnsubmittedCallTxData.md) is privacy-sensitive and carries
-the unproven transaction, ZK inputs/outputs, and next private state. See
-that type for handling guidance before logging, serializing, or
-transmitting the result.
+EraMismatchError with reason `'ledger8-contract-unsupported'` for a contract produced by
+        the ledger 8 Compact toolchain, after the artifact era is read and before anything else.
 
 ## Call Signature
 
@@ -71,7 +36,7 @@ transmitting the result.
 
 #### options
 
-[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithProviderDataDependencies`](../type-aliases/Ledger9CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -79,7 +44,7 @@ transmitting the result.
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 
@@ -107,7 +72,7 @@ transmitting the result.
 
 #### options
 
-[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithPrivateState`](../type-aliases/Ledger9CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -115,7 +80,7 @@ transmitting the result.
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 

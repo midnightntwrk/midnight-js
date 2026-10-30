@@ -28,7 +28,7 @@
 
 #### options
 
-[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithProviderDataDependencies`](../type-aliases/Ledger9CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -36,7 +36,7 @@
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 
@@ -64,7 +64,7 @@
 
 #### options
 
-[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithPrivateState`](../type-aliases/Ledger9CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -72,7 +72,7 @@
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 

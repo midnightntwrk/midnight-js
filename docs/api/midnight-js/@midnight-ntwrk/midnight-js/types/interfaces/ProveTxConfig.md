@@ -20,5 +20,5 @@ provider's internal retry/backoff means a `proveTx` call may take longer than th
 retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
 
 Honoured by `httpClientProofProvider`. Providers that cannot apply it reject `proveTx` with
-`InvalidArgumentError` instead of ignoring it: [createProofProvider](../variables/createProofProvider.md),
+`InvalidArgumentError` instead of ignoring it: [createLedger9ProofProvider](../variables/createLedger9ProofProvider.md),
 [createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md) and `dappConnectorProofProvider`.

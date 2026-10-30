@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger9DeployContractOptionsBase\<C\>
 
-> **Ledger9DeployContractOptionsBase**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
+> **Ledger9DeployContractOptionsBase**\<`C`\> = [`Ledger9DeployContractOptionsShared`](Ledger9DeployContractOptionsShared.md)\<`C`\> & `object`
 
 The [deployContract](../functions/deployContract.md) options variant for a contract whose private state is stored
 NOWHERE: the constructor runs against `undefined` and nothing is written.

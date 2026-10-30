@@ -68,7 +68,7 @@ authority. If undefined, a fresh one is sampled.
 The same `{ tag, value }` shape the current era takes. The retained era
 signs with `schnorr` only, so any other key -- or a value that is not
 exactly 64 hexadecimal characters -- is refused with
-`Ledger8SigningKeyUnusableError` before anything is composed.
+`Ledger8SigningKeyError` (reason `'unusable'`) before anything is composed.
 
 #### Inherited from
 

@@ -24,7 +24,7 @@
 
 #### options
 
-[`DeployTxOptionsBase`](../type-aliases/DeployTxOptionsBase.md)\<`C`\>
+[`Ledger9DeployTxOptionsBase`](../type-aliases/Ledger9DeployTxOptionsBase.md)\<`C`\>
 
 ### Returns
 
@@ -48,7 +48,7 @@
 
 #### options
 
-[`DeployTxOptionsWithPrivateStateId`](../type-aliases/DeployTxOptionsWithPrivateStateId.md)\<`C`\>
+[`Ledger9DeployTxOptionsWithPrivateStateId`](../type-aliases/Ledger9DeployTxOptionsWithPrivateStateId.md)\<`C`\>
 
 ### Returns
 

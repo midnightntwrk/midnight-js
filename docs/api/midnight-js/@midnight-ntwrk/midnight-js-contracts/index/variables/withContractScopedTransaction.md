@@ -49,7 +49,7 @@ created for all circuit calls made within `fn`.
 
 ## Throws
 
-When the network is on a ledger era that composes only
+with reason `'scope-on-ledger8-network'` When the network is on a ledger era that composes only
         one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
         runs, so no circuit is executed and no private state is touched.
 
