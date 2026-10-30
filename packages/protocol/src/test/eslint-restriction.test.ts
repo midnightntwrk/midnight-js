@@ -298,8 +298,7 @@ describe('plain-throw gate', () => {
 
   it.each([
     'packages/contracts/src/test/some-consumer.test.ts',
-    'packages/compact/src/some-cli.ts',
-    'packages/network-id/src/some-module.ts'
+    'packages/compact/src/some-cli.ts'
   ])('allows a plain throw in %s', async (filePath) => {
     expect(await lintMessagesFor(plainThrow, filePath, SYNTAX_RULE_ID)).toEqual([]);
   });
@@ -340,7 +339,7 @@ describe('plain-throw gate', () => {
     expect(messages).toEqual([]);
   });
 
-  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+  it.each(['packages/compact/src/some-cli.ts'])(
     'still gates unsafe casts in %s',
     async (filePath) => {
       const cast = 'export const f = (x: number) => x as unknown;\n';
@@ -348,7 +347,7 @@ describe('plain-throw gate', () => {
     }
   );
 
-  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+  it.each(['packages/compact/src/some-cli.ts'])(
     'still bans dynamic imports of protocol/v8 and protocol/v8/engine in %s',
     async (filePath) => {
       expect((await lintMessagesFor(dynamicImportStatement(LEDGER8_SUBPATH), filePath, SYNTAX_RULE_ID)).length).toBe(1);
@@ -356,7 +355,7 @@ describe('plain-throw gate', () => {
     }
   );
 
-  it.each(['packages/compact/src/some-cli.ts', 'packages/network-id/src/some-module.ts'])(
+  it.each(['packages/compact/src/some-cli.ts'])(
     'never disables %s outright in the exempt folders',
     async (filePath) => {
       const { rules } = await eslint.calculateConfigForFile(filePath);

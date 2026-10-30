@@ -40,7 +40,7 @@ Package layers (each layer depends on the one above):
 ```
 protocol                                       ← ledger/runtime bindings, era resolver
 types                                          ← provider interfaces (depends on protocol only)
-contracts, network-id, utils                   ← core logic
+contracts, utils                   ← core logic
 provider implementations (6 packages)          ← concrete providers
 midnight-js                                    ← barrel re-export
 testkit-js, testkit-js-e2e                     ← testing infrastructure

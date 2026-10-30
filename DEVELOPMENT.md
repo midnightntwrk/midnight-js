@@ -101,7 +101,7 @@ Create `.vscode/launch.json`:
 ### Adding a New Package
 
 1. Create directory under `packages/`
-2. Copy structure from existing package (e.g., `network-id`)
+2. Copy structure from existing package (e.g., `utils`)
 3. Update `package.json` with correct name and dependencies
 4. Add to `tsconfig.base.json` references if needed
 5. Build to verify: `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-<name>`

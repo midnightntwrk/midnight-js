@@ -142,7 +142,6 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
 | [@midnight-ntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
 | [@midnight-ntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
-| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Deprecated global network id (use `MidnightProviders.config`) |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
 | [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |

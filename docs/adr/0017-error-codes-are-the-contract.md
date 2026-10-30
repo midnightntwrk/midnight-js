@@ -32,8 +32,8 @@ chain, and a generic retry would submit it twice (a second deploy lands at a new
 first deploy's signing key).
 
 Building a plain `Error`/`TypeError`/`RangeError`/`AggregateError` to throw or reject with, and declaring a
-class that extends one of them directly, are forbidden in `packages/*/src` (tests, the `compact` CLI and
-`network-id` exempt; `network-id` is deprecated and being removed). The lint gate matches the usual shapes
+class that extends one of them directly, are forbidden in `packages/*/src` (tests and the `compact` CLI exempt).
+The lint gate matches the usual shapes
 (`throw new`, `throw Error(...)`, a variable later thrown, `Promise.reject`, `reject(...)`, `Effect.fail`);
 a plain error built only as a `cause` stays allowed. Failures of `fetch` at provider I/O seams, including
 reading the response body, are wrapped with the original on `cause`. An error midnight-js did not raise —

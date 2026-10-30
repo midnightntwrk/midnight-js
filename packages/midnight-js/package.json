@@ -13,10 +13,6 @@
       "types": "./dist/contracts.d.ts",
       "default": "./dist/contracts.js"
     },
-    "./network-id": {
-      "types": "./dist/network-id.d.ts",
-      "default": "./dist/network-id.js"
-    },
     "./protocol/v9": {
       "types": "./dist/protocol/v9.d.ts",
       "default": "./dist/protocol/v9.js"
@@ -44,7 +40,6 @@
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"

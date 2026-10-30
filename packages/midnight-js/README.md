@@ -26,7 +26,6 @@ const deployed = await contracts.deployContract(providers, {
 | Module       | Package                                  | Description                                    |
 | ------------ | ---------------------------------------- | ---------------------------------------------- |
 | `contracts`  | `@midnight-ntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
-| `networkId`  | `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id (ignored by the framework since 5.0.0) |
 | `types`      | `@midnight-ntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
 | `utils`      | `@midnight-ntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
 
@@ -146,15 +145,14 @@ import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
 ## Exports
 
 ```typescript
-// Namespace imports (all modules); `networkId` is deprecated and ignored by the framework since 5.0.0
-import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+// Namespace imports (all modules)
+import { contracts, types, utils } from '@midnight-ntwrk/midnight-js';
 
 // Ledger era vocabulary (named, not namespaced)
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js';
 
 // Sub-path imports (individual modules)
 import { ... } from '@midnight-ntwrk/midnight-js/contracts';
-import { ... } from '@midnight-ntwrk/midnight-js/network-id'; // deprecated
 import { ... } from '@midnight-ntwrk/midnight-js/types';
 import { ... } from '@midnight-ntwrk/midnight-js/utils';
 ```

@@ -36,7 +36,6 @@
   "devDependencies": {
     "@fast-check/vitest": "^0.5.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "rollup": "^4.60.4",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",

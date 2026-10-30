@@ -32,7 +32,6 @@ import type {
   VersionResolutionPath
 } from '../index';
 import * as midnightJs from '../index';
-import * as networkId from '../network-id';
 import * as ledger9Protocol from '../protocol/v9';
 import * as types from '../types';
 import * as utils from '../utils';
@@ -71,7 +70,6 @@ const EXPECTED_BARREL_EXPORTS = [
   'contracts',
   'latestNetworkLedgerVersion',
   'ledger9Protocol',
-  'networkId',
   'types',
   'utils',
   'versionOfRecord'
@@ -107,12 +105,6 @@ describe('barrel exports', () => {
   it('should export contracts namespace', () => {
     expect(midnightJs.contracts).toBeDefined();
     expect(typeof midnightJs.contracts).toBe('object');
-  });
-
-  it('should export networkId namespace', () => {
-    expect(midnightJs.networkId).toBeDefined();
-    expect(typeof midnightJs.networkId.setNetworkId).toBe('function');
-    expect(typeof midnightJs.networkId.getNetworkId).toBe('function');
   });
 
   it('should export types namespace', () => {
@@ -291,13 +283,6 @@ describe('sub-path exports', () => {
     expect(contracts).toBeDefined();
     const namespaceKeys = Object.keys(midnightJs.contracts).sort();
     const subpathKeys = Object.keys(contracts).sort();
-    expect(subpathKeys).toEqual(namespaceKeys);
-  });
-
-  it('should export network-id sub-path with same members as namespace', () => {
-    expect(networkId).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.networkId).sort();
-    const subpathKeys = Object.keys(networkId).sort();
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
