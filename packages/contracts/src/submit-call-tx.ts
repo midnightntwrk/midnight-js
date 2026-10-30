@@ -40,7 +40,7 @@ import { submitLedger9PayloadAsync } from './submit-tx';
 import { type Ledger9TransactionContext } from './transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9SubmittedCallTx } from './tx-model';
 import {
-  createUnprovenCallTx,
+  createLedger9UnprovenCallTx,
   type Ledger9CallTxOptions,
   type Ledger9CallTxOptionsBase,
   type Ledger9CallTxOptionsWithPrivateStateId} from './unproven-call-tx';
@@ -207,7 +207,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
       options.circuitId,
-      await createUnprovenCallTx(providers, options, txCtx),
+      await createLedger9UnprovenCallTx(providers, options, txCtx),
       hasPrivateStateId ? options.privateStateId : undefined
     );
   };
@@ -368,7 +368,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
     providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
-  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
+  const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);
 
   const txId = await submitLedger9PayloadAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,

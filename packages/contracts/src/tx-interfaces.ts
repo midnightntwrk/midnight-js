@@ -208,7 +208,7 @@ export function createCircuitCallTxInterface<C extends Contract.Any>(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: (...args: unknown[]) => {
-        const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
+        const txCtx = args.length > 0 && Transaction.isLedger9TransactionContext(args[0]) ? args[0] : undefined;
         const callArgs = txCtx ? args.slice(1) : args;
         const callOptions = createCallTxOptions<C, Contract.ProvableCircuitId<C>>(
           compiledContract,

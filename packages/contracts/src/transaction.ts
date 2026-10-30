@@ -16,7 +16,7 @@
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import type { Ledger9ContractStates, Ledger9PublicStates } from './internal/era';
@@ -103,7 +103,7 @@ export interface ScopedTransactionOptions {
  * @param u The value to check.
  * @returns `true` if `u` is a {@link Ledger9TransactionContext}, otherwise `false`.
  */
-export const isTransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any> =
+export const isLedger9TransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any> =
   Internal.isTransactionContext;
 
   /**
@@ -129,6 +129,41 @@ export const isTransactionContext: (u: unknown) => u is Ledger9TransactionContex
    * all; submit those calls individually with `submitCallTx`.
    */
 export const withContractScopedTransaction: <
+  C extends Contract.Any,
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+>(
+  providers: Ledger9ContractProviders<C, PCK>,
+  fn: (txCtx: Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  options?: ScopedTransactionOptions
+) => Promise<Ledger9FinalizedCallTxData<C, PCK>> =
+  async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+    providers: Ledger9ContractProviders<C, PCK>,
+    fn: (txCtx: Ledger9TransactionContext<C, PCK>) => Promise<void>,
+    options?: ScopedTransactionOptions
+  ): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
+    assertValidMidnightConfig(providers.config);
+    if (Internal.isTransactionContext<C, PCK>(options)) {
+      return Internal.scopedTransaction(providers, fn, options);
+    }
+    const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
+    switch (reading.head) {
+      case 'v9':
+        return Internal.scopedTransaction(providers, fn, options, reading);
+      case 'v8':
+        throw Internal.scopeRefusal(reading.head);
+      default:
+        return assertNever(reading.head, 'withContractScopedTransaction');
+    }
+  };
+
+/**
+ * Executes a function within a contract-scoped transaction on a ledger 9 head. The rules are those of
+ * {@link withContractScopedTransaction}.
+ *
+ * @throws {EraMismatchError} with reason `'scope-on-ledger8-network'` when the network is not on ledger 9.
+ *         Raised before `fn` runs.
+ */
+export const withLedger9ContractScopedTransaction: <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(

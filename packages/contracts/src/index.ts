@@ -210,13 +210,14 @@ export type {
   Ledger9ContractMaintenanceTxInterface
 } from './governance';
 export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from './submit-call-tx';
-export { Ledger9DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
+export { Ledger9DeployTxOptions, submitDeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
 export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
-  isTransactionContext,
+  isLedger9TransactionContext,
   Ledger9TransactionContext,
   ScopedTransactionOptions,
-  withContractScopedTransaction
+  withContractScopedTransaction,
+  withLedger9ContractScopedTransaction
 } from './transaction';
 export type { Ledger9CircuitCallTxInterface } from './tx-interfaces';
 export { createCallTxOptions, createCircuitCallTxInterface } from './tx-interfaces';
@@ -246,12 +247,16 @@ export type {
   Ledger9CallTxOptionsWithPrivateStateId
 } from './unproven-call-tx';
 export {
+  createLedger9UnprovenCallTx,
+  createLedger9UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
   type Ledger9CrossContractConfig,
   Ledger9UnprovenCallTxProvidersWithPrivateState,
   UnprovenCallTxProvidersBase} from './unproven-call-tx';
 export {
+  createLedger9UnprovenDeployTx,
+  createLedger9UnprovenDeployTxFromVerifierKeys,
   createUnprovenDeployTx,
   createUnprovenDeployTxFromVerifierKeys,
   Ledger9DeployTxOptionsBase,

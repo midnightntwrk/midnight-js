@@ -23,7 +23,7 @@ import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vites
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { deployContract, type Ledger9DeployContractOptionsBase, type Ledger9DeployedContract } from '../deploy-contract';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
-import type { submitDeployTx } from '../submit-deploy-tx';
+import type { submitLedger9DeployTx } from '../submit-deploy-tx';
 import { type Ledger9FinalizedDeployTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
@@ -36,7 +36,7 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({
-  submitDeployTx: vi.fn()
+  submitLedger9DeployTx: vi.fn()
 }));
 
 vi.mock('../tx-interfaces', () => ({
@@ -49,7 +49,7 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  let mockSubmitDeployTx: MockedFunction<typeof submitDeployTx>;
+  let mockSubmitDeployTx: MockedFunction<typeof submitLedger9DeployTx>;
 
   // The tests resolve unsubmitted-level tx data where the real function
   // returns finalized-level data; the code under test forwards the value
@@ -94,8 +94,8 @@ describe('deployContract', () => {
   };
 
   beforeEach(async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    mockSubmitDeployTx = vi.mocked(submitDeployTx);
+    const { submitLedger9DeployTx } = await import('../submit-deploy-tx');
+    mockSubmitDeployTx = vi.mocked(submitLedger9DeployTx);
     vi.clearAllMocks();
 
     providers = createMockProviders();

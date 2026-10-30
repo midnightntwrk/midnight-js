@@ -17,6 +17,7 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -40,6 +41,7 @@ import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } fr
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import {
   acquireHeadEra,
+  type HeadEraReading,
   type HeadVersionSource,
   type Ledger9ContractStates,
   type Ledger9PublicStates,
@@ -108,6 +110,25 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
 };
 
 /**
+ * Makes the ONE head read of a scope and breadcrumbs it, before any refusal.
+ *
+ * @internal
+ */
+export const readScopeHead = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<HeadEraReading> => {
+  const reading = await readHeadEra(pdp);
+  emitHeadResolution(logger, reading, 'operation-start');
+  return reading;
+};
+
+/**
+ * The refusal of a scope on a head era that composes one call per transaction.
+ *
+ * @internal
+ */
+export const scopeRefusal = (head: LedgerVersion): EraMismatchError =>
+  new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${head}'.` });
+
+/**
  * Resolves the ONE era reading a scope runs under, and refuses a scope the head
  * era cannot express.
  *
@@ -136,15 +157,14 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  *      are load-bearing.
  */
 export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<ResolvedOperationEra> => {
-  const reading = await readHeadEra(pdp);
-  emitHeadResolution(logger, reading, 'operation-start');
+  const reading = await readScopeHead(pdp, logger);
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${reading.head}'.` });
+    throw scopeRefusal(reading.head);
   }
 
   return acquireHeadEra(reading);
@@ -522,7 +542,8 @@ export const scopedTransaction = async <
 > (
   providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  ledger9Reading?: HeadEraReading
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
@@ -542,7 +563,11 @@ export const scopedTransaction = async <
   }
 
   const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const scopeEra = await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider);
+  // A reading the caller already took and admitted as ledger 9 is acquired, not read again.
+  const scopeEra =
+    ledger9Reading === undefined
+      ? await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider)
+      : await acquireHeadEra(ledger9Reading);
 
   return runScope<C, PCK>(providers, fn, undefined, options, scopeEra);
 };

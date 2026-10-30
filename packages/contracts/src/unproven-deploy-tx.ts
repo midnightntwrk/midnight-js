@@ -26,11 +26,12 @@ import {
   type PrivateStateId,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';
-import { isEffectContractError } from './errors';
+import { EraMismatchError, isEffectContractError } from './errors';
+import { resolveArtifactEra } from './internal/era';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './internal/utils';
 import type { Ledger9UnsubmittedDeployTxData } from './tx-model';
 
@@ -82,7 +83,7 @@ export type Ledger9DeployTxOptionsWithPrivateStateId<C extends Contract.Any> = L
  */
 export type Ledger9UnprovenDeployTxOptions<C extends Contract.Any> = Ledger9DeployTxOptionsBase<C> | Ledger9DeployTxOptionsWithPrivateState<C>;
 
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
+export function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: Ledger9DeployTxOptionsBase<C>,
@@ -90,7 +91,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefi
   config: MidnightConfig
 ): Promise<Ledger9UnsubmittedDeployTxData<C>>;
 
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+export function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: Ledger9DeployTxOptionsWithPrivateState<C>,
@@ -120,7 +121,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * initial Zswap state. See that type for handling guidance before logging,
  * serializing, or transmitting the result.
  */
-export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+export async function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: Ledger9UnprovenDeployTxOptions<C>,
@@ -191,12 +192,12 @@ export type Ledger9UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
   'zkConfigProvider' | 'walletProvider' | 'config'
 >;
 
-export async function createUnprovenDeployTx<C extends Contract<undefined>>(
+export async function createLedger9UnprovenDeployTx<C extends Contract<undefined>>(
   providers: Ledger9UnprovenDeployTxProviders<C>,
   options: Ledger9DeployTxOptionsBase<C>
 ): Promise<Ledger9UnsubmittedDeployTxData<C>>;
 
-export async function createUnprovenDeployTx<C extends Contract.Any>(
+export async function createLedger9UnprovenDeployTx<C extends Contract.Any>(
   providers: Ledger9UnprovenDeployTxProviders<C>,
   options: Ledger9DeployTxOptionsWithPrivateState<C>
 ): Promise<Ledger9UnsubmittedDeployTxData<C>>;
@@ -221,16 +222,89 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  * initial Zswap state. See that type for handling guidance before logging,
  * serializing, or transmitting the result.
  */
-export async function createUnprovenDeployTx<C extends Contract.Any>(
+export async function createLedger9UnprovenDeployTx<C extends Contract.Any>(
   providers: Ledger9UnprovenDeployTxProviders<C>,
   options: Ledger9UnprovenDeployTxOptions<C>
 ): Promise<Ledger9UnsubmittedDeployTxData<C>> {
   assertValidMidnightConfig(providers.config);
-  return createUnprovenDeployTxFromVerifierKeys(
+  return createLedger9UnprovenDeployTxFromVerifierKeys(
     providers.zkConfigProvider,
     parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
     options,
     providers.walletProvider.getEncryptionPublicKey(),
     providers.config
   );
+}
+
+export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  coinPublicKey: CoinPublicKey,
+  options: Ledger9DeployTxOptionsBase<C>,
+  encryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<Ledger9UnsubmittedDeployTxData<C>>;
+
+export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  coinPublicKey: CoinPublicKey,
+  options: Ledger9DeployTxOptionsWithPrivateState<C>,
+  encryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<Ledger9UnsubmittedDeployTxData<C>>;
+
+/**
+ * Creates an unproven deploy transaction from the verifier keys, for a contract of the era its
+ * artifacts declare. A ledger 9 contract runs {@link createLedger9UnprovenDeployTxFromVerifierKeys}.
+ *
+ * @throws EraMismatchError with reason `'ledger8-contract-unsupported'` for a contract produced by
+ *         the ledger 8 Compact toolchain, after the artifact era is read and before anything else.
+ */
+export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  coinPublicKey: CoinPublicKey,
+  options: Ledger9UnprovenDeployTxOptions<C>,
+  encryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<Ledger9UnsubmittedDeployTxData<C>> {
+  const era = await resolveArtifactEra(options.compiledContract, zkConfigProvider);
+  switch (era) {
+    case 'v9':
+      return createLedger9UnprovenDeployTxFromVerifierKeys(zkConfigProvider, coinPublicKey, options, encryptionPublicKey, config);
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-unsupported', { detail: 'Function: createUnprovenDeployTxFromVerifierKeys.' });
+    default:
+      return assertNever(era, 'createUnprovenDeployTxFromVerifierKeys');
+  }
+}
+
+export async function createUnprovenDeployTx<C extends Contract<undefined>>(
+  providers: Ledger9UnprovenDeployTxProviders<C>,
+  options: Ledger9DeployTxOptionsBase<C>
+): Promise<Ledger9UnsubmittedDeployTxData<C>>;
+
+export async function createUnprovenDeployTx<C extends Contract.Any>(
+  providers: Ledger9UnprovenDeployTxProviders<C>,
+  options: Ledger9DeployTxOptionsWithPrivateState<C>
+): Promise<Ledger9UnsubmittedDeployTxData<C>>;
+
+/**
+ * Creates an unproven deploy transaction for a contract of the era its artifacts declare. A ledger 9
+ * contract runs {@link createLedger9UnprovenDeployTx}.
+ *
+ * @throws EraMismatchError with reason `'ledger8-contract-unsupported'` for a contract produced by
+ *         the ledger 8 Compact toolchain, after the artifact era is read and before anything else.
+ */
+export async function createUnprovenDeployTx<C extends Contract.Any>(
+  providers: Ledger9UnprovenDeployTxProviders<C>,
+  options: Ledger9UnprovenDeployTxOptions<C>
+): Promise<Ledger9UnsubmittedDeployTxData<C>> {
+  const era = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  switch (era) {
+    case 'v9':
+      return createLedger9UnprovenDeployTx(providers, options);
+    case 'v8':
+      throw new EraMismatchError('ledger8-contract-unsupported', { detail: 'Function: createUnprovenDeployTx.' });
+    default:
+      return assertNever(era, 'createUnprovenDeployTx');
+  }
 }

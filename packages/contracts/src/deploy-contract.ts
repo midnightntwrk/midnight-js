@@ -38,7 +38,7 @@ import {
   type Ledger8DeployContractOptions,
   type Ledger8DeployedContract
 } from './ledger8-contract';
-import { type Ledger9DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
+import { type Ledger9DeployTxOptions, submitLedger9DeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } from './tx-interfaces';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
 
@@ -319,7 +319,7 @@ export async function deployContract<C extends Contract.Any>(
       contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, deployed.contractAddress)
     };
   }
-  const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
+  const deployTxData = await submitLedger9DeployTx(providers, createDeployTxOptions(options));
   return {
     era: 'v9',
     compiledContract: options.compiledContract,
