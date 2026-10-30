@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import type { FoundContract, Ledger9CallOptions } from '../contracts';
-import type { CompiledContract, Contract } from '../protocol';
+import type { CompiledContract, Contract } from '../protocol/v9';
 
 // The positive compile assertion for the protocol-annotation recipe in
 // llms.txt. The recipe below is real code reaching the framework only through
@@ -79,7 +79,7 @@ describe('llms.txt protocol annotation recipe', () => {
     const compiled = regionSource('llms:protocol-annotations');
     const name = packageName();
     const importLines = [
-      `import type { CompiledContract, Contract } from '${name}/protocol';`,
+      `import type { CompiledContract, Contract } from '${name}/protocol/v9';`,
       `import type { FoundContract, Ledger9CallOptions } from '${name}/contracts';`
     ].join('\n');
 

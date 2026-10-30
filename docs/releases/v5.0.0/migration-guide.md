@@ -331,11 +331,11 @@ console.log(unprovenTx.identifiers());
 After:
 
 ```ts
-import { contracts, type protocol, types } from '@midnight-ntwrk/midnight-js';
+import { contracts, type ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
 
 declare const callTx: contracts.UnsubmittedCallTxData<
   contracts.Ledger9Contract,
-  protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+  ledger9Protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
 >;
 declare const proofProvider: types.ProofProvider;
 declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;

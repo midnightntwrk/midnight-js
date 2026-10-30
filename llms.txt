@@ -423,7 +423,7 @@ annotations ship from `@midnight-ntwrk/midnight-js/protocol`, so naming them
 does not require installing a second package:
 
 ```typescript
-import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol';
+import type { CompiledContract, Contract } from '@midnight-ntwrk/midnight-js/protocol/v9';
 import type { FoundContract, Ledger9CallOptions } from '@midnight-ntwrk/midnight-js/contracts';
 
 type MyCompiled = CompiledContract.CompiledContract<Contract.Any, unknown>;
