@@ -325,6 +325,38 @@ const servedLedgerParameters = (
 };
 
 /**
+ * Decodes snapshot bytes whose era is already settled: fetched and dated by
+ * {@link readLedger8Snapshot}, or supplied by a caller that read the state itself.
+ *
+ * @param retainedEra The RETAINED era facade, which reads a retained-era envelope.
+ * @param headEra The head's era facade, which reads a current-era envelope.
+ * @param stateEra The era whose envelope the bytes carry.
+ * @param state The contract state bytes and the ledger parameters.
+ * @returns The snapshot, its extracted state and its decoded entry points.
+ * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
+ */
+export const decodeLedger8Snapshot = (
+  retainedEra: LedgerEra,
+  headEra: LedgerEra,
+  stateEra: LedgerVersion,
+  state: Ledger8SnapshotBytes
+): Ledger8Snapshot => {
+  // Read with the era the ENVELOPE names, never with the head's and never with
+  // a fixed one. A retained envelope is the retained ledger's to read -- pre-
+  // fork natively, post-fork as keep-state, where a pinned read still serves
+  // one. A current-era envelope belongs to the head's era, and post-fork it is
+  // what a contract looks like once the fork has translated it; its retained
+  // verifier keys survive that unchanged, so this pipeline is still the right
+  // one to run it.
+  const reader = stateEra === 'v8' ? retainedEra : headEra;
+  const encoded = reader.extractState(state.raw);
+  const decoded = reader.decodeContractState(state.raw);
+
+  return { state, encoded, decoded, stateEra };
+};
+
+/**
  * Fetches the one contract-state snapshot an operation runs against and dates
  * it against the head era.
  *
@@ -365,23 +397,10 @@ export const readLedger8Snapshot = async (
   );
 
   const stateEra = await resolveContractStateEra(head, read, pdp, logger);
-  const state: Ledger8SnapshotBytes = {
+  return decodeLedger8Snapshot(retainedEra, headEra, stateEra, {
     raw: read.contractState.serialize(),
     ledgerParameters: servedLedgerParameters(read)
-  };
-
-  // Read with the era the ENVELOPE names, never with the head's and never with
-  // a fixed one. A retained envelope is the retained ledger's to read -- pre-
-  // fork natively, post-fork as keep-state, where a pinned read still serves
-  // one. A current-era envelope belongs to the head's era, and post-fork it is
-  // what a contract looks like once the fork has translated it; its retained
-  // verifier keys survive that unchanged, so this pipeline is still the right
-  // one to run it.
-  const reader = stateEra === 'v8' ? retainedEra : headEra;
-  const encoded = reader.extractState(state.raw);
-  const decoded = reader.decodeContractState(state.raw);
-
-  return { state, encoded, decoded, stateEra };
+  });
 };
 
 /**
@@ -643,37 +662,28 @@ export interface Ledger8CallPipelineResult<TState> {
   readonly fallibleZswapOfferBytes: Uint8Array | undefined;
 }
 
-/**
- * Runs one call against a retained-era contract, in the order this module
- * exists to fix: fetch the one snapshot, date it, read the state and the key
- * set off it, check the key, execute the circuit, compose the transaction.
- *
- * @param request The era and engine to run against, the read surface, and the
- * call's own inputs.
- * @returns The serialized unproven transaction and what the circuit produced.
- * @throws ContractNotFoundError if no contract is deployed at the address.
- * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError, BlankVerifierKeySlotError,
- * VerifierKeyMismatchError from {@link readLedger8Snapshot}.
- * @throws LedgerParametersUnservedError if the read served no ledger parameters.
- * @throws PublicStatesEraMismatchError if the ledger parameters were written by another era than
- * the head the call is composed for.
- * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a shielded
- * coin the contract already held — see {@link spendsHeldCoin}.
- * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
- */
-export const runLedger8CallPipeline = async <TState>(
-  request: Ledger8CallPipelineRequest<TState>
-): Promise<Ledger8CallPipelineResult<TState>> => {
-  const { era, retainedEra, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
+/** {@link Ledger8CallPipelineRequest} without what reading the snapshot takes. */
+export type Ledger8ComposeCallRequest<TState> = Omit<
+  Ledger8CallPipelineRequest<TState>,
+  'publicDataProvider' | 'logger' | 'retainedEra'
+>;
 
-  const snapshot = await readLedger8Snapshot(
-    retainedEra,
-    era,
-    head,
-    publicDataProvider,
-    contractAddress,
-    request.logger
-  );
+/**
+ * {@link runLedger8CallPipeline} from the point the snapshot is in hand: every check, the
+ * execution and the composition, so a fetched snapshot and a caller-supplied one run the same
+ * code.
+ *
+ * @param request The era and engine to run against, and the call's own inputs.
+ * @param snapshot The contract state to run against, already dated.
+ * @returns The serialized unproven transaction and what the circuit produced.
+ * @throws Everything {@link runLedger8CallPipeline} raises after its snapshot read.
+ */
+export const composeLedger8Call = async <TState>(
+  request: Ledger8ComposeCallRequest<TState>,
+  snapshot: Ledger8Snapshot
+): Promise<Ledger8CallPipelineResult<TState>> => {
+  const { era, engine, head, contract, contractAddress, circuitId } = request;
+
   // Checked HERE and not inside `readLedger8Snapshot`, which is also the attach path's reader:
   // attaching only checks verifier keys and composes nothing, so it has no use for the block's
   // parameters and must not be refused for their absence. This path composes, so it does.
@@ -869,6 +879,39 @@ export const runLedger8CallPipeline = async <TState>(
     fallibleZswapOfferBytes: routed.fallibleBytes
   };
 };
+
+/**
+ * Runs one call against a retained-era contract, in the order this module
+ * exists to fix: fetch the one snapshot, date it, read the state and the key
+ * set off it, check the key, execute the circuit, compose the transaction.
+ *
+ * @param request The era and engine to run against, the read surface, and the
+ * call's own inputs.
+ * @returns The serialized unproven transaction and what the circuit produced.
+ * @throws ContractNotFoundError if no contract is deployed at the address.
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError, BlankVerifierKeySlotError,
+ * VerifierKeyMismatchError from {@link readLedger8Snapshot}.
+ * @throws LedgerParametersUnservedError if the read served no ledger parameters.
+ * @throws PublicStatesEraMismatchError if the ledger parameters were written by another era than
+ * the head the call is composed for.
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a shielded
+ * coin the contract already held — see {@link spendsHeldCoin}.
+ * @throws ComposeOptionError, ComposeFailedError if the era refuses the composed call.
+ */
+export const runLedger8CallPipeline = async <TState>(
+  request: Ledger8CallPipelineRequest<TState>
+): Promise<Ledger8CallPipelineResult<TState>> =>
+  composeLedger8Call(
+    request,
+    await readLedger8Snapshot(
+      request.retainedEra,
+      request.era,
+      request.head,
+      request.publicDataProvider,
+      request.contractAddress,
+      request.logger
+    )
+  );
 
 /** Everything one retained-era deploy needs. */
 export interface Ledger8DeployPipelineRequest {

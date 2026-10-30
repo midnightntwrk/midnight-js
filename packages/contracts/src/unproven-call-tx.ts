@@ -40,15 +40,17 @@ import {
   resolveArtifactEra,
   unsupportedContractEra
 } from './internal/era';
-import { buildLedger8CallTx, toLedger8CallEntryOptions } from './internal/ledger8-entry';
+import { buildLedger8CallTx, buildLedger8CallTxFromStates, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
   zswapCallsToNewCoins
 } from './internal/utils';
 import type {
+  AnyLedger8CallOptionsWithInitialStates,
   AnyLedger8CallTxOptions,
   AnyLedger8UnsubmittedCallTxData,
+  Ledger8CallOptionsWithInitialStates,
   Ledger8CallTxOptions,
   Ledger8CircuitId,
   Ledger8Contract,
@@ -558,6 +560,49 @@ export async function createLedger8UnprovenCallTx(
   await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger8UnprovenCallTx');
   assertValidMidnightConfig(providers.config);
   return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(options))).data;
+}
+
+export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger8CallOptionsWithInitialStates<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit of a ledger 8 contract against states the caller read itself, then creates an
+ * unproven, unsubmitted call transaction. Reads nothing from the network and stores nothing.
+ *
+ * `options.head` decides the transaction's ledger: `'v8'` builds a ledger 8 transaction, `'v9'` a
+ * ledger 9 one that keeps the contract's ledger 8 state. The contract state may be a ledger 8 state
+ * or, after a call migrated it, a ledger 9 one; label each state with the era that wrote it.
+ *
+ * @param zkConfigProvider The source of the circuit's verifier key and of the artifact era.
+ * @param options Configuration, including the states to run against.
+ * @param walletEncryptionPublicKey The calling wallet's encryption key.
+ *
+ * @returns All data produced by the circuit call and the unproven transaction.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, before anything else.
+ * @throws NetworkVersionStateMismatchError If the contract state was written by a later ledger than
+ *         `options.head`.
+ * @throws InvalidSerializedStateError If a state's bytes do not carry the era it is labelled with.
+ * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than
+ *         `options.head`.
+ * @throws Ledger8CallUnsupportedError If the circuit spends a coin the contract already holds, or pays
+ *         a recipient whose encryption key is unknown.
+ *
+ * @remarks
+ * The returned {@link Ledger8UnsubmittedCallTxData} is privacy-sensitive. See that type for
+ * handling guidance before logging, serializing, or transmitting the result.
+ */
+export async function createLedger8UnprovenCallTxFromInitialStates(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: AnyLedger8CallOptionsWithInitialStates,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<AnyLedger8UnsubmittedCallTxData> {
+  await requireLedger8Contract(options.compiledContract, zkConfigProvider, 'createLedger8UnprovenCallTxFromInitialStates');
+  return buildLedger8CallTxFromStates(zkConfigProvider, options, walletEncryptionPublicKey);
 }
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(

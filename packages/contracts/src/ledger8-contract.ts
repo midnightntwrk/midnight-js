@@ -40,6 +40,7 @@
 import type {
   ConstructorResultPojo,
   EncodedStateValue,
+  LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
 
@@ -67,6 +68,7 @@ import type {
   ContractCallPrivateBase,
   FinalizedTxRead,
   Ledger8FinalizedTxData,
+  MidnightConfig,
   MidnightProviders,
   PrivateStateId,
   SubmittedCallTxBase,
@@ -310,6 +312,42 @@ export type Ledger8CallTxOptionsWithPrivateStateId<C extends Ledger8Contract, PC
 export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
   | Ledger8CallTxOptionsBase<C, PCK>
   | Ledger8CallTxOptionsWithPrivateStateId<C, PCK>;
+
+/**
+ * A decoded ledger object of either era. Any runtime copy works: the framework reads only its
+ * serialized bytes.
+ */
+export interface Ledger8Serializable {
+  serialize(): Uint8Array;
+}
+
+/**
+ * Configuration for building a retained-era call on states the caller read itself, with
+ * `createLedger8UnprovenCallTxFromInitialStates`. Every era is stated, because after the fork a
+ * retained-era contract's state may already be a ledger 9 one.
+ */
+export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
+  Ledger8CallTxOptionsBase<C, PCK> & {
+    /** The era of the network head the transaction is built for. */
+    readonly head: LedgerVersion;
+    /**
+     * The contract state to run the circuit against, with the era of the ledger that wrote it:
+     * `'v8'` before the fork and after it until a call migrates the contract, `'v9'` after that.
+     */
+    readonly initialContractState: { readonly era: LedgerVersion; readonly state: Ledger8Serializable };
+    /** The ledger parameters of the block the state was read at, with the era that wrote them. */
+    readonly ledgerParameters: { readonly era: LedgerVersion; readonly parameters: Ledger8Serializable };
+    /** The Zswap public key of the current user. */
+    readonly coinPublicKey: CoinPublicKey;
+    /** Network and transaction settings, normally `providers.config`. */
+    readonly config: MidnightConfig;
+    /**
+     * The private state the circuit runs against.
+     *
+     * @remarks **Privacy-sensitive.**
+     */
+    readonly initialPrivateState?: Ledger8PrivateState<C>;
+  };
 
 /**
  * The finalized data a retained-era call transaction resolves with.
@@ -988,6 +1026,11 @@ export interface Ledger8DeployedContract<C extends Ledger8Contract> extends Ledg
  * the current era's. It is never the signature a caller sees — the overloads above it are.
  */
 export type AnyLedger8CallTxOptions = Ledger8CallTxOptions<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+/** @see {@link AnyLedger8CallTxOptions} */
+export type AnyLedger8CallOptionsWithInitialStates = Ledger8CallOptionsWithInitialStates<
+  Ledger8Contract,
+  Ledger8CircuitId<Ledger8Contract>
+>;
 /** @see {@link AnyLedger8CallTxOptions} */
 export type AnyLedger8FinalizedCallTxData = Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
 /** @see {@link AnyLedger8CallTxOptions} */

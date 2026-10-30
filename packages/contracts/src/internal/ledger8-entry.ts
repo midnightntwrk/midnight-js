@@ -36,6 +36,7 @@ import type {
   LedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
+  LEDGER_VERSIONS,
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
@@ -55,6 +56,7 @@ import {
   type ProofProvider,
   type PublicDataProvider,
   type ReadMethod,
+  SerializedState,
   SucceedEntirely,
   type TransactionProviders,
   type UnprovenTx,
@@ -76,6 +78,7 @@ import {
   Ledger8NotStoredError,
   Ledger8SigningKeyError,
   Ledger8UnconfirmedError,
+  NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
@@ -84,6 +87,7 @@ import {
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import type {
+  AnyLedger8CallOptionsWithInitialStates,
   AnyLedger8CallTxOptions,
   AnyLedger8FinalizedCallTxData,
   AnyLedger8SubmittedCallTx,
@@ -99,11 +103,14 @@ import {
 } from './era';
 import {
   assertSnapshotVerifierKey,
+  composeLedger8Call,
+  decodeLedger8Snapshot,
   type Ledger8CallPipelineResult,
   type Ledger8ConstructedState,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   type Ledger8MaintenanceUpdate,
+  type Ledger8SnapshotBytes,
   type Ledger8StateValue,
   readLedger8Snapshot,
   runLedger8CallPipeline,
@@ -862,6 +869,75 @@ export const buildLedger8CallTx = async (
   });
 
   return { data: toLedger8CallTxData(call), head: resolved.head };
+};
+
+/**
+ * Builds one retained-era call on states the caller read itself, and submits nothing. Reads
+ * neither the head nor the contract state: both come from `options`, with their eras.
+ *
+ * Runs the same checks, execution and composition as {@link buildLedger8CallTx} through
+ * {@link composeLedger8Call}; only the snapshot comes from the caller instead of the network.
+ *
+ * @param zkConfigProvider The source of the circuit's local verifier key.
+ * @param options The call and the states it runs against.
+ * @param walletEncryptionPublicKey The calling wallet's encryption key, for outputs paying it.
+ * @returns The execution data of the call.
+ * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
+ * circuit, or `options.config` is invalid.
+ * @throws NetworkVersionStateMismatchError if the state was written by a later ledger than the head.
+ * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
+ * @throws Everything {@link composeLedger8Call} raises.
+ */
+export const buildLedger8CallTxFromStates = async (
+  zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKey'>,
+  options: AnyLedger8CallOptionsWithInitialStates,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<AnyLedger8UnsubmittedCallTxData> => {
+  const { head, initialContractState, ledgerParameters } = options;
+  assertIsContractAddress(options.contractAddress);
+  if (!Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId)) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
+  assertValidMidnightConfig(options.config, 'options.config');
+  if (LEDGER_VERSIONS.indexOf(initialContractState.era) > LEDGER_VERSIONS.indexOf(head)) {
+    throw new NetworkVersionStateMismatchError(head, initialContractState.era);
+  }
+  assertEraCompatible('v8', head, 'call');
+
+  const state: Ledger8SnapshotBytes = {
+    raw: SerializedState.fromBytes(initialContractState.era, 'ContractState', initialContractState.state.serialize()).serialize(),
+    ledgerParameters: SerializedState.fromBytes(ledgerParameters.era, 'LedgerParameters', ledgerParameters.parameters.serialize())
+  };
+  const { networkId } = options.config;
+  const [era, engine, retainedEra] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);
+  const localVerifierKey = await zkConfigProvider.getVerifierKey(options.circuitId);
+  const coinPublicKey = parseCoinPublicKeyToHex(options.coinPublicKey, networkId);
+
+  const call = await composeLedger8Call(
+    {
+      era,
+      engine,
+      head,
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      circuitId: options.circuitId,
+      args: 'args' in options ? options.args : [],
+      coinPublicKey,
+      privateState: options.initialPrivateState,
+      localVerifierKey,
+      networkId,
+      ttl: intentTtl(options.config),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        networkId,
+        coinPublicKey,
+        walletEncryptionPublicKey,
+        options.additionalCoinEncPublicKeyMappings
+      )
+    },
+    decodeLedger8Snapshot(retainedEra, era, initialContractState.era, state)
+  );
+
+  return toLedger8CallTxData(call);
 };
 
 /**

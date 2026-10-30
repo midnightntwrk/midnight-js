@@ -127,6 +127,7 @@ export {
 // The retained era's types, flat. The entry-point overloads return them by these names, and a
 // dApp's declaration emit can name only what the package exports flat (TS4023).
 export type {
+  Ledger8CallOptionsWithInitialStates,
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,
   Ledger8CallTxOptions,
@@ -161,6 +162,7 @@ export type {
   Ledger8FoundDeployTxData,
   Ledger8InitialStateResult,
   Ledger8PrivateState,
+  Ledger8Serializable,
   Ledger8SubmittedCallTx,
   Ledger8UnsubmittedCallTxData,
   Ledger8Witness
@@ -250,6 +252,7 @@ export type {
 } from './unproven-call-tx';
 export {
   createLedger8UnprovenCallTx,
+  createLedger8UnprovenCallTxFromInitialStates,
   createLedger9UnprovenCallTx,
   createLedger9UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,

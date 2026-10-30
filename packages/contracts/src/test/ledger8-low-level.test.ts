@@ -16,8 +16,14 @@
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
-import { createLedger8UnprovenCallTx } from '../unproven-call-tx';
-import { createMockCompiledContract, createMockContractAddress, createMockProviders } from './test-mocks';
+import { createLedger8UnprovenCallTx, createLedger8UnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import {
+  createMockCoinPublicKey,
+  createMockCompiledContract,
+  createMockContractAddress,
+  createMockEncryptionPublicKey,
+  createMockProviders
+} from './test-mocks';
 
 type Providers = ReturnType<typeof createMockProviders>;
 
@@ -34,7 +40,24 @@ const ledger9CallOptions = () => ({
 
 const LEDGER8_FUNCTIONS: readonly (readonly [string, (providers: Providers) => Promise<unknown>])[] = [
   // @ts-expect-error a ledger 9 contract is not a ledger 8 contract
-  ['createLedger8UnprovenCallTx', (providers) => createLedger8UnprovenCallTx(providers, ledger9CallOptions())]
+  ['createLedger8UnprovenCallTx', (providers) => createLedger8UnprovenCallTx(providers, ledger9CallOptions())],
+  [
+    'createLedger8UnprovenCallTxFromInitialStates',
+    (providers) =>
+      createLedger8UnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        // @ts-expect-error a ledger 9 contract is not a ledger 8 contract
+        {
+          ...ledger9CallOptions(),
+          head: 'v9',
+          initialContractState: { era: 'v9', state: { serialize: () => new Uint8Array() } },
+          ledgerParameters: { era: 'v9', parameters: { serialize: () => new Uint8Array() } },
+          coinPublicKey: createMockCoinPublicKey(),
+          config: providers.config
+        },
+        createMockEncryptionPublicKey()
+      )
+  ]
 ];
 
 describe('the Ledger8 low-level functions accept only a contract whose artifacts declare ledger 8', () => {

@@ -79,7 +79,7 @@ describe('the retained-era errors are published flat', () => {
   });
 
   it('leaves no retained-era runtime name on the surface beyond the errors, the result guard and the low-level functions', () => {
-    const allowed = [...LEDGER8_ERRORS, 'isLedger8Result', 'createLedger8UnprovenCallTx'];
+    const allowed = [...LEDGER8_ERRORS, 'isLedger8Result', 'createLedger8UnprovenCallTx', 'createLedger8UnprovenCallTxFromInitialStates'];
     const leaked = Object.keys(barrel).filter((name) => name.includes('Ledger8') && !allowed.includes(name));
 
     expect(leaked).toEqual([]);
