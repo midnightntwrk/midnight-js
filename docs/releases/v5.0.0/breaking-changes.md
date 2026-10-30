@@ -1387,7 +1387,7 @@ and the names of their own time for the renames of sections 22 and 24.
 | `DeployContractOptionsShared`, `DeployTxOptions`, `DeployTxOptionsBase`, `DeployTxOptionsWithPrivateState`, `DeployTxOptionsWithPrivateStateId` | the same names with the `Ledger9` prefix |
 | `UnprovenDeployTxOptions`, `UnprovenDeployTxProviders` | `Ledger9UnprovenDeployTxOptions`, `Ledger9UnprovenDeployTxProviders` |
 | `FindDeployedContractOptionsBase`, `…ExistingPrivateState`, `…StorePrivateState` | the same names with the `Ledger9` prefix |
-| `FinalizedDeployTxDataBase`, `UnsubmittedDeployTxData`, `UnsubmittedDeployTxDataBase`, `UnsubmittedDeployTxPrivateData`, `UnsubmittedDeployTxPrivateDataFull`, `UnsubmittedCallTxPrivateData`, `UnsubmittedTxData` | the same names with the `Ledger9` prefix |
+| `FinalizedDeployTxDataBase`, `UnsubmittedDeployTxData`, `UnsubmittedDeployTxDataBase`, `UnsubmittedDeployTxPrivateData`, `UnsubmittedDeployTxPrivateDataFull`, `UnsubmittedDeployTxPublicData`, `UnsubmittedCallTxPrivateData`, `UnsubmittedTxData` | the same names with the `Ledger9` prefix |
 | `UnprovenCallTxProvidersWithPrivateState`, `SubmitCallTxProviders` | `Ledger9UnprovenCallTxProvidersWithPrivateState`, `Ledger9SubmitCallTxProviders` |
 | `TransactionContext`, `CrossContractConfig` | `Ledger9TransactionContext`, `Ledger9CrossContractConfig` |
 | `ContractLog`, `LogEvent` | `Ledger9ContractLog`, `Ledger9LogEvent` |

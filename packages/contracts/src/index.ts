@@ -240,7 +240,9 @@ export {
   Ledger9UnsubmittedDeployTxDataBase,
   Ledger9UnsubmittedDeployTxPrivateData,
   Ledger9UnsubmittedDeployTxPrivateDataFull,
-  Ledger9UnsubmittedTxData,  UnsubmittedDeployTxPublicData} from './tx-model';
+  Ledger9UnsubmittedDeployTxPublicData,
+  Ledger9UnsubmittedTxData
+} from './tx-model';
 export type {
   Ledger9CallTxOptions,
   Ledger9CallTxOptionsBase,

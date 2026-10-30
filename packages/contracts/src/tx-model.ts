@@ -52,7 +52,7 @@ export interface Ledger9UnsubmittedTxData extends UnsubmittedTxDataBase {
 /**
  * Base type for public data relevant to an unsubmitted deployment transaction.
  */
-export interface UnsubmittedDeployTxPublicData {
+export interface Ledger9UnsubmittedDeployTxPublicData {
   /**
    * The ledger address of the contract that was deployed.
    */
@@ -111,7 +111,7 @@ export interface Ledger9UnsubmittedDeployTxDataBase<C extends Contract.Any> {
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
-  readonly public: UnsubmittedDeployTxPublicData;
+  readonly public: Ledger9UnsubmittedDeployTxPublicData;
   /**
    * The private data (data that will not be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -164,10 +164,10 @@ export interface Ledger9UnsubmittedDeployTxData<C extends Contract.Any> extends 
  */
 /**
  * The public data of a finalized deployment transaction: the deploy-specific
- * public data ({@link UnsubmittedDeployTxPublicData}) combined with the
+ * public data ({@link Ledger9UnsubmittedDeployTxPublicData}) combined with the
  * finalized transaction data ({@link Ledger9FinalizedTxData}).
  */
-export interface Ledger9FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, Ledger9FinalizedTxData {}
+export interface Ledger9FinalizedDeployTxPublicData extends Ledger9UnsubmittedDeployTxPublicData, Ledger9FinalizedTxData {}
 
 export interface Ledger9FinalizedDeployTxDataBase<C extends Contract.Any> extends Ledger9UnsubmittedDeployTxDataBase<C> {
   /**

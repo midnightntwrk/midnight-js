@@ -189,9 +189,7 @@ export async function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Co
 /**
  * Providers needed to create an unproven deployment transactions, just the ZK artifact
  * provider and a wallet.
-  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
-*/
+ */
 export type Ledger9UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
   Ledger9ContractProviders<C>,
   'zkConfigProvider' | 'walletProvider' | 'config'
@@ -216,6 +214,8 @@ export async function createLedger9UnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 9, before anything else.
  * @throws ConfigurationError If `providers.config` is missing.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.

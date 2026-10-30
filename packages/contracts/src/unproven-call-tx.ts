@@ -395,9 +395,7 @@ export type Ledger9UnprovenCallTxProvidersWithPrivateState<C extends Contract.An
 
 /**
  * Providers needed to create a call transaction.
-  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
-*/
+ */
 export type UnprovenCallTxProviders<C extends Contract.Any> =
   | UnprovenCallTxProvidersBase
   | Ledger9UnprovenCallTxProvidersWithPrivateState<C>;
@@ -426,6 +424,8 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @returns A promise that contains all data produced by the circuit call and an unproven
  *          transaction assembled from the call result.
  *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 9, before anything else.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.

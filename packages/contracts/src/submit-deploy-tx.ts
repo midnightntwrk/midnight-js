@@ -35,9 +35,7 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 
 /**
  * Configuration for creating deploy transactions.
-  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
-*/
+ */
 export type Ledger9DeployTxOptions<C extends Contract.Any> = Ledger9DeployTxOptionsBase<C> | Ledger9DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitLedger9DeployTx<C extends Contract<undefined>>(
@@ -82,6 +80,8 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
  * @returns A `Promise` that resolves with the finalized deployment transaction data;
  *          or rejects with an error if the deployment fails.
  *
+ * @throws {EraMismatchError} With reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 9, before anything else.
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without

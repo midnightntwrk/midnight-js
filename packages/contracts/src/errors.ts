@@ -249,9 +249,10 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'produced by the ledger 9 Compact toolchain.',
   'contract-era-unsupported':
     'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
-    'No low-level function builds an unsubmitted transaction for a ledger 8 (pre-fork) contract yet. ' +
-    'submitCallTx, deployContract and findDeployedContract run contracts of both eras, but they also submit ' +
-    'the transaction.',
+    'The low-level functions that build a call or deploy transaction from a compiled contract serve only ' +
+    'contracts produced by the ledger 9 Compact toolchain. For a contract of another era, call submitCallTx ' +
+    'or deployContract, which run contracts of both eras and submit the transaction, or join a deployed ' +
+    'contract with findDeployedContract.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
     `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +

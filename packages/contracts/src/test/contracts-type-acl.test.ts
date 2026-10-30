@@ -198,6 +198,7 @@ describe('Contracts type ACL', () => {
       'Ledger9UnsubmittedDeployTxDataBase',
       'Ledger9UnsubmittedDeployTxPrivateData',
       'Ledger9UnsubmittedDeployTxPrivateDataFull',
+      'Ledger9UnsubmittedDeployTxPublicData',
       'Ledger9UnsubmittedTxData',
       'ScopedTransactionOptions',
       'SubmitRejectionUndiagnosedCause',
@@ -209,8 +210,7 @@ describe('Contracts type ACL', () => {
       'TxFailedDetails',
       'TxFailedOperation',
       'UnprovenCallTxProvidersBase',
-      'UnsubmittedCallTxData',
-      'UnsubmittedDeployTxPublicData'
+      'UnsubmittedCallTxData'
     ]);
   });
 });

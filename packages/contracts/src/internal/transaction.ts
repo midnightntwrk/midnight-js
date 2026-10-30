@@ -185,7 +185,7 @@ export class TransactionContextImpl<
    * OPTIONAL, and the two cases are genuinely different rather than one being a
    * degraded form of the other. A scope created through
    * `withContractScopedTransaction` always carries a reading, resolved once by
-   * {@link resolveScopeEra}. A context built for a SINGLE call outside any
+   * {@link readScopeHead}. A context built for a SINGLE call outside any
    * scope carries none, because the current-era single-call path resolves no
    * era of its own and reading the head for it would add a network round trip
    * to every call in the framework to answer a question that path does not ask.

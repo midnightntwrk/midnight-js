@@ -165,6 +165,7 @@ The rule now covers the whole public surface of `contracts`, `types`, `utils` an
 Without a prefix stay `AnyProvableCircuitId` and `AnyPrivateState` (they reduce to `string` and
 `any`, pinned by a type test), the every-era bases in `types`, and era-neutral names that have no
 contract parameter and hold no ledger object. `UnsubmittedDeployTxPublicData` holds a live ledger 9
-`ContractState` and is left for the follow-up of ADR 0020.
+`ContractState`, so it is `Ledger9UnsubmittedDeployTxPublicData`; changing how it carries that state
+is left for the follow-up of ADR 0020.
 
 The renames are listed in section 26 of `docs/releases/v5.0.0/breaking-changes.md`.

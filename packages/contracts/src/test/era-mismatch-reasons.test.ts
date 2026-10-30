@@ -51,4 +51,12 @@ describe('EraMismatchError reasons that carry a detail', () => {
     expect(error.message).toContain('Before the hard fork');
     expect(error.message).toContain('4.4.0-rc.6');
   });
+
+  it('points a contract of another era at the functions serving both eras, without claiming findDeployedContract submits', () => {
+    const error = new EraMismatchError('contract-era-unsupported', { detail: "Function: submitDeployTx. Contract era: 'v8'." });
+
+    expect(error.message).toContain('submitCallTx or deployContract');
+    expect(error.message).toContain('join a deployed contract with findDeployedContract');
+    expect(error.message).not.toContain('also submit');
+  });
 });
