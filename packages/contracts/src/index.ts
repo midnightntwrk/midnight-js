@@ -14,25 +14,25 @@
  */
 
 export {
-  CallOptions,
-  CallOptionsBase,
-  CallOptionsProviderDataDependencies,
-  CallOptionsWithArguments,
-  CallOptionsWithPrivateState,
-  CallOptionsWithProviderDataDependencies,
-  CallResult
+  Ledger9CallOptions,
+  Ledger9CallOptionsBase,
+  Ledger9CallOptionsProviderDataDependencies,
+  Ledger9CallOptionsWithArguments,
+  Ledger9CallOptionsWithPrivateState,
+  Ledger9CallOptionsWithProviderDataDependencies,
+  Ledger9CallResult
 } from './call';
 export {
-  ContractConstructorOptions,
-  ContractConstructorOptionsBase,
   ContractConstructorOptionsProviderDataDependencies,
-  ContractConstructorOptionsWithArguments,
-  ContractConstructorOptionsWithPrivateState,
-  ContractConstructorOptionsWithProviderDataDependencies,
-  ContractConstructorResult} from './call-constructor';
+  Ledger9ContractConstructorOptions,
+  Ledger9ContractConstructorOptionsBase,
+  Ledger9ContractConstructorOptionsWithArguments,
+  Ledger9ContractConstructorOptionsWithPrivateState,
+  Ledger9ContractConstructorOptionsWithProviderDataDependencies,
+  Ledger9ContractConstructorResult} from './call-constructor';
 export {
   deployContract,
-  DeployContractOptionsShared
+  Ledger9DeployContractOptionsShared
 } from './deploy-contract';
 // The one member of `./internal/breadcrumbs` that is CONSUMER-FACING: an aggregator has to import
 // the fixed message rather than retype it. The breadcrumb TYPES stay internal -- publishing the
@@ -91,9 +91,9 @@ export {
   ZswapOutputResolutionError} from './errors';
 export {
   findDeployedContract,
-  FindDeployedContractOptionsBase,
-  FindDeployedContractOptionsExistingPrivateState,
-  FindDeployedContractOptionsStorePrivateState,
+  Ledger9FindDeployedContractOptionsBase,
+  Ledger9FindDeployedContractOptionsExistingPrivateState,
+  Ledger9FindDeployedContractOptionsStorePrivateState,
   verifierKeysEqual,
   verifyContractState} from './find-deployed-contract';
 export {
@@ -152,9 +152,9 @@ export type {
   Ledger8DeployContractOptionsBase,
   Ledger8DeployContractOptionsWithPrivateState,
   Ledger8DeployedContract,
-  Ledger8DeployTxData,
   Ledger8FinalizedCallTxData,
   Ledger8FinalizedCallTxPublicData,
+  Ledger8FinalizedDeployTxData,
   Ledger8FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
@@ -197,8 +197,10 @@ export type {
   FindDeployedContractOptions,
   FoundContract,
   FoundDeployTxData,
+  Ledger9CircuitId,
   Ledger9Contract,
   SubmittedCallTx,
+  SubmitTxProviders,
   UnsubmittedCallTxData
 } from './era-aliases';
 export type { Ledger9FindDeployedContractOptions, Ledger9FoundContract } from './find-deployed-contract';
@@ -207,14 +209,15 @@ export type {
   Ledger9CircuitMaintenanceTxInterfaces,
   Ledger9ContractMaintenanceTxInterface
 } from './governance';
-export { submitCallTx, submitCallTxAsync, type SubmitCallTxProviders } from './submit-call-tx';
-export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
-export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
+export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from './submit-call-tx';
+export { Ledger9DeployTxOptions, submitDeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
+export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
-  isTransactionContext,
+  isLedger9TransactionContext,
+  Ledger9TransactionContext,
   ScopedTransactionOptions,
-  TransactionContext,
-  withContractScopedTransaction
+  withContractScopedTransaction,
+  withLedger9ContractScopedTransaction
 } from './transaction';
 export type { Ledger9CircuitCallTxInterface } from './tx-interfaces';
 export { createCallTxOptions, createCircuitCallTxInterface } from './tx-interfaces';
@@ -229,39 +232,43 @@ export type {
   Ledger9UnsubmittedCallTxData
 } from './tx-model';
 export {
-  FinalizedDeployTxDataBase,
   FoundDeployTxPublicData,
   type Ledger8FoundDeployTxPublicData,
-  UnsubmittedCallTxPrivateData,
-  UnsubmittedDeployTxData,
-  UnsubmittedDeployTxDataBase,
-  UnsubmittedDeployTxPrivateData,
-  UnsubmittedDeployTxPrivateDataFull,
-  UnsubmittedDeployTxPublicData,
-  UnsubmittedTxData} from './tx-model';
+  Ledger9FinalizedDeployTxDataBase,
+  Ledger9UnsubmittedCallTxPrivateData,
+  Ledger9UnsubmittedDeployTxData,
+  Ledger9UnsubmittedDeployTxDataBase,
+  Ledger9UnsubmittedDeployTxPrivateData,
+  Ledger9UnsubmittedDeployTxPrivateDataFull,
+  Ledger9UnsubmittedDeployTxPublicData,
+  Ledger9UnsubmittedTxData
+} from './tx-model';
 export type {
   Ledger9CallTxOptions,
   Ledger9CallTxOptionsBase,
   Ledger9CallTxOptionsWithPrivateStateId
 } from './unproven-call-tx';
 export {
+  createLedger9UnprovenCallTx,
+  createLedger9UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
-  type CrossContractConfig,
-  UnprovenCallTxProvidersBase,
-  UnprovenCallTxProvidersWithPrivateState
-} from './unproven-call-tx';
+  type Ledger9CrossContractConfig,
+  Ledger9UnprovenCallTxProvidersWithPrivateState,
+  UnprovenCallTxProvidersBase} from './unproven-call-tx';
 export {
+  createLedger9UnprovenDeployTx,
+  createLedger9UnprovenDeployTxFromVerifierKeys,
   createUnprovenDeployTx,
   createUnprovenDeployTxFromVerifierKeys,
-  DeployTxOptionsBase,
-  DeployTxOptionsWithPrivateState,
-  DeployTxOptionsWithPrivateStateId,
-  UnprovenDeployTxOptions,
-  UnprovenDeployTxProviders} from './unproven-deploy-tx';
+  Ledger9DeployTxOptionsBase,
+  Ledger9DeployTxOptionsWithPrivateState,
+  Ledger9DeployTxOptionsWithPrivateStateId,
+  Ledger9UnprovenDeployTxOptions,
+  Ledger9UnprovenDeployTxProviders} from './unproven-deploy-tx';
 // Event type and decoder for `Ledger9CallResultPublic.logEvents` (MIP-0002), re-exported so consumers can name
-// the events (`LogEvent`) and decode them (`ContractLog.decodeAll`) without depending on
+// the events (`Ledger9LogEvent`) and decode them (`Ledger9ContractLog.decodeAll`) without depending on
 // compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
-// `ContractLog.ContractEvent`.
-export { ContractLog } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-export type { LogEvent } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+// `Ledger9ContractLog.ContractEvent`.
+export { ContractLog as Ledger9ContractLog } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+export type { LogEvent as Ledger9LogEvent } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';

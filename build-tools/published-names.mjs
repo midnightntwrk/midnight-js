@@ -14,7 +14,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 import ts from 'typescript';
 
@@ -56,29 +56,45 @@ const compilerOptions = (packageRoot) => {
   return ts.parseJsonConfigFileContent(config, ts.sys, packageRoot).options;
 };
 
+const programs = new Map();
+
+const exportsOfEntryPoints = (packageRoot, skipSubpaths) => {
+  const key = `${packageRoot}\0${skipSubpaths.join(',')}`;
+  if (!programs.has(key)) {
+    programs.set(key, readExports(packageRoot, skipSubpaths));
+  }
+  return programs.get(key);
+};
+
+const readExports = (packageRoot, skipSubpaths) => {
+  const entries = entryPoints(packageRoot, skipSubpaths);
+  const program = ts.createProgram(entries, compilerOptions(packageRoot));
+  const checker = program.getTypeChecker();
+  const exports = entries.flatMap((entry) => {
+    const source = program.getSourceFile(entry);
+    const moduleSymbol = source && checker.getSymbolAtLocation(source);
+    if (!moduleSymbol) {
+      throw new Error(`${entry} resolves to no module symbol`);
+    }
+    return checker.getExportsOfModule(moduleSymbol);
+  });
+  return { checker, exports };
+};
+
 /**
  * Every name a package publishes, read from the sources of its `exports` entry points with the
  * compiler's own resolution. A namespace export (`export * as X`) contributes its members too, as
  * `X.member`, unless it is listed in `skipNamespaces`.
  */
 export const publishedNames = (packageRoot, { skipSubpaths = [], skipNamespaces = [] } = {}) => {
-  const entries = entryPoints(packageRoot, skipSubpaths);
-  const program = ts.createProgram(entries, compilerOptions(packageRoot));
-  const checker = program.getTypeChecker();
-  return entries.flatMap((entry) => {
-    const source = program.getSourceFile(entry);
-    const moduleSymbol = source && checker.getSymbolAtLocation(source);
-    if (!moduleSymbol) {
-      throw new Error(`${entry} resolves to no module symbol`);
+  const { checker, exports } = exportsOfEntryPoints(packageRoot, skipSubpaths);
+  return exports.flatMap((exported) => {
+    const target = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
+    const isNamespace = (target.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)) !== 0;
+    if (!isNamespace || skipNamespaces.includes(exported.name)) {
+      return [exported.name];
     }
-    return checker.getExportsOfModule(moduleSymbol).flatMap((exported) => {
-      const target = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
-      const isNamespace = (target.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)) !== 0;
-      if (!isNamespace || skipNamespaces.includes(exported.name)) {
-        return [exported.name];
-      }
-      return [exported.name, ...checker.getExportsOfModule(target).map((member) => `${exported.name}.${member.name}`)];
-    });
+    return [exported.name, ...checker.getExportsOfModule(target).map((member) => `${exported.name}.${member.name}`)];
   });
 };
 
@@ -88,3 +104,35 @@ export const namingViolations = (names) =>
     const own = name.split('.').pop();
     return RULES.filter(([, breaks]) => breaks(own)).map(([rule]) => `${name} ${rule}`);
   });
+
+const LEDGER_PREFIX = /^Ledger[89]/;
+const CONSTRAINED_TO_LEDGER9_CONTRACT = /\b(Contract\.Any|Ledger9Contract)\b/;
+
+const isTypeBoundToContractAny = (declaration) =>
+  (ts.isTypeAliasDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)) &&
+  (declaration.typeParameters ?? []).some(
+    (parameter) => parameter.constraint !== undefined && CONSTRAINED_TO_LEDGER9_CONTRACT.test(parameter.constraint.getText())
+  );
+
+/**
+ * The exported types (aliases and interfaces) with a type parameter constrained to `Contract.Any` or
+ * `Ledger9Contract` whose name carries no ledger prefix, outside the files that hold the era-picking
+ * aliases. Such a type is bound to ledger 9 and must say so.
+ *
+ * The constraint is matched by its source text, so a type bound to ledger 9 only through a member or
+ * through another spelling of the constraint is not seen; the strict published-names lists pin those.
+ */
+export const unprefixedLedger9Types = (packageRoot, { aliasFiles = [], skipSubpaths = [] } = {}) => {
+  const { checker, exports } = exportsOfEntryPoints(packageRoot, skipSubpaths);
+  const flagged = exports.filter((exported) => {
+    if (LEDGER_PREFIX.test(exported.name)) {
+      return false;
+    }
+    const target = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
+    return (target.declarations ?? []).some(
+      (declaration) =>
+        !aliasFiles.includes(basename(declaration.getSourceFile().fileName)) && isTypeBoundToContractAny(declaration)
+    );
+  });
+  return [...new Set(flagged.map((exported) => exported.name))].sort();
+};

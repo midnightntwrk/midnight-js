@@ -145,7 +145,7 @@ export interface Ledger9WalletProvider {
  * @example
  * ```typescript
  * // The wallet runs its own copy of the ledger, so the transaction crosses as bytes.
- * const walletProvider = createWalletProvider({
+ * const walletProvider = createLedger9WalletProvider({
  *   balanceTx: async (tx, ttl) =>
  *     deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
  *   getCoinPublicKey: () => wallet.coinPublicKey,
@@ -153,7 +153,7 @@ export interface Ledger9WalletProvider {
  * });
  * ```
  */
-export const createWalletProvider = (impl: Ledger9WalletProvider): WalletProvider =>
+export const createLedger9WalletProvider = (impl: Ledger9WalletProvider): WalletProvider =>
   createWalletProviderFromHandlers({
     v8: undefined,
     v9: (tx, ttl) => impl.balanceTx(tx, ttl),

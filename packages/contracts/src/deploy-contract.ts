@@ -19,7 +19,7 @@ import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-p
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import type { ContractConstructorOptionsWithArguments } from './call-constructor';
+import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';
 import type { Ledger9FoundContract } from './find-deployed-contract';
 import {
@@ -38,13 +38,13 @@ import {
   type Ledger8DeployContractOptions,
   type Ledger8DeployedContract
 } from './ledger8-contract';
-import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
+import { type Ledger9DeployTxOptions, submitLedger9DeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface, createLedger8CircuitCallTxInterface } from './tx-interfaces';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
 
 /**
  * What both {@link deployContract} option variants carry, and nothing either variant
- * decides. Identical to {@link ContractConstructorOptionsWithArguments} except
+ * decides. Identical to {@link Ledger9ContractConstructorOptionsWithArguments} except
  * the `signingKey` is now optional, since {@link deployContract} will generate a
  * fresh signing key in the event that `signingKey` is undefined.
  *
@@ -58,7 +58,7 @@ import type { Ledger9FinalizedDeployTxData } from './tx-model';
  * retained era, which arrives there by a different route: its variants are
  * interfaces, and an interface redeclaring the member is rejected outright as an
  * incompatible extension. This era cannot use interfaces, because `args` reaches
- * both variants through the {@link ContractConstructorOptionsWithArguments}
+ * both variants through the {@link Ledger9ContractConstructorOptionsWithArguments}
  * conditional and an interface cannot extend a conditional type.
  *
  * PUBLISHED, unlike its retained-era counterpart, purely so the two members
@@ -67,7 +67,7 @@ import type { Ledger9FinalizedDeployTxData } from './tx-model';
  * delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the
  * reference for both variants.
  */
-export type DeployContractOptionsShared<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+export type Ledger9DeployContractOptionsShared<C extends Contract.Any> = Ledger9ContractConstructorOptionsWithArguments<C> & {
   /**
    * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
    * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
@@ -91,7 +91,7 @@ export type DeployContractOptionsShared<C extends Contract.Any> = ContractConstr
  *
  * The other variant is {@link Ledger9DeployContractOptionsWithPrivateState}.
  */
-export type Ledger9DeployContractOptionsBase<C extends Contract.Any> = DeployContractOptionsShared<C> & {
+export type Ledger9DeployContractOptionsBase<C extends Contract.Any> = Ledger9DeployContractOptionsShared<C> & {
   /**
    * DECLARED on this variant, and only ever `undefined`.
    *
@@ -120,7 +120,7 @@ export type Ledger9DeployContractOptionsBase<C extends Contract.Any> = DeployCon
  * an id with no state stores `undefined` under a name a later call will read
  * back.
  */
-export type Ledger9DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsShared<C> & {
+export type Ledger9DeployContractOptionsWithPrivateState<C extends Contract.Any> = Ledger9DeployContractOptionsShared<C> & {
   /**
    * An identifier for the private state of the contract being deployed.
    */
@@ -161,7 +161,7 @@ const namesPrivateState = <C extends Contract.Any>(
 
 const createDeployTxOptions = <C extends Contract.Any>(
   deployContractOptions: Ledger9DeployContractOptions<C>
-): DeployTxOptions<C> => {
+): Ledger9DeployTxOptions<C> => {
   const signingKey = deployContractOptions.signingKey ?? sampleSigningKey();
 
   if (!namesPrivateState(deployContractOptions)) {
@@ -170,7 +170,7 @@ const createDeployTxOptions = <C extends Contract.Any>(
   const { privateStateId } = deployContractOptions;
   // Returned through a local rather than as a literal, which is what lets this be CHECKED instead
   // of asserted. The checker computes the spread fine; what it refuses is a FRESH literal typed
-  // against `DeployTxOptions<C>` while `C` keeps that union's `args` conditional deferred. The
+  // against `Ledger9DeployTxOptions<C>` while `C` keeps that union's `args` conditional deferred. The
   // local is not contextually typed, so the same object passes on its own inferred type.
   const deployTxOptions = {
     ...deployContractOptions,
@@ -319,7 +319,7 @@ export async function deployContract<C extends Contract.Any>(
       contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, deployed.contractAddress)
     };
   }
-  const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
+  const deployTxData = await submitLedger9DeployTx(providers, createDeployTxOptions(options));
   return {
     era: 'v9',
     compiledContract: options.compiledContract,

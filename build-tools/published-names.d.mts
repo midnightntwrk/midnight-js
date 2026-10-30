@@ -21,3 +21,10 @@ export interface PublishedNamesOptions {
 export declare const publishedNames: (packageRoot: string, options?: PublishedNamesOptions) => string[];
 
 export declare const namingViolations: (names: readonly string[]) => string[];
+
+export interface Ledger9NamingOptions {
+  readonly aliasFiles?: readonly string[];
+  readonly skipSubpaths?: readonly string[];
+}
+
+export declare const unprefixedLedger9Types: (packageRoot: string, options?: Ledger9NamingOptions) => string[];

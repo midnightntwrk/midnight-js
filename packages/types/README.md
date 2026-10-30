@@ -171,17 +171,17 @@ also seals its answer:
 
 ```typescript
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 
 // The wallet runs its own copy of the ledger, so transactions cross as bytes.
 
-const walletProvider = createWalletProvider({
+const walletProvider = createLedger9WalletProvider({
   balanceTx: async (tx, ttl) =>
     deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
   getCoinPublicKey: () => wallet.coinPublicKey,
   getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });
-const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
+const midnightProvider = createLedger9MidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
 ```
 
 ### Declaring the eras a provider serves
@@ -431,9 +431,9 @@ import {
 
   // Factory functions
   type Ledger9WalletProvider,
-  createWalletProvider,
-  createMidnightProvider,
-  createProofProvider,
+  createLedger9WalletProvider,
+  createLedger9MidnightProvider,
+  createLedger9ProofProvider,
   createProofProviderFromProvingProviders,
   type ProvingProvidersByEra,
   type ProofProviderHandlers,

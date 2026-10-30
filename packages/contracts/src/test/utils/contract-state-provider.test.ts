@@ -43,9 +43,9 @@ const providerWith = (
 
 // The framework decodes a read with its own runtime; these stand in for the decoded objects.
 const decode = vi.hoisted(() => ({
-  deserializeCompactContractState: vi.fn(),
-  deserializeZswapChainState: vi.fn(),
-  deserializeLedgerParameters: vi.fn()
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
@@ -55,8 +55,8 @@ vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
 
 /** A served record that decodes to these states. Decodes are queued in the order reads are made. */
 const ledger9States = (zswapChainState: ZswapChainState, contractState: ContractState): PublicStatesRead => {
-  decode.deserializeCompactContractState.mockReturnValueOnce(contractState);
-  decode.deserializeZswapChainState.mockReturnValueOnce(zswapChainState);
+  decode.deserializeLedger9CompactContractState.mockReturnValueOnce(contractState);
+  decode.deserializeLedger9ZswapChainState.mockReturnValueOnce(zswapChainState);
   return publicStatesReadStub('v9');
 };
 

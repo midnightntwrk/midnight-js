@@ -21,13 +21,12 @@ import { describe, expect, it } from 'vitest';
 
 import { isDeserializationError } from '../deserialization';
 import {
-  decodeLedgerStateValue,
-  deserializeCompactContractState,
-  deserializeContractState,
-  deserializeLedgerParameters,
-  deserializeLedgerTransaction,
-  deserializeZswapChainState
-} from '../deserialization/typed-wrappers';
+  decodeLedger9StateValue,
+  deserializeLedger9CompactContractState,
+  deserializeLedger9ContractState,
+  deserializeLedger9Parameters,
+  deserializeLedger9ZswapChainState,
+  deserializeLedgerTransaction} from '../deserialization/typed-wrappers';
 
 const garbage = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
 const caller = '@midnight-ntwrk/midnight-js-test:typed-wrapper-fixture';
@@ -53,9 +52,9 @@ const expectThrowsDeserializationError = (
 };
 
 describe('typed wrappers — source attribution', () => {
-  it('deserializeContractState attributes to ledger', () => {
+  it('deserializeLedger9ContractState attributes to ledger', () => {
     expectThrowsDeserializationError(
-      () => deserializeContractState(garbage, { caller }),
+      () => deserializeLedger9ContractState(garbage, { caller }),
       {
         dataType: 'ContractState',
         source: 'ledger'
@@ -63,9 +62,9 @@ describe('typed wrappers — source attribution', () => {
     );
   });
 
-  it('deserializeCompactContractState attributes to compact-runtime', () => {
+  it('deserializeLedger9CompactContractState attributes to compact-runtime', () => {
     expectThrowsDeserializationError(
-      () => deserializeCompactContractState(garbage, { caller }),
+      () => deserializeLedger9CompactContractState(garbage, { caller }),
       {
         dataType: 'ContractState',
         source: 'compact-runtime'
@@ -73,9 +72,9 @@ describe('typed wrappers — source attribution', () => {
     );
   });
 
-  it('deserializeZswapChainState attributes to ledger', () => {
+  it('deserializeLedger9ZswapChainState attributes to ledger', () => {
     expectThrowsDeserializationError(
-      () => deserializeZswapChainState(garbage, { caller }),
+      () => deserializeLedger9ZswapChainState(garbage, { caller }),
       {
         dataType: 'ZswapChainState',
         source: 'ledger'
@@ -96,9 +95,9 @@ describe('typed wrappers — source attribution', () => {
     }
   );
 
-  it('deserializeLedgerParameters attributes to ledger', () => {
+  it('deserializeLedger9Parameters attributes to ledger', () => {
     expectThrowsDeserializationError(
-      () => deserializeLedgerParameters(garbage, { caller }),
+      () => deserializeLedger9Parameters(garbage, { caller }),
       {
         dataType: 'LedgerParameters',
         source: 'ledger'
@@ -106,14 +105,14 @@ describe('typed wrappers — source attribution', () => {
     );
   });
 
-  it('decodeLedgerStateValue attributes to onchain-runtime (per D8)', () => {
+  it('decodeLedger9StateValue attributes to onchain-runtime (per D8)', () => {
     // EncodedStateValue is a tagged union, not bytes. Construct a deliberately
     // malformed one — the underlying StateValue.decode will throw, classifier
     // returns 'unknown' (no pattern matches a structured-data decode error).
-    const malformedEncoded = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedgerStateValue>[0];
+    const malformedEncoded = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedger9StateValue>[0];
 
     expectThrowsDeserializationError(
-      () => decodeLedgerStateValue(malformedEncoded, { caller }),
+      () => decodeLedger9StateValue(malformedEncoded, { caller }),
       {
         dataType: 'StateValue',
         source: 'onchain-runtime'

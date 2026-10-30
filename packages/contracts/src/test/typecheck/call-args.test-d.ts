@@ -19,11 +19,11 @@ import type { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { CallOptionsWithArguments, CallResult } from '../../call';
+import type { Ledger9CallOptionsWithArguments, Ledger9CallResult } from '../../call';
 import type { Ledger9ContractProviders } from '../../contract-providers';
 import type { Ledger8CallTxOptions } from '../../ledger8-contract';
 import { submitCallTx } from '../../submit-call-tx';
-import type { TransactionContext } from '../../transaction';
+import type { Ledger9TransactionContext } from '../../transaction';
 import { createCallTxOptions, createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type { Ledger9FinalizedCallTxData } from '../../tx-model';
 import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } from '../../unproven-call-tx';
@@ -40,24 +40,24 @@ import type {
 // keyings to that, so a regression to `unknown[]` -- which is a real,
 // non-empty array type, and so would keep `args` present on every circuit and
 // accept any argument list -- fails here rather than reaching a consumer.
-describe('CallOptionsWithArguments', () => {
+describe('Ledger9CallOptionsWithArguments', () => {
   it('carries the circuit\'s real parameter tuple', () => {
     // `CoinReceiver016Coin` is read off the generated circuit signature rather than restated,
     // so this cannot drift from the artifact.
     expectTypeOf<
-      CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
+      Ledger9CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
     >().toEqualTypeOf<[CoinReceiver016Coin]>();
   });
 
   it('omits args entirely for a LITERAL-keyed zero-argument circuit', () => {
-    expectTypeOf<CallOptionsWithArguments<Counter016Contract, 'increment'>>().not.toHaveProperty(
+    expectTypeOf<Ledger9CallOptionsWithArguments<Counter016Contract, 'increment'>>().not.toHaveProperty(
       'args'
     );
   });
 
   it('does not degrade a LITERAL-keyed parameter tuple to unknown[]', () => {
     expectTypeOf<
-      CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
+      Ledger9CallOptionsWithArguments<CoinReceiver016Contract, 'receive_coin'>['args']
     >().not.toEqualTypeOf<unknown[]>();
   });
 
@@ -69,7 +69,7 @@ describe('CallOptionsWithArguments', () => {
   // branded lookup resolves.
   it('carries the real tuple for the BRANDED id that call sites produce', () => {
     type BrandedId = ProvableCircuitId<CoinReceiver016Contract, 'receive_coin'>;
-    expectTypeOf<CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
+    expectTypeOf<Ledger9CallOptionsWithArguments<CoinReceiver016Contract, BrandedId>['args']>()
       .toEqualTypeOf<[CoinReceiver016Coin]>();
   });
 
@@ -80,7 +80,7 @@ describe('CallOptionsWithArguments', () => {
   // so the conditional takes the wrong branch and this type gains a spurious REQUIRED `args`.
   it('omits args for a zero-argument circuit at the BRANDED id too', () => {
     type BrandedIncrementId = ProvableCircuitId<Counter016Contract, 'increment'>;
-    expectTypeOf<CallOptionsWithArguments<Counter016Contract, BrandedIncrementId>>().not.toHaveProperty('args');
+    expectTypeOf<Ledger9CallOptionsWithArguments<Counter016Contract, BrandedIncrementId>>().not.toHaveProperty('args');
   });
 });
 
@@ -90,7 +90,7 @@ declare const compiledContract: CompiledContract.CompiledContract<CoinReceiver01
 declare const contractAddress: ContractAddress;
 declare const brandedCircuitId: ReceiveCoinBrandedId;
 
-// `createCallTxOptions` is the exported function `CallOptionsWithArguments` only describes the
+// `createCallTxOptions` is the exported function `Ledger9CallOptionsWithArguments` only describes the
 // shape of -- see F1 in the branch review. It is assented to separately because it is the
 // published entry point a consumer actually calls: were its `args` parameter to widen while the
 // return type kept the real tuple, it would accept any argument list and hand back a value
@@ -174,7 +174,7 @@ describe('createCallTxOptions for a ledger 8 contract with two circuits', () => 
 declare const providers: Ledger9ContractProviders<CoinReceiver016Contract>;
 declare const privateStateId: PrivateStateId;
 declare const coin: CoinReceiver016Coin;
-declare const transactionContext: TransactionContext<CoinReceiver016Contract, ReceiveCoinBrandedId>;
+declare const transactionContext: Ledger9TransactionContext<CoinReceiver016Contract, ReceiveCoinBrandedId>;
 
 // `createCircuitCallTxInterface` is the one changed production path with no test of its own. Its
 // explicit type arguments and both `as` casts are ASSERTIONS -- a wrong one compiles -- and the
@@ -216,7 +216,7 @@ describe('createCircuitCallTxInterface', () => {
       Promise<Ledger9FinalizedCallTxData<CoinReceiver016Contract, ReceiveCoinBrandedId>>
     >();
     expectTypeOf(submitCallTx(providers, scopedOptions, transactionContext)).toEqualTypeOf<
-      Promise<CallResult<CoinReceiver016Contract, ReceiveCoinBrandedId>>
+      Promise<Ledger9CallResult<CoinReceiver016Contract, ReceiveCoinBrandedId>>
     >();
   });
 

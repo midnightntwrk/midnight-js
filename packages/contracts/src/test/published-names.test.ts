@@ -17,9 +17,13 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { namingViolations, publishedNames } from '../../../../build-tools/published-names.mjs';
+import { namingViolations, publishedNames, unprefixedLedger9Types } from '../../../../build-tools/published-names.mjs';
 
-const names = publishedNames(resolve(__dirname, '../..'));
+const PACKAGE_ROOT = resolve(__dirname, '../..');
+const NAMING_FIXTURE = resolve(__dirname, '../../../../build-tools/test-fixtures/ledger9-naming');
+const ALIAS_FILES = ['era-aliases.ts'];
+
+const names = publishedNames(PACKAGE_ROOT);
 
 describe('published names', () => {
   it('reads every entry point the package publishes', () => {
@@ -28,5 +32,18 @@ describe('published names', () => {
 
   it('follow the naming rules of the public API', () => {
     expect(namingViolations(names)).toEqual([]);
+  });
+
+  it('flag an exported type constrained to Contract.Any that has no ledger prefix and does not pick the era', () => {
+    expect(unprefixedLedger9Types(NAMING_FIXTURE, { aliasFiles: ALIAS_FILES })).toEqual([
+      'FlaggedAlias',
+      'FlaggedInterface',
+      'ReExportedFlagged',
+      'ViaLedger9Contract'
+    ]);
+  });
+
+  it('name every exported type bound to ledger 9 after its ledger', () => {
+    expect(unprefixedLedger9Types(PACKAGE_ROOT, { aliasFiles: ALIAS_FILES })).toEqual([]);
   });
 });

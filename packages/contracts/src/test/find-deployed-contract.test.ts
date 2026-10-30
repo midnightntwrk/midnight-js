@@ -47,11 +47,11 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 // The framework decodes the read with its own runtime; the mock contract state stands in for the result.
-const deserializeCompactContractState = vi.hoisted(() => vi.fn());
+const deserializeLedger9CompactContractState = vi.hoisted(() => vi.fn());
 
 vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
-  deserializeCompactContractState
+  deserializeLedger9CompactContractState
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
@@ -72,7 +72,7 @@ describe('findDeployedContract', () => {
 
   const setupCommonMocks = () => {
     vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    deserializeCompactContractState.mockReturnValue(contractState);
+    deserializeLedger9CompactContractState.mockReturnValue(contractState);
     vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v9'));
     vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractStateAndParametersReadStub('v9'));
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);

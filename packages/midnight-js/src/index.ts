@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-export * as protocol from './protocol';
+export * as ledger9Protocol from './protocol/v9';
 export * as contracts from '@midnight-ntwrk/midnight-js-contracts';
 export * as networkId from '@midnight-ntwrk/midnight-js-network-id';
 export * as types from '@midnight-ntwrk/midnight-js-types';

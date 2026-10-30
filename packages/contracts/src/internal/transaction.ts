@@ -17,6 +17,7 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -27,7 +28,7 @@ import {
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
-import { type CallResult } from '../call';
+import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
 import {
   EraMismatchError,
@@ -40,6 +41,7 @@ import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } fr
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import {
   acquireHeadEra,
+  type HeadEraReading,
   type HeadVersionSource,
   type Ledger9ContractStates,
   type Ledger9PublicStates,
@@ -108,6 +110,25 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
 };
 
 /**
+ * Makes the ONE head read of a scope and breadcrumbs it, before any refusal.
+ *
+ * @internal
+ */
+export const readScopeHead = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<HeadEraReading> => {
+  const reading = await readHeadEra(pdp);
+  emitHeadResolution(logger, reading, 'operation-start');
+  return reading;
+};
+
+/**
+ * The refusal of a scope on a head era that composes one call per transaction.
+ *
+ * @internal
+ */
+export const scopeRefusal = (head: LedgerVersion): EraMismatchError =>
+  new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${head}'.` });
+
+/**
  * Resolves the ONE era reading a scope runs under, and refuses a scope the head
  * era cannot express.
  *
@@ -136,15 +157,14 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  *      are load-bearing.
  */
 export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<ResolvedOperationEra> => {
-  const reading = await readHeadEra(pdp);
-  emitHeadResolution(logger, reading, 'operation-start');
+  const reading = await readScopeHead(pdp, logger);
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${reading.head}'.` });
+    throw scopeRefusal(reading.head);
   }
 
   return acquireHeadEra(reading);
@@ -154,7 +174,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
 export class TransactionContextImpl<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.TransactionContext<C, PCK> {
+> implements Transaction.Ledger9TransactionContext<C, PCK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
@@ -165,7 +185,7 @@ export class TransactionContextImpl<
    * OPTIONAL, and the two cases are genuinely different rather than one being a
    * degraded form of the other. A scope created through
    * `withContractScopedTransaction` always carries a reading, resolved once by
-   * {@link resolveScopeEra}. A context built for a SINGLE call outside any
+   * {@link readScopeHead}. A context built for a SINGLE call outside any
    * scope carries none, because the current-era single-call path resolves no
    * era of its own and reading the head for it would add a network round trip
    * to every call in the framework to answer a question that path does not ask.
@@ -310,7 +330,7 @@ export const mergeUnsubmittedCallTxData = <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 >(
-  txCtx: Transaction.TransactionContext<C, PCK>,
+  txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
   circuitId: PCK,
   callData: Ledger9UnsubmittedCallTxData<C, PCK>,
   privateStateId?: PrivateStateId
@@ -334,7 +354,7 @@ export const isTransactionContext = <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   u: unknown
-): u is Transaction.TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
+): u is Transaction.Ledger9TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
 
 /**
  * Refuses a retained-era call that was handed a scope to join.
@@ -410,8 +430,8 @@ const runScope = async <
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  outerTxCtx: Transaction.TransactionContext<C, PCK> | undefined,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  outerTxCtx: Transaction.Ledger9TransactionContext<C, PCK> | undefined,
   txOptions: Transaction.ScopedTransactionOptions | undefined,
   scopeEra: ResolvedOperationEra | undefined
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -429,7 +449,7 @@ const runScope = async <
       return await innerTxCtx[Submit]();
     }
 
-    // ...otherwise, return the `CallResult` from the last submitted call within the scope of the transaction context.
+    // ...otherwise, return the `Ledger9CallResult` from the last submitted call within the scope of the transaction context.
     const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
       //disable-next-line: no-throw-literal
@@ -438,7 +458,7 @@ const runScope = async <
     // ANNOTATED, not asserted: this function answers both scope cases and so
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
-    const nestedCallResult: CallResult<C, PCK> = {
+    const nestedCallResult: Ledger9CallResult<C, PCK> = {
       era: 'v9',
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
@@ -478,22 +498,22 @@ const runScope = async <
 export const scoped: {
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
     providers: Ledger9ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
   ): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
     providers: Ledger9ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-    txCtx: Transaction.TransactionContext<C, PCK>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+    txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
     options?: Transaction.ScopedTransactionOptions
-  ): Promise<CallResult<C, PCK>>
+  ): Promise<Ledger9CallResult<C, PCK>>
 } = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
@@ -521,8 +541,9 @@ export const scopedTransaction = async <
   PCK extends Contract.ProvableCircuitId<C>
 > (
   providers: Ledger9ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  ledger9Reading?: HeadEraReading & { readonly head: 'v9' }
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
@@ -536,13 +557,17 @@ export const scopedTransaction = async <
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,
     // which is what keeps it at one read per scope, and the outer scope is the
-    // one that submits -- so this returns that scope's `CallResult`, exactly as
+    // one that submits -- so this returns that scope's `Ledger9CallResult`, exactly as
     // it did before.
     return runScope<C, PCK>(providers, fn, outerTxCtx, undefined, undefined);
   }
 
   const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const scopeEra = await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider);
+  // A reading the caller already took and admitted as ledger 9 is acquired, not read again.
+  const scopeEra =
+    ledger9Reading === undefined
+      ? await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider)
+      : await acquireHeadEra(ledger9Reading);
 
   return runScope<C, PCK>(providers, fn, undefined, options, scopeEra);
 };

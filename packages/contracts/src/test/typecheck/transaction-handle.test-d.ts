@@ -24,19 +24,18 @@ import type {
   Ledger8CircuitId,
   Ledger8Contract,
   Ledger8FinalizedCallTxData,
+  Ledger9UnsubmittedDeployTxData,
+  Ledger9UnsubmittedTxData,
   SubmitTxOptions,
-  UnsubmittedCallTxData,
-  UnsubmittedDeployTxData,
-  UnsubmittedTxData
-} from '../../index';
+  UnsubmittedCallTxData} from '../../index';
 
 type AnyLedger8CircuitId = Ledger8CircuitId<Ledger8Contract>;
 
 describe('every transaction the contracts barrel publishes is a handle', () => {
   it('carries the unproven transaction as an UnprovenTx', () => {
-    expectTypeOf<UnsubmittedTxData['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
+    expectTypeOf<Ledger9UnsubmittedTxData['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
     expectTypeOf<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>['private']['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
-    expectTypeOf<UnsubmittedDeployTxData<Contract.Any>['private']['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
+    expectTypeOf<Ledger9UnsubmittedDeployTxData<Contract.Any>['private']['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
     expectTypeOf<SubmitTxOptions<AnyProvableCircuitId>['unprovenTx']>().toEqualTypeOf<UnprovenTx>();
   });
 

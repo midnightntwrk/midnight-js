@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import type * as Contract from './contract.js';
 
-import { ContractLog, type LogEvent } from '../index';
+export type { ReExportedFlagged, ViaLedger9Contract } from './bound.js';
+export type { PicksTheEra } from './era-aliases.js';
 
-describe('ContractLog re-export', () => {
-  it('exposes compact-js decodeAll so consumers decode CallResult events without reaching into compact-js', () => {
-    expect(ContractLog.decodeAll).toBeTypeOf('function');
-    expect(ContractLog.decodeAll([])).toEqual([]);
-  });
+export type FlaggedAlias<C extends Contract.Any> = readonly C[];
 
-  it('re-exports the LogEvent type so consumers can name CallResult events without importing compact-runtime', () => {
-    const events: readonly LogEvent[] = [];
-    expect(ContractLog.decodeAll(events)).toEqual([]);
-  });
-});
+export interface FlaggedInterface<C extends Contract.Any> {
+  readonly contract: C;
+}
+
+export type Ledger9Named<C extends Contract.Any> = readonly C[];
+
+export type Unconstrained<C> = readonly C[];
+
+export const routesOnTheEra = <C extends Contract.Any>(contract: C): C => contract;

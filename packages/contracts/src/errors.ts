@@ -162,6 +162,8 @@ export type EraMismatchReason =
   | 'scope-on-ledger8-network'
   /** A call against a ledger 8 (pre-fork) contract given a contract-scoped transaction to join. `detail` carries the circuit id. */
   | 'ledger8-call-in-scope'
+  /** A contract whose artifacts declare an era the low-level function does not serve. `detail` carries the function name and that era. */
+  | 'contract-era-unsupported'
   /** A result whose `era` tag names neither pipeline. `detail` carries the value received. */
   | 'unrecognised-result-era';
 
@@ -245,6 +247,12 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'while a ledger 8 call is composed and submitted on its own. Submit this call as its own ' +
     'transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ' +
     'produced by the ledger 9 Compact toolchain.',
+  'contract-era-unsupported':
+    'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
+    'The low-level functions that build a call or deploy transaction from a compiled contract serve only ' +
+    'contracts produced by the ledger 9 Compact toolchain. For a contract of another era, call submitCallTx ' +
+    'or deployContract, which run contracts of both eras and submit the transaction, or join a deployed ' +
+    'contract with findDeployedContract.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
     `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +

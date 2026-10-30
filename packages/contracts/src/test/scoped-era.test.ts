@@ -44,8 +44,8 @@ import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
 import { submitLedger9Payload } from '../submit-tx';
-import { withContractScopedTransaction } from '../transaction';
-import { createUnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
+import { withContractScopedTransaction, withLedger9ContractScopedTransaction } from '../transaction';
+import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -106,7 +106,7 @@ describe('per-scope era resolution', () => {
     providers = createMockProviders();
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
-    vi.mocked(createUnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
+    vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
     vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
@@ -236,7 +236,7 @@ describe('per-scope era resolution', () => {
     // could answer differently mid-scope and leave the batched transaction
     // composed half against each era.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    expect(createUnprovenCallTx).toHaveBeenCalledTimes(2);
+    expect(createLedger9UnprovenCallTx).toHaveBeenCalledTimes(2);
     expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
@@ -260,7 +260,7 @@ describe('per-scope era resolution', () => {
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
-    expect(createUnprovenCallTx).not.toHaveBeenCalled();
+    expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
     expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
@@ -370,6 +370,55 @@ describe('per-scope era resolution', () => {
     // And no head read either -- a nested call inherits the outer scope's one
     // reading rather than taking a second.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
+  const SCOPE_ENTRY_POINTS = [
+    ['withContractScopedTransaction', withContractScopedTransaction],
+    ['withLedger9ContractScopedTransaction', withLedger9ContractScopedTransaction]
+  ] as const;
+
+  it.each(SCOPE_ENTRY_POINTS)('%s reads the head once and breadcrumbs it before refusing a pre-fork head', async (_name, scoped) => {
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
+    const debug = vi.fn();
+    const body = vi.fn(async () => undefined);
+
+    const rejection = await scoped({ ...providers, loggerProvider: { debug, isLevelEnabled: () => true } }, body).catch(
+      (error: unknown) => error
+    );
+
+    expect(rejection).toMatchObject({ reason: 'scope-on-ledger8-network' });
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    expect(debug.mock.calls.map(([breadcrumb]) => breadcrumb.decision)).toEqual(['network-version-read']);
+    expect(body).not.toHaveBeenCalled();
+  });
+
+  it.each(SCOPE_ENTRY_POINTS)('%s reads the head once on a post-fork head and submits the scope', async (_name, scoped) => {
+    onPostForkHead();
+
+    await scoped(providers, async (txCtx) => {
+      await submitCallTx(providers, callOptions(), txCtx);
+    });
+
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(SCOPE_ENTRY_POINTS)('%s nests into a context passed as its third argument without a head read', async (_name, scoped) => {
+    onPostForkHead();
+    const outer = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(providers, undefined);
+
+    await scoped(
+      providers,
+      async (txCtx) => {
+        expect(txCtx).toBe(outer);
+        await submitCallTx(providers, callOptions(), txCtx);
+      },
+      // @ts-expect-error the parameter is declared as options; a JavaScript caller can still pass a context
+      outer
+    );
+
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
   it('carries the era it resolved on the scope, so nothing downstream re-reads the head', async () => {
