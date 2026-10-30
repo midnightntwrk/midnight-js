@@ -1404,7 +1404,7 @@ The full table is in
 - [ ] Every `switch` on `record.era` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact; for a `'transaction'` from `submitTx`, build the transaction again. `error.contractAddress` is `undefined` for a `'transaction'`.
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
 - [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8UnconfirmedError` or `Ledger8NotStoredError` keeps the `signingKey` it carries.

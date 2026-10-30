@@ -27,8 +27,9 @@ import {
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason } from './errors';
+import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason, type SubmittedTransaction } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { diagnosedSubmit } from './internal/stale-head';
 import { proveBalanceSubmit } from './internal/submit-payload';
 
 /**
@@ -121,7 +122,17 @@ const submitOnHead = async (
   if (era !== head) {
     throw new EraMismatchError(ERA_MISMATCH_REASON[era]);
   }
-  const txId = await proveBalanceSubmit(providers, unprovenTx, circuitId);
+  const operation: SubmittedTransaction = {
+    networkVersion: head,
+    kind: 'transaction',
+    circuitId: circuitId === undefined ? undefined : [circuitId].flat().join(', ')
+  };
+  const txId = await proveBalanceSubmit(
+    providers,
+    unprovenTx,
+    circuitId,
+    diagnosedSubmit(providers.publicDataProvider, operation, circuitId, providers.loggerProvider)
+  );
   return { txId, head };
 };
 

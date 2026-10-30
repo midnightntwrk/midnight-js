@@ -1438,6 +1438,33 @@ have one type parameter: write `submitTx<PCK>(…)` where you wrote `submitTx<C,
 
 ---
 
+## 27. `submitTx` diagnoses a rejection across the fork (#1524)
+
+`submitTx` and `submitTxAsync` now diagnose a submission the node rejects the way the other
+entry points do: when the network crossed the ledger fork between their head read and the
+submit, they throw `ForkCrossedDuringOperationError`; when the head cannot be read again, or
+reads an earlier era, `SubmitRejectionUndiagnosedError`. A rejection on an unmoved head is
+thrown unchanged, as before. `submitTxAsync` still returns without waiting for a record.
+
+Both errors gain the kind `'transaction'`, for a transaction submitted this way. `submitTx` does
+not know the contract, and knows the circuit only when you pass `circuitId`, so:
+
+| Field | Before | Now |
+|---|---|---|
+| `kind` | `'call' \| 'deploy' \| 'maintenance'` | adds `'transaction'` |
+| `contractAddress` | `string` | `string \| undefined` (`undefined` only for `'transaction'`) |
+| `circuitId` | `string` | `string \| undefined` (`undefined` only for a `'transaction'` with no `circuitId`) |
+
+`SubmittedOperation` is the union of `SubmittedContractOperation` (the three contract kinds, both
+fields required) and the new `SubmittedTransaction`. `SubmittedOperationKind` is unchanged.
+
+```ts
+// Before
+reconcile(error.contractAddress);
+// After
+if (error.contractAddress !== undefined) reconcile(error.contractAddress);
+```
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

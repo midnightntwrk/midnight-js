@@ -514,7 +514,7 @@ export type SubmittedOperationKind = 'call' | 'deploy' | 'maintenance';
  * identifiers, which messages may carry; decoded state and key bytes are what
  * they may not.
  */
-export interface SubmittedOperation {
+export interface SubmittedContractOperation {
   /**
    * The ledger version the network was on when this operation started.
    *
@@ -540,6 +540,22 @@ export interface SubmittedOperation {
   readonly contractAddress: string;
 }
 
+/**
+ * A transaction submitted with `submitTx` or `submitTxAsync`: the caller built it, so neither the
+ * contract nor, unless the caller named it, the circuit is known.
+ */
+export interface SubmittedTransaction {
+  /** The ledger version the network was on when `submitTx` read it. */
+  readonly networkVersion: LedgerVersion;
+  readonly kind: 'transaction';
+  /** The circuits the caller named on the submit options, joined by `', '`, or `undefined`. */
+  readonly circuitId: string | undefined;
+  readonly contractAddress?: undefined;
+}
+
+/** {@link SubmittedContractOperation} or {@link SubmittedTransaction}. */
+export type SubmittedOperation = SubmittedContractOperation | SubmittedTransaction;
+
 // The remediation, written once per operation kind. The kinds do NOT share one
 // text, and the reason is not tone: after the network has crossed, a retained-era
 // CALL can simply be run again -- it lands on the keep-state pipeline with no
@@ -559,7 +575,7 @@ export interface SubmittedOperation {
 // is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
 const FORK_CROSSED_MESSAGES: Readonly<
-  Record<SubmittedOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
+  Record<SubmittedOperationKind, (operation: SubmittedContractOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
   call: (operation, freshEra) =>
     `This call was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
@@ -594,6 +610,18 @@ const FORK_CROSSED_MESSAGES: Readonly<
     `cannot maintain a contract on a network that has crossed the fork.`
 });
 
+const forkCrossedMessage = (operation: SubmittedOperation, freshEra: LedgerVersion): string =>
+  operation.kind === 'transaction'
+    ? `This transaction was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
+      `it${operation.circuitId === undefined ? '' : ` (circuit '${operation.circuitId}')`}; the network now reports ` +
+      `ledger '${freshEra}', so the network crossed the ledger fork between submitTx reading the network's ledger ` +
+      `version and submitting the transaction. Take two steps, in this order. First, verify the transaction did ` +
+      `not finalize: a submission rejected while the fork was happening can still have been recorded, so check ` +
+      `whether its effects are already on chain before doing anything that would repeat it. Then build the ` +
+      `transaction again: it reads the network's ledger version again and builds for the ledger the network now ` +
+      `reports, which a transaction built for ledger '${operation.networkVersion}' cannot be submitted to.`
+    : FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra);
+
 /**
  * An error indicating that the network crossed the ledger fork between an
  * operation reading the network's ledger version and its transaction being submitted, and
@@ -617,14 +645,21 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
   /**
-   * Whether the refused operation was a call, a deploy or a maintenance update —
-   * the discriminant a caller branches on, and which remediation the message carries.
+   * Whether the refused operation was a call, a deploy, a maintenance update or a transaction
+   * submitted with `submitTx` / `submitTxAsync` — the discriminant a caller branches on, and which
+   * remediation the message carries.
    */
-  readonly kind: SubmittedOperationKind;
-  /** The entry point that was run, so a caller with several in flight knows which. */
-  readonly circuitId: string;
-  /** The contract to reconcile, which is the first remediation step's subject. */
-  readonly contractAddress: string;
+  readonly kind: SubmittedOperation['kind'];
+  /**
+   * The entry point that was run, so a caller with several in flight knows which. `undefined` only for
+   * a `'transaction'` whose caller named no circuit.
+   */
+  readonly circuitId: string | undefined;
+  /**
+   * The contract to reconcile, which is the first remediation step's subject. `undefined` only for a
+   * `'transaction'`, whose contract `submitTx` does not know.
+   */
+  readonly contractAddress: string | undefined;
 
   /**
    * @param operation Which operation was rejected. Flattened onto the error
@@ -639,7 +674,7 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
     readonly freshEra: LedgerVersion,
     cause: unknown
   ) {
-    super(FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra), { cause });
+    super(forkCrossedMessage(operation, freshEra), { cause });
     this.name = 'ForkCrossedDuringOperationError';
     this.startEra = operation.networkVersion;
     this.kind = operation.kind;
@@ -671,7 +706,7 @@ export type SubmitRejectionUndiagnosedCause =
 // nothing observed in either case establishes one, and telling a caller to wait
 // out a fork that is not happening is worse than telling it to retry. Same
 // discipline as `IndexerInconsistencyError`.
-const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
+const undiagnosedSubject = (kind: SubmittedOperation['kind']): string => {
   switch (kind) {
     case 'call':
       return 'call';
@@ -679,6 +714,8 @@ const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
       return 'deployment';
     case 'maintenance':
       return 'maintenance update';
+    case 'transaction':
+      return 'transaction';
     default: {
       const unhandled: never = kind;
       throw new InvariantViolationError(`unknown operation kind '${String(unhandled)}'`);
@@ -689,12 +726,16 @@ const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
 const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRejectionUndiagnosedCause): string => {
   const subject = undiagnosedSubject(operation.kind);
   const target =
-    operation.circuitId === NO_CIRCUIT
-      ? `contract '${operation.contractAddress}'`
-      : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
+    operation.kind === 'transaction'
+      ? operation.circuitId === undefined
+        ? ''
+        : ` (circuit '${operation.circuitId}')`
+      : operation.circuitId === NO_CIRCUIT
+        ? ` (contract '${operation.contractAddress}')`
+        : ` (circuit '${operation.circuitId}', contract '${operation.contractAddress}')`;
   const opening =
-    `This ${subject} was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
-    `transaction (${target}).`;
+    `This ${subject} was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
+    `${operation.kind === 'transaction' ? 'it' : 'its transaction'}${target}.`;
 
   switch (undiagnosed.reason) {
     case 'network-version-read-failed':
@@ -746,9 +787,11 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
-  readonly kind: SubmittedOperationKind;
-  readonly circuitId: string;
-  readonly contractAddress: string;
+  readonly kind: SubmittedOperation['kind'];
+  /** See {@link ForkCrossedDuringOperationError.circuitId}. */
+  readonly circuitId: string | undefined;
+  /** See {@link ForkCrossedDuringOperationError.contractAddress}. */
+  readonly contractAddress: string | undefined;
 
   /**
    * @param operation Which operation was rejected.

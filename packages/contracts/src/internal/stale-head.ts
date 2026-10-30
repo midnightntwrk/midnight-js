@@ -35,6 +35,7 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import { type HeadEraReading, type HeadVersionSource, readHeadEra } from './era';
+import { atProviderMethod, type SubmitRunner } from './submit-payload';
 
 /**
  * Where an era sits on the timeline, for comparing two readings by DIRECTION
@@ -137,3 +138,28 @@ export const handleSubmitRejection = async (
 
   throw new ForkCrossedDuringOperationError(operation, freshEra, rejection);
 };
+
+/**
+ * The submit step of an operation, with a rejection handed to {@link handleSubmitRejection}: the one
+ * place a rejected submission is diagnosed as a fork crossing, whoever submits. `atProviderMethod`
+ * still sanitizes the provider's failure; the diagnosis runs on its result.
+ *
+ * @param pdp The read surface, for the head re-read.
+ * @param operation Which operation is submitting, and the head era it read.
+ * @param circuitIds The circuits the provider-failure wrapper names.
+ * @param logger The optional logger the re-read breadcrumb is written to.
+ */
+export const diagnosedSubmit =
+  (
+    pdp: HeadVersionSource,
+    operation: SubmittedOperation,
+    circuitIds: string | readonly string[] | undefined,
+    logger?: BreadcrumbSink
+  ): SubmitRunner =>
+  async (call) => {
+    try {
+      return await atProviderMethod('submitTx', circuitIds, call);
+    } catch (rejection) {
+      return handleSubmitRejection(pdp, operation, rejection, logger);
+    }
+  };

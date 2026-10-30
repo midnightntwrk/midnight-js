@@ -34,7 +34,13 @@ import {
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { EraInvariantViolationError, EraMismatchError, ProviderFailedError } from '../errors';
+import {
+  EraInvariantViolationError,
+  EraMismatchError,
+  ForkCrossedDuringOperationError,
+  ProviderFailedError,
+  SubmitRejectionUndiagnosedError
+} from '../errors';
 import { submitLedger9Payload, submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
 import { handles } from './ledger-transaction-fixtures';
 import { createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders, createMockUnprovenTx } from './test-mocks';
@@ -547,6 +553,102 @@ describe('submit-tx', () => {
 
       expect(txId).toBe('test-tx-id');
       expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
+    });
+
+    describe('a submission the node rejects', () => {
+      const rejectedOnV8Head = async (secondRead: () => Promise<number>): Promise<void> => {
+        await answerInEra('v8');
+        mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+        mockProviders.publicDataProvider.queryLatestProtocolVersion = vi
+          .fn()
+          .mockResolvedValueOnce(LEDGER8_HEAD)
+          .mockImplementationOnce(secondRead);
+      };
+
+      it('reports a fork crossing when the head moved forward between the head read and the submit', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
+
+        const rejection = await submitTx(mockProviders, {
+          unprovenTx: await handles.v8.Unproven(),
+          circuitId: 'increment'
+        }).catch((error: unknown) => error);
+
+        expect(rejection).toBeInstanceOf(ForkCrossedDuringOperationError);
+        expect(rejection).toMatchObject({
+          kind: 'transaction',
+          startEra: 'v8',
+          freshEra: 'v9',
+          circuitId: 'increment',
+          contractAddress: undefined
+        });
+        expect((rejection as ForkCrossedDuringOperationError).message).not.toContain('undefined');
+        expect((rejection as ForkCrossedDuringOperationError).cause).toBeInstanceOf(ProviderFailedError);
+        expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
+      });
+
+      it('reports a fork crossing from submitTxAsync too, still without waiting for a record', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
+
+        const rejection = await submitTxAsync(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(ForkCrossedDuringOperationError);
+        expect(rejection).toMatchObject({ kind: 'transaction', circuitId: undefined });
+        expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
+      });
+
+      it('keeps the rejection as it is when the head has not moved', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER8_HEAD));
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
+      });
+
+      it('reports the rejection as undiagnosed when the head cannot be read again', async () => {
+        await rejectedOnV8Head(() => Promise.reject(new Error('indexer unreachable')));
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+        expect(rejection).toMatchObject({ reason: 'network-version-read-failed', kind: 'transaction' });
+        expect((rejection as SubmitRejectionUndiagnosedError).message).not.toContain('undefined');
+      });
+
+      it('does not claim a fork when the head moved backwards', async () => {
+        await answerInEra('v9');
+        mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+        mockProviders.publicDataProvider.queryLatestProtocolVersion = vi
+          .fn()
+          .mockResolvedValueOnce(LEDGER9_HEAD)
+          .mockResolvedValueOnce(LEDGER8_HEAD);
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v9.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+        expect(rejection).toMatchObject({ reason: 'network-version-went-backwards', kind: 'transaction' });
+        expect((rejection as SubmitRejectionUndiagnosedError).message).toContain("now reports ledger 'v8', an EARLIER ledger era");
+      });
+
+      it('does not read the head again when proving fails', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
+        mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('prover down'));
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
