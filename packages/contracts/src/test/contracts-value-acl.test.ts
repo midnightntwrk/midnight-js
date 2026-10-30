@@ -80,6 +80,7 @@ const RUNTIME_EXPORTS: readonly string[] = [
   'createLedger9UnprovenDeployTx',
   'createLedger9UnprovenCallTxFromInitialStates',
   'createLedger9UnprovenCallTx',
+  'createLedger8UnprovenCallTx',
   'createUnprovenCallTxFromInitialStates',
   'createUnprovenDeployTx',
   'createUnprovenDeployTxFromVerifierKeys',

@@ -615,6 +615,23 @@ export const requireLedger9Contract = async (
 };
 
 /**
+ * Reads the era the contract's artifacts declare and refuses any era but ledger 8.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of another era,
+ *         and the refusals of {@link resolveArtifactEra}.
+ */
+export const requireLedger8Contract = async (
+  compiledContract: unknown,
+  source: ArtifactRuntimeVersionSource,
+  functionName: string
+): Promise<void> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  if (era !== 'v8') {
+    throw unsupportedContractEra(functionName, era);
+  }
+};
+
+/**
  * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
  *
  * Not a second decision: the era is established in exactly one place, and this only gives that

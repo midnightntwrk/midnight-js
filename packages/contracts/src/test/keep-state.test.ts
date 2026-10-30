@@ -74,6 +74,8 @@ import {
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
+import { createLedger8UnprovenCallTx } from '../unproven-call-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 
@@ -428,6 +430,18 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('createLedger8UnprovenCallTx builds a v9 keep-state handle that submitTx submits on this head', async () => {
+    const providers = postForkProviders(v6Envelope);
+
+    const built = await createLedger8UnprovenCallTx(providers, callOptions());
+    const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+
+    expect(built.era).toBe('v8');
+    expect(built.private.unprovenTx.era).toBe('v9');
+    expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+    expect(record.era).toBe('v9');
   });
 
   it('passes the providers.config TTL to the wallet on the current-era path', async () => {

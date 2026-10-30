@@ -108,7 +108,9 @@ import type {
   Ledger8FindDeployedContractOptions
 } from '../ledger8-contract';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
 import { createCallTxOptions } from '../tx-interfaces';
+import { createLedger8UnprovenCallTx } from '../unproven-call-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type {
   CoinReceiver016Circuits,
@@ -1246,6 +1248,52 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // The same partition the offer was routed against, so a caller reading it
     // sees what the transaction was actually composed from.
     expect(submitted.callTxData.public.partitionedTranscript).toHaveLength(2);
+  });
+
+  describe('createLedger8UnprovenCallTx', () => {
+    it('builds the call as a v8 handle, and proves, submits and stores nothing', async () => {
+      const providers = preForkProviders(v6Envelope);
+      providers.privateStateProvider.get = vi.fn().mockResolvedValue({ storedBefore: true });
+      engineSlot.engine = createReplayEngine(loadCoinReceiverRecording(), [], v6Envelope, {
+        privateState: { storedBefore: true }
+      });
+
+      const built = await createLedger8UnprovenCallTx(providers, { ...callOptions(), privateStateId: 'ledger8-private-state' });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v8');
+      expect(built.private.result).toStrictEqual(recording.transcript.result);
+      expect(built.private.nextPrivateState).toEqual({});
+      expect(built.calls).toHaveLength(1);
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+      expect(providers.walletProvider.balanceTx).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+      expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses a named privateStateId the provider holds nothing under, before reading the head', async () => {
+      const providers = preForkProviders(v6Envelope);
+      providers.privateStateProvider.get = vi.fn().mockResolvedValue(undefined);
+
+      await expect(
+        createLedger8UnprovenCallTx(providers, { ...callOptions(), privateStateId: 'ledger8-private-state' })
+      ).rejects.toMatchObject({ code: CONTRACTS_ERROR_CODES.PRIVATE_STATE_NOT_FOUND });
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    });
+
+    it('builds a transaction submitTx proves, balances and submits, leaving the private state to the caller', async () => {
+      const providers = preForkProviders(v6Envelope);
+
+      const built = await createLedger8UnprovenCallTx(providers, callOptions());
+      const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+
+      expect(record.era).toBe('v8');
+      expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+      expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('retained-era-tx-id');
+      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    });
   });
 
   it('composes and submits a retained-era DEPLOY, with the verifier keys the state declares', async () => {

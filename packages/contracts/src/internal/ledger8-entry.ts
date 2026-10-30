@@ -294,128 +294,6 @@ export const submitLedger8Tx = async (
   return proveBalanceSubmit(providers, unprovenTx, circuitId, submit);
 };
 
-/** What a retained-era call arrived with. */
-export interface Ledger8CallRequest {
-  readonly contract: Ledger8Contract;
-  readonly contractAddress: string;
-  readonly circuitId: string;
-  readonly args: readonly unknown[];
-  readonly privateState: unknown;
-  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
-}
-
-/** A composed and submitted retained-era call. */
-export interface Ledger8SubmittedCall {
-  readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<Ledger8StateValue>;
-  /**
-   * The era the network head was on when this call started.
-   *
-   * Deliberately NOT on the published `Ledger8SubmittedCallTx`: that type names
-   * the era of the PIPELINE, and this is the era of the NETWORK. The two are
-   * different facts and they disagree on this path every time a retained-era
-   * call is recorded post-fork. The finalizing path needs this one to attribute
-   * the record it fetches, so it travels on this internal shape instead.
-   */
-  readonly head: LedgerVersion;
-}
-
-/**
- * Runs one retained-era call end to end: acquire, compose through the
- * pipeline, then prove, balance and submit.
- *
- * The verifier key the pre-proving check compares is fetched BEFORE the
- * pipeline runs, because the pipeline's key check has to happen before any
- * proof exists.
- *
- * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded
- * outputs are encrypted per recipient and an unresolvable recipient is refused
- * rather than mis-encrypted.
- *
- * @param providers The provider set.
- * @param request The contract, its address, the circuit, its arguments and the
- * private state to run against.
- * @returns The transaction id and what the call produced.
- * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
- * envelope's era disagrees with the head.
- * @throws StateDecodeFailedError if the envelope will not decode on this era.
- * @throws StateInconsistentError if the decoded state is internally inconsistent.
- * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
- * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
- * pre-proving key check.
- * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a coin the
- * contract already held.
- * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if a shielded output pays a recipient
- * that is not the calling wallet, the burn address, or a key in
- * `additionalCoinEncPublicKeyMappings`.
- * @throws ProviderEraUnsupportedError if a provider does not serve the head's era.
- * @throws EraInvariantViolationError if a provider answers in the other era.
- * @throws ProviderFailedError if a provider rejects.
- * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
- *      a bare key would cost.
- */
-export const runLedger8Call = async (
-  providers: Ledger8EntryProviders,
-  request: Ledger8CallRequest
-): Promise<Ledger8SubmittedCall> => {
-  assertValidMidnightConfig(providers.config);
-  const { networkId } = providers.config;
-  const ttl = intentTtl(providers.config);
-  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
-    logger: providers.loggerProvider,
-    contractAddress: request.contractAddress
-  });
-  const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(request.circuitId);
-
-  // Read ONCE and used for both the circuit's coin public key and the
-  // resolver's notion of "the wallet's own key". Two reads of the same wallet
-  // member could disagree, and a resolver built against a different key than
-  // the circuit executed under is exactly the mismatch that mis-encrypts.
-  //
-  // NORMALIZED, exactly as every current-era call site normalizes it. A real
-  // wallet hands this over Bech32m-encoded; the retained runtime's
-  // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
-  // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
-  // passes hex through unchanged, so this is free for a wallet that already
-  // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
-  // test in this repo can catch its absence.
-  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
-
-  const call = await runLedger8CallPipeline({
-    era: resolved.era,
-    retainedEra,
-    engine,
-    publicDataProvider: providers.publicDataProvider,
-    head: resolved.head,
-    logger: providers.loggerProvider,
-    contract: request.contract,
-    contractAddress: request.contractAddress,
-    circuitId: request.circuitId,
-    args: request.args,
-    coinPublicKey,
-    privateState: request.privateState,
-    localVerifierKey,
-    networkId,
-    ttl,
-    encryptionPublicKey: createEncryptionPublicKeyResolver(
-      networkId,
-      coinPublicKey,
-      providers.walletProvider.getEncryptionPublicKey(),
-      request.additionalCoinEncPublicKeyMappings
-    )
-  });
-
-  const txId = await submitLedger8Tx(providers, call.unprovenTx, {
-    networkVersion: resolved.head,
-    kind: 'call',
-    circuitId: request.circuitId,
-    contractAddress: request.contractAddress
-  });
-
-  return { txId, call, head: resolved.head };
-};
-
 /** What a retained-era deploy arrived with. */
 export interface Ledger8DeployRequest {
   readonly contract: Ledger8Contract;
@@ -446,7 +324,7 @@ export interface Ledger8SubmittedDeploy {
   readonly deploy: Ledger8DeployPipelineResult;
   /**
    * The era the network head was on when this deploy started, for the same
-   * reason {@link Ledger8SubmittedCall.head} carries it: the finalizing step
+   * reason {@link Ledger8BuiltCall.head} carries it: the finalizing step
    * needs it to attribute the record it fetches, and re-reading the head there
    * could answer differently.
    */
@@ -863,39 +741,60 @@ const toLedger8CallTxData = (
 });
 
 /**
- * What one retained-era call entry produced: the submitted-call result the
- * public entry points answer with, and the era the network head was on.
+ * A retained-era call built and not submitted: the execution data the public builder hands back,
+ * and the era the network head was on.
  *
- * The head is here rather than on `Ledger8SubmittedCallTx` for the reason
- * given on {@link Ledger8SubmittedCall.head}: that type names the era of the
- * PIPELINE, this is the era of the NETWORK, and on this path they routinely
- * differ. The finalizing entry point needs the network's to attribute the record it
- * fetches, and no caller needs it at all.
+ * The head is here rather than on `Ledger8UnsubmittedCallTxData`: that type names the era of the
+ * PIPELINE, this is the era of the NETWORK, and post-fork they differ. The submit step checks the
+ * transaction against it and the finalizing step attributes the record with it, so neither reads
+ * the head a second time — a second reading could answer differently mid-operation.
  */
-interface Ledger8CallEntryOutcome {
-  readonly submitted: AnyLedger8SubmittedCallTx;
+export interface Ledger8BuiltCall {
+  readonly data: AnyLedger8UnsubmittedCallTxData;
   readonly head: LedgerVersion;
 }
 
 /**
- * Runs one retained-era call: the local refusals, the private-state read, the
- * pipeline, and the submission -- everything both public entry points share.
+ * Builds one retained-era call and submits nothing: the local refusals, the private-state read,
+ * the era acquisition, the verifier-key fetch and the pipeline, in that order. Persists nothing.
  *
- * Extracted so the finalizing entry point can reach the head this call resolved
- * WITHOUT a second head read. Re-reading it would break the single-head-read
- * invariant the entry points are asserted against, and worse, a second reading
- * could answer differently and attribute the record against an era the
- * transaction was never built for.
+ * Does NOT read the artifact era. Its callers have already resolved it, and a second read would
+ * cost a second round trip to the ZK config provider per operation.
+ *
+ * The verifier key the pre-proving check compares is fetched BEFORE the pipeline runs, because the
+ * pipeline's key check has to happen before any proof exists.
+ *
+ * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded outputs are encrypted
+ * per recipient and an unresolvable recipient is refused rather than mis-encrypted.
  *
  * @param providers The provider set.
- * @param options The call the entry point received.
- * @returns The submitted-call result and the head era it resolved.
- * @throws Every error the public entry points document.
+ * @param options The call, in the shape this layer reads.
+ * @returns The execution data and the head era the transaction was composed for.
+ * @throws InvalidArgumentError if the contract address is malformed, or if the artifact declares no
+ * such circuit.
+ * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named with no private-state
+ * provider.
+ * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing stored under it.
+ * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched envelope's era
+ * disagrees with the head.
+ * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
+ * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
+ * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the pre-proving key check.
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a coin the
+ * contract already held.
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if a shielded output pays a
+ * recipient that is not the calling wallet, the burn address, or a key in
+ * `additionalCoinEncPublicKeyMappings`.
+ * @throws ProviderEraUnsupportedError if a transaction provider does not serve the head's era.
+ * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what a bare key would
+ *      cost.
  */
-const runLedger8CallEntry = async (
+export const buildLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<Ledger8CallEntryOutcome> => {
+): Promise<Ledger8BuiltCall> => {
   // The same two local refusals the current-era path makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
   // to discover, and an unknown circuit id would surface as a blank
@@ -915,24 +814,82 @@ const runLedger8CallEntry = async (
       ? undefined
       : await readLedger8PrivateState(providers.privateStateProvider, options.privateStateId);
 
-  const { txId, call, head } = await runLedger8Call(providers, {
+  assertValidMidnightConfig(providers.config);
+  const { networkId } = providers.config;
+  const ttl = intentTtl(providers.config);
+  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
+    logger: providers.loggerProvider,
+    contractAddress: options.contractAddress
+  });
+  const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(options.circuitId);
+
+  // Read ONCE and used for both the circuit's coin public key and the
+  // resolver's notion of "the wallet's own key". Two reads of the same wallet
+  // member could disagree, and a resolver built against a different key than
+  // the circuit executed under is exactly the mismatch that mis-encrypts.
+  //
+  // NORMALIZED, exactly as every current-era call site normalizes it. A real
+  // wallet hands this over Bech32m-encoded; the retained runtime's
+  // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
+  // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
+  // passes hex through unchanged, so this is free for a wallet that already
+  // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
+  // test in this repo can catch its absence.
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
+
+  const call = await runLedger8CallPipeline({
+    era: resolved.era,
+    retainedEra,
+    engine,
+    publicDataProvider: providers.publicDataProvider,
+    head: resolved.head,
+    logger: providers.loggerProvider,
     contract: options.compiledContract,
     contractAddress: options.contractAddress,
     circuitId: options.circuitId,
     args: options.args ?? [],
+    coinPublicKey,
     privateState,
-    additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
+    localVerifierKey,
+    networkId,
+    ttl,
+    encryptionPublicKey: createEncryptionPublicKeyResolver(
+      networkId,
+      coinPublicKey,
+      providers.walletProvider.getEncryptionPublicKey(),
+      options.additionalCoinEncPublicKeyMappings
+    )
   });
 
-  return {
-    submitted: {
-      era: 'v8',
-      txId,
-      circuitId: call.circuitId,
-      callTxData: toLedger8CallTxData(call)
-    },
-    head
-  };
+  return { data: toLedger8CallTxData(call), head: resolved.head };
+};
+
+/**
+ * Builds one retained-era call and proves, balances and submits it -- what both high-level entry
+ * points share.
+ *
+ * @param providers The provider set.
+ * @param options The call the entry point received.
+ * @returns The transaction id, the circuit, the execution data and the head era it was built for.
+ * @throws Every error {@link buildLedger8CallTx} and {@link submitLedger8Tx} raise.
+ */
+const submitBuiltLedger8Call = async (
+  providers: Ledger8CallEntryProviders,
+  options: Ledger8CallEntryOptions
+): Promise<{
+  readonly txId: string;
+  readonly circuitId: string;
+  readonly callTxData: AnyLedger8UnsubmittedCallTxData;
+  readonly head: LedgerVersion;
+}> => {
+  const { data, head } = await buildLedger8CallTx(providers, options);
+  const txId = await submitLedger8Tx(providers, data.private.unprovenTx, {
+    networkVersion: head,
+    kind: 'call',
+    circuitId: options.circuitId,
+    contractAddress: options.contractAddress
+  });
+  return { txId, circuitId: options.circuitId, callTxData: data, head };
 };
 
 /**
@@ -950,18 +907,15 @@ const runLedger8CallEntry = async (
  * @returns The transaction id, the circuit, the next private state, and the
  * execution data — everything but a finalized record, which a submission that
  * does not wait for one cannot have.
- * @throws InvalidArgumentError if the contract address is malformed, or if the
- * artifact declares no such circuit.
- * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing
- * stored under it.
- * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named
- * with no private-state provider.
- * @throws Every error {@link runLedger8Call} raises.
+ * @throws Every error {@link buildLedger8CallTx} and {@link submitLedger8Tx} raise.
  */
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<AnyLedger8SubmittedCallTx> => (await runLedger8CallEntry(providers, options)).submitted;
+): Promise<AnyLedger8SubmittedCallTx> => {
+  const { txId, circuitId, callTxData } = await submitBuiltLedger8Call(providers, options);
+  return { era: 'v8', txId, circuitId, callTxData };
+};
 
 /**
  * Runs a retained-era call and waits for the chain to record it, storing the
@@ -984,8 +938,7 @@ export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<AnyLedger8FinalizedCallTxData> => {
-  const { submitted, head } = await runLedger8CallEntry(providers, options);
-  const { txId, circuitId, callTxData } = submitted;
+  const { txId, circuitId, callTxData, head } = await submitBuiltLedger8Call(providers, options);
   // The ONE path to the next private state, the same one the current era
   // publishes and this path's own asynchronous surface documents.
   const nextPrivateState = callTxData.private.nextPrivateState;

@@ -249,6 +249,7 @@ export type {
   Ledger9CallTxOptionsWithPrivateStateId
 } from './unproven-call-tx';
 export {
+  createLedger8UnprovenCallTx,
   createLedger9UnprovenCallTx,
   createLedger9UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,
