@@ -145,7 +145,7 @@ const tx = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
 A contract state, ledger parameters and a zswap chain state come back as a
-`LedgerState`: the bytes, plus the `era` of the ledger that wrote them.
+`SerializedState`: the bytes, plus the `era` of the ledger that wrote them.
 Decode one with the runtime your contract was compiled against, so its
 `ledger()` accepts the result:
 
@@ -159,11 +159,11 @@ if (read !== null) {
 ```
 
 `deserialize` calls only the decoder for the state's own `era`. It refuses a
-missing one with `LedgerStateDecoderMissingError`, and reports a decoder that
-throws as `LedgerStateDecodeFailedError` (a decoder error that is already a
+missing one with `SerializedStateDecoderMissingError`, and reports a decoder that
+throws as `SerializedStateDecodeFailedError` (a decoder error that is already a
 `MidnightJsError` is rethrown unchanged). A call with no decoder for any era the
-state can be does not compile. Only `LedgerState.fromBytes(era, kind, bytes)`
-makes a `LedgerState`; `LedgerState.isLedgerState(value)` checks one.
+state can be does not compile. Only `SerializedState.fromBytes(era, kind, bytes)`
+makes a `SerializedState`; `SerializedState.isSerializedState(value)` checks one.
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
 implementation. Both adapters unwrap each handle for you, and the wallet adapter
@@ -316,9 +316,9 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
-  InvalidLedgerStateError,
-  LedgerStateDecoderMissingError,
-  LedgerStateDecodeFailedError,
+  InvalidSerializedStateError,
+  SerializedStateDecoderMissingError,
+  SerializedStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,
@@ -383,8 +383,8 @@ import {
   type LedgerTransactionTypes,
 
   // On-chain state as bytes, decoded by the caller's own runtime
-  LedgerState,
-  type LedgerStateKind,
+  SerializedState,
+  type StateKind,
   type StateDecoder,
   type StateDecoders,
   type DecodedState,
@@ -392,7 +392,7 @@ import {
   type ContractStateRead,
   type ContractStateAndParametersRead,
   type PublicStatesRead,
-  type InvalidLedgerStateReason,
+  type InvalidSerializedStateReason,
 
   // Version-tagged transaction records for the ledger-fork window
   type Ledger8FinalizedTxData,
@@ -416,9 +416,9 @@ import {
   ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   TransactionEraMismatchError,
-  InvalidLedgerStateError,
-  LedgerStateDecoderMissingError,
-  LedgerStateDecodeFailedError,
+  InvalidSerializedStateError,
+  SerializedStateDecoderMissingError,
+  SerializedStateDecodeFailedError,
   ProviderEraUnsupportedError,
   UnusableEraEntryError,
   InvalidProtocolSchemeError,

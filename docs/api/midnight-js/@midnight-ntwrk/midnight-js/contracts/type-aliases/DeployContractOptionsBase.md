@@ -6,39 +6,12 @@
 
 # Type Alias: DeployContractOptionsBase\<C\>
 
-> **DeployContractOptionsBase**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
+> **DeployContractOptionsBase**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9DeployContractOptionsBase`](Ledger9DeployContractOptionsBase.md)\<`C`\> : `never`
 
-The [deployContract](../functions/deployContract.md) options variant for a contract whose private state is stored
-NOWHERE: the constructor runs against `undefined` and nothing is written.
-
-The other variant is [DeployContractOptionsWithPrivateState](DeployContractOptionsWithPrivateState.md).
-
-## Type Declaration
-
-### initialPrivateState?
-
-> `readonly` `optional` **initialPrivateState?**: `never`
-
-DECLARED on this variant, and only ever `undefined` — see
-DeployContractOptionsBase.privateStateId for why the member is
-present rather than absent.
-
-### privateStateId?
-
-> `readonly` `optional` **privateStateId?**: `never`
-
-DECLARED on this variant, and only ever `undefined`.
-
-Left off the variant entirely, `{ compiledContract, privateStateId: 'x' }`
-compiled: union excess-property checking admits a member declared on the
-SIBLING variant as long as one variant is satisfied, and `compiledContract` alone
-satisfies this one. The constructor then ran against `undefined`,
-`undefined` was stored under the caller's id, and
-`deployTxData.private.initialPrivateState` was typed non-optional while
-actually undefined.
+The options of `deployContract` without private state. Generic code names an era: `Ledger9DeployContractOptionsBase<C>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

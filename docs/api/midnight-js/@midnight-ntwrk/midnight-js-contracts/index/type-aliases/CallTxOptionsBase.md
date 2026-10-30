@@ -4,18 +4,18 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / CallTxOptionsBase
 
-# Type Alias: CallTxOptionsBase\<C, PCK\>
+# Type Alias: CallTxOptionsBase\<C, K\>
 
-> **CallTxOptionsBase**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\>
+> **CallTxOptionsBase**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9CallTxOptionsBase`](Ledger9CallTxOptionsBase.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-Base type for configuration for a call transaction; identical to [CallOptionsWithArguments](CallOptionsWithArguments.md).
+The options of a circuit call without private state. Generic code names an era: `Ledger9CallTxOptionsBase<C, K>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

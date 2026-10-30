@@ -6,13 +6,12 @@
 
 # Type Alias: CircuitCallTxInterface\<C\>
 
-> **CircuitCallTxInterface**\<`C`\> = `{ [PCK in Contract.ProvableCircuitId<C>]: { (args: CircuitParameters<C, PCK>): Promise<FinalizedCallTxData<C, PCK>>; (txCtx: TransactionContext<C, PCK>, args: CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>> } }`
+> **CircuitCallTxInterface**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8CircuitCallTxInterface`](Ledger8CircuitCallTxInterface.md)\<`C`\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9CircuitCallTxInterface`](Ledger9CircuitCallTxInterface.md)\<`C`\> : `never`
 
-A type that lifts each circuit defined in a contract to a function that builds
-and submits a call transaction.
+One call function per circuit. Generic code names an era: `Ledger9CircuitCallTxInterface<C>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

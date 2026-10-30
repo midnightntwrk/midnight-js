@@ -6,11 +6,10 @@
 
 # Variable: getPublicStates
 
-> `const` **getPublicStates**: (`publicDataProvider`, `contractAddress`, `blockHash?`) => `Promise`\<[`VersionedPublicStates`](../../types/type-aliases/VersionedPublicStates.md)\>
+> `const` **getPublicStates**: (`publicDataProvider`, `contractAddress`, `blockHash?`) => `Promise`\<[`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md)\>
 
-Fetches only the public visible (Zswap and ledger) states of a contract, tagged with the ledger
-era that wrote them. Narrow on `version`, or use `requireLedger9` from
-`@midnight-ntwrk/midnight-js-utils` when only the v9 era is handled.
+Fetches only the public visible (Zswap and ledger) states of a contract, as bytes with the
+era of the ledger that wrote them.
 
 ## Parameters
 
@@ -35,4 +34,4 @@ The block to read the states at. If `undefined`, the latest states are read.
 
 ## Returns
 
-`Promise`\<[`VersionedPublicStates`](../../types/type-aliases/VersionedPublicStates.md)\>
+`Promise`\<[`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md)\>

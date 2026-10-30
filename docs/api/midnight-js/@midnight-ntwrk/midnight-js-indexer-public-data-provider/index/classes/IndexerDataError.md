@@ -152,6 +152,36 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### malformedZswapEncoding()
+
+> `static` **malformedZswapEncoding**(): `IndexerDataError`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### malformedZswapState()
+
+> `static` **malformedZswapState**(`era`, `cause`): `IndexerDataError`
+
+#### Parameters
+
+##### era
+
+`"v8"` \| `"v9"`
+
+##### cause
+
+`unknown`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### missingContractAction()
 
 > `static` **missingContractAction**(`contractAddress`): `IndexerDataError`
@@ -242,6 +272,30 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### parametersEraDisagreement()
+
+> `static` **parametersEraDisagreement**(`protocolVersion`, `reportedVersion`, `parametersVersion`): `IndexerDataError`
+
+#### Parameters
+
+##### protocolVersion
+
+`number`
+
+##### reportedVersion
+
+`"v8"` \| `"v9"`
+
+##### parametersVersion
+
+`"v8"` \| `"v9"`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### undatedState()
 
 > `static` **undatedState**(): `IndexerDataError`
@@ -301,38 +355,6 @@ Construct via the static factory methods to ensure the message and
 ##### value
 
 `string`
-
-#### Returns
-
-`IndexerDataError`
-
-***
-
-### unsupportedDecodeEra()
-
-> `static` **unsupportedDecodeEra**(`version`): `IndexerDataError`
-
-#### Parameters
-
-##### version
-
-`"v8"` \| `"v9"`
-
-#### Returns
-
-`IndexerDataError`
-
-***
-
-### unsupportedParametersEra()
-
-> `static` **unsupportedParametersEra**(`version`): `IndexerDataError`
-
-#### Parameters
-
-##### version
-
-`"v8"` \| `"v9"`
 
 #### Returns
 

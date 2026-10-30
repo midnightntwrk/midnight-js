@@ -8,22 +8,22 @@
 
 ## Call Signature
 
-> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`CircuitMaintenanceTxInterfaces`](../namespaces/Ledger8/type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger8CircuitMaintenanceTxInterfaces`](../type-aliases/Ledger8CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
-Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxInterfaces.md), or the retained era's
+Creates a [Ledger9CircuitMaintenanceTxInterfaces](../type-aliases/Ledger9CircuitMaintenanceTxInterfaces.md), or the retained era's
 `Ledger8CircuitMaintenanceTxInterfaces` for a contract the retained Compact toolchain produced.
 
 ### Type Parameters
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 The providers to use to build transactions.
 
@@ -41,7 +41,7 @@ The ledger address of the contract.
 
 ### Returns
 
-[`CircuitMaintenanceTxInterfaces`](../namespaces/Ledger8/type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+[`Ledger8CircuitMaintenanceTxInterfaces`](../type-aliases/Ledger8CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
 ### Throws
 
@@ -53,9 +53,9 @@ EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
 
 ## Call Signature
 
-> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger9CircuitMaintenanceTxInterfaces`](../type-aliases/Ledger9CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
-Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxInterfaces.md), or the retained era's
+Creates a [Ledger9CircuitMaintenanceTxInterfaces](../type-aliases/Ledger9CircuitMaintenanceTxInterfaces.md), or the retained era's
 `Ledger8CircuitMaintenanceTxInterfaces` for a contract the retained Compact toolchain produced.
 
 ### Type Parameters
@@ -68,7 +68,7 @@ Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxI
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 The providers to use to build transactions.
 
@@ -86,7 +86,7 @@ The ledger address of the contract.
 
 ### Returns
 
-[`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+[`Ledger9CircuitMaintenanceTxInterfaces`](../type-aliases/Ledger9CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
 ### Throws
 

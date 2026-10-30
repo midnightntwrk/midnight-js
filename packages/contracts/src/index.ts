@@ -109,17 +109,9 @@ export {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The receiving half of the era surface: the overloads hand a caller one era's
-// result by inference, and these let a caller who RECEIVES either one declare a
-// parameter for both and narrow it by name.
-export {
-  type AnyEraDeployedContract,
-  type AnyEraFinalizedCallTxData,
-  type AnyEraFoundContract,
-  type AnyEraMaintenanceTxData,
-  type AnyEraSubmittedCallTx,
-  isLedger8Result
-} from './era-results';
+// The receiving half of the era surface: a caller who RECEIVES a result of either era declares
+// it with a flat name and narrows it with this guard.
+export { isLedger8Result } from './era-results';
 // The RETAINED era's refusals and the types on their public fields, flat.
 export {
   Ledger8AmbiguousEntryPointError,
@@ -184,7 +176,9 @@ export type {
   Ledger9DeployedContract
 } from './deploy-contract';
 export type {
-  AnyEraContract,
+  AnyContract,
+  AnyFinalizedCallTxData,
+  AnySubmittedCallTx,
   CallResultPrivate,
   CallTxOptions,
   CallTxOptionsBase,
@@ -199,6 +193,7 @@ export type {
   DeployedContract,
   FinalizedCallTxData,
   FinalizedDeployTxData,
+  FinalizedMaintenanceTxData,
   FindDeployedContractOptions,
   FoundContract,
   FoundDeployTxData,

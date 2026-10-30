@@ -6,7 +6,7 @@
 
 # Type Alias: AnyEraFinalizedCallTxData
 
-> **AnyEraFinalizedCallTxData** = `WithOpaqueCircuitValues`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk), [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)\>\>\> \| [`FinalizedCallTxData`](../namespaces/Ledger8/interfaces/FinalizedCallTxData.md)\<[`Contract`](../namespaces/Ledger8/interfaces/Contract.md), [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<[`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\>\>
+> **AnyEraFinalizedCallTxData** = `WithOpaqueCircuitValues`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk), [`Contract$1.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract$1.Any`](https://github.com/midnightntwrk/midnight-sdk)\>\>\> \| [`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<[`Ledger8Contract`](../interfaces/Ledger8Contract.md), [`Ledger8CircuitId`](Ledger8CircuitId.md)\<[`Ledger8Contract`](../interfaces/Ledger8Contract.md)\>\>
 
 What a finalizing call answers with, in either era.
 

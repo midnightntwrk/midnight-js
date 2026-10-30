@@ -6,7 +6,7 @@
 
 # Type Alias: UnprovenCallTxProvidersWithPrivateState\<C\>
 
-> **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
+> **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
 
 Same providers as [UnprovenCallTxProvidersBase](UnprovenCallTxProvidersBase.md) with an additional private
 state provider to store the new private state resulting from the circuit call -

@@ -19,8 +19,8 @@ import { ChargedState, ContractState, StateValue } from '@midnight-ntwrk/midnigh
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
-  LedgerState,
-  type PrivateStateId
+  type PrivateStateId,
+  SerializedState
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -219,7 +219,7 @@ describe('TransactionContextImpl identity validation', () => {
       const result = txCtx.getCurrentStates();
 
       expect(Object.keys(result ?? {}).sort()).toEqual(['contractState', 'ledgerParameters', 'protocolVersion', 'zswapChainState']);
-      expect(LedgerState.isLedgerState(result?.contractState)).toBe(true);
+      expect(SerializedState.isSerializedState(result?.contractState)).toBe(true);
       expect(result?.contractState.era).toBe('v9');
       expect(result?.contractState.serialize()).toEqual(contractState.serialize());
       expect(result?.ledgerParameters).toBe(MOCK_READ.ledgerParameters);

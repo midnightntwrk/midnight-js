@@ -4,31 +4,18 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / CallResultPrivate
 
-# Type Alias: CallResultPrivate\<C, PCK\>
+# Type Alias: CallResultPrivate\<C, K\>
 
-> **CallResultPrivate**\<`C`, `PCK`\> = [`CallResultPrivateBase`](../../types/interfaces/CallResultPrivateBase.md)\<[`Contract.CircuitReturnType`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\>, [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\>
+> **CallResultPrivate**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8CallResultPrivate`](../interfaces/Ledger8CallResultPrivate.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9CallResultPrivate`](Ledger9CallResultPrivate.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-The private (sensitive) portions of the call result.
+The private result of a circuit call. Generic code names an era: `Ledger9CallResultPrivate<C, K>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
-
-## Remarks
-
-**Privacy-sensitive type.** Every field on this type carries data the
-zero-knowledge proofs were designed to keep confidential: the ZK-aligned
-circuit input/output, the private transcript outputs from witness calls,
-the JS-typed circuit result, the next private state, and the next Zswap
-local state.
-
-Application code must not log, serialize, or transmit instances of this
-type. If a non-sensitive subset of the call result is needed (for example,
-the JS `result` value alone), extract that field explicitly rather than
-passing the whole object across a trust boundary.
+`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

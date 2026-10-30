@@ -18,6 +18,9 @@ import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import type {
+  AnyContract,
+  AnyFinalizedCallTxData,
+  AnySubmittedCallTx,
   CallResultPrivate,
   CallTxOptions,
   CallTxOptionsBase,
@@ -32,6 +35,7 @@ import type {
   DeployedContract,
   FinalizedCallTxData,
   FinalizedDeployTxData,
+  FinalizedMaintenanceTxData,
   FindDeployedContractOptions,
   FoundContract,
   FoundDeployTxData,
@@ -40,7 +44,9 @@ import type {
   Ledger8CallTxOptionsBase,
   Ledger8CallTxOptionsWithPrivateStateId,
   Ledger8CircuitCallTxInterface,
+  Ledger8CircuitId,
   Ledger8CircuitMaintenanceTxInterfaces,
+  Ledger8Contract,
   Ledger8ContractProviders,
   Ledger8DeployContractOptions,
   Ledger8DeployContractOptionsBase,
@@ -48,6 +54,7 @@ import type {
   Ledger8DeployedContract,
   Ledger8DeployTxData,
   Ledger8FinalizedCallTxData,
+  Ledger8FinalizedMaintenanceTxData,
   Ledger8FindDeployedContractOptions,
   Ledger8FoundContract,
   Ledger8FoundDeployTxData,
@@ -59,6 +66,7 @@ import type {
   Ledger9CallTxOptionsWithPrivateStateId,
   Ledger9CircuitCallTxInterface,
   Ledger9CircuitMaintenanceTxInterfaces,
+  Ledger9Contract,
   Ledger9ContractProviders,
   Ledger9DeployContractOptions,
   Ledger9DeployContractOptionsBase,
@@ -66,6 +74,7 @@ import type {
   Ledger9DeployedContract,
   Ledger9FinalizedCallTxData,
   Ledger9FinalizedDeployTxData,
+  Ledger9FinalizedMaintenanceTxData,
   Ledger9FindDeployedContractOptions,
   Ledger9FoundContract,
   Ledger9FoundDeployTxData,
@@ -127,8 +136,9 @@ describe('a flat name picks the variant of the era that compiled the contract', 
     expectTypeOf<ContractProviders<V8, K>>().toEqualTypeOf<Ledger8ContractProviders<V8, K>>();
   });
 
-  it('keeps the ledger 9 provider set when no contract is named', () => {
-    expectTypeOf<ContractProviders>().toEqualTypeOf<Ledger9ContractProviders>();
+  it('requires a contract to name a provider set', () => {
+    // @ts-expect-error a provider set serves one contract, so the contract has to be named
+    type _NoContract = ContractProviders;
   });
 
   it('refuses a circuit id the contract does not declare', () => {
@@ -173,6 +183,61 @@ describe('a flat name picks the variant of the era that compiled the contract', 
 
   it('picks the era of each member of a union of contracts', () => {
     expectTypeOf<FoundContract<V8 | V9>>().toEqualTypeOf<Ledger8FoundContract<V8> | Ledger9FoundContract<V9>>();
+    expectTypeOf<DeployedContract<V8 | V9>>().toEqualTypeOf<Ledger8DeployedContract<V8> | Ledger9DeployedContract<V9>>();
+  });
+});
+
+describe('a flat name without a contract is the union of every era', () => {
+  it('names a contract of either era', () => {
+    expectTypeOf<AnyContract>().toEqualTypeOf<Ledger8Contract | Ledger9Contract>();
+  });
+
+  it('names a maintenance result of either era', () => {
+    expectTypeOf<FinalizedMaintenanceTxData>().toEqualTypeOf<
+      Ledger8FinalizedMaintenanceTxData | Ledger9FinalizedMaintenanceTxData
+    >();
+  });
+
+  it('names a finalized call of either era', () => {
+    expectTypeOf<Extract<AnyFinalizedCallTxData, { era: 'v8' }>>().toEqualTypeOf<
+      Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    >();
+    expectTypeOf<Exclude<AnyFinalizedCallTxData, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
+    expectTypeOf<FinalizedCallTxData<V9, K>>().toExtend<AnyFinalizedCallTxData>();
+    expectTypeOf<FinalizedCallTxData<V8, K>>().toExtend<AnyFinalizedCallTxData>();
+  });
+
+  it('names a submitted call of either era', () => {
+    expectTypeOf<Extract<AnySubmittedCallTx, { era: 'v8' }>>().toEqualTypeOf<
+      Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>
+    >();
+    expectTypeOf<Exclude<AnySubmittedCallTx, { era: 'v8' }>['era']>().toEqualTypeOf<'v9'>();
+    expectTypeOf<SubmittedCallTx<V9, K>>().toExtend<AnySubmittedCallTx>();
+    expectTypeOf<SubmittedCallTx<V8, K>>().toExtend<AnySubmittedCallTx>();
+  });
+
+  it('refuses a call result type without a contract and a circuit', () => {
+    // @ts-expect-error a call result of either era is AnyFinalizedCallTxData
+    type _NoContract = FinalizedCallTxData;
+    // @ts-expect-error the circuit has to be named
+    type _NoCircuit = FinalizedCallTxData<V9>;
+    // @ts-expect-error a submitted call of either era is AnySubmittedCallTx
+    type _NoContractSubmitted = SubmittedCallTx;
+    // @ts-expect-error the circuit has to be named
+    type _NoCircuitSubmitted = SubmittedCallTx<V9>;
+  });
+
+  it('types the circuit values as any when instantiated with AnyContract itself', () => {
+    // Known limit: AnyContract is a constraint. The widest ledger 9 contract is `Contract<any>`,
+    // so a value of any contract is `AnyFinalizedCallTxData`, not `FinalizedCallTxData<AnyContract, …>`.
+    expectTypeOf<FinalizedCallTxData<AnyContract, CircuitIdOf<AnyContract>>['private']['result']>().toBeAny();
+  });
+
+  it('reads the circuit values of a call of either era as unknown, never any', () => {
+    expectTypeOf<AnyFinalizedCallTxData['private']['result']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnyFinalizedCallTxData['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnySubmittedCallTx['callTxData']['private']['result']>().toEqualTypeOf<unknown>();
+    expectTypeOf<AnySubmittedCallTx['callTxData']['private']['nextPrivateState']>().toEqualTypeOf<unknown>();
   });
 });
 

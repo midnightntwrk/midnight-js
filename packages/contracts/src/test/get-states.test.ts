@@ -39,7 +39,7 @@ describe('get-states', () => {
       ledgerParameters: LedgerParameters.initialParameters()
     });
 
-  // `toEqual` compares a `LedgerState` by its public fields only, so the record is checked by identity.
+  // `toEqual` compares a `SerializedState` by its public fields only, so the record is checked by identity.
   const expectSameRecord = (actual: PublicStatesRead, expected: PublicStatesRead): void => {
     expect(actual.protocolVersion).toBe(expected.protocolVersion);
     expect(actual.contractState).toBe(expected.contractState);

@@ -18,7 +18,7 @@ A [WalletProvider](WalletProvider.md) written against the v9 ledger runtime only
 
 ##### tx
 
-[`UnboundTransaction`](../type-aliases/UnboundTransaction.md)
+[`Ledger9UnboundTransaction`](../type-aliases/Ledger9UnboundTransaction.md)
 
 ##### ttl?
 

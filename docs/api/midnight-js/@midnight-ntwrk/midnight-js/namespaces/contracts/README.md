@@ -8,15 +8,9 @@
 
 ## References
 
-### AnyEraContractState
+### AnyEraContract
 
-Re-exports [AnyEraContractState](../../contracts/interfaces/AnyEraContractState.md)
-
-***
-
-### AnyEraContractStateReadSurface
-
-Re-exports [AnyEraContractStateReadSurface](../../contracts/type-aliases/AnyEraContractStateReadSurface.md)
+Re-exports [AnyEraContract](../../contracts/type-aliases/AnyEraContract.md)
 
 ***
 
@@ -110,12 +104,6 @@ Re-exports [CallResultPrivate](../../contracts/type-aliases/CallResultPrivate.md
 
 ***
 
-### CallResultPublic
-
-Re-exports [CallResultPublic](../../contracts/interfaces/CallResultPublic.md)
-
-***
-
 ### CallTxFailedError
 
 Re-exports [CallTxFailedError](../../contracts/classes/CallTxFailedError.md)
@@ -146,9 +134,9 @@ Re-exports [CircuitCallTxInterface](../../contracts/type-aliases/CircuitCallTxIn
 
 ***
 
-### CircuitMaintenanceTxInterface
+### CircuitIdOf
 
-Re-exports [CircuitMaintenanceTxInterface](../../contracts/interfaces/CircuitMaintenanceTxInterface.md)
+Re-exports [CircuitIdOf](../../contracts/type-aliases/CircuitIdOf.md)
 
 ***
 
@@ -200,12 +188,6 @@ Re-exports [ContractConstructorResult](../../contracts/interfaces/ContractConstr
 
 ***
 
-### ContractMaintenanceTxInterface
-
-Re-exports [ContractMaintenanceTxInterface](../../contracts/interfaces/ContractMaintenanceTxInterface.md)
-
-***
-
 ### ContractNotFoundError
 
 Re-exports [ContractNotFoundError](../../contracts/classes/ContractNotFoundError.md)
@@ -238,7 +220,7 @@ Re-exports [ContractTypeMismatch](../../contracts/interfaces/ContractTypeMismatc
 
 ### createCallTxOptions
 
-Re-exports [createCallTxOptions](../../contracts/variables/createCallTxOptions.md)
+Re-exports [createCallTxOptions](../../contracts/functions/createCallTxOptions.md)
 
 ***
 
@@ -328,7 +310,7 @@ Re-exports [DeployContractOptionsWithPrivateState](../../contracts/type-aliases/
 
 ### DeployedContract
 
-Re-exports [DeployedContract](../../contracts/interfaces/DeployedContract.md)
+Re-exports [DeployedContract](../../contracts/type-aliases/DeployedContract.md)
 
 ***
 
@@ -394,37 +376,19 @@ Re-exports [EraInvariantViolationError](../../contracts/classes/EraInvariantViol
 
 ### FinalizedCallTxData
 
-Re-exports [FinalizedCallTxData](../../contracts/interfaces/FinalizedCallTxData.md)
-
-***
-
-### FinalizedCallTxPublicData
-
-Re-exports [FinalizedCallTxPublicData](../../contracts/interfaces/FinalizedCallTxPublicData.md)
+Re-exports [FinalizedCallTxData](../../contracts/type-aliases/FinalizedCallTxData.md)
 
 ***
 
 ### FinalizedDeployTxData
 
-Re-exports [FinalizedDeployTxData](../../contracts/interfaces/FinalizedDeployTxData.md)
+Re-exports [FinalizedDeployTxData](../../contracts/type-aliases/FinalizedDeployTxData.md)
 
 ***
 
 ### FinalizedDeployTxDataBase
 
 Re-exports [FinalizedDeployTxDataBase](../../contracts/interfaces/FinalizedDeployTxDataBase.md)
-
-***
-
-### FinalizedDeployTxPublicData
-
-Re-exports [FinalizedDeployTxPublicData](../../contracts/interfaces/FinalizedDeployTxPublicData.md)
-
-***
-
-### FinalizedMaintenanceTxData
-
-Re-exports [FinalizedMaintenanceTxData](../../contracts/interfaces/FinalizedMaintenanceTxData.md)
 
 ***
 
@@ -466,25 +430,19 @@ Re-exports [ForkCrossedDuringOperationError](../../contracts/classes/ForkCrossed
 
 ### FoundContract
 
-Re-exports [FoundContract](../../contracts/interfaces/FoundContract.md)
+Re-exports [FoundContract](../../contracts/type-aliases/FoundContract.md)
 
 ***
 
 ### FoundDeployTxData
 
-Re-exports [FoundDeployTxData](../../contracts/interfaces/FoundDeployTxData.md)
+Re-exports [FoundDeployTxData](../../contracts/type-aliases/FoundDeployTxData.md)
 
 ***
 
 ### FoundDeployTxPublicData
 
 Re-exports [FoundDeployTxPublicData](../../contracts/type-aliases/FoundDeployTxPublicData.md)
-
-***
-
-### getAnyEraContractState
-
-Re-exports [getAnyEraContractState](../../contracts/variables/getAnyEraContractState.md)
 
 ***
 
@@ -554,9 +512,381 @@ Re-exports [Ledger8](../../contracts/namespaces/Ledger8/README.md)
 
 ***
 
+### Ledger8CallResultPrivate
+
+Re-exports [Ledger8CallResultPrivate](../../contracts/interfaces/Ledger8CallResultPrivate.md)
+
+***
+
+### Ledger8CallResultPublic
+
+Re-exports [Ledger8CallResultPublic](../../contracts/interfaces/Ledger8CallResultPublic.md)
+
+***
+
+### Ledger8CallTxOptions
+
+Re-exports [Ledger8CallTxOptions](../../contracts/type-aliases/Ledger8CallTxOptions.md)
+
+***
+
+### Ledger8CallTxOptionsBase
+
+Re-exports [Ledger8CallTxOptionsBase](../../contracts/type-aliases/Ledger8CallTxOptionsBase.md)
+
+***
+
+### Ledger8CallTxOptionsWithPrivateStateId
+
+Re-exports [Ledger8CallTxOptionsWithPrivateStateId](../../contracts/type-aliases/Ledger8CallTxOptionsWithPrivateStateId.md)
+
+***
+
+### Ledger8CallTxTarget
+
+Re-exports [Ledger8CallTxTarget](../../contracts/interfaces/Ledger8CallTxTarget.md)
+
+***
+
+### Ledger8Circuit
+
+Re-exports [Ledger8Circuit](../../contracts/type-aliases/Ledger8Circuit.md)
+
+***
+
+### Ledger8CircuitCallTxInterface
+
+Re-exports [Ledger8CircuitCallTxInterface](../../contracts/type-aliases/Ledger8CircuitCallTxInterface.md)
+
+***
+
+### Ledger8CircuitContext
+
+Re-exports [Ledger8CircuitContext](../../contracts/interfaces/Ledger8CircuitContext.md)
+
+***
+
+### Ledger8CircuitId
+
+Re-exports [Ledger8CircuitId](../../contracts/type-aliases/Ledger8CircuitId.md)
+
+***
+
+### Ledger8CircuitMaintenanceTxInterface
+
+Re-exports [Ledger8CircuitMaintenanceTxInterface](../../contracts/interfaces/Ledger8CircuitMaintenanceTxInterface.md)
+
+***
+
+### Ledger8CircuitMaintenanceTxInterfaces
+
+Re-exports [Ledger8CircuitMaintenanceTxInterfaces](../../contracts/type-aliases/Ledger8CircuitMaintenanceTxInterfaces.md)
+
+***
+
+### Ledger8CircuitParameters
+
+Re-exports [Ledger8CircuitParameters](../../contracts/type-aliases/Ledger8CircuitParameters.md)
+
+***
+
+### Ledger8CircuitResult
+
+Re-exports [Ledger8CircuitResult](../../contracts/interfaces/Ledger8CircuitResult.md)
+
+***
+
+### Ledger8CircuitReturnType
+
+Re-exports [Ledger8CircuitReturnType](../../contracts/type-aliases/Ledger8CircuitReturnType.md)
+
+***
+
+### Ledger8ConstructorParameters
+
+Re-exports [Ledger8ConstructorParameters](../../contracts/type-aliases/Ledger8ConstructorParameters.md)
+
+***
+
+### Ledger8Contract
+
+Re-exports [Ledger8Contract](../../contracts/interfaces/Ledger8Contract.md)
+
+***
+
+### Ledger8ContractCall
+
+Re-exports [Ledger8ContractCall](../../contracts/interfaces/Ledger8ContractCall.md)
+
+***
+
+### Ledger8ContractCallPublic
+
+Re-exports [Ledger8ContractCallPublic](../../contracts/interfaces/Ledger8ContractCallPublic.md)
+
+***
+
+### Ledger8ContractMaintenanceTxInterface
+
+Re-exports [Ledger8ContractMaintenanceTxInterface](../../contracts/interfaces/Ledger8ContractMaintenanceTxInterface.md)
+
+***
+
+### Ledger8ContractProviders
+
+Re-exports [Ledger8ContractProviders](../../contracts/type-aliases/Ledger8ContractProviders.md)
+
+***
+
+### Ledger8DeployContractOptions
+
+Re-exports [Ledger8DeployContractOptions](../../contracts/type-aliases/Ledger8DeployContractOptions.md)
+
+***
+
+### Ledger8DeployContractOptionsBase
+
+Re-exports [Ledger8DeployContractOptionsBase](../../contracts/interfaces/Ledger8DeployContractOptionsBase.md)
+
+***
+
+### Ledger8DeployContractOptionsWithPrivateState
+
+Re-exports [Ledger8DeployContractOptionsWithPrivateState](../../contracts/interfaces/Ledger8DeployContractOptionsWithPrivateState.md)
+
+***
+
+### Ledger8DeployedContract
+
+Re-exports [Ledger8DeployedContract](../../contracts/interfaces/Ledger8DeployedContract.md)
+
+***
+
+### Ledger8DeployTxData
+
+Re-exports [Ledger8DeployTxData](../../contracts/interfaces/Ledger8DeployTxData.md)
+
+***
+
+### Ledger8FinalizedCallTxData
+
+Re-exports [Ledger8FinalizedCallTxData](../../contracts/interfaces/Ledger8FinalizedCallTxData.md)
+
+***
+
+### Ledger8FinalizedCallTxPublicData
+
+Re-exports [Ledger8FinalizedCallTxPublicData](../../contracts/type-aliases/Ledger8FinalizedCallTxPublicData.md)
+
+***
+
+### Ledger8FinalizedMaintenanceTxData
+
+Re-exports [Ledger8FinalizedMaintenanceTxData](../../contracts/interfaces/Ledger8FinalizedMaintenanceTxData.md)
+
+***
+
+### Ledger8FindDeployedContractOptions
+
+Re-exports [Ledger8FindDeployedContractOptions](../../contracts/interfaces/Ledger8FindDeployedContractOptions.md)
+
+***
+
+### Ledger8FoundContract
+
+Re-exports [Ledger8FoundContract](../../contracts/interfaces/Ledger8FoundContract.md)
+
+***
+
+### Ledger8FoundDeployTxData
+
+Re-exports [Ledger8FoundDeployTxData](../../contracts/interfaces/Ledger8FoundDeployTxData.md)
+
+***
+
 ### Ledger8FoundDeployTxPublicData
 
 Re-exports [Ledger8FoundDeployTxPublicData](../../contracts/interfaces/Ledger8FoundDeployTxPublicData.md)
+
+***
+
+### Ledger8InitialStateResult
+
+Re-exports [Ledger8InitialStateResult](../../contracts/interfaces/Ledger8InitialStateResult.md)
+
+***
+
+### Ledger8PrivateState
+
+Re-exports [Ledger8PrivateState](../../contracts/type-aliases/Ledger8PrivateState.md)
+
+***
+
+### Ledger8SubmittedCallTx
+
+Re-exports [Ledger8SubmittedCallTx](../../contracts/interfaces/Ledger8SubmittedCallTx.md)
+
+***
+
+### Ledger8UnsubmittedCallTxData
+
+Re-exports [Ledger8UnsubmittedCallTxData](../../contracts/interfaces/Ledger8UnsubmittedCallTxData.md)
+
+***
+
+### Ledger8Witness
+
+Re-exports [Ledger8Witness](../../contracts/type-aliases/Ledger8Witness.md)
+
+***
+
+### Ledger9CallResultPrivate
+
+Re-exports [Ledger9CallResultPrivate](../../contracts/type-aliases/Ledger9CallResultPrivate.md)
+
+***
+
+### Ledger9CallResultPublic
+
+Re-exports [Ledger9CallResultPublic](../../contracts/interfaces/Ledger9CallResultPublic.md)
+
+***
+
+### Ledger9CallTxOptions
+
+Re-exports [Ledger9CallTxOptions](../../contracts/type-aliases/Ledger9CallTxOptions.md)
+
+***
+
+### Ledger9CallTxOptionsBase
+
+Re-exports [Ledger9CallTxOptionsBase](../../contracts/type-aliases/Ledger9CallTxOptionsBase.md)
+
+***
+
+### Ledger9CallTxOptionsWithPrivateStateId
+
+Re-exports [Ledger9CallTxOptionsWithPrivateStateId](../../contracts/type-aliases/Ledger9CallTxOptionsWithPrivateStateId.md)
+
+***
+
+### Ledger9CircuitCallTxInterface
+
+Re-exports [Ledger9CircuitCallTxInterface](../../contracts/type-aliases/Ledger9CircuitCallTxInterface.md)
+
+***
+
+### Ledger9CircuitMaintenanceTxInterface
+
+Re-exports [Ledger9CircuitMaintenanceTxInterface](../../contracts/interfaces/Ledger9CircuitMaintenanceTxInterface.md)
+
+***
+
+### Ledger9CircuitMaintenanceTxInterfaces
+
+Re-exports [Ledger9CircuitMaintenanceTxInterfaces](../../contracts/type-aliases/Ledger9CircuitMaintenanceTxInterfaces.md)
+
+***
+
+### Ledger9Contract
+
+Re-exports [Ledger9Contract](../../contracts/type-aliases/Ledger9Contract.md)
+
+***
+
+### Ledger9ContractMaintenanceTxInterface
+
+Re-exports [Ledger9ContractMaintenanceTxInterface](../../contracts/interfaces/Ledger9ContractMaintenanceTxInterface.md)
+
+***
+
+### Ledger9ContractProviders
+
+Re-exports [Ledger9ContractProviders](../../contracts/type-aliases/Ledger9ContractProviders.md)
+
+***
+
+### Ledger9DeployContractOptions
+
+Re-exports [Ledger9DeployContractOptions](../../contracts/type-aliases/Ledger9DeployContractOptions.md)
+
+***
+
+### Ledger9DeployContractOptionsBase
+
+Re-exports [Ledger9DeployContractOptionsBase](../../contracts/type-aliases/Ledger9DeployContractOptionsBase.md)
+
+***
+
+### Ledger9DeployContractOptionsWithPrivateState
+
+Re-exports [Ledger9DeployContractOptionsWithPrivateState](../../contracts/type-aliases/Ledger9DeployContractOptionsWithPrivateState.md)
+
+***
+
+### Ledger9DeployedContract
+
+Re-exports [Ledger9DeployedContract](../../contracts/interfaces/Ledger9DeployedContract.md)
+
+***
+
+### Ledger9FinalizedCallTxData
+
+Re-exports [Ledger9FinalizedCallTxData](../../contracts/interfaces/Ledger9FinalizedCallTxData.md)
+
+***
+
+### Ledger9FinalizedCallTxPublicData
+
+Re-exports [Ledger9FinalizedCallTxPublicData](../../contracts/interfaces/Ledger9FinalizedCallTxPublicData.md)
+
+***
+
+### Ledger9FinalizedDeployTxData
+
+Re-exports [Ledger9FinalizedDeployTxData](../../contracts/interfaces/Ledger9FinalizedDeployTxData.md)
+
+***
+
+### Ledger9FinalizedDeployTxPublicData
+
+Re-exports [Ledger9FinalizedDeployTxPublicData](../../contracts/interfaces/Ledger9FinalizedDeployTxPublicData.md)
+
+***
+
+### Ledger9FinalizedMaintenanceTxData
+
+Re-exports [Ledger9FinalizedMaintenanceTxData](../../contracts/interfaces/Ledger9FinalizedMaintenanceTxData.md)
+
+***
+
+### Ledger9FindDeployedContractOptions
+
+Re-exports [Ledger9FindDeployedContractOptions](../../contracts/type-aliases/Ledger9FindDeployedContractOptions.md)
+
+***
+
+### Ledger9FoundContract
+
+Re-exports [Ledger9FoundContract](../../contracts/interfaces/Ledger9FoundContract.md)
+
+***
+
+### Ledger9FoundDeployTxData
+
+Re-exports [Ledger9FoundDeployTxData](../../contracts/interfaces/Ledger9FoundDeployTxData.md)
+
+***
+
+### Ledger9SubmittedCallTx
+
+Re-exports [Ledger9SubmittedCallTx](../../contracts/interfaces/Ledger9SubmittedCallTx.md)
+
+***
+
+### Ledger9UnsubmittedCallTxData
+
+Re-exports [Ledger9UnsubmittedCallTxData](../../contracts/interfaces/Ledger9UnsubmittedCallTxData.md)
 
 ***
 
@@ -593,6 +923,12 @@ Re-exports [PrivateStateNotFoundError](../../contracts/classes/PrivateStateNotFo
 ### ProviderFailedError
 
 Re-exports [ProviderFailedError](../../contracts/classes/ProviderFailedError.md)
+
+***
+
+### PublicStatesEraMismatchError
+
+Re-exports [PublicStatesEraMismatchError](../../contracts/classes/PublicStatesEraMismatchError.md)
 
 ***
 
@@ -682,7 +1018,7 @@ Re-exports [submitReplaceAuthorityTx](../../contracts/functions/submitReplaceAut
 
 ### SubmittedCallTx
 
-Re-exports [SubmittedCallTx](../../contracts/interfaces/SubmittedCallTx.md)
+Re-exports [SubmittedCallTx](../../contracts/type-aliases/SubmittedCallTx.md)
 
 ***
 
@@ -766,7 +1102,7 @@ Re-exports [UnprovenDeployTxProviders](../../contracts/type-aliases/UnprovenDepl
 
 ### UnsubmittedCallTxData
 
-Re-exports [UnsubmittedCallTxData](../../contracts/interfaces/UnsubmittedCallTxData.md)
+Re-exports [UnsubmittedCallTxData](../../contracts/type-aliases/UnsubmittedCallTxData.md)
 
 ***
 

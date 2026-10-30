@@ -141,6 +141,15 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `TX_FAILED` → REJECTED · `NETWORK_VERSION_STATE_MISMATCH` → TRANSIENT · `FORK_CROSSED_DURING_OPERATION`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `PROVIDER_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_MISMATCH` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
 | U | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL |
 
+## Amendment — the on-chain state errors are renamed (2026-10-29)
+
+Issue #1568. `InvalidLedgerStateError` is `InvalidSerializedStateError`,
+`LedgerStateDecoderMissingError` is `SerializedStateDecoderMissingError`, and
+`LedgerStateDecodeFailedError` is `SerializedStateDecodeFailedError`. Their codes
+(`INVALID_LEDGER_STATE`, `LEDGER_STATE_DECODER_MISSING`, `LEDGER_STATE_DECODE_FAILED`) and
+categories are unchanged: codes are the contract. The table above keeps the names that were
+current when it was written.
+
 ## Amendment — one class per fault (2026-10-29)
 
 Issue #1557. The decision is unchanged. It changes how classes are cut.

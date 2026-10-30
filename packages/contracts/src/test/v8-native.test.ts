@@ -900,7 +900,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       expect(snapshot.state.ledgerParameters).toBeUndefined();
     });
 
-    it('refuses ledger parameters served in a shape that is not a LedgerState, rather than taking them as absent', async () => {
+    it('refuses ledger parameters served in a shape that is not a SerializedState, rather than taking them as absent', async () => {
       await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnknownLedgerVersionError);
     });
 

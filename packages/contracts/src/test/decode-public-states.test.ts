@@ -15,7 +15,7 @@
 
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { InvalidLedgerStateError, LedgerState, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidSerializedStateError, type PublicStatesRead, SerializedState } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,9 +42,9 @@ const tagged = (era: LedgerVersion, kind: keyof typeof LEDGER_STATE_TAGS, body: 
 
 const ledger9Read = (): PublicStatesRead => ({
   protocolVersion: 2_000_000,
-  contractState: LedgerState.fromBytes('v9', 'ContractState', tagged('v9', 'ContractState', 'state')),
-  ledgerParameters: LedgerState.fromBytes('v9', 'LedgerParameters', tagged('v9', 'LedgerParameters', 'parameters')),
-  zswapChainState: LedgerState.fromBytes('v9', 'ZswapChainState', tagged('v9', 'ZswapChainState', 'zswap'))
+  contractState: SerializedState.fromBytes('v9', 'ContractState', tagged('v9', 'ContractState', 'state')),
+  ledgerParameters: SerializedState.fromBytes('v9', 'LedgerParameters', tagged('v9', 'LedgerParameters', 'parameters')),
+  zswapChainState: SerializedState.fromBytes('v9', 'ZswapChainState', tagged('v9', 'ZswapChainState', 'zswap'))
 });
 
 const rejectionOf = (act: () => unknown): unknown => {
@@ -56,9 +56,9 @@ const rejectionOf = (act: () => unknown): unknown => {
   throw new Error('expected the call to throw');
 };
 
-// What a LedgerState made by a second installed copy of the types package looks like to this copy:
+// What a SerializedState made by a second installed copy of the types package looks like to this copy:
 // the same fields and methods, without this copy's private field.
-const fromAnotherTypesCopy = <K extends keyof typeof LEDGER_STATE_TAGS>(state: LedgerState<K>) => ({
+const fromAnotherTypesCopy = <K extends keyof typeof LEDGER_STATE_TAGS>(state: SerializedState<K>) => ({
   era: state.era,
   kind: state.kind,
   serialize: () => state.serialize(),
@@ -98,7 +98,7 @@ describe('decodeLedger9PublicStates', () => {
     expect((error as EraMismatchError).message).toContain(contractAddress);
   });
 
-  it('refuses a record whose contract state is not a LedgerState, the shape of a pre-5.0.0 provider', () => {
+  it('refuses a record whose contract state is not a SerializedState, the shape of a pre-5.0.0 provider', () => {
     const preFiveRecord = { ...ledger9Read(), contractState: { version: 'v9', state: new Uint8Array() } };
 
     // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
@@ -118,8 +118,8 @@ describe('decodeLedger9PublicStates', () => {
     'refuses %s written by another era than the contract state, before decoding anything',
     (field) => {
       const ledger8Field = {
-        ledgerParameters: LedgerState.fromBytes('v8', 'LedgerParameters', tagged('v8', 'LedgerParameters', 'parameters')),
-        zswapChainState: LedgerState.fromBytes('v8', 'ZswapChainState', tagged('v8', 'ZswapChainState', 'zswap'))
+        ledgerParameters: SerializedState.fromBytes('v8', 'LedgerParameters', tagged('v8', 'LedgerParameters', 'parameters')),
+        zswapChainState: SerializedState.fromBytes('v8', 'ZswapChainState', tagged('v8', 'ZswapChainState', 'zswap'))
       }[field];
       const read = { ...ledger9Read(), [field]: ledger8Field };
 
@@ -170,7 +170,7 @@ describe('decodeLedger9PublicStates', () => {
       zswapChainState: fromAnotherTypesCopy(own.zswapChainState)
     };
 
-    // @ts-expect-error the states are LedgerStates of another copy of the types package
+    // @ts-expect-error the states are SerializedStates of another copy of the types package
     const states = decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx');
 
     expect(states).toEqual({
@@ -190,7 +190,7 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state is a look-alike of another copy of the types package
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'tag-mismatch' });
     expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });
@@ -202,7 +202,7 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract-state field holds ledger parameters
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'tag-mismatch' });
     expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });
@@ -214,13 +214,13 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the ledger-parameters field holds a contract state
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'LedgerParameters', era: 'v9', reason: 'tag-mismatch' });
     expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });
 
   it.each(['ledgerParameters', 'zswapChainState'] as const)(
-    'refuses %s served in a shape that is not a LedgerState as unrecognised, not as missing',
+    'refuses %s served in a shape that is not a SerializedState as unrecognised, not as missing',
     (field) => {
       const read = { ...ledger9Read(), [field]: { version: 'v9', state: new Uint8Array() } };
 
@@ -251,7 +251,7 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state serializes to a string
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(InvalidLedgerStateError);
+    expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'not-bytes' });
     expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
   });

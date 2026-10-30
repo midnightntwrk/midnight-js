@@ -18,9 +18,9 @@ fields only that era has.
 
 ## Extended by
 
+- [`Ledger8CallResultPrivate`](../../contracts/interfaces/Ledger8CallResultPrivate.md)
 - [`UnsubmittedTxData`](../../contracts/interfaces/UnsubmittedTxData.md)
-- [`CallResultPrivate`](../../contracts/namespaces/Ledger8/interfaces/CallResultPrivate.md)
-- [`CallResultPrivate`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/CallResultPrivate.md)
+- [`Ledger8CallResultPrivate`](../../../midnight-js-contracts/index/interfaces/Ledger8CallResultPrivate.md)
 - [`UnsubmittedTxData`](../../../midnight-js-contracts/index/interfaces/UnsubmittedTxData.md)
 
 ## Properties

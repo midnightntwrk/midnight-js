@@ -6,54 +6,142 @@
 
 # Function: createCallTxOptions()
 
-> **createCallTxOptions**\<`C`, `PCK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`): [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
+## Call Signature
 
-Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various data.
+> **createCallTxOptions**\<`C`, `K`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`): [`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
 
-`args` carries the circuit's real parameter tuple, indexed at `PCK` -- including the branded id
-`getProvableCircuitIds()` hands back, which `Contract.CircuitParameters` unbrands itself.
+Creates the options `submitCallTx` takes to call one circuit: a [Ledger9CallTxOptions](../type-aliases/Ledger9CallTxOptions.md) for a
+ledger 9 `CompiledContract`, or a [Ledger8CallTxOptions](../type-aliases/Ledger8CallTxOptions.md) for a ledger 8 contract.
 
-`circuitId` is constrained by `PCK extends Contract.ProvableCircuitId<C>`, which is the
-NAMESPACE member `keyof C['provableCircuits'] & string`. That `keyof` is what rejects a circuit
-id the contract does not declare; the brand plays no part in it, and a plain unbranded literal
-is accepted here.
+`args` is left out for a circuit that takes no arguments, and `privateStateId` when it is
+`undefined`. `circuitId` must be a circuit the contract declares; a plain string literal is
+accepted.
 
-## Type Parameters
+### Type Parameters
 
-### C
+#### C
 
-`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-### PCK
+#### K
 
-`PCK` *extends* `string`
+`K` *extends* `string`
 
-## Parameters
+### Parameters
 
-### compiledContract
+#### compiledContract
 
-[`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
+`C`
 
-### circuitId
+The contract the circuit belongs to.
 
-`PCK`
+#### circuitId
 
-### contractAddress
+`K`
+
+The circuit to call.
+
+#### contractAddress
 
 `string`
 
-### privateStateId
+The ledger address of the contract.
+
+#### privateStateId
 
 `string` \| `undefined`
 
-### additionalCoinEncPublicKeyMappings
+Where to read and store the contract's private state,
+or `undefined` for a contract that carries none.
+
+#### additionalCoinEncPublicKeyMappings
 
 `ReadonlyMap`\<`string`, `string`\> \| `undefined`
 
-### args
+Encryption keys for shielded coins the circuit pays
+to a recipient other than the calling wallet, or `undefined` for none.
+
+#### args
+
+[`Ledger8CircuitParameters`](../type-aliases/Ledger8CircuitParameters.md)\<`C`, `K`\>
+
+The circuit's own arguments.
+
+### Returns
+
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
+
+### Throws
+
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+contract nor a ledger 9 `CompiledContract`.
+
+## Call Signature
+
+> **createCallTxOptions**\<`C`, `PCK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`): [`Ledger9CallTxOptions`](../type-aliases/Ledger9CallTxOptions.md)\<`C`, `PCK`\>
+
+Creates the options `submitCallTx` takes to call one circuit: a [Ledger9CallTxOptions](../type-aliases/Ledger9CallTxOptions.md) for a
+ledger 9 `CompiledContract`, or a [Ledger8CallTxOptions](../type-aliases/Ledger8CallTxOptions.md) for a ledger 8 contract.
+
+`args` is left out for a circuit that takes no arguments, and `privateStateId` when it is
+`undefined`. `circuitId` must be a circuit the contract declares; a plain string literal is
+accepted.
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### compiledContract
+
+[`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
+
+The contract the circuit belongs to.
+
+#### circuitId
+
+`PCK`
+
+The circuit to call.
+
+#### contractAddress
+
+`string`
+
+The ledger address of the contract.
+
+#### privateStateId
+
+`string` \| `undefined`
+
+Where to read and store the contract's private state,
+or `undefined` for a contract that carries none.
+
+#### additionalCoinEncPublicKeyMappings
+
+`ReadonlyMap`\<`string`, `string`\> \| `undefined`
+
+Encryption keys for shielded coins the circuit pays
+to a recipient other than the calling wallet, or `undefined` for none.
+
+#### args
 
 [`CircuitParameters`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `PCK`\>
 
-## Returns
+The circuit's own arguments.
 
-[`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
+### Returns
+
+[`Ledger9CallTxOptions`](../type-aliases/Ledger9CallTxOptions.md)\<`C`, `PCK`\>
+
+### Throws
+
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+contract nor a ledger 9 `CompiledContract`.

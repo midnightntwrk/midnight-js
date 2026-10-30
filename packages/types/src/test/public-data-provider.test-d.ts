@@ -19,7 +19,6 @@ import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from '../contract-state-read';
-import type { LedgerState } from '../ledger-state';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
@@ -28,6 +27,7 @@ import type {
   PositionedRecord,
   PublicDataProvider
 } from '../public-data-provider';
+import type { SerializedState } from '../serialized-state';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -40,20 +40,20 @@ import type {
 // restating them.
 type ContractStateReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: LedgerState<'ContractState'>;
+  readonly contractState: SerializedState<'ContractState'>;
 };
 
 type ContractStateAndParametersReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: LedgerState<'ContractState'>;
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+  readonly contractState: SerializedState<'ContractState'>;
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
 };
 
 type PublicStatesReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: LedgerState<'ContractState'>;
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
-  readonly zswapChainState: LedgerState<'ZswapChainState'>;
+  readonly contractState: SerializedState<'ContractState'>;
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
+  readonly zswapChainState: SerializedState<'ZswapChainState'>;
 };
 
 type PositionedRecordFixture<T> = {

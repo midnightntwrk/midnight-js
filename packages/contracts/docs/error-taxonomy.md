@@ -114,7 +114,7 @@ set *here* is a provider that did not serve them, not a caller with no read
 surface.
 
 Only parameters that are absent (`undefined` or `null`) are taken as unserved.
-Parameters served in a shape that is not a `LedgerState` are refused with
+Parameters served in a shape that is not a `SerializedState` are refused with
 `UnknownLedgerVersionError` instead, because the provider did serve something, in
 the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
 fault.
@@ -141,21 +141,21 @@ fail inside the runtime with a message that tells the dApp to pass a decoder it
 never passes. So the era of each state is checked before anything is decoded,
 and the refusal names the state and the provider as the fault.
 
-Before that check each state is rebuilt with `LedgerState.fromBytes` from its
-`era`, `kind` and `serialize()`. `LedgerState.isLedgerState` answers `false` for
+Before that check each state is rebuilt with `SerializedState.fromBytes` from its
+`era`, `kind` and `serialize()`. `SerializedState.isSerializedState` answers `false` for
 a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are
-still refused, with `InvalidLedgerStateError` (`tag-mismatch`). A state that is
+still refused, with `InvalidSerializedStateError` (`tag-mismatch`). A state that is
 present but names no known era is not "missing": it is refused with
 `UnknownLedgerVersionError`. Its `requestedVersion` is `'undefined'` when the
 value carried no era at all, and the message points to an outdated provider. A
-state with a known era but no `serialize()` still gives `InvalidLedgerStateError`.
+state with a known era but no `serialize()` still gives `InvalidSerializedStateError`.
 
 A framework decoder that fails on the bytes after a valid tag throws its own
 `DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).
-`LedgerState.deserialize` rethrows it unchanged, so the error does not tell the
+`SerializedState.deserialize` rethrows it unchanged, so the error does not tell the
 dApp to pass a decoder it never passed.
 
 ### `Ledger8CallUnsupportedError`, reason `'shielded-spend'`

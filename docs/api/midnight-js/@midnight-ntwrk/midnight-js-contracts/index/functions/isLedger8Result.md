@@ -17,10 +17,10 @@ the tag, not only the published unions above.
 
 `era` names the PIPELINE that produced the objects in the result, read off
 the compiled artifact. It is NOT the era that recorded the transaction:
-`public.version` answers that, and the two disagree after the fork, when a
+`public.era` answers that, and the two disagree after the fork, when a
 retained-era call is recorded as a keep-state transaction tagged `'v9'`.
 Branch on this one to decide which module a result's objects came from, and
-on `version` to decide which ledger recorded it.
+on `era` to decide which ledger recorded it.
 
 ## Type Parameters
 

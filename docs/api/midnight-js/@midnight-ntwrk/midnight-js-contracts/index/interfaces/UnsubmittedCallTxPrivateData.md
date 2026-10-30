@@ -7,12 +7,12 @@
 # Interface: UnsubmittedCallTxPrivateData\<C, PCK\>
 
 The private data of an unsubmitted call transaction: the circuit execution's
-private result ([CallResultPrivate](../type-aliases/CallResultPrivate.md)) combined with the unproven
+private result ([Ledger9CallResultPrivate](../type-aliases/Ledger9CallResultPrivate.md)) combined with the unproven
 transaction data ([UnsubmittedTxData](UnsubmittedTxData.md)).
 
 ## Extends
 
-- [`CallResultPrivate`](../type-aliases/CallResultPrivate.md)\<`C`, `PCK`\>.[`UnsubmittedTxData`](UnsubmittedTxData.md)
+- [`Ledger9CallResultPrivate`](../type-aliases/Ledger9CallResultPrivate.md)\<`C`, `PCK`\>.[`UnsubmittedTxData`](UnsubmittedTxData.md)
 
 ## Type Parameters
 
@@ -34,7 +34,7 @@ ZK representation of the circuit arguments.
 
 #### Inherited from
 
-`CallResultPrivate.input`
+`Ledger9CallResultPrivate.input`
 
 ***
 
@@ -59,7 +59,7 @@ The private state resulting from executing the circuit.
 
 #### Inherited from
 
-`CallResultPrivate.nextPrivateState`
+`Ledger9CallResultPrivate.nextPrivateState`
 
 ***
 
@@ -71,7 +71,7 @@ The Zswap local state resulting from executing the circuit.
 
 #### Inherited from
 
-`CallResultPrivate.nextZswapLocalState`
+`Ledger9CallResultPrivate.nextZswapLocalState`
 
 ***
 
@@ -83,7 +83,7 @@ ZK representation of the circuit result.
 
 #### Inherited from
 
-`CallResultPrivate.output`
+`Ledger9CallResultPrivate.output`
 
 ***
 
@@ -95,7 +95,7 @@ ZK representation of the circuit's witness call results.
 
 #### Inherited from
 
-`CallResultPrivate.privateTranscriptOutputs`
+`Ledger9CallResultPrivate.privateTranscriptOutputs`
 
 ***
 
@@ -107,7 +107,7 @@ The JS representation of the value the circuit returned.
 
 #### Inherited from
 
-`CallResultPrivate.result`
+`Ledger9CallResultPrivate.result`
 
 ***
 

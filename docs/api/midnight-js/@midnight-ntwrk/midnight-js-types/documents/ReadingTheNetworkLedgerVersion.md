@@ -41,8 +41,8 @@ read on `PublicDataProvider` already carries.
 
 Use that field wherever the era of EXISTING data is the question. It dates the
 block the read resolved and costs no extra request. For a contract state that
-block can be newer than the bytes; the era that wrote the bytes is the record's
-`version`. Reach for
+block can be newer than the bytes; the era that wrote the bytes is
+`contractState.era`. Reach for
 this method only where there is no record to date — the deploy path, which has no
 prior contract state to read.
 

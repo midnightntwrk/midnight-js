@@ -60,7 +60,7 @@ vocabulary in the error module and make every reader of that vocabulary an
 importer of errors. A leaf both modules can reach keeps the direction and the
 ownership straight.
 
-## `./v8` and `./engine` are separate chunks
+## `./v8` and `./v8/engine` are separate chunks
 
 Two heavy dependency sets are reachable only through a dynamic import, and
 each has its own entry chunk, because each pulls a different set of
@@ -71,10 +71,10 @@ retained-era dependencies:
   names this build entry, which rollup emits as its own chunk and links only
   through that dynamic import, so the v8 WASM loads on the first call to
   `loadLedger8Protocol` and not before.
-- `./engine` — the retained `compact-runtime@0.16` glue (installed under the
+- `./v8/engine` — the retained `compact-runtime@0.16` glue (installed under the
   `compact-runtime-ledger8` alias) and the
   `@midnight-ntwrk/onchain-runtime-v3` WASM. The relative specifier in
-  `lib/v8/load-engine.ts` names the `./engine` build entry the same way, so
+  `lib/v8/load-engine.ts` names the `./v8/engine` build entry the same way, so
   those two load only on the first call to `loadLedger8Engine` — never as a
   side effect of importing the package root. Evaluating `lib/v8/engine.ts` is
   what pulls them in, and that happens only on that import.
@@ -118,10 +118,10 @@ Each property above is pinned by a named suite rather than by convention:
 - `v8-surface.test.ts` — no module under `src/` other than `lib/v8/load.ts`
   may import the v8 module at runtime. It reads past comments and type-only
   imports and re-exports, and resolves each relative specifier against the
-  file naming it, so the `./engine` build entry is never confused with the
+  file naming it, so the `./v8/engine` build entry is never confused with the
   `lib/v8/engine.ts` sibling that shares its name.
 - `dist-laziness.test.ts` — the index bundle must never link the v8 entry
-  statically, and must never link the `./engine` subpath,
+  statically, and must never link the `./v8/engine` subpath,
   `@midnight-ntwrk/onchain-runtime-v3`, or the `compact-runtime-ledger8` glue
   alias statically either. It inspects the built rollup output, so it is the
   suite that proves erasure and chunking rather than assuming them, and the

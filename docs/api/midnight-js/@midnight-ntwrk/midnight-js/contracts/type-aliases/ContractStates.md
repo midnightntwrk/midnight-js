@@ -6,10 +6,11 @@
 
 # Type Alias: ContractStates\<PS\>
 
-> **ContractStates**\<`PS`\> = [`VersionedPublicStates`](../../types/type-aliases/VersionedPublicStates.md) & `object`
+> **ContractStates**\<`PS`\> = [`PublicStatesRead`](../../types/interfaces/PublicStatesRead.md) & `object`
 
-The publicly visible states of a contract, tagged with the ledger era that wrote them, together
-with the private state of the contract.
+The publicly visible states of a contract, as bytes, together with the private state of the
+contract. Decode a public state with your own runtime, e.g.
+`states.contractState.deserialize({ v9: ContractState })`.
 
 ## Type Declaration
 

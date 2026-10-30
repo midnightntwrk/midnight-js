@@ -501,7 +501,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
  * @throws UnknownLedgerVersionError The deploy record carries no readable era tag.
- * @throws UnknownLedgerVersionError The deploy state is not a `LedgerState`: the shape of a pre-5.0.0
+ * @throws UnknownLedgerVersionError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
  *                                 provider.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract

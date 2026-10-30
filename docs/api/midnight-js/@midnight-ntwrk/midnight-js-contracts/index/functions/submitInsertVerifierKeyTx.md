@@ -8,7 +8,7 @@
 
 ## Call Signature
 
-> **submitInsertVerifierKeyTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<[`FinalizedMaintenanceTxData`](../namespaces/Ledger8/interfaces/FinalizedMaintenanceTxData.md)\>
+> **submitInsertVerifierKeyTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<[`Ledger8FinalizedMaintenanceTxData`](../interfaces/Ledger8FinalizedMaintenanceTxData.md)\>
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.
@@ -37,13 +37,13 @@ Midnight transactions execute in two phases:
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 The providers to use to manage the transaction lifecycle.
 
@@ -62,7 +62,7 @@ The address of the contract containing the circuit for which
 
 #### circuitId
 
-[`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>
+[`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 The circuit for which the verifier key should be inserted.
 
@@ -74,7 +74,7 @@ The new verifier key for the circuit.
 
 ### Returns
 
-`Promise`\<[`FinalizedMaintenanceTxData`](../namespaces/Ledger8/interfaces/FinalizedMaintenanceTxData.md)\>
+`Promise`\<[`Ledger8FinalizedMaintenanceTxData`](../interfaces/Ledger8FinalizedMaintenanceTxData.md)\>
 
 A promise that resolves with the finalized transaction data under `public`, tagged
          with the pipeline's `era`, or rejects if an error occurs along the way.
@@ -110,7 +110,7 @@ TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier
 
 ## Call Signature
 
-> **submitInsertVerifierKeyTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<[`FinalizedMaintenanceTxData`](../interfaces/FinalizedMaintenanceTxData.md)\>
+> **submitInsertVerifierKeyTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<[`Ledger9FinalizedMaintenanceTxData`](../interfaces/Ledger9FinalizedMaintenanceTxData.md)\>
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.
@@ -145,7 +145,7 @@ Midnight transactions execute in two phases:
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)
 
 The providers to use to manage the transaction lifecycle.
 
@@ -176,7 +176,7 @@ The new verifier key for the circuit.
 
 ### Returns
 
-`Promise`\<[`FinalizedMaintenanceTxData`](../interfaces/FinalizedMaintenanceTxData.md)\>
+`Promise`\<[`Ledger9FinalizedMaintenanceTxData`](../interfaces/Ledger9FinalizedMaintenanceTxData.md)\>
 
 A promise that resolves with the finalized transaction data under `public`, tagged
          with the pipeline's `era`, or rejects if an error occurs along the way.

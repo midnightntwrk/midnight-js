@@ -6,12 +6,12 @@
 
 # Type Alias: FindDeployedContractOptions\<C\>
 
-> **FindDeployedContractOptions**\<`C`\> = [`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\> \| [`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\> \| [`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
+> **FindDeployedContractOptions**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8FindDeployedContractOptions`](../interfaces/Ledger8FindDeployedContractOptions.md)\<`C`\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9FindDeployedContractOptions`](Ledger9FindDeployedContractOptions.md)\<`C`\> : `never`
 
-Configuration for [findDeployedContract](../functions/findDeployedContract.md).
+The options of `findDeployedContract`. Generic code names an era: `Ledger9FindDeployedContractOptions<C>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

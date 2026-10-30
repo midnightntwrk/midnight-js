@@ -6,7 +6,7 @@
 
 # Type Alias: AnyEraDeployedContract\<C, L8\>
 
-> **AnyEraDeployedContract**\<`C`, `L8`\> = [`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\> \| [`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`L8`\>
+> **AnyEraDeployedContract**\<`C`, `L8`\> = [`Ledger9DeployedContract`](../interfaces/Ledger9DeployedContract.md)\<`C`\> \| [`Ledger8DeployedContract`](../interfaces/Ledger8DeployedContract.md)\<`L8`\>
 
 A contract deployed by `deployContract`, in either era.
 
@@ -20,7 +20,7 @@ The current-era contract.
 
 ### L8
 
-`L8` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)
+`L8` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
 The retained-era contract.
 

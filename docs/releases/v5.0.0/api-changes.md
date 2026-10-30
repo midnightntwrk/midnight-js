@@ -198,27 +198,27 @@ the v8 runtime first.
 ### On-chain state as bytes (#1550)
 
 ```ts
-export type LedgerStateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
+export type StateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
 export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
 export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
-export class LedgerState<K extends LedgerStateKind = LedgerStateKind, E extends LedgerVersion = LedgerVersion> {
+export class SerializedState<K extends StateKind = StateKind, E extends LedgerVersion = LedgerVersion> {
   readonly era: E;
   readonly kind: K;
-  static fromBytes<E extends LedgerVersion, K extends LedgerStateKind>(era: E, kind: K, bytes: Uint8Array): LedgerState<K, E>;
-  static isLedgerState(value: unknown): value is LedgerState;
+  static fromBytes<E extends LedgerVersion, K extends StateKind>(era: E, kind: K, bytes: Uint8Array): SerializedState<K, E>;
+  static isSerializedState(value: unknown): value is SerializedState;
   serialize(): Uint8Array;
   deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>; // does not compile when D has no decoder for any era E can be
 }
 
 export interface ContractStateRead {
   readonly protocolVersion: number;
-  readonly contractState: LedgerState<'ContractState'>;
+  readonly contractState: SerializedState<'ContractState'>;
 }
 export interface ContractStateAndParametersRead extends ContractStateRead {
-  readonly ledgerParameters: LedgerState<'LedgerParameters'>;
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
 }
 export interface PublicStatesRead extends ContractStateAndParametersRead {
-  readonly zswapChainState: LedgerState<'ZswapChainState'>;
+  readonly zswapChainState: SerializedState<'ZswapChainState'>;
 }
 
 interface PublicDataProvider {
@@ -229,10 +229,10 @@ interface PublicDataProvider {
   // queryRawContractState and rawContractStateObservable are removed.
 }
 
-export type InvalidLedgerStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
-export class InvalidLedgerStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidLedgerStateReason; }
-export class LedgerStateDecoderMissingError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
-export class LedgerStateDecodeFailedError extends MidnightJsError { readonly kind: LedgerStateKind; readonly era: LedgerVersion; }
+export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export class InvalidSerializedStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidSerializedStateReason; }
+export class SerializedStateDecoderMissingError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
+export class SerializedStateDecodeFailedError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
 ```
 
 In `contracts`:
@@ -399,7 +399,7 @@ export interface Ledger9FinalizedMaintenanceTxData {
   readonly era: 'v9';
   readonly public: Ledger9FinalizedTxData;
 }
-export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
 export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -409,7 +409,7 @@ export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   newVk: VerifierKey
 ): Promise<Ledger8FinalizedMaintenanceTxData>;
 export function submitInsertVerifierKeyTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>,
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>,
@@ -463,10 +463,26 @@ import { type Ledger8FoundContract } from '@midnight-ntwrk/midnight-js-contracts
 type T = Ledger8FoundContract<C>;
 ```
 
+### Types for both eras carry no prefix (#1566)
+
+```ts
+// A name without a ledger prefix is valid for every era
+export type AnyContract = Ledger8Contract | Ledger9Contract;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+// A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
+export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+// `ContractProviders` requires its contract: `ContractProviders<C, PCK?>`
+```
+
+Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
+`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`. See
+breaking-changes.md section 24. The error classes are in the next section.
+
 ### One error class per fault (#1557)
 
 The `Ledger8` namespace is removed. These are the final classes; see
-[breaking-changes.md](./breaking-changes.md#24-one-error-class-per-fault-1557) for the old name of each one.
+[breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557) for the old name of each one.
 
 ```ts
 // contracts

@@ -195,6 +195,19 @@ plain data still has to be turned into a handle of the dApp's runtime before `le
 **Check that the tag NAMES the version.** Rejected. The zswap chain state has one tag for two
 versions, and a later ledger may share a tag for another kind too.
 
+## Amendment — the class is renamed (2026-10-29)
+
+Issue #1568. The ledger packages export a different `LedgerState`, the whole ledger state, so a
+dApp that imports both saw two unrelated classes under one name. Before 5.0.0 final, `LedgerState`
+is `SerializedState`, `LedgerState.isLedgerState` is `SerializedState.isSerializedState`, and
+`LedgerStateKind` is `StateKind`. The errors are `InvalidSerializedStateError` (with
+`InvalidSerializedStateReason`), `SerializedStateDecoderMissingError` and
+`SerializedStateDecodeFailedError`; the shorter `StateDecodeFailedError` is already a `protocol`
+error. The error codes are unchanged. `LEDGER_STATE_KINDS` and `LEDGER_STATE_TAGS` in `protocol`
+keep their names: they describe what the ledger writes, not the class. The decision is unchanged.
+The sections above, and ADRs 0006, 0007, 0008, 0010 and 0019, keep the names that were current
+when they were written.
+
 ## Amendment — the error for a value with no era (2026-10-29)
 
 `UnrecognisedEraTagError` is now `UnknownLedgerVersionError`, with a `requestedVersion` of `undefined`

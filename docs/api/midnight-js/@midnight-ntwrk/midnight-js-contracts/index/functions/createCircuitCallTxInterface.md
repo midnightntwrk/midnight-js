@@ -8,22 +8,22 @@
 
 ## Call Signature
 
-> **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`CircuitCallTxInterface`](../namespaces/Ledger8/type-aliases/CircuitCallTxInterface.md)\<`C`\>
+> **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`Ledger8CircuitCallTxInterface`](../type-aliases/Ledger8CircuitCallTxInterface.md)\<`C`\>
 
-Creates a [CircuitCallTxInterface](../type-aliases/CircuitCallTxInterface.md), or the retained era's `Ledger8.CircuitCallTxInterface`
+Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the retained era's `Ledger8CircuitCallTxInterface`
 for a contract the retained Compact toolchain produced.
 
 ### Type Parameters
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 The providers to use to build transactions.
 
@@ -48,7 +48,7 @@ or `undefined` for a contract that carries none.
 
 ### Returns
 
-[`CircuitCallTxInterface`](../namespaces/Ledger8/type-aliases/CircuitCallTxInterface.md)\<`C`\>
+[`Ledger8CircuitCallTxInterface`](../type-aliases/Ledger8CircuitCallTxInterface.md)\<`C`\>
 
 ### Throws
 
@@ -56,14 +56,14 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraArtifactMismatchError If `compiledContract` is neither a ledger 8 contract nor a
-ledger 9 `CompiledContract`, including a ledger 9 contract that is not wrapped in one.
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+contract nor a ledger 9 `CompiledContract`.
 
 ## Call Signature
 
-> **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
+> **createCircuitCallTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `privateStateId`): [`Ledger9CircuitCallTxInterface`](../type-aliases/Ledger9CircuitCallTxInterface.md)\<`C`\>
 
-Creates a [CircuitCallTxInterface](../type-aliases/CircuitCallTxInterface.md), or the retained era's `Ledger8.CircuitCallTxInterface`
+Creates a [Ledger9CircuitCallTxInterface](../type-aliases/Ledger9CircuitCallTxInterface.md), or the retained era's `Ledger8CircuitCallTxInterface`
 for a contract the retained Compact toolchain produced.
 
 ### Type Parameters
@@ -76,7 +76,7 @@ for a contract the retained Compact toolchain produced.
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 The providers to use to build transactions.
 
@@ -101,7 +101,7 @@ or `undefined` for a contract that carries none.
 
 ### Returns
 
-[`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
+[`Ledger9CircuitCallTxInterface`](../type-aliases/Ledger9CircuitCallTxInterface.md)\<`C`\>
 
 ### Throws
 
@@ -109,5 +109,5 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraArtifactMismatchError If `compiledContract` is neither a ledger 8 contract nor a
-ledger 9 `CompiledContract`, including a ledger 9 contract that is not wrapped in one.
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+contract nor a ledger 9 `CompiledContract`.

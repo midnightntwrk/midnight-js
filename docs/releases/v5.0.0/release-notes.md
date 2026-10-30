@@ -85,7 +85,7 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### On-chain state is bytes, decoded by your own runtime (#1550)
 
-Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `LedgerState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
+Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `SerializedState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 
@@ -94,6 +94,14 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 ### Protocol subpaths name their ledger (#1536)
 
 `@midnight-ntwrk/midnight-js-protocol` serves ledger 9 from `/v9`, `/v9/compact-runtime`, `/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and `/v9/onchain-runtime`. The unnamed 4.x subpaths and the root `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` namespaces are removed: their meaning changed with every ledger. See [breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536).
+
+### A name without a ledger prefix is valid for every era (#1566)
+
+`Ledger8*` and `Ledger9*` names are bound to one ledger. A flat name with a contract picks the era from it; without one it is the union of every era: `FinalizedMaintenanceTxData` and `AnyContract`. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`. See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
+
+### One error class per fault (#1557)
+
+Every failed transaction is one `TxFailedError` in both eras; `operation` says which operation failed and `record` is the era-tagged record. A wrong-era fault is one `EraMismatchError` with a `reason`. The `Ledger8` namespace is removed; its errors are five flat `Ledger8*` classes. See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557).
 
 ## New Features
 

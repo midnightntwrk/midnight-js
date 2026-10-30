@@ -147,7 +147,7 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 ```
 
 `getStates` and `getPublicStates` return the public states as bytes: each of
-`contractState`, `zswapChainState` and `ledgerParameters` is a `LedgerState`
+`contractState`, `zswapChainState` and `ledgerParameters` is a `SerializedState`
 with the `era` of the ledger that wrote it. Decode one with your own
 runtime — the one your contract was compiled against — so your contract's
 `ledger()` accepts the result:
@@ -156,7 +156,7 @@ runtime — the one your contract was compiled against — so your contract's
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import { ledger } from './managed/counter/contract/index.js';
 
-// Throws LedgerStateDecoderMissingError if the state was written by the v8 ledger.
+// Throws SerializedStateDecoderMissingError if the state was written by the v8 ledger.
 const counter = ledger(publicStates.contractState.deserialize({ v9: ContractState }).data);
 ```
 
@@ -221,14 +221,22 @@ era-named type: `Ledger9FoundContract<C>` or `Ledger8FoundContract<C>`.
 In generic code the contract is unknown, so name the era:
 
 ```typescript
-const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: Ledger9FinalizedCallTxData<C, K>
+const read = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
 ) => data.public;
 ```
 
-Types with no contract parameter have only their era-named form, for example
-`Ledger9FinalizedMaintenanceTxData`. To accept either era, use the `AnyEra*`
-unions.
+To accept a call of any contract in either era, use `AnyFinalizedCallTxData`
+or `AnySubmittedCallTx`. Their `result` and `nextPrivateState` are `unknown`;
+narrow on `era` or with `isLedger8Result`:
+
+```typescript
+const onCall = (result: AnyFinalizedCallTxData) =>
+  isLedger8Result(result) ? result.public.txId : result.public.logEvents;
+```
+
+A flat name with no contract parameter is the union of every era:
+`FinalizedMaintenanceTxData`, `AnyContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
 
 ## Exports
 

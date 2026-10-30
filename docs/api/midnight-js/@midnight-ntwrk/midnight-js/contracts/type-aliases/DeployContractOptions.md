@@ -6,12 +6,12 @@
 
 # Type Alias: DeployContractOptions\<C\>
 
-> **DeployContractOptions**\<`C`\> = [`DeployContractOptionsBase`](DeployContractOptionsBase.md)\<`C`\> \| [`DeployContractOptionsWithPrivateState`](DeployContractOptionsWithPrivateState.md)\<`C`\>
+> **DeployContractOptions**\<`C`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8DeployContractOptions`](Ledger8DeployContractOptions.md)\<`C`\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9DeployContractOptions`](Ledger9DeployContractOptions.md)\<`C`\> : `never`
 
-Configuration for [deployContract](../functions/deployContract.md).
+The options of `deployContract`. Generic code names an era: `Ledger9DeployContractOptions<C>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

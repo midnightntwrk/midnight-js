@@ -672,8 +672,8 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   });
 });
 
-describe('resolveContractStateEra reads only a LedgerState', () => {
-  it('refuses a record whose contract state is not a LedgerState, the shape of a pre-5.0.0 provider', async () => {
+describe('resolveContractStateEra reads only a SerializedState', () => {
+  it('refuses a record whose contract state is not a SerializedState, the shape of a pre-5.0.0 provider', async () => {
     const queryLatestProtocolVersion = vi.fn();
     const preFiveRecord = { protocolVersion: 2_000_000, contractState: { version: 'v9', state: new Uint8Array() } };
 

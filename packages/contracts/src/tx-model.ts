@@ -209,7 +209,7 @@ export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9Fi
  *
  * Nested like every other `contracts` result, so `era` names the pipeline and `public` carries the
  * record. The retained era's counterpart is `Ledger8FinalizedMaintenanceTxData`; the two together
- * are `AnyEraMaintenanceTxData`.
+ * are `FinalizedMaintenanceTxData`.
  */
 export interface Ledger9FinalizedMaintenanceTxData {
   /** The pipeline that produced this result: always ledger 9 here. */

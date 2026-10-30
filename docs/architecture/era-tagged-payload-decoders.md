@@ -7,7 +7,7 @@ runtime, and states which era each of those decoders is allowed to be.
 
 `era: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
 envelope; `protocolVersion` is the era of the block that dated the read. A value read from the
-network — a contract state, ledger parameters, a zswap chain state — is a `LedgerState`: the bytes
+network — a contract state, ledger parameters, a zswap chain state — is a `SerializedState`: the bytes
 and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
 finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
 `FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
@@ -43,7 +43,7 @@ derived from a `[vN]` by arithmetic or by analogy with another family's table:
 
 Every row above is measured against bytes minted by both real runtimes, never assumed from another
 family's numbering. The rows live in one table, `LEDGER_STATE_TAGS` in
-`packages/protocol/src/lib/shared/state-tags.ts`, which `LedgerState.fromBytes` in `types` and the
+`packages/protocol/src/lib/shared/state-tags.ts`, which `SerializedState.fromBytes` in `types` and the
 `ledgerVersionOf*` readers in `utils` both read. It is pinned by
 `packages/protocol/src/test/state-tags.test.ts`, which mints every kind with both runtimes and
 asserts the literal tag each one writes.
@@ -79,9 +79,9 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `toContractStateRead` and
   `toPublicStatesRead` decode nothing: they read the version tag of each payload and wrap the bytes
-  in a `LedgerState` of that version. The caller decodes with its own runtime (ADR 0020).
+  in a `SerializedState` of that version. The caller decodes with its own runtime (ADR 0020).
   `decodeRecordTransaction` dispatches per record to a table with one entry per era.
-- `packages/types/src/ledger-state.ts` — `LedgerState.deserialize` calls only the decoder for the
+- `packages/types/src/serialized-state.ts` — `SerializedState.deserialize` calls only the decoder for the
   value's own version.
 - `packages/contracts/src/internal/era.ts` — `decodeLedger9ContractState` and
   `decodeLedger9PublicStates` decode a read with the framework's copy, only to build a transaction,

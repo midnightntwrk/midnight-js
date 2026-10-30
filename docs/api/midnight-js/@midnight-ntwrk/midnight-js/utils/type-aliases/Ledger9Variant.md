@@ -6,9 +6,9 @@
 
 # Type Alias: Ledger9Variant\<T\>
 
-> **Ledger9Variant**\<`T`\> = `Extract`\<`T`, \{ `version`: `"v9"`; \}\>
+> **Ledger9Variant**\<`T`\> = `Extract`\<`T`, \{ `era`: `"v9"`; \}\>
 
-The v9 variant of a version-tagged union.
+The v9 variant of a era-tagged union.
 
 ## Type Parameters
 

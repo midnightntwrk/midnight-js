@@ -17,7 +17,7 @@ This package handles that fact in three ways:
   (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle carries its era as data
   and checks the WASM instance when it is made.
 - A value the ledger wrote and the read side returns — a contract state, ledger
-  parameters, a zswap chain state — is a **`LedgerState`**: the bytes, plus the
+  parameters, a zswap chain state — is a **`SerializedState`**: the bytes, plus the
   era of the ledger that wrote them. The caller decodes it with its own
   runtime.
 - A finalized-transaction record (`FinalizedTxRead`) carries an `era`
@@ -74,7 +74,7 @@ comes from the request, never from the bytes.
 
 ## On-chain state is bytes, decoded by the caller
 
-`LedgerState<K, E>` holds the bytes the ledger wrote, a `kind`
+`SerializedState<K, E>` holds the bytes the ledger wrote, a `kind`
 (`'ContractState'`, `'LedgerParameters'` or `'ZswapChainState'`) and an `era`
 (`'v8'` or `'v9'`), like `LedgerTransaction`. The reads return it inside a
 record: `ContractStateAndParametersRead` from `queryContractState`,
@@ -82,13 +82,13 @@ record: `ContractStateAndParametersRead` from `queryContractState`,
 and `contractStateObservable`, and `PublicStatesRead` from
 `queryZSwapAndContractState`.
 
-- `LedgerState.fromBytes(era, kind, bytes)` makes one, and nothing else can. It
+- `SerializedState.fromBytes(era, kind, bytes)` makes one, and nothing else can. It
   checks that the bytes start with the tag the ledger of `era` writes for `kind`
   (`LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`), and
-  refuses other bytes with `InvalidLedgerStateError`. A zswap chain state has the
+  refuses other bytes with `InvalidSerializedStateError`. A zswap chain state has the
   same tag in v8 and v9, so the check accepts it under either era.
-- `LedgerState.isLedgerState(value)` tells a `LedgerState` of this copy of the
-  package from a look-alike object. A `LedgerState` made by a second installed
+- `SerializedState.isSerializedState(value)` tells a `SerializedState` of this copy of the
+  package from a look-alike object. A `SerializedState` made by a second installed
   copy of this package gives `false`. The `contracts` package does not refuse
   such a state: it rebuilds it from its bytes with `fromBytes`, which checks the
   tag again.
@@ -98,9 +98,9 @@ and `contractStateObservable`, and `PublicStatesRead` from
   state's own era, and only that one. Pass the class from the runtime your
   contract was compiled against: a state decoded by another copy is refused by
   your contract's `ledger()` with `expected instance of ChargedState`. A missing
-  decoder is refused with `LedgerStateDecoderMissingError`, whose message names
+  decoder is refused with `SerializedStateDecoderMissingError`, whose message names
   the class to import. A decoder that throws is reported as
-  `LedgerStateDecodeFailedError`, with its error as `cause`, unless the error
+  `SerializedStateDecodeFailedError`, with its error as `cause`, unless the error
   is already a `MidnightJsError`: that one is rethrown unchanged. A call with no
   decoder for any era the state can be does not compile.
 - The bytes are a private field, so `structuredClone`, `postMessage` and JSON
@@ -114,7 +114,7 @@ A finalized-transaction record names its era `era` too, and its `tx` is a
 
 ## Three things the tag does not establish
 
-**It does not validate the body.** `LedgerState.fromBytes` checks the tag at
+**It does not validate the body.** `SerializedState.fromBytes` checks the tag at
 the front of the bytes, nothing after it. A decoder that refuses the body is
 reporting a real disagreement, not a bug in the reader.
 
@@ -174,7 +174,7 @@ does not use. That is wrong on any chain that has been running, not only across 
 fork — see `packages/contracts/docs/error-taxonomy.md` for what it cost before a
 refusal existed.
 
-They are a `LedgerState` for the same reason the contract state is: only the
+They are a `SerializedState` for the same reason the contract state is: only the
 era that wrote them can read them, and the caller holds the runtime.
 
 The member is required on `ContractStateAndParametersRead` and on

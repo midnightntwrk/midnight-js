@@ -58,11 +58,14 @@ Optional stream start.
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`VersionedContractState`](../type-aliases/VersionedContractState.md)\>\>
+> **contractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractStateRead`](ContractStateRead.md)\>\>
 
-Creates a stream of contract states, each tagged with the ledger era that wrote it. The
-observable emits a value every time a state is either created or updated at the given address.
-A replay that starts before the hard fork emits the pre-fork states as v8 values and carries on.
+Creates a stream of contract states, each as bytes with the era of the ledger that wrote
+them. The observable emits a value every time a state is either created or updated at the given
+address. A replay that starts before the hard fork emits the pre-fork states with
+`contractState.era === 'v8'` and carries on. A stream carries no ledger parameters: a caller that
+needs them reads [queryContractState](#querycontractstate) with `{ type: 'blockHash', blockHash }` from the same
+record.
 Waits indefinitely for matching data to appear.
 
 #### Parameters
@@ -81,7 +84,7 @@ The configuration for the observable.
 
 #### Returns
 
-`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`VersionedContractState`](../type-aliases/VersionedContractState.md)\>\>
+`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`ContractStateRead`](ContractStateRead.md)\>\>
 
 One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
   served it. Passing its `blockHeight` or `blockHash` back as the config
@@ -157,11 +160,12 @@ Optional pagination window.
 
 ### queryContractState()
 
-> **queryContractState**(`contractAddress`, `config?`): `Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md) \| `null`\>
+> **queryContractState**(`contractAddress`, `config?`): `Promise`\<[`ContractStateAndParametersRead`](ContractStateAndParametersRead.md) \| `null`\>
 
-Retrieves the on-chain state of a contract, tagged with the ledger era that wrote it. If no
-block hash or block height are provided, the contract state at the address in the latest block
-is returned. A v8-era state is returned as the stored bytes, never translated to the v9 encoding.
+Retrieves the on-chain state of a contract as bytes, with the ledger parameters of the block
+that dates the read. If no block hash or block height are provided, the contract state at the
+address in the latest block is returned. Decode the state with your own runtime:
+`read.contractState.deserialize({ v9: ContractState })`.
 Immediately returns null if no matching data is found.
 
 #### Parameters
@@ -181,17 +185,23 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md) \| `null`\>
+`Promise`\<[`ContractStateAndParametersRead`](ContractStateAndParametersRead.md) \| `null`\>
+
+#### Throws
+
+When the state or the ledger parameters are not well-formed bytes of a known era, when
+the state is newer than the block a pinned read names, or when the ledger parameters are of
+another era than their block.
 
 ***
 
 ### queryDeployContractState()
 
-> **queryDeployContractState**(`contractAddress`): `Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md) \| `null`\>
+> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractStateRead`](ContractStateRead.md) \| `null`\>
 
 Retrieves the contract state in the deploy's record for the contract at the given contract address,
-or in the latest update's record when the contract has been updated, tagged with the ledger era
-that wrote it. A v8-era record is returned as the stored bytes, never translated to the v9 encoding.
+or in the latest update's record when the contract has been updated, as bytes with the era
+of the ledger that wrote them.
 Immediately returns null if no matching data is found.
 
 #### Parameters
@@ -204,7 +214,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md) \| `null`\>
+`Promise`\<[`ContractStateRead`](ContractStateRead.md) \| `null`\>
 
 ***
 
@@ -222,7 +232,7 @@ reading held indefinitely is forbidden.
 PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
 is the question — it dates the block the read resolved and costs no extra
 request. For a contract state that block can be newer than the bytes; the
-era that wrote the bytes is the record's `version`. Reach for this method only where there is no
+era that wrote the bytes is `contractState.era`. Reach for this method only where there is no
 record to date: the deploy path.
 
 The answer is a LOWER BOUND on the era of the block that will include a
@@ -242,42 +252,6 @@ Implementation-specific error when the network reports no latest
 
 ReadingTheNetworkLedgerVersion for why the cache must expire by itself, and
   why this member takes no "give me a fresh one" option.
-
-***
-
-### queryRawContractState()
-
-> **queryRawContractState**(`contractAddress`, `config?`): `Promise`\<[`RawContractState`](RawContractState.md) \| `null`\>
-
-Retrieves the on-chain state of a contract as the raw serialized bytes the
-network returned, without deserializing them, tagged with the ledger era
-that wrote them.
-
-For callers that decode the bytes themselves: they narrow on
-[RawContractState.version](RawContractState.md#version) and then hand the bytes to that era's
-deserializer. Both eras' bytes are returned unchanged. The era is read
-off the version tag the bytes carry.
-
-Immediately returns null if no matching data is found.
-
-#### Parameters
-
-##### contractAddress
-
-`string`
-
-The address of the contract of interest.
-
-##### config?
-
-[`BlockHashConfig`](../type-aliases/BlockHashConfig.md) \| [`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md)
-
-The configuration of the query.
-              If `undefined` returns the latest state.
-
-#### Returns
-
-`Promise`\<[`RawContractState`](RawContractState.md) \| `null`\>
 
 ***
 
@@ -310,11 +284,13 @@ The configuration of the query.
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<[`VersionedPublicStates`](../type-aliases/VersionedPublicStates.md) \| `null`\>
+> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<[`PublicStatesRead`](PublicStatesRead.md) \| `null`\>
 
 Retrieves the zswap chain state (token balances), the contract state of the contract at the
-given address, and the ledger parameters in effect on the associated block, tagged with the
-ledger era that wrote them. All three are retrieved in a single query to ensure consistency.
+given address, and the ledger parameters in effect on the associated block, each as bytes with
+the era of the ledger that wrote them. All three are written by the ledger of one era. On a read
+with no block given, the contract state is looked up separately from the block, so near the hard
+fork it can come from another block than the ledger parameters and the zswap chain state.
 Immediately returns null if no matching data is found.
 
 #### Parameters
@@ -334,61 +310,11 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<[`VersionedPublicStates`](../type-aliases/VersionedPublicStates.md) \| `null`\>
+`Promise`\<[`PublicStatesRead`](PublicStatesRead.md) \| `null`\>
 
 #### Throws
 
 When the contract state and the ledger parameters were written by different eras.
-
-***
-
-### rawContractStateObservable()
-
-> **rawContractStateObservable**(`address`, `config`): `Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
-
-Creates a stream of contract states as the raw serialized bytes the network
-returned, without deserializing them, each tagged with the ledger era that
-wrote it. The observable emits a value every time a state is either
-created or updated at the given address.
-Waits indefinitely for matching data to appear.
-
-THE STREAMING COUNTERPART OF [queryRawContractState](#queryrawcontractstate). Prefer it over
-[contractStateObservable](#contractstateobservable) when the caller decodes the bytes itself.
-
-[RawContractState.version](RawContractState.md#version) is the era read off the version tag of
-[RawContractState.raw](RawContractState.md#raw); [RawContractState.protocolVersion](RawContractState.md#protocolversion)
-dates the block that served it.
-
-[RawContractState.ledgerParameters](RawContractState.md#ledgerparameters) MAY BE ABSENT ON A STREAM even
-where the same implementation serves it on
-[queryRawContractState](#queryrawcontractstate). The parameters are a per-block blob, and a
-stream may have no cheap way to obtain one per emission; an implementation
-is free to refuse that cost. A caller that needs the parameters for a
-streamed state reads [queryRawContractState](#queryrawcontractstate) with
-`{ type: 'blockHash', blockHash }` from the same [PositionedRecord](../type-aliases/PositionedRecord.md).
-
-#### Parameters
-
-##### address
-
-`string`
-
-The address of the contract of interest.
-
-##### config
-
-[`ContractStateObservableConfig`](../type-aliases/ContractStateObservableConfig.md)
-
-The configuration for the observable.
-
-#### Returns
-
-`Observable`\<[`PositionedRecord`](../type-aliases/PositionedRecord.md)\<[`RawContractState`](RawContractState.md)\>\>
-
-One [PositionedRecord](../type-aliases/PositionedRecord.md) per value, carrying the block that
-  served it. Passing its `blockHeight` or `blockHash` back as the config
-  resumes the stream from that block; values from that block may be
-  delivered again.
 
 ***
 
@@ -425,10 +351,10 @@ One [PositionedRecord](../type-aliases/PositionedRecord.md) per balance change, 
 
 ### watchForContractState()
 
-> **watchForContractState**(`contractAddress`): `Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md)\>
+> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractStateRead`](ContractStateRead.md)\>
 
-Retrieves the contract state of the contract with the given address, tagged with the ledger era
-that wrote it. Waits indefinitely for matching data to appear.
+Retrieves the contract state of the contract with the given address, as bytes with the era
+of the ledger that wrote them. Waits indefinitely for matching data to appear.
 
 #### Parameters
 
@@ -440,13 +366,13 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`VersionedContractState`](../type-aliases/VersionedContractState.md)\>
+`Promise`\<[`ContractStateRead`](ContractStateRead.md)\>
 
 ***
 
 ### watchForDeployTxData()
 
-> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
+> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 Retrieves data of the deployment transaction for the contract at the given contract address.
 
@@ -466,7 +392,7 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
+`Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 A promise that resolves with finalized transaction data when the deployment appears on-chain.
          The promise never rejects due to timeout.
@@ -475,7 +401,7 @@ A promise that resolves with finalized transaction data when the deployment appe
 
 ### watchForTxData()
 
-> **watchForTxData**(`txId`): `Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
+> **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
 
@@ -500,7 +426,7 @@ The identifier of the call or deployment of interest.
 
 #### Returns
 
-`Promise`\<[`VersionedFinalizedTxData`](../type-aliases/VersionedFinalizedTxData.md)\>
+`Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 A promise that resolves with finalized transaction data when the transaction appears on-chain.
          The promise never rejects due to timeout.

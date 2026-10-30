@@ -115,9 +115,9 @@ it out rather than present-and-undefined.
 ### Encoding
 
 This is the byte-level answer: `contractState.era` on the read record. Only
-`LedgerState.fromBytes` makes a `LedgerState`, and it refuses bytes whose tag
+`SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
 does not match `era`, so the era is the era of these exact bytes. A record whose
-contract state is not a `LedgerState` is refused before this breadcrumb, as
+contract state is not a `SerializedState` is refused before this breadcrumb, as
 `UnknownLedgerVersionError`.
 
 It carries no head integer and no reading provenance, because dating an envelope
