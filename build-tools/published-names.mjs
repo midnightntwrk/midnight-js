@@ -96,18 +96,21 @@ export const namingViolations = (names) =>
   });
 
 const LEDGER_PREFIX = /^Ledger[89]/;
-const CONSTRAINED_TO_CONTRACT_ANY = /\bContract\.Any\b/;
+const CONSTRAINED_TO_LEDGER9_CONTRACT = /\b(Contract\.Any|Ledger9Contract)\b/;
 
 const isTypeBoundToContractAny = (declaration) =>
   (ts.isTypeAliasDeclaration(declaration) || ts.isInterfaceDeclaration(declaration)) &&
   (declaration.typeParameters ?? []).some(
-    (parameter) => parameter.constraint !== undefined && CONSTRAINED_TO_CONTRACT_ANY.test(parameter.constraint.getText())
+    (parameter) => parameter.constraint !== undefined && CONSTRAINED_TO_LEDGER9_CONTRACT.test(parameter.constraint.getText())
   );
 
 /**
- * The exported types (aliases and interfaces) with a type parameter constrained to `Contract.Any`
- * whose name carries no ledger prefix, outside the files that hold the era-picking aliases. Such a
- * type is bound to ledger 9 and must say so.
+ * The exported types (aliases and interfaces) with a type parameter constrained to `Contract.Any` or
+ * `Ledger9Contract` whose name carries no ledger prefix, outside the files that hold the era-picking
+ * aliases. Such a type is bound to ledger 9 and must say so.
+ *
+ * The constraint is matched by its source text, so a type bound to ledger 9 only through a member or
+ * through another spelling of the constraint is not seen; the strict published-names lists pin those.
  */
 export const unprefixedLedger9Types = (packageRoot, { aliasFiles = [], skipSubpaths = [] } = {}) => {
   const { checker, exports } = exportsOfEntryPoints(packageRoot, skipSubpaths);

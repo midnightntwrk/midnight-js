@@ -15,6 +15,7 @@
 
 import type * as Contract from './contract.js';
 
+export type { ReExportedFlagged, ViaLedger9Contract } from './bound.js';
 export type { PicksTheEra } from './era-aliases.js';
 
 export type FlaggedAlias<C extends Contract.Any> = readonly C[];

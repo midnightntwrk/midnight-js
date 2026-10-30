@@ -16,3 +16,5 @@
 export interface Any {
   readonly tag: string;
 }
+
+export type Ledger9Contract = Any;
