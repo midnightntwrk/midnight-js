@@ -56,7 +56,17 @@ const compilerOptions = (packageRoot) => {
   return ts.parseJsonConfigFileContent(config, ts.sys, packageRoot).options;
 };
 
+const programs = new Map();
+
 const exportsOfEntryPoints = (packageRoot, skipSubpaths) => {
+  const key = `${packageRoot}\0${skipSubpaths.join(',')}`;
+  if (!programs.has(key)) {
+    programs.set(key, readExports(packageRoot, skipSubpaths));
+  }
+  return programs.get(key);
+};
+
+const readExports = (packageRoot, skipSubpaths) => {
   const entries = entryPoints(packageRoot, skipSubpaths);
   const program = ts.createProgram(entries, compilerOptions(packageRoot));
   const checker = program.getTypeChecker();
