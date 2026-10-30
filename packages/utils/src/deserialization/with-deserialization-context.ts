@@ -39,7 +39,7 @@ import { type DeserializationCallSite, DeserializationError } from './deserializ
  * @example
  * ```ts
  * // Inside a typed wrapper:
- * deserializeContractState(buf, ctx) =>
+ * deserializeLedger9ContractState(buf, ctx) =>
  *   withDeserializationContext(callSite, () => LedgerContractState.deserialize(buf));
  * ```
  */

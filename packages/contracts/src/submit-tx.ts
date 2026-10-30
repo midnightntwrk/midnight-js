@@ -21,6 +21,7 @@ import {
   type FinalizedTxRead,
   type Ledger9FinalizedTxData,
   LedgerTransaction,
+  type MidnightProviders,
   TransactionEraMismatchError,
   type UnprovenTx} from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
@@ -51,10 +52,10 @@ export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
 }
 
 /**
- * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
- * manipulate private state, the private state provider can be omitted.
+ * Providers required to submit a ledger 9 transaction. Submission doesn't manipulate private state,
+ * so the private state provider can be omitted.
  */
-export type SubmitTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Omit<
+export type Ledger9SubmitTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Omit<
   Ledger9ContractProviders<C, PCK>,
   'privateStateProvider'
 >;
@@ -73,7 +74,7 @@ export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
  * @throws TransactionEraMismatchError if the handle is not a v9 one.
  */
 export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
   const unprovenTx = LedgerTransaction.require(options.unprovenTx, 'Unproven', 'submitTx');
@@ -89,7 +90,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
 
 /** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */
 export const submitLedger9Payload = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<Ledger9FinalizedTxData> => {
   const txId = await submitLedger9PayloadAsync(providers, options);
@@ -108,9 +109,9 @@ const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraMismatchReason>> = 
   v9: 'ledger9-transaction-on-ledger8-network'
 };
 
-const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
-  options: SubmitTxOptions<PCK>
+const submitOnHead = async (
+  providers: Omit<MidnightProviders, 'privateStateProvider'>,
+  options: SubmitTxOptions<AnyProvableCircuitId>
 ): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
   const { unprovenTx, circuitId } = options;
   const era = transactionEra(unprovenTx);
@@ -185,10 +186,10 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  *         differs from the head's. In the record's case the
  *         transaction is already on chain; its id is on `txId`.
  */
-export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+export async function submitTx<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
   options: SubmitTxOptions<PCK>
-): Promise<FinalizedTxRead> => {
+): Promise<FinalizedTxRead> {
   const { txId, head } = await submitOnHead(providers, options);
   const record = requireTaggedRecord(
     await providers.publicDataProvider.watchForTxData(txId),
@@ -199,7 +200,7 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
     throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.era, undefined, txId);
   }
   return record;
-};
+}
 
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
@@ -218,10 +219,10 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
  * @throws EraMismatchError for a transaction whose era is not the head's.
  * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
  */
-export const submitTxAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+export async function submitTxAsync<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
   options: SubmitTxOptions<PCK>
-): Promise<string> => {
+): Promise<string> {
   const { txId } = await submitOnHead(providers, options);
   return txId;
-};
+}

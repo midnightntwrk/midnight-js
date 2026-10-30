@@ -18,8 +18,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
 import { LedgerTransaction } from '../ledger-transaction';
-import { createMidnightProvider } from '../midnight-provider';
-import { createWalletProvider } from '../wallet-provider';
+import { createLedger9MidnightProvider } from '../midnight-provider';
+import { createLedger9WalletProvider } from '../wallet-provider';
 import { handles, ledgerTransactions } from './ledger-transaction-fixtures';
 
 const coinPublicKey = 'coin-pk';
@@ -31,7 +31,7 @@ const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
     (error: unknown) => error
   );
 
-describe('createWalletProvider', () => {
+describe('createLedger9WalletProvider', () => {
   const buildImpl = (balanced: LedgerTransactionTypes['v9']['Finalized']) => ({
     balanceTx: vi.fn(async () => balanced),
     getCoinPublicKey: () => coinPublicKey,
@@ -40,7 +40,7 @@ describe('createWalletProvider', () => {
 
   it('answers a finalized v9 handle around the implementation result', async () => {
     const balanced = await ledgerTransactions.v9.Finalized();
-    const provider = createWalletProvider(buildImpl(balanced));
+    const provider = createLedger9WalletProvider(buildImpl(balanced));
 
     const result = await provider.balanceTx(await handles.v9.Unbound());
 
@@ -52,7 +52,7 @@ describe('createWalletProvider', () => {
     const handle = await handles.v9.Unbound();
     const ttl = new Date(0);
     const impl = buildImpl(await ledgerTransactions.v9.Finalized());
-    const provider = createWalletProvider(impl);
+    const provider = createLedger9WalletProvider(impl);
 
     await provider.balanceTx(handle, ttl);
 
@@ -61,7 +61,7 @@ describe('createWalletProvider', () => {
 
   it('refuses a v8 handle as an unserved era, and never calls the implementation', async () => {
     const impl = buildImpl(await ledgerTransactions.v9.Finalized());
-    const provider = createWalletProvider(impl);
+    const provider = createLedger9WalletProvider(impl);
 
     const rejection = await rejectionOf(provider.balanceTx(await handles.v8.Unbound()));
 
@@ -72,7 +72,7 @@ describe('createWalletProvider', () => {
 
   it('refuses the pre-handle version-tagged payload, and never calls the implementation', async () => {
     const impl = buildImpl(await ledgerTransactions.v9.Finalized());
-    const provider = createWalletProvider(impl);
+    const provider = createLedger9WalletProvider(impl);
 
     // @ts-expect-error the version-tagged payload is not a transaction handle
     const rejection = await rejectionOf(provider.balanceTx({ version: 'v9', tx: await ledgerTransactions.v9.Unbound() }));
@@ -83,23 +83,23 @@ describe('createWalletProvider', () => {
   });
 
   it('passes the key readers through unchanged', async () => {
-    const provider = createWalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
+    const provider = createLedger9WalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
 
     expect([provider.getCoinPublicKey(), provider.getEncryptionPublicKey()]).toEqual([coinPublicKey, encryptionPublicKey]);
   });
 
   it('declares exactly v9', async () => {
-    const provider = createWalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
+    const provider = createLedger9WalletProvider(buildImpl(await ledgerTransactions.v9.Finalized()));
 
     expect(provider.supportedEras).toEqual(['v9']);
   });
 });
 
-describe('createMidnightProvider', () => {
+describe('createLedger9MidnightProvider', () => {
   it('hands the implementation the unwrapped ledger object and returns its transaction id', async () => {
     const handle = await handles.v9.Finalized();
     const submit = vi.fn(async () => 'tx-id');
-    const provider = createMidnightProvider(submit);
+    const provider = createLedger9MidnightProvider(submit);
 
     const txId = await provider.submitTx(handle);
 
@@ -109,7 +109,7 @@ describe('createMidnightProvider', () => {
 
   it('refuses a v8 handle as an unserved era, and never submits', async () => {
     const submit = vi.fn(async () => 'tx-id');
-    const provider = createMidnightProvider(submit);
+    const provider = createLedger9MidnightProvider(submit);
 
     const rejection = await rejectionOf(provider.submitTx(await handles.v8.Finalized()));
 
@@ -120,7 +120,7 @@ describe('createMidnightProvider', () => {
 
   it('refuses a raw ledger transaction, and never submits', async () => {
     const submit = vi.fn(async () => 'tx-id');
-    const provider = createMidnightProvider(submit);
+    const provider = createLedger9MidnightProvider(submit);
 
     // @ts-expect-error a raw ledger transaction is not a transaction handle
     const rejection = await rejectionOf(provider.submitTx(await ledgerTransactions.v9.Finalized()));
@@ -130,6 +130,6 @@ describe('createMidnightProvider', () => {
   });
 
   it('declares exactly v9', () => {
-    expect(createMidnightProvider(vi.fn(async () => 'tx-id')).supportedEras).toEqual(['v9']);
+    expect(createLedger9MidnightProvider(vi.fn(async () => 'tx-id')).supportedEras).toEqual(['v9']);
   });
 });

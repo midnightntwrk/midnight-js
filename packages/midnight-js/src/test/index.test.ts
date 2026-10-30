@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import * as contracts from '../contracts';
@@ -30,7 +33,7 @@ import type {
 } from '../index';
 import * as midnightJs from '../index';
 import * as networkId from '../network-id';
-import * as protocol from '../protocol';
+import * as ledger9Protocol from '../protocol/v9';
 import * as types from '../types';
 import * as utils from '../utils';
 
@@ -67,8 +70,8 @@ const EXPECTED_BARREL_EXPORTS = [
   'UnknownProtocolVersionError',
   'contracts',
   'latestNetworkLedgerVersion',
+  'ledger9Protocol',
   'networkId',
-  'protocol',
   'types',
   'utils',
   'versionOfRecord'
@@ -312,20 +315,28 @@ describe('sub-path exports', () => {
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  it('should export protocol sub-path with same members as namespace', () => {
-    expect(protocol).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.protocol).sort();
-    const subpathKeys = Object.keys(protocol).sort();
+  it('should export the protocol/v9 sub-path with same members as the ledger9Protocol namespace', () => {
+    expect(ledger9Protocol).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.ledger9Protocol).sort();
+    const subpathKeys = Object.keys(ledger9Protocol).sort();
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  // The names the protocol sub-path carries AT RUNTIME, asserted by strict
+  // The names the protocol/v9 sub-path carries AT RUNTIME, asserted by strict
   // equality. `Contract` is deliberately absent: it is an interface merged
   // with a types-only namespace, so it has no runtime binding to re-export.
   // Listing it here is what fails when it is re-exported in value position --
-  // which emits a name into `dist/protocol.d.ts` that `dist/protocol.js` does
+  // which emits a name into `dist/protocol/v9.d.ts` that `dist/protocol/v9.js` does
   // not have, and breaks a consumer under any transpile-only pipeline.
-  it('should carry only the protocol names that exist at runtime', () => {
-    expect(Object.keys(protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
+  it('should carry only the protocol/v9 names that exist at runtime', () => {
+    expect(Object.keys(ledger9Protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
+  });
+
+  it('publishes the ledger 9 protocol names only under protocol/v9', () => {
+    const subpaths = Object.keys(
+      (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports
+    );
+
+    expect(subpaths.filter((subpath) => subpath.startsWith('./protocol'))).toEqual(['./protocol/v9']);
   });
 });

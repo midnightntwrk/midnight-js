@@ -75,7 +75,7 @@ const makeAdaptedRuntimeLayer = (zkConfigProvider: ZKConfigProvider<string>, con
 /**
  * Options for use when constructing a Compact.js contract executable runtime.
  */
-export type ContractExecutableRuntimeOptions = {
+export type Ledger9ContractExecutableRuntimeOptions = {
   /** The current user's ZSwap public key. */
   readonly coinPublicKey: string;
 
@@ -90,8 +90,8 @@ export type ContractExecutableRuntimeOptions = {
  * @param options Values that will be mapped into and made available within the constructed runtime.
  * @returns An Effect {@link ManagedRuntime} that can be used to execute {@link ContractExecutable} instances.
  */
-export const makeContractExecutableRuntime:
-  (zkConfigProvider: ZKConfigProvider<string>, options: ContractExecutableRuntimeOptions) => ManagedRuntime<ContractExecutable.ContractExecutable.Context, ConfigError.ConfigError> =
+export const makeLedger9ContractExecutableRuntime:
+  (zkConfigProvider: ZKConfigProvider<string>, options: Ledger9ContractExecutableRuntimeOptions) => ManagedRuntime<ContractExecutable.ContractExecutable.Context, ConfigError.ConfigError> =
   (zkConfigProvider, options) => {
     let config: readonly [string, string][] = [['KEYS_COIN_PUBLIC', options.coinPublicKey]];
     if (options.signingKey) {

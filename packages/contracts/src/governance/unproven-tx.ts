@@ -26,7 +26,7 @@ import {
   asContractAddress,
   asEffectOption,
   LedgerTransaction,
-  makeContractExecutableRuntime,
+  makeLedger9ContractExecutableRuntime,
   type MidnightConfig,
   type UnprovenTx,
   type VerifierKey,
@@ -59,7 +59,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
   config: MidnightConfig
 ): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
-  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+  const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
     signingKey: currentAuthority
   });
@@ -86,7 +86,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
   config: MidnightConfig
 ): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
-  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+  const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
     signingKey: currentAuthority
   });
@@ -114,7 +114,7 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
   config: MidnightConfig
 ): Promise<UnprovenTx> => {
   const contractExec = ContractExecutable.make(compiledContract);
-  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+  const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
     signingKey: currentAuthority
   });

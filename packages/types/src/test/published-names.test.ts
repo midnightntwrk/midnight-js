@@ -17,7 +17,7 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { namingViolations, publishedNames } from '../../../../build-tools/published-names.mjs';
+import { namingViolations, publishedNames, unprefixedLedger9Types } from '../../../../build-tools/published-names.mjs';
 
 const names = publishedNames(resolve(__dirname, '../..'));
 
@@ -46,19 +46,18 @@ const EXPECTED_PUBLISHED_NAMES = [
   'ContractEventsPage',
   'ContractEventSubscriptionFilter',
   'ContractEventType',
-  'ContractExecutableRuntimeOptions',
   'ContractKeyLocation',
   'ContractStateAndParametersRead',
   'ContractStateObservableConfig',
   'ContractStateRead',
-  'createMidnightProvider',
+  'createLedger9MidnightProvider',
+  'createLedger9ProofProvider',
+  'createLedger9WalletProvider',
   'createMidnightProviderFromHandlers',
-  'createProofProvider',
   'createProofProviderFromHandlers',
   'createProofProviderFromProvingProviders',
   'createProverKey',
   'createVerifierKey',
-  'createWalletProvider',
   'createWalletProviderFromHandlers',
   'createZKIR',
   'DecodedState',
@@ -93,6 +92,7 @@ const EXPECTED_PUBLISHED_NAMES = [
   'KeyMaterialProvider',
   'Latest',
   'Ledger8FinalizedTxData',
+  'Ledger9ContractExecutableRuntimeOptions',
   'Ledger9FinalizedTxData',
   'Ledger9UnboundTransaction',
   'Ledger9WalletProvider',
@@ -100,7 +100,7 @@ const EXPECTED_PUBLISHED_NAMES = [
   'LedgerTransactionTypes',
   'LoggerProvider',
   'LogLevel',
-  'makeContractExecutableRuntime',
+  'makeLedger9ContractExecutableRuntime',
   'MAX_EXPORT_SIGNING_KEYS',
   'MAX_EXPORT_STATES',
   'MidnightConfig',
@@ -189,6 +189,10 @@ describe('published names', () => {
 
   it('follow the naming rules of the public API', () => {
     expect(namingViolations(names)).toEqual([]);
+  });
+
+  it('name every exported type bound to ledger 9 after its ledger', () => {
+    expect(unprefixedLedger9Types(resolve(__dirname, '../..'), { aliasFiles: [] })).toEqual([]);
   });
 
   it('applies each rule to the names it exists for, and only to those', () => {

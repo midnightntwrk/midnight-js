@@ -15,14 +15,16 @@
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { TxFailedError } from './errors';
+import { requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitLedger9Payload } from './submit-tx';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
-import type { DeployTxOptionsBase, DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
-import { createUnprovenDeployTx } from './unproven-deploy-tx';
+import type { Ledger9DeployTxOptionsBase, Ledger9DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
+import { createLedger9UnprovenDeployTx } from './unproven-deploy-tx';
 
 /**
  * Providers necessary to submit a deployment transaction - all providers.
@@ -34,16 +36,16 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 /**
  * Configuration for creating deploy transactions.
  */
-export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
+export type Ledger9DeployTxOptions<C extends Contract.Any> = Ledger9DeployTxOptionsBase<C> | Ledger9DeployTxOptionsWithPrivateStateId<C>;
 
-export async function submitDeployTx<C extends Contract<undefined>>(
+export async function submitLedger9DeployTx<C extends Contract<undefined>>(
   providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
-  options: DeployTxOptionsBase<C>
+  options: Ledger9DeployTxOptionsBase<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>>;
 
-export async function submitDeployTx<C extends Contract.Any>(
+export async function submitLedger9DeployTx<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
-  options: DeployTxOptionsWithPrivateStateId<C>
+  options: Ledger9DeployTxOptionsWithPrivateStateId<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>>;
 
 /**
@@ -78,6 +80,8 @@ export async function submitDeployTx<C extends Contract.Any>(
  * @returns A `Promise` that resolves with the finalized deployment transaction data;
  *          or rejects with an error if the deployment fails.
  *
+ * @throws {EraMismatchError} With reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 9, before anything else.
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
@@ -92,12 +96,13 @@ export async function submitDeployTx<C extends Contract.Any>(
  * type for handling guidance before logging, serializing, or transmitting the
  * result.
  */
-export async function submitDeployTx<C extends Contract.Any>(
+export async function submitLedger9DeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
-  options: DeployTxOptions<C>
+  options: Ledger9DeployTxOptions<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>> {
+  await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'submitLedger9DeployTx');
   assertDeployPrivateStatePairing(options);
-  const unprovenDeployTxData = await createUnprovenDeployTx(providers, options);
+  const unprovenDeployTxData = await createLedger9UnprovenDeployTx(providers, options);
   const finalizedTxData = await submitLedger9Payload(providers, {
     unprovenTx: unprovenDeployTxData.private.unprovenTx
   });
@@ -123,4 +128,41 @@ export async function submitDeployTx<C extends Contract.Any>(
       ...unprovenDeployTxData.public
     }
   };
+}
+
+export async function submitDeployTx<C extends Contract<undefined>>(
+  providers: Ledger9ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
+  options: Ledger9DeployTxOptionsBase<C>
+): Promise<Ledger9FinalizedDeployTxData<C>>;
+
+export async function submitDeployTx<C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9DeployTxOptionsWithPrivateStateId<C>
+): Promise<Ledger9FinalizedDeployTxData<C>>;
+
+/**
+ * Creates and submits a deploy transaction for a contract of the era its artifacts declare. A
+ * ledger 9 contract runs {@link submitLedger9DeployTx}, whose documentation covers
+ * the parameters and the privacy-sensitive result.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
+ *         function does not serve, after the artifact era is read and before anything else, and with
+ *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
+ *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `deployContract` deploys contracts of both eras.
+ */
+export async function submitDeployTx<C extends Contract.Any>(
+  providers: SubmitDeployTxProviders<C>,
+  options: Ledger9DeployTxOptions<C>
+): Promise<Ledger9FinalizedDeployTxData<C>> {
+  const era = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
+  switch (era) {
+    case 'v9':
+      return submitLedger9DeployTx(providers, options);
+    case 'v8':
+      throw unsupportedContractEra('submitDeployTx', era);
+    default:
+      return assertNever(era, 'submitDeployTx');
+  }
 }

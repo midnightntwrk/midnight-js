@@ -82,6 +82,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'ledger8-contract-state-unsupported': 'upgrade-indexer',
       'scope-on-ledger8-network': 'submit-each-call',
       'ledger8-call-in-scope': 'call-outside-scope',
+      'contract-era-unsupported': 'use-an-era-routing-function',
       'unrecognised-result-era': 'carry-the-era'
     };
 

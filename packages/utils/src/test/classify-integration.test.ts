@@ -31,13 +31,12 @@ import { describe, expect, it } from 'vitest';
 
 import { isDeserializationError } from '../deserialization';
 import {
-  decodeLedgerStateValue,
-  deserializeCompactContractState,
-  deserializeContractState,
-  deserializeLedgerParameters,
-  deserializeLedgerTransaction,
-  deserializeZswapChainState
-} from '../deserialization/typed-wrappers';
+  decodeLedger9StateValue,
+  deserializeLedger9CompactContractState,
+  deserializeLedger9ContractState,
+  deserializeLedger9Parameters,
+  deserializeLedger9ZswapChainState,
+  deserializeLedgerTransaction} from '../deserialization/typed-wrappers';
 
 const caller = '@midnight-ntwrk/midnight-js-test:classify-integration';
 
@@ -56,7 +55,7 @@ const catchDeserError = (fn: () => unknown) => {
 
 describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
   it('empty buffer → version-mismatch, direction undefined (got is empty, secondary fails)', () => {
-    const err = catchDeserError(() => deserializeContractState(new Uint8Array(0), { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(new Uint8Array(0), { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBeUndefined();
@@ -69,7 +68,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
   it('garbage bytes → version-mismatch, direction undefined (got is gibberish, secondary fails)', () => {
     const garbage = new Uint8Array([0xab, 0xcd, 0xef, 0x01, 0x02, 0x03, 0x04, 0x05]);
 
-    const err = catchDeserError(() => deserializeContractState(garbage, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(garbage, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBeUndefined();
@@ -79,7 +78,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
     // ContractState currently expects [v8]. We feed [v5].
     const oldTag = headerBytes('midnight:contract-state[v5]:');
 
-    const err = catchDeserError(() => deserializeContractState(oldTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(oldTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-older-than-code');
@@ -91,7 +90,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
     // ContractState currently expects [v8]. We feed [v9].
     const newTag = headerBytes('midnight:contract-state[v9]:');
 
-    const err = catchDeserError(() => deserializeContractState(newTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(newTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-newer-than-code');
@@ -102,7 +101,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
   it('cross-type bytes (zswap header fed to ContractState) → version-mismatch', () => {
     const crossTypeTag = headerBytes('midnight:zswap-ledger-state[v5]:');
 
-    const err = catchDeserError(() => deserializeContractState(crossTypeTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(crossTypeTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     // direction may or may not be inferable — accept either undefined or set
@@ -111,7 +110,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
   it('extracted.dataType is populated from the WASM error prefix (D9 override)', () => {
     const oldTag = headerBytes('midnight:contract-state[v5]:');
 
-    const err = catchDeserError(() => deserializeContractState(oldTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ContractState(oldTag, { caller }));
 
     expect(err.context.extracted?.dataType).toBe('ContractState');
     // dataType in the final context matches extracted (which equals the WASM class name)
@@ -121,7 +120,7 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
 
 describe('integration: ledger source — ZswapChainState', () => {
   it('empty buffer → version-mismatch with ZswapChainState dataType', () => {
-    const err = catchDeserError(() => deserializeZswapChainState(new Uint8Array(0), { caller }));
+    const err = catchDeserError(() => deserializeLedger9ZswapChainState(new Uint8Array(0), { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.source).toBe('ledger');
@@ -133,7 +132,7 @@ describe('integration: ledger source — ZswapChainState', () => {
     // ZswapChainState currently expects [v5]
     const oldTag = headerBytes('midnight:zswap-ledger-state[v4]:');
 
-    const err = catchDeserError(() => deserializeZswapChainState(oldTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ZswapChainState(oldTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-older-than-code');
@@ -142,7 +141,7 @@ describe('integration: ledger source — ZswapChainState', () => {
   it('newer version → data-newer-than-code', () => {
     const newTag = headerBytes('midnight:zswap-ledger-state[v6]:');
 
-    const err = catchDeserError(() => deserializeZswapChainState(newTag, { caller }));
+    const err = catchDeserError(() => deserializeLedger9ZswapChainState(newTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-newer-than-code');
@@ -161,7 +160,7 @@ describe('integration: ledger source — LedgerTransaction', () => {
 
 describe('integration: ledger source — LedgerParameters smoke', () => {
   it('garbage bytes → DeserializationError with LedgerParameters dataType', () => {
-    const err = catchDeserError(() => deserializeLedgerParameters(new Uint8Array([0, 0]), { caller }));
+    const err = catchDeserError(() => deserializeLedger9Parameters(new Uint8Array([0, 0]), { caller }));
 
     expect(err.context.source).toBe('ledger');
     expect(err.context.dataType).toBe('LedgerParameters');
@@ -170,7 +169,7 @@ describe('integration: ledger source — LedgerParameters smoke', () => {
 
 describe('integration: compact-runtime source', () => {
   it('garbage bytes → DeserializationError with source=compact-runtime', () => {
-    const err = catchDeserError(() => deserializeCompactContractState(new Uint8Array([0]), { caller }));
+    const err = catchDeserError(() => deserializeLedger9CompactContractState(new Uint8Array([0]), { caller }));
 
     expect(err.context.source).toBe('compact-runtime');
   });
@@ -178,9 +177,9 @@ describe('integration: compact-runtime source', () => {
 
 describe('integration: onchain-runtime source — StateValue', () => {
   it('malformed EncodedStateValue → DeserializationError with source=onchain-runtime', () => {
-    const malformed = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedgerStateValue>[0];
+    const malformed = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedger9StateValue>[0];
 
-    const err = catchDeserError(() => decodeLedgerStateValue(malformed, { caller }));
+    const err = catchDeserError(() => decodeLedger9StateValue(malformed, { caller }));
 
     expect(err.context.source).toBe('onchain-runtime');
   });
@@ -189,7 +188,7 @@ describe('integration: onchain-runtime source — StateValue', () => {
 describe('integration: mitigation hints rendered (D12 — keyed on classification × source)', () => {
   it('version-mismatch error references the structural tag and underlying packages', () => {
     const err = catchDeserError(() =>
-      deserializeContractState(headerBytes('midnight:contract-state[v5]:'), { caller })
+      deserializeLedger9ContractState(headerBytes('midnight:contract-state[v5]:'), { caller })
     );
 
     const joined = err.context.mitigation.join('\n');
