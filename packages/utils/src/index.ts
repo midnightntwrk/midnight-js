@@ -22,6 +22,7 @@ export * from './hex-utils';
 export * from './ledger-parameters-version';
 export * from './midnight-config';
 export * from './midnight-providers';
+export * from './networks';
 export * from './password-validation';
 export * from './require-ledger9';
 export * from './security-utils';

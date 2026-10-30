@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
+import { type MidnightNetwork, networks } from '@midnight-ntwrk/midnight-js-utils';
 import type * as ws from 'isomorphic-ws';
 import { describe, expect, test } from 'vitest';
 
-import { DEFAULT_POLL_INTERVAL, validateConfig } from '../config';
+import { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig, validateConfig } from '../config';
 import { IndexerProviderConfigError } from '../errors';
 
 const queryURL = 'http://localhost:4000/api/v1/graphql';
@@ -123,5 +124,22 @@ describe('validateConfig — pollInterval fail-fast validation', () => {
 
   test('error message mentions the offending value', () => {
     expect(() => validateConfig({ queryURL, subscriptionURL, pollInterval: -1 })).toThrow(/-1/);
+  });
+});
+
+describe('validateConfig — predefined networks', () => {
+  test.each([
+    ['preview', networks.preview()],
+    ['preprod', networks.preprod('token')],
+    ['mainnet', networks.mainnet('token')]
+  ])('accepts the %s indexer endpoints as they are', (_, network: MidnightNetwork) => {
+    const config: IndexerProviderConfig = network.indexer;
+
+    const validated = validateConfig(config);
+
+    expect({ query: validated.queryURLString, subscription: validated.subscriptionURLString }).toEqual({
+      query: network.indexer.queryURL,
+      subscription: network.indexer.subscriptionURL
+    });
   });
 });
