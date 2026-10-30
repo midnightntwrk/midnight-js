@@ -48,6 +48,7 @@ import type {
   Ledger8SubmittedCallTx,
   Ledger8UnsubmittedCallTxData
 } from './ledger8-contract';
+import type { Ledger9SubmitTxProviders } from './submit-tx';
 import type { Ledger9CircuitCallTxInterface } from './tx-interfaces';
 import type {
   Ledger9FinalizedCallTxData,
@@ -178,6 +179,16 @@ export type FinalizedDeployTxData<C extends AnyContract> = C extends Ledger8Cont
   ? Ledger8FinalizedDeployTxData<C>
   : C extends Ledger9Contract
     ? Ledger9FinalizedDeployTxData<C>
+    : never;
+
+/**
+ * The providers that submit a transaction of `C`: the provider set of the era that compiled `C`,
+ * without a private state provider. Generic code names an era: `Ledger9SubmitTxProviders<C, PCK>`.
+ */
+export type SubmitTxProviders<C extends AnyContract, PCK extends CircuitIdOf<C>> = C extends Ledger8Contract
+  ? Omit<Ledger8ContractProviders<C, PCK & Ledger8CircuitId<C>>, 'privateStateProvider'>
+  : C extends Ledger9Contract
+    ? Ledger9SubmitTxProviders<C, PCK & Contract.ProvableCircuitId<C>>
     : never;
 
 /** The private result of a circuit call. Generic code names an era: `Ledger9CallResultPrivate<C, PCK>`. */

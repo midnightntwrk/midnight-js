@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { FinalizedTxRead } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
@@ -80,10 +81,14 @@ import type {
   Ledger9FoundContract,
   Ledger9FoundDeployTxData,
   Ledger9SubmittedCallTx,
+  Ledger9SubmitTxProviders,
   Ledger9UnsubmittedCallTxData,
   SubmittedCallTx,
+  SubmitTxOptions,
+  SubmitTxProviders,
   UnsubmittedCallTxData
 } from '../../index';
+import { submitTx } from '../../index';
 import type { Counter016Contract } from '../ledger8-fixture-types';
 
 type V9 = Twin018Contract<{ readonly round: bigint }>;
@@ -363,5 +368,21 @@ describe('generic code names an era', () => {
     ) => data.public;
 
     expectTypeOf(publicOf<V9, K>).returns.toEqualTypeOf<FinalizedCallTxData<V9, K>['public']>();
+  });
+});
+
+describe('the providers that submit a transaction', () => {
+  it('are the provider set of the era that compiled the contract, without a private state provider', () => {
+    expectTypeOf<SubmitTxProviders<V9, K>>().toEqualTypeOf<Ledger9SubmitTxProviders<V9, K>>();
+    expectTypeOf<SubmitTxProviders<V8, K>>().toEqualTypeOf<
+      Omit<Ledger8ContractProviders<V8, K>, 'privateStateProvider'>
+    >();
+  });
+
+  it('let submitTx take a ledger 8 provider set', () => {
+    const submitLedger8 = (providers: SubmitTxProviders<V8, K>, options: SubmitTxOptions<K>) =>
+      submitTx(providers, options);
+
+    expectTypeOf(submitLedger8).returns.resolves.toEqualTypeOf<FinalizedTxRead>();
   });
 });

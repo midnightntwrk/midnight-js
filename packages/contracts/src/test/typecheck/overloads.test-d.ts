@@ -99,7 +99,7 @@ import {
   type NeitherEraContractOptions
 } from '../../ledger8-contract';
 import { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from '../../submit-call-tx';
-import type { SubmitTxProviders } from '../../submit-tx';
+import type { Ledger9SubmitTxProviders } from '../../submit-tx';
 import type { Ledger9TransactionContext } from '../../transaction';
 import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
@@ -1183,11 +1183,25 @@ describe('adding era overloads leaves the pre-existing entry points public surfa
   it('leaves Parameters<typeof submitCallTx> reporting the scoped current-era call', () => {
     expectTypeOf<Parameters<typeof submitCallTx>>().toEqualTypeOf<
       [
-        providers: SubmitTxProviders<Contract<undefined>, string>,
+        providers: Ledger9SubmitTxProviders<Contract<undefined>, string>,
         options: Ledger9CallTxOptionsBase<Contract<undefined>, string>,
         transactionContext: Ledger9TransactionContext<Contract<undefined>, string>
       ]
     >();
+  });
+
+  it('lets generic code call without a private state provider', () => {
+    const call = <C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+      providers: Ledger9SubmitTxProviders<C, PCK>,
+      options: Ledger9CallTxOptionsBase<C, PCK>
+    ) => submitCallTx(providers, options);
+    const callAsync = <C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+      providers: Ledger9SubmitTxProviders<C, PCK>,
+      options: Ledger9CallTxOptionsBase<C, PCK>
+    ) => submitCallTxAsync(providers, options);
+
+    expectTypeOf(call).toBeFunction();
+    expectTypeOf(callAsync).toBeFunction();
   });
 
   it('leaves ReturnType<typeof submitCallTxAsync> reporting Ledger9SubmittedCallTx', () => {

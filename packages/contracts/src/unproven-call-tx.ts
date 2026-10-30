@@ -19,7 +19,7 @@ import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type MidnightProviders, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
@@ -371,7 +371,7 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
  * contract with no private state.
  */
 export type UnprovenCallTxProvidersBase = Pick<
-  Ledger9ContractProviders,
+  MidnightProviders,
   'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider' | 'config'
 >;
 

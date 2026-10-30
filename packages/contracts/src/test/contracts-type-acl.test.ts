@@ -187,6 +187,7 @@ describe('Contracts type ACL', () => {
       'Ledger9LogEvent',
       'Ledger9SubmitCallTxProviders',
       'Ledger9SubmittedCallTx',
+      'Ledger9SubmitTxProviders',
       'Ledger9TransactionContext',
       'Ledger9UnprovenCallTxProvidersWithPrivateState',
       'Ledger9UnprovenDeployTxOptions',

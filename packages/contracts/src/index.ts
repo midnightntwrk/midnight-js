@@ -200,6 +200,7 @@ export type {
   Ledger9CircuitId,
   Ledger9Contract,
   SubmittedCallTx,
+  SubmitTxProviders,
   UnsubmittedCallTxData
 } from './era-aliases';
 export type { Ledger9FindDeployedContractOptions, Ledger9FoundContract } from './find-deployed-contract';
@@ -210,7 +211,7 @@ export type {
 } from './governance';
 export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { Ledger9DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
-export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
+export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
   isTransactionContext,
   Ledger9TransactionContext,

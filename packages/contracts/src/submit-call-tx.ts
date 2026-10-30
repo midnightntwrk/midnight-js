@@ -35,7 +35,7 @@ import {
   type Ledger8FinalizedCallTxData,
   type Ledger8SubmittedCallTx
 } from './ledger8-contract';
-import type { SubmitTxProviders } from './submit-tx';
+import type { Ledger9SubmitTxProviders } from './submit-tx';
 import { submitLedger9PayloadAsync } from './submit-tx';
 import { type Ledger9TransactionContext } from './transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9SubmittedCallTx } from './tx-model';
@@ -58,7 +58,7 @@ import {
  */
 export type Ledger9SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | Ledger9ContractProviders<C>
-  | SubmitTxProviders<C, PCK>;
+  | Ledger9SubmitTxProviders<C, PCK>;
 
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
@@ -88,7 +88,7 @@ export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger
  * Calls a circuit on a contract that declares no private state.
  */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9CallTxOptionsBase<C, PCK>
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>>;
 
@@ -114,7 +114,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
  */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9CallTxOptionsBase<C, PCK>,
   transactionContext: Ledger9TransactionContext<C, PCK>
 ): Promise<Ledger9CallResult<C, PCK>>;
