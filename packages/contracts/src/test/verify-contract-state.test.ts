@@ -15,6 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { createVerifierKey, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
@@ -22,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ContractTypeError } from '../errors';
 import { verifyContractState } from '../find-deployed-contract';
+import { hfFixturePath, readHfHexFixture } from './ledger8-replay';
 
 const CIRCUIT_ID = ProvableCircuitId('deposit');
 const OTHER_CIRCUIT_ID = ProvableCircuitId('withdraw');
@@ -277,4 +279,51 @@ describe('verifyContractState', () => {
       expect(error.contractState).toBe(state);
     });
   });
+
+  describe('decoded states of both eras', () => {
+    const RETAINED_KEY = new Uint8Array(readFileSync(hfFixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier')));
+    const RETAINED_CIRCUIT_ID = 'receive_coin';
+
+    const ledger8State = async () => {
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+      return Ledger8ContractState.deserialize(readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex'));
+    };
+
+    it('should accept a ledger 8 state whose deployed key equals the local key', async () => {
+      const state = await ledger8State();
+
+      expect(() => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, RETAINED_KEY]), state)).not.toThrow();
+    });
+
+    it('should reject a ledger 8 state whose deployed key differs, describing the ledger 8 state', async () => {
+      const state = await ledger8State();
+
+      const error = expectThrows(
+        () => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, DEPLOYED_KEY]), state),
+        ContractTypeError
+      );
+
+      expect(error.mismatchedCircuitIds).toEqual([RETAINED_CIRCUIT_ID]);
+      expect(error.contractState).toBe(state);
+      expect(error.message).toContain(`Deployed state: ${state.toString(true).slice(0, 40)}`);
+    });
+
+    it('should reject a ledger 8 state that registers no operation for the circuit', async () => {
+      const state = await ledger8State();
+
+      const error = expectThrows(
+        () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state),
+        ContractTypeError
+      );
+
+      expect(error.missingCircuitIds).toEqual([CIRCUIT_ID]);
+    });
+
+    it('should accept a ledger 9 state migrated from ledger 8, which keeps the ledger 8 key', () => {
+      const state = ContractState.deserialize(readHfHexFixture('coin-receiver-016', 'state-v9.hex'));
+
+      expect(() => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, RETAINED_KEY]), state)).not.toThrow();
+    });
+  });
 });
+
