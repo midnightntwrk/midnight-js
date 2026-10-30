@@ -57,10 +57,10 @@ import {
   ProviderFailedError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
-import { runLedger8Deploy } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitLedger8DeployTx } from '../submit-deploy-tx';
 import { finalizedLike, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
@@ -653,15 +653,11 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
       .mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+    providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]);
 
     let caught: unknown;
     try {
-      await runLedger8Deploy(providers, {
-        contract,
-        args: [],
-        privateState: {},
-        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-      });
+      await submitLedger8DeployTx(providers, { compiledContract: contract });
     } catch (error) {
       caught = error;
     }

@@ -269,3 +269,24 @@ No API change is required — construct the provider as before and compression i
 ## Contract-event GraphQL schema enhancements (#971, #975)
 
 The generated contract-event GraphQL schema was enhanced with transaction references and beta markers, richer contract-event types, and **dust generation** support — underpinning the `PublicDataProvider` event surface above.
+
+## Low-level functions for ledger 8 contracts (#1524)
+
+A contract produced by the ledger 8 toolchain now has the same low-level functions as a ledger 9
+one: `createLedger8UnprovenCallTx`, `createLedger8UnprovenCallTxFromInitialStates`,
+`createLedger8UnprovenDeployTx`, `createLedger8UnprovenDeployTxFromVerifierKeys` and
+`submitLedger8DeployTx`. The unprefixed routers (`createUnprovenCallTx`, …, `submitDeployTx`)
+send a ledger 8 contract to them.
+
+A builder stores nothing. Submit what it built with `submitTx`:
+
+```ts
+const built = await createLedger8UnprovenCallTx(providers, callOptions);
+// 'v8' before the fork, 'v9' after it: the call keeps the contract's ledger 8 state.
+console.log(built.private.unprovenTx.era);
+const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+```
+
+`createLedger8UnprovenCallTxFromInitialStates` runs a call on states the caller read, with every
+era stated: `head`, `initialContractState: { era, state }` and `ledgerParameters: { era, parameters }`.
+A ledger 8 deploy works only before the fork.

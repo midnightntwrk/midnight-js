@@ -127,6 +127,7 @@ export {
 // The retained era's types, flat. The entry-point overloads return them by these names, and a
 // dApp's declaration emit can name only what the package exports flat (TS4023).
 export type {
+  Ledger8CallOptionsWithInitialStates,
   Ledger8CallResultPrivate,
   Ledger8CallResultPublic,
   Ledger8CallTxOptions,
@@ -161,8 +162,12 @@ export type {
   Ledger8FoundDeployTxData,
   Ledger8InitialStateResult,
   Ledger8PrivateState,
+  Ledger8Serializable,
   Ledger8SubmittedCallTx,
+  Ledger8UnprovenDeployTxOptions,
+  Ledger8UnprovenDeployTxOptionsBase,
   Ledger8UnsubmittedCallTxData,
+  Ledger8UnsubmittedDeployTxData,
   Ledger8Witness
 } from './ledger8-contract';
 // The flat names pick between the eras by contract type. The ledger 9 variants are flat `Ledger9*`
@@ -210,7 +215,7 @@ export type {
   Ledger9ContractMaintenanceTxInterface
 } from './governance';
 export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from './submit-call-tx';
-export { Ledger9DeployTxOptions, submitDeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
+export { Ledger9DeployTxOptions, submitDeployTx, submitLedger8DeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
 export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
   isLedger9TransactionContext,
@@ -249,6 +254,8 @@ export type {
   Ledger9CallTxOptionsWithPrivateStateId
 } from './unproven-call-tx';
 export {
+  createLedger8UnprovenCallTx,
+  createLedger8UnprovenCallTxFromInitialStates,
   createLedger9UnprovenCallTx,
   createLedger9UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,
@@ -257,6 +264,8 @@ export {
   Ledger9UnprovenCallTxProvidersWithPrivateState,
   UnprovenCallTxProvidersBase} from './unproven-call-tx';
 export {
+  createLedger8UnprovenDeployTx,
+  createLedger8UnprovenDeployTxFromVerifierKeys,
   createLedger9UnprovenDeployTx,
   createLedger9UnprovenDeployTxFromVerifierKeys,
   createUnprovenDeployTx,

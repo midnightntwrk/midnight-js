@@ -556,7 +556,7 @@ export interface SubmittedOperation {
 // Every kind is reachable in production: `call` through `submitCallTx`,
 // `deploy` through `deployContract`'s retained-era overload, and `maintenance`
 // through the retained-era overloads of the governance functions. `kind: 'deploy'`
-// is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
+// is set at exactly one place, inside `deployLedger8Contract`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
 const FORK_CROSSED_MESSAGES: Readonly<
   Record<SubmittedOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>

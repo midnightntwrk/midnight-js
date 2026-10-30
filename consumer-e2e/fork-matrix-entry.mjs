@@ -40,6 +40,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
 // `src/protocol/v9.ts` for the published set.
 import {
+  createLedger8UnprovenCallTx,
+  createLedger8UnprovenDeployTx,
   deployContract,
   EraMismatchError,
   findDeployedContract,
@@ -47,7 +49,8 @@ import {
   SubmitRejectionUndiagnosedError,
   submitCallTx,
   submitCallTxAsync,
-  submitReplaceAuthorityTx
+  submitReplaceAuthorityTx,
+  submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { latestNetworkLedgerVersion, ledger9Protocol } from '@midnight-ntwrk/midnight-js';
 
@@ -1568,6 +1571,50 @@ await leg('pre-fork retained call', async () => {
   return { txId: submitted.public.txId };
 });
 
+// (a) continued: THE LOW-LEVEL LEDGER 8 FUNCTIONS (#1524). Build with the ledger 8 builder, submit
+// with `submitTx`, on a contract of their own so the baseline legs keep their contract. ONE shard,
+// for the reason the read-surface probes below give.
+const MEASURES_LOW_LEVEL = covers(SELECTED.current, 'simple');
+/** @type {{ contractAddress: string } | undefined} */
+let lowLevelDeployment;
+
+/** Throws unless the handle and the record carry the expected era, and the record succeeded. */
+const assertSubmitted = (built, record, era) => {
+  if (built.private.unprovenTx.era !== era || record.era !== era || record.status !== 'SucceedEntirely') {
+    throw new Error(
+      `expected a '${era}' transaction recorded as '${era}' and succeeded, got handle '${built.private.unprovenTx.era}', ` +
+        `record '${record.era}', status '${record.status}'`
+    );
+  }
+  return { txId: record.txId, era: record.era };
+};
+
+if (MEASURES_LOW_LEVEL) {
+  await leg('pre-fork low-level ledger 8 deploy, then submitTx', async () => {
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenDeployTx(session.providers, { compiledContract: new Contract({}), args: [] });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx });
+    lowLevelDeployment = { contractAddress: built.public.contractAddress };
+    await waitForContract(session.providers.publicDataProvider, built.public.contractAddress, 5 * 60_000);
+    return { ...assertSubmitted(built, record, 'v8'), contractAddress: built.public.contractAddress };
+  });
+
+  await leg('pre-fork low-level ledger 8 call, then submitTx', async () => {
+    if (lowLevelDeployment === undefined) {
+      throw new Error('the low-level deploy above did not complete');
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenCallTx(session.providers, {
+      compiledContract: new Contract({}),
+      contractAddress: lowLevelDeployment.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: []
+    });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+    return assertSubmitted(built, record, 'v8');
+  });
+}
+
 // (a) continued: THE READ SURFACE ACROSS THE BOUNDARY. These probes record what
 // each read member hands back for a contract that really is deployed and really
 // does carry a retained envelope: bytes, with the era of the ledger that wrote
@@ -2413,6 +2460,23 @@ await leg('post-fork keep-state call through the same call site', async () => {
   // `submitted.txId` is NOT it: neither path puts the id at the top level.
   return { txId: submitted.public.txId };
 });
+
+if (MEASURES_LOW_LEVEL) {
+  await leg('post-fork low-level ledger 8 call builds a keep-state ledger 9 transaction, then submitTx', async () => {
+    if (lowLevelDeployment === undefined) {
+      throw new Error('the pre-fork low-level deploy did not complete');
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenCallTx(session.providers, {
+      compiledContract: new Contract({}),
+      contractAddress: lowLevelDeployment.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: []
+    });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+    return assertSubmitted(built, record, 'v9');
+  });
+}
 
 // (c) continued: the same three reads, now that the keep-state call above has
 // written to the contract and re-versioned its envelope. This is what separates

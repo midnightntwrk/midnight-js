@@ -36,6 +36,7 @@ import type {
   LedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
+  LEDGER_VERSIONS,
   type LedgerVersion,
   loadLedger8Engine,
   loadLedgerEra,
@@ -55,6 +56,7 @@ import {
   type ProofProvider,
   type PublicDataProvider,
   type ReadMethod,
+  SerializedState,
   SucceedEntirely,
   type TransactionProviders,
   type UnprovenTx,
@@ -76,6 +78,7 @@ import {
   Ledger8NotStoredError,
   Ledger8SigningKeyError,
   Ledger8UnconfirmedError,
+  NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation,
@@ -84,10 +87,15 @@ import {
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
 import type {
+  AnyLedger8CallOptionsWithInitialStates,
   AnyLedger8CallTxOptions,
+  AnyLedger8DeployContractOptions,
   AnyLedger8FinalizedCallTxData,
+  AnyLedger8FinalizedDeployTxData,
   AnyLedger8SubmittedCallTx,
-  AnyLedger8UnsubmittedCallTxData
+  AnyLedger8UnprovenDeployTxOptions,
+  AnyLedger8UnsubmittedCallTxData,
+  AnyLedger8UnsubmittedDeployTxData
 } from '../ledger8-contract';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
@@ -99,11 +107,13 @@ import {
 } from './era';
 import {
   assertSnapshotVerifierKey,
+  composeLedger8Call,
+  decodeLedger8Snapshot,
   type Ledger8CallPipelineResult,
-  type Ledger8ConstructedState,
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   type Ledger8MaintenanceUpdate,
+  type Ledger8SnapshotBytes,
   type Ledger8StateValue,
   readLedger8Snapshot,
   runLedger8CallPipeline,
@@ -227,6 +237,31 @@ export const acquireLedger8Runtime = async (
 };
 
 /**
+ * Refuses a provider set that cannot carry a retained-era operation. The retained-era path reads the
+ * head and checks the transaction providers before it builds anything, and a router's ledger 9
+ * overloads take a narrower set, so a caller the compiler never checked can reach it without them.
+ *
+ * @param providers The provider set a router received.
+ * @param functionName The router, for the message.
+ * @throws InvalidArgumentError naming every missing provider.
+ */
+export function assertLedger8TransactionProviders<P extends object>(
+  providers: P,
+  functionName: string
+): asserts providers is P & Pick<Ledger8EntryProviders, 'publicDataProvider' | 'proofProvider' | 'midnightProvider'> {
+  const missing = (['publicDataProvider', 'proofProvider', 'midnightProvider'] as const).filter(
+    (name) => !(name in providers)
+  );
+  if (missing.length > 0) {
+    throw new InvalidArgumentError(
+      `${functionName} was given a ledger 8 contract without ${missing.map((name) => `'${name}'`).join(', ')}. ` +
+        'A ledger 8 contract is built with the full provider set: it reads the network head and checks ' +
+        'the transaction providers before anything is built.'
+    );
+  }
+}
+
+/**
  * Proves, balances and submits a retained-era-executed transaction, and
  * returns the transaction id.
  *
@@ -292,239 +327,6 @@ export const submitLedger8Tx = async (
   };
 
   return proveBalanceSubmit(providers, unprovenTx, circuitId, submit);
-};
-
-/** What a retained-era call arrived with. */
-export interface Ledger8CallRequest {
-  readonly contract: Ledger8Contract;
-  readonly contractAddress: string;
-  readonly circuitId: string;
-  readonly args: readonly unknown[];
-  readonly privateState: unknown;
-  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
-}
-
-/** A composed and submitted retained-era call. */
-export interface Ledger8SubmittedCall {
-  readonly txId: string;
-  readonly call: Ledger8CallPipelineResult<Ledger8StateValue>;
-  /**
-   * The era the network head was on when this call started.
-   *
-   * Deliberately NOT on the published `Ledger8SubmittedCallTx`: that type names
-   * the era of the PIPELINE, and this is the era of the NETWORK. The two are
-   * different facts and they disagree on this path every time a retained-era
-   * call is recorded post-fork. The finalizing path needs this one to attribute
-   * the record it fetches, so it travels on this internal shape instead.
-   */
-  readonly head: LedgerVersion;
-}
-
-/**
- * Runs one retained-era call end to end: acquire, compose through the
- * pipeline, then prove, balance and submit.
- *
- * The verifier key the pre-proving check compares is fetched BEFORE the
- * pipeline runs, because the pipeline's key check has to happen before any
- * proof exists.
- *
- * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded
- * outputs are encrypted per recipient and an unresolvable recipient is refused
- * rather than mis-encrypted.
- *
- * @param providers The provider set.
- * @param request The contract, its address, the circuit, its arguments and the
- * private state to run against.
- * @returns The transaction id and what the call produced.
- * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
- * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
- * envelope's era disagrees with the head.
- * @throws StateDecodeFailedError if the envelope will not decode on this era.
- * @throws StateInconsistentError if the decoded state is internally inconsistent.
- * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
- * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the
- * pre-proving key check.
- * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a coin the
- * contract already held.
- * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if a shielded output pays a recipient
- * that is not the calling wallet, the burn address, or a key in
- * `additionalCoinEncPublicKeyMappings`.
- * @throws ProviderEraUnsupportedError if a provider does not serve the head's era.
- * @throws EraInvariantViolationError if a provider answers in the other era.
- * @throws ProviderFailedError if a provider rejects.
- * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what
- *      a bare key would cost.
- */
-export const runLedger8Call = async (
-  providers: Ledger8EntryProviders,
-  request: Ledger8CallRequest
-): Promise<Ledger8SubmittedCall> => {
-  assertValidMidnightConfig(providers.config);
-  const { networkId } = providers.config;
-  const ttl = intentTtl(providers.config);
-  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
-    logger: providers.loggerProvider,
-    contractAddress: request.contractAddress
-  });
-  const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(request.circuitId);
-
-  // Read ONCE and used for both the circuit's coin public key and the
-  // resolver's notion of "the wallet's own key". Two reads of the same wallet
-  // member could disagree, and a resolver built against a different key than
-  // the circuit executed under is exactly the mismatch that mis-encrypts.
-  //
-  // NORMALIZED, exactly as every current-era call site normalizes it. A real
-  // wallet hands this over Bech32m-encoded; the retained runtime's
-  // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
-  // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
-  // passes hex through unchanged, so this is free for a wallet that already
-  // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
-  // test in this repo can catch its absence.
-  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
-
-  const call = await runLedger8CallPipeline({
-    era: resolved.era,
-    retainedEra,
-    engine,
-    publicDataProvider: providers.publicDataProvider,
-    head: resolved.head,
-    logger: providers.loggerProvider,
-    contract: request.contract,
-    contractAddress: request.contractAddress,
-    circuitId: request.circuitId,
-    args: request.args,
-    coinPublicKey,
-    privateState: request.privateState,
-    localVerifierKey,
-    networkId,
-    ttl,
-    encryptionPublicKey: createEncryptionPublicKeyResolver(
-      networkId,
-      coinPublicKey,
-      providers.walletProvider.getEncryptionPublicKey(),
-      request.additionalCoinEncPublicKeyMappings
-    )
-  });
-
-  const txId = await submitLedger8Tx(providers, call.unprovenTx, {
-    networkVersion: resolved.head,
-    kind: 'call',
-    circuitId: request.circuitId,
-    contractAddress: request.contractAddress
-  });
-
-  return { txId, call, head: resolved.head };
-};
-
-/** What a retained-era deploy arrived with. */
-export interface Ledger8DeployRequest {
-  readonly contract: Ledger8Contract;
-  readonly args: readonly unknown[];
-  readonly privateState: unknown;
-  /**
-   * Fetches one verifier key per entry point the constructor's state will
-   * declare.
-   *
-   * A RESOLVER rather than the map itself, because an argument is evaluated
-   * before the call it is an argument to: a map built inline was fetched ahead
-   * of the era and provider gates below, so a retained artifact on a post-fork head
-   * - whose ZK config an ordinary browser no longer serves after the fork - got
-   * the provider's fetch rejection in place of `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), which
-   * is the reason a caller can act on.
-   */
-  readonly resolveVerifierKeys: () => Promise<ReadonlyMap<string, Uint8Array>>;
-  /**
-   * The key to register as the deployed contract's maintenance authority. A
-   * caller that names none gets a sampled one, reported on the result.
-   */
-  readonly signingKey?: Ledger8SigningKey;
-}
-
-/** A composed and submitted retained-era deploy. */
-export interface Ledger8SubmittedDeploy {
-  readonly txId: string;
-  readonly deploy: Ledger8DeployPipelineResult;
-  /**
-   * The era the network head was on when this deploy started, for the same
-   * reason {@link Ledger8SubmittedCall.head} carries it: the finalizing step
-   * needs it to attribute the record it fetches, and re-reading the head there
-   * could answer differently.
-   */
-  readonly head: LedgerVersion;
-}
-
-/**
- * Runs one retained-era deploy end to end: acquire, execute the constructor and
- * compose through the pipeline, then prove, balance and submit.
- *
- * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the
- * post-fork case before the constructor is executed.
- *
- * @param providers The provider set.
- * @param request The contract, its constructor arguments, the private state,
- * the verifier keys to register and the optional signing key.
- * @returns The transaction id, the composed deploy record and the head era.
- * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` on a post-fork head.
- */
-export const runLedger8Deploy = async (
-  providers: Ledger8EntryProviders,
-  request: Ledger8DeployRequest
-): Promise<Ledger8SubmittedDeploy> => {
-  assertValidMidnightConfig(providers.config);
-  const { networkId } = providers.config;
-  const ttl = intentTtl(providers.config);
-  // No contract address on this path: a deploy has none until the composition
-  // below mints one, so the selection breadcrumb leaves the field out.
-  const { resolved, engine } = await acquireLedger8Runtime(providers, 'deploy', {
-    logger: providers.loggerProvider
-  });
-
-  // AFTER the gates above, never as an argument to the composition below: an
-  // argument is evaluated before its call, which put this fetch ahead of the
-  // very refusals that exist to be raised first. See the field's own comment.
-  const verifierKeys = await request.resolveVerifierKeys();
-
-  // Read ONCE. The call path forbids the second read for the reason that applies
-  // here unchanged: a resolver built against a different key than the one the
-  // constructor executed under is exactly the mismatch that mis-encrypts a coin
-  // the constructor minted. Normalized once too, so both uses get the same
-  // form rather than relying on the resolver normalizing again internally.
-  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
-
-  const deploy = await runLedger8DeployPipeline({
-    era: resolved.era,
-    engine,
-    contract: request.contract,
-    args: request.args,
-    privateState: request.privateState,
-    coinPublicKey,
-    verifierKeys,
-    signingKey: request.signingKey,
-    networkId,
-    ttl,
-    // Built the same way the call path builds it, so a coin a constructor mints
-    // is encrypted to the same key a coin a circuit mints would be.
-    encryptionPublicKey: createEncryptionPublicKeyResolver(
-      networkId,
-      coinPublicKey,
-      providers.walletProvider.getEncryptionPublicKey()
-    )
-  });
-
-  const txId = await submitLedger8Tx(providers, deploy.unprovenTx, {
-    // Only ever a pre-fork head here -- a retained-era deploy against a
-    // network after the fork was refused above.
-    networkVersion: resolved.head,
-    kind: 'deploy',
-    // The deploy has no circuit of its own to name, so the constructor's own
-    // vocabulary is used rather than inventing a circuit id.
-    circuitId: 'initialState',
-    // READ OFF the composition record: a deploy mints a fresh nonce, so this is
-    // the one address a caller has to check before deploying again.
-    contractAddress: deploy.contractAddress
-  });
-
-  return { txId, deploy, head: resolved.head };
 };
 
 /** What attaching to an already-deployed retained-era contract arrived with. */
@@ -863,39 +665,60 @@ const toLedger8CallTxData = (
 });
 
 /**
- * What one retained-era call entry produced: the submitted-call result the
- * public entry points answer with, and the era the network head was on.
+ * A retained-era call built and not submitted: the execution data the public builder hands back,
+ * and the era the network head was on.
  *
- * The head is here rather than on `Ledger8SubmittedCallTx` for the reason
- * given on {@link Ledger8SubmittedCall.head}: that type names the era of the
- * PIPELINE, this is the era of the NETWORK, and on this path they routinely
- * differ. The finalizing entry point needs the network's to attribute the record it
- * fetches, and no caller needs it at all.
+ * The head is here rather than on `Ledger8UnsubmittedCallTxData`: that type names the era of the
+ * PIPELINE, this is the era of the NETWORK, and post-fork they differ. The submit step checks the
+ * transaction against it and the finalizing step attributes the record with it, so neither reads
+ * the head a second time — a second reading could answer differently mid-operation.
  */
-interface Ledger8CallEntryOutcome {
-  readonly submitted: AnyLedger8SubmittedCallTx;
+export interface Ledger8BuiltCall {
+  readonly data: AnyLedger8UnsubmittedCallTxData;
   readonly head: LedgerVersion;
 }
 
 /**
- * Runs one retained-era call: the local refusals, the private-state read, the
- * pipeline, and the submission -- everything both public entry points share.
+ * Builds one retained-era call and submits nothing: the local refusals, the private-state read,
+ * the era acquisition, the verifier-key fetch and the pipeline, in that order. Persists nothing.
  *
- * Extracted so the finalizing entry point can reach the head this call resolved
- * WITHOUT a second head read. Re-reading it would break the single-head-read
- * invariant the entry points are asserted against, and worse, a second reading
- * could answer differently and attribute the record against an era the
- * transaction was never built for.
+ * Does NOT read the artifact era. Its callers have already resolved it, and a second read would
+ * cost a second round trip to the ZK config provider per operation.
+ *
+ * The verifier key the pre-proving check compares is fetched BEFORE the pipeline runs, because the
+ * pipeline's key check has to happen before any proof exists.
+ *
+ * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded outputs are encrypted
+ * per recipient and an unresolvable recipient is refused rather than mis-encrypted.
  *
  * @param providers The provider set.
- * @param options The call the entry point received.
- * @returns The submitted-call result and the head era it resolved.
- * @throws Every error the public entry points document.
+ * @param options The call, in the shape this layer reads.
+ * @returns The execution data and the head era the transaction was composed for.
+ * @throws InvalidArgumentError if the contract address is malformed, or if the artifact declares no
+ * such circuit.
+ * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named with no private-state
+ * provider.
+ * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing stored under it.
+ * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched envelope's era
+ * disagrees with the head.
+ * @throws StateDecodeFailedError if the envelope will not decode on this era.
+ * @throws StateInconsistentError if the decoded state is internally inconsistent.
+ * @throws Ledger8AmbiguousEntryPointError if the state names the circuit twice.
+ * @throws BlankVerifierKeySlotError, VerifierKeyMismatchError from the pre-proving key check.
+ * @throws Ledger8CallUnsupportedError with reason `'shielded-spend'` if the circuit spends a coin the
+ * contract already held.
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if a shielded output pays a
+ * recipient that is not the calling wallet, the burn address, or a key in
+ * `additionalCoinEncPublicKeyMappings`.
+ * @throws ProviderEraUnsupportedError if a transaction provider does not serve the head's era.
+ * @see {@link KeepStatePipeline} for the per-recipient encryption rule and what a bare key would
+ *      cost.
  */
-const runLedger8CallEntry = async (
+export const buildLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<Ledger8CallEntryOutcome> => {
+): Promise<Ledger8BuiltCall> => {
   // The same two local refusals the current-era path makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
   // to discover, and an unknown circuit id would surface as a blank
@@ -915,24 +738,151 @@ const runLedger8CallEntry = async (
       ? undefined
       : await readLedger8PrivateState(providers.privateStateProvider, options.privateStateId);
 
-  const { txId, call, head } = await runLedger8Call(providers, {
+  assertValidMidnightConfig(providers.config);
+  const { networkId } = providers.config;
+  const ttl = intentTtl(providers.config);
+  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
+    logger: providers.loggerProvider,
+    contractAddress: options.contractAddress
+  });
+  const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(options.circuitId);
+
+  // Read ONCE and used for both the circuit's coin public key and the
+  // resolver's notion of "the wallet's own key". Two reads of the same wallet
+  // member could disagree, and a resolver built against a different key than
+  // the circuit executed under is exactly the mismatch that mis-encrypts.
+  //
+  // NORMALIZED, exactly as every current-era call site normalizes it. A real
+  // wallet hands this over Bech32m-encoded; the retained runtime's
+  // `encodeCoinPublicKey` accepts hex only and throws `Invalid character 'm' at
+  // position 0` from inside the WASM on anything else. `parseCoinPublicKeyToHex`
+  // passes hex through unchanged, so this is free for a wallet that already
+  // answers in hex. DO NOT DROP IT: the testkit wallet answers in hex, so no
+  // test in this repo can catch its absence.
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
+
+  const call = await runLedger8CallPipeline({
+    era: resolved.era,
+    retainedEra,
+    engine,
+    publicDataProvider: providers.publicDataProvider,
+    head: resolved.head,
+    logger: providers.loggerProvider,
     contract: options.compiledContract,
     contractAddress: options.contractAddress,
     circuitId: options.circuitId,
     args: options.args ?? [],
+    coinPublicKey,
     privateState,
-    additionalCoinEncPublicKeyMappings: options.additionalCoinEncPublicKeyMappings
+    localVerifierKey,
+    networkId,
+    ttl,
+    encryptionPublicKey: createEncryptionPublicKeyResolver(
+      networkId,
+      coinPublicKey,
+      providers.walletProvider.getEncryptionPublicKey(),
+      options.additionalCoinEncPublicKeyMappings
+    )
   });
 
-  return {
-    submitted: {
-      era: 'v8',
-      txId,
-      circuitId: call.circuitId,
-      callTxData: toLedger8CallTxData(call)
-    },
-    head
+  return { data: toLedger8CallTxData(call), head: resolved.head };
+};
+
+/**
+ * Builds one retained-era call on states the caller read itself, and submits nothing. Reads
+ * neither the head nor the contract state: both come from `options`, with their eras.
+ *
+ * Runs the same checks, execution and composition as {@link buildLedger8CallTx} through
+ * {@link composeLedger8Call}; only the snapshot comes from the caller instead of the network.
+ *
+ * @param zkConfigProvider The source of the circuit's local verifier key.
+ * @param options The call and the states it runs against.
+ * @param walletEncryptionPublicKey The calling wallet's encryption key, for outputs paying it.
+ * @returns The execution data of the call.
+ * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
+ * circuit, or `options.config` is invalid.
+ * @throws NetworkVersionStateMismatchError if the state was written by a later ledger than the head.
+ * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
+ * @throws Everything {@link composeLedger8Call} raises.
+ */
+export const buildLedger8CallTxFromStates = async (
+  zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKey'>,
+  options: AnyLedger8CallOptionsWithInitialStates,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<AnyLedger8UnsubmittedCallTxData> => {
+  const { head, initialContractState, ledgerParameters } = options;
+  assertIsContractAddress(options.contractAddress);
+  if (!Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId)) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
+  assertValidMidnightConfig(options.config, 'options.config');
+  if (LEDGER_VERSIONS.indexOf(initialContractState.era) > LEDGER_VERSIONS.indexOf(head)) {
+    throw new NetworkVersionStateMismatchError(head, initialContractState.era);
+  }
+  assertEraCompatible('v8', head, 'call');
+
+  const state: Ledger8SnapshotBytes = {
+    raw: SerializedState.fromBytes(initialContractState.era, 'ContractState', initialContractState.state.serialize()).serialize(),
+    ledgerParameters: SerializedState.fromBytes(ledgerParameters.era, 'LedgerParameters', ledgerParameters.parameters.serialize())
   };
+  const { networkId } = options.config;
+  const [era, engine, retainedEra] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);
+  const localVerifierKey = await zkConfigProvider.getVerifierKey(options.circuitId);
+  const coinPublicKey = parseCoinPublicKeyToHex(options.coinPublicKey, networkId);
+
+  const call = await composeLedger8Call(
+    {
+      era,
+      engine,
+      head,
+      contract: options.compiledContract,
+      contractAddress: options.contractAddress,
+      circuitId: options.circuitId,
+      args: 'args' in options ? options.args : [],
+      coinPublicKey,
+      privateState: options.initialPrivateState,
+      localVerifierKey,
+      networkId,
+      ttl: intentTtl(options.config),
+      encryptionPublicKey: createEncryptionPublicKeyResolver(
+        networkId,
+        coinPublicKey,
+        walletEncryptionPublicKey,
+        options.additionalCoinEncPublicKeyMappings
+      )
+    },
+    decodeLedger8Snapshot(retainedEra, era, initialContractState.era, state)
+  );
+
+  return toLedger8CallTxData(call);
+};
+
+/**
+ * Builds one retained-era call and proves, balances and submits it -- what both high-level entry
+ * points share.
+ *
+ * @param providers The provider set.
+ * @param options The call the entry point received.
+ * @returns The transaction id, the circuit, the execution data and the head era it was built for.
+ * @throws Every error {@link buildLedger8CallTx} and {@link submitLedger8Tx} raise.
+ */
+const submitBuiltLedger8Call = async (
+  providers: Ledger8CallEntryProviders,
+  options: Ledger8CallEntryOptions
+): Promise<{
+  readonly txId: string;
+  readonly circuitId: string;
+  readonly callTxData: AnyLedger8UnsubmittedCallTxData;
+  readonly head: LedgerVersion;
+}> => {
+  const { data, head } = await buildLedger8CallTx(providers, options);
+  const txId = await submitLedger8Tx(providers, data.private.unprovenTx, {
+    networkVersion: head,
+    kind: 'call',
+    circuitId: options.circuitId,
+    contractAddress: options.contractAddress
+  });
+  return { txId, circuitId: options.circuitId, callTxData: data, head };
 };
 
 /**
@@ -950,18 +900,15 @@ const runLedger8CallEntry = async (
  * @returns The transaction id, the circuit, the next private state, and the
  * execution data — everything but a finalized record, which a submission that
  * does not wait for one cannot have.
- * @throws InvalidArgumentError if the contract address is malformed, or if the
- * artifact declares no such circuit.
- * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing
- * stored under it.
- * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named
- * with no private-state provider.
- * @throws Every error {@link runLedger8Call} raises.
+ * @throws Every error {@link buildLedger8CallTx} and {@link submitLedger8Tx} raise.
  */
 export const submitLedger8CallTxAsync = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
-): Promise<AnyLedger8SubmittedCallTx> => (await runLedger8CallEntry(providers, options)).submitted;
+): Promise<AnyLedger8SubmittedCallTx> => {
+  const { txId, circuitId, callTxData } = await submitBuiltLedger8Call(providers, options);
+  return { era: 'v8', txId, circuitId, callTxData };
+};
 
 /**
  * Runs a retained-era call and waits for the chain to record it, storing the
@@ -984,8 +931,7 @@ export const submitLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions
 ): Promise<AnyLedger8FinalizedCallTxData> => {
-  const { submitted, head } = await runLedger8CallEntry(providers, options);
-  const { txId, circuitId, callTxData } = submitted;
+  const { txId, circuitId, callTxData, head } = await submitBuiltLedger8Call(providers, options);
   // The ONE path to the next private state, the same one the current era
   // publishes and this path's own asynchronous surface documents.
   const nextPrivateState = callTxData.private.nextPrivateState;
@@ -1031,69 +977,216 @@ export interface Ledger8DeployEntryProviders extends Ledger8EntryProviders {
   readonly privateStateProvider: Ledger8DeployPrivateStateSurface;
 }
 
-/** Everything one retained-era deployment produced that a caller is handed. */
-export interface Ledger8DeployedState {
-  /** The address the composition minted, which no other deployment shares. */
-  readonly contractAddress: string;
-  readonly deployTxData: Ledger8FinalizedTxData;
-  readonly signingKey: SigningKey;
-  readonly initialContractStateBytes: Uint8Array;
-  readonly initialContractState: Ledger8ConstructedState['contractState'];
-  /** The private state the CONSTRUCTOR produced. */
-  readonly initialPrivateState: unknown;
-  readonly initialZswapState: Ledger8DeployPipelineResult['initialZswapState'];
+/**
+ * Reshapes the options a retained-era deploy entry point received into the uniform shape this
+ * layer reads. `args`, `privateStateId` and `initialPrivateState` are CONDITIONAL members on the
+ * caller's types, so each is read with an `in` check rather than accessed.
+ *
+ * @param options The options a retained-era deploy entry point received.
+ * @returns The same deployment in the shape this layer reads.
+ */
+export const toLedger8DeployEntryOptions = (
+  options: AnyLedger8DeployContractOptions | AnyLedger8UnprovenDeployTxOptions
+): Ledger8DeployEntryOptions => ({
+  compiledContract: options.compiledContract,
+  args: 'args' in options ? options.args : [],
+  ...('privateStateId' in options ? { privateStateId: options.privateStateId } : {}),
+  ...('initialPrivateState' in options ? { initialPrivateState: options.initialPrivateState } : {}),
+  signingKey: options.signingKey
+});
+
+/**
+ * The constructor and the composition, once the era facade and the engine are in hand: shared by
+ * the builder that reads the head and the one that reads nothing.
+ *
+ * The verifier keys are fetched for EVERY entry point the artifact declares, off the artifact
+ * rather than off any state, and only here -- behind the era and provider gates of the caller.
+ */
+const composeLedger8Deploy = async (
+  era: LedgerEra,
+  engine: Ledger8ExecutionEngine<Ledger8StateValue>,
+  zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKeys'>,
+  coinPublicKey: string,
+  walletEncryptionPublicKey: EncPublicKey,
+  config: MidnightConfig,
+  options: Ledger8DeployEntryOptions,
+  signingKey: Ledger8SigningKey | undefined
+): Promise<Ledger8DeployPipelineResult> =>
+  runLedger8DeployPipeline({
+    era,
+    engine,
+    contract: options.compiledContract,
+    args: options.args ?? [],
+    privateState: options.initialPrivateState,
+    coinPublicKey,
+    verifierKeys: new Map(
+      await zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))
+    ),
+    signingKey,
+    networkId: config.networkId,
+    ttl: intentTtl(config),
+    // Built the same way the call path builds it, so a coin a constructor mints
+    // is encrypted to the same key a coin a circuit mints would be.
+    encryptionPublicKey: createEncryptionPublicKeyResolver(config.networkId, coinPublicKey, walletEncryptionPublicKey)
+  });
+
+/** A retained-era deploy built and not submitted, with the head era it was built on. */
+export interface Ledger8BuiltDeploy {
+  readonly deploy: Ledger8DeployPipelineResult;
+  /**
+   * The era the network head was on when this deploy started, for the same reason
+   * {@link Ledger8BuiltCall.head} carries it: the finalizing step needs it to attribute the record
+   * it fetches, and re-reading the head there could answer differently.
+   */
+  readonly head: LedgerVersion;
 }
 
 /**
- * Deploys a retained-era contract and waits for the chain to record it, storing
- * the private state and the signing key only once it has.
+ * Builds one retained-era deploy and submits nothing: the signing-key check, the era acquisition,
+ * the verifier-key fetch, the constructor and the composition, in that order. Stores nothing.
  *
- * The ORDER below is the whole of what this function adds over
- * {@link runLedger8Deploy}, and it mirrors {@link submitLedger8CallTx}: watch,
- * attribute the record against the head, refuse a non-success status, and only
- * then store. A deploy that the chain refused must leave no local state ahead of
- * it — and on this path that matters more than on the call path, because a second
- * attempt lands at a different address.
- *
- * The verifier keys are fetched for EVERY entry point the artifact declares,
- * off the artifact rather than off any state.
- *
- * The private-state pairing is NOT checked here: `deployContract`, the only
- * caller, checks it before any provider is touched.
+ * Reachable only on a pre-fork head; {@link acquireLedger8Runtime} refuses the post-fork case
+ * before any verifier key is fetched or the constructor runs.
  *
  * @param providers The provider set.
- * @param options The deployment the entry point received.
- * @returns The minted address, the finalized record, the signing key now stored
- * against that address, and everything the constructor produced.
+ * @param options The deployment, in the shape this layer reads.
+ * @returns The composed deploy and the head era.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the retained
+ * era can sign with. Raised before the head is read.
+ * @throws EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` on a post-fork head.
+ * @throws ComposeFailedError with stage `'deploy-verifier-key'` if the keys do not name every entry
+ * point.
+ * @throws Ledger8CallUnsupportedError with reason `'unmappable-recipient'` if the constructor pays a
+ * third party.
+ */
+export const buildLedger8DeployTx = async (
+  providers: Ledger8EntryProviders,
+  options: Ledger8DeployEntryOptions
+): Promise<Ledger8BuiltDeploy> => {
+  const signingKey =
+    options.signingKey === undefined ? undefined : requireLedger8SigningKey(options.signingKey, undefined);
+  assertValidMidnightConfig(providers.config);
+  // No contract address on this path: a deploy has none until the composition
+  // mints one, so the selection breadcrumb leaves the field out.
+  const { resolved, engine } = await acquireLedger8Runtime(providers, 'deploy', {
+    logger: providers.loggerProvider
+  });
+
+  // Read ONCE. A resolver built against a different key than the one the
+  // constructor executed under is exactly the mismatch that mis-encrypts a coin
+  // the constructor minted.
+  const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId);
+
+  const deploy = await composeLedger8Deploy(
+    resolved.era,
+    engine,
+    providers.zkConfigProvider,
+    coinPublicKey,
+    providers.walletProvider.getEncryptionPublicKey(),
+    providers.config,
+    options,
+    signingKey
+  );
+  return { deploy, head: resolved.head };
+};
+
+/**
+ * Builds one retained-era deploy from what the caller holds, reading nothing from the network. The
+ * transaction is always a ledger 8 one: no head is read, so a post-fork network is refused when the
+ * transaction is submitted, before it is proved.
+ *
+ * @param zkConfigProvider The source of the verifier keys.
+ * @param coinPublicKey The deploying wallet's coin public key, in hex or Bech32m.
+ * @param options The deployment, in the shape this layer reads.
+ * @param walletEncryptionPublicKey The deploying wallet's encryption key.
+ * @param config Network and transaction settings.
+ * @returns The composed deploy.
+ * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the retained
+ * era can sign with.
+ * @throws Every composition error {@link buildLedger8DeployTx} raises.
+ */
+export const buildLedger8DeployTxFromVerifierKeys = async (
+  zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKeys'>,
+  coinPublicKey: CoinPublicKey,
+  options: Ledger8DeployEntryOptions,
+  walletEncryptionPublicKey: EncPublicKey,
+  config: MidnightConfig
+): Promise<Ledger8DeployPipelineResult> => {
+  const signingKey =
+    options.signingKey === undefined ? undefined : requireLedger8SigningKey(options.signingKey, undefined);
+  assertValidMidnightConfig(config, 'config');
+  const [era, engine] = await Promise.all([loadLedgerEra('v8'), loadLedger8Engine()]);
+  return composeLedger8Deploy(
+    era,
+    engine,
+    zkConfigProvider,
+    parseCoinPublicKeyToHex(coinPublicKey, config.networkId),
+    walletEncryptionPublicKey,
+    config,
+    options,
+    signingKey
+  );
+};
+
+/**
+ * The public shape of a built retained-era deploy, with the signing key in the `{ tag, value }`
+ * form both eras share.
+ */
+export const toLedger8UnsubmittedDeployTxData = (deploy: Ledger8DeployPipelineResult): AnyLedger8UnsubmittedDeployTxData => ({
+  era: 'v8',
+  public: {
+    contractAddress: deploy.contractAddress,
+    initialContractState: deploy.initialContractState,
+    initialContractStateBytes: deploy.initialContractStateBytes
+  },
+  private: {
+    signingKey: toStoredLedger8SigningKey(deploy.signingKey),
+    initialPrivateState: deploy.nextPrivateState,
+    initialZswapState: deploy.initialZswapState,
+    unprovenTx: deploy.unprovenTx
+  }
+});
+
+/**
+ * Deploys a retained-era contract and waits for the chain to record it, storing
+ * the private state and the signing key only once it has: {@link buildLedger8DeployTx},
+ * {@link submitLedger8Tx}, then watch, attribute the record against the head, refuse a
+ * non-success status, and only then store. A deploy that the chain refused must leave no local
+ * state ahead of it — a second attempt lands at a different address.
+ *
+ * Does NOT read the artifact era nor check the private-state pairing: its callers have done both
+ * before any provider is touched.
+ *
+ * @param providers The provider set.
+ * @param options The deployment, in the shape this layer reads.
+ * @returns The finalized deploy data, the signing key now stored against the minted address.
  * @throws TxFailedError if the node recorded a non-success status.
  * @throws Ledger8UnconfirmedError with operation `'deploy'` if the record cannot be read back and
  * attributed to the head at all, the record's era included.
  * @throws Ledger8NotStoredError with operation `'deploy'` if the deployment was CONFIRMED and the
  * private-state provider then refused to store the signing key or the initial
  * private state. It carries the key either way.
- * @throws Ledger8SigningKeyError with reason `'unusable'` if a supplied key is not one the
- * retained era can sign with. Raised before the head is read.
- * @throws Every error {@link runLedger8Deploy} raises.
+ * @throws Every error {@link buildLedger8DeployTx} and {@link submitLedger8Tx} raise.
  * @see {@link KeepStatePipeline} for why every slot has to be registered, and
  * for the order after submission.
  */
-export const submitLedger8DeployTx = async (
+export const deployLedger8Contract = async (
   providers: Ledger8DeployEntryProviders,
   options: Ledger8DeployEntryOptions
-): Promise<Ledger8DeployedState> => {
+): Promise<AnyLedger8FinalizedDeployTxData> => {
   const { privateStateId } = options;
-  const suppliedSigningKey =
-    options.signingKey === undefined ? undefined : requireLedger8SigningKey(options.signingKey, undefined);
-
-  const { deploy, head } = await runLedger8Deploy(providers, {
-    contract: options.compiledContract,
-    args: options.args ?? [],
-    privateState: options.initialPrivateState,
-    // Handed as a THUNK, so the fetch runs behind the era and provider gates rather
-    // than ahead of them.
-    resolveVerifierKeys: async () =>
-      new Map(await providers.zkConfigProvider.getVerifierKeys(Object.keys(options.compiledContract.provableCircuits))),
-    signingKey: suppliedSigningKey
+  const { deploy, head } = await buildLedger8DeployTx(providers, options);
+  await submitLedger8Tx(providers, deploy.unprovenTx, {
+    // Only ever a pre-fork head here -- a retained-era deploy against a
+    // network after the fork was refused while building.
+    networkVersion: head,
+    kind: 'deploy',
+    // The deploy has no circuit of its own to name, so the constructor's own
+    // vocabulary is used rather than inventing a circuit id.
+    circuitId: 'initialState',
+    // READ OFF the composition record: a deploy mints a fresh nonce, so this is
+    // the one address a caller has to check before deploying again.
+    contractAddress: deploy.contractAddress
   });
   const signingKey = toStoredLedger8SigningKey(deploy.signingKey);
 
@@ -1169,13 +1262,18 @@ export const submitLedger8DeployTx = async (
   }
 
   return {
-    contractAddress: deploy.contractAddress,
-    deployTxData,
-    signingKey,
-    initialContractStateBytes: deploy.initialContractStateBytes,
-    initialContractState: deploy.initialContractState,
-    initialPrivateState: deploy.nextPrivateState,
-    initialZswapState: deploy.initialZswapState
+    era: 'v8',
+    public: {
+      ...deployTxData,
+      contractAddress: deploy.contractAddress,
+      initialContractState: deploy.initialContractState,
+      initialContractStateBytes: deploy.initialContractStateBytes
+    },
+    private: {
+      signingKey,
+      initialPrivateState: deploy.nextPrivateState,
+      initialZswapState: deploy.initialZswapState
+    }
   };
 };
 

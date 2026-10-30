@@ -50,6 +50,7 @@ import {
   type ContractStateAndParametersRead,
   type ContractStateRead,
   type FinalizedTx,
+  InvalidSerializedStateError,
   LedgerTransaction,
   type UnboundTx,
   type UnprovenTx,
@@ -72,8 +73,10 @@ import {
   runLedger8CallPipeline
 } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
-import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
+import type { Ledger8CallOptionsWithInitialStates, Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
+import { createLedger8UnprovenCallTx, createLedger8UnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 
@@ -428,6 +431,112 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('createLedger8UnprovenCallTx builds a v9 keep-state handle that submitTx submits on this head', async () => {
+    const providers = postForkProviders(v6Envelope);
+
+    const built = await createLedger8UnprovenCallTx(providers, callOptions());
+    const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+
+    expect(built.era).toBe('v8');
+    expect(built.private.unprovenTx.era).toBe('v9');
+    expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+    expect(record.era).toBe('v9');
+  });
+
+  describe('createLedger8UnprovenCallTxFromInitialStates', () => {
+    const fromStates = async (
+      providers: RetainedProviders,
+      states: Pick<
+        Ledger8CallOptionsWithInitialStates<CoinReceiver016Contract, typeof CIRCUIT_ID>,
+        'head' | 'initialContractState' | 'ledgerParameters'
+      >
+    ) =>
+      createLedger8UnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          ...states,
+          coinPublicKey: recording.coinPublicKey,
+          config: { networkId: NETWORK_ID, ttlSeconds: 3600 }
+        },
+        providers.walletProvider.getEncryptionPublicKey()
+      );
+
+    const ledger9Parameters = () => ({ era: 'v9' as const, parameters: LedgerParameters.initialParameters() });
+
+    it('builds a v9 keep-state handle from a retained state the caller read, reading nothing from the network', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v9');
+      expect(built.private.result).toStrictEqual(recording.transcript.result);
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('builds a v9 handle from a MIGRATED state the caller read', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v9', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.private.unprovenTx.era).toBe('v9');
+    });
+
+    it('refuses a ledger 9 state on a ledger 8 head, without a second head read', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const rejection = await fromStates(providers, {
+        head: 'v8',
+        initialContractState: { era: 'v9', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(NetworkVersionStateMismatchError);
+      expect(rejection).toMatchObject({ networkVersion: 'v8', stateEra: 'v9' });
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    });
+
+    it('refuses ledger parameters of another era than the head, before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+
+      const rejection = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() }
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(PublicStatesEraMismatchError);
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    it('refuses a state labelled with an era its bytes do not carry', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const rejection = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidSerializedStateError);
+    });
   });
 
   it('passes the providers.config TTL to the wallet on the current-era path', async () => {

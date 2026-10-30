@@ -615,6 +615,23 @@ export const requireLedger9Contract = async (
 };
 
 /**
+ * Reads the era the contract's artifacts declare and refuses any era but ledger 8.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of another era,
+ *         and the refusals of {@link resolveArtifactEra}.
+ */
+export const requireLedger8Contract = async (
+  compiledContract: unknown,
+  source: ArtifactRuntimeVersionSource,
+  functionName: string
+): Promise<void> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  if (era !== 'v8') {
+    throw unsupportedContractEra(functionName, era);
+  }
+};
+
+/**
  * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
  *
  * Not a second decision: the era is established in exactly one place, and this only gives that
@@ -648,6 +665,37 @@ export const isLedger8Contract = <C extends object>(
   _compiledContract: C | Ledger8Contract,
   era: LedgerVersion
 ): _compiledContract is Ledger8Contract => era === 'v8';
+
+/**
+ * A router's options, tagged with the era their contract's artifacts declare. A `switch` on `era`
+ * narrows `options` without a cast, which a `switch` on a bare {@link LedgerVersion} cannot do.
+ */
+export type EraRequest<L8, L9> =
+  | { readonly era: 'v8'; readonly options: L8 }
+  | { readonly era: 'v9'; readonly options: L9 };
+
+// Compile-time gate: a new ledger era must get a variant here, and through it a case in every router.
+type _EveryEraHasARequest = Assert<[LedgerVersion] extends [EraRequest<unknown, unknown>['era']] ? true : false>;
+
+/**
+ * Reads the era the contract's artifacts declare -- the one artifact read of a routed operation --
+ * and tags the options with it.
+ *
+ * @param options The options a router received.
+ * @param source The artifact runtime version source, normally `zkConfigProvider`.
+ * @returns The options, tagged with their era.
+ * @throws The refusals of {@link resolveArtifactEra}.
+ */
+export const resolveEraRequest = async <
+  L8 extends { readonly compiledContract: Ledger8Contract },
+  L9 extends { readonly compiledContract: unknown }
+>(
+  options: L8 | L9,
+  source: ArtifactRuntimeVersionSource
+): Promise<EraRequest<L8, L9>> => {
+  const era = await resolveArtifactEra(options.compiledContract, source);
+  return isLedger8Request<L8>(options, era) ? { era: 'v8', options } : { era: 'v9', options };
+};
 
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
