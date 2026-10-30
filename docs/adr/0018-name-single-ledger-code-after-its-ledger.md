@@ -121,8 +121,8 @@ contract keeps its `Ledger9*` name, and the flat name, where it exists, is the u
   `Ledger9FinalizedDeployTxPublicData`. The two shapes differ: the ledger 8 record is read from chain
   and carries no `initialContractState`, so `Found` names it correctly.
 
-The lower-level names this change left without a prefix are under the rule since the
-2026-10-30 amendment below.
+The lower-level names this change left without a prefix are renamed by the 2026-10-30
+amendment below, or it states why they keep their name.
 
 The renames are listed in section 24 of `docs/releases/v5.0.0/breaking-changes.md`.
 
@@ -148,8 +148,10 @@ The rule now covers the whole public surface of `contracts`, `types`, `utils` an
 - A low-level function exists once per era, named after it (`createLedger9UnprovenCallTx`), and once
   as an unprefixed router per role (`createUnprovenCallTx`). The router reads the era once (the
   artifact's declared runtime, or the network head for a scoped transaction), runs the function of
-  that era, and refuses an era it cannot serve with `EraMismatchError` before any other work. Its
-  `switch` is closed by `assertNever`, so a new ledger version fails the build at every router.
+  that era, and refuses an era it cannot serve with `EraMismatchError` (`'contract-era-unsupported'`)
+  before any other work. Its `switch` is closed by `assertNever`, so a new ledger version fails the
+  build at every router. A per-era function checks positively that the artifacts declare its era,
+  never that they declare some other one, so it keeps refusing correctly when an era is added.
   Internal pipelines call the per-era function, never the router, so the era is still read once per
   operation.
 - A provider set is `MidnightProviders` in both eras. `SubmitTxProviders<C, PCK>` picks the era from

@@ -74,7 +74,7 @@ import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
 
-// Submit a deploy transaction
+// Submit a deploy transaction (ledger 9 contracts; deployContract deploys either era)
 await submitDeployTx(providers, deployOptions);
 
 // Generic transaction submission. Pass a transaction handle; it carries the era

@@ -419,7 +419,7 @@ import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
 
 The contract APIs are generic over a compiled contract, and several of their
 options carry a `compiledContract` field. The types needed to write those
-annotations ship from `@midnight-ntwrk/midnight-js/protocol`, so naming them
+annotations ship from `@midnight-ntwrk/midnight-js/protocol/v9`, so naming them
 does not require installing a second package:
 
 ```typescript
@@ -439,9 +439,9 @@ const circuitCalledOn = async (compiled: MyCompiled): Promise<string> =>
 `ContractExecutable` is exported alongside them; `Ledger9CallResult.calls` is typed
 with its nested `ContractExecutable.ContractExecutable.ContractCall`.
 `CompiledContract` and `ContractExecutable` are also reachable as values
-through the barrel, as `protocol.CompiledContract` and
-`protocol.ContractExecutable`. `Contract` is a type, so it is importable only
-in type position -- there is no `protocol.Contract` value to read at runtime.
+through the barrel, as `ledger9Protocol.CompiledContract` and
+`ledger9Protocol.ContractExecutable`. `Contract` is a type, so it is importable only
+in type position -- there is no `ledger9Protocol.Contract` value to read at runtime.
 
 The barrel also publishes the ledger era vocabulary as named exports, so a
 consumer can say which era produced a payload or a record without depending on

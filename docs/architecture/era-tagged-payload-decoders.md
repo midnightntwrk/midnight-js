@@ -129,11 +129,11 @@ a boundary is chosen from the era of the request rather than inferred from the b
 
 ### The typed wrappers themselves
 
-`packages/utils/src/deserialization/typed-wrappers.ts` holds four fixed-era decoders
-(`deserializeLedgerContractState`, `deserializeLedger9CompactContractState`, `deserializeLedger9ZswapChainState`,
-`deserializeLedger9Parameters`) and one that takes the era as an argument,
-`deserializeLedgerTransaction(era, bytes, ctx)`. The four are era-fixed by construction
-and deliberately so: each is the *current* era's decoder plus a `caller` marker, and every verdict
+`packages/utils/src/deserialization/typed-wrappers.ts` holds five ledger 9 decoders
+(`deserializeLedger9ContractState`, `deserializeLedger9CompactContractState`, `deserializeLedger9ZswapChainState`,
+`deserializeLedger9Parameters`, `decodeLedger9StateValue`) and one that takes the era as an argument,
+`deserializeLedgerTransaction(era, bytes, ctx)`. The five are era-fixed by construction
+and deliberately so: each is the ledger 9 decoder plus a `caller` marker, and every verdict
 above about a call site is a verdict about which wrapper that site picks and what it checks first.
 They are correct as a layer — a wrapper cannot date bytes it is not told the era of — so the
 obligation sits with the callers, which is what the rest of this table records.

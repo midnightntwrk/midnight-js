@@ -116,7 +116,7 @@ Notable schema-driven decisions:
 
 ## MIP-0002 log events on `Ledger9CallResult` (#1083)
 
-The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.Ledger9CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
+The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
 
 `Ledger9CallResultPublic` now carries them:
 

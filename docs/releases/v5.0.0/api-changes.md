@@ -494,7 +494,7 @@ export function submitTx<PCK extends AnyProvableCircuitId>(
   providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
   options: SubmitTxOptions<PCK>
 ): Promise<FinalizedTxRead>;
-// new EraMismatchReason: 'ledger8-contract-unsupported'
+// new EraMismatchReason: 'contract-era-unsupported'
 ```
 
 Renamed with the `Ledger9` prefix or infix: the ledger 9 call, constructor, deploy, find and

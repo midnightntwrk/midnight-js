@@ -93,7 +93,8 @@ Register the new scope if you import the protocol packages anywhere (the framewo
 ### Constructing a signing key
 
 ```diff
-  const options: Ledger9ContractExecutableRuntimeOptions = {
+- const options: ContractExecutableRuntimeOptions = {
++ const options: Ledger9ContractExecutableRuntimeOptions = {
     // ...
 -   signingKey: keyHex, // 64 hex characters (32 bytes)
 +   signingKey: { tag: 'schnorr', value: keyHex },
@@ -1362,7 +1363,8 @@ See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-155
 ## Step 25 — Add `Ledger9` to the names bound to ledger 9
 
 Every public name that serves only ledger 9 now carries the ledger number (#1574). Rename
-your imports; nothing else changes for ledger 9 code.
+the names you use: imports, namespace accesses and explicit type arguments. Behaviour for
+ledger 9 contracts does not change.
 
 ```ts
 // Before
@@ -1418,4 +1420,4 @@ The full table is in
 - [ ] No import of `@midnight-ntwrk/midnight-js-protocol/ledger`, `/compact-runtime`, `/compact-js*` or `/onchain-runtime`, and no use of the root `ledger`, `compactRuntime`, `compactJs` or `onchainRuntime` namespaces.
 - [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
 - [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.
-- [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from `@midnight-ntwrk/midnight-js/protocol`.
+- [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from the bare `@midnight-ntwrk/midnight-js/protocol` subpath (without `/v9`).

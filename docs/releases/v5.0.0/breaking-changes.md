@@ -38,7 +38,8 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ### 2a. `Ledger9ContractExecutableRuntimeOptions.signingKey`
 
 ```diff
-  const options: Ledger9ContractExecutableRuntimeOptions = {
+- const options: ContractExecutableRuntimeOptions = {
++ const options: Ledger9ContractExecutableRuntimeOptions = {
     // ...
 -   signingKey: keyHex, // 64 hex characters (32 bytes)
 +   signingKey: { tag: 'schnorr', value: keyHex },
@@ -1373,7 +1374,8 @@ See ADR 0013 and ADR 0017.
 
 Section 24's rule, applied to the rest of the surface: a public name that serves only
 ledger 9 says so with `Ledger9`. Behaviour for ledger 9 input and every error code are
-unchanged. Earlier sections of this document already use the new names.
+unchanged. Earlier sections of this document use the final names for the symbols renamed here,
+and the names of their own time for the renames of sections 22 and 24.
 
 **`contracts` types.**
 
@@ -1395,8 +1397,10 @@ unchanged. Earlier sections of this document already use the new names.
 **`contracts` functions.** The ledger 9 implementation of each low-level function moved to
 a `Ledger9` name. The old name stays and routes on the era of the contract: a ledger 9
 contract runs the `Ledger9` function, and a contract produced by the ledger 8 toolchain is
-refused with `EraMismatchError` (`reason: 'ledger8-contract-unsupported'`) after the era read
-and before any other provider call. A ledger 9 `CompiledContract` costs no extra read.
+refused with `EraMismatchError` (`reason: 'contract-era-unsupported'`) after the era read
+and before any other provider call. The `Ledger9` functions check the same way that the
+artifacts declare ledger 9, and refuse any other era with the same reason. A ledger 9
+`CompiledContract` costs no extra read.
 
 | Router (unchanged name) | Ledger 9 function |
 |---|---|
