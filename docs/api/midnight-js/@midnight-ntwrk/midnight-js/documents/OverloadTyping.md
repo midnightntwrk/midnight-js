@@ -312,9 +312,9 @@ takes the fallback for all of them.
 ## The call entry point's provider set has two variants
 
 `Ledger9SubmitCallTxProviders` names two variants because a call does not always need
-private state. `SubmitTxProviders` is `ContractProviders` without
+private state. `Ledger9SubmitTxProviders` is `Ledger9ContractProviders` without
 `privateStateProvider`, so a contract that declares no private state can be
-called with a set that has none. Naming only `ContractProviders` would demand a
+called with a set that has none. Naming only `Ledger9ContractProviders` would demand a
 provider such a caller has no reason to build.
 
 The variant without the provider is valid only for options that name no
@@ -326,7 +326,7 @@ narrowing becomes an unchecked assumption.
 
 ## Why the scope-context guard is type-parameterised
 
-`isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
+The internal `isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
 context type instead of the widest one. Both default to the widest, so a caller
 that supplies none behaves exactly as it did before the parameters existed.
 

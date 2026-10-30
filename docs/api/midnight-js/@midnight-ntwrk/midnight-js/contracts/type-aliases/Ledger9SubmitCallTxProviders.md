@@ -8,7 +8,7 @@
 
 > **Ledger9SubmitCallTxProviders**\<`C`, `PCK`\> = [`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\> \| [`Ledger9SubmitTxProviders`](Ledger9SubmitTxProviders.md)\<`C`, `PCK`\>
 
-The provider set a call entry point accepts.
+The provider set a ledger 9 call accepts.
 
 Two variants, because a call does not always need private state. The variant WITHOUT
 `privateStateProvider` is valid only for options that name no

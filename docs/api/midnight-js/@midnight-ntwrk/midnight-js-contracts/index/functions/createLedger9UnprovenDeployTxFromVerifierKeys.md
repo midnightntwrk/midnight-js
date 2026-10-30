@@ -41,6 +41,11 @@ The network the transaction is built for and how long it stays valid, normally `
 
 ## Throws
 
+EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+        do not declare ledger 9, before anything else.
+
+## Throws
+
 ConfigurationError If `config` is missing.
 
 ## Throws

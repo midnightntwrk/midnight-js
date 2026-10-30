@@ -43,7 +43,7 @@ than spreading or stringifying the whole object.
 Proof data for every contract call made while executing the circuit, in execution-trace order:
 cross-contract callees first, the root call last. For a circuit that performs no cross-contract
 calls this contains a single entry (the root). Consistent with `compact-js`'s
-`ContractExecutable.Ledger9CallResult.calls`.
+`ContractExecutable.CallResult.calls`.
 
 #### Remarks
 

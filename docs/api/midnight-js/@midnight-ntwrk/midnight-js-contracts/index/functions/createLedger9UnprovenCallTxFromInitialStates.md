@@ -31,6 +31,11 @@ Enables cross-contract calls; required for circuits that make them.
 
 ## Throws
 
+EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+        do not declare ledger 9, before anything else.
+
+## Throws
+
 ConfigurationError If `options.config` is missing.
 
 ## Throws

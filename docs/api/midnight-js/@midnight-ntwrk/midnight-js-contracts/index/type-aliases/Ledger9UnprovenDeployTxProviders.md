@@ -10,9 +10,15 @@
 
 Providers needed to create an unproven deployment transactions, just the ZK artifact
 provider and a wallet.
+ *
 
 ## Type Parameters
 
 ### C
 
 `C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+## Throws
+
+EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+        do not declare ledger 9, before anything else.

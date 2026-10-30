@@ -19,4 +19,4 @@ without a private state provider. Generic code names an era: `Ledger9SubmitTxPro
 
 ### PCK
 
-`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
+`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\> = [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

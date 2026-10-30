@@ -6,7 +6,7 @@
 
 # Type Alias: EraMismatchReason
 
-> **EraMismatchReason** = `"unwrapped-ledger9-contract"` \| `"unrecognised-contract-shape"` \| `"ledger9-artifact-on-ledger8-network"` \| `"ledger9-transaction-on-ledger8-network"` \| `"ledger8-transaction-on-ledger9-network"` \| `"artifact-era-undeclared"` \| `"provider-cannot-declare-era"` \| `"unknown-artifact-runtime-version"` \| `"ledger8-deploy-on-ledger9-network"` \| `"ledger8-maintenance-on-ledger9-network"` \| `"ledger8-artifact-on-ledger9-contract"` \| `"ledger8-contract-state-unsupported"` \| `"scope-on-ledger8-network"` \| `"ledger8-call-in-scope"` \| `"ledger8-contract-unsupported"` \| `"unrecognised-result-era"`
+> **EraMismatchReason** = `"unwrapped-ledger9-contract"` \| `"unrecognised-contract-shape"` \| `"ledger9-artifact-on-ledger8-network"` \| `"ledger9-transaction-on-ledger8-network"` \| `"ledger8-transaction-on-ledger9-network"` \| `"artifact-era-undeclared"` \| `"provider-cannot-declare-era"` \| `"unknown-artifact-runtime-version"` \| `"ledger8-deploy-on-ledger9-network"` \| `"ledger8-maintenance-on-ledger9-network"` \| `"ledger8-artifact-on-ledger9-contract"` \| `"ledger8-contract-state-unsupported"` \| `"scope-on-ledger8-network"` \| `"ledger8-call-in-scope"` \| `"contract-era-unsupported"` \| `"unrecognised-result-era"`
 
 Why an object was refused as belonging to the wrong era, or to neither.
 

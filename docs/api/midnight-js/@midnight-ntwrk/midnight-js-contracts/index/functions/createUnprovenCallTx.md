@@ -7,12 +7,16 @@
 # Function: createUnprovenCallTx()
 
 Creates an unproven call transaction for a contract of the era its artifacts declare. A ledger 9
-contract runs [createLedger9UnprovenCallTx](createLedger9UnprovenCallTx.md).
+contract runs [createLedger9UnprovenCallTx](createLedger9UnprovenCallTx.md), whose documentation covers
+the parameters and the privacy-sensitive result.
 
 ## Throws
 
-EraMismatchError with reason `'ledger8-contract-unsupported'` for a contract produced by
-        the ledger 8 Compact toolchain, after the artifact era is read and before anything else.
+EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
+        function does not serve, after the artifact era is read and before anything else, and with
+        the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+        `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
+        `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
 
 ## Call Signature
 

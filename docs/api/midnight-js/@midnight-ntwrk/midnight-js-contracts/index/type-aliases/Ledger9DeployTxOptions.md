@@ -9,9 +9,15 @@
 > **Ledger9DeployTxOptions**\<`C`\> = [`Ledger9DeployTxOptionsBase`](Ledger9DeployTxOptionsBase.md)\<`C`\> \| [`Ledger9DeployTxOptionsWithPrivateStateId`](Ledger9DeployTxOptionsWithPrivateStateId.md)\<`C`\>
 
 Configuration for creating deploy transactions.
+ *
 
 ## Type Parameters
 
 ### C
 
 `C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+## Throws
+
+EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+        do not declare ledger 9, before anything else.

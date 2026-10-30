@@ -8,7 +8,8 @@
 
 > `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
-Executes a function within the context of a contract-scoped transaction.
+Executes a function within the context of a contract-scoped transaction, on the ledger era the
+network head is on. A ledger 9 head runs [withLedger9ContractScopedTransaction](withLedger9ContractScopedTransaction.md).
 
 ## Type Parameters
 
@@ -49,13 +50,13 @@ created for all circuit calls made within `fn`.
 
 ## Throws
 
-with reason `'scope-on-ledger8-network'` When the network is on a ledger era that composes only
-        one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
-        runs, so no circuit is executed and no private state is touched.
+with reason `'scope-on-ledger8-network'` when the network is on a ledger
+        era that composes only one call per transaction, so has nothing for a scope to batch into.
+        Raised before `fn` runs, so no circuit is executed and no private state is touched.
 
 ## Remarks
 
-Where `fn` make circuit calls, these are batched together and submitted as a single transaction when
+Where `fn` makes circuit calls, these are batched together and submitted as a single transaction when
 the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
 
 The ledger era this scope runs against is read ONCE, before `fn` runs, and every call merged into
