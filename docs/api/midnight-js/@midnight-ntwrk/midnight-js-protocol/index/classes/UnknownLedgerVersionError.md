@@ -10,9 +10,9 @@ Thrown when a ledger era was requested by a value that is not a member of
 `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
 `extractEncodedStateValue` (`lib/era/envelope.ts`).
 
-A TypeScript caller cannot produce this: `version` is typed as
-`LedgerVersion`. It exists for the untyped JavaScript consumers this package
-also serves.
+Two sources: an untyped JavaScript caller passing a value that is not a
+`LedgerVersion`, and a provider returning a value with no era or an unknown
+one. The second is named by `context`.
 
 Carries no `version` field, unlike every other era-aware error here — there
 is no valid era to name.
@@ -21,7 +21,9 @@ is no valid era to name.
 
 **requestedVersion**
 
-The offending value that was passed. Carried for
+The offending value. Kept as `undefined` when the
+  value carried no era, as the kind (`'object'`, `'function'`) for a value
+  that is not a scalar, and as its string form otherwise. Carried for
   programmatic use only; it is deliberately kept out of the message.
 
 ## Param
@@ -51,7 +53,7 @@ The call that read the version off a value it was handed,
 
 ##### requestedVersion
 
-`string`
+`unknown`
 
 ##### context?
 
@@ -95,4 +97,4 @@ The call that read the version off a value it was handed,
 
 ### requestedVersion
 
-> `readonly` **requestedVersion**: `string`
+> `readonly` **requestedVersion**: `string` \| `undefined`

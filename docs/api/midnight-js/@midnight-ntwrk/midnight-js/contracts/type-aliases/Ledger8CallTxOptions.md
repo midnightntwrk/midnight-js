@@ -4,9 +4,9 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8CallTxOptions
 
-# Type Alias: Ledger8CallTxOptions\<C, K\>
+# Type Alias: Ledger8CallTxOptions\<C, PCK\>
 
-> **Ledger8CallTxOptions**\<`C`, `K`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `K`\> \| [`Ledger8CallTxOptionsWithPrivateStateId`](Ledger8CallTxOptionsWithPrivateStateId.md)\<`C`, `K`\>
+> **Ledger8CallTxOptions**\<`C`, `PCK`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `PCK`\> \| [`Ledger8CallTxOptionsWithPrivateStateId`](Ledger8CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 Retained-era call transaction configuration.
 
@@ -16,6 +16,6 @@ Retained-era call transaction configuration.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
-### K
+### PCK
 
-`K` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>

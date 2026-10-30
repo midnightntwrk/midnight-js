@@ -219,7 +219,7 @@ mistyped current-era call report that the caller's perfectly ordinary contract
 statement on the common path. An overload that is NOT last never renders at all, so placing one
 earlier would only distort `ReturnType` and `Parameters`.
 
-`NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraArtifactMismatchError`, which
+`NEITHER_ERA_CONTRACT_MESSAGE` is consumed by `EraMismatchError`, which
 `resolveArtifactEra` raises when it is handed an object belonging to neither era. A
 thrown error can carry full remediation text where a compiler diagnostic cannot,
 which is why the text is not wired into an overload.
@@ -232,7 +232,7 @@ The message is a runtime `const` rather than a bare literal inside
 `NeitherContractShape` so the text is written ONCE and can be read by a runtime
 consumer — the error above, and any test asserting on one — while `typeof` still
 gives the type a string LITERAL member. It is not re-exported from the package
-index: the error that carries it, `EraArtifactMismatchError`, is the consumer
+index: the error that carries it, `EraMismatchError`, is the consumer
 surface, and that error IS exported — so a consumer narrows on the error rather
 than comparing against the message. `overloads.test-d.ts` pins the wording
 verbatim, and pins that a neither-era object really is refused by
@@ -275,7 +275,7 @@ Both of its members are optional, because the current era's three option
 interfaces differ in which of them they declare and the retained era's declares
 both as optional. That makes it a WEAK type, and TypeScript refuses a source that
 shares no property with a weak type — which is exactly
-`FindDeployedContractOptionsBase`, the commonest find of all.
+`Ledger9FindDeployedContractOptionsBase`, the commonest find of all.
 
 Hence the `& object` on every use. It adds no member and disables no check other
 than that one. Removing it does not loosen the type; it breaks the ordinary
@@ -311,10 +311,10 @@ takes the fallback for all of them.
 
 ## The call entry point's provider set has two variants
 
-`SubmitCallTxProviders` names two variants because a call does not always need
-private state. `SubmitTxProviders` is `ContractProviders` without
+`Ledger9SubmitCallTxProviders` names two variants because a call does not always need
+private state. `Ledger9SubmitTxProviders` is `Ledger9ContractProviders` without
 `privateStateProvider`, so a contract that declares no private state can be
-called with a set that has none. Naming only `ContractProviders` would demand a
+called with a set that has none. Naming only `Ledger9ContractProviders` would demand a
 provider such a caller has no reason to build.
 
 The variant without the provider is valid only for options that name no
@@ -326,7 +326,7 @@ narrowing becomes an unchecked assumption.
 
 ## Why the scope-context guard is type-parameterised
 
-`isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
+The internal `isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
 context type instead of the widest one. Both default to the widest, so a caller
 that supplies none behaves exactly as it did before the parameters existed.
 

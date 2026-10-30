@@ -23,13 +23,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Verifier key remains on the contract (unchanged)
 - No on-chain record of the failed transaction
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Verifier key may be partially removed but contract state is inconsistent
 - Transaction appears in blockchain history as partial success
 
@@ -76,16 +76,16 @@ A promise that resolves with the finalized transaction data under `public`, tagg
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. The retained-era overload
-        raises `Ledger8RemoveVerifierKeyTxFailedError` instead.
+        The error contains the finalized transaction data for debugging. Raised by both eras;
+        `record.era` tells which.
 
 ### Throws
 
-When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
 
 ### Throws
 
-When the retained-era overload finds no usable key.
+with reason `'unavailable'` When the retained-era overload finds no usable key.
 
 ### Throws
 
@@ -124,13 +124,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Verifier key remains on the contract (unchanged)
 - No on-chain record of the failed transaction
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Verifier key may be partially removed but contract state is inconsistent
 - Transaction appears in blockchain history as partial success
 
@@ -177,16 +177,16 @@ A promise that resolves with the finalized transaction data under `public`, tagg
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. The retained-era overload
-        raises `Ledger8RemoveVerifierKeyTxFailedError` instead.
+        The error contains the finalized transaction data for debugging. Raised by both eras;
+        `record.era` tells which.
 
 ### Throws
 
-When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
 
 ### Throws
 
-When the retained-era overload finds no usable key.
+with reason `'unavailable'` When the retained-era overload finds no usable key.
 
 ### Throws
 

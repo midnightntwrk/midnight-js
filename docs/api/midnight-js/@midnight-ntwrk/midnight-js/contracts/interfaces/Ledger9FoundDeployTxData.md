@@ -33,7 +33,7 @@ recorded the deploy transaction is `public.era`.
 
 ### private
 
-> `readonly` **private**: [`UnsubmittedDeployTxPrivateData`](UnsubmittedDeployTxPrivateData.md)\<`C`\>
+> `readonly` **private**: [`Ledger9UnsubmittedDeployTxPrivateData`](Ledger9UnsubmittedDeployTxPrivateData.md)\<`C`\>
 
 The private data stored for this contract on this device.
 

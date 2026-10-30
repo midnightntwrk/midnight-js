@@ -8,7 +8,7 @@
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
@@ -22,23 +22,23 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-#### K
+#### PCK
 
-`K` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
 #### providers
 
-[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `K`\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
 
 #### options
 
-[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
+`Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### See
 
@@ -66,11 +66,11 @@ Calls a circuit on a contract that declares no private state.
 
 #### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
+[`Ledger9SubmitTxProviders`](../type-aliases/Ledger9SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithArguments`](../type-aliases/Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 ### Returns
 
@@ -108,7 +108,7 @@ Calls a circuit on a contract that declares private state, naming where that sta
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
 
 Calls a circuit inside a scoped transaction, on a contract that declares private state. The
 call is added to the scope rather than submitted on its own.
@@ -135,15 +135,15 @@ call is added to the scope rather than submitted on its own.
 
 #### transactionContext
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
 
 Calls a circuit inside a scoped transaction, on a contract that declares no private state.
 
@@ -161,16 +161,16 @@ Calls a circuit inside a scoped transaction, on a contract that declares no priv
 
 #### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
+[`Ledger9SubmitTxProviders`](../type-aliases/Ledger9SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithArguments`](../type-aliases/Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 #### transactionContext
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>

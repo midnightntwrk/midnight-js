@@ -152,12 +152,6 @@ Re-exports [ContractEventType](../../types/type-aliases/ContractEventType.md)
 
 ***
 
-### ContractExecutableRuntimeOptions
-
-Re-exports [ContractExecutableRuntimeOptions](../../types/type-aliases/ContractExecutableRuntimeOptions.md)
-
-***
-
 ### ContractStateAndParametersRead
 
 Re-exports [ContractStateAndParametersRead](../../types/interfaces/ContractStateAndParametersRead.md)
@@ -176,21 +170,27 @@ Re-exports [ContractStateRead](../../types/interfaces/ContractStateRead.md)
 
 ***
 
-### createMidnightProvider
+### createLedger9MidnightProvider
 
-Re-exports [createMidnightProvider](../../types/variables/createMidnightProvider.md)
+Re-exports [createLedger9MidnightProvider](../../types/variables/createLedger9MidnightProvider.md)
+
+***
+
+### createLedger9ProofProvider
+
+Re-exports [createLedger9ProofProvider](../../types/variables/createLedger9ProofProvider.md)
+
+***
+
+### createLedger9WalletProvider
+
+Re-exports [createLedger9WalletProvider](../../types/variables/createLedger9WalletProvider.md)
 
 ***
 
 ### createMidnightProviderFromHandlers
 
 Re-exports [createMidnightProviderFromHandlers](../../types/variables/createMidnightProviderFromHandlers.md)
-
-***
-
-### createProofProvider
-
-Re-exports [createProofProvider](../../types/variables/createProofProvider.md)
 
 ***
 
@@ -215,12 +215,6 @@ Re-exports [createProverKey](../../types/variables/createProverKey.md)
 ### createVerifierKey
 
 Re-exports [createVerifierKey](../../types/variables/createVerifierKey.md)
-
-***
-
-### createWalletProvider
-
-Re-exports [createWalletProvider](../../types/variables/createWalletProvider.md)
 
 ***
 
@@ -416,6 +410,12 @@ Re-exports [Ledger8FinalizedTxData](../../types/interfaces/Ledger8FinalizedTxDat
 
 ***
 
+### Ledger9ContractExecutableRuntimeOptions
+
+Re-exports [Ledger9ContractExecutableRuntimeOptions](../../types/type-aliases/Ledger9ContractExecutableRuntimeOptions.md)
+
+***
+
 ### Ledger9FinalizedTxData
 
 Re-exports [Ledger9FinalizedTxData](../../types/interfaces/Ledger9FinalizedTxData.md)
@@ -458,9 +458,9 @@ Re-exports [LogLevel](../../types/enumerations/LogLevel.md)
 
 ***
 
-### makeContractExecutableRuntime
+### makeLedger9ContractExecutableRuntime
 
-Re-exports [makeContractExecutableRuntime](../../types/variables/makeContractExecutableRuntime.md)
+Re-exports [makeLedger9ContractExecutableRuntime](../../types/variables/makeLedger9ContractExecutableRuntime.md)
 
 ***
 

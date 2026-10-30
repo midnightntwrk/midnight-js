@@ -184,7 +184,6 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 - [ErrorTaxonomy](documents/ErrorTaxonomy.md)
 - [KeepStatePipeline](documents/KeepStatePipeline.md)
 - [OverloadTyping](documents/OverloadTyping.md)
-- [RetainedEraNamespace](documents/RetainedEraNamespace.md)
 - [ForkCrossedRemediation](documents/ForkCrossedRemediation.md)
 - [VerificationPath](documents/VerificationPath.md)
 
@@ -193,6 +192,6 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 - [](README.md)
 - [contracts](contracts/README.md)
 - [network-id](network-id/README.md)
-- [protocol](protocol/README.md)
+- [protocol/v9](protocol/v9/README.md)
 - [types](types/README.md)
 - [utils](utils/README.md)

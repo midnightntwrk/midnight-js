@@ -4,18 +4,18 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / UnsubmittedCallTxData
 
-# Type Alias: UnsubmittedCallTxData\<C, K\>
+# Type Alias: UnsubmittedCallTxData\<C, PCK\>
 
-> **UnsubmittedCallTxData**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9UnsubmittedCallTxData`](../interfaces/Ledger9UnsubmittedCallTxData.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
+> **UnsubmittedCallTxData**\<`C`, `PCK`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9UnsubmittedCallTxData`](../interfaces/Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-A proven circuit call, not yet submitted. Generic code names an era: `Ledger9UnsubmittedCallTxData<C, K>`.
+A proven circuit call, not yet submitted. Generic code names an era: `Ledger9UnsubmittedCallTxData<C, PCK>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`AnyEraContract`](AnyEraContract.md)
+`C` *extends* [`AnyContract`](AnyContract.md)
 
-### K
+### PCK
 
-`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
+`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
