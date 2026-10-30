@@ -18,7 +18,7 @@ than spreading or stringifying the whole object.
 
 ## Extends
 
-- [`CallResult`](CallResult.md)\<`C`, `PCK`\>
+- [`Ledger9CallResult`](Ledger9CallResult.md)\<`C`, `PCK`\>
 
 ## Extended by
 
@@ -48,11 +48,11 @@ calls this contains a single entry (the root). Consistent with `compact-js`'s
 #### Remarks
 
 **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
-for a call in the tree. Treat as confidential alongside [private](CallResult.md#private).
+for a call in the tree. Treat as confidential alongside [private](Ledger9CallResult.md#private).
 
 #### Inherited from
 
-[`CallResult`](CallResult.md).[`calls`](CallResult.md#calls)
+[`Ledger9CallResult`](Ledger9CallResult.md).[`calls`](Ledger9CallResult.md#calls)
 
 ***
 
@@ -68,19 +68,19 @@ objects in this result came from.
 
 #### Inherited from
 
-[`CallResult`](CallResult.md).[`era`](CallResult.md#era)
+[`Ledger9CallResult`](Ledger9CallResult.md).[`era`](Ledger9CallResult.md#era)
 
 ***
 
 ### private
 
-> `readonly` **private**: [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
+> `readonly` **private**: [`Ledger9UnsubmittedCallTxPrivateData`](Ledger9UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
 
 Private data relevant to this call transaction.
 
 #### Overrides
 
-[`CallResult`](CallResult.md).[`private`](CallResult.md#private)
+[`Ledger9CallResult`](Ledger9CallResult.md).[`private`](Ledger9CallResult.md#private)
 
 ***
 
@@ -93,8 +93,8 @@ The public/non-sensitive data produced by the circuit execution.
 #### Remarks
 
 Describes the **root** contract call (the circuit that was invoked). It is the
-application-facing view; equivalent to the last entry of [calls](CallResult.md#calls).
+application-facing view; equivalent to the last entry of [calls](Ledger9CallResult.md#calls).
 
 #### Inherited from
 
-[`CallResult`](CallResult.md).[`public`](CallResult.md#public)
+[`Ledger9CallResult`](Ledger9CallResult.md).[`public`](Ledger9CallResult.md#public)

@@ -22,11 +22,11 @@
 
 ### callTxData
 
-`FinalizedCallTxData`\<`C`, `PCK`\>
+`Ledger9FinalizedCallTxData`\<`C`, `PCK`\>
 
 ### callTxOptions?
 
-`CallTxOptions`\<`C`, `PCK`\>
+`Ledger9CallTxOptions`\<`C`, `PCK`\>
 
 ### nextPrivateState?
 

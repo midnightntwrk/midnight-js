@@ -4,9 +4,9 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8ContractProviders
 
-# Type Alias: Ledger8ContractProviders\<C, K\>
+# Type Alias: Ledger8ContractProviders\<C, PCK\>
 
-> **Ledger8ContractProviders**\<`C`, `K`\> = [`MidnightProviders`](../../../midnight-js/types/interfaces/MidnightProviders.md)\<`K`, [`PrivateStateId`](../../../midnight-js/types/type-aliases/PrivateStateId.md), [`Ledger8PrivateState`](Ledger8PrivateState.md)\<`C`\>\>
+> **Ledger8ContractProviders**\<`C`, `PCK`\> = [`MidnightProviders`](../../../midnight-js/types/interfaces/MidnightProviders.md)\<`PCK`, [`PrivateStateId`](../../../midnight-js/types/type-aliases/PrivateStateId.md), [`Ledger8PrivateState`](Ledger8PrivateState.md)\<`C`\>\>
 
 The providers a retained-era call transaction needs.
 
@@ -19,9 +19,9 @@ id.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
-### K
+### PCK
 
-`K` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
 
 ## See
 

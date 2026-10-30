@@ -8,7 +8,7 @@
 
 ### finalizedTxData
 
-`FinalizedTxData`
+`Ledger9FinalizedTxData`
 
 ## Returns
 

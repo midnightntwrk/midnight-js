@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8CallTxTarget
 
-# Interface: Ledger8CallTxTarget\<C, K\>
+# Interface: Ledger8CallTxTarget\<C, PCK\>
 
 The target of a retained-era circuit invocation, without its arguments.
 
@@ -14,9 +14,9 @@ The target of a retained-era circuit invocation, without its arguments.
 
 `C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
 
-### K
+### PCK
 
-`K` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -28,13 +28,13 @@ An optional mapping of [CoinPublicKey](https://github.com/midnightntwrk/midnight
 encrypt shielded coins the circuit pays to a recipient other than the
 calling wallet. A user-owned recipient that is neither the calling wallet,
 the burn address, nor a key in this map is refused with
-`Ledger8RecipientUnmappableError` before anything is proven.
+`Ledger8CallUnsupportedError` (reason `'unmappable-recipient'`) before anything is proven.
 
 ***
 
 ### circuitId
 
-> `readonly` **circuitId**: `K`
+> `readonly` **circuitId**: `PCK`
 
 The identifier of the circuit to call.
 

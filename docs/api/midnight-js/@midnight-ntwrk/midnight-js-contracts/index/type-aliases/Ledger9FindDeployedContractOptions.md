@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger9FindDeployedContractOptions\<C\>
 
-> **Ledger9FindDeployedContractOptions**\<`C`\> = [`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\> \| [`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\> \| [`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
+> **Ledger9FindDeployedContractOptions**\<`C`\> = [`Ledger9FindDeployedContractOptionsBase`](../interfaces/Ledger9FindDeployedContractOptionsBase.md)\<`C`\> \| [`Ledger9FindDeployedContractOptionsExistingPrivateState`](../interfaces/Ledger9FindDeployedContractOptionsExistingPrivateState.md)\<`C`\> \| [`Ledger9FindDeployedContractOptionsStorePrivateState`](../interfaces/Ledger9FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
 
 Configuration for [findDeployedContract](../functions/findDeployedContract.md).
 

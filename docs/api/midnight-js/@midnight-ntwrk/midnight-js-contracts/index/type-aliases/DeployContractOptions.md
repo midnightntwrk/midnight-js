@@ -14,4 +14,4 @@ The options of `deployContract`. Generic code names an era: `Ledger9DeployContra
 
 ### C
 
-`C` *extends* [`AnyEraContract`](AnyEraContract.md)
+`C` *extends* [`AnyContract`](AnyContract.md)

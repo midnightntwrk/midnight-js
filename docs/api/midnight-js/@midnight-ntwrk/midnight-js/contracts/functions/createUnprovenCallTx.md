@@ -28,11 +28,11 @@
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithArguments`](../type-aliases/Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
@@ -56,7 +56,7 @@
 
 #### providers
 
-[`UnprovenCallTxProvidersWithPrivateState`](../type-aliases/UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
+[`Ledger9UnprovenCallTxProvidersWithPrivateState`](../type-aliases/Ledger9UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
 
 #### options
 
@@ -64,7 +64,7 @@
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 

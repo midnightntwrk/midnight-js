@@ -6,53 +6,17 @@
 
 # Function: createUnprovenCallTx()
 
-Calls a circuit using states fetched from the public data provider and private state
-provider, then creates an unbalanced, unproven, unsubmitted, call transaction.
-
-## Param
-
-**providers**
-
-The providers to use to create the call transaction.
-
-## Param
-
-**options**
-
-Configuration.
-
-## Param
-
-**transactionContext**
-
-Optional scoped transaction context to participate in an
-       existing transaction scope.
+Creates an unproven call transaction for a contract of the era its artifacts declare. A ledger 9
+contract runs [createLedger9UnprovenCallTx](createLedger9UnprovenCallTx.md), whose documentation covers
+the parameters and the privacy-sensitive result.
 
 ## Throws
 
-IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
-                                          was not. We assume that when a user gives a `privateStateId`,
-                                          they want to update the private state store.
-
-## Throws
-
-ConfigurationError If `providers.config` is missing.
-
-## Throws
-
-InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
-        whitespace.
-
-## Throws
-
-InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
-
-## Remarks
-
-The returned [Ledger9UnsubmittedCallTxData](../interfaces/Ledger9UnsubmittedCallTxData.md) is privacy-sensitive and carries
-the unproven transaction, ZK inputs/outputs, and next private state. See
-that type for handling guidance before logging, serializing, or
-transmitting the result.
+EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
+        function does not serve, after the artifact era is read and before anything else, and with
+        the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+        `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
+        `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
 
 ## Call Signature
 
@@ -76,11 +40,11 @@ transmitting the result.
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithArguments`](../type-aliases/Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
@@ -104,7 +68,7 @@ transmitting the result.
 
 #### providers
 
-[`UnprovenCallTxProvidersWithPrivateState`](../type-aliases/UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
+[`Ledger9UnprovenCallTxProvidersWithPrivateState`](../type-aliases/Ledger9UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
 
 #### options
 
@@ -112,7 +76,7 @@ transmitting the result.
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 

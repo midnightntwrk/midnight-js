@@ -6,44 +6,21 @@
 
 # Function: createUnprovenDeployTx()
 
-Calls a contract constructor and creates an unbalanced, unproven, unsubmitted, deploy transaction
-from the constructor results.
-
-## Param
-
-**providers**
-
-The providers to use to create the deploy transaction.
-
-## Param
-
-**options**
-
-Configuration.
+Creates an unproven deploy transaction for a contract of the era its artifacts declare. A ledger 9
+contract runs [createLedger9UnprovenDeployTx](createLedger9UnprovenDeployTx.md), whose documentation covers
+the parameters and the privacy-sensitive result.
 
 ## Throws
 
-ConfigurationError If `providers.config` is missing.
-
-## Throws
-
-InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
-        whitespace.
-
-## Throws
-
-InvalidArgumentError If `providers.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
-
-## Remarks
-
-The returned [UnsubmittedDeployTxData](../interfaces/UnsubmittedDeployTxData.md) is privacy-sensitive and
-carries the unproven transaction, signing key, initial private state, and
-initial Zswap state. See that type for handling guidance before logging,
-serializing, or transmitting the result.
+EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
+        function does not serve, after the artifact era is read and before anything else, and with
+        the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+        `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
+        `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
 
 ## Call Signature
 
-> **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -55,19 +32,19 @@ serializing, or transmitting the result.
 
 #### providers
 
-[`UnprovenDeployTxProviders`](../type-aliases/UnprovenDeployTxProviders.md)\<`C`\>
+[`Ledger9UnprovenDeployTxProviders`](../type-aliases/Ledger9UnprovenDeployTxProviders.md)\<`C`\>
 
 #### options
 
-[`DeployTxOptionsBase`](../type-aliases/DeployTxOptionsBase.md)\<`C`\>
+[`Ledger9DeployTxOptionsBase`](../type-aliases/Ledger9DeployTxOptionsBase.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -79,12 +56,12 @@ serializing, or transmitting the result.
 
 #### providers
 
-[`UnprovenDeployTxProviders`](../type-aliases/UnprovenDeployTxProviders.md)\<`C`\>
+[`Ledger9UnprovenDeployTxProviders`](../type-aliases/Ledger9UnprovenDeployTxProviders.md)\<`C`\>
 
 #### options
 
-[`DeployTxOptionsWithPrivateState`](../type-aliases/DeployTxOptionsWithPrivateState.md)\<`C`\>
+[`Ledger9DeployTxOptionsWithPrivateState`](../type-aliases/Ledger9DeployTxOptionsWithPrivateState.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>

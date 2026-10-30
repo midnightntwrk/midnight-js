@@ -1,0 +1,120 @@
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / submitLedger9DeployTx
+
+# Function: submitLedger9DeployTx()
+
+Creates and submits a deploy transaction for the given contract.
+
+## Transaction Execution Phases
+
+Midnight transactions execute in two phases:
+1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+
+## Failure Behavior
+
+**Guaranteed Phase Failure:**
+- Transaction is rejected and not included in the blockchain
+- `TxFailedError` is thrown with transaction data
+- Private state (if `privateStateId` provided) is NOT stored
+- Contract signing key is NOT stored in private state provider
+- Contract is NOT deployed
+
+**Fallible Phase Failure:**
+- Transaction is recorded on-chain with non-`SucceedEntirely` status
+- `TxFailedError` is thrown with transaction data
+- Private state (if `privateStateId` provided) is NOT stored
+- Contract signing key is NOT stored in private state provider
+- Transaction appears in blockchain history as partial success
+- Contract may be partially deployed but not functional
+
+## Param
+
+**providers**
+
+The providers used to manage the deploy lifecycle.
+
+## Param
+
+**options**
+
+Configuration.
+
+## Throws
+
+With reason `'contract-era-unsupported'` for a contract whose artifacts
+        do not declare ledger 9, before anything else.
+
+## Throws
+
+When transaction fails in either guaranteed or fallible phase.
+        The error contains the finalized transaction data for debugging.
+
+## Throws
+
+When `privateStateId` is present without
+        `initialPrivateState`, or `initialPrivateState` holds a value without `privateStateId`.
+        Raised before anything is built or submitted.
+
+## Throws
+
+When `privateStateId` is present with an undefined value. Raised before anything
+        is built or submitted, and ahead of the pairing refusal.
+
+## Remarks
+
+The returned [Ledger9FinalizedDeployTxData](../interfaces/Ledger9FinalizedDeployTxData.md) is privacy-sensitive and carries
+the unproven transaction, signing key, and initial private state. See that
+type for handling guidance before logging, serializing, or transmitting the
+result.
+
+## Call Signature
+
+> **submitLedger9DeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Contract`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`, [`Witnesses`](https://github.com/midnightntwrk/midnight-sdk)\<`undefined`\>\>
+
+### Parameters
+
+#### providers
+
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
+
+#### options
+
+[`Ledger9DeployTxOptionsBase`](../type-aliases/Ledger9DeployTxOptionsBase.md)\<`C`\>
+
+### Returns
+
+`Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
+
+## Call Signature
+
+> **submitLedger9DeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+### Parameters
+
+#### providers
+
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
+
+#### options
+
+[`Ledger9DeployTxOptionsWithPrivateStateId`](../type-aliases/Ledger9DeployTxOptionsWithPrivateStateId.md)\<`C`\>
+
+### Returns
+
+`Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>

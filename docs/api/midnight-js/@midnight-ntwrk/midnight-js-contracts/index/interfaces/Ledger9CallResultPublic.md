@@ -23,12 +23,12 @@ The public portions of the call result.
 > `readonly` **logEvents**: readonly [`LogEvent`](https://github.com/LFDT-Minokawa/compact)[]
 
 The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-executor result and typed by `compact-runtime`'s [LogEvent](https://github.com/LFDT-Minokawa/compact). This is the single
+executor result and typed by `compact-runtime`'s `LogEvent`, published here as `Ledger9LogEvent`. This is the single
 execution-wide list across the whole call tree (not just the root call), in emission order; each
 event is tagged with its emitting contract's address, so a per-contract view is a filter over
 that address.
 
-Events are carried **raw** — decode on demand with `ContractLog.decodeAll` (re-exported from
+Events are carried **raw** — decode on demand with `Ledger9ContractLog.decodeAll` (re-exported from
 this package). The decoder degrades gracefully and never throws, but it is `@experimental`: a
 successful decode can still yield a silently-wrong payload, so treat decoded values with care.
 Empty when the circuit emits no logs.

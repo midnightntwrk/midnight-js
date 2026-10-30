@@ -8,7 +8,7 @@
 
 ## Call Signature
 
-> **createCallTxOptions**\<`C`, `K`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`): [`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
+> **createCallTxOptions**\<`C`, `PCK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `additionalCoinEncPublicKeyMappings`, `args`): [`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
 
 Creates the options `submitCallTx` takes to call one circuit: a [Ledger9CallTxOptions](../type-aliases/Ledger9CallTxOptions.md) for a
 ledger 9 `CompiledContract`, or a [Ledger8CallTxOptions](../type-aliases/Ledger8CallTxOptions.md) for a ledger 8 contract.
@@ -23,9 +23,9 @@ accepted.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-#### K
+#### PCK
 
-`K` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -37,7 +37,7 @@ The contract the circuit belongs to.
 
 #### circuitId
 
-`K`
+`PCK`
 
 The circuit to call.
 
@@ -63,17 +63,17 @@ to a recipient other than the calling wallet, or `undefined` for none.
 
 #### args
 
-[`Ledger8CircuitParameters`](../type-aliases/Ledger8CircuitParameters.md)\<`C`, `K`\>
+[`Ledger8CircuitParameters`](../type-aliases/Ledger8CircuitParameters.md)\<`C`, `PCK`\>
 
 The circuit's own arguments.
 
 ### Returns
 
-[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
 
 ### Throws
 
-EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+EraMismatchError If `compiledContract` has the shape of neither a ledger 8
 contract nor a ledger 9 `CompiledContract`.
 
 ## Call Signature
@@ -143,5 +143,5 @@ The circuit's own arguments.
 
 ### Throws
 
-EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
+EraMismatchError If `compiledContract` has the shape of neither a ledger 8
 contract nor a ledger 9 `CompiledContract`.

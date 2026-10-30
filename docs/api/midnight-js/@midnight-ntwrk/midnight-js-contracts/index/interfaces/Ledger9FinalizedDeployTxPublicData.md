@@ -7,12 +7,12 @@
 # Interface: Ledger9FinalizedDeployTxPublicData
 
 The public data of a finalized deployment transaction: the deploy-specific
-public data ([UnsubmittedDeployTxPublicData](UnsubmittedDeployTxPublicData.md)) combined with the
+public data ([Ledger9UnsubmittedDeployTxPublicData](Ledger9UnsubmittedDeployTxPublicData.md)) combined with the
 finalized transaction data ([Ledger9FinalizedTxData](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)).
 
 ## Extends
 
-- [`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
+- [`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
 
 ## Properties
 
@@ -72,7 +72,7 @@ The ledger address of the contract that was deployed.
 
 #### Inherited from
 
-[`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`contractAddress`](UnsubmittedDeployTxPublicData.md#contractaddress)
+[`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`contractAddress`](Ledger9UnsubmittedDeployTxPublicData.md#contractaddress)
 
 ***
 
@@ -132,7 +132,7 @@ The initial public state of the contract deployed to the blockchain.
 
 #### Inherited from
 
-[`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`initialContractState`](UnsubmittedDeployTxPublicData.md#initialcontractstate)
+[`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`initialContractState`](Ledger9UnsubmittedDeployTxPublicData.md#initialcontractstate)
 
 ***
 

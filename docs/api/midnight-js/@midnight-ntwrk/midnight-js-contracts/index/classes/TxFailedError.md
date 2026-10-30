@@ -6,44 +6,57 @@
 
 # Class: TxFailedError
 
-An error indicating that a transaction submitted to a consensus node failed.
+A transaction this framework submitted that the chain recorded with a
+non-success status, in either ledger era. The one class to catch.
 
-The current era's subclass of [AnyEraTxFailedError](AnyEraTxFailedError.md): its record is always
-the v9 one. Catch the base to catch both eras.
+Read [TxFailedError.operation](#operation) for which operation failed, and
+[TxFailedError.record](#record) for what the chain recorded. `record.tx` is a
+`FinalizedTx` in the era `record.era` names; read it with
+`LedgerTransaction.unwrap(record.tx, record.era)` after narrowing on `era`.
+
+[TxFailedError.signingKey](#signingkey) is NAMED in the message but never rendered
+into it: after a failed deploy or replacement it may be the only copy of the
+authority over a contract that landed. It is not enumerable, so a logger that
+serializes an error's properties does not write it out.
+
+Branch on the registered code rather than `instanceof` where more than one
+copy of this package may be loaded.
 
 ## Extends
 
-- [`AnyEraTxFailedError`](AnyEraTxFailedError.md)
-
-## Extended by
-
-- [`CallTxFailedError`](CallTxFailedError.md)
-- [`DeployTxFailedError`](DeployTxFailedError.md)
-- [`InsertVerifierKeyTxFailedError`](InsertVerifierKeyTxFailedError.md)
-- [`RemoveVerifierKeyTxFailedError`](RemoveVerifierKeyTxFailedError.md)
-- [`ReplaceMaintenanceAuthorityTxFailedError`](ReplaceMaintenanceAuthorityTxFailedError.md)
+- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
 
 ## Constructors
 
 ### Constructor
 
-> **new TxFailedError**(`finalizedTxData`, `circuitId?`): `TxFailedError`
+> **new TxFailedError**(`operation`, `record`, `details`): `TxFailedError`
 
 #### Parameters
 
-##### finalizedTxData
+##### operation
 
-[`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
+`"deploy"` \| `"replace-authority"`
 
-The finalization data of the transaction that failed.
+The operation whose transaction failed.
 
-##### circuitId?
+##### record
 
-`string` \| `string`[]
+[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-The name of the circuit that was called to create the call
-                 transaction that failed. Only defined if a call transaction
-                 failed.
+The finalized record the chain reported, tagged with its era.
+
+##### details
+
+What the operation was about. Each operation requires the members it always has.
+
+###### contractAddress
+
+`string`
+
+###### signingKey
+
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 #### Returns
 
@@ -51,7 +64,71 @@ The name of the circuit that was called to create the call
 
 #### Overrides
 
-[`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`constructor`](AnyEraTxFailedError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+
+### Constructor
+
+> **new TxFailedError**(`operation`, `record`, `details`): `TxFailedError`
+
+#### Parameters
+
+##### operation
+
+`"insert-verifier-key"` \| `"remove-verifier-key"`
+
+##### record
+
+[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
+
+##### details
+
+###### circuitId
+
+`string`
+
+###### contractAddress
+
+`string`
+
+#### Returns
+
+`TxFailedError`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+
+### Constructor
+
+> **new TxFailedError**(`operation`, `record`, `details`): `TxFailedError`
+
+#### Parameters
+
+##### operation
+
+`"call"`
+
+##### record
+
+[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
+
+##### details
+
+###### circuitId
+
+`string` \| readonly `string`[]
+
+###### contractAddress?
+
+`string`
+
+#### Returns
+
+`TxFailedError`
+
+#### Overrides
+
+`MidnightJsError.constructor`
 
 ## Properties
 
@@ -59,19 +136,15 @@ The name of the circuit that was called to create the call
 
 > `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
 
-#### Inherited from
+#### Overrides
 
-[`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`category`](AnyEraTxFailedError.md#category)
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
 
 ***
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId?**: `string` \| `string`[]
-
-The name of the circuit that was called to create the call
-                 transaction that failed. Only defined if a call transaction
-                 failed.
+> `readonly` `optional` **circuitId?**: `string` \| readonly `string`[]
 
 ***
 
@@ -79,50 +152,30 @@ The name of the circuit that was called to create the call
 
 > `readonly` **code**: `"MIDNIGHT_JS_C_TX_FAILED"` = `CONTRACTS_ERROR_CODES.TX_FAILED`
 
-The one code every recorded-failure class in this package answers to.
+#### Overrides
 
-Branch on this rather than `instanceof` where these classes cannot be
-imported, or where there may be more than one copy of this package in the
-process. Subclasses inherit it rather than each declaring their own.
-
-#### See
-
-[ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for why the code sits on the base.
-
-#### Inherited from
-
-[`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`code`](AnyEraTxFailedError.md#code)
+[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
 
 ***
 
-### finalizedTxData
+### contractAddress?
 
-> `readonly` **finalizedTxData**: [`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
+> `readonly` `optional` **contractAddress?**: `string`
 
-The finalization data of the transaction that failed.
+***
 
-## Accessors
+### operation
+
+> `readonly` **operation**: [`TxFailedOperation`](../type-aliases/TxFailedOperation.md)
+
+***
 
 ### record
 
-#### Get Signature
+> `readonly` **record**: [`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-> **get** **record**(): [`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
+***
 
-See [AnyEraTxFailedError.record](AnyEraTxFailedError.md#record). Always the v9 variant on this class.
+### signingKey?
 
-##### Returns
-
-[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
-
-The finalized record the chain reported, tagged with its era.
-
-#### Remarks
-
-`record.tx` is a `FinalizedTx` in the era `record.era` names.
-Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
-narrowing on `record.era`.
-
-#### Overrides
-
-[`AnyEraTxFailedError`](AnyEraTxFailedError.md).[`record`](AnyEraTxFailedError.md#record)
+> `readonly` `optional` **signingKey?**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
