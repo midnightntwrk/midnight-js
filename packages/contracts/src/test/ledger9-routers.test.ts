@@ -18,9 +18,19 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
-import { submitDeployTx } from '../submit-deploy-tx';
-import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
-import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
+import { submitDeployTx, submitLedger9DeployTx } from '../submit-deploy-tx';
+import {
+  createLedger9UnprovenCallTx,
+  createLedger9UnprovenCallTxFromInitialStates,
+  createUnprovenCallTx,
+  createUnprovenCallTxFromInitialStates
+} from '../unproven-call-tx';
+import {
+  createLedger9UnprovenDeployTx,
+  createLedger9UnprovenDeployTxFromVerifierKeys,
+  createUnprovenDeployTx,
+  createUnprovenDeployTxFromVerifierKeys
+} from '../unproven-deploy-tx';
 import { createMockContractAddress, createMockProviders } from './test-mocks';
 
 type Providers = ReturnType<typeof createMockProviders>;
@@ -71,6 +81,33 @@ const ROUTERS: readonly (readonly [string, (providers: Providers) => Promise<unk
   ['submitDeployTx', (providers) => submitDeployTx(providers, deployOptions)]
 ];
 
+const LEDGER9_FUNCTIONS: readonly (readonly [string, (providers: Providers) => Promise<unknown>])[] = [
+  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+  ['createLedger9UnprovenCallTx', (providers) => createLedger9UnprovenCallTx(providers, callOptions)],
+  [
+    'createLedger9UnprovenCallTxFromInitialStates',
+    (providers) =>
+      // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+      createLedger9UnprovenCallTxFromInitialStates(providers.zkConfigProvider, callOptions, sampleEncryptionPublicKey())
+  ],
+  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+  ['createLedger9UnprovenDeployTx', (providers) => createLedger9UnprovenDeployTx(providers, deployOptions)],
+  [
+    'createLedger9UnprovenDeployTxFromVerifierKeys',
+    (providers) =>
+      createLedger9UnprovenDeployTxFromVerifierKeys(
+        providers.zkConfigProvider,
+        sampleCoinPublicKey(),
+        // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+        deployOptions,
+        sampleEncryptionPublicKey(),
+        providers.config
+      )
+  ],
+  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+  ['submitLedger9DeployTx', (providers) => submitLedger9DeployTx(providers, deployOptions)]
+];
+
 describe('the unprefixed low-level functions route on the era of the contract', () => {
   it.each(ROUTERS)('%s refuses a ledger 8 contract with a named error', async (name, route) => {
     const providers = ledger8Providers();
@@ -78,9 +115,9 @@ describe('the unprefixed low-level functions route on the era of the contract', 
     const rejection = await route(providers).catch((error: unknown) => error);
 
     expect(rejection).toBeInstanceOf(EraMismatchError);
-    expect(rejection).toMatchObject({ reason: 'ledger8-contract-unsupported' });
+    expect(rejection).toMatchObject({ reason: 'contract-era-unsupported' });
     expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
-    expect((rejection as EraMismatchError).message).toContain(`Function: ${name}.`);
+    expect((rejection as EraMismatchError).message).toContain(`Function: ${name}. Contract era: 'v8'.`);
   });
 
   it.each(ROUTERS)('%s refuses after the era read and before any other provider call', async (_name, route) => {
@@ -91,5 +128,26 @@ describe('the unprefixed low-level functions route on the era of the contract', 
     const calledMocks = providerMocks(providers).filter((mock) => mock.mock.calls.length > 0);
     expect(calledMocks).toEqual([providers.zkConfigProvider.getArtifactRuntimeVersion]);
     expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the Ledger9 low-level functions accept only a contract whose artifacts declare ledger 9', () => {
+  it.each(LEDGER9_FUNCTIONS)('%s refuses a ledger 8 contract with a named error', async (name, run) => {
+    const providers = ledger8Providers();
+
+    const rejection = await run(providers).catch((error: unknown) => error);
+
+    expect(rejection).toBeInstanceOf(EraMismatchError);
+    expect(rejection).toMatchObject({ reason: 'contract-era-unsupported' });
+    expect((rejection as EraMismatchError).message).toContain(`Function: ${name}. Contract era: 'v8'.`);
+  });
+
+  it.each(LEDGER9_FUNCTIONS)('%s refuses after the era read and before any other provider call', async (_name, run) => {
+    const providers = ledger8Providers();
+
+    await run(providers).catch(() => undefined);
+
+    const calledMocks = providerMocks(providers).filter((mock) => mock.mock.calls.length > 0);
+    expect(calledMocks).toEqual([providers.zkConfigProvider.getArtifactRuntimeVersion]);
   });
 });

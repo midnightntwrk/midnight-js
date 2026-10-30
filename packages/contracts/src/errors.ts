@@ -162,8 +162,8 @@ export type EraMismatchReason =
   | 'scope-on-ledger8-network'
   /** A call against a ledger 8 (pre-fork) contract given a contract-scoped transaction to join. `detail` carries the circuit id. */
   | 'ledger8-call-in-scope'
-  /** A ledger 8 (pre-fork) contract given to a low-level function that serves only ledger 9 contracts. `detail` carries the function name. */
-  | 'ledger8-contract-unsupported'
+  /** A contract whose artifacts declare an era the low-level function does not serve. `detail` carries the function name and that era. */
+  | 'contract-era-unsupported'
   /** A result whose `era` tag names neither pipeline. `detail` carries the value received. */
   | 'unrecognised-result-era';
 
@@ -247,10 +247,11 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'while a ledger 8 call is composed and submitted on its own. Submit this call as its own ' +
     'transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ' +
     'produced by the ledger 9 Compact toolchain.',
-  'ledger8-contract-unsupported':
-    'This low-level function runs only contracts produced by the ledger 9 Compact toolchain, and was given a ' +
-    'contract produced by the ledger 8 (pre-fork) Compact toolchain. Use submitCallTx, deployContract or ' +
-    'findDeployedContract, which run contracts of both eras.',
+  'contract-era-unsupported':
+    'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
+    'No low-level function builds an unsubmitted transaction for a ledger 8 (pre-fork) contract yet. ' +
+    'submitCallTx, deployContract and findDeployedContract run contracts of both eras, but they also submit ' +
+    'the transaction.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
     `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +

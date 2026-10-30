@@ -35,7 +35,12 @@ describe('published names', () => {
   });
 
   it('flag an exported type constrained to Contract.Any that has no ledger prefix and does not pick the era', () => {
-    expect(unprefixedLedger9Types(NAMING_FIXTURE, { aliasFiles: ALIAS_FILES })).toEqual(['FlaggedAlias', 'FlaggedInterface']);
+    expect(unprefixedLedger9Types(NAMING_FIXTURE, { aliasFiles: ALIAS_FILES })).toEqual([
+      'FlaggedAlias',
+      'FlaggedInterface',
+      'ReExportedFlagged',
+      'ViaLedger9Contract'
+    ]);
   });
 
   it('name every exported type bound to ledger 9 after its ledger', () => {

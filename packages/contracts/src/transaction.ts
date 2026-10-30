@@ -106,28 +106,29 @@ export interface ScopedTransactionOptions {
 export const isLedger9TransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any> =
   Internal.isTransactionContext;
 
-  /**
-   * Executes a function within the context of a contract-scoped transaction.
-   *
-   * @param providers The contract providers to use within the transaction.
-   * @param fn The function to execute within the transaction context.
-   * @param options Optional transaction scope options.
-   * @returns A `Promise` that resolves with the finalized transaction data of the single transaction
-   * created for all circuit calls made within `fn`.
-   *
-   * @throws {EraMismatchError} with reason `'scope-on-ledger8-network'` When the network is on a ledger era that composes only
-   *         one call per transaction, so has nothing for a scope to batch into. Raised before `fn`
-   *         runs, so no circuit is executed and no private state is touched.
-   *
-   * @remarks
-   * Where `fn` make circuit calls, these are batched together and submitted as a single transaction when
-   * the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
-   *
-   * The ledger era this scope runs against is read ONCE, before `fn` runs, and every call merged into
-   * the scope shares that one reading — the same single-snapshot discipline the scope already applies
-   * to the block it pins. A contract produced by the retained Compact toolchain cannot join a scope at
-   * all; submit those calls individually with `submitCallTx`.
-   */
+/**
+ * Executes a function within the context of a contract-scoped transaction, on the ledger era the
+ * network head is on. A ledger 9 head runs {@link withLedger9ContractScopedTransaction}.
+ *
+ * @param providers The contract providers to use within the transaction.
+ * @param fn The function to execute within the transaction context.
+ * @param options Optional transaction scope options.
+ * @returns A `Promise` that resolves with the finalized transaction data of the single transaction
+ * created for all circuit calls made within `fn`.
+ *
+ * @throws {EraMismatchError} with reason `'scope-on-ledger8-network'` when the network is on a ledger
+ *         era that composes only one call per transaction, so has nothing for a scope to batch into.
+ *         Raised before `fn` runs, so no circuit is executed and no private state is touched.
+ *
+ * @remarks
+ * Where `fn` makes circuit calls, these are batched together and submitted as a single transaction when
+ * the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
+ *
+ * The ledger era this scope runs against is read ONCE, before `fn` runs, and every call merged into
+ * the scope shares that one reading — the same single-snapshot discipline the scope already applies
+ * to the block it pins. A contract produced by the retained Compact toolchain cannot join a scope at
+ * all; submit those calls individually with `submitCallTx`.
+ */
 export const withContractScopedTransaction: <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
@@ -148,7 +149,7 @@ export const withContractScopedTransaction: <
     const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
     switch (reading.head) {
       case 'v9':
-        return Internal.scopedTransaction(providers, fn, options, reading);
+        return Internal.scopedTransaction(providers, fn, options, { ...reading, head: reading.head });
       case 'v8':
         throw Internal.scopeRefusal(reading.head);
       default:

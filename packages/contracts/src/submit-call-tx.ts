@@ -46,7 +46,7 @@ import {
   type Ledger9CallTxOptionsWithPrivateStateId} from './unproven-call-tx';
 
 /**
- * The provider set a call entry point accepts.
+ * The provider set a ledger 9 call accepts.
  *
  * Two variants, because a call does not always need private state. The variant WITHOUT
  * `privateStateProvider` is valid only for options that name no

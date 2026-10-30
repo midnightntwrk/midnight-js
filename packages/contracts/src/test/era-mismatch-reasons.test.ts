@@ -25,7 +25,7 @@ const DETAIL_CASES: readonly (readonly [EraMismatchReason, string])[] = [
   ['ledger8-contract-state-unsupported', 'Contract address: ab12. Operation: findDeployedContract.'],
   ['scope-on-ledger8-network', "Network version: 'v8'."],
   ['ledger8-call-in-scope', "Circuit: 'increment'."],
-  ['ledger8-contract-unsupported', 'Function: createUnprovenCallTx.'],
+  ['contract-era-unsupported', "Function: createUnprovenCallTx. Contract era: 'v8'."],
   ['unrecognised-result-era', 'Received: v7.']
 ];
 

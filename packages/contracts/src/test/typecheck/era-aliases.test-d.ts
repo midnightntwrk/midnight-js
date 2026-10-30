@@ -379,6 +379,11 @@ describe('the providers that submit a transaction', () => {
     >();
   });
 
+  it('default the circuit ids to every circuit of the contract, as ContractProviders does', () => {
+    expectTypeOf<SubmitTxProviders<V9>>().toEqualTypeOf<SubmitTxProviders<V9, CircuitIdOf<V9>>>();
+    expectTypeOf<SubmitTxProviders<V8>>().toEqualTypeOf<SubmitTxProviders<V8, CircuitIdOf<V8>>>();
+  });
+
   it('let submitTx take a ledger 8 provider set', () => {
     const submitLedger8 = (providers: SubmitTxProviders<V8, K>, options: SubmitTxOptions<K>) =>
       submitTx(providers, options);

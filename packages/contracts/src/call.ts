@@ -169,7 +169,7 @@ export interface Ledger9CallResultPublic extends CallResultPublicBase {
   readonly nextContractStateEncoded: EncodedStateValue;
   /**
    * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-   * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single
+   * executor result and typed by `compact-runtime`'s `LogEvent`, published here as `Ledger9LogEvent`. This is the single
    * execution-wide list across the whole call tree (not just the root call), in emission order; each
    * event is tagged with its emitting contract's address, so a per-contract view is a filter over
    * that address.
@@ -210,7 +210,7 @@ export interface Ledger9CallResult<C extends Contract.Any, PCK extends Contract.
    * Proof data for every contract call made while executing the circuit, in execution-trace order:
    * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
    * calls this contains a single entry (the root). Consistent with `compact-js`'s
-   * `ContractExecutable.Ledger9CallResult.calls`.
+   * `ContractExecutable.CallResult.calls`.
    *
    * @remarks **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
    * for a call in the tree. Treat as confidential alongside {@link private}.

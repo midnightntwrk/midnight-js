@@ -185,7 +185,7 @@ export type FinalizedDeployTxData<C extends AnyContract> = C extends Ledger8Cont
  * The providers that submit a transaction of `C`: the provider set of the era that compiled `C`,
  * without a private state provider. Generic code names an era: `Ledger9SubmitTxProviders<C, PCK>`.
  */
-export type SubmitTxProviders<C extends AnyContract, PCK extends CircuitIdOf<C>> = C extends Ledger8Contract
+export type SubmitTxProviders<C extends AnyContract, PCK extends CircuitIdOf<C> = CircuitIdOf<C>> = C extends Ledger8Contract
   ? Omit<Ledger8ContractProviders<C, PCK & Ledger8CircuitId<C>>, 'privateStateProvider'>
   : C extends Ledger9Contract
     ? Ledger9SubmitTxProviders<C, PCK & Contract.ProvableCircuitId<C>>

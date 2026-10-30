@@ -18,8 +18,8 @@ import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { EraMismatchError, TxFailedError } from './errors';
-import { resolveArtifactEra } from './internal/era';
+import { TxFailedError } from './errors';
+import { requireLedger9Contract, resolveArtifactEra, unsupportedContractEra } from './internal/era';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import { submitLedger9Payload } from './submit-tx';
 import type { Ledger9FinalizedDeployTxData } from './tx-model';
@@ -35,7 +35,9 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 
 /**
  * Configuration for creating deploy transactions.
- */
+  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 9, before anything else.
+*/
 export type Ledger9DeployTxOptions<C extends Contract.Any> = Ledger9DeployTxOptionsBase<C> | Ledger9DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitLedger9DeployTx<C extends Contract<undefined>>(
@@ -98,6 +100,7 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
   options: Ledger9DeployTxOptions<C>
 ): Promise<Ledger9FinalizedDeployTxData<C>> {
+  await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'submitLedger9DeployTx');
   assertDeployPrivateStatePairing(options);
   const unprovenDeployTxData = await createLedger9UnprovenDeployTx(providers, options);
   const finalizedTxData = await submitLedger9Payload(providers, {
@@ -139,10 +142,14 @@ export async function submitDeployTx<C extends Contract.Any>(
 
 /**
  * Creates and submits a deploy transaction for a contract of the era its artifacts declare. A
- * ledger 9 contract runs {@link submitLedger9DeployTx}.
+ * ledger 9 contract runs {@link submitLedger9DeployTx}, whose documentation covers
+ * the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'ledger8-contract-unsupported'` for a contract produced by
- *         the ledger 8 Compact toolchain, after the artifact era is read and before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
+ *         function does not serve, after the artifact era is read and before anything else, and with
+ *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
+ *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
  *         `deployContract` deploys contracts of both eras.
  */
 export async function submitDeployTx<C extends Contract.Any>(
@@ -154,7 +161,7 @@ export async function submitDeployTx<C extends Contract.Any>(
     case 'v9':
       return submitLedger9DeployTx(providers, options);
     case 'v8':
-      throw new EraMismatchError('ledger8-contract-unsupported', { detail: 'Function: submitDeployTx.' });
+      throw unsupportedContractEra('submitDeployTx', era);
     default:
       return assertNever(era, 'submitDeployTx');
   }

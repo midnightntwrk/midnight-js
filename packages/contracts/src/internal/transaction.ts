@@ -543,7 +543,7 @@ export const scopedTransaction = async <
   providers: Ledger9ContractProviders<C, PCK>,
   fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
   txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
-  ledger9Reading?: HeadEraReading
+  ledger9Reading?: HeadEraReading & { readonly head: 'v9' }
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
