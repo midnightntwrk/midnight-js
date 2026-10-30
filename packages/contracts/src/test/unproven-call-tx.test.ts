@@ -51,11 +51,11 @@ import {
 } from './test-mocks';
 
 // The framework decodes the contract state with its own runtime; this stands in for the decoded object.
-const deserializeCompactContractState = vi.hoisted(() => vi.fn());
+const deserializeLedger9CompactContractState = vi.hoisted(() => vi.fn());
 
 vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
-  deserializeCompactContractState
+  deserializeLedger9CompactContractState
 }));
 
 vi.mock('../get-states', () => ({
@@ -101,7 +101,7 @@ describe('unproven-call-tx', () => {
   }
 
   const ledger9StatesDecodingTo = async (contractState: unknown) => {
-    deserializeCompactContractState.mockReturnValue(contractState);
+    deserializeLedger9CompactContractState.mockReturnValue(contractState);
     return publicStatesRead({
       zswapChainState: new ZswapChainState(),
       ledgerParameters: LedgerParameters.initialParameters()

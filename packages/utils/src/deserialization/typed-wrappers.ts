@@ -56,7 +56,7 @@ export interface CallSiteContext {
  *
  * @example
  * ```ts
- * const state = deserializeContractState(buf, {
+ * const state = deserializeLedger9ContractState(buf, {
  *   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
  * });
  * ```
@@ -65,7 +65,7 @@ export interface CallSiteContext {
  * convention is enforced across the codebase and surfaces in the rendered
  * error message.
  */
-export const deserializeContractState = (
+export const deserializeLedger9ContractState = (
   bytes: Uint8Array,
   ctx: CallSiteContext
 ): LedgerContractState =>
@@ -85,7 +85,7 @@ export const deserializeContractState = (
  * @throws {DeserializationError} On any underlying compact-runtime
  *   deserialization failure.
  */
-export const deserializeCompactContractState = (
+export const deserializeLedger9CompactContractState = (
   bytes: Uint8Array,
   ctx: CallSiteContext
 ): CompactContractState =>
@@ -105,7 +105,7 @@ export const deserializeCompactContractState = (
  * @throws {DeserializationError} On any underlying ledger deserialization
  *   failure.
  */
-export const deserializeZswapChainState = (
+export const deserializeLedger9ZswapChainState = (
   bytes: Uint8Array,
   ctx: CallSiteContext
 ): ZswapChainState =>
@@ -183,7 +183,7 @@ export const deserializeLedgerTransaction = async <E extends LedgerVersion>(
  * @throws {DeserializationError} On any underlying ledger deserialization
  *   failure.
  */
-export const deserializeLedgerParameters = (
+export const deserializeLedger9Parameters = (
   bytes: Uint8Array,
   ctx: CallSiteContext
 ): LedgerParameters =>
@@ -210,7 +210,7 @@ export const deserializeLedgerParameters = (
  * @throws {DeserializationError} On any underlying onchain-runtime decode
  *   failure.
  */
-export const decodeLedgerStateValue = (
+export const decodeLedger9StateValue = (
   encoded: EncodedStateValue,
   ctx: CallSiteContext
 ): LedgerStateValue =>

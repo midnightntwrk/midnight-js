@@ -37,9 +37,9 @@ vi.mock('../../governance/unproven-tx');
 
 // The framework decodes a read with its own runtime; these stand in for the decoded objects.
 const decode = vi.hoisted(() => ({
-  deserializeCompactContractState: vi.fn(),
-  deserializeZswapChainState: vi.fn(),
-  deserializeLedgerParameters: vi.fn()
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
@@ -48,7 +48,7 @@ vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
 }));
 
 const servingLedger9 = (state: unknown) => {
-  decode.deserializeCompactContractState.mockReturnValue(state);
+  decode.deserializeLedger9CompactContractState.mockReturnValue(state);
   return vi.fn().mockResolvedValue(contractStateReadStub('v9'));
 };
 

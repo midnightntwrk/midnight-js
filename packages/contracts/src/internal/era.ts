@@ -43,9 +43,9 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  deserializeCompactContractState,
-  deserializeLedgerParameters,
-  deserializeZswapChainState,
+  deserializeLedger9CompactContractState,
+  deserializeLedger9Parameters,
+  deserializeLedger9ZswapChainState,
   ZkArtifactContractInfoError
 } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -215,7 +215,7 @@ export const decodeLedger9ContractState = (
 ): ContractState => {
   const state = requireLedger9Read(read, contractAddress, operation, servedBy);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
-  return state.deserialize({ v9: { deserialize: (bytes) => deserializeCompactContractState(bytes, { caller }) } });
+  return state.deserialize({ v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) } });
 };
 
 /**
@@ -242,10 +242,10 @@ export const decodeLedger9PublicStates = (
   return {
     contractState,
     ledgerParameters: ledgerParameters.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedgerParameters(bytes, { caller }) }
+      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
     }),
     zswapChainState: zswapChainState.deserialize({
-      v9: { deserialize: (bytes) => deserializeZswapChainState(bytes, { caller }) }
+      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
     })
   };
 };
