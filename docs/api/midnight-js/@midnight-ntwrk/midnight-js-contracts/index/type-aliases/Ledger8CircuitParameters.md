@@ -4,11 +4,11 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8CircuitParameters
 
-# Type Alias: Ledger8CircuitParameters\<C, PCK\>
+# Type Alias: Ledger8CircuitParameters\<C, K\>
 
-> **Ledger8CircuitParameters**\<`C`, `PCK`\> = `Parameters`\<`C`\[`"provableCircuits"`\]\[`PCK`\]\> *extends* \[[`Ledger8CircuitContext`](../interfaces/Ledger8CircuitContext.md), `...(infer A)`\] ? `A` : `never`[]
+> **Ledger8CircuitParameters**\<`C`, `K`\> = `Parameters`\<`C`\[`"provableCircuits"`\]\[`K`\]\> *extends* \[[`Ledger8CircuitContext`](../interfaces/Ledger8CircuitContext.md), `...(infer A)`\] ? `A` : `never`[]
 
-The arguments a caller supplies for circuit `PCK` on a retained-era contract.
+The arguments a caller supplies for circuit `K` on a retained-era contract.
 
 The leading [Ledger8CircuitContext](../interfaces/Ledger8CircuitContext.md) is stripped, exactly as the current
 era's `Contract.CircuitParameters` strips its own leading `CircuitContext`:
@@ -26,9 +26,9 @@ asked for an `args` it cannot supply and the mismatch surfaces instead of being 
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
 
 ## See
 

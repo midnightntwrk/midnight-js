@@ -23,13 +23,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `TxFailedError` is thrown with transaction data
+- `InsertVerifierKeyTxFailedError` is thrown with transaction data
 - Verifier key is NOT added to the contract
 - No on-chain record of the failed transaction
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `TxFailedError` is thrown with transaction data
+- `InsertVerifierKeyTxFailedError` is thrown with transaction data
 - Verifier key may be partially added but not usable
 - Transaction appears in blockchain history as partial success
 
@@ -82,16 +82,16 @@ A promise that resolves with the finalized transaction data under `public`, tagg
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. Raised by both eras;
-        `record.era` tells which.
+        The error contains the finalized transaction data for debugging. The retained-era overload
+        raises `Ledger8InsertVerifierKeyTxFailedError` instead.
 
 ### Throws
 
-with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
+When a retained-era artifact is used after the fork.
 
 ### Throws
 
-with reason `'unavailable'` When the retained-era overload finds no usable key.
+When the retained-era overload finds no usable key.
 
 ### Throws
 
@@ -125,13 +125,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `TxFailedError` is thrown with transaction data
+- `InsertVerifierKeyTxFailedError` is thrown with transaction data
 - Verifier key is NOT added to the contract
 - No on-chain record of the failed transaction
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `TxFailedError` is thrown with transaction data
+- `InsertVerifierKeyTxFailedError` is thrown with transaction data
 - Verifier key may be partially added but not usable
 - Transaction appears in blockchain history as partial success
 
@@ -184,16 +184,16 @@ A promise that resolves with the finalized transaction data under `public`, tagg
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. Raised by both eras;
-        `record.era` tells which.
+        The error contains the finalized transaction data for debugging. The retained-era overload
+        raises `Ledger8InsertVerifierKeyTxFailedError` instead.
 
 ### Throws
 
-with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
+When a retained-era artifact is used after the fork.
 
 ### Throws
 
-with reason `'unavailable'` When the retained-era overload finds no usable key.
+When the retained-era overload finds no usable key.
 
 ### Throws
 

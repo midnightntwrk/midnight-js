@@ -44,7 +44,7 @@ calls this contains a single entry (the root). Consistent with `compact-js`'s
 #### Remarks
 
 **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
-for a call in the tree. Treat as confidential alongside [private](Ledger9CallResult.md#private).
+for a call in the tree. Treat as confidential alongside [private](CallResult.md#private).
 
 #### Inherited from
 
@@ -66,12 +66,12 @@ produced it. Both eras carry it.
 In a scope that made several calls this names the LAST one, which is the
 call `public`, `private` and `calls` also describe: this type is one
 call's result, not the transaction's. The transaction may carry more, and
-a failure reports all of them -- `TxFailedError`'s `circuitId` is the
+a failure reports all of them -- `CallTxFailedError`'s `circuitId` is the
 accumulated list. The two are answering different questions, and a caller
 routing on this one is routing on the call, not the transaction.
 
 Typed as the contract's whole circuit-id union, NOT as `PCK`, and that is
-load-bearing. This type is reachable through `Ledger9TransactionContext[Submit]`,
+load-bearing. This type is reachable through `TransactionContext[Submit]`,
 so naming `PCK` in a property position makes the context invariant in
 `PCK`. A scope is legitimately typed with the union --
 `withContractScopedTransaction<C>` defaults it that way -- while the calls
@@ -106,7 +106,7 @@ objects in this result came from.
 
 ### private
 
-> `readonly` **private**: [`Ledger9UnsubmittedCallTxPrivateData`](Ledger9UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
+> `readonly` **private**: [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
 
 Private data relevant to this call transaction.
 

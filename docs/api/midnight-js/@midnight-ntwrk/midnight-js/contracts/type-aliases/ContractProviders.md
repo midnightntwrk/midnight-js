@@ -4,18 +4,19 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / ContractProviders
 
-# Type Alias: ContractProviders\<C, PCK\>
+# Type Alias: ContractProviders\<C, K\>
 
-> **ContractProviders**\<`C`, `PCK`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8ContractProviders`](Ledger8ContractProviders.md)\<`C`, `PCK` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`, `PCK` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
+> **ContractProviders**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8ContractProviders`](Ledger8ContractProviders.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-The providers a contract needs. Generic code names an era: `Ledger9ContractProviders<C, PCK>`.
+The providers a contract needs. With no contract named, the ledger 9 set.
+Generic code names an era: `Ledger9ContractProviders<C, K>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md) = [`Ledger9Contract`](Ledger9Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\> = [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
+`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\> = [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

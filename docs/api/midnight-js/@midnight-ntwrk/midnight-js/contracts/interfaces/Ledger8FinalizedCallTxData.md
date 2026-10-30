@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8FinalizedCallTxData
 
-# Interface: Ledger8FinalizedCallTxData\<C, PCK\>
+# Interface: Ledger8FinalizedCallTxData\<C, K\>
 
 What a retained-era call transaction resolves with once finalized.
 
@@ -22,9 +22,9 @@ they are, what stands in for them, and why.
 
 `C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -38,7 +38,7 @@ See [Ledger8UnsubmittedCallTxData.calls](Ledger8UnsubmittedCallTxData.md#calls).
 
 ### circuitId
 
-> `readonly` **circuitId**: `PCK`
+> `readonly` **circuitId**: `K`
 
 ***
 
@@ -55,7 +55,7 @@ produced the objects below.
 
 ### private
 
-> `readonly` **private**: [`Ledger8CallResultPrivate`](Ledger8CallResultPrivate.md)\<`C`, `PCK`\>
+> `readonly` **private**: [`Ledger8CallResultPrivate`](Ledger8CallResultPrivate.md)\<`C`, `K`\>
 
 ***
 

@@ -117,11 +117,15 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | C | `INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteDeployContractPrivateStateConfig` |
 | C | `INCOMPLETE_FIND_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteFindContractPrivateStateConfig` |
 | C | `SCOPED_TRANSACTION_IDENTITY_MISMATCH` | USAGE | `ScopedTransactionIdentityMismatchError` |
+| C | `LEDGER8_DEPLOY_UNCONFIRMED` | UNCERTAIN | `Ledger8DeployUnconfirmedError` |
 | C | `LEDGER8_AMBIGUOUS_ENTRY_POINT` | INTEGRITY | `Ledger8AmbiguousEntryPointError` |
-| C | `LEDGER8_SIGNING_KEY` | USAGE | `Ledger8SigningKeyError`* |
-| C | `LEDGER8_UNCONFIRMED` | UNCERTAIN | `Ledger8UnconfirmedError`* |
-| C | `LEDGER8_NOT_STORED` | ENVIRONMENT | `Ledger8NotStoredError`* |
-| C | `LEDGER8_CALL_UNSUPPORTED` | USAGE | `Ledger8CallUnsupportedError`* |
+| C | `LEDGER8_RECIPIENT_UNMAPPABLE` | USAGE | `Ledger8RecipientUnmappableError` |
+| C | `LEDGER8_DEPLOY_NOT_STORED` | ENVIRONMENT | `Ledger8DeployNotStoredError` |
+| C | `LEDGER8_SIGNING_KEY_UNUSABLE` | USAGE | `Ledger8SigningKeyUnusableError` |
+| C | `LEDGER8_MAINTENANCE_ON_LEDGER9` | USAGE | `Ledger8MaintenanceOnLedger9Error`* |
+| C | `LEDGER8_SIGNING_KEY_UNAVAILABLE` | USAGE | `Ledger8SigningKeyUnavailableError`* |
+| C | `LEDGER8_SIGNING_KEY_NOT_STORED` | ENVIRONMENT | `Ledger8SigningKeyNotStoredError`* |
+| C | `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED` | UNCERTAIN | `Ledger8ReplaceAuthorityUnconfirmedError`* |
 | C | `NETWORK_VERSION_READ_FAILED` | TRANSIENT | `NetworkVersionReadFailedError`* |
 | C | `ZSWAP_OUTPUT_UNRESOLVED` | USAGE | `ZswapOutputResolutionError`* |
 | C | `CONTRACT_NOT_FOUND` | USAGE | `ContractNotFoundError`* |
@@ -138,8 +142,8 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 |---|---|
 | P | `UNKNOWN_PROTOCOL_VERSION_READ`, `UNKNOWN_PROTOCOL_VERSION_CONSTRUCT`, `LEDGER8_RUNTIME_MISSING`, `UNKNOWN_LEDGER_VERSION`, `LEDGER8_RUNTIME_INVALID` → ENVIRONMENT · `STATE_CONVERSION_FAILED`, `STATE_DECODE_FAILED`, `STATE_INCONSISTENT` → INTEGRITY · `COMPOSE_FAILED`, `COMPOSE_OPTION_INVALID`, `PAYLOAD_NOT_A_TRANSACTION` → USAGE |
 | PR | `PROVIDER_ERA_UNSUPPORTED`, `PRIVATE_STATE_NOT_SERIALIZABLE` → USAGE · `DECODER_ERA_UNSUPPORTED`, `UNKNOWN_RECORD_ERA` → ENVIRONMENT |
-| C | `TX_FAILED` → REJECTED · `NETWORK_VERSION_STATE_MISMATCH` → TRANSIENT · `FORK_CROSSED_DURING_OPERATION`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `PROVIDER_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_MISMATCH` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
-| U | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL |
+| C | `TX_FAILED` → REJECTED · `NETWORK_VERSION_STATE_MISMATCH` → TRANSIENT · `FORK_CROSSED_DURING_OPERATION`, `SUBMIT_REJECTION_UNDIAGNOSED` → UNCERTAIN · `INDEXER_INCONSISTENCY`, `BLANK_VERIFIER_KEY_SLOT`, `VERIFIER_KEY_MISMATCH` → INTEGRITY · `PROVIDER_FAILED`, `LEDGER_PARAMETERS_UNSERVED` → ENVIRONMENT · `ERA_ARTIFACT_MISMATCH`, `UNKNOWN_RESULT_ERA`, `LEDGER8_DEPLOY_ON_LEDGER9`, `LEDGER8_ARTIFACT_ON_LEDGER9_STATE`, `LEDGER8_CONTRACT_STATE_UNSUPPORTED`, `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `SCOPED_TRANSACTION_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE` → USAGE · `ERA_INVARIANT_VIOLATION` → INTERNAL |
+| U | `TAG_PARSE_FAILED` → INTEGRITY · `UNHANDLED_UNION_MEMBER` → INTERNAL · `LEDGER8_VALUE_UNSUPPORTED` → USAGE · `UNRECOGNISED_ERA_TAG` → USAGE |
 
 ## Amendment — the on-chain state errors are renamed (2026-10-29)
 
@@ -149,29 +153,3 @@ Issue #1568. `InvalidLedgerStateError` is `InvalidSerializedStateError`,
 (`INVALID_LEDGER_STATE`, `LEDGER_STATE_DECODER_MISSING`, `LEDGER_STATE_DECODE_FAILED`) and
 categories are unchanged: codes are the contract. The table above keeps the names that were
 current when it was written.
-
-## Amendment — one class per fault (2026-10-29)
-
-Issue #1557. The decision is unchanged. It changes how classes are cut.
-
-- (a) One class per fault, with a `reason` or `operation` field that says which case it was. Classes are
-  merged only within one category, so a caller never has to read the field to learn what to do.
-  Failed transactions are one `TxFailedError` with an `operation`. The five ledger 8 classes that are
-  left carry a `reason`, an `operation` or a `stage`.
-- (b) A wrong-era fault stays split by who is at fault. `EraMismatchError` is USAGE: the caller passed
-  something of the wrong era. `EraInvariantViolationError` is INTERNAL: a provider or the framework broke
-  the era rule. `PublicStatesEraMismatchError` and `IndexerInconsistencyError` are INTEGRITY: the data
-  served does not agree with itself.
-- (c) A value with no era moves to ENVIRONMENT. It means an outdated provider or an outdated midnight-js,
-  so the fix is in the installation. `UnknownLedgerVersionError` now covers it, with a
-  `requestedVersion` of `undefined`.
-- (d) Codes renamed: `ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`. Codes removed: `UNKNOWN_RESULT_ERA`,
-  `SCOPED_TRANSACTION_ERA_UNSUPPORTED`, `MIXED_ERA_SCOPE`, `LEDGER8_DEPLOY_ON_LEDGER9`,
-  `LEDGER8_MAINTENANCE_ON_LEDGER9`, `LEDGER8_ARTIFACT_ON_LEDGER9_STATE`,
-  `LEDGER8_CONTRACT_STATE_UNSUPPORTED` (all now reasons of `ERA_MISMATCH`);
-  `LEDGER8_SIGNING_KEY_UNUSABLE`, `LEDGER8_SIGNING_KEY_UNAVAILABLE`, `LEDGER8_DEPLOY_UNCONFIRMED`,
-  `LEDGER8_REPLACE_AUTHORITY_UNCONFIRMED`, `LEDGER8_DEPLOY_NOT_STORED`, `LEDGER8_SIGNING_KEY_NOT_STORED`,
-  `LEDGER8_SHIELDED_SPEND_UNSUPPORTED`, `LEDGER8_RECIPIENT_UNMAPPABLE` (now `LEDGER8_SIGNING_KEY`,
-  `LEDGER8_UNCONFIRMED`, `LEDGER8_NOT_STORED`, `LEDGER8_CALL_UNSUPPORTED`); and in `utils`
-  `LEDGER8_VALUE_UNSUPPORTED` and `UNRECOGNISED_ERA_TAG`. The "TxFailedError families sit three levels
-  down" sentence above is history: there is one class now. The code tables above already show the result.

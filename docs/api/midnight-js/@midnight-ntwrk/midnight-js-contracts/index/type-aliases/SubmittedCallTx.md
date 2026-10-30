@@ -4,19 +4,18 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / SubmittedCallTx
 
-# Type Alias: SubmittedCallTx\<C, PCK\>
+# Type Alias: SubmittedCallTx\<C, K\>
 
-> **SubmittedCallTx**\<`C`, `PCK`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `PCK` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9SubmittedCallTx`](../interfaces/Ledger9SubmittedCallTx.md)\<`C`, `PCK` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
+> **SubmittedCallTx**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9SubmittedCallTx`](../interfaces/Ledger9SubmittedCallTx.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-A submitted, not yet finalized circuit call. Generic code names an era: `Ledger9SubmittedCallTx<C, PCK>`.
-A submission of any contract, in either era, is [AnySubmittedCallTx](AnySubmittedCallTx.md).
+A submitted, not yet finalized circuit call. Generic code names an era: `Ledger9SubmittedCallTx<C, K>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
+`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

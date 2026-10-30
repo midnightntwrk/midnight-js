@@ -20,7 +20,7 @@ it is part of `Ledger9FoundDeployTxData`.
 
 ## See
 
-[ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for how the `Ledger8` names are used.
+[RetainedEraNamespace](../../documents/RetainedEraNamespace.md) for which names belong to the retained era.
 
 ## Extends
 

@@ -4,18 +4,18 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / CallResultPrivate
 
-# Type Alias: CallResultPrivate\<C, PCK\>
+# Type Alias: CallResultPrivate\<C, K\>
 
-> **CallResultPrivate**\<`C`, `PCK`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8CallResultPrivate`](../interfaces/Ledger8CallResultPrivate.md)\<`C`, `PCK` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9CallResultPrivate`](Ledger9CallResultPrivate.md)\<`C`, `PCK` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
+> **CallResultPrivate**\<`C`, `K`\> = `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md) ? [`Ledger8CallResultPrivate`](../interfaces/Ledger8CallResultPrivate.md)\<`C`, `K` & [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>\> : `C` *extends* [`Ledger9Contract`](Ledger9Contract.md) ? [`Ledger9CallResultPrivate`](Ledger9CallResultPrivate.md)\<`C`, `K` & [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>\> : `never`
 
-The private result of a circuit call. Generic code names an era: `Ledger9CallResultPrivate<C, PCK>`.
+The private result of a circuit call. Generic code names an era: `Ledger9CallResultPrivate<C, K>`.
 
 ## Type Parameters
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>
+`K` *extends* [`CircuitIdOf`](CircuitIdOf.md)\<`C`\>

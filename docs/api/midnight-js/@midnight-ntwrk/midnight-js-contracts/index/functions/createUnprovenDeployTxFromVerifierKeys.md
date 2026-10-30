@@ -6,21 +6,62 @@
 
 # Function: createUnprovenDeployTxFromVerifierKeys()
 
-Creates an unproven deploy transaction from the verifier keys, for a contract of the era its
-artifacts declare. A ledger 9 contract runs [createLedger9UnprovenDeployTxFromVerifierKeys](createLedger9UnprovenDeployTxFromVerifierKeys.md), whose documentation covers
-the parameters and the privacy-sensitive result.
+Calls a contract constructor and creates an unbalanced, unproven, unsubmitted, deploy transaction
+from the constructor results.
+
+## Param
+
+**zkConfigProvider**
+
+Supplies the verifier keys for the contract being deployed.
+
+## Param
+
+**coinPublicKey**
+
+The Zswap coin public key of the current user.
+
+## Param
+
+**options**
+
+Configuration.
+
+## Param
+
+**encryptionPublicKey**
+
+The Zswap encryption public key of the current user.
+
+## Param
+
+**config**
+
+The network the transaction is built for and how long it stays valid, normally `providers.config`.
 
 ## Throws
 
-EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
-        function does not serve, after the artifact era is read and before anything else, and with
-        the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
-        `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
-        `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ConfigurationError If `config` is missing.
+
+## Throws
+
+InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+        whitespace.
+
+## Throws
+
+InvalidArgumentError If `config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+
+## Remarks
+
+The returned [UnsubmittedDeployTxData](../interfaces/UnsubmittedDeployTxData.md) is privacy-sensitive and
+carries the unproven transaction, signing key, initial private state, and
+initial Zswap state. See that type for handling guidance before logging,
+serializing, or transmitting the result.
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -40,7 +81,7 @@ EraMismatchError with reason `'contract-era-unsupported'` for a contract of an e
 
 #### options
 
-[`Ledger9DeployTxOptionsBase`](../type-aliases/Ledger9DeployTxOptionsBase.md)\<`C`\>
+[`DeployTxOptionsBase`](../type-aliases/DeployTxOptionsBase.md)\<`C`\>
 
 #### encryptionPublicKey
 
@@ -52,11 +93,11 @@ EraMismatchError with reason `'contract-era-unsupported'` for a contract of an e
 
 ### Returns
 
-`Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`, `config`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -76,7 +117,7 @@ EraMismatchError with reason `'contract-era-unsupported'` for a contract of an e
 
 #### options
 
-[`Ledger9DeployTxOptionsWithPrivateState`](../type-aliases/Ledger9DeployTxOptionsWithPrivateState.md)\<`C`\>
+[`DeployTxOptionsWithPrivateState`](../type-aliases/DeployTxOptionsWithPrivateState.md)\<`C`\>
 
 #### encryptionPublicKey
 
@@ -88,4 +129,4 @@ EraMismatchError with reason `'contract-era-unsupported'` for a contract of an e
 
 ### Returns
 
-`Promise`\<[`Ledger9UnsubmittedDeployTxData`](../interfaces/Ledger9UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>

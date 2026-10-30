@@ -4,9 +4,9 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8CircuitReturnType
 
-# Type Alias: Ledger8CircuitReturnType\<C, PCK\>
+# Type Alias: Ledger8CircuitReturnType\<C, K\>
 
-> **Ledger8CircuitReturnType**\<`C`, `PCK`\> = `ReturnType`\<`C`\[`"provableCircuits"`\]\[`PCK`\]\> *extends* `object` ? `R` : `unknown`
+> **Ledger8CircuitReturnType**\<`C`, `K`\> = `ReturnType`\<`C`\[`"provableCircuits"`\]\[`K`\]\> *extends* `object` ? `R` : `unknown`
 
 What a retained-era circuit's own return value narrows to.
 
@@ -23,6 +23,6 @@ has to check instead of one it cannot use.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>

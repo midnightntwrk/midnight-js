@@ -18,13 +18,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `TxFailedError` is thrown with transaction data and circuit ID
+- `CallTxFailedError` is thrown with transaction data and circuit ID
 - Private state updates are NOT stored (state remains unchanged)
 - No on-chain record of the failed transaction
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `TxFailedError` is thrown with transaction data and circuit ID
+- `CallTxFailedError` is thrown with transaction data and circuit ID
 - Private state updates are NOT stored (state remains unchanged)
 - Transaction appears in blockchain history as partial success
 
@@ -62,14 +62,14 @@ When `options.compiledContract` belongs to neither Compact
 
 ## Remarks
 
-The returned [Ledger9FinalizedCallTxData](../interfaces/Ledger9FinalizedCallTxData.md) (and the [Ledger9CallResult](../interfaces/Ledger9CallResult.md) variant)
+The returned [Ledger9FinalizedCallTxData](../interfaces/Ledger9FinalizedCallTxData.md) (and the [CallResult](../interfaces/CallResult.md) variant)
 is privacy-sensitive and carries the unproven transaction and private
 state. See those types for handling guidance before logging, serializing,
 or transmitting the result.
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
 
 The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
@@ -83,23 +83,23 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-#### PCK
+#### K
 
-`PCK` *extends* `string`
+`K` *extends* `string`
 
 ### Parameters
 
 #### providers
 
-[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `K`\>
 
 #### options
 
-[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
 
 ### Returns
 
-`Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
 
 ### See
 
@@ -127,7 +127,7 @@ Calls a circuit on a contract that declares no private state.
 
 #### providers
 
-[`Ledger9SubmitTxProviders`](../type-aliases/Ledger9SubmitTxProviders.md)\<`C`, `PCK`\>
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
@@ -169,7 +169,7 @@ Calls a circuit on a contract that declares private state, naming where that sta
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 Calls a circuit inside a scoped transaction, on a contract that declares private state. The
 call is added to the scope rather than submitted on its own.
@@ -196,15 +196,15 @@ call is added to the scope rather than submitted on its own.
 
 #### transactionContext
 
-[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 Calls a circuit inside a scoped transaction, on a contract that declares no private state.
 
@@ -222,7 +222,7 @@ Calls a circuit inside a scoped transaction, on a contract that declares no priv
 
 #### providers
 
-[`Ledger9SubmitTxProviders`](../type-aliases/Ledger9SubmitTxProviders.md)\<`C`, `PCK`\>
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
@@ -230,8 +230,8 @@ Calls a circuit inside a scoped transaction, on a contract that declares no priv
 
 #### transactionContext
 
-[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`Ledger9CallResult`](../interfaces/Ledger9CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>

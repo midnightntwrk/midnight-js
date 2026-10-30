@@ -4,9 +4,9 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8CallTxOptionsWithPrivateStateId
 
-# Type Alias: Ledger8CallTxOptionsWithPrivateStateId\<C, PCK\>
+# Type Alias: Ledger8CallTxOptionsWithPrivateStateId\<C, K\>
 
-> **Ledger8CallTxOptionsWithPrivateStateId**\<`C`, `PCK`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
+> **Ledger8CallTxOptionsWithPrivateStateId**\<`C`, `K`\> = [`Ledger8CallTxOptionsBase`](Ledger8CallTxOptionsBase.md)\<`C`, `K`\> & `object`
 
 A retained-era call transaction configuration that also names where to store
 the private state the call produces.
@@ -25,6 +25,6 @@ The identifier for the private state of the contract.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>

@@ -64,7 +64,7 @@ InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this 
 #### Throws
 
 ProviderEraUnsupportedError if the implementation does not serve the handle's era.
-        [createLedger9ProofProvider](../variables/createLedger9ProofProvider.md) serves v9 only; `httpClientProofProvider` and
+        [createProofProvider](../variables/createProofProvider.md) serves v9 only; `httpClientProofProvider` and
         `dappConnectorProofProvider` serve both eras.
 
 #### Throws
@@ -80,6 +80,6 @@ InvalidTransactionHandleError if the proven transaction is not a ledger transact
 #### Throws
 
 InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
-        apply it. [createLedger9ProofProvider](../variables/createLedger9ProofProvider.md), [createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md) and
+        apply it. [createProofProvider](../variables/createProofProvider.md), [createProofProviderFromProvingProviders](../variables/createProofProviderFromProvingProviders.md) and
         `dappConnectorProofProvider` refuse it before any proving starts;
         `httpClientProofProvider` honours it.

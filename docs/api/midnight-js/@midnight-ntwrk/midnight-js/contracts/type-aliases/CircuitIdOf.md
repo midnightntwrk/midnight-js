@@ -14,4 +14,4 @@ The circuit ids of `C`, read the way the era that compiled `C` reads them.
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

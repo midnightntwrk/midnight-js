@@ -14,13 +14,13 @@ A declaration OF THE ARTIFACT, not a framework result. It is the shape
 the era discriminable at the type level -- the current era's `initialState`
 answers with a `Promise`.
 
-Deliberately NOT the retained counterpart of `Ledger9ContractConstructorResult`,
+Deliberately NOT the retained counterpart of `ContractConstructorResult`,
 which is a framework result carrying `era` and `next*` members. There is no
 retained counterpart of that type: the constructor output a retained deploy
 would publish is spread across `Ledger8DeployedContract`'s `initial*`
 members, and nothing constructs one today. This type was called
 `Ledger8ConstructorResult`, which put a false pairing next to
-`Ledger9ContractConstructorResult` on the published surface.
+`ContractConstructorResult` on the published surface.
 
 ## Type Parameters
 

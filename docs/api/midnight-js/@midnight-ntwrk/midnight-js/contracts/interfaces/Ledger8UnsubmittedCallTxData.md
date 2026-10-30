@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / Ledger8UnsubmittedCallTxData
 
-# Interface: Ledger8UnsubmittedCallTxData\<C, PCK\>
+# Interface: Ledger8UnsubmittedCallTxData\<C, K\>
 
 The execution data of a retained-era call, before the chain has recorded it.
 
@@ -18,9 +18,9 @@ for finalization cannot answer with.
 
 `C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -29,7 +29,7 @@ for finalization cannot answer with.
 > `readonly` **calls**: readonly [`Ledger8ContractCall`](Ledger8ContractCall.md)\<`StateValue`\>[]
 
 Proof data for every contract call this circuit made, as the current era's
-`Ledger9CallResult.calls` carries. Always exactly ONE entry, the root call: a
+`CallResult.calls` carries. Always exactly ONE entry, the root call: a
 pre-fork contract cannot make a cross-contract call.
 
 ***
@@ -47,7 +47,7 @@ produced the objects below.
 
 ### private
 
-> `readonly` **private**: [`Ledger8CallResultPrivate`](Ledger8CallResultPrivate.md)\<`C`, `PCK`\>
+> `readonly` **private**: [`Ledger8CallResultPrivate`](Ledger8CallResultPrivate.md)\<`C`, `K`\>
 
 ***
 

@@ -6,14 +6,14 @@
 
 # Type Alias: Ledger8CircuitCallTxInterface\<C\>
 
-> **Ledger8CircuitCallTxInterface**\<`C`\> = `{ [PCK in Ledger8CircuitId<C>]: (args: Ledger8CircuitParameters<C, PCK>) => Promise<Ledger8FinalizedCallTxData<C, PCK>> }`
+> **Ledger8CircuitCallTxInterface**\<`C`\> = `{ [K in Ledger8CircuitId<C>]: (args: Ledger8CircuitParameters<C, K>) => Promise<Ledger8FinalizedCallTxData<C, K>> }`
 
 Lifts every circuit a retained-era contract declares to a function that
 builds and submits a call transaction against one address.
 
 ONE signature per circuit, where `Ledger9CircuitCallTxInterface`
 has two: the retained era cannot join a scoped transaction — a scope refuses
-a retained-era call with `EraMismatchError` (reason `'ledger8-call-in-scope'`) — so there is no context-taking
+a retained-era call with `MixedEraScopeError` — so there is no context-taking
 overload to declare.
 
 ## Type Parameters

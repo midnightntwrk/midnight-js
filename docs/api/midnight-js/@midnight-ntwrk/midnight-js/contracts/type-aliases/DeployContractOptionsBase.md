@@ -14,4 +14,4 @@ The options of `deployContract` without private state. Generic code names an era
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

@@ -14,4 +14,4 @@ The contract found at an address. Generic code names an era: `Ledger9FoundContra
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

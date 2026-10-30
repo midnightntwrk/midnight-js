@@ -56,7 +56,7 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraMismatchError If `compiledContract` has the shape of neither a ledger 8
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
 contract nor a ledger 9 `CompiledContract`.
 
 ## Call Signature
@@ -109,5 +109,5 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraMismatchError If `compiledContract` has the shape of neither a ledger 8
+EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
 contract nor a ledger 9 `CompiledContract`.

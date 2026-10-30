@@ -78,7 +78,7 @@ Attaches to a deployed contract that declares no private state.
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsBase`](../interfaces/Ledger9FindDeployedContractOptionsBase.md)\<`C`\>
+[`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\>
 
 ### Returns
 
@@ -104,7 +104,7 @@ Attaches to a deployed contract, reusing the private state already stored at `pr
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsExistingPrivateState`](../interfaces/Ledger9FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
 
 ### Returns
 
@@ -130,7 +130,7 @@ Attaches to a deployed contract, storing the given `initialPrivateState` at `pri
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsStorePrivateState`](../interfaces/Ledger9FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
 
 ### Returns
 

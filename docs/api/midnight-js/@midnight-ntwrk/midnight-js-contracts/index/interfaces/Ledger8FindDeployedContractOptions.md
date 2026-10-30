@@ -72,7 +72,7 @@ caller that holds one and deployed the contract somewhere else.
 VALIDATED BEFORE IT IS STORED. A retained-era key is a `schnorr` key whose
 value is exactly 64 hexadecimal characters, which is what that era's
 `sampleSigningKey` produces; this type also admits `ecdsa` and values of any
-length, and those are refused with `Ledger8SigningKeyError` (reason `'unusable'`).
+length, and those are refused with `Ledger8SigningKeyUnusableError`.
 Nothing is written when it is refused.
 
 Stored against [Ledger8FindDeployedContractOptions.contractAddress](#contractaddress)

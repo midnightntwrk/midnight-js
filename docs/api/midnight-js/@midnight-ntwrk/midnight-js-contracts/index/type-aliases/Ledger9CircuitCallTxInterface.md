@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger9CircuitCallTxInterface\<C\>
 
-> **Ledger9CircuitCallTxInterface**\<`C`\> = `{ [PCK in Contract.ProvableCircuitId<C>]: { (args: CircuitParameters<C, PCK>): Promise<Ledger9FinalizedCallTxData<C, PCK>>; (txCtx: Ledger9TransactionContext<C, PCK>, args: CircuitParameters<C, PCK>): Promise<Ledger9CallResult<C, PCK>> } }`
+> **Ledger9CircuitCallTxInterface**\<`C`\> = `{ [PCK in Contract.ProvableCircuitId<C>]: { (args: CircuitParameters<C, PCK>): Promise<Ledger9FinalizedCallTxData<C, PCK>>; (txCtx: TransactionContext<C, PCK>, args: CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>> } }`
 
 A type that lifts each circuit defined in a contract to a function that builds
 and submits a call transaction.

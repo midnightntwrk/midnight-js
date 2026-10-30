@@ -6,7 +6,7 @@
 
 # Interface: SubmitTxOptions\<PCK\>
 
-Configuration for [submitTx](../functions/submitTx.md).
+Configuration for [submitTx](../variables/submitTx.md).
 
 ## Type Parameters
 

@@ -14,4 +14,4 @@ One call function per circuit. Generic code names an era: `Ledger9CircuitCallTxI
 
 ### C
 
-`C` *extends* [`AnyContract`](AnyContract.md)
+`C` *extends* [`AnyEraContract`](AnyEraContract.md)

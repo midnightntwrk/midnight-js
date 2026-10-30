@@ -82,8 +82,8 @@ A refusal of the v8 era does not mean "the framework cannot do this yet". It
 means the specific implementation of that provider does not serve v8. Two quite
 different cases produce it:
 
-**Permanently, from the lifting adapters.** `createLedger9ProofProvider`,
-`createLedger9WalletProvider` and `createLedger9MidnightProvider` each lift a v9-ONLY
+**Permanently, from the lifting adapters.** `createProofProvider`,
+`createWalletProvider` and `createMidnightProvider` each lift a v9-ONLY
 implementation into the provider interface. Refusing v8 is the adapter
 accurately reporting what it wraps, not a gap to be filled. To serve both eras,
 use the `…FromHandlers` factories, or implement the interface directly. For the
@@ -143,6 +143,6 @@ reports the PARAMETER mismatch first, so the error is about the ledger methods
 the handle does not have — rather than the missing `seal`, which is the actual
 problem. An implementer meeting that error has no path from it to the fix.
 
-Going through `createLedger9WalletProvider` or `createLedger9MidnightProvider` means the error
+Going through `createWalletProvider` or `createMidnightProvider` means the error
 never arises: both adapters unwrap each handle on the way in, and the wallet
 adapter seals its answer on the way out.

@@ -54,9 +54,11 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`ZkArtifactFetchError`](../../../midnight-js-types/index/classes/ZkArtifactFetchError.md)
 - [`ZKArtifactNotFoundError`](../../../midnight-js-types/index/classes/ZKArtifactNotFoundError.md)
 - [`DeserializationError`](../../../midnight-js-utils/index/classes/DeserializationError.md)
+- [`Ledger8ValueUnsupportedError`](../../../midnight-js-utils/index/classes/Ledger8ValueUnsupportedError.md)
 - [`PasswordValidationError`](../../../midnight-js-utils/index/classes/PasswordValidationError.md)
 - [`TagParseError`](../../../midnight-js-utils/index/classes/TagParseError.md)
 - [`UnhandledUnionMemberError`](../../../midnight-js-utils/index/classes/UnhandledUnionMemberError.md)
+- [`UnrecognisedEraTagError`](../../../midnight-js-utils/index/classes/UnrecognisedEraTagError.md)
 - [`ZkArtifactContractInfoError`](../../../midnight-js-utils/index/classes/ZkArtifactContractInfoError.md)
 - [`ZkArtifactIntegrityError`](../../../midnight-js-utils/index/classes/ZkArtifactIntegrityError.md)
 

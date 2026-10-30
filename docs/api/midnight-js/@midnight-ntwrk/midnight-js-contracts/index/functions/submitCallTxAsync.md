@@ -11,7 +11,7 @@ returning immediately after submission without waiting for finalization.
 
 ## Call Signature
 
-> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `PCK`\>\>
+> **submitCallTxAsync**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `K`\>\>
 
 The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
@@ -25,23 +25,23 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 `C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-#### PCK
+#### K
 
-`PCK` *extends* `string`
+`K` *extends* `string`
 
 ### Parameters
 
 #### providers
 
-[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `K`\>
 
 #### options
 
-[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
 
 ### Returns
 
-`Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger8SubmittedCallTx`](../interfaces/Ledger8SubmittedCallTx.md)\<`C`, `K`\>\>
 
 ### See
 
@@ -100,7 +100,7 @@ After calling this function, you must manually:
 
 #### providers
 
-[`Ledger9SubmitCallTxProviders`](../type-aliases/Ledger9SubmitCallTxProviders.md)\<`C`, `PCK`\>
+[`SubmitCallTxProviders`](../type-aliases/SubmitCallTxProviders.md)\<`C`, `PCK`\>
 
 The providers used to manage the invocation lifecycle.
 
@@ -149,7 +149,7 @@ if (record.era !== 'v9') {
 
 // 4. Check status
 if (record.status !== SucceedEntirely) {
-  throw new TxFailedError('call', record, { circuitId: options.circuitId });
+  throw new CallTxFailedError(record, options.circuitId);
 }
 
 // 5. Update private state manually if needed

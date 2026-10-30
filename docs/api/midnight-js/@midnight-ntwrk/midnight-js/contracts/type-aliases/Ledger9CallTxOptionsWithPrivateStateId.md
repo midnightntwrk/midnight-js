@@ -11,7 +11,7 @@
 Call transaction options with the private state ID to use to store the new private
 state resulting from the circuit call. Since a private state should already be
 stored at the given private state ID, we don't need an 'initialPrivateState' like
-in [Ledger9DeployTxOptionsWithPrivateState](Ledger9DeployTxOptionsWithPrivateState.md).
+in [DeployTxOptionsWithPrivateState](DeployTxOptionsWithPrivateState.md).
 
 ## Type Declaration
 

@@ -49,7 +49,7 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraMismatchError If `compiledContract` has neither toolchain's shape.
+EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
 
 ## Call Signature
 
@@ -94,4 +94,4 @@ InvalidArgumentError If `contractAddress` is malformed.
 
 ### Throws
 
-EraMismatchError If `compiledContract` has neither toolchain's shape.
+EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.

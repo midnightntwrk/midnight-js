@@ -41,12 +41,12 @@ const proven = await proofProvider.proveTx(ledger8UnprovenTx);
 // proven.era is 'v8'
 ```
 
-Note that `createLedger9ProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the v8 era —
+Note that `createProofProvider` in `@midnight-ntwrk/midnight-js-types` refuses the v8 era —
 it adapts a v9-only `ProvingProvider` — so reach for this provider, not that helper, when
 you need both eras.
 
 #### Proving is only the first step
-Read this before wiring a v8 flow. `createLedger9WalletProvider` and `createLedger9MidnightProvider` both
+Read this before wiring a v8 flow. `createWalletProvider` and `createMidnightProvider` both
 refuse the v8 era. Through the framework's own entry points (`submitCallTx` and
 `deployContract`), `assertProvidersSupportEra` detects this upfront and raises
 `ProviderEraUnsupportedError` (naming `balanceTx`) before any proving work is done. However,

@@ -38,7 +38,7 @@ ContractNotFoundError No contract state could be found at `contractAddress`.
 
 ## Throws
 
-EraMismatchError with reason `'ledger8-contract-state-unsupported'` The current contract state was written by the v8
+Ledger8ContractStateUnsupportedError The current contract state was written by the v8
 ledger, and these artifacts come from the current toolchain.
 
 ## Throws
@@ -52,7 +52,7 @@ UnknownLedgerVersionError The deploy record carries no readable era tag.
 
 ## Throws
 
-UnknownLedgerVersionError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
+UnrecognisedEraTagError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
                                 provider.
 
 ## Throws
@@ -72,7 +72,7 @@ IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given bu
 
 ## Throws
 
-EraMismatchError If `options.compiledContract` belongs to neither Compact era, or
+EraArtifactMismatchError If `options.compiledContract` belongs to neither Compact era, or
                                  is a raw current-era contract instance passed instead of its
                                  `CompiledContract` container, or its artifacts declare no
                                  toolchain this framework can place. Raised before anything is
@@ -152,7 +152,7 @@ Attaches to a deployed contract that declares no private state.
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsBase`](../interfaces/Ledger9FindDeployedContractOptionsBase.md)\<`C`\>
+[`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\>
 
 ### Returns
 
@@ -178,7 +178,7 @@ Attaches to a deployed contract, reusing the private state already stored at `pr
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsExistingPrivateState`](../interfaces/Ledger9FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
 
 ### Returns
 
@@ -204,7 +204,7 @@ Attaches to a deployed contract, storing the given `initialPrivateState` at `pri
 
 #### options
 
-[`Ledger9FindDeployedContractOptionsStorePrivateState`](../interfaces/Ledger9FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
 
 ### Returns
 

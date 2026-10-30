@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8CallResultPrivate
 
-# Interface: Ledger8CallResultPrivate\<C, PCK\>
+# Interface: Ledger8CallResultPrivate\<C, K\>
 
 The private, ZK-confidential half of a retained-era circuit execution.
 
@@ -22,7 +22,7 @@ or transmitting.
 
 ## Extends
 
-- [`CallResultPrivateBase`](../../../midnight-js/types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `PCK`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>.[`UnsubmittedTxDataBase`](../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md)
+- [`CallResultPrivateBase`](../../../midnight-js/types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `K`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>.[`UnsubmittedTxDataBase`](../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md)
 
 ## Type Parameters
 
@@ -30,9 +30,9 @@ or transmitting.
 
 `C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
 
-### PCK
+### K
 
-`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+`K` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 ## Properties
 

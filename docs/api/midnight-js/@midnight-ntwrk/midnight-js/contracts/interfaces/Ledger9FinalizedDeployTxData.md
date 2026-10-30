@@ -10,7 +10,7 @@ Data for a finalized deploy transaction submitted in this process.
 
 ## Remarks
 
-**Privacy-sensitive type.** Inherits [Ledger9UnsubmittedDeployTxData](Ledger9UnsubmittedDeployTxData.md)'s
+**Privacy-sensitive type.** Inherits [UnsubmittedDeployTxData](UnsubmittedDeployTxData.md)'s
 `private` field, which transitively carries the unproven transaction,
 `newCoins`, signing key, initial private state, and `initialZswapState`.
 Treat as confidential when logging, serializing, or transmitting —
@@ -25,7 +25,7 @@ not an intended use.
 
 ## Extends
 
-- [`Ledger9UnsubmittedDeployTxData`](Ledger9UnsubmittedDeployTxData.md)\<`C`\>
+- [`UnsubmittedDeployTxData`](UnsubmittedDeployTxData.md)\<`C`\>
 
 ## Type Parameters
 
@@ -47,19 +47,19 @@ objects in this result came from.
 
 #### Inherited from
 
-[`Ledger9UnsubmittedDeployTxDataBase`](Ledger9UnsubmittedDeployTxDataBase.md).[`era`](Ledger9UnsubmittedDeployTxDataBase.md#era)
+[`UnsubmittedDeployTxData`](UnsubmittedDeployTxData.md).[`era`](UnsubmittedDeployTxData.md#era)
 
 ***
 
 ### private
 
-> `readonly` **private**: [`Ledger9UnsubmittedDeployTxPrivateDataFull`](Ledger9UnsubmittedDeployTxPrivateDataFull.md)\<`C`\>
+> `readonly` **private**: [`UnsubmittedDeployTxPrivateDataFull`](UnsubmittedDeployTxPrivateDataFull.md)\<`C`\>
 
 The data of this transaction that is only visible on the user device.
 
 #### Inherited from
 
-[`Ledger9UnsubmittedDeployTxData`](Ledger9UnsubmittedDeployTxData.md).[`private`](Ledger9UnsubmittedDeployTxData.md#private)
+[`UnsubmittedDeployTxData`](UnsubmittedDeployTxData.md).[`private`](UnsubmittedDeployTxData.md#private)
 
 ***
 
@@ -71,4 +71,4 @@ The data of this transaction that is visible on the blockchain.
 
 #### Overrides
 
-[`Ledger9UnsubmittedDeployTxDataBase`](Ledger9UnsubmittedDeployTxDataBase.md).[`public`](Ledger9UnsubmittedDeployTxDataBase.md#public)
+[`UnsubmittedDeployTxDataBase`](UnsubmittedDeployTxDataBase.md).[`public`](UnsubmittedDeployTxDataBase.md#public)

@@ -14,7 +14,7 @@ The retained-era overload. Accepts a contract produced by the PREVIOUS Compact t
 the raw contract instance rather than inside a `CompiledContract` container.
 
 Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
-artifact after the fork is refused with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`). Recompile with the
+artifact after the fork is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
 current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
 against contracts deployed before the fork.
 

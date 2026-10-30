@@ -13,7 +13,7 @@ variant.
 
 Reads `era`, which every result carries and which each variant declares as its
 own literal -- so this narrows a union of any two result shapes that carry
-the tag, not only the flat unions.
+the tag, not only the published unions above.
 
 `era` names the PIPELINE that produced the objects in the result, read off
 the compiled artifact. It is NOT the era that recorded the transaction:
