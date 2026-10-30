@@ -39,7 +39,7 @@ export {
 // shapes would pin them as API before a second consumer has asked for them.
 export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // The era errors that serve BOTH eras. The retained era's own classes are published under the
-// `Ledger8` namespace below -- `Ledger8.CallTxFailedError` still extends `AnyEraTxFailedError`
+// `Ledger8` namespace below -- `Ledger8.CallTxFailedError` still extends `TxFailedError`
 // here, so a handler written against the base keeps catching it.
 //
 // The fork-window refusals are the other group. `ForkCrossedDuringOperationError` is raised when a submission was
@@ -63,13 +63,10 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // Deliberately no test-file names here: which suite exercises what is the kind of claim that rots
 // the first time a test moves.
 export {
-  AnyEraTxFailedError,
   BlankVerifierKeySlotError,
-  CallTxFailedError,
   ContractNotFoundError,
   ContractTypeError,
   ContractTypeMismatch,
-  DeployTxFailedError,
   EraArtifactMismatchError,
   type EraArtifactMismatchOptions,
   type EraArtifactMismatchReason,
@@ -79,6 +76,9 @@ export {
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   IndexerInconsistencyError,
+  Ledger9CallTxFailedError,
+  Ledger9DeployTxFailedError,
+  Ledger9TxFailedError,
   LedgerParametersUnservedError,
   MixedEraScopeError,
   NetworkVersionReadFailedError,
@@ -112,24 +112,16 @@ export {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface,
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError,
+  Ledger9InsertVerifierKeyTxFailedError,
+  Ledger9RemoveVerifierKeyTxFailedError,
+  Ledger9ReplaceMaintenanceAuthorityTxFailedError,
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from './governance';
-// The receiving half of the era surface: the overloads hand a caller one era's
-// result by inference, and these let a caller who RECEIVES either one declare a
-// parameter for both and narrow it by name.
-export {
-  type AnyEraDeployedContract,
-  type AnyEraFinalizedCallTxData,
-  type AnyEraFoundContract,
-  type AnyEraMaintenanceTxData,
-  type AnyEraSubmittedCallTx,
-  isLedger8Result
-} from './era-results';
+// The receiving half of the era surface: a caller who RECEIVES a result of either era declares
+// it with a flat name and narrows it with this guard.
+export { isLedger8Result } from './era-results';
 // The RETAINED era's refusals under one name: `Ledger8.CallTxFailedError`. Only error classes;
 // see `docs/retained-era-namespace.md` for what qualifies and how the surface is withdrawn.
 export * as Ledger8 from './ledger8';
@@ -185,7 +177,9 @@ export type {
   Ledger9DeployedContract
 } from './deploy-contract';
 export type {
-  AnyEraContract,
+  AnyContract,
+  AnyFinalizedCallTxData,
+  AnySubmittedCallTx,
   CallResultPrivate,
   CallTxOptions,
   CallTxOptionsBase,
@@ -200,6 +194,7 @@ export type {
   DeployedContract,
   FinalizedCallTxData,
   FinalizedDeployTxData,
+  FinalizedMaintenanceTxData,
   FindDeployedContractOptions,
   FoundContract,
   FoundDeployTxData,

@@ -221,14 +221,22 @@ era-named type: `Ledger9FoundContract<C>` or `Ledger8FoundContract<C>`.
 In generic code the contract is unknown, so name the era:
 
 ```typescript
-const read = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: Ledger9FinalizedCallTxData<C, K>
+const read = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
 ) => data.public;
 ```
 
-Types with no contract parameter have only their era-named form, for example
-`Ledger9FinalizedMaintenanceTxData`. To accept either era, use the `AnyEra*`
-unions.
+To accept a call of any contract in either era, use `AnyFinalizedCallTxData`
+or `AnySubmittedCallTx`. Their `result` and `nextPrivateState` are `unknown`;
+narrow on `era` or with `isLedger8Result`:
+
+```typescript
+const onCall = (result: AnyFinalizedCallTxData) =>
+  isLedger8Result(result) ? result.public.txId : result.public.logEvents;
+```
+
+A flat name with no contract parameter is the union of every era:
+`FinalizedMaintenanceTxData`, `AnyContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
 
 ## Exports
 
@@ -278,10 +286,10 @@ import {
   UnsubmittedDeployTxData,
 
   // Errors
-  CallTxFailedError,
-  DeployTxFailedError,
   ContractTypeError,
   EraInvariantViolationError,
+  Ledger9CallTxFailedError,
+  Ledger9DeployTxFailedError,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```

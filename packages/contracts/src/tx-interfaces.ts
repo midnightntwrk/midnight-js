@@ -49,14 +49,14 @@ export type Ledger9CircuitCallTxInterface<C extends Contract.Any> = {
 /**
  * Builds a ledger 8 `CallTxOptions`, leaving out every member the caller did not supply.
  */
-const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+const createLedger8CallTxOptions = <C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   compiledContract: C,
-  circuitId: K,
+  circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
-  args: Ledger8CircuitParameters<C, K>
-): Ledger8CallTxOptions<C, K> => {
+  args: Ledger8CircuitParameters<C, PCK>
+): Ledger8CallTxOptions<C, PCK> => {
   const target = {
     compiledContract,
     contractAddress,
@@ -65,7 +65,7 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
     // Omitted, not `undefined`: downstream must tell "named none" from "named one".
     ...(privateStateId === undefined ? {} : { privateStateId })
   };
-  return (args.length === 0 ? target : { ...target, args }) as Ledger8CallTxOptions<C, K>;
+  return (args.length === 0 ? target : { ...target, args }) as Ledger8CallTxOptions<C, PCK>;
 };
 
 /**
@@ -87,14 +87,14 @@ const createLedger8CallTxOptions = <C extends Ledger8Contract, K extends Ledger8
  * @throws EraArtifactMismatchError If `compiledContract` has the shape of neither a ledger 8
  * contract nor a ledger 9 `CompiledContract`.
  */
-export function createCallTxOptions<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+export function createCallTxOptions<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   compiledContract: C,
-  circuitId: K,
+  circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
   additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
-  args: Ledger8CircuitParameters<C, K>
-): Ledger8CallTxOptions<C, K>;
+  args: Ledger8CircuitParameters<C, PCK>
+): Ledger8CallTxOptions<C, PCK>;
 export function createCallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   circuitId: PCK,

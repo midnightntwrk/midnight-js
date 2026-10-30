@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-16
 - Deciders: Szymon Paluchowski
-- Related: #1490, #1489, #1533, #1536
+- Related: #1490, #1489, #1533, #1536, #1566
 
 ## Context
 
@@ -72,6 +72,57 @@ broke the rule above: at the next fork it would have meant ledger 10. Two rules 
 
 - High-level types: the flat name is era-generic. With a contract parameter it is a conditional
   alias over the `Ledger8` / `Ledger9` variants, so it keeps its meaning at a fork; ledger 10 adds a
-  branch. Without one it does not exist, and only the `Ledger9*` name remains.
+  branch. Without one it does not exist, and only the `Ledger9*` name remains (replaced by the
+  #1566 amendment below).
 - Low-level functions serve one era each, so they are named after it (#1527).
 
+
+## Amendment — a name without a prefix is valid for every era (2026-10-29)
+
+Issue #1566. Types for both eras used two styles: an `AnyEra` prefix (`AnyEraFoundContract`,
+`AnyEraTxFailedError`) and no prefix (`FinalizedTxRead`, `FoundDeployTxPublicData`). A reader could
+not tell from the name which one was a union. One rule now applies to the high-level result and
+handle types of `contracts` and to the recorded-failure classes:
+
+> A `Ledger8` / `Ledger9` prefix means bound to one ledger. No prefix means valid for every era: with
+> a contract parameter it picks the era from the contract; without one it is the union of all eras.
+
+This replaces "without one it does not exist" in the amendment above: a ledger 9 type without a
+contract keeps its `Ledger9*` name, and the flat name, where it exists, is the union.
+
+- No exported name carries the `AnyEra` prefix. `AnyEraContract` is `AnyContract`;
+  `AnyEraMaintenanceTxData` is `FinalizedMaintenanceTxData`; `AnyEraFoundContract<C, L8>` and
+  `AnyEraDeployedContract<C, L8>` are `FoundContract<C | L8>` and `DeployedContract<C | L8>`.
+- `FinalizedCallTxData<C, PCK>` and `SubmittedCallTx<C, PCK>` keep both type arguments required, as in
+  4.x. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`: it is a
+  weaker type, not the same one for every era, because without a contract `result` and
+  `nextPrivateState` are `unknown` (the widest ledger 9 instantiation would type them `any`, which
+  turns off checking in exactly the handlers that receive either era). A default type argument would
+  have given one name three meanings: one era, every circuit of one contract, and any call.
+- The `Any` prefix keeps the meaning it already has in `AnyLedger8FinalizedCallTxData`: any contract
+  and any circuit. It says nothing about the era by itself. `AnyProvableCircuitId` and
+  `AnyPrivateState` (`types`) are still built on the ledger 9 `Contract.Any`.
+- `AnyContract` is a constraint. Instantiated with itself, a flat name types the circuit values as
+  `any`, because the widest ledger 9 contract is `Contract<any>`; a value of any contract is an
+  `Any*` type.
+- `ContractProviders` requires its contract. A provider set serves one contract, so a union of the
+  eras' sets has no use, and a ledger 9 default would break the rule.
+- `TxFailedError` is the base of every recorded-failure class, in both eras. The ledger 9 classes take
+  the prefix: `Ledger9TxFailedError`, `Ledger9CallTxFailedError`, `Ledger9DeployTxFailedError`,
+  `Ledger9InsertVerifierKeyTxFailedError`, `Ledger9RemoveVerifierKeyTxFailedError`,
+  `Ledger9ReplaceMaintenanceAuthorityTxFailedError`. The ledger 8 classes stay in the `Ledger8`
+  namespace.
+- `AnyContract`, after the `Any` convention and compact-js's `Contract.Any`, rather than `Contract`,
+  which a dApp also imports as a namespace from compact-js. Structurally it is `Contract.Any`: the
+  compact-js interface accepts a ledger 8 artifact too, and the flat aliases tell the eras apart by
+  testing `Ledger8Contract` first. The name is ours because an era-neutral name must not come from a
+  `/v9/` import path.
+- `FoundDeployTxPublicData` keeps its pair `Ledger8FoundDeployTxPublicData` |
+  `Ledger9FinalizedDeployTxPublicData`. The two shapes differ: the ledger 8 record is read from chain
+  and carries no `initialContractState`, so `Found` names it correctly.
+
+Not yet under the rule: `CallResult`, `CallOptions`, `UnsubmittedDeployTxData`, `DeployTxOptions`,
+`SubmitTxProviders`, `AnyProvableCircuitId` and `AnyPrivateState` have no prefix but serve ledger 9
+only. They are lower-level types outside this change.
+
+The renames are listed in section 24 of `docs/releases/v5.0.0/breaking-changes.md`.

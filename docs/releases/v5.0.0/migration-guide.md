@@ -333,8 +333,10 @@ After:
 ```ts
 import { contracts, type protocol, types } from '@midnight-ntwrk/midnight-js';
 
-type AnyContract = protocol.Contract.Any;
-declare const callTx: contracts.UnsubmittedCallTxData<AnyContract, protocol.Contract.ProvableCircuitId<AnyContract>>;
+declare const callTx: contracts.UnsubmittedCallTxData<
+  contracts.Ledger9Contract,
+  protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+>;
 declare const proofProvider: types.ProofProvider;
 declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;
 
@@ -652,7 +654,7 @@ The retained era's types are flat `Ledger8*` names in `midnight-js-contracts`:
 `Ledger8FinalizedCallTxData` is the result type below, `Ledger8Contract` the
 constraint for a helper of your own. Its error classes are under the `Ledger8`
 namespace: `Ledger8.CallTxFailedError` is the failure class. The half that serves
-BOTH eras -- `AnyEraFinalizedCallTxData`, `isLedger8Result`, `AnyEraTxFailedError`
+BOTH eras -- `AnyFinalizedCallTxData`, `isLedger8Result`, `TxFailedError`
 -- carries no era prefix, so a handler that only receives results imports nothing
 era-specific. The fork-window refusals (`ForkCrossedDuringOperationError` and the
 rest of that group) are published flat and are removed in a separate step.
@@ -671,8 +673,8 @@ either era.
 - **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
   `LedgerVersion`, the same values as `public.era`), read off the compiled
   artifact. Narrow with `isLedger8Result(result)`, and
-  declare a parameter that accepts both with `AnyEraFinalizedCallTxData` or
-  `AnyEraSubmittedCallTx`.
+  declare a parameter that accepts both with `AnyFinalizedCallTxData` or
+  `AnySubmittedCallTx`.
 - **`era` is not `public.era`.** `era` names the pipeline that produced the
   objects; `public.era` names the ledger that recorded the transaction.
   After the fork they disagree for every retained-era call: `era: 'v8'`
@@ -763,20 +765,20 @@ directly for these circuits.
 ### Catching a failure in either era
 
 A call the chain recorded with a non-success status throws by class, and the
-class differs per era: `CallTxFailedError` on the current era,
-`Ledger8.CallTxFailedError` on the retained one. The retained class is NOT a
-`CallTxFailedError` — it cannot be, because that class carries a v9-only
+class differs per era: `Ledger9CallTxFailedError` on ledger 9,
+`Ledger8.CallTxFailedError` on ledger 8. The ledger 8 class is NOT a
+`Ledger9CallTxFailedError` — it cannot be, because that class carries a v9-only
 record.
 
-Catch `AnyEraTxFailedError` to get both, and read the record through `.record`,
-which is era-tagged. Each class also keeps its own historical member
-(`finalizedTxData`, `txData`), so existing code does not change.
+Catch `TxFailedError` to get both, and read the record through `.record`,
+which is era-tagged. `Ledger9TxFailedError` also has `finalizedTxData` and the
+ledger 8 classes have `txData`; Step 23 lists the renamed classes.
 
 ```typescript
 try {
   await submitCallTx(providers, options);
 } catch (error) {
-  if (error instanceof AnyEraTxFailedError) {
+  if (error instanceof TxFailedError) {
     // Narrow before reading `tx`: the handle belongs to the era the tag names.
     console.error(error.record.status, error.record.era);
   }
@@ -1227,13 +1229,13 @@ Generic code names the era:
 
 ```ts
 // Before
-const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: FinalizedCallTxData<C, K>
+const check = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: FinalizedCallTxData<C, PCK>
 ) => data.public;
 
 // After
-const check = <C extends Contract.Any, K extends Contract.ProvableCircuitId<C>>(
-  data: Ledger9FinalizedCallTxData<C, K>
+const check = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
 ) => data.public;
 ```
 
@@ -1253,7 +1255,7 @@ Rename the types that have no contract parameter: `FinalizedTxData` →
 `Ledger9CircuitMaintenanceTxInterface`, `ContractMaintenanceTxInterface` →
 `Ledger9ContractMaintenanceTxInterface`. Import `Transaction` from
 `@midnight-ntwrk/midnight-js-protocol/v9` instead of `types`. A third type argument to
-`ContractProviders` moves to `Ledger9ContractProviders<C, K, PS>`.
+`ContractProviders` moves to `Ledger9ContractProviders<C, PCK, PS>`.
 
 See [breaking-changes.md](./breaking-changes.md#22-ledger-9-types-carry-the-ledger9-prefix-flat-names-pick-the-era-1536).
 
@@ -1278,6 +1280,64 @@ A package that emits declarations can now export a value inferred from a ledger 
 call without an explicit type annotation.
 
 See [breaking-changes.md](./breaking-changes.md#23-ledger-8-types-are-flat-ledger8-names-1561).
+
+## Step 23 — Name the ledger 9 failure classes, and drop the `AnyEra` prefix
+
+A name without a ledger prefix is valid for every era (#1566). `TxFailedError` is now the
+base both eras' failure classes extend; the ledger 9 classes carry the `Ledger9` prefix.
+
+```ts
+// Before (4.x)
+import { CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+if (error instanceof CallTxFailedError) log(error.finalizedTxData.txId);
+if (error instanceof TxFailedError) report(error.finalizedTxData.status);
+
+// After
+import { Ledger9CallTxFailedError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+if (error instanceof Ledger9CallTxFailedError) log(error.finalizedTxData.txId);
+if (error instanceof TxFailedError) report(error.record.status); // both ledgers
+```
+
+Rename `TxFailedError`, `CallTxFailedError`, `DeployTxFailedError`,
+`InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` and
+`ReplaceMaintenanceAuthorityTxFailedError` to their `Ledger9*` names where you mean
+ledger 9 only. Keep `TxFailedError` where you mean both ledgers. A `TxFailedError` that
+reads `.finalizedTxData` stops compiling: read `.record` (era-tagged) or narrow to
+`Ledger9TxFailedError`. If you compare `error.name` strings, update them too: nothing
+warns you about these.
+
+> **Never retry on `TxFailedError`.** The chain recorded the transaction, so a retry
+> sends a second one. The base now also catches `Ledger8.DeployTxFailedError` and
+> `Ledger8.ReplaceMaintenanceAuthorityTxFailedError`. A ledger 8 deploy that failed in
+> the fallible phase may still have created the contract, and the error's `signingKey`
+> can be the only copy of its maintenance key. Keep that key; do not deploy again.
+
+`ContractProviders` needs its contract. In 4.x a bare `ContractProviders` meant the
+providers of any contract; write `ContractProviders<typeof MyContract>` or
+`Ledger9ContractProviders`.
+
+From a 5.0.0 pre-release, rename in this order, so that the two failure classes do not
+merge into one name: first `TxFailedError` → `Ledger9TxFailedError` (check that each use
+meant ledger 9 only), then `AnyEraTxFailedError` → `TxFailedError`. Then rename the
+`AnyEra*` types:
+
+```ts
+// Before (5.0.0 pre-release)
+const onResult = (result: AnyEraFinalizedCallTxData) => ...;
+const onFound = (found: AnyEraFoundContract<MyContract, MyLedger8Contract>) => ...;
+
+// After
+const onResult = (result: AnyFinalizedCallTxData) => ...;
+const onFound = (found: FoundContract<MyContract | MyLedger8Contract>) => ...;
+```
+
+`AnyEraContract` → `AnyContract`, `AnyEraSubmittedCallTx` → `AnySubmittedCallTx`,
+`AnyEraDeployedContract<C, L8>` → `DeployedContract<C | L8>`, `AnyEraMaintenanceTxData` →
+`FinalizedMaintenanceTxData`. In `5.0.0-rc.5`, `FinalizedMaintenanceTxData` was the
+ledger 9 type; it is now the union, so narrow it on `era` or write
+`Ledger9FinalizedMaintenanceTxData`.
+
+See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
 
 ## Verification checklist
 
@@ -1308,3 +1368,5 @@ See [breaking-changes.md](./breaking-changes.md#23-ledger-8-types-are-flat-ledge
 - [ ] Every contract-state read and `getPublicStates` / `getStates` result is decoded with `deserialize`, passing the `ContractState` of the runtime your contract was compiled against.
 - [ ] No code calls `queryRawContractState`, `rawContractStateObservable` or `getAnyEraContractState`.
 - [ ] No import of `@midnight-ntwrk/midnight-js-protocol/ledger`, `/compact-runtime`, `/compact-js*` or `/onchain-runtime`, and no use of the root `ledger`, `compactRuntime`, `compactJs` or `onchainRuntime` namespaces.
+- [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
+- [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.

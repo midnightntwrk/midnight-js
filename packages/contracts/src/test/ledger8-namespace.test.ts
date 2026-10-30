@@ -48,7 +48,7 @@ import {
 // Imported from the package BARREL, because the barrel is what this suite is about: the retained
 // era reaches a consumer through ONE name, and everything it publishes is reachable under it.
 import * as barrel from '../index';
-import { AnyEraTxFailedError, Ledger8 } from '../index';
+import { Ledger8, TxFailedError } from '../index';
 
 /**
  * Every runtime member the retained-era namespace publishes.
@@ -85,8 +85,8 @@ const LEDGER8_MEMBERS = [
  * transitional one.
  */
 const ERA_NEUTRAL_MEMBERS = [
-  'AnyEraTxFailedError',
   'isLedger8Result',
+  'TxFailedError',
   'UnknownResultEraError'
 ];
 
@@ -177,14 +177,14 @@ describe('the retained era is published as one namespace', () => {
   });
 
   it('keeps the retained failure class under the era-neutral base a consumer catches', () => {
-    // A handler written as `catch (e) { if (e instanceof AnyEraTxFailedError) }` must keep catching
+    // A handler written as `catch (e) { if (e instanceof TxFailedError) }` must keep catching
     // the retained-era failure. Asserted on the class rather than an instance: the constructor
     // takes a finalized record, and what is at stake here is the hierarchy, not a message.
     //
     // `prototype instanceof` rather than the DIRECT prototype: what a consumer relies on is that
-    // the base catches it, at any depth. `TxFailedError extends AnyEraTxFailedError` shows an
+    // the base catches it, at any depth. `Ledger9TxFailedError extends TxFailedError` shows an
     // intermediate base is an established shape here, and inserting one must not fail this test.
-    expect(Ledger8.CallTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
-    expect(Ledger8.DeployTxFailedError.prototype instanceof AnyEraTxFailedError).toBe(true);
+    expect(Ledger8.CallTxFailedError.prototype instanceof TxFailedError).toBe(true);
+    expect(Ledger8.DeployTxFailedError.prototype instanceof TxFailedError).toBe(true);
   });
 });

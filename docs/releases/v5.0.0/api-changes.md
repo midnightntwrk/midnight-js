@@ -399,7 +399,7 @@ export interface Ledger9FinalizedMaintenanceTxData {
   readonly era: 'v9';
   readonly public: Ledger9FinalizedTxData;
 }
-export type AnyEraMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
 
 export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
@@ -409,7 +409,7 @@ export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
   newVk: VerifierKey
 ): Promise<Ledger8FinalizedMaintenanceTxData>;
 export function submitInsertVerifierKeyTx<C extends Contract.Any>(
-  providers: ContractProviders,
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>,
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>,
@@ -462,6 +462,37 @@ import { type Ledger8FoundContract, Ledger8 } from '@midnight-ntwrk/midnight-js-
 type T = Ledger8FoundContract<C>;
 error instanceof Ledger8.CallTxFailedError;
 ```
+
+### Types for both eras carry no prefix (#1566)
+
+```ts
+// A name without a ledger prefix is valid for every era
+export type AnyContract = Ledger8Contract | Ledger9Contract;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+// A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
+export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+// `ContractProviders` requires its contract: `ContractProviders<C, PCK?>`
+
+// The base of every recorded-failure class, in both eras
+export abstract class TxFailedError extends MidnightJsError {
+  readonly code: 'MIDNIGHT_JS_C_TX_FAILED';
+  abstract readonly record: FinalizedTxRead;
+}
+export class Ledger9TxFailedError extends TxFailedError {
+  readonly finalizedTxData: Ledger9FinalizedTxData;
+  readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[];
+}
+export class Ledger9CallTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9DeployTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9InsertVerifierKeyTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9RemoveVerifierKeyTxFailedError extends Ledger9TxFailedError {}
+export class Ledger9ReplaceMaintenanceAuthorityTxFailedError extends Ledger9TxFailedError {}
+```
+
+Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
+`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`,
+`AnyEraTxFailedError`. See breaking-changes.md section 24.
 
 ---
 

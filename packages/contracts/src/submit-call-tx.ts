@@ -20,7 +20,7 @@ import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-nt
 
 import { type CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
-import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import { IncompleteCallTxPrivateStateConfig,Ledger9CallTxFailedError } from './errors';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
@@ -79,10 +79,10 @@ export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.P
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
-export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
-  providers: Ledger8ContractProviders<C, K>,
-  options: Ledger8CallTxOptions<C, K>
-): Promise<Ledger8FinalizedCallTxData<C, K>>;
+export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8FinalizedCallTxData<C, PCK>>;
 
 /**
  * Calls a circuit on a contract that declares no private state.
@@ -132,13 +132,13 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `CallTxFailedError` is thrown with transaction data and circuit ID
+ * - `Ledger9CallTxFailedError` is thrown with transaction data and circuit ID
  * - Private state updates are NOT stored (state remains unchanged)
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `CallTxFailedError` is thrown with transaction data and circuit ID
+ * - `Ledger9CallTxFailedError` is thrown with transaction data and circuit ID
  * - Private state updates are NOT stored (state remains unchanged)
  * - Transaction appears in blockchain history as partial success
  *
@@ -150,7 +150,7 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  * @returns A `Promise` that resolves with the finalized transaction data for the invocation of
  *         `circuitId` on `contract` with the given `args`; or rejects with an error if the invocation fails.
  *
- * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ * @throws {Ledger9CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  * @throws {EraArtifactMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
@@ -241,10 +241,10 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  *
  * @see {@link OverloadTyping} for how the two eras are discriminated.
  */
-export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
-  providers: Ledger8ContractProviders<C, K>,
-  options: Ledger8CallTxOptions<C, K>
-): Promise<Ledger8SubmittedCallTx<C, K>>;
+export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8SubmittedCallTx<C, PCK>>;
 
 /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
@@ -314,7 +314,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
  *
  * // 4. Check status
  * if (record.status !== SucceedEntirely) {
- *   throw new CallTxFailedError(record, options.circuitId);
+ *   throw new Ledger9CallTxFailedError(record, options.circuitId);
  * }
  *
  * // 5. Update private state manually if needed

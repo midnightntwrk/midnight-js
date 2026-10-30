@@ -63,14 +63,14 @@ const cases: readonly Case[] = [
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
   ['UnknownResultEraError', new errors.UnknownResultEraError('v7'), CONTRACTS_ERROR_CODES.UNKNOWN_RESULT_ERA, 'USAGE'],
-  ['TxFailedError', new errors.TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['DeployTxFailedError', new errors.DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['CallTxFailedError', new errors.CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9TxFailedError', new errors.Ledger9TxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9DeployTxFailedError', new errors.Ledger9DeployTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9CallTxFailedError', new errors.Ledger9CallTxFailedError(finalizedTxData, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['Ledger8CallTxFailedError', new errors.Ledger8CallTxFailedError(ledger8Record, 'increment'), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['Ledger8DeployTxFailedError', new errors.Ledger8DeployTxFailedError(ledger8Record, ADDRESS, SIGNING_KEY), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['ReplaceMaintenanceAuthorityTxFailedError', new governance.ReplaceMaintenanceAuthorityTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['RemoveVerifierKeyTxFailedError', new governance.RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['InsertVerifierKeyTxFailedError', new governance.InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9ReplaceMaintenanceAuthorityTxFailedError', new governance.Ledger9ReplaceMaintenanceAuthorityTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9RemoveVerifierKeyTxFailedError', new governance.Ledger9RemoveVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
+  ['Ledger9InsertVerifierKeyTxFailedError', new governance.Ledger9InsertVerifierKeyTxFailedError(finalizedTxData), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
   ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
   ['ScopedTransactionEraUnsupportedError', new errors.ScopedTransactionEraUnsupportedError('v8'), CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED, 'USAGE'],
   ['MixedEraScopeError', new errors.MixedEraScopeError('increment'), CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE, 'USAGE'],
@@ -110,7 +110,7 @@ describe('contracts error classes', () => {
 
   it('the table below covers every concrete error class', () => {
     const covered = new Set(cases.map(([name]) => name));
-    const concrete = errorClasses.map((c) => c.name).filter((name) => name !== 'AnyEraTxFailedError');
+    const concrete = errorClasses.map((c) => c.name).filter((name) => name !== 'TxFailedError');
 
     expect(concrete.filter((name) => !covered.has(name))).toEqual([]);
   });

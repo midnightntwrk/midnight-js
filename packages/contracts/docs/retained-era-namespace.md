@@ -54,7 +54,7 @@ A type reachable only through a namespace re-export fails with TS4023
 
 The types are not optional decoration either. Inference alone does not let a
 caller NAME a type: a consumer can make a retained-era call and still not write
-`function handle(r: Ledger8FinalizedCallTxData<C, K>)` or constrain a helper of
+`function handle(r: Ledger8FinalizedCallTxData<C, PCK>)` or constrain a helper of
 its own by `Ledger8Contract`. Two things look like substitutes and are not:
 
 - **A name in the emitted `.d.ts` is not an export.** This package publishes
@@ -91,10 +91,11 @@ A name belongs to the retained era's family when BOTH hold:
 A name that serves BOTH eras has no era prefix, so a consumer that only RECEIVES
 results never imports the transitional half:
 
-- `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`, `AnyEraFoundContract`,
-  `AnyEraDeployedContract`, `AnyEraMaintenanceTxData` and `isLedger8Result` -- the
-  unions a shared handler declares, and the guard that narrows them.
-- `AnyEraTxFailedError` -- the base both eras' failure classes extend.
+- `AnyFinalizedCallTxData`, `AnySubmittedCallTx`, `FinalizedMaintenanceTxData`,
+  `FoundContract<C | L8>` and `DeployedContract<C | L8>`, and
+  `isLedger8Result` -- the unions a shared handler declares, and the guard that
+  narrows them.
+- `TxFailedError` -- the base both eras' failure classes extend.
   `Ledger8.CallTxFailedError` still extends it, so a handler written against the
   base keeps catching the retained era without naming it.
 - `UnknownResultEraError` -- raised for a result tagged with neither era,

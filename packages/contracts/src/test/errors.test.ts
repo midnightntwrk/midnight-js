@@ -28,8 +28,6 @@ import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js
 import { describe, expect, it } from 'vitest';
 
 import {
-  AnyEraTxFailedError,
-  CallTxFailedError,
   EraInvariantViolationError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
@@ -39,8 +37,18 @@ import {
   Ledger8DeployUnconfirmedError,
   Ledger8RecipientUnmappableError,
   Ledger8SigningKeyUnusableError,
-  TxFailedError
-} from '../errors';
+  Ledger9CallTxFailedError,
+  Ledger9DeployTxFailedError,
+  Ledger9TxFailedError,
+  TxFailedError} from '../errors';
+import {
+  Ledger8InsertVerifierKeyTxFailedError,
+  Ledger8RemoveVerifierKeyTxFailedError,
+  Ledger8ReplaceMaintenanceAuthorityTxFailedError,
+  Ledger9InsertVerifierKeyTxFailedError,
+  Ledger9RemoveVerifierKeyTxFailedError,
+  Ledger9ReplaceMaintenanceAuthorityTxFailedError
+} from '../governance/errors';
 import { createMockFinalizedTxData } from './test-mocks';
 
 // The v8 variant of the record union. Its `tx` is a live `Ledger8FinalizedTransaction` handle
@@ -53,7 +61,7 @@ const ledger8FailedRecord = (status: TxStatus = FailFallible): Ledger8FinalizedT
   tx: undefined as unknown as Ledger8FinalizedTxData['tx']
 });
 
-describe('TxFailedError', () => {
+describe('Ledger9TxFailedError', () => {
   it('should serialize segmentStatusMap in error message', () => {
     const segmentStatusMap = new Map([
       [0, SegmentSuccess],
@@ -64,7 +72,7 @@ describe('TxFailedError', () => {
       segmentStatusMap
     };
 
-    const error = new TxFailedError(finalizedTxData);
+    const error = new Ledger9TxFailedError(finalizedTxData);
 
     const parsed = JSON.parse(error.message);
     expect(parsed.segmentStatusMap).toBeDefined();
@@ -75,7 +83,7 @@ describe('TxFailedError', () => {
   it('should handle undefined segmentStatusMap', () => {
     const finalizedTxData = createMockFinalizedTxData(FailFallible);
 
-    const error = new TxFailedError(finalizedTxData);
+    const error = new Ledger9TxFailedError(finalizedTxData);
 
     expect(() => JSON.parse(error.message)).not.toThrow();
   });
@@ -86,7 +94,7 @@ describe('TxFailedError', () => {
       segmentStatusMap: new Map()
     };
 
-    const error = new TxFailedError(finalizedTxData);
+    const error = new Ledger9TxFailedError(finalizedTxData);
 
     const parsed = JSON.parse(error.message);
     expect(parsed.segmentStatusMap).toEqual({});
@@ -94,29 +102,29 @@ describe('TxFailedError', () => {
 });
 
 describe('the era-agnostic failure base', () => {
-  // Before this base existed a caller had to know that the current era throws
-  // `CallTxFailedError extends TxFailedError` carrying `finalizedTxData` and
-  // the retained era throws `Ledger8CallTxFailedError extends Error` carrying
-  // `txData`. So `instanceof CallTxFailedError` missed every retained-era
+  // Before this base existed a caller had to know that ledger 9 throws
+  // `CallTxFailedError extends TxFailedError` (now `Ledger9CallTxFailedError`) carrying
+  // `finalizedTxData` and ledger 8 throws `Ledger8CallTxFailedError extends Error` carrying
+  // `txData`. So `instanceof CallTxFailedError` missed every ledger 8
   // failure -- silently, which is the part that matters -- and a caller that
   // caught both still read the record through two different member names.
 
   it('catches a failure from EITHER era with one instanceof', () => {
-    const currentEra = new CallTxFailedError(createMockFinalizedTxData(FailFallible), 'testCircuit');
+    const currentEra = new Ledger9CallTxFailedError(createMockFinalizedTxData(FailFallible), 'testCircuit');
     const retainedEra = new Ledger8CallTxFailedError(createMockFinalizedTxData(FailFallible), 'increment');
 
-    expect(currentEra).toBeInstanceOf(AnyEraTxFailedError);
-    expect(retainedEra).toBeInstanceOf(AnyEraTxFailedError);
-    // And the pre-existing hierarchy is untouched: the retained-era class is
-    // still NOT a `CallTxFailedError`, because it cannot carry that class's
-    // v9-only record. The base is what the two now share, not that one.
-    expect(retainedEra).not.toBeInstanceOf(CallTxFailedError);
     expect(currentEra).toBeInstanceOf(TxFailedError);
+    expect(retainedEra).toBeInstanceOf(TxFailedError);
+    // And the pre-existing hierarchy is untouched: the retained-era class is
+    // still NOT a `Ledger9CallTxFailedError`, because it cannot carry that class's
+    // v9-only record. The base is what the two now share, not that one.
+    expect(retainedEra).not.toBeInstanceOf(Ledger9CallTxFailedError);
+    expect(currentEra).toBeInstanceOf(Ledger9TxFailedError);
   });
 
   it('reads the record through ONE member in either era, without dropping the old names', () => {
     const record = createMockFinalizedTxData(FailFallible);
-    const currentEra = new CallTxFailedError(record, 'testCircuit');
+    const currentEra = new Ledger9CallTxFailedError(record, 'testCircuit');
     const retainedEra = new Ledger8CallTxFailedError(record, 'increment');
 
     // The era-agnostic read path...
@@ -138,7 +146,7 @@ describe('the era-agnostic failure base', () => {
   });
 });
 
-describe('CallTxFailedError', () => {
+describe('Ledger9CallTxFailedError', () => {
   it('should include circuitId and serialized segmentStatusMap', () => {
     const circuitId = 'testCircuit' as AnyProvableCircuitId;
     const segmentStatusMap = new Map([
@@ -150,7 +158,7 @@ describe('CallTxFailedError', () => {
       segmentStatusMap
     };
 
-    const error = new CallTxFailedError(finalizedTxData, circuitId);
+    const error = new Ledger9CallTxFailedError(finalizedTxData, circuitId);
 
     const parsed = JSON.parse(error.message);
     expect(parsed.circuitId).toBe(circuitId);
@@ -224,7 +232,7 @@ describe('Ledger8DeployTxFailedError', () => {
 
     const error = new Ledger8DeployTxFailedError(record, ADDRESS, SIGNING_KEY);
 
-    expect(error).toBeInstanceOf(AnyEraTxFailedError);
+    expect(error).toBeInstanceOf(TxFailedError);
     expect(error.record).toBe(record);
     expect(error.txData).toBe(record);
     expect(error.contractAddress).toBe(ADDRESS);
@@ -322,9 +330,9 @@ describe('the recorded-failure code', () => {
   it('is carried by both eras and by the subclasses that extend them', () => {
     const record = createMockFinalizedTxData(FailFallible);
 
-    const errors: AnyEraTxFailedError[] = [
-      new TxFailedError(record),
-      new CallTxFailedError(record, 'increment'),
+    const errors: TxFailedError[] = [
+      new Ledger9TxFailedError(record),
+      new Ledger9CallTxFailedError(record, 'increment'),
       new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')
     ];
 
@@ -333,6 +341,42 @@ describe('the recorded-failure code', () => {
       CONTRACTS_ERROR_CODES.TX_FAILED,
       CONTRACTS_ERROR_CODES.TX_FAILED
     ]);
+  });
+});
+
+describe('the recorded-failure classes', () => {
+  const ADDRESS = '0200'.repeat(8);
+  const SIGNING_KEY: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
+  const record = createMockFinalizedTxData(FailFallible);
+
+  const ledger9: readonly (readonly [string, TxFailedError])[] = [
+    ['Ledger9TxFailedError', new Ledger9TxFailedError(record)],
+    ['Ledger9CallTxFailedError', new Ledger9CallTxFailedError(record, 'increment')],
+    ['Ledger9DeployTxFailedError', new Ledger9DeployTxFailedError(record)],
+    ['Ledger9InsertVerifierKeyTxFailedError', new Ledger9InsertVerifierKeyTxFailedError(record)],
+    ['Ledger9RemoveVerifierKeyTxFailedError', new Ledger9RemoveVerifierKeyTxFailedError(record)],
+    ['Ledger9ReplaceMaintenanceAuthorityTxFailedError', new Ledger9ReplaceMaintenanceAuthorityTxFailedError(record)]
+  ];
+
+  const ledger8: readonly (readonly [string, TxFailedError])[] = [
+    ['Ledger8CallTxFailedError', new Ledger8CallTxFailedError(ledger8FailedRecord(), 'increment')],
+    ['Ledger8DeployTxFailedError', new Ledger8DeployTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY)],
+    ['Ledger8InsertVerifierKeyTxFailedError', new Ledger8InsertVerifierKeyTxFailedError(ledger8FailedRecord(), ADDRESS, 'increment')],
+    ['Ledger8RemoveVerifierKeyTxFailedError', new Ledger8RemoveVerifierKeyTxFailedError(ledger8FailedRecord(), ADDRESS, 'increment')],
+    ['Ledger8ReplaceMaintenanceAuthorityTxFailedError', new Ledger8ReplaceMaintenanceAuthorityTxFailedError(ledger8FailedRecord(), ADDRESS, SIGNING_KEY)]
+  ];
+
+  it.each([...ledger9, ...ledger8])('%s carries its own class name and is caught by the base', (name, error) => {
+    expect(error.name).toBe(name);
+    expect(error).toBeInstanceOf(TxFailedError);
+  });
+
+  it.each(ledger9)('%s is a ledger 9 failure', (_name, error) => {
+    expect(error).toBeInstanceOf(Ledger9TxFailedError);
+  });
+
+  it.each(ledger8)('%s is never a ledger 9 failure', (_name, error) => {
+    expect(error).not.toBeInstanceOf(Ledger9TxFailedError);
   });
 });
 

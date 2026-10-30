@@ -239,7 +239,7 @@ export async function deployContract<C extends Contract.Any>(
  * @param providers The providers used to manage the transaction lifecycle.
  * @param options Configuration.
  *
- * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
+ * @throws Ledger9DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node. Current-era overloads only; the retained-era one
  *                             raises `Ledger8DeployTxFailedError`, which carries a version-tagged
  *                             record and the signing key, instead.
