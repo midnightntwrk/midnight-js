@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",
-    "@midnightntwrk/ledger-v8": "8.1.2",
+    "@midnightntwrk/ledger-v8": "8.1.3",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
     "@types/ws": "^8.18.2",
     "@vitest/runner": "^4.1.11",
