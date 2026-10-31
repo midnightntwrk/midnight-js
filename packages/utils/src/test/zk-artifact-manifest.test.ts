@@ -111,10 +111,57 @@ describe('parseZkArtifactManifest', () => {
     ).not.toThrow();
   });
 
-  // Note: a *duplicate flattened key* cannot arise from valid JSON (object keys are unique and each key is
-  // prefixed by its top-level directory name, so sections cannot collide). The `files.has(key)` guard in the
-  // parser is therefore defensive-only and is intentionally not exercised by a unit test — there is no valid
-  // input that reaches it, and a contrived prototype-pollution input is out of scope.
+  // A *duplicate flattened key* cannot arise from a parsed object (keys are unique once parsed and
+  // each key is prefixed by its top-level directory name), so the `files.has(key)` guard stays
+  // defensive-only. A duplicate in the RAW text is a different matter: `JSON.parse` collapses it to
+  // the last occurrence before any check runs, so raw duplicates are rejected up front instead.
+  describe('duplicate keys in the raw JSON text', () => {
+    const fileEntry = (hash: string): string => `{"type":"file","size":3,"hash":"${hash}"}`;
+
+    it('throws on a duplicated file entry instead of keeping the last hash', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"c.verifier":${fileEntry(BYTES_SHA256)},"c.verifier":${fileEntry(OTHER_HASH)}}}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(ZkArtifactIntegrityError);
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "c\.verifier"/);
+    });
+
+    it('throws on a duplicated directory entry', () => {
+      const raw =
+        `{"manifest-version":"1",` +
+        `"keys":{"type":"directory","a.prover":${fileEntry(BYTES_SHA256)}},` +
+        `"keys":{"type":"directory","b.prover":${fileEntry(OTHER_HASH)}}}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "keys"/);
+    });
+
+    it('throws on a duplicated metadata key instead of returning the last value', () => {
+      const raw =
+        `{"manifest-version":"1","runtime-version":"0.15.0",` +
+        `"keys":{"type":"directory"},"runtime-version":"9.9.9"}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "runtime-version"/);
+    });
+
+    it('throws on a duplicate spelled with a JSON string escape', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"clear.verifier":${fileEntry(BYTES_SHA256)},"cle\\u0061r.verifier":${fileEntry(OTHER_HASH)}}}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "clear\.verifier"/);
+    });
+
+    it('accepts the same file name in two different directories', () => {
+      const manifest = parseZkArtifactManifest(manifestJson(BYTES_SHA256));
+      expect(manifest.files.has('keys/increment.prover')).toBe(true);
+      expect(manifest.files.has('zkir/increment.bzkir')).toBe(true);
+    });
+
+    it('does not mistake repeated strings in an array or braces in a string value for keys', () => {
+      const raw =
+        `{"manifest-version":"1","note":"{\\"keys\\": {\\"keys\\": 1}}",` +
+        `"tags":["keys","keys"],"keys":{"type":"directory","a.prover":${fileEntry(BYTES_SHA256)}}}`;
+      const manifest = parseZkArtifactManifest(raw);
+      expect(manifest.files.get('keys/a.prover')?.hash).toBe(BYTES_SHA256);
+    });
+  });
 });
 
 describe('computeSha256Hex', () => {
