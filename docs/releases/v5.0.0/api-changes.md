@@ -9,15 +9,12 @@ interface PublicDataProvider {
   // ... existing methods ...
 
   /** Finite, paged, point-in-time read of contract events. */
-  queryContractEvents(
-    filter: ContractEventQueryFilter,
-    page?: ContractEventsPage,
-  ): Promise<ContractEvent[]>;
+  queryContractEvents(filter: ContractEventQueryFilter, page?: ContractEventsPage): Promise<ContractEvent[]>;
 
   /** Replay from a start cursor, then live tail. Terminable via filter.toBlock. */
   contractEventsObservable(
     filter: ContractEventSubscriptionFilter,
-    opts?: { startAt?: ContractEventCursor },
+    opts?: { startAt?: ContractEventCursor }
   ): Observable<ContractEvent>;
 
   /** "As-of" block lookup. No argument → latest block. Returns null if none matches. */
@@ -25,7 +22,7 @@ interface PublicDataProvider {
 }
 
 export type BlockInfo = {
-  readonly hash: string;            // hex-encoded block hash
+  readonly hash: string; // hex-encoded block hash
   readonly height: number;
   readonly protocolVersion: number; // dates the block to a ledger era
 };
@@ -39,9 +36,17 @@ Resolve `protocolVersion` with `versionOfRecord(block)` from `@midnight-ntwrk/mi
 
 ```ts
 export type ContractEventType =
-  | 'ShieldedSpend' | 'ShieldedReceive' | 'ShieldedMint' | 'ShieldedBurn'
-  | 'UnshieldedSpend' | 'UnshieldedReceive' | 'UnshieldedMint' | 'UnshieldedBurn'
-  | 'Paused' | 'Unpaused' | 'Misc'; // 11 variants
+  | 'ShieldedSpend'
+  | 'ShieldedReceive'
+  | 'ShieldedMint'
+  | 'ShieldedBurn'
+  | 'UnshieldedSpend'
+  | 'UnshieldedReceive'
+  | 'UnshieldedMint'
+  | 'UnshieldedBurn'
+  | 'Paused'
+  | 'Unpaused'
+  | 'Misc'; // 11 variants
 
 export interface ContractEventAddress {
   readonly kind: 'user' | 'contract';
@@ -49,37 +54,69 @@ export interface ContractEventAddress {
 }
 
 export interface ContractEventBase {
-  readonly id: number;              // monotonic indexer cursor; inclusive resumption point
-  readonly maxId: number;           // highest event id known (events tip)
-  readonly payloadVersion: number;  // payload schema version, not a ledger era (renamed from `version` in #1508)
+  readonly id: number; // monotonic indexer cursor; inclusive resumption point
+  readonly maxId: number; // highest event id known (events tip)
+  readonly payloadVersion: number; // payload schema version, not a ledger era (renamed from `version` in #1508)
   readonly contractAddress: ContractAddress;
-  readonly transactionId: number;   // indexer row id — NOT the chain tx hash
-  readonly raw: string;             // opaque hex VersionedLogItem, verbatim
+  readonly transactionId: number; // indexer row id — NOT the chain tx hash
+  readonly raw: string; // opaque hex VersionedLogItem, verbatim
 }
 
 export type ContractEvent =
   | (ContractEventBase & { readonly eventType: 'ShieldedSpend'; readonly nullifier: string })
-  | (ContractEventBase & { readonly eventType: 'ShieldedReceive'; readonly commitment: string; readonly ciphertext?: string; readonly receivingContractAddress?: string })
-  | (ContractEventBase & { readonly eventType: 'ShieldedMint'; readonly commitment: string; readonly domainSep: string; readonly amount?: string })
+  | (ContractEventBase & {
+      readonly eventType: 'ShieldedReceive';
+      readonly commitment: string;
+      readonly ciphertext?: string;
+      readonly receivingContractAddress?: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'ShieldedMint';
+      readonly commitment: string;
+      readonly domainSep: string;
+      readonly amount?: string;
+    })
   | (ContractEventBase & { readonly eventType: 'ShieldedBurn'; readonly nullifier: string; readonly amount?: string })
-  | (ContractEventBase & { readonly eventType: 'UnshieldedSpend'; readonly sender: ContractEventAddress; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
-  | (ContractEventBase & { readonly eventType: 'UnshieldedReceive'; readonly recipient: ContractEventAddress; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
-  | (ContractEventBase & { readonly eventType: 'UnshieldedMint'; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
-  | (ContractEventBase & { readonly eventType: 'UnshieldedBurn'; readonly sender: ContractEventAddress; readonly tokenType: string; readonly amount: string })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedSpend';
+      readonly sender: ContractEventAddress;
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedReceive';
+      readonly recipient: ContractEventAddress;
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedMint';
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedBurn';
+      readonly sender: ContractEventAddress;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
   | (ContractEventBase & { readonly eventType: 'Paused' })
   | (ContractEventBase & { readonly eventType: 'Unpaused' })
   | (ContractEventBase & { readonly eventType: 'Misc'; readonly name: string; readonly payload: string });
 
 export interface ContractEventFilterBase {
   readonly contractAddress: ContractAddress;
-  readonly types?: ContractEventType[];               // omit = all; empty array is rejected
+  readonly types?: ContractEventType[]; // omit = all; empty array is rejected
   readonly fieldPrefixes?: ContractEventFieldPrefix[]; // non-Misc variants only
   readonly transactionHash?: string;
 }
 
 export interface ContractEventQueryFilter extends ContractEventFilterBase {
   readonly fromBlock?: number; // inclusive
-  readonly toBlock?: number;   // inclusive
+  readonly toBlock?: number; // inclusive
 }
 
 export interface ContractEventSubscriptionFilter extends ContractEventFilterBase {
@@ -87,7 +124,7 @@ export interface ContractEventSubscriptionFilter extends ContractEventFilterBase
 }
 
 export type ContractEventCursor =
-  | { readonly fromId: number }     // xor — inclusive event id
+  | { readonly fromId: number } // xor — inclusive event id
   | { readonly fromBlock: number };
 
 export interface ContractEventsPage {
@@ -572,19 +609,25 @@ Package barrel (`index.ts`) exports:
 ```ts
 // Structured configuration (preferred)
 export type IndexerProviderConfig = {
-  readonly queryURL: string;        // indexer HTTP/GraphQL endpoint
+  readonly queryURL: string; // indexer HTTP/GraphQL endpoint
   readonly subscriptionURL: string; // indexer WebSocket endpoint
   readonly webSocket?: typeof ws.WebSocket;
-  readonly pollInterval?: number;   // defaults to DEFAULT_POLL_INTERVAL
+  readonly pollInterval?: number; // defaults to DEFAULT_POLL_INTERVAL
 };
-export const DEFAULT_POLL_INTERVAL: number;            // 1000 (ms)
+export const DEFAULT_POLL_INTERVAL: number; // 1000 (ms)
 export const DEFAULT_CONTRACT_EVENTS_PAGE_SIZE: number; // 100
 
 // Concrete provider class + overloaded factory (both return IndexerPublicDataProvider)
-export class IndexerPublicDataProvider implements PublicDataProvider { dispose(): Promise<void>; /* ... */ }
+export class IndexerPublicDataProvider implements PublicDataProvider {
+  dispose(): Promise<void>; /* ... */
+}
 export function indexerPublicDataProvider(config: IndexerProviderConfig): IndexerPublicDataProvider;
 /** @deprecated positional form retained for backward compatibility */
-export function indexerPublicDataProvider(queryURL: string, subscriptionURL: string, webSocket?: typeof ws.WebSocket): IndexerPublicDataProvider;
+export function indexerPublicDataProvider(
+  queryURL: string,
+  subscriptionURL: string,
+  webSocket?: typeof ws.WebSocket
+): IndexerPublicDataProvider;
 
 // Event iterator helper + transaction guard
 export function getAllContractEvents(/* provider, filter */): AsyncIterable<ContractEvent>;
@@ -611,9 +654,9 @@ export class UnknownRecordEraError extends IndexerError {
 export class DecoderEraUnsupportedError extends IndexerError {
   readonly code: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED';
   readonly method: ReadMethod;
-  readonly era: LedgerVersion;      // an era the decoder table has no entry for
+  readonly era: LedgerVersion; // an era the decoder table has no entry for
   readonly protocolVersion: number; // the raw integer the indexer reported
-  readonly recordRef?: string;      // the txId or contractAddress being read
+  readonly recordRef?: string; // the txId or contractAddress being read
   // A guard on the era-keyed decoder table, which is total over the eras this
   // client ships runtimes for. A TypeScript caller cannot raise it; it exists
   // so an era string threaded in from untyped JavaScript fails here instead of
@@ -784,12 +827,9 @@ export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<s
 export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
 ```
 
-## `@midnight-ntwrk/midnight-js-network-id` (deprecated, #982)
+## `@midnight-ntwrk/midnight-js-network-id` (removed, #982, #1546)
 
-`setNetworkId`, `getNetworkId` and `NetworkId` are `@deprecated`. They still work,
-but the framework no longer reads the value. Use `MidnightProviders.config.networkId`
-and import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. The package is
-removed in 6.0.
+The package is removed in 5.0.0. Configure `MidnightProviders.config.networkId` and import `NetworkId` from `@midnight-ntwrk/midnight-js-types`.
 
 ## `@midnight-ntwrk/testkit-js`
 
@@ -797,4 +837,3 @@ removed in 6.0.
 
 `new NodeClient(url, logger, networkId)` — the third argument addresses contract
 state in `contractState()`, replacing the global network id.
-

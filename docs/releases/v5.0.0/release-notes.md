@@ -30,7 +30,7 @@ must be updated. `createLedger9WalletProvider` and `createLedger9MidnightProvide
 v9-only implementation, and the `create*FromHandlers` factories build one from
 a handler per era, so the handle never enters your code.
 
-The discriminant on a read record is *derived* from the record's own
+The discriminant on a read record is _derived_ from the record's own
 `protocolVersion`, never asserted, and that same answer picks the ledger runtime
 that decodes the record — so a v8-era record is served as the `'v8'` variant rather
 than refused, with the pre-fork runtime acquired lazily on first use. What fails
@@ -89,7 +89,7 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 
-`MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is deprecated and is removed in 6.0. `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
+`MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546). `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
 
 ### Protocol subpaths name their ledger (#1536)
 

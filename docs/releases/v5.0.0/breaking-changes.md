@@ -10,9 +10,9 @@ v5.0.0 is a protocol-level major release. The breaking surface concentrates in f
 
 `@midnight-ntwrk/midnight-js-protocol` re-exports new packages under a **new npm scope**:
 
-| Subpath | Before | After |
-|---------|--------|-------|
-| `@midnight-ntwrk/midnight-js-protocol/ledger` | `@midnight-ntwrk/ledger-v8@8.1.0` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| Subpath                                                | Before                                     | After                                          |
+| ------------------------------------------------------ | ------------------------------------------ | ---------------------------------------------- |
+| `@midnight-ntwrk/midnight-js-protocol/ledger`          | `@midnight-ntwrk/ledger-v8@8.1.0`          | `@midnightntwrk/ledger-v9@1.0.0-rc.3`          |
 | `@midnight-ntwrk/midnight-js-protocol/onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3@3.0.0` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
 
 Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, `compactc 0.33.0-rc.1`.
@@ -112,9 +112,9 @@ Opt down or pin explicitly through the constructor option bag (`ZkConfigIntegrit
 
 ```ts
 new NodeZkConfigProvider(baseDir, {
-  verify: 'require-if-present',    // 'require' (default) | 'require-if-present' | 'warn' | 'off'
+  verify: 'require-if-present', // 'require' (default) | 'require-if-present' | 'warn' | 'off'
   onWarn: (msg) => logger.warn(msg),
-  expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
+  expectedManifestHash: MANIFEST_SHA256 // pin to resist a coordinated artifact+manifest swap
 });
 ```
 
@@ -160,24 +160,24 @@ unnamed protocol subpaths separately.
 
 **Impact — you need both of these:**
 
-| Requirement | Why |
-|-------------|-----|
-| **Node >= 22.12** | Where `require(esm)` works unflagged, so a CommonJS consumer can still load these packages. `engines.node` is now `>=22.12`. |
-| **TypeScript >= 5.8** with a `module` setting that knows about `require(esm)` | Older module settings refuse the import at compile time even though the runtime call succeeds. |
+| Requirement                                                                   | Why                                                                                                                          |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Node >= 22.12**                                                             | Where `require(esm)` works unflagged, so a CommonJS consumer can still load these packages. `engines.node` is now `>=22.12`. |
+| **TypeScript >= 5.8** with a `module` setting that knows about `require(esm)` | Older module settings refuse the import at compile time even though the runtime call succeeds.                               |
 
 A CommonJS TypeScript consumer keeps working at runtime, but only some `module`
 settings **compile**. Verified against tsc 6.0.3 with a CommonJS consumer file
 importing `@midnight-ntwrk/midnight-js/utils` and
 `@midnight-ntwrk/midnight-js-protocol/ledger` (now `/v9`, see section 21):
 
-| `module` | `moduleResolution` | Result |
-|----------|--------------------|--------|
-| `node16` | `node16` | `TS1479` |
-| `node18` | (default) | `TS1479` |
-| `node20` | (default) | compiles |
-| `nodenext` | `nodenext` | compiles |
-| `preserve` | `bundler` | compiles |
-| `commonjs` | `node10` | `TS5107` (`node10` is no longer supported in TypeScript 6) |
+| `module`   | `moduleResolution` | Result                                                     |
+| ---------- | ------------------ | ---------------------------------------------------------- |
+| `node16`   | `node16`           | `TS1479`                                                   |
+| `node18`   | (default)          | `TS1479`                                                   |
+| `node20`   | (default)          | compiles                                                   |
+| `nodenext` | `nodenext`         | compiles                                                   |
+| `preserve` | `bundler`          | compiles                                                   |
+| `commonjs` | `node10`           | `TS5107` (`node10` is no longer supported in TypeScript 6) |
 
 `module: node20` was introduced in TypeScript 5.8 precisely to model Node's
 `require(esm)`, which is why it is the lowest CommonJS setting that works. The
@@ -514,7 +514,7 @@ Catch any of these by code with `hasErrorCode(error, CODE)` from
 
 `BlockInfo`, returned by `PublicDataProvider.queryBlock()`, now carries
 `readonly protocolVersion: number` — the protocol-version integer the block was
-produced under, which dates it to a ledger era. Any code that *constructs* a
+produced under, which dates it to a ledger era. Any code that _constructs_ a
 `BlockInfo` — test fixtures and custom `PublicDataProvider` implementations —
 must set it. Code that only reads a `BlockInfo` is unaffected.
 
@@ -537,7 +537,7 @@ now emit `PositionedRecord<T>` instead of the bare value:
 
 ```ts
 type PositionedRecord<T> = {
-  readonly value: T;           // what the stream emitted before
+  readonly value: T; // what the stream emitted before
   readonly blockHeight: number; // the block that carried the value
   readonly blockHash: BlockHash;
 };
@@ -563,7 +563,7 @@ block, so values from it may arrive again but none after it is skipped.
 ```ts
 interface MidnightConfig {
   readonly networkId: NetworkId; // e.g. 'preview', 'undeployed'
-  readonly ttlSeconds: number;   // positive whole number of seconds
+  readonly ttlSeconds: number; // positive whole number of seconds
 }
 
 interface MidnightProviders {
@@ -595,9 +595,9 @@ interface MidnightProviders {
   `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.
   `UnprovenCallTxProvidersBase` and `Ledger9UnprovenDeployTxProviders` now include `config`.
 - **`NetworkId`** moved to `@midnight-ntwrk/midnight-js-types`.
-- **`@midnight-ntwrk/midnight-js-network-id` is deprecated.** `setNetworkId`,
-  `getNetworkId` and `NetworkId` still compile and run, but the framework ignores
-  them. The package is removed in 6.0.
+- **`@midnight-ntwrk/midnight-js-network-id` is removed.**
+  The package is removed in 5.0.0 (#1546).
+  Configure `networkId` on `MidnightProviders.config` instead.
 - **testkit-js:** `NodeClient` takes the network id as a third constructor
   argument and rejects an empty one. `initializeMidnightProviders` sets
   `config.networkId` from the environment configuration and `config.ttlSeconds`
@@ -787,14 +787,22 @@ redacted of transaction and witness material. Own properties of the original are
 try {
   await submitCallTx(providers, options);
 } catch (error) {
-  if (error instanceof Error && error.name.includes('Wallet.InsufficientFunds')) { /* ... */ }
+  if (error instanceof Error && error.name.includes('Wallet.InsufficientFunds')) {
+    /* ... */
+  }
 }
 // After
 try {
   await submitCallTx(providers, options);
 } catch (error) {
-  if (error instanceof ProviderFailedError && error.method === 'balanceTx' &&
-      error.cause instanceof Error && error.cause.message.includes('Wallet.InsufficientFunds')) { /* ... */ }
+  if (
+    error instanceof ProviderFailedError &&
+    error.method === 'balanceTx' &&
+    error.cause instanceof Error &&
+    error.cause.message.includes('Wallet.InsufficientFunds')
+  ) {
+    /* ... */
+  }
 }
 ```
 

@@ -76,7 +76,7 @@ interface MidnightProviders {
   but no longer affects the framework.
 - **Negative:** a `WalletProvider` that ignores the `ttl` argument still gives its
   balancing intent its own TTL; the framework cannot enforce it.
-- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 6.0.
+- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 5.0.0 (#1546).
 
 The Zswap Merkle-root retention window (`ZSWAP_MERKLE_ROOT_RETENTION_SECONDS`)
 stays an internal constant. It controls how many past roots are kept when the

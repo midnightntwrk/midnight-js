@@ -118,7 +118,7 @@ import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 const keyHex = 'ab'.repeat(32); // 64 hex characters (32 bytes)
 
 isValidSigningKey({ tag: 'schnorr', value: keyHex }); // true
-isValidSigningKey(keyHex);                            // false (old string shape)
+isValidSigningKey(keyHex); // false (old string shape)
 isValidSigningKey({ tag: 'schnorr', value: 'abcdef' }); // false (not 32 bytes)
 ```
 
@@ -134,7 +134,7 @@ A stored entry that is neither shape makes `getSigningKey`, `exportSigningKeys` 
 - import a valid key with `importSigningKeys(export, { conflictStrategy: 'overwrite' })`;
 - remove it with `removeSigningKey(address)`.
 
-The steps below apply only to export *files* made by a 4.x client.
+The steps below apply only to export _files_ made by a 4.x client.
 
 `importSigningKeys` now validates the structured shape **before** any write. A v4.x export that stored a bare hex string fails with `InvalidExportFormatError`.
 
@@ -198,7 +198,7 @@ If you need on-chain contract events, the `PublicDataProvider` now exposes them 
 
 - **Preferred:** recompile with `compactc 0.33.0-rc.1` so the `contract-manifest.json` is emitted alongside the artifacts, and ship the whole `compiler/` directory with your artifacts.
 - **Harden further:** pin `expectedManifestHash` (SHA-256 of the manifest bytes) at build time to resist a coordinated swap of both the artifacts and their co-located manifest.
-- **If you cannot recompile yet:** set `verify: 'require-if-present'`. `compactc` only began emitting the manifest in 0.33, so artifacts from an earlier toolchain can never satisfy `require`. This mode tolerates a wholly absent manifest (it warns) but still requires a manifest that *does* exist to cover the artifact, and it begins verifying in full as soon as you recompile — no further code change.
+- **If you cannot recompile yet:** set `verify: 'require-if-present'`. `compactc` only began emitting the manifest in 0.33, so artifacts from an earlier toolchain can never satisfy `require`. This mode tolerates a wholly absent manifest (it warns) but still requires a manifest that _does_ exist to cover the artifact, and it begins verifying in full as soon as you recompile — no further code change.
 - **Last resort:** `verify: 'warn'` (or `'off'`) while you regenerate artifacts. Unlike `require-if-present`, `warn` also lets through an artifact missing from a manifest that is present. A digest mismatch still throws except in `'off'` mode.
 
 ```diff
@@ -418,11 +418,11 @@ compiles; the moment the union carries a variant your switch does not handle,
 **that line stops compiling and points at the switch that has to change**.
 
 Be clear about which direction that buys you, because it is not the one you
-might assume. When a later major *shrinks* `LedgerVersion` to drop the retained
+might assume. When a later major _shrinks_ `LedgerVersion` to drop the retained
 era, the now-stale `case 'v8':` label is already a compile error on its own —
 `assertNever` adds a second diagnostic beside it, it is not what makes the
 removal visible. What it uniquely catches is the other direction: a union that
-*grows* a further era. For a switch that returns a value, the compiler can
+_grows_ a further era. For a switch that returns a value, the compiler can
 sometimes catch that at the function signature instead; for a `void`,
 side-effecting switch it catches nothing at all, and the unhandled variant falls
 through in silence. That is the case `assertNever` closes.
@@ -585,7 +585,7 @@ For a **call**, the remediation is two steps, in order:
    carries none. Do it the way the error's own message prescribes — read the
    contract state at `error.contractAddress` with `queryContractState`, and check
    whether the call to `error.circuitId` is already reflected in it. Note that
-   `watchForTxData` is *not* the tool here: it needs an id this error does not
+   `watchForTxData` is _not_ the tool here: it needs an id this error does not
    carry, and it waits indefinitely rather than ever reporting a transaction
    absent. Do not skip this step — see the warning below.
 2. **Re-run.** Run the same call again, unchanged. It resolves the new era and
@@ -593,9 +593,9 @@ For a **call**, the remediation is two steps, in order:
 
 For a **deploy** the remediation is different, and it is also two steps:
 
-1. **Confirm no finalization**, the same way — but check the *address the deployment
-   composed*, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
-   fresh nonce, so a second attempt lands at a *different* address and a skipped check
+1. **Confirm no finalization**, the same way — but check the _address the deployment
+   composed_, `error.contractAddress`, rather than a circuit's effect. A deploy mints a
+   fresh nonce, so a second attempt lands at a _different_ address and a skipped check
    leaves two copies of the contract on chain.
 2. **Recompile with the ledger 9 Compact toolchain and deploy that artifact.** Unlike the
    call case, a plain re-run does not work: after the fork a contract produced by the
@@ -640,7 +640,7 @@ In practice:
 - **Obtain ledger 9 toolchain artifacts for every contract you deploy at
   runtime**, and ship them before the fork. From the fork on, a retained
   artifact cannot be deployed.
-- Contracts you deployed *before* the fork are unaffected — they keep working
+- Contracts you deployed _before_ the fork are unaffected — they keep working
   through the same call sites.
 - A dApp that only calls already-deployed contracts is not affected by this
   section at all.
@@ -712,15 +712,15 @@ v8 ledger wrote: decode it with the runtime that can read it (Step 19).
 a found handle and on a deployed one. The retained-era handle used to keep the
 deployer's data at the top level up to rc.4; it is now under `deployTxData`:
 
-| Fact | Before (retained era, up to rc.4) | Now (both eras) |
-|---|---|---|
-| Deploy record | `deployTxData` (the flat record) | `deployTxData.public` (a ledger 8 record on a deployed handle) |
-| Contract address | `contractAddress` | `deployTxData.public.contractAddress` (and `contractAddress`) |
-| Signing key | `signingKey` | `deployTxData.private.signingKey` |
-| Private state from the constructor | `initialPrivateState` | `deployTxData.private.initialPrivateState` |
-| Zswap state from the constructor | `initialZswapState` | `deployTxData.private.initialZswapState` |
-| Initial contract state (live handle) | `initialContractState` | `deployTxData.public.initialContractState` |
-| Initial contract state (bytes, retained era only) | `initialContractStateBytes` | `deployTxData.public.initialContractStateBytes` |
+| Fact                                              | Before (retained era, up to rc.4) | Now (both eras)                                                |
+| ------------------------------------------------- | --------------------------------- | -------------------------------------------------------------- |
+| Deploy record                                     | `deployTxData` (the flat record)  | `deployTxData.public` (a ledger 8 record on a deployed handle) |
+| Contract address                                  | `contractAddress`                 | `deployTxData.public.contractAddress` (and `contractAddress`)  |
+| Signing key                                       | `signingKey`                      | `deployTxData.private.signingKey`                              |
+| Private state from the constructor                | `initialPrivateState`             | `deployTxData.private.initialPrivateState`                     |
+| Zswap state from the constructor                  | `initialZswapState`               | `deployTxData.private.initialZswapState`                       |
+| Initial contract state (live handle)              | `initialContractState`            | `deployTxData.public.initialContractState`                     |
+| Initial contract state (bytes, retained era only) | `initialContractStateBytes`       | `deployTxData.public.initialContractStateBytes`                |
 
 The retained era's signing key is now the same `SigningKey` the current era
 uses, `{ tag, value }`, on `deployTxData.private.signingKey`, on the
@@ -869,7 +869,7 @@ See also [Vite WASM resolution](../../guides/vite-wasm-resolution.md).
 
 Contracts compiled with the ledger 8 (pre-fork) toolchain remain transactable on the
 network indefinitely; upstream has not announced a sunset. The retained-era
-support in *this framework* is a separate question and is scheduled for removal
+support in _this framework_ is a separate question and is scheduled for removal
 in the next major after the window closes — announced from day one so it is
 something you can plan around rather than a surprise. When that removal lands,
 `LedgerVersion` shrinks and every switch over it stops compiling at its stale
@@ -892,7 +892,7 @@ oracle. Back off and look at why, rather than looping.
 Every coded error, with what happened and what to do, is listed in
 [TROUBLESHOOTING.md](../../../TROUBLESHOOTING.md#midnightjs-error-codes).
 Discriminate on one with `hasErrorCode(error, code)`; for the errors whose
-*payload* you need to read — `ComposeFailedError.stage`,
+_payload_ you need to read — `ComposeFailedError.stage`,
 `Ledger8RuntimeMissingError.subpath`, `UnknownLedgerVersionError.requestedVersion`
 — catch by class instead, since `hasErrorCode` narrows only to
 `Error & { code }`.
@@ -904,22 +904,22 @@ Named here rather than omitted, so the gaps are visible.
 **Operator requirements.** The proof server is fork-prepared: a dual-capable
 server is available before the fork, one configured endpoint serves the whole
 window, and the retained-era path reuses your existing proof-provider
-configuration unchanged. You do **not** configure a second endpoint. *Pending:*
+configuration unchanged. You do **not** configure a second endpoint. _Pending:_
 the exact minimum proof-server version with dual support, and the supported
 delivery API for retained pre-fork key material. If you operate your own proof
 server, treat this as incomplete and check for an updated guide before the
 fork rather than assuming the version you run today suffices.
 
 **Minimum wallet version.** Crossing the fork without a code change holds end to
-end only if the wallet your dApp connects to also crosses it. *Pending:* the
+end only if the wallet your dApp connects to also crosses it. _Pending:_ the
 minimum wallet version, gated on wallet-side state migration that is not yet
 delivered. Until it is stated, do not assume any particular wallet build
 carries a dApp across the boundary.
 
 **DApp-connector proving.** dApps that prove through the wallet connector
 rather than through a configured proof server do not yet have a stated
-fork-crossing story, and no section of this guide covers them. *Pending: a
-scope ruling.* If you prove through the connector, treat this as an open
+fork-crossing story, and no section of this guide covers them. _Pending: a
+scope ruling._ If you prove through the connector, treat this as an open
 question to raise, not as an omission that implies "it just works".
 
 ---
@@ -957,11 +957,23 @@ no longer fixed at one hour (#982). Both come from a new, required
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 setNetworkId('preview');
-const providers = { privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider };
+const providers = {
+  privateStateProvider,
+  publicDataProvider,
+  zkConfigProvider,
+  proofProvider,
+  walletProvider,
+  midnightProvider
+};
 
 // After (5.0.0)
 const providers = {
-  privateStateProvider, publicDataProvider, zkConfigProvider, proofProvider, walletProvider, midnightProvider,
+  privateStateProvider,
+  publicDataProvider,
+  zkConfigProvider,
+  proofProvider,
+  walletProvider,
+  midnightProvider,
   config: { networkId: 'preview', ttlSeconds: 3600 }
 };
 ```
@@ -974,8 +986,7 @@ const providers = {
   implement `WalletProvider` yourself, use that argument for the intent your wallet
   adds while balancing, instead of a TTL of your own.
 - `setNetworkId` has **no effect** on the framework any more. Remove the call once
-  `config` is in place; `@midnight-ntwrk/midnight-js-network-id` is deprecated and
-  is removed in 6.0.
+  `config` is in place; `@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546).
 - Import the `NetworkId` type from `@midnight-ntwrk/midnight-js-types`.
 - Low-level calls that do not take `providers`:
   - `createUnprovenCallTxFromInitialStates`: add `config` to the options.

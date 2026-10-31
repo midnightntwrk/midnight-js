@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
@@ -364,17 +363,6 @@ describe('ledger-utils', () => {
     it('rejects an invalid TTL', () => {
       expect(() => buildCall({ networkId: 'preview', ttlSeconds: 0 })).toThrow(InvalidArgumentError);
     });
-
-    it('ignores a leftover global network id', () => {
-      setNetworkId('preview');
-
-      try {
-        expect(networkIdOf(buildCall({ networkId: 'undeployed', ttlSeconds: 60 }))).toBe('undeployed');
-      } finally {
-        setNetworkId('undeployed');
-      }
-    });
-
   });
 
   describe('createUnprovenLedgerCallTx with receiveShielded (issue #686)', () => {

@@ -43,7 +43,6 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
 | `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-based ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
-| `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id (use `MidnightProviders.config`) |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions, error-code registry) |
 | `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
@@ -519,8 +518,7 @@ ledger and onchain-runtime, because `contracts` needs them.
 
 The network id is not global state: it travels on the provider set as
 `config.networkId` (see the provider setup example below).
-`@midnight-ntwrk/midnight-js-network-id` is deprecated — the framework ignores
-`setNetworkId()`. Predefined endpoints for public networks are shipped in
+`@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546). Predefined endpoints for public networks are shipped in
 `@midnight-ntwrk/midnight-js-utils`. `preview` is hosted by Midnight. `preprod`
 and `mainnet` are served by Blockfrost and take a Blockfrost project token for
 that network, which ends up in every URL — remove it before you log a URL. For
@@ -669,7 +667,6 @@ midnight-js/
 │   ├── http-client-proof-provider/    # Proof HTTP client
 │   ├── fetch-zk-config-provider/      # Browser ZK provider
 │   ├── node-zk-config-provider/       # Node.js ZK provider
-│   ├── network-id/                    # Network management
 │   ├── logger-provider/               # Logging
 │   ├── utils/                         # Utilities
 │   └── compact/                       # Compiler tools
