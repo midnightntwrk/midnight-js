@@ -285,6 +285,10 @@ export function createLedger8UnprovenDeployTxFromVerifierKeys<C extends Ledger8C
  *         do not declare ledger 8, before anything else.
  * @throws Ledger8SigningKeyError with reason `'unusable'` If `signingKey` is not a `schnorr` key of
  *         64 hex characters.
+ * @throws InvalidArgumentError If `config` is invalid.
+ * @throws ConfigurationError If `config` is missing.
+ * @throws ComposeFailedError If the constructor cannot run, or the verifier keys do not match the
+ *         circuits the initial state declares.
  *
  * @remarks
  * The returned {@link Ledger8UnsubmittedDeployTxData} is privacy-sensitive: it carries the signing
@@ -316,9 +320,11 @@ export async function createLedger8UnprovenDeployTx<C extends Ledger8Contract>(
 
 /**
  * Runs the constructor of a ledger 8 contract and creates an unproven, unsubmitted deploy
- * transaction. Reads the network head once, and stores nothing. Works only before the fork.
+ * transaction. Reads the network head once from the network, and stores nothing. Works only before
+ * the fork.
  *
- * @param providers The providers used to read the head and the verifier keys.
+ * @param providers The providers used to read the artifact era, the head, the verifier keys, the
+ *        wallet keys and the transaction providers' eras.
  * @param options Configuration.
  *
  * @returns Everything the constructor produced and the unproven transaction.
@@ -328,6 +334,11 @@ export async function createLedger8UnprovenDeployTx<C extends Ledger8Contract>(
  *         `'ledger8-deploy-on-ledger9-network'` after the fork, before any verifier key is fetched.
  * @throws Ledger8SigningKeyError with reason `'unusable'` If `signingKey` is not a `schnorr` key of
  *         64 hex characters. Raised before the head is read.
+ * @throws InvalidArgumentError If `providers.config` is invalid.
+ * @throws ConfigurationError If `providers.config` is missing.
+ * @throws ProviderEraUnsupportedError If a transaction provider does not serve the network's ledger era.
+ * @throws ComposeFailedError If the constructor cannot run, or the verifier keys do not match the
+ *         circuits the initial state declares.
  *
  * @remarks
  * The returned {@link Ledger8UnsubmittedDeployTxData} is privacy-sensitive: it carries the signing

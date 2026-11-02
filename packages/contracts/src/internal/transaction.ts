@@ -359,8 +359,8 @@ export const isTransactionContext = <
 /**
  * Refuses a retained-era call that was handed a scope to join.
  *
- * Reachable only from JavaScript today — the retained-era `submitCallTx`
- * overload declares no scope parameter — and still checked.
+ * Reachable only from JavaScript today — the retained-era `submitCallTx` and
+ * `createUnprovenCallTx` overloads declare no scope parameter — and still checked.
  *
  * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
  * scope is the mixed-era refusal; anything else is a malformed argument.
@@ -371,12 +371,17 @@ export const isTransactionContext = <
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
  * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
+ * @param entryPoint The public function the caller called, named in the refusal.
  * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
-export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionContext: unknown): void => {
+export const assertScopeAdmitsLedger8Call = (
+  circuitId: string,
+  transactionContext: unknown,
+  entryPoint: 'submitCallTx' | 'createUnprovenCallTx'
+): void => {
   if (transactionContext === undefined) {
     return;
   }
@@ -384,10 +389,10 @@ export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionConte
     throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
   }
   throw new InvalidArgumentError(
-    `submitCallTx was passed a third argument that is not a transaction context (received ` +
+    `${entryPoint} was passed a third argument that is not a transaction context (received ` +
       `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
       `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
-      `submit this call as its own transaction.`
+      `run this call as its own transaction.`
   );
 };
 

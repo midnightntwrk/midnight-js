@@ -203,8 +203,10 @@ export async function submitDeployTx<C extends Contract.Any>(
  * ledger 9 contract runs {@link submitLedger9DeployTx}, a ledger 8 contract {@link submitLedger8DeployTx};
  * their documentation covers the parameters and the privacy-sensitive result.
  *
- * @throws InvalidArgumentError, IncompleteDeployContractPrivateStateConfig If `privateStateId` and
- *         `initialPrivateState` are not given together. Raised before any provider is touched.
+ * @throws IncompleteDeployContractPrivateStateConfig If `privateStateId` and `initialPrivateState`
+ *         are not given together. Raised before any provider is touched.
+ * @throws InvalidArgumentError If `privateStateId` is given as `undefined` or `null`. Raised before
+ *         any provider is touched.
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,

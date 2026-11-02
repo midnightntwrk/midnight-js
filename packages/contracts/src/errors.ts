@@ -249,10 +249,10 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'produced by the ledger 9 Compact toolchain.',
   'contract-era-unsupported':
     'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
-    'The low-level functions that build a call or deploy transaction from a compiled contract serve only ' +
-    'contracts produced by the ledger 9 Compact toolchain. For a contract of another era, call submitCallTx ' +
-    'or deployContract, which run contracts of both eras and submit the transaction, or join a deployed ' +
-    'contract with findDeployedContract.',
+    'Each Ledger8 or Ledger9 low-level function serves the contracts of its own era only. Call the function ' +
+    'of the other era (createLedger8UnprovenCallTx for createLedger9UnprovenCallTx, and so on), or the ' +
+    'function without the era in its name (createUnprovenCallTx, createUnprovenDeployTx, submitDeployTx), ' +
+    'which serves contracts of both eras.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
     `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
@@ -554,7 +554,8 @@ export interface SubmittedOperation {
 // caller with several operations in flight can act on otherwise.
 //
 // Every kind is reachable in production: `call` through `submitCallTx`,
-// `deploy` through `deployContract`'s retained-era overload, and `maintenance`
+// `deploy` through `deployContract`'s, `submitDeployTx`'s and `submitLedger8DeployTx`'s
+// retained-era paths, and `maintenance`
 // through the retained-era overloads of the governance functions. `kind: 'deploy'`
 // is set at exactly one place, inside `deployLedger8Contract`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.

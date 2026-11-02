@@ -43,6 +43,7 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
+  assertNever,
   deserializeLedger9CompactContractState,
   deserializeLedger9Parameters,
   deserializeLedger9ZswapChainState,
@@ -666,10 +667,7 @@ export const isLedger8Contract = <C extends object>(
   era: LedgerVersion
 ): _compiledContract is Ledger8Contract => era === 'v8';
 
-/**
- * A router's options, tagged with the era their contract's artifacts declare. A `switch` on `era`
- * narrows `options` without a cast, which a `switch` on a bare {@link LedgerVersion} cannot do.
- */
+/** A router's options, tagged with the era their contract's artifacts declare. */
 export type EraRequest<L8, L9> =
   | { readonly era: 'v8'; readonly options: L8 }
   | { readonly era: 'v9'; readonly options: L9 };
@@ -694,7 +692,13 @@ export const resolveEraRequest = async <
   source: ArtifactRuntimeVersionSource
 ): Promise<EraRequest<L8, L9>> => {
   const era = await resolveArtifactEra(options.compiledContract, source);
-  return isLedger8Request<L8>(options, era) ? { era: 'v8', options } : { era: 'v9', options };
+  switch (era) {
+    case 'v8':
+    case 'v9':
+      return isLedger8Request<L8>(options, era) ? { era: 'v8', options } : { era: 'v9', options };
+    default:
+      return assertNever(era, 'resolveEraRequest');
+  }
 };
 
 /**
@@ -859,10 +863,8 @@ export const assertEraCompatible = (
   head: LedgerVersion,
   kind: SubmittedOperationKind
 ): void => {
-  // Defence in depth, not a live boundary: both call sites pass literals today
-  // (`internal/ledger8-entry.ts`) and this module is not reachable from outside the package. The
-  // guards are here so that a future call site threading a value through cannot quietly widen what
-  // the table admits.
+  // A live boundary: `buildLedger8CallTxFromStates` passes the caller's `options.head` straight
+  // through, so the head here can be any value a JavaScript caller wrote.
   //
   // The `typeof` checks are load-bearing and are NOT redundant with the parameter types. A member
   // access coerces its key -- `ToPropertyKey` runs `toString` -- so an object, a `String` wrapper

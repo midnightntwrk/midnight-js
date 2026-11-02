@@ -43,7 +43,6 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   return {
     ...original,
     loadLedger8Engine: vi.fn(original.loadLedger8Engine),
-    loadLedger8Protocol: vi.fn(original.loadLedger8Protocol),
     loadLedgerEra: vi.fn(original.loadLedgerEra)
   };
 });
@@ -128,6 +127,7 @@ describe('a session that only uses ledger 9 contracts', () => {
     ).catch(() => undefined);
 
     expect(Protocol.loadLedger8Engine).toHaveBeenCalled();
+    expect(Protocol.loadLedgerEra).toHaveBeenCalledWith('v8');
   });
 
   it.each(LEDGER9_RUNS)('%s loads no ledger 8 runtime', async (_name, run) => {
@@ -136,7 +136,6 @@ describe('a session that only uses ledger 9 contracts', () => {
     await run(createMockProviders()).catch(() => undefined);
 
     expect(Protocol.loadLedger8Engine).not.toHaveBeenCalled();
-    expect(Protocol.loadLedger8Protocol).not.toHaveBeenCalled();
     expect(Protocol.loadLedgerEra).not.toHaveBeenCalledWith('v8');
   });
 });

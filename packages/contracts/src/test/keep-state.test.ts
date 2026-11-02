@@ -45,6 +45,7 @@ import {
   type LedgerEra,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type ContractStateAndParametersRead,
@@ -484,7 +485,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
     });
 
-    it('builds a v9 handle from a MIGRATED state the caller read', async () => {
+    it('builds a v9 handle from a ledger 9 state the caller read', async () => {
       const providers = postForkProviders(ledger9Envelope);
 
       const built = await fromStates(providers, {
@@ -496,7 +497,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       expect(built.private.unprovenTx.era).toBe('v9');
     });
 
-    it('refuses a ledger 9 state on a ledger 8 head, without a second head read', async () => {
+    it('refuses a ledger 9 state on a ledger 8 head as a caller mistake, not a fork crossing', async () => {
       const providers = postForkProviders(ledger9Envelope);
 
       const rejection = await fromStates(providers, {
@@ -505,9 +506,26 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
         ledgerParameters: ledger9Parameters()
       }).catch((error: unknown) => error);
 
-      expect(rejection).toBeInstanceOf(NetworkVersionStateMismatchError);
-      expect(rejection).toMatchObject({ networkVersion: 'v8', stateEra: 'v9' });
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect((rejection as InvalidArgumentError).message).toContain('options.initialContractState');
+      expect((rejection as InvalidArgumentError).message).toContain('options.head');
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses a head that names no ledger era before comparing it with the state', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+
+      const rejection = await fromStates(providers, {
+        // @ts-expect-error - a JavaScript caller that left the head out
+        head: undefined,
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
     });
 
     it('refuses ledger parameters of another era than the head, before the circuit runs', async () => {

@@ -295,8 +295,8 @@ export interface Ledger8Snapshot {
   /**
    * The era whose decoder read {@link Ledger8Snapshot.state}, decided by its envelope.
    *
-   * `'v9'` means the contract has already been migrated by an earlier post-fork call, which is what
-   * lets the key check tell a migrated contract apart from one deployed with current-toolchain
+   * `'v9'` means the fork has translated the contract's state, which is what lets the key check
+   * tell a translated ledger 8 contract apart from one deployed with current-toolchain
    * artifacts. Both carry a current-era envelope; only the second carries keys these artifacts
    * cannot match.
    */

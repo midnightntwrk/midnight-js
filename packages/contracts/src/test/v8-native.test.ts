@@ -47,8 +47,10 @@ import {
   sampleCoinPublicKey,
   sampleEncryptionPublicKey
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type Recipient, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
+  type AnyProvableCircuitId,
   type ContractStateAndParametersRead,
   createLedger9MidnightProvider,
   createLedger9ProofProvider,
@@ -75,6 +77,8 @@ import { isLedger8Result } from '../era-results';
 import {
   BlankVerifierKeySlotError,
   EraInvariantViolationError,
+  EraMismatchError,
+  ForkCrossedDuringOperationError,
   IncompleteDeployContractPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   Ledger8AmbiguousEntryPointError,
@@ -89,13 +93,14 @@ import {
 import { findDeployedContract } from '../find-deployed-contract';
 import { DISPATCH_BREADCRUMB_MESSAGE } from '../internal/breadcrumbs';
 import { resolveArtifactEra } from '../internal/era';
-import { buildLedger8DeployTx, findLedger8Contract, submitLedger8CallTx } from '../internal/ledger8-entry';
+import { buildLedger8DeployTx, findLedger8Contract, submitLedger8CallTx, submitLedger8Tx } from '../internal/ledger8-entry';
 import {
   assertSnapshotVerifierKey,
   type Ledger8Snapshot,
   readLedger8Snapshot,
   runLedger8CallPipeline
 } from '../internal/ledger8-pipeline';
+import { TransactionContextImpl } from '../internal/transaction';
 import {
   createEncryptionPublicKeyResolver,
   type EncryptionPublicKeyResolver,
@@ -1316,9 +1321,14 @@ describe('the retained-native pipeline through the unchanged entry points', () =
 
     const deployed = await buildLedger8DeployTx(withVerifierKeys(providers), { compiledContract: contract, initialPrivateState: {} });
 
-    await submitTx(providers, { unprovenTx: deployed.deploy.unprovenTx });
+    const txId = await submitLedger8Tx(providers, deployed.deploy.unprovenTx, {
+      networkVersion: deployed.head,
+      kind: 'deploy',
+      circuitId: 'initialState',
+      contractAddress: deployed.deploy.contractAddress
+    });
 
-    expect(providers.midnightProvider.submitTx).toHaveBeenCalledTimes(1);
+    expect(txId).toBe('retained-era-tx-id');
     // READ OFF the composition record, never derived: a deploy mints a fresh
     // nonce, so the same initial state deploys to a different address each time.
     expect(typeof deployed.deploy.contractAddress).toBe('string');
@@ -3056,12 +3066,34 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     it('createUnprovenCallTx refuses a ledger 8 call inside a scoped transaction', async () => {
       const providers = deployProviders();
+      const scope = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(createMockProviders());
+
+      // @ts-expect-error - the ledger 8 overload takes no transaction context
+      const caught: unknown = await createUnprovenCallTx(providers, callOptions(), scope).catch((error: unknown) => error);
+
+      expect(caught).toBeInstanceOf(EraMismatchError);
+      expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    });
+
+    it('createUnprovenCallTx refuses an invalid config before it touches the private-state provider', async () => {
+      const providers = { ...deployProviders(), config: { networkId: 'undeployed', ttlSeconds: 0 } };
+
+      await expect(createUnprovenCallTx(providers, callOptions())).rejects.toBeInstanceOf(InvalidArgumentError);
+      expect(providers.privateStateProvider.setContractAddress).not.toHaveBeenCalled();
+    });
+
+    it('createUnprovenCallTx names itself when its third argument is not a transaction context', async () => {
+      const providers = deployProviders();
       const notAContext = { scope: 'not a transaction context' };
 
       // @ts-expect-error - the ledger 8 overload takes no transaction context
-      const building = createUnprovenCallTx(providers, callOptions(), notAContext);
+      const caught: unknown = await createUnprovenCallTx(providers, callOptions(), notAContext).catch(
+        (error: unknown) => error
+      );
 
-      await expect(building).rejects.toBeInstanceOf(InvalidArgumentError);
+      expect(caught).toBeInstanceOf(InvalidArgumentError);
+      expect((caught as InvalidArgumentError).message).toMatch(/^createUnprovenCallTx was passed a third argument/);
       expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     });
 
@@ -3085,6 +3117,30 @@ describe('deploying a retained-era contract through deployContract', () => {
       expect(built.era).toBe('v8');
       expect(built.private.unprovenTx.era).toBe('v8');
       expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('createUnprovenCallTxFromInitialStates refuses a cross-contract config for a ledger 8 contract', async () => {
+      const providers = deployProviders();
+      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+
+      // @ts-expect-error - the ledger 8 overload takes no cross-contract config
+      const caught: unknown = await createUnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          head: 'v8',
+          initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+          ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() },
+          coinPublicKey: recording.coinPublicKey,
+          config: providers.config
+        },
+        providers.walletProvider.getEncryptionPublicKey(),
+        { callees: [] }
+      ).catch((error: unknown) => error);
+
+      expect(caught).toBeInstanceOf(InvalidArgumentError);
+      expect((caught as InvalidArgumentError).message).toContain('crossContract');
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
     });
 
     it('createUnprovenDeployTx', async () => {
@@ -3123,6 +3179,23 @@ describe('deploying a retained-era contract through deployContract', () => {
         deployed.private.signingKey
       );
       expect(providers.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['a privateStateId without an initial private state', { privateStateId: 'ledger8-private-state' }, IncompleteDeployContractPrivateStateConfig],
+      ['an initial private state without a privateStateId', { initialPrivateState: {} }, IncompleteDeployContractPrivateStateConfig],
+      ['a privateStateId written as undefined', { privateStateId: undefined, initialPrivateState: {} }, InvalidArgumentError]
+    ])('submitDeployTx refuses %s for a ledger 8 contract before reading its era', async (_, pairing, expected) => {
+      const providers = deployProviders();
+
+      // @ts-expect-error - each pairing breaks the privateStateId / initialPrivateState rule
+      const caught: unknown = await submitDeployTx(providers, { compiledContract: contract, ...pairing }).catch(
+        (error: unknown) => error
+      );
+
+      expect(caught).toBeInstanceOf(expected);
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+      expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
     });
   });
 
@@ -3238,6 +3311,51 @@ describe('deploying a retained-era contract through deployContract', () => {
 
       await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
       expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    });
+
+    it('submitLedger8DeployTx refuses an initial private state without a privateStateId', async () => {
+      const providers = deployProviders();
+
+      const deploying = submitLedger8DeployTx(
+        providers,
+        // @ts-expect-error - a state with no id to store it under
+        { compiledContract: contract, initialPrivateState: {} }
+      );
+
+      await expect(deploying).rejects.toBeInstanceOf(IncompleteDeployContractPrivateStateConfig);
+      expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    });
+
+    it('submitLedger8DeployTx hands back the sampled key when the submit may have landed', async () => {
+      const providers = deployProviders();
+      providers.publicDataProvider.queryLatestProtocolVersion = vi
+        .fn()
+        .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
+        .mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      const caught: unknown = await submitLedger8DeployTx(providers, { compiledContract: contract }).catch(
+        (error: unknown) => error
+      );
+
+      expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+      expect((caught as Ledger8UnconfirmedError).operation).toBe('deploy');
+      expect((caught as Ledger8UnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
+      expect((caught as Ledger8UnconfirmedError).contractAddress).toMatch(/^[0-9a-f]+$/);
+      expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(ForkCrossedDuringOperationError);
+      expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('submitLedger8DeployTx passes a submit rejection on an unmoved head through unchanged', async () => {
+      const providers = deployProviders();
+      providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+
+      const caught: unknown = await submitLedger8DeployTx(providers, { compiledContract: contract }).catch(
+        (error: unknown) => error
+      );
+
+      expect(caught).toBeInstanceOf(ProviderFailedError);
+      expect((caught as ProviderFailedError).method).toBe('submitTx');
     });
   });
 

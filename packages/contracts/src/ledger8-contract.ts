@@ -332,7 +332,8 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
     readonly head: LedgerVersion;
     /**
      * The contract state to run the circuit against, with the era of the ledger that wrote it:
-     * `'v8'` before the fork and after it until a call migrates the contract, `'v9'` after that.
+     * `'v8'` before the fork, `'v9'` after it. An indexer older than 4.4.0-rc.6 may still serve the
+     * pre-fork `'v8'` bytes after the fork.
      */
     readonly initialContractState: { readonly era: LedgerVersion; readonly state: Ledger8Serializable };
     /** The ledger parameters of the block the state was read at, with the era that wrote them. */

@@ -533,18 +533,23 @@ export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK
  * transaction. Proves, submits and stores nothing.
  *
  * The transaction is composed for the network's ledger: before the fork it is a ledger 8
- * transaction, after it a ledger 9 one that keeps the contract's ledger 8 state. Read which from
+ * transaction, after it a ledger 9 one that keeps the contract's ledger 8 verifier keys. Read which from
  * `result.private.unprovenTx.era`, and pass the transaction to `submitTx` or `submitTxAsync`.
  * Storing `result.private.nextPrivateState` is the caller's job, once the transaction is final.
  *
- * @param providers The providers to use to create the call transaction. `privateStateProvider` is
- *        read only when `options.privateStateId` is given.
+ * @param providers The providers to use to create the call transaction. `privateStateProvider`, when
+ *        given, is pointed at `options.contractAddress`; its state is read only when
+ *        `options.privateStateId` is given.
  * @param options Configuration.
  *
  * @returns All data produced by the circuit call and the unproven transaction.
  *
  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
  *         do not declare ledger 8, before anything else.
+ * @throws InvalidArgumentError If the contract address is malformed, the artifact declares no such
+ *         circuit, or `providers.config` is invalid.
+ * @throws ConfigurationError If `providers.config` is missing.
+ * @throws ProviderEraUnsupportedError If a transaction provider does not serve the network's ledger era.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a
  *         `privateStateProvider` was not.
  * @throws PrivateStateNotFoundError If the private state provider holds nothing under the given
@@ -562,7 +567,6 @@ export async function createLedger8UnprovenCallTx(
   options: AnyLedger8CallTxOptions
 ): Promise<AnyLedger8UnsubmittedCallTxData> {
   await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger8UnprovenCallTx');
-  assertValidMidnightConfig(providers.config);
   return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(options))).data;
 }
 
@@ -577,8 +581,8 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  * unproven, unsubmitted call transaction. Reads nothing from the network and stores nothing.
  *
  * `options.head` decides the transaction's ledger: `'v8'` builds a ledger 8 transaction, `'v9'` a
- * ledger 9 one that keeps the contract's ledger 8 state. The contract state may be a ledger 8 state
- * or, after a call migrated it, a ledger 9 one; label each state with the era that wrote it.
+ * ledger 9 one that keeps the contract's ledger 8 verifier keys. The fork translates the contract's
+ * state, so after it the state is a ledger 9 one; label each state with the era that wrote it.
  *
  * @param zkConfigProvider The source of the circuit's verifier key and of the artifact era.
  * @param options Configuration, including the states to run against.
@@ -588,8 +592,11 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  *
  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
  *         do not declare ledger 8, before anything else.
- * @throws NetworkVersionStateMismatchError If the contract state was written by a later ledger than
- *         `options.head`.
+ * @throws InvalidArgumentError If the contract address is malformed, the artifact declares no such
+ *         circuit, `options.config` is invalid, or the contract state was written by a later ledger
+ *         than `options.head`.
+ * @throws ConfigurationError If `options.config` is missing.
+ * @throws UnknownLedgerVersionError If `options.head` names no ledger era.
  * @throws InvalidSerializedStateError If a state's bytes do not carry the era it is labelled with.
  * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than
  *         `options.head`.
@@ -638,6 +645,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
  *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ * @throws InvalidArgumentError If `crossContract` is given for a ledger 8 contract.
  */
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -653,6 +661,12 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     case 'v9':
       return createLedger9UnprovenCallTxFromInitialStates(zkConfigProvider, request.options, walletEncryptionPublicKey, crossContract);
     case 'v8':
+      if (crossContract !== undefined) {
+        throw new InvalidArgumentError(
+          'createUnprovenCallTxFromInitialStates was passed a crossContract config for a ledger 8 contract. A ' +
+            'ledger 8 contract makes no cross-contract calls; omit the argument.'
+        );
+      }
       return buildLedger8CallTxFromStates(zkConfigProvider, request.options, walletEncryptionPublicKey);
     default:
       return assertNever(request, 'createUnprovenCallTxFromInitialStates');
@@ -703,7 +717,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     case 'v9':
       return createLedger9UnprovenCallTx(providers, request.options, transactionContext);
     case 'v8':
-      Transaction.assertScopeAdmitsLedger8Call(request.options.circuitId, transactionContext);
+      Transaction.assertScopeAdmitsLedger8Call(request.options.circuitId, transactionContext, 'createUnprovenCallTx');
       assertLedger8TransactionProviders(providers, 'createUnprovenCallTx');
       return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(request.options))).data;
     default:

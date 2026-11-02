@@ -15,15 +15,28 @@
 
 import { describe, expectTypeOf, it } from 'vitest';
 
+import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
 import {
   createLedger8UnprovenCallTxFromInitialStates,
   createUnprovenCallTx,
+  createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTx,
+  createUnprovenDeployTxFromVerifierKeys,
   type Ledger8CallOptionsWithInitialStates,
   type Ledger8ContractProviders,
   type Ledger8FinalizedDeployTxData,
   type Ledger8UnsubmittedCallTxData,
   type Ledger8UnsubmittedDeployTxData,
+  type Ledger9CallOptionsWithPrivateState,
+  type Ledger9CallTxOptionsWithPrivateStateId,
+  type Ledger9ContractProviders,
+  type Ledger9DeployTxOptionsWithPrivateState,
+  type Ledger9DeployTxOptionsWithPrivateStateId,
+  type Ledger9FinalizedDeployTxData,
+  type Ledger9UnprovenCallTxProvidersWithPrivateState,
+  type Ledger9UnprovenDeployTxProviders,
+  type Ledger9UnsubmittedCallTxData,
+  type Ledger9UnsubmittedDeployTxData,
   submitDeployTx
 } from '../../index';
 import type { CoinReceiver016Coin, CoinReceiver016Contract, Counter016Contract } from '../ledger8-fixture-types';
@@ -121,6 +134,68 @@ describe('the unprefixed routers answer a ledger 8 contract with the ledger 8 re
   it('submitDeployTx', () => {
     expectTypeOf(submitDeployTx(counterProviders, { compiledContract: counter })).resolves.toEqualTypeOf<
       Ledger8FinalizedDeployTxData<Counter016Contract>
+    >();
+  });
+});
+
+declare const coinPublicKey: Parameters<typeof createUnprovenDeployTxFromVerifierKeys>[1];
+declare const config: Parameters<typeof createUnprovenDeployTxFromVerifierKeys>[4];
+
+describe('the ledger 8 overloads of the caller-supplied routers', () => {
+  it('createUnprovenCallTxFromInitialStates', () => {
+    expectTypeOf(
+      createUnprovenCallTxFromInitialStates(
+        zkConfigProvider,
+        { ...states, compiledContract: counter, circuitId: 'increment' },
+        encryptionPublicKey
+      )
+    ).resolves.toEqualTypeOf<Ledger8UnsubmittedCallTxData<Counter016Contract, 'increment'>>();
+  });
+
+  it('createUnprovenDeployTxFromVerifierKeys', () => {
+    expectTypeOf(
+      createUnprovenDeployTxFromVerifierKeys(zkConfigProvider, coinPublicKey, { compiledContract: counter }, encryptionPublicKey, config)
+    ).resolves.toEqualTypeOf<Ledger8UnsubmittedDeployTxData<Counter016Contract>>();
+  });
+});
+
+type Twin018 = Twin018Contract<{ readonly round: bigint }>;
+declare const callProviders018: Ledger9UnprovenCallTxProvidersWithPrivateState<Twin018>;
+declare const callOptions018: Ledger9CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
+declare const statesOptions018: Ledger9CallOptionsWithPrivateState<Twin018, 'increment'>;
+declare const deployProviders018: Ledger9UnprovenDeployTxProviders<Twin018>;
+declare const deployOptions018: Ledger9DeployTxOptionsWithPrivateState<Twin018>;
+declare const submitProviders018: Ledger9ContractProviders<Twin018>;
+declare const submitOptions018: Ledger9DeployTxOptionsWithPrivateStateId<Twin018>;
+
+describe('the unprefixed routers still answer a ledger 9 contract with the ledger 9 result types', () => {
+  it('createUnprovenCallTx', () => {
+    expectTypeOf(createUnprovenCallTx(callProviders018, callOptions018)).resolves.toEqualTypeOf<
+      Ledger9UnsubmittedCallTxData<Twin018, 'increment'>
+    >();
+  });
+
+  it('createUnprovenCallTxFromInitialStates', () => {
+    expectTypeOf(
+      createUnprovenCallTxFromInitialStates(zkConfigProvider, statesOptions018, encryptionPublicKey)
+    ).resolves.toEqualTypeOf<Ledger9UnsubmittedCallTxData<Twin018, 'increment'>>();
+  });
+
+  it('createUnprovenDeployTx', () => {
+    expectTypeOf(createUnprovenDeployTx(deployProviders018, deployOptions018)).resolves.toEqualTypeOf<
+      Ledger9UnsubmittedDeployTxData<Twin018>
+    >();
+  });
+
+  it('createUnprovenDeployTxFromVerifierKeys', () => {
+    expectTypeOf(
+      createUnprovenDeployTxFromVerifierKeys(zkConfigProvider, coinPublicKey, deployOptions018, encryptionPublicKey, config)
+    ).resolves.toEqualTypeOf<Ledger9UnsubmittedDeployTxData<Twin018>>();
+  });
+
+  it('submitDeployTx', () => {
+    expectTypeOf(submitDeployTx(submitProviders018, submitOptions018)).resolves.toEqualTypeOf<
+      Ledger9FinalizedDeployTxData<Twin018>
     >();
   });
 });
