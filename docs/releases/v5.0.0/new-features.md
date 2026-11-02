@@ -282,7 +282,7 @@ A builder stores nothing. Submit what it built with `submitTx`:
 
 ```ts
 const built = await createLedger8UnprovenCallTx(providers, callOptions);
-// 'v8' before the fork, 'v9' after it: the call keeps the contract's ledger 8 state.
+// 'v8' before the fork, 'v9' after it: the call keeps the contract's ledger 8 verifier keys.
 console.log(built.private.unprovenTx.era);
 const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
 ```

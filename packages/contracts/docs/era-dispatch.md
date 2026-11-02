@@ -450,9 +450,14 @@ current-era-only providers is ADMITTED, and the same head with a provider servin
 neither is refused naming `'v9'`.
 
 One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
-the single funnel every retained-era operation passes through — `buildLedger8CallTx`
-and `buildLedger8DeployTx` both — so the check sits there rather than being spread
-across its callers, where a third caller would eventually forget it. That is also
+the funnel every retained-era operation that reads the network passes through —
+`buildLedger8CallTx`, `buildLedger8DeployTx` and `submitLedger8MaintenanceTx` —
+so the check sits there rather than being spread across its callers, where a
+fourth caller would eventually forget it. The two builders that read nothing from
+the network, `buildLedger8CallTxFromStates` and `buildLedger8DeployTxFromVerifierKeys`,
+skip it: they have no head to check against and no providers to check, so their
+transaction is checked when `submitTx` reads the head and the providers' eras
+before proving. That is also
 why acquisition takes the provider set (`Ledger8RuntimeProviders`) rather than
 just the read surface. That type is deliberately narrow: the head source plus the
 three declarations, and nothing else, so a reader can see that acquisition reads

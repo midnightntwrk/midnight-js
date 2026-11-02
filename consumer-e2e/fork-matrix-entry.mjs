@@ -1572,8 +1572,8 @@ await leg('pre-fork retained call', async () => {
 });
 
 // (a) continued: THE LOW-LEVEL LEDGER 8 FUNCTIONS (#1524). Build with the ledger 8 builder, submit
-// with `submitTx`, on a contract of their own so the baseline legs keep their contract. ONE shard,
-// for the reason the read-surface probes below give.
+// with `submitTx`, on a contract of their own so the baseline legs keep their contract. ONE shard:
+// every shard would otherwise run the same legs and answer the same question.
 const MEASURES_LOW_LEVEL = covers(SELECTED.current, 'simple');
 /** @type {{ contractAddress: string } | undefined} */
 let lowLevelDeployment;

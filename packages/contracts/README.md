@@ -91,6 +91,17 @@ const finalized = LedgerTransaction.unwrap(record.tx, record.era);
 get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 (`result.private.unprovenTx`) is already sealed, so you pass it on as it is.
 
+`submitTx` reads the network's current ledger version once. The transaction's era must match it:
+
+| input | network | what happens |
+|---|---|---|
+| v9 | v9 | proved, balanced and submitted as v9 handles |
+| v8 | v8 | proved, balanced and submitted as v8 handles |
+| v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
+| v9 | v8 | refused with `EraMismatchError` before proving |
+
+It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
+
 ### Low-level functions per ledger era
 
 The low-level functions build a transaction without submitting it, or deploy and wait. Each
@@ -119,19 +130,8 @@ if (record.status === 'SucceedEntirely') {
 
 Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
 scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era and each
-state with the era that wrote it (`{ era, state }`), because after the fork a ledger 8 contract's
-state may already be a ledger 9 one.
-
-`submitTx` reads the network's current ledger version once. The transaction's era must match it:
-
-| input | network | what happens |
-|---|---|---|
-| v9 | v9 | proved, balanced and submitted as v9 handles |
-| v8 | v8 | proved, balanced and submitted as v8 handles |
-| v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
-| v9 | v8 | refused with `EraMismatchError` before proving |
-
-It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
+state with the era that wrote it (`{ era, state }`), because the fork translates a ledger 8
+contract's state into a ledger 9 one.
 
 ### Maintenance Operations
 
