@@ -27,8 +27,9 @@ import {
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason } from './errors';
+import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason, type SubmittedTransaction } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { diagnosedSubmit } from './internal/stale-head';
 import { proveBalanceSubmit } from './internal/submit-payload';
 
 /**
@@ -121,7 +122,18 @@ const submitOnHead = async (
   if (era !== head) {
     throw new EraMismatchError(ERA_MISMATCH_REASON[era]);
   }
-  const txId = await proveBalanceSubmit(providers, unprovenTx, circuitId);
+  const namedCircuits = circuitId === undefined ? [] : [circuitId].flat();
+  const operation: SubmittedTransaction = {
+    networkVersion: head,
+    kind: 'transaction',
+    circuitId: namedCircuits.length === 0 ? undefined : namedCircuits.join(', ')
+  };
+  const txId = await proveBalanceSubmit(
+    providers,
+    unprovenTx,
+    circuitId,
+    diagnosedSubmit(providers.publicDataProvider, operation, circuitId, providers.loggerProvider)
+  );
   return { txId, head };
 };
 
@@ -140,10 +152,10 @@ const submitOnHead = async (
  * | v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
  * | v9 | v8 | refused with `EraMismatchError` before proving |
  *
- * The head is read before proving, not again. If the network crosses the hard fork while the
- * transaction is being proved, the node refuses it and the refusal arrives as
- * `ProviderFailedError` from `submitTx`, not as a fork diagnosis. Read the head again and rebuild
- * the transaction for the new era.
+ * The head is read before proving. If the node rejects the submission, the head is read once more:
+ * when the network crossed the hard fork in between, the rejection arrives as
+ * `ForkCrossedDuringOperationError` (kind `'transaction'`); verify the transaction did not finalize,
+ * then build it again for the new era. A failure while proving or balancing reads nothing again.
  *
  * ## Blocking Behavior
  *
@@ -181,7 +193,12 @@ const submitOnHead = async (
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
  * @throws EraMismatchError for a transaction whose era is not the head's.
- * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+ *         rejected submission arrives as this error only when the head has not moved.
+ * @throws ForkCrossedDuringOperationError if the node rejects the submission and the head now
+ *         reports a later era.
+ * @throws SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+ *         read again, or reports an earlier era.
  * @throws EraInvariantViolationError if a provider answers in the other era, or the record's era
  *         differs from the head's. In the record's case the
  *         transaction is already on chain; its id is on `txId`.
@@ -217,7 +234,12 @@ export async function submitTx<PCK extends AnyProvableCircuitId>(
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
  * @throws EraMismatchError for a transaction whose era is not the head's.
- * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+ *         rejected submission arrives as this error only when the head has not moved.
+ * @throws ForkCrossedDuringOperationError if the node rejects the submission and the head now
+ *         reports a later era.
+ * @throws SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+ *         read again, or reports an earlier era.
  */
 export async function submitTxAsync<PCK extends AnyProvableCircuitId>(
   providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,

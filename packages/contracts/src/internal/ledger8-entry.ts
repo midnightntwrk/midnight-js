@@ -81,7 +81,7 @@ import {
   NetworkVersionStateMismatchError,
   PrivateStateNotFoundError,
   SubmitRejectionUndiagnosedError,
-  type SubmittedOperation,
+  type SubmittedContractOperation,
   type SubmittedOperationKind,
   TxFailedError
 } from '../errors';
@@ -125,8 +125,8 @@ import {
   requireLedger8SigningKey,
   toStoredLedger8SigningKey
 } from './ledger8-signing-key';
-import { handleSubmitRejection } from './stale-head';
-import { atProviderMethod, proveBalanceSubmit, type SubmitRunner } from './submit-payload';
+import { diagnosedSubmit } from './stale-head';
+import { atProviderMethod, proveBalanceSubmit } from './submit-payload';
 import { createEncryptionPublicKeyResolver } from './utils';
 
 /**
@@ -307,7 +307,7 @@ export const submitLedger8Tx = async (
     'publicDataProvider' | 'proofProvider' | 'walletProvider' | 'midnightProvider' | 'loggerProvider' | 'config'
   >,
   unprovenTx: UnprovenTx,
-  operation: SubmittedOperation
+  operation: SubmittedContractOperation
 ): Promise<string> => {
   const { circuitId, networkVersion } = operation;
   if (unprovenTx.era !== networkVersion) {
@@ -316,18 +316,12 @@ export const submitLedger8Tx = async (
         `for circuit '${circuitId}' of contract '${operation.contractAddress}', before any provider was called`
     );
   }
-  // Wrapped ONCE, around whichever era's submit runs, so the two cannot end
-  // up with different failure handling. `atProviderMethod` still does the sanitizing --
-  // what this adds is the fork-crossing diagnosis on top of its result.
-  const submit: SubmitRunner = async (call) => {
-    try {
-      return await atProviderMethod('submitTx', circuitId, call);
-    } catch (rejection) {
-      return handleSubmitRejection(providers.publicDataProvider, operation, rejection, providers.loggerProvider);
-    }
-  };
-
-  return proveBalanceSubmit(providers, unprovenTx, circuitId, submit);
+  return proveBalanceSubmit(
+    providers,
+    unprovenTx,
+    circuitId,
+    diagnosedSubmit(providers.publicDataProvider, operation, circuitId, providers.loggerProvider)
+  );
 };
 
 /** What attaching to an already-deployed retained-era contract arrived with. */

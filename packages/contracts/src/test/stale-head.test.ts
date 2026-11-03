@@ -671,11 +671,10 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect((forkCrossed as Error).message).not.toMatch(/re-run/);
     // The address the composition MINTED, read off the deploy record rather
     // than off anything the caller supplied -- a deploy supplies none.
-    expect((forkCrossed as ForkCrossedDuringOperationError).contractAddress.length).toBeGreaterThan(0);
-    expect((forkCrossed as Error).message).toContain((forkCrossed as ForkCrossedDuringOperationError).contractAddress);
-    expect((caught as Ledger8UnconfirmedError).contractAddress).toBe(
-      (forkCrossed as ForkCrossedDuringOperationError).contractAddress
-    );
+    const { contractAddress } = forkCrossed as ForkCrossedDuringOperationError;
+    expect(contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect((forkCrossed as Error).message).toContain(`'${String(contractAddress)}'`);
+    expect((caught as Ledger8UnconfirmedError).contractAddress).toBe(contractAddress);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {
