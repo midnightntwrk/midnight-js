@@ -203,7 +203,8 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
 /**
  * The public data of a deployment found on chain, discriminated by the ledger
  * era that recorded the deploy transaction. Narrow on `era` before reading
- * `tx` or `initialContractState`; `contractAddress` is present on both variants.
+ * `tx`. `contractAddress` and `initialContractState` are present on both
+ * variants; the era of `initialContractState` is its own, read it from the state.
  */
 export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 

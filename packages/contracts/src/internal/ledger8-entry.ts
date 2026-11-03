@@ -357,7 +357,11 @@ export interface Ledger8FoundState {
  *
  * @param providers The provider set.
  * @param request The contract, its address and the entry points to check.
- * @returns The deploy record as the read surface reported it.
+ * @returns The deploy record as the read surface reported it, and the deploy-time state
+ * `queryDeployContractState` serves.
+ * @throws ContractNotFoundError if the read surface serves no deploy-time state.
+ * @throws UnknownLedgerVersionError, InvalidSerializedStateError if the deploy-time state is not a
+ * contract state of a known era.
  * @throws InvalidArgumentError if the artifact declares no callable circuits,
  * or if the address is malformed.
  * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
@@ -808,7 +812,7 @@ export const buildLedger8CallTx = async (
  * @returns The execution data of the call.
  * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
  * circuit, or `options.config` is invalid.
- * @throws UnknownLedgerVersionError if `options.head` names no ledger era.
+ * @throws UnknownLedgerVersionError if `options.head`, or the era a state names, is not a ledger era.
  * @throws InvalidArgumentError if a state is not a serialized state.
  * @throws InvalidArgumentError if the state was written by a later ledger than `options.head`.
  * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
@@ -829,13 +833,13 @@ export const buildLedger8CallTxFromStates = async (
   const initialContractState = requireStateOption(
     options.initialContractState,
     ownContractState,
-    'options.initialContractState',
+    'initialContractState',
     'SerializedContractState'
   );
   const ledgerParameters = requireStateOption(
     options.ledgerParameters,
     ownLedgerParameters,
-    'options.ledgerParameters',
+    'ledgerParameters',
     'SerializedLedgerParameters'
   );
   if (LEDGER_VERSIONS.indexOf(initialContractState.era) > LEDGER_VERSIONS.indexOf(head)) {

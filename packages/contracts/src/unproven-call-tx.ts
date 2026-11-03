@@ -266,7 +266,10 @@ export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.
  *         zswap chain state were not written by the v9 ledger.
  * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` If the v8 ledger wrote
  *         the contract state.
+ * @throws UnknownLedgerVersionError If a state names an era this build does not know.
  * @throws InvalidSerializedStateError If a state's bytes are not of its kind and era.
+ * @throws SerializedStateDecodeFailedError, or the framework decoder's coded error, If the bytes after
+ *         a tag do not decode.
  * @throws ConfigurationError If `options.config` is missing.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
@@ -452,6 +455,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
  *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
  *         ledger 8, before anything else.
+ * @throws InvalidArgumentError If `transactionContext` was not made by `withContractScopedTransaction`.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
@@ -583,7 +587,7 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  *
  * `options.head` decides the transaction's ledger: `'v8'` builds a ledger 8 transaction, `'v9'` a
  * ledger 9 one that keeps the contract's ledger 8 verifier keys. The fork translates the contract's
- * state, so after it the state is a ledger 9 one; label each state with the era that wrote it.
+ * state, so after it the state is a ledger 9 one; pass the states as a read returns them.
  *
  * @param zkConfigProvider The source of the circuit's verifier key and of the artifact era.
  * @param options Configuration, including the states to run against.
@@ -597,9 +601,9 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  *         circuit, `options.config` is invalid, or the contract state was written by a later ledger
  *         than `options.head`.
  * @throws ConfigurationError If `options.config` is missing.
- * @throws UnknownLedgerVersionError If `options.head`, `options.initialContractState.era` or
- *         `options.ledgerParameters.era` names no ledger era.
- * @throws InvalidSerializedStateError If a state's bytes do not carry the era it is labelled with.
+ * @throws UnknownLedgerVersionError If `options.head`, or the era a state names, is not a ledger era.
+ * @throws InvalidArgumentError If a state is not a serialized state.
+ * @throws InvalidSerializedStateError If a state's bytes do not carry the kind and era it names.
  * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than
  *         `options.head`.
  * @throws Ledger8CallUnsupportedError If the circuit spends a coin the contract already holds, or pays

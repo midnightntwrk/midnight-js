@@ -15,10 +15,20 @@
 
 import { readFileSync } from 'node:fs';
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { createVerifierKey, SerializedContractState, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import {
+  createVerifierKey,
+  InvalidSerializedStateError,
+  PROVIDER_ERROR_CODES,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
+import { UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { ContractTypeError } from '../errors';
@@ -343,6 +353,43 @@ describe('verifyContractState', () => {
       await expect(
         Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), fromAnotherTypesCopy])
       ).resolves.toBeUndefined();
+    });
+
+    it('should refuse a state whose era this build does not know as an unknown ledger version', async () => {
+      const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
+      const fromNewerTypesCopy = { era: 'v10', serialize: () => state.serialize() };
+
+      const error = await expectThrows(
+        () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), fromNewerTypesCopy]),
+        UnknownLedgerVersionError
+      );
+
+      expect(error.requestedVersion).toBe('v10');
+    });
+
+    it('should refuse ledger parameters in place of a contract state by their tag', async () => {
+      const parameters = SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize());
+
+      const error = await expectThrows(
+        () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), parameters]),
+        InvalidSerializedStateError
+      );
+
+      expect(error).toMatchObject({ kind: 'ContractState', reason: 'tag-mismatch' });
+    });
+
+    it.each([
+      ['v9', UTILS_ERROR_CODES.DESERIALIZATION_FAILED],
+      ['v8', PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]
+    ] as const)('should refuse forged %s bytes behind a valid tag with a coded integrity error', async (era, code) => {
+      const forged = SerializedContractState.fromBytes(era, new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState[era]}:forged`));
+
+      const error = await verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), forged).then(
+        () => undefined,
+        (rejection: unknown) => rejection
+      );
+
+      expect(error).toMatchObject({ code, category: 'INTEGRITY' });
     });
 
     it('should refuse a decoded contract state as an invalid argument', async () => {

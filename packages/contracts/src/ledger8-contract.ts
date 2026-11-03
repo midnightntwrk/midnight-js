@@ -314,8 +314,9 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8C
 
 /**
  * Configuration for building a retained-era call on states the caller read itself, with
- * `createLedger8UnprovenCallTxFromInitialStates`. Every era is stated, because after the fork a
- * retained-era contract's state may already be a ledger 9 one.
+ * `createLedger8UnprovenCallTxFromInitialStates`. The head era is stated, and each state carries the
+ * era that wrote it, because after the fork a retained-era contract's state may already be a ledger 9
+ * one.
  */
 export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
   Ledger8CallTxOptionsBase<C, PCK> & {
@@ -922,7 +923,7 @@ export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends
    * The record of the deploy transaction, always a ledger 8 one: a retained-era
    * deploy runs only before the fork.
    */
-  readonly public: Ledger8FoundDeployTxPublicData & {
+  readonly public: Omit<Ledger8FoundDeployTxPublicData, 'initialContractState'> & {
     /**
      * The state the contract was deployed with: the bytes the contract address
      * was derived from. A deploy mints a fresh nonce, so these bytes and that

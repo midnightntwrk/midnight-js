@@ -49,6 +49,7 @@ import {
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
 import {
   ownContractState,
+  refuseUnknownEra,
   requireContractStateRead,
   requireLedger9ContractStateRead,
   requireTaggedRecord,
@@ -323,8 +324,14 @@ const decodeForVerification = async (contractState: SerializedContractState): Pr
  * @param contractAddress The address `contractState` was read from, used to identify the contract
  *                        in the thrown error.
  *
+ * @throws UnknownLedgerVersionError When `contractState` names an era this build does not know.
  * @throws InvalidArgumentError When `contractState` is not a `SerializedContractState`.
- * @throws InvalidSerializedStateError When its bytes are not a contract state of its era.
+ * @throws InvalidSerializedStateError When its bytes are not a contract state of its era, for example
+ *                                     ledger parameters, or a state from another copy of the types
+ *                                     package whose bytes carry another tag.
+ * @throws SerializedStateDecodeFailedError, or the framework decoder's coded error, When the bytes
+ *                                     after the tag do not decode.
+ * @throws Ledger8RuntimeMissingError When a v8 state is passed and the ledger 8 runtime cannot load.
  * @throws ContractTypeError When any circuit is missing from `contractState`, has no deployed
  *                           verifier key, or has a key differing from the local one.
  */
@@ -335,6 +342,7 @@ export const verifyContractState = async (
 ): Promise<void> => {
   const state = ownContractState(contractState);
   if (state === undefined) {
+    refuseUnknownEra(contractState);
     throw new InvalidArgumentError(
       'verifyContractState was passed a contractState that is not a SerializedContractState. Pass ' +
         '`read.contractState` of a PublicDataProvider read as it is.'

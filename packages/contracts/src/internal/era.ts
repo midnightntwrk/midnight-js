@@ -305,9 +305,23 @@ export interface Ledger9InitialStates {
 }
 
 /**
+ * Refuses a value that names an era this build does not know, such as a serialized state made by a
+ * newer installed copy of the types package.
+ *
+ * @throws UnknownLedgerVersionError if the value carries an `era` that is not a ledger era.
+ */
+export const refuseUnknownEra = (value: unknown): void => {
+  const era = eraTagOf(value);
+  if (era !== undefined) {
+    throw new UnknownLedgerVersionError(era);
+  }
+};
+
+/**
  * A state a caller passed in an option, rebuilt by this copy of the types package.
  *
- * @throws InvalidArgumentError if the value is not a serialized state that names a known era.
+ * @throws UnknownLedgerVersionError if the value names an era this build does not know.
+ * @throws InvalidArgumentError if the value is not a serialized state.
  * @throws InvalidSerializedStateError if its bytes are not of the expected kind and era.
  */
 export const requireStateOption = <T extends { readonly era: LedgerVersion }>(
@@ -318,6 +332,7 @@ export const requireStateOption = <T extends { readonly era: LedgerVersion }>(
 ): T => {
   const state = own(value);
   if (state === undefined) {
+    refuseUnknownEra(value);
     throw new InvalidArgumentError(
       `options.${option} is not a ${className}. Pass the field of a PublicDataProvider read as it is, ` +
         `or build one with ${className}.fromBytes(era, bytes).`
@@ -337,9 +352,11 @@ const requireLedger9OptionEra = <T extends { readonly era: LedgerVersion }>(stat
 };
 
 /**
- * Decodes the states a caller passed to a ledger 9 call, with the framework's own runtime. A state
- * made by a second installed copy of the types package is rebuilt from its bytes first.
+ * Decodes the states a caller passed to a ledger 9 call, with the framework's own runtime. Every
+ * state is rebuilt from its bytes first, so one made by a second installed copy of the types package
+ * is accepted. The zswap chain state has the same tag in both eras, so its era is the one it names.
  *
+ * @throws UnknownLedgerVersionError if a state names an era this build does not know.
  * @throws InvalidArgumentError if a state is not a serialized state, or the ledger parameters or the
  *   zswap chain state were not written by the v9 ledger.
  * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote
@@ -359,6 +376,12 @@ export const decodeLedger9InitialStates = (
     'initialContractState',
     'SerializedContractState'
   );
+  if (contractState.era === 'v8') {
+    throw new EraMismatchError('ledger8-contract-state-unsupported', {
+      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+      contractAddress
+    });
+  }
   const zswapChainState = requireLedger9OptionEra(
     requireStateOption(states.initialZswapChainState, ownZswapChainState, 'initialZswapChainState', 'SerializedZswapChainState'),
     'initialZswapChainState'
@@ -367,12 +390,6 @@ export const decodeLedger9InitialStates = (
     requireStateOption(states.ledgerParameters, ownLedgerParameters, 'ledgerParameters', 'SerializedLedgerParameters'),
     'ledgerParameters'
   );
-  if (contractState.era === 'v8') {
-    throw new EraMismatchError('ledger8-contract-state-unsupported', {
-      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
-      contractAddress
-    });
-  }
   return decodeLedger9States(contractState, ledgerParameters, zswapChainState, operation);
 };
 

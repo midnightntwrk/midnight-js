@@ -259,7 +259,8 @@ if (read !== null) {
 ```
 
 A mismatch throws `ContractTypeError`. Its message lists the circuits; the deployed state is on
-`error.contractState`, a `SerializedContractState`. Decode it with your own runtime to inspect it.
+`error.contractState`, a `SerializedContractState` of either era. Decode it with your own runtime of
+`error.contractState.era` to inspect it.
 
 The deploy and found handles carry the deploy-time state the same way, in both eras:
 `deployTxData.public.initialContractState` is a `SerializedContractState`. Decode it with your own

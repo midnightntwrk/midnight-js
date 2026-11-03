@@ -114,7 +114,7 @@ and `contractStateObservable`, and `PublicStatesRead` from
 
 The shape is the same in every era, so the next fork changes no read type. The
 `contracts` package uses the same classes for every full ledger state on its API
-too: the states a caller passes to build a call, `initialContractState` on the
+too, except `Ledger9ContractConstructorResult.nextContractState`: the states a caller passes to build a call, `initialContractState` on the
 deploy and found handles, `verifyContractState` and `ContractTypeError`.
 
 A finalized-transaction record names its era `era` too, and its `tx` is a

@@ -1107,8 +1107,9 @@ export class ContractTypeError extends MidnightJsError {
   /**
    * Initializes a new {@link ContractTypeError}.
    *
-   * @param contractState The deployed contract state that was checked, as bytes. Decode it with your
-   *   own runtime to inspect it: `error.contractState.deserialize({ v9: ContractState })`.
+   * @param contractState The deployed contract state that was checked, as bytes, of either era.
+   *   Decode it with your own runtime of `error.contractState.era` to inspect it, for example
+   *   `error.contractState.deserialize({ v9: ContractState })`.
    * @param mismatch The circuits that failed to match, grouped by the condition that applied.
    * @param contractAddress The address the state was read from, when known.
    */

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
@@ -32,7 +33,7 @@ import {
   SerializedLedgerParameters,
   SerializedZswapChainState
 } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
@@ -87,6 +88,9 @@ const createContextRecordingCircuit = (seen: CircuitContext[]) => {
     return circuit(ctx);
   });
 };
+
+// The hash the mocked public data provider's `queryBlock` answers with.
+const MOCK_BLOCK_HASH = '00'.repeat(32);
 
 const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
 
@@ -400,23 +404,55 @@ describe('unproven-call-tx', () => {
       const error = await refusalOf({ [field]: make() }, seen);
 
       expect(error).toBeInstanceOf(InvalidArgumentError);
-      expect(error).toMatchObject({ code: COMMON_ERROR_CODES.INVALID_ARGUMENT });
-      expect(String(error)).toContain(`options.${field}`);
+      expect(error).toMatchObject({
+        code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
+        message: expect.stringMatching(new RegExp(`^options\\.${field} was written by the v8 ledger`))
+      });
       expect(seen).toHaveLength(0);
     });
 
-    it.each(['initialContractState', 'initialZswapChainState', 'ledgerParameters'])(
-      'refuses a decoded object in place of %s before running the circuit',
-      async (field) => {
-        const seen: CircuitContext[] = [];
+    it.each([
+      ['initialContractState', () => new ContractState()],
+      ['initialZswapChainState', () => new ZswapChainState()],
+      ['ledgerParameters', () => LedgerParameters.initialParameters()]
+    ] as const)('refuses a decoded object in place of %s before running the circuit', async (field, decoded) => {
+      const seen: CircuitContext[] = [];
 
-        const error = await refusalOf({ [field]: LedgerParameters.initialParameters() }, seen);
+      const error = await refusalOf({ [field]: decoded() }, seen);
 
-        expect(error).toBeInstanceOf(InvalidArgumentError);
-        expect(String(error)).toContain(`options.${field}`);
-        expect(seen).toHaveLength(0);
-      }
-    );
+      expect(error).toBeInstanceOf(InvalidArgumentError);
+      expect(error).toMatchObject({ message: expect.stringMatching(new RegExp(`^options\\.${field} is not a Serialized`)) });
+      expect(seen).toHaveLength(0);
+    });
+
+    it('refuses a state whose era this build does not know as an unknown ledger version', async () => {
+      const seen: CircuitContext[] = [];
+      const fromNewerTypesCopy = { era: 'v10', serialize: () => new ContractState().serialize() };
+
+      const error = await refusalOf({ initialContractState: fromNewerTypesCopy }, seen);
+
+      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(error).toMatchObject({ requestedVersion: 'v10' });
+      expect(seen).toHaveLength(0);
+    });
+
+    it('refuses a whole set of v8 states as a ledger 8 contract state, before the companions', async () => {
+      const seen: CircuitContext[] = [];
+      const ledger8 = await loadLedger8Protocol();
+
+      const error = await refusalOf(
+        {
+          initialContractState: SerializedContractState.fromBytes('v8', new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v8}:body`)),
+          initialZswapChainState: SerializedZswapChainState.fromBytes('v8', new ledger8.ZswapChainState().serialize()),
+          ledgerParameters: SerializedLedgerParameters.fromBytes('v8', ledger8.LedgerParameters.initialParameters().serialize())
+        },
+        seen
+      );
+
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect(error).toMatchObject({ reason: 'ledger8-contract-state-unsupported' });
+      expect(seen).toHaveLength(0);
+    });
 
     it('refuses a state of another kind before running the circuit', async () => {
       const seen: CircuitContext[] = [];
@@ -435,7 +471,7 @@ describe('unproven-call-tx', () => {
 
       const error = await refusalOf({ initialContractState: forged }, seen);
 
-      expect(error).toBeInstanceOf(MidnightJsError);
+      expect(error).toMatchObject({ code: UTILS_ERROR_CODES.DESERIALIZATION_FAILED, category: 'INTEGRITY' });
       expect(seen).toHaveLength(0);
     });
   });
@@ -511,7 +547,8 @@ describe('unproven-call-tx', () => {
       expect(seen).toHaveLength(2);
       const stateSeenBySecondCall = Object.values(seen[1]!.queryContexts)[0]!.state.state;
       expect(stateSeenBySecondCall.encode()).toEqual(runningState.encode());
-      expect(seen[1]!.callContext.parentBlockHash).toBe(seen[0]!.callContext.parentBlockHash);
+      expect(seen[0]!.callContext.parentBlockHash).toBe(MOCK_BLOCK_HASH);
+      expect(seen[1]!.callContext.parentBlockHash).toBe(MOCK_BLOCK_HASH);
       expect(getPublicStates).toHaveBeenCalledTimes(1);
       expect(providers.publicDataProvider.queryBlock).toHaveBeenCalledTimes(1);
       const current = scope.getCurrentStates();

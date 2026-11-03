@@ -89,7 +89,6 @@ export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-
 
 /**
  * @internal The states a scope caches between its calls, decoded by the framework's own runtime.
- * Kept off the public context, whose API carries states only as bytes.
  */
 export interface ScopeStateCache<C extends Contract.Any> {
   readonly [CacheStates]: (

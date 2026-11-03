@@ -45,8 +45,9 @@ import {
   type LedgerEra,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type ContractStateAndParametersRead,
   type ContractStateRead,
@@ -597,7 +598,32 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       }).catch((error: unknown) => error);
 
       expect(rejection).toBeInstanceOf(InvalidArgumentError);
-      expect(String(rejection)).toContain(`options.${field}`);
+      expect(rejection).toMatchObject({ message: expect.stringMatching(new RegExp(`^options\\.${field} is not a Serialized`)) });
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    it('refuses a state whose era this build does not know as an unknown ledger version', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const fromNewerTypesCopy = { era: 'v10', serialize: () => v6Envelope };
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: fromNewerTypesCopy }).catch(
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(rejection).toMatchObject({ requestedVersion: 'v10' });
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses forged bytes behind a valid tag with a coded error before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+      const forged = SerializedContractState.fromBytes('v8', new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v8}:forged`));
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: forged }).catch((error: unknown) => error);
+
+      expect(rejection).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, category: 'INTEGRITY' });
       expect(log).not.toContain('engine.executeCircuit');
     });
 
