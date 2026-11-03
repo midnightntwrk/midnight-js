@@ -39,6 +39,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Pull the e2e prover keys from Git LFS
+        uses: ./.github/actions/pull-lfs
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:

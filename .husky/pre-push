@@ -1,3 +1,4 @@
+git lfs pre-push "$@"
 yarn lint
 yarn typecheck:tests
 yarn typecheck:consumer-e2e
