@@ -61,7 +61,8 @@ artifacts belong to. The integrity manifest is preferred, because
 `expectedManifestHash` pins it to a digest the application controls;
 `contract-info.json` is the fallback for bundles built before compactc emitted a
 manifest, and it is verified against the manifest whenever one is present.
-Every contract operation reads it, for contracts of every era: a bundle that ships neither file is refused with `EraMismatchError`
+Every contract operation reads the declared `runtime-version`, for contracts of
+every era: a bundle that ships neither file is refused with `EraMismatchError`
 reason `'artifact-era-undeclared'`. A custom `ZKConfigProvider` must override
 `getArtifactRuntimeVersion()` for the same reason.
 

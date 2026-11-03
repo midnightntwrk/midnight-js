@@ -133,7 +133,7 @@ too".
   next ledger keeps the container shape, every ledger 9 container would be sent
   to the next ledger's pipeline, without an error, the day that constant moves.
   The retained refusal (`unwrapped-ledger9-contract`) compared against the same
-  constant, so it now compares against ledger 9 by name.
+  constant, so it now compares against the era its shape admits, ledger 8.
 - Cost, accepted: every contract operation reads the declaration. The shipped
   providers cache it per instance, so it is one read per provider. Every bundle
   must serve its manifest `runtime-version` or `compiler/contract-info.json`,

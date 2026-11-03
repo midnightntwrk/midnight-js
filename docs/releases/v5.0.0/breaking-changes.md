@@ -1480,12 +1480,14 @@ What you must do:
   and `zkir/` is refused with `EraMismatchError` reason `'artifact-era-undeclared'`.
 - **Implement `getArtifactRuntimeVersion()` on a custom `ZKConfigProvider`.** The base method
   throws `ArtifactRuntimeVersionUnavailableError`. A provider that does not override it is now
-  refused on every contract operation with reason `'provider-cannot-declare-era'`. A provider
-  mocked as an object literal in tests needs the member too.
+  refused on every contract operation with reason `'provider-cannot-declare-era'`. This includes
+  the low-level functions that take a `zkConfigProvider` argument, such as
+  `createLedger9UnprovenDeployTxFromVerifierKeys`. A provider mocked as an object literal in tests
+  needs the member too: without it the call fails with a `TypeError`, not with an era reason.
 
 New refusal: reason `'ledger8-artifacts-in-ledger9-container'`, for a ledger 9 container whose
-provider serves artifacts that declare the ledger 8 toolchain. The provider points at another
-contract's compiler output.
+provider serves artifacts that declare the ledger 8 toolchain. Usually the provider points at
+another contract's compiler output.
 
 The shipped providers cache the version per provider instance, so it costs one read per
 provider, not one per call.

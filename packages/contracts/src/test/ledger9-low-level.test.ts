@@ -29,7 +29,7 @@ import {
   createLedger9UnprovenDeployTxFromVerifierKeys,
   createUnprovenDeployTx
 } from '../unproven-deploy-tx';
-import { createMockContractAddress, createMockProviders } from './test-mocks';
+import { createMockCompiledContract, createMockContractAddress, createMockProviders } from './test-mocks';
 
 type Providers = ReturnType<typeof createMockProviders>;
 
@@ -49,19 +49,21 @@ const providerMocks = (providers: Providers): MockInstance[] =>
     typeof provider === 'object' && provider !== null ? Object.values(provider).filter(vi.isMockFunction) : []
   );
 
-const callOptions = { compiledContract: ledger8Contract, contractAddress: createMockContractAddress(), circuitId: 'increment' };
-const deployOptions = { compiledContract: ledger8Contract };
-
-const LEDGER9_FUNCTIONS: readonly (readonly [string, (providers: Providers) => Promise<unknown>])[] = [
-  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+const ledger9FunctionsFor = (
+  compiledContract: object
+): readonly (readonly [string, (providers: Providers) => Promise<unknown>])[] => {
+  const callOptions = { compiledContract, contractAddress: createMockContractAddress(), circuitId: 'increment' };
+  const deployOptions = { compiledContract };
+  return [
+  // @ts-expect-error an untyped contract matches no overload; a JavaScript caller can still pass one
   ['createLedger9UnprovenCallTx', (providers) => createLedger9UnprovenCallTx(providers, callOptions)],
   [
     'createLedger9UnprovenCallTxFromInitialStates',
     (providers) =>
-      // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+      // @ts-expect-error an untyped contract matches no overload; a JavaScript caller can still pass one
       createLedger9UnprovenCallTxFromInitialStates(providers.zkConfigProvider, callOptions, sampleEncryptionPublicKey())
   ],
-  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+  // @ts-expect-error an untyped contract matches no overload; a JavaScript caller can still pass one
   ['createLedger9UnprovenDeployTx', (providers) => createLedger9UnprovenDeployTx(providers, deployOptions)],
   [
     'createLedger9UnprovenDeployTxFromVerifierKeys',
@@ -69,15 +71,20 @@ const LEDGER9_FUNCTIONS: readonly (readonly [string, (providers: Providers) => P
       createLedger9UnprovenDeployTxFromVerifierKeys(
         providers.zkConfigProvider,
         sampleCoinPublicKey(),
-        // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+        // @ts-expect-error an untyped contract matches no overload; a JavaScript caller can still pass one
         deployOptions,
         sampleEncryptionPublicKey(),
         providers.config
       )
   ],
-  // @ts-expect-error a ledger 8 contract matches no overload; a JavaScript caller can still pass one
+  // @ts-expect-error an untyped contract matches no overload; a JavaScript caller can still pass one
   ['submitLedger9DeployTx', (providers) => submitLedger9DeployTx(providers, deployOptions)]
 ];
+};
+
+const callOptions = { compiledContract: ledger8Contract, contractAddress: createMockContractAddress(), circuitId: 'increment' };
+const deployOptions = { compiledContract: ledger8Contract };
+const LEDGER9_FUNCTIONS = ledger9FunctionsFor(ledger8Contract);
 
 const ROUTERS_NEEDING_TRANSACTION_PROVIDERS: readonly (readonly [string, (providers: Providers) => Promise<unknown>])[] = [
   // @ts-expect-error - an untyped ledger 8 contract, as a JavaScript caller passes one
@@ -154,4 +161,20 @@ describe('the Ledger9 low-level functions accept only a contract whose artifacts
     const calledMocks = providerMocks(providers).filter((mock) => mock.mock.calls.length > 0);
     expect(calledMocks).toEqual([providers.zkConfigProvider.getArtifactRuntimeVersion]);
   });
+});
+
+describe('the Ledger9 low-level functions refuse a ledger 9 container served with ledger 8 artifacts', () => {
+  it.each(ledger9FunctionsFor(createMockCompiledContract()))(
+    '%s refuses with a named error after reading only the artifact era',
+    async (_name, run) => {
+      const providers = ledger8Providers();
+
+      const rejection = await run(providers).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(EraMismatchError);
+      expect(rejection).toMatchObject({ reason: 'ledger8-artifacts-in-ledger9-container' });
+      const calledMocks = providerMocks(providers).filter((mock) => mock.mock.calls.length > 0);
+      expect(calledMocks).toEqual([providers.zkConfigProvider.getArtifactRuntimeVersion]);
+    }
+  );
 });

@@ -465,8 +465,7 @@ const eraOfRuntimeVersion = (runtimeVersion: string): LedgerVersion | undefined 
 };
 
 /**
- * Reads what the caller's contract object can prove about itself, WITHOUT deciding an era for a
- * retained candidate.
+ * Reads what the caller's contract object can prove about itself. It never decides an era.
  *
  * A STRUCTURAL check, and it must not be "improved" to test the vendor's registered
  * `CompiledContract` brand: that brand sits on a prototype the container's own combinators drop,
@@ -494,7 +493,7 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
     // the property is an OWN one, so it survives both the spread its own combinators perform and
     // any build step. The era still comes from the artifacts' declaration. Requiring the `tag` as well
     // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
-    // being routed into the current-era pipeline by default.
+    // being routed into the ledger 9 pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
       return 'ledger9-container';
     }
@@ -588,8 +587,9 @@ export const resolveArtifactEra = async (
     });
   }
   if (era !== ERA_OF_SHAPE[shape]) {
-    // A retained SHAPE whose artifacts declare the ledger 9 toolchain is a ledger 9 contract passed
-    // raw, with its `async` erased by the caller's build. It reads as retained and is not.
+    // A container whose artifacts declare ledger 8 is served another contract's artifacts. A
+    // retained SHAPE whose artifacts declare ledger 9 is a ledger 9 contract passed raw, with its
+    // `async` erased by the caller's build: it reads as retained and is not.
     throw shape === 'ledger9-container'
       ? new EraMismatchError('ledger8-artifacts-in-ledger9-container', {
           detail: `The artifacts declare compact-runtime ${runtimeVersion}.`

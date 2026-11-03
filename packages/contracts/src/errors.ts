@@ -216,9 +216,10 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'rebuild the contract with a toolchain this version supports.',
   'ledger8-artifacts-in-ledger9-container':
     'The contract is a ledger 9 CompiledContract container, but the ZK config provider serves ' +
-    'artifacts that declare the ledger 8 (pre-fork) Compact toolchain, so the keys and the contract ' +
-    'do not belong together. Point the provider at the compiler output of this contract, built by ' +
-    'the ledger 9 Compact toolchain.',
+    'artifacts that declare the ledger 8 (pre-fork) Compact toolchain, so these artifacts do not ' +
+    'belong to this contract. Point the provider at the compiler output of this contract, built by ' +
+    'the ledger 9 Compact toolchain. If these artifacts are the right ones, pass the contract ' +
+    'instance the ledger 8 toolchain generated instead of a CompiledContract container.',
   'ledger8-deploy-on-ledger9-network':
     'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
     'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +

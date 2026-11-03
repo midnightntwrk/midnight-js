@@ -126,8 +126,9 @@ export function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Contract
  * @param config The network the transaction is built for and how long it stays valid, normally `providers.config`.
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
  * @throws ConfigurationError If `config` is missing.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
@@ -230,8 +231,9 @@ export async function createLedger9UnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
  * @throws ConfigurationError If `providers.config` is missing.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
@@ -386,7 +388,8 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  */
 export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -442,7 +445,8 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  */
 export async function createUnprovenDeployTx<C extends Contract.Any>(
   providers: Ledger9UnprovenDeployTxProviders<C>,

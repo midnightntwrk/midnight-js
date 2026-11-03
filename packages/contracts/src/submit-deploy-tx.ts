@@ -90,8 +90,9 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
  * @returns A `Promise` that resolves with the finalized deployment transaction data;
  *          or rejects with an error if the deployment fails.
  *
- * @throws {EraMismatchError} With reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws {EraMismatchError} With reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
@@ -210,7 +211,8 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,

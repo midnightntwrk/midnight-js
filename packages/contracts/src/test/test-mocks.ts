@@ -274,9 +274,8 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
-    // The CURRENT-era value, because this is the current-era provider set. A retained value here
-    // would be read by nothing today and would silently route a regression into the retained
-    // pipeline instead of failing at the era decision.
+    // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
+    // it, and a ledger 9 container served with a retained value is refused.
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.20.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),

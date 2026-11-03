@@ -107,8 +107,9 @@ export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.
  * @param walletEncryptionPublicKey
  * @param crossContract Enables cross-contract calls; required for circuits that make them.
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
  * @throws ConfigurationError If `options.config` is missing.
  * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
  *         whitespace.
@@ -441,8 +442,9 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @returns A promise that contains all data produced by the circuit call and an unproven
  *          transaction assembled from the call result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
@@ -646,7 +648,8 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  * @throws InvalidArgumentError If `crossContract` is given for a ledger 8 contract.
  */
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
@@ -704,7 +707,8 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  *
  * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  */
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,

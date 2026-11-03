@@ -574,9 +574,9 @@ export class InvalidProtocolSchemeError extends MidnightJsError {
  * An error indicating that a {@link ZKConfigProvider} cannot report which `compact-runtime` its
  * artifact set was compiled against.
  *
- * The retained-era pipeline establishes an artifact's era from that declared version, so a provider
- * that cannot serve it cannot be used with retained-era artifacts. Every provider this framework
- * ships can serve it; a provider written outside it may not, which is the case named here.
+ * Every contract operation establishes an artifact's era from that declared version, so a provider
+ * that cannot serve it cannot be used for contract operations. Every provider this framework ships
+ * can serve it; a provider written outside it may not, which is the case named here.
  *
  * Raised rather than answered with a default, because every default would be a guess about which
  * ledger era a caller's artifacts belong to.

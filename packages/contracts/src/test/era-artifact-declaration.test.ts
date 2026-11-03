@@ -66,10 +66,13 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     expect((error as EraMismatchError).message).toMatch(/0\.16\.0/);
   });
 
-  it('refuses a ledger 9 container whose runtime version this framework cannot place', async () => {
-    await expect(resolveArtifactEra(createMockCompiledContract(), declaring('0.99.0'))).rejects.toMatchObject({
+  it('refuses a ledger 9 container whose runtime version this framework cannot place, naming it', async () => {
+    const source = declaring('0.99.0');
+
+    await expect(resolveArtifactEra(createMockCompiledContract(), source)).rejects.toMatchObject({
       reason: 'unknown-artifact-runtime-version'
     });
+    await expect(resolveArtifactEra(createMockCompiledContract(), source)).rejects.toThrow(/0\.99\.0/);
   });
 
   it('refuses a ledger 9 container whose artifacts declare nothing', async () => {
@@ -79,6 +82,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       (thrown: unknown) => thrown
     );
 
+    expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
     expect((error as EraMismatchError).cause).toBe(unavailable);
   });
