@@ -19,6 +19,7 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_STATE_KINDS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
@@ -54,6 +55,16 @@ export type StateReadMethod = 'queryDeployContractState';
  * error can come from either surface.
  */
 export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
+
+/**
+ * The {@link PublicDataProvider} methods that wait for data to appear and accept
+ * a bound on that wait.
+ */
+export type WatchOperation =
+  | 'watchForContractState'
+  | 'watchForUnshieldedBalances'
+  | 'watchForDeployTxData'
+  | 'watchForTxData';
 
 /**
  * Stable error-code strings for the providers.
@@ -109,12 +120,13 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH',
   INVALID_LEDGER_STATE: 'MIDNIGHT_JS_PR_INVALID_LEDGER_STATE',
   LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING',
-  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED'
+  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED',
+  WATCH_TIMED_OUT: 'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, UNCERTAIN, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
@@ -151,7 +163,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
-  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.WATCH_TIMED_OUT]: UNCERTAIN
 });
 
 const {
@@ -178,7 +191,8 @@ const {
   TRANSACTION_ERA_MISMATCH,
   INVALID_LEDGER_STATE,
   LEDGER_STATE_DECODER_MISSING,
-  LEDGER_STATE_DECODE_FAILED
+  LEDGER_STATE_DECODE_FAILED,
+  WATCH_TIMED_OUT
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -876,5 +890,33 @@ export class PrivateStateLimitExceededError extends MidnightJsError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateLimitExceededError';
+  }
+}
+
+/**
+ * Raised when a `watchFor*` call given `maxWaitMs` finds nothing within that
+ * bound. The wait is abandoned and polling stops. The data may still appear:
+ * if it depends on a transaction you submitted, check the chain before
+ * submitting again.
+ */
+export class WatchTimeoutError extends MidnightJsError {
+  readonly code = WATCH_TIMED_OUT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
+
+  /**
+   * @param operation The method that gave up waiting.
+   * @param target The transaction id or contract address it waited for.
+   * @param maxWaitMs The bound that elapsed.
+   */
+  constructor(
+    readonly operation: WatchOperation,
+    readonly target: ContractAddress | TransactionId,
+    readonly maxWaitMs: number
+  ) {
+    super(
+      `${operation} found nothing for ${target} within ${maxWaitMs} ms. It may still appear: ` +
+        `if it depends on a transaction you submitted, check the chain before submitting again.`
+    );
+    this.name = 'WatchTimeoutError';
   }
 }

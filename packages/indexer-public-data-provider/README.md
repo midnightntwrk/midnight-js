@@ -241,24 +241,53 @@ Wait for data to appear on-chain (polling with automatic retry):
 ```typescript
 // Wait for contract to be deployed
 watchForContractState(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<ContractStateRead>
 
 // Wait for unshielded balances
 watchForUnshieldedBalances(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<UnshieldedBalances>
 
 // Wait for deploy transaction data
 watchForDeployTxData(
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  options?: WatchOptions
 ): Promise<FinalizedTxRead>
 
 // Wait for any transaction data
 watchForTxData(
-  txId: TransactionId
+  txId: TransactionId,
+  options?: WatchOptions
 ): Promise<FinalizedTxRead>
 ```
+
+Each method waits indefinitely unless you pass `maxWaitMs`. Then it rejects
+with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`, category
+`UNCERTAIN`) when the indexer has not reported the data in time, and polling
+stops:
+
+```typescript
+import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  const record = await provider.watchForTxData(txId, { maxWaitMs: 120_000 });
+} catch (e) {
+  if (hasErrorCode(e, PROVIDER_ERROR_CODES.WATCH_TIMED_OUT)) {
+    // The transaction may still land: check the chain before submitting again.
+  }
+  throw e;
+}
+```
+
+- The bound covers the indexer poll only, including its retries on network
+  failure. A short bound reports an unreachable indexer as a timeout.
+- An invalid `maxWaitMs` throws `InvalidArgumentError` synchronously.
+- `submitTx`, `deployContract` and `findDeployedContract` do not pass
+  `maxWaitMs` through yet; they still wait indefinitely.
 
 ### Observable Methods
 

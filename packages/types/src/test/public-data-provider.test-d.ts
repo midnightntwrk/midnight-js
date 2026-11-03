@@ -19,13 +19,15 @@ import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from '../contract-state-read';
+import type { WatchOperation } from '../errors';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
   ContractStateObservableConfig,
   PositionedRecord,
-  PublicDataProvider
+  PublicDataProvider,
+  WatchOptions
 } from '../public-data-provider';
 import type { SerializedState } from '../serialized-state';
 
@@ -94,7 +96,7 @@ describe('contract state reads', () => {
 
   it('pins watchForContractState to the read record', () => {
     expectTypeOf<PublicDataProvider['watchForContractState']>().toEqualTypeOf<
-      (contractAddress: ContractAddress) => Promise<ContractStateReadFixture>
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<ContractStateReadFixture>
     >();
   });
 
@@ -164,5 +166,17 @@ describe('PositionedRecord', () => {
 
     expectTypeOf({ type: 'blockHeight', blockHeight: record.blockHeight } as const).toExtend<ContractStateObservableConfig>();
     expectTypeOf({ type: 'blockHash', blockHash: record.blockHash } as const).toExtend<ContractStateObservableConfig>();
+  });
+});
+
+describe('the watchFor* surface', () => {
+  it('WatchOperation names exactly the watchFor* methods of PublicDataProvider', () => {
+    expectTypeOf<WatchOperation>().toEqualTypeOf<Extract<keyof PublicDataProvider, `watchFor${string}`>>();
+  });
+
+  it('watchForUnshieldedBalances takes an optional bound', () => {
+    expectTypeOf<PublicDataProvider['watchForUnshieldedBalances']>().toEqualTypeOf<
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<UnshieldedBalances>
+    >();
   });
 });
