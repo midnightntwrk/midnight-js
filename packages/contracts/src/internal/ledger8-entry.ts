@@ -33,7 +33,7 @@
 
 import type {
   Ledger8SigningKey,
-  LedgerEra
+  LedgerEraFacade
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   LEDGER_VERSIONS,
@@ -187,7 +187,7 @@ export interface Ledger8Runtime {
    * Acquiring it costs nothing extra here: the engine beside it has already pulled the retained
    * runtime, and the era load is memoised.
    */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
 }
 
 /**
@@ -1029,7 +1029,7 @@ export const toLedger8DeployEntryOptions = (
  * rather than off any state, and only here -- behind the era and provider gates of the caller.
  */
 const composeLedger8Deploy = async (
-  era: LedgerEra,
+  era: LedgerEraFacade,
   engine: Ledger8ExecutionEngine<Ledger8StateValue>,
   zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKeys'>,
   coinPublicKey: string,

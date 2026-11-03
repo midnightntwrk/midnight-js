@@ -130,7 +130,7 @@ describe('Protocol type ACL', () => {
       // reusing the current-era one.
       'Ledger8SigningKey',
       'Ledger8Subpath',
-      'LedgerEra',
+      'LedgerEraFacade',
       'LedgerParametersOption',
       'LedgerVersion',
       'MaintenanceAuthorityMismatchReason',

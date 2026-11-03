@@ -22,7 +22,7 @@ import { composeEraLedger8CallTx, composeEraLedger8DeployTx } from '../v8/adapt'
 import { loadLedger8Protocol } from '../v8/load';
 import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from './envelope';
-import type { LedgerEra } from './era';
+import type { LedgerEraFacade } from './era';
 
 // The option, parameter and return vocabulary of the facade's compose methods
 // travels with them: publishing a method without them leaves a caller unable to
@@ -44,16 +44,16 @@ export type {
 } from '../shared/compose-types';
 export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
-export type { LedgerEra } from './era';
+export type { LedgerEraFacade } from './era';
 
 // One memo slot per era, never one shared slot, and both era objects are frozen --
 // see SharedTableDiscipline and EraBoundary.
-let ledger8EraPromise: Promise<LedgerEra> | undefined;
-let ledger9EraPromise: Promise<LedgerEra> | undefined;
+let ledger8EraPromise: Promise<LedgerEraFacade> | undefined;
+let ledger9EraPromise: Promise<LedgerEraFacade> | undefined;
 
 /** The v9 era. Wholly synchronous -- see the EraBoundary document. */
-const createLedger9Era = (): LedgerEra => {
-  const era: LedgerEra = {
+const createLedger9Era = (): LedgerEraFacade => {
+  const era: LedgerEraFacade = {
     version: 'v9',
     extractState: (raw) => extractStateWith(raw, 'v9', extractLedger9EncodedStateValue),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
@@ -69,10 +69,10 @@ const createLedger9Era = (): LedgerEra => {
  * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */
-const createLedger8Era = async (): Promise<LedgerEra> => {
+const createLedger8Era = async (): Promise<LedgerEraFacade> => {
   const v8 = await loadLedger8Protocol();
 
-  const era: LedgerEra = {
+  const era: LedgerEraFacade = {
     version: 'v8',
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
@@ -84,7 +84,7 @@ const createLedger8Era = async (): Promise<LedgerEra> => {
 };
 
 /**
- * Resolves one ledger era to a {@link LedgerEra} bound to it.
+ * Resolves one ledger era to a {@link LedgerEraFacade} bound to it.
  *
  * This is the only sanctioned way to reach either era's operations. Pass the
  * version resolved from a record or from the network's latest block (see
@@ -105,7 +105,7 @@ const createLedger8Era = async (): Promise<LedgerEra> => {
  * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */
-export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
+export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEraFacade> => {
   switch (version) {
     case 'v9':
       return (ledger9EraPromise ??= Promise.resolve(createLedger9Era()));

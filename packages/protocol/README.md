@@ -83,7 +83,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
+| [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEraFacade` and `Ledger8Engine`, and the memoisation rules |
 | [Retained-era execution](./docs/retained-era-execution.md) | The state a circuit runs against, why the Merkle walk was removed, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the version tag is the only authority over the bytes, and the division of labour between the three decode failures |

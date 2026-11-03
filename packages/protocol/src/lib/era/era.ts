@@ -20,10 +20,13 @@ import type { ContractStatePojo } from '../shared/contract-state';
 import type { LedgerVersion } from '../shared/ledger-version';
 
 /**
- * One ledger era, as a single object a caller holds and calls.
+ * The facade of one ledger era: an object bound to that one era, obtained
+ * from `loadLedgerEra`. It hides the era's ledger package (WASM,
+ * `ContractState`, `Transaction`, serialization) behind methods that take
+ * and return plain data only. There is one facade per era.
  *
  * Both eras expose the SAME methods with the same signatures. Which era an
- * object is bound to is readable from {@link LedgerEra.version} and nowhere
+ * object is bound to is readable from {@link LedgerEraFacade.version} and nowhere
  * else — a caller that has resolved the era for a record (see
  * `protocolVersionToLedger` in `../../version.ts`) hands that value to
  * `loadLedgerEra` once and then writes era-agnostic code.
@@ -38,7 +41,7 @@ import type { LedgerVersion } from '../shared/ledger-version';
  *
  * @see {@link EraBoundary}
  */
-export interface LedgerEra {
+export interface LedgerEraFacade {
   /** The era this object is bound to — the value that was passed to `loadLedgerEra`. */
   readonly version: LedgerVersion;
 
@@ -49,7 +52,7 @@ export interface LedgerEra {
    * Fails closed on an envelope this era cannot read — including one written
    * by the other era — rather than returning a partial or empty state. The
    * failure is a `StateDecodeFailedError` naming this era, the same class
-   * {@link LedgerEra.decodeContractState} raises, with the decoder's own
+   * {@link LedgerEraFacade.decodeContractState} raises, with the decoder's own
    * diagnosis on `cause`.
    *
    * @param raw The serialized contract-state envelope.

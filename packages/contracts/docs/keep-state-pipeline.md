@@ -28,7 +28,7 @@ one router per role, and what happens to it when an era is added or removed, is
 
 ## No retained-runtime dependency, not even in development
 
-Every era-specific step is a call onto a `LedgerEra` or a
+Every era-specific step is a call onto a `LedgerEraFacade` or a
 `Ledger8ExecutionEngine`, both of which arrive as values. This package holds no
 retained-runtime dependency of any kind, because the engine's own construction
 guard exists to detect a SECOND acquisition path for the retained runtime, and
@@ -62,7 +62,7 @@ caller's artifact.
 ### What the narrowed transcript carries, and what it used to drop
 
 `preContractState` used to be dropped. Nothing was lost by it — the pre-call
-state the composition needs is the one `LedgerEra.extractState` already
+state the composition needs is the one `LedgerEraFacade.extractState` already
 returned, and the state guard refuses to execute unless its decoding re-encodes
 to exactly that value, so reading it off the transcript was only a second route
 to the same bytes. It is carried now, generically, because compact-js publishes
@@ -89,7 +89,7 @@ that keeps the two eras' surfaces in step.
 | retained-native | `v8` | the retained era | a retained-era transaction |
 
 There is no second composition branch. Both paths end at
-`LedgerEra.composeCallTx`, handing it the transcript as `kind: 'unpartitioned'`,
+`LedgerEraFacade.composeCallTx`, handing it the transcript as `kind: 'unpartitioned'`,
 and the era object decides which ledger the call is bound onto.
 
 `wrapKeepStateCall` is deliberately NOT called from here. The current era's

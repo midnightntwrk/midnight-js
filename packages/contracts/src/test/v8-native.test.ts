@@ -36,7 +36,7 @@ import {
   type ComposeCallOptions,
   ComposeFailedError,
   ComposeOptionError,
-  type LedgerEra,
+  type LedgerEraFacade,
   loadLedger8Protocol,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -395,7 +395,7 @@ const SAMPLED_KEY: SigningKey = { tag: 'schnorr', value: SAMPLED_SIGNING_KEY };
 describe('the retained-native pipeline (previous-toolchain contract, pre-fork head)', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
-  let retainedEra: LedgerEra;
+  let retainedEra: LedgerEraFacade;
   let v6Envelope: Uint8Array;
 
   beforeAll(async () => {
@@ -688,7 +688,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     const recorded = recordEraCalls(retainedEra, log, undefined, (offers) => {
       routed = offers;
     });
-    const fallibleOnlyEra: LedgerEra = {
+    const fallibleOnlyEra: LedgerEraFacade = {
       ...recorded,
       composeCallTx: (options) => {
         const { zswapOffer } = options;
@@ -758,7 +758,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
 
     const recorded = recordEraCalls(retainedEra, log);
-    const offerIgnoringEra: LedgerEra = {
+    const offerIgnoringEra: LedgerEraFacade = {
       ...recorded,
       // Drops the factory on the floor, exactly as a third-party era that never
       // read the era boundary's contract would.

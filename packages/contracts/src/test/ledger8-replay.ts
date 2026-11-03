@@ -46,7 +46,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { ComposeCallOptions, ContractBalance, LedgerEraFacade } from '@midnight-ntwrk/midnight-js-protocol';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { expect } from 'vitest';
@@ -544,7 +544,7 @@ export const createReplayEngine = (
  * delegating wrapper is what gives the orchestration order an observable trace
  * while leaving every answer the era's own.
  *
- * Built as a plain object literal satisfying {@link LedgerEra} rather than as a
+ * Built as a plain object literal satisfying {@link LedgerEraFacade} rather than as a
  * proxy or a cast, so the compiler checks the wrapper against the very
  * interface the pipeline consumes.
  *
@@ -557,11 +557,11 @@ export const createReplayEngine = (
  * @returns A facade that logs and delegates.
  */
 export const recordEraCalls = (
-  era: LedgerEra,
+  era: LedgerEraFacade,
   log: OrchestrationLog,
   onComposeCall?: (options: ComposeCallOptions) => void,
   onZswapOffer?: (offers: { readonly guaranteedBytes?: Uint8Array; readonly fallibleBytes?: Uint8Array }) => void
-): LedgerEra => ({
+): LedgerEraFacade => ({
   version: era.version,
   extractState: (raw) => {
     log.push(`era.${era.version}.extractState`);

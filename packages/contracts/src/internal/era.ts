@@ -14,7 +14,7 @@
  */
 
 import {
-  type LedgerEra,
+  type LedgerEraFacade,
   type LedgerVersion,
   loadLedgerEra,
   protocolVersionToLedger,
@@ -491,7 +491,7 @@ export function requireLedger9Record(
  */
 export interface ResolvedOperationEra extends HeadEraReading {
   /** The era facade bound to {@link HeadEraReading.head}, acquired once so nothing downstream awaits an era. */
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
 }
 
 /**

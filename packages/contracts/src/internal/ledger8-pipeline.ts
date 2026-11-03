@@ -32,7 +32,7 @@ import type {
   DeployResultPojo,
   EncodedStateValue,
   Ledger8SigningKey,
-  LedgerEra,
+  LedgerEraFacade,
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -337,8 +337,8 @@ const servedLedgerParameters = (
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
  */
 export const decodeLedger8Snapshot = (
-  retainedEra: LedgerEra,
-  headEra: LedgerEra,
+  retainedEra: LedgerEraFacade,
+  headEra: LedgerEraFacade,
   stateEra: LedgerVersion,
   state: Ledger8SnapshotBytes
 ): Ledger8Snapshot => {
@@ -384,8 +384,8 @@ export const decodeLedger8Snapshot = (
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
-  retainedEra: LedgerEra,
-  headEra: LedgerEra,
+  retainedEra: LedgerEraFacade,
+  headEra: LedgerEraFacade,
   head: LedgerVersion,
   pdp: Ledger8PipelineReadSurface,
   contractAddress: string,
@@ -538,9 +538,9 @@ export interface Ledger8CallPipelineRequest<TState> {
    * RETAINED ledger wrote and still owns. Collapsing the two back into one facade is what refused
    * every post-fork call against a pre-fork contract.
    */
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
   /** The retained era facade, which reads the contract's on-chain state. Always the pre-fork one. */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
   readonly engine: Ledger8ExecutionEngine<TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly head: LedgerVersion;
@@ -915,7 +915,7 @@ export const runLedger8CallPipeline = async <TState>(
 
 /** Everything one retained-era deploy needs. */
 export interface Ledger8DeployPipelineRequest {
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
   readonly engine: Ledger8ExecutionEngine<unknown>;
   readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
@@ -1060,9 +1060,9 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
 /** What one retained-era maintenance update is composed from. */
 export interface Ledger8MaintenancePipelineRequest {
   /** The RETAINED era facade, which reads a retained-era envelope. See {@link readLedger8Snapshot}. */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
   /** The facade bound to the network head. */
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
   readonly head: LedgerVersion;
   readonly engine: Pick<Ledger8ExecutionEngine<unknown>, 'composeMaintenanceTx'>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;

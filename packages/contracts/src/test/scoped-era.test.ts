@@ -75,7 +75,7 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
-    loadLedgerEra: (version: LedgerVersion): Promise<Protocol.LedgerEra> => {
+    loadLedgerEra: (version: LedgerVersion): Promise<Protocol.LedgerEraFacade> => {
       eraLoadSlot.acquired.push(version);
       if (version === eraLoadSlot.rejectFor) {
         // The shape the real acquisition fails with when the lazy subpath

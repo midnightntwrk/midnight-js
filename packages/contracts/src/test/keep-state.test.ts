@@ -42,7 +42,7 @@ import {
   type Ledger8CircuitOptions,
   type Ledger8Engine,
   type Ledger8EngineContract,
-  type LedgerEra,
+  type LedgerEraFacade,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
@@ -169,8 +169,8 @@ const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): Co
 describe('the keep-state pipeline (previous-toolchain contract, post-fork head)', () => {
   let recording: CoinReceiverRecording;
   let contract: CoinReceiver016Contract;
-  let currentEra: LedgerEra;
-  let retainedEra: LedgerEra;
+  let currentEra: LedgerEraFacade;
+  let retainedEra: LedgerEraFacade;
   let ledger9Envelope: Uint8Array;
   let v6Envelope: Uint8Array;
 
@@ -367,7 +367,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const providers = postForkProviders(v6Envelope);
     const heldColour = { tag: 'unshielded', raw: 'ab'.repeat(32) } as const;
     const held: ContractBalance = new Map([[heldColour, 1_000n]]);
-    const retainedEraHolding: LedgerEra = {
+    const retainedEraHolding: LedgerEraFacade = {
       ...retainedEra,
       decodeContractState: (raw) => ({ ...retainedEra.decodeContractState(raw), balance: held })
     };
