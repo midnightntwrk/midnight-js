@@ -268,7 +268,8 @@ export function createLedger8UnprovenDeployTxFromVerifierKeys<C extends Ledger8C
 
 /**
  * Runs the constructor of a ledger 8 contract and creates an unproven, unsubmitted deploy
- * transaction from what the caller holds. Reads nothing from the network and stores nothing.
+ * transaction from what the caller holds. Reads neither the network head nor any contract state, and
+ * stores nothing; the ZK config provider is still read for the contract's artifacts.
  *
  * The transaction is a ledger 8 one. After the fork a ledger 8 contract cannot be deployed:
  * `submitTx` then refuses the transaction before proving it.

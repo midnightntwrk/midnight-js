@@ -798,7 +798,8 @@ export const buildLedger8CallTx = async (
  * @returns The execution data of the call.
  * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
  * circuit, or `options.config` is invalid.
- * @throws UnknownLedgerVersionError if `options.head` names no ledger era.
+ * @throws UnknownLedgerVersionError if `options.head`, `options.initialContractState.era` or
+ * `options.ledgerParameters.era` names no ledger era.
  * @throws InvalidArgumentError if the state was written by a later ledger than `options.head`.
  * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
  * @throws Everything {@link composeLedger8Call} raises.

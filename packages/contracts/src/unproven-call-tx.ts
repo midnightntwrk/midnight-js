@@ -578,7 +578,8 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
 
 /**
  * Calls a circuit of a ledger 8 contract against states the caller read itself, then creates an
- * unproven, unsubmitted call transaction. Reads nothing from the network and stores nothing.
+ * unproven, unsubmitted call transaction. Reads neither the network head nor the contract state, and
+ * stores nothing; the ZK config provider is still read for the contract's artifacts.
  *
  * `options.head` decides the transaction's ledger: `'v8'` builds a ledger 8 transaction, `'v9'` a
  * ledger 9 one that keeps the contract's ledger 8 verifier keys. The fork translates the contract's
@@ -596,7 +597,8 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  *         circuit, `options.config` is invalid, or the contract state was written by a later ledger
  *         than `options.head`.
  * @throws ConfigurationError If `options.config` is missing.
- * @throws UnknownLedgerVersionError If `options.head` names no ledger era.
+ * @throws UnknownLedgerVersionError If `options.head`, `options.initialContractState.era` or
+ *         `options.ledgerParameters.era` names no ledger era.
  * @throws InvalidSerializedStateError If a state's bytes do not carry the era it is labelled with.
  * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than
  *         `options.head`.
