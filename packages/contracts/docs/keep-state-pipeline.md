@@ -22,7 +22,9 @@ Three modules implement it, and the split is deliberate:
 
 Which pipeline an operation is allowed to take at all is a separate thread — see
 [EraDispatch](./era-dispatch.md). The verifier-key check it performs is
-[VerificationPath](./verification-path.md).
+[VerificationPath](./verification-path.md). How the retained flow sits behind
+one router per role, and what happens to it when an era is added or removed, is
+[ADR 0021](../../../docs/adr/0021-mirror-per-era-functions-and-route-each-role-once.md).
 
 ## No retained-runtime dependency, not even in development
 

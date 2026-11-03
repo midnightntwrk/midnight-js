@@ -14,6 +14,11 @@ The code lives in `packages/contracts/src/internal/era.ts`. The verifier-key
 half of the same admission path is a separate thread — see
 [VerificationPath](./verification-path.md).
 
+How the public functions are laid out around this decision — one `LedgerN*`
+function per era and one unprefixed router per role that switches on the era —
+is recorded in
+[ADR 0021](../../../docs/adr/0021-mirror-per-era-functions-and-route-each-role-once.md).
+
 ## The pipeline is named by the ledger era, not the toolchain
 
 A pipeline is named by a `LedgerVersion`, `'v8'` or `'v9'` — the same values a
