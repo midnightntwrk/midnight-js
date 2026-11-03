@@ -75,13 +75,30 @@ describe('submitReplaceAuthorityTx', () => {
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
-  it('refuses an invalid config before reading chain state', async () => {
+  it('refuses an invalid config before reading the artifact era or chain state', async () => {
     const providers = { ...mockProviders, config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
     await expect(
       submitReplaceAuthorityTx(providers, mockCompiledContract, mockContractAddress)(mockNewAuthority)
     ).rejects.toThrow(InvalidArgumentError);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+  });
+
+  it('reads the artifact era on each call of the returned function, never when building it', async () => {
+    mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
+    mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
+    vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
+    vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
+
+    const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
+    const readsAfterBuild = vi.mocked(mockProviders.zkConfigProvider.getArtifactRuntimeVersion).mock.calls.length;
+    await replaceAuthorityFn(mockNewAuthority);
+    await replaceAuthorityFn(mockNewAuthority);
+
+    expect(readsAfterBuild).toBe(0);
+    expect(mockProviders.publicDataProvider.queryContractState).toHaveBeenCalledTimes(2);
+    expect(mockProviders.zkConfigProvider.getArtifactRuntimeVersion).toHaveBeenCalledTimes(2);
   });
 
   describe('happy path', () => {

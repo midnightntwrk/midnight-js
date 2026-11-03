@@ -208,6 +208,7 @@ describe('deployContract', () => {
       "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
     );
     expect(mockSubmitDeployTx).not.toHaveBeenCalled();
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
   });
 
   it('deploys with an initial private state given as undefined beside an id', async () => {

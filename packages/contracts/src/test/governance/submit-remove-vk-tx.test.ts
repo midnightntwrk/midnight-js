@@ -74,13 +74,14 @@ describe('submitRemoveVerifierKeyTx', () => {
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
-  it('refuses an invalid config before reading chain state', async () => {
+  it('refuses an invalid config before reading the artifact era or chain state', async () => {
     const providers = { ...mockProviders, config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
     await expect(
       submitRemoveVerifierKeyTx(providers, mockCompiledContract, mockContractAddress, 'testCircuit')
     ).rejects.toThrow(InvalidArgumentError);
     expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+    expect(providers.zkConfigProvider.getArtifactRuntimeVersion).not.toHaveBeenCalled();
   });
 
   describe('happy path', () => {
