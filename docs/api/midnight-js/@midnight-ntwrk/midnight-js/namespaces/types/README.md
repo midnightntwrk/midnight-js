@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -44,9 +44,9 @@ Re-exports [asEffectOption](../../types/variables/asEffectOption.md)
 
 ***
 
-### assertSeamsSupportEra
+### assertProvidersSupportEra
 
-Re-exports [assertSeamsSupportEra](../../types/variables/assertSeamsSupportEra.md)
+Re-exports [assertProvidersSupportEra](../../types/variables/assertProvidersSupportEra.md)
 
 ***
 
@@ -158,9 +158,21 @@ Re-exports [ContractExecutableRuntimeOptions](../../types/type-aliases/ContractE
 
 ***
 
+### ContractStateAndParametersRead
+
+Re-exports [ContractStateAndParametersRead](../../types/interfaces/ContractStateAndParametersRead.md)
+
+***
+
 ### ContractStateObservableConfig
 
 Re-exports [ContractStateObservableConfig](../../types/type-aliases/ContractStateObservableConfig.md)
+
+***
+
+### ContractStateRead
+
+Re-exports [ContractStateRead](../../types/interfaces/ContractStateRead.md)
 
 ***
 
@@ -182,15 +194,15 @@ Re-exports [createProofProvider](../../types/variables/createProofProvider.md)
 
 ***
 
-### createProofProviderForEras
-
-Re-exports [createProofProviderForEras](../../types/variables/createProofProviderForEras.md)
-
-***
-
 ### createProofProviderFromHandlers
 
 Re-exports [createProofProviderFromHandlers](../../types/variables/createProofProviderFromHandlers.md)
+
+***
+
+### createProofProviderFromProvingProviders
+
+Re-exports [createProofProviderFromProvingProviders](../../types/variables/createProofProviderFromProvingProviders.md)
 
 ***
 
@@ -224,21 +236,15 @@ Re-exports [createZKIR](../../types/variables/createZKIR.md)
 
 ***
 
-### CurrentEraBalancer
+### DecodedState
 
-Re-exports [CurrentEraBalancer](../../types/type-aliases/CurrentEraBalancer.md)
-
-***
-
-### CurrentEraProver
-
-Re-exports [CurrentEraProver](../../types/type-aliases/CurrentEraProver.md)
+Re-exports [DecodedState](../../types/type-aliases/DecodedState.md)
 
 ***
 
-### CurrentEraSubmitter
+### DecodersFor
 
-Re-exports [CurrentEraSubmitter](../../types/type-aliases/CurrentEraSubmitter.md)
+Re-exports [DecodersFor](../../types/type-aliases/DecodersFor.md)
 
 ***
 
@@ -251,18 +257,6 @@ Re-exports [EraDeclaringProvider](../../types/interfaces/EraDeclaringProvider.md
 ### EraEntryShape
 
 Re-exports [EraEntryShape](../../types/type-aliases/EraEntryShape.md)
-
-***
-
-### EraRequest
-
-Re-exports [EraRequest](../../types/type-aliases/EraRequest.md)
-
-***
-
-### erasServedBy
-
-Re-exports [erasServedBy](../../types/variables/erasServedBy.md)
 
 ***
 
@@ -308,21 +302,33 @@ Re-exports [Fees](../../types/type-aliases/Fees.md)
 
 ***
 
-### FinalizedTxData
+### FinalizedTx
 
-Re-exports [FinalizedTxData](../../types/interfaces/FinalizedTxData.md)
+Re-exports [FinalizedTx](../../types/type-aliases/FinalizedTx.md)
 
 ***
 
-### FinalizedTxDataV8
+### FinalizedTxRead
 
-Re-exports [FinalizedTxDataV8](../../types/interfaces/FinalizedTxDataV8.md)
+Re-exports [FinalizedTxRead](../../types/type-aliases/FinalizedTxRead.md)
 
 ***
 
 ### FinalizedTxRecord
 
 Re-exports [FinalizedTxRecord](../../types/interfaces/FinalizedTxRecord.md)
+
+***
+
+### ForeignLedgerTransactionError
+
+Re-exports [ForeignLedgerTransactionError](../../types/classes/ForeignLedgerTransactionError.md)
+
+***
+
+### ForeignLedgerTransactionReason
+
+Re-exports [ForeignLedgerTransactionReason](../../types/type-aliases/ForeignLedgerTransactionReason.md)
 
 ***
 
@@ -368,6 +374,30 @@ Re-exports [InvalidProtocolSchemeError](../../types/classes/InvalidProtocolSchem
 
 ***
 
+### InvalidSerializedStateError
+
+Re-exports [InvalidSerializedStateError](../../types/classes/InvalidSerializedStateError.md)
+
+***
+
+### InvalidSerializedStateReason
+
+Re-exports [InvalidSerializedStateReason](../../types/type-aliases/InvalidSerializedStateReason.md)
+
+***
+
+### InvalidTransactionHandleError
+
+Re-exports [InvalidTransactionHandleError](../../types/classes/InvalidTransactionHandleError.md)
+
+***
+
+### InvalidTransactionHandleReason
+
+Re-exports [InvalidTransactionHandleReason](../../types/type-aliases/InvalidTransactionHandleReason.md)
+
+***
+
 ### KeyMaterialProvider
 
 Re-exports [KeyMaterialProvider](../../types/type-aliases/KeyMaterialProvider.md)
@@ -377,6 +407,42 @@ Re-exports [KeyMaterialProvider](../../types/type-aliases/KeyMaterialProvider.md
 ### Latest
 
 Re-exports [Latest](../../types/type-aliases/Latest.md)
+
+***
+
+### Ledger8FinalizedTxData
+
+Re-exports [Ledger8FinalizedTxData](../../types/interfaces/Ledger8FinalizedTxData.md)
+
+***
+
+### Ledger9FinalizedTxData
+
+Re-exports [Ledger9FinalizedTxData](../../types/interfaces/Ledger9FinalizedTxData.md)
+
+***
+
+### Ledger9UnboundTransaction
+
+Re-exports [Ledger9UnboundTransaction](../../types/type-aliases/Ledger9UnboundTransaction.md)
+
+***
+
+### Ledger9WalletProvider
+
+Re-exports [Ledger9WalletProvider](../../types/interfaces/Ledger9WalletProvider.md)
+
+***
+
+### LedgerTransaction
+
+Re-exports [LedgerTransaction](../../types/classes/LedgerTransaction.md)
+
+***
+
+### LedgerTransactionTypes
+
+Re-exports [LedgerTransactionTypes](../../types/interfaces/LedgerTransactionTypes.md)
 
 ***
 
@@ -424,19 +490,13 @@ Re-exports [MidnightProvider](../../types/interfaces/MidnightProvider.md)
 
 ### MidnightProviderHandlers
 
-Re-exports [MidnightProviderHandlers](../../types/interfaces/MidnightProviderHandlers.md)
+Re-exports [MidnightProviderHandlers](../../types/type-aliases/MidnightProviderHandlers.md)
 
 ***
 
 ### MidnightProviders
 
 Re-exports [MidnightProviders](../../types/interfaces/MidnightProviders.md)
-
-***
-
-### narrowToEra
-
-Re-exports [narrowToEra](../../types/variables/narrowToEra.md)
 
 ***
 
@@ -538,7 +598,7 @@ Re-exports [ProofProvider](../../types/interfaces/ProofProvider.md)
 
 ### ProofProviderHandlers
 
-Re-exports [ProofProviderHandlers](../../types/interfaces/ProofProviderHandlers.md)
+Re-exports [ProofProviderHandlers](../../types/type-aliases/ProofProviderHandlers.md)
 
 ***
 
@@ -572,15 +632,21 @@ Re-exports [PROVIDER_ERROR_CODES](../../types/variables/PROVIDER_ERROR_CODES.md)
 
 ***
 
+### ProviderEraUnsupportedError
+
+Re-exports [ProviderEraUnsupportedError](../../types/classes/ProviderEraUnsupportedError.md)
+
+***
+
 ### ProviderErrorCode
 
 Re-exports [ProviderErrorCode](../../types/type-aliases/ProviderErrorCode.md)
 
 ***
 
-### ProviderSeam
+### ProviderMethod
 
-Re-exports [ProviderSeam](../../types/type-aliases/ProviderSeam.md)
+Re-exports [ProviderMethod](../../types/type-aliases/ProviderMethod.md)
 
 ***
 
@@ -596,51 +662,15 @@ Re-exports [PublicDataProvider](../../types/interfaces/PublicDataProvider.md)
 
 ***
 
-### RawContractState
+### PublicStatesRead
 
-Re-exports [RawContractState](../../types/interfaces/RawContractState.md)
-
-***
-
-### ReadSeam
-
-Re-exports [ReadSeam](../../types/type-aliases/ReadSeam.md)
+Re-exports [PublicStatesRead](../../types/interfaces/PublicStatesRead.md)
 
 ***
 
-### RetainedEraBalancer
+### ReadMethod
 
-Re-exports [RetainedEraBalancer](../../types/type-aliases/RetainedEraBalancer.md)
-
-***
-
-### RetainedEraHandlers
-
-Re-exports [RetainedEraHandlers](../../types/type-aliases/RetainedEraHandlers.md)
-
-***
-
-### RetainedEraProver
-
-Re-exports [RetainedEraProver](../../types/type-aliases/RetainedEraProver.md)
-
-***
-
-### RetainedEraSubmitter
-
-Re-exports [RetainedEraSubmitter](../../types/type-aliases/RetainedEraSubmitter.md)
-
-***
-
-### Seam
-
-Re-exports [Seam](../../types/type-aliases/Seam.md)
-
-***
-
-### SeamEraUnsupportedError
-
-Re-exports [SeamEraUnsupportedError](../../types/classes/SeamEraUnsupportedError.md)
+Re-exports [ReadMethod](../../types/type-aliases/ReadMethod.md)
 
 ***
 
@@ -662,6 +692,24 @@ Re-exports [SegmentSuccess](../../types/variables/SegmentSuccess.md)
 
 ***
 
+### SerializedState
+
+Re-exports [SerializedState](../../types/classes/SerializedState.md)
+
+***
+
+### SerializedStateDecodeFailedError
+
+Re-exports [SerializedStateDecodeFailedError](../../types/classes/SerializedStateDecodeFailedError.md)
+
+***
+
+### SerializedStateDecoderMissingError
+
+Re-exports [SerializedStateDecoderMissingError](../../types/classes/SerializedStateDecoderMissingError.md)
+
+***
+
 ### SigningKeyExport
 
 Re-exports [SigningKeyExport](../../types/interfaces/SigningKeyExport.md)
@@ -671,6 +719,30 @@ Re-exports [SigningKeyExport](../../types/interfaces/SigningKeyExport.md)
 ### SigningKeyExportError
 
 Re-exports [SigningKeyExportError](../../types/classes/SigningKeyExportError.md)
+
+***
+
+### StateDecoder
+
+Re-exports [StateDecoder](../../types/interfaces/StateDecoder.md)
+
+***
+
+### StateDecoders
+
+Re-exports [StateDecoders](../../types/type-aliases/StateDecoders.md)
+
+***
+
+### StateKind
+
+Re-exports [StateKind](../../types/type-aliases/StateKind.md)
+
+***
+
+### StateReadMethod
+
+Re-exports [StateReadMethod](../../types/type-aliases/StateReadMethod.md)
 
 ***
 
@@ -686,9 +758,33 @@ Re-exports [SucceedEntirely](../../types/variables/SucceedEntirely.md)
 
 ***
 
-### TransactionSeams
+### TransactionEraMismatchError
 
-Re-exports [TransactionSeams](../../types/interfaces/TransactionSeams.md)
+Re-exports [TransactionEraMismatchError](../../types/classes/TransactionEraMismatchError.md)
+
+***
+
+### TransactionHandleMethod
+
+Re-exports [TransactionHandleMethod](../../types/type-aliases/TransactionHandleMethod.md)
+
+***
+
+### TransactionMethod
+
+Re-exports [TransactionMethod](../../types/type-aliases/TransactionMethod.md)
+
+***
+
+### TransactionProviders
+
+Re-exports [TransactionProviders](../../types/interfaces/TransactionProviders.md)
+
+***
+
+### TransactionStage
+
+Re-exports [TransactionStage](../../types/type-aliases/TransactionStage.md)
 
 ***
 
@@ -704,9 +800,15 @@ Re-exports [TxStatus](../../types/type-aliases/TxStatus.md)
 
 ***
 
-### UnboundTransaction
+### UnboundTx
 
-Re-exports [UnboundTransaction](../../types/type-aliases/UnboundTransaction.md)
+Re-exports [UnboundTx](../../types/type-aliases/UnboundTx.md)
+
+***
+
+### UnprovenTx
+
+Re-exports [UnprovenTx](../../types/type-aliases/UnprovenTx.md)
 
 ***
 
@@ -740,81 +842,15 @@ Re-exports [UnsubmittedTxDataBase](../../types/interfaces/UnsubmittedTxDataBase.
 
 ***
 
-### UntaggedPayloadError
-
-Re-exports [UntaggedPayloadError](../../types/classes/UntaggedPayloadError.md)
-
-***
-
 ### UnusableEraEntryError
 
 Re-exports [UnusableEraEntryError](../../types/classes/UnusableEraEntryError.md)
 
 ***
 
-### unwrapV9
-
-Re-exports [unwrapV9](../../types/variables/unwrapV9.md)
-
-***
-
-### V8PayloadUnsupportedError
-
-Re-exports [V8PayloadUnsupportedError](../../types/classes/V8PayloadUnsupportedError.md)
-
-***
-
-### V8TxBytes
-
-Re-exports [V8TxBytes](../../types/interfaces/V8TxBytes.md)
-
-***
-
-### V9Tx
-
-Re-exports [V9Tx](../../types/interfaces/V9Tx.md)
-
-***
-
-### V9WalletProvider
-
-Re-exports [V9WalletProvider](../../types/interfaces/V9WalletProvider.md)
-
-***
-
 ### VerifierKey
 
 Re-exports [VerifierKey](../../types/type-aliases/VerifierKey.md)
-
-***
-
-### VersionedFinalizedTransaction
-
-Re-exports [VersionedFinalizedTransaction](../../types/type-aliases/VersionedFinalizedTransaction.md)
-
-***
-
-### VersionedFinalizedTxData
-
-Re-exports [VersionedFinalizedTxData](../../types/type-aliases/VersionedFinalizedTxData.md)
-
-***
-
-### VersionedTx
-
-Re-exports [VersionedTx](../../types/type-aliases/VersionedTx.md)
-
-***
-
-### VersionedUnboundTransaction
-
-Re-exports [VersionedUnboundTransaction](../../types/type-aliases/VersionedUnboundTransaction.md)
-
-***
-
-### VersionedUnprovenTransaction
-
-Re-exports [VersionedUnprovenTransaction](../../types/type-aliases/VersionedUnprovenTransaction.md)
 
 ***
 
@@ -826,7 +862,7 @@ Re-exports [WalletProvider](../../types/interfaces/WalletProvider.md)
 
 ### WalletProviderHandlers
 
-Re-exports [WalletProviderHandlers](../../types/interfaces/WalletProviderHandlers.md)
+Re-exports [WalletProviderHandlers](../../types/type-aliases/WalletProviderHandlers.md)
 
 ***
 

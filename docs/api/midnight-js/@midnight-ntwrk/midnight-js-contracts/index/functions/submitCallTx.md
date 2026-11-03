@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -62,26 +62,26 @@ When `options.compiledContract` belongs to neither Compact
 
 ## Remarks
 
-The returned [FinalizedCallTxData](../interfaces/FinalizedCallTxData.md) (and the [CallResult](../interfaces/CallResult.md) variant)
+The returned [Ledger9FinalizedCallTxData](../interfaces/Ledger9FinalizedCallTxData.md) (and the [CallResult](../interfaces/CallResult.md) variant)
 is privacy-sensitive and carries the unproven transaction and private
 state. See those types for handling guidance before logging, serializing,
 or transmitting the result.
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../namespaces/Ledger8/interfaces/FinalizedCallTxData.md)\<`C`, `K`\>\>
+> **submitCallTx**\<`C`, `K`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Which pipeline runs is decided by the NETWORK HEAD, not by this overload: a pre-fork head runs
-the retained-era-native pipeline, a post-fork head the keep-state one.
+Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
+retained-era-native pipeline runs, after it the keep-state one.
 
 ### Type Parameters
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 #### K
 
@@ -91,25 +91,25 @@ the retained-era-native pipeline, a post-fork head the keep-state one.
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, `K`\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `K`\>
 
 #### options
 
-[`CallTxOptions`](../namespaces/Ledger8/type-aliases/CallTxOptions.md)\<`C`, `K`\>
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `K`\>
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../namespaces/Ledger8/interfaces/FinalizedCallTxData.md)\<`C`, `K`\>\>
+`Promise`\<[`Ledger8FinalizedCallTxData`](../interfaces/Ledger8FinalizedCallTxData.md)\<`C`, `K`\>\>
 
 ### See
 
- - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the seam table, and for why a provider needs to handle the
-     `'v8'` seam arm only while the network head is still pre-fork.
+ - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the era table, and for why a provider needs to serve v8
+     handles only while the network is still before the fork.
  - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Calls a circuit on a contract that declares no private state.
 
@@ -131,15 +131,15 @@ Calls a circuit on a contract that declares no private state.
 
 #### options
 
-[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `PCK`\>
+[`Ledger9CallTxOptionsBase`](../type-aliases/Ledger9CallTxOptionsBase.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Calls a circuit on a contract that declares private state, naming where that state is stored.
 
@@ -157,15 +157,15 @@ Calls a circuit on a contract that declares private state, naming where that sta
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 #### options
 
-[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
+[`Ledger9CallTxOptionsWithPrivateStateId`](../type-aliases/Ledger9CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
@@ -188,11 +188,11 @@ call is added to the scope rather than submitted on its own.
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 #### options
 
-[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
+[`Ledger9CallTxOptionsWithPrivateStateId`](../type-aliases/Ledger9CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 #### transactionContext
 
@@ -226,7 +226,7 @@ Calls a circuit inside a scoped transaction, on a contract that declares no priv
 
 #### options
 
-[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `PCK`\>
+[`Ledger9CallTxOptionsBase`](../type-aliases/Ledger9CallTxOptionsBase.md)\<`C`, `PCK`\>
 
 #### transactionContext
 

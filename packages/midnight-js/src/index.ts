@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-export * as protocol from './protocol';
+export * as ledger9Protocol from './protocol/v9';
 export * as contracts from '@midnight-ntwrk/midnight-js-contracts';
 export * as networkId from '@midnight-ntwrk/midnight-js-network-id';
 export * as types from '@midnight-ntwrk/midnight-js-types';
@@ -27,9 +27,9 @@ export * as utils from '@midnight-ntwrk/midnight-js-utils';
 export {
   CURRENT_LEDGER_VERSION,
   type CurrentLedgerVersion,
+  latestNetworkLedgerVersion,
   LEDGER_VERSIONS,
   type LedgerVersion,
-  networkHeadVersion,
   type ProtocolVersionSource,
   type VersionedRecord,
   versionOfRecord
@@ -42,8 +42,8 @@ export {
 // without a cast. `NO_CIRCUIT` travels with `ComposeFailedError` for the same
 // reason: it is the value that error's `circuitId` carries when the refusal
 // names no circuit, and comparing against a hand-written string instead is
-// exactly what the constant exists to avoid. `PayloadNotATransactionError` arrives as a `proveTx`
-// rejection rather than from the era pipeline, and has a private constructor:
+// exactly what the constant exists to avoid. `PayloadNotATransactionError` arrives from
+// decoding transaction bytes rather than from the era pipeline, and has a private constructor:
 // it is published to be caught, not built. The error base, its categories and
 // the general errors are published so a consumer can handle every midnight-js
 // error from the barrel. See BarrelPublishedSurface.

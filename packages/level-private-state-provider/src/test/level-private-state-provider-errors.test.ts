@@ -17,8 +17,8 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   PrivateStateDecryptionError,
   PrivateStateLimitExceededError,

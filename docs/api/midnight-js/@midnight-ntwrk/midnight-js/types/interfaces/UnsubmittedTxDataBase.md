@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,9 +8,9 @@
 
 What every era carries alongside the transaction it composed.
 
-The composed transaction itself is NOT here: the eras express it differently
-— a live `UnprovenTransaction` in the current era, serialized bytes in a
-retained one — and only the coin list is the same shape on both sides.
+The composed transaction itself is NOT here: each era's own unsubmitted data
+carries it as `unprovenTx`, an `UnprovenTx` handle of that era, beside the
+fields only that era has.
 
 ## Remarks
 
@@ -18,9 +18,9 @@ retained one — and only the coin list is the same shape on both sides.
 
 ## Extended by
 
+- [`Ledger8CallResultPrivate`](../../contracts/interfaces/Ledger8CallResultPrivate.md)
 - [`UnsubmittedTxData`](../../contracts/interfaces/UnsubmittedTxData.md)
-- [`CallResultPrivate`](../../contracts/namespaces/Ledger8/interfaces/CallResultPrivate.md)
-- [`CallResultPrivate`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/CallResultPrivate.md)
+- [`Ledger8CallResultPrivate`](../../../midnight-js-contracts/index/interfaces/Ledger8CallResultPrivate.md)
 - [`UnsubmittedTxData`](../../../midnight-js-contracts/index/interfaces/UnsubmittedTxData.md)
 
 ## Properties

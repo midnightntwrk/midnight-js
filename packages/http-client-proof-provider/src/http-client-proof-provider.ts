@@ -14,8 +14,8 @@
  */
 
 import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
+import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
@@ -138,15 +138,10 @@ export function httpClientProofProvider<K extends string>(
     };
   };
 
-  // One handler per era, with the routing, the `version` tagging and the refusal of an era with no
-  // handler all left to the factory. Answering in the variant a request arrived in is the factory's
-  // guarantee, which matters here because callers narrow the response and reject the other era —
-  // replying in the wrong one would strand a submit mid-flight.
+  // One handler per era, with the routing, the sealing of the answer in the era of the request and
+  // the refusal of an era with no handler all left to the factory.
   return createProofProviderFromHandlers({
-    currentEra: (tx, proveTxConfig) =>
-      tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel()),
-    retainedEras: {
-      v8: (txBytes, proveTxConfig) => proveLedger8Transaction(txBytes, provingProviderFor(proveTxConfig))
-    }
+    v8: (tx, proveTxConfig) => proveLedger8Transaction(tx, provingProviderFor(proveTxConfig)),
+    v9: (tx, proveTxConfig) => tx.prove(provingProviderFor(proveTxConfig), CostModel.initialCostModel())
   });
 };

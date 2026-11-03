@@ -19,6 +19,14 @@ import type * as V8 from '../../v8.js';
 export type Ledger8Protocol = typeof V8;
 
 let ledger8ModulePromise: Promise<Ledger8Protocol> | undefined;
+let ledger8Module: Ledger8Protocol | undefined;
+
+/**
+ * The v8 ledger module if {@link loadLedger8Protocol} has resolved, synchronously.
+ *
+ * @returns The loaded module, or `undefined` before the first successful load.
+ */
+export const loadedLedger8Protocol = (): Ledger8Protocol | undefined => ledger8Module;
 
 /**
  * The only sanctioned runtime path to the v8 ledger era.
@@ -36,7 +44,13 @@ let ledger8ModulePromise: Promise<Ledger8Protocol> | undefined;
  * @see {@link EraBoundary}
  */
 export const loadLedger8Protocol = (): Promise<Ledger8Protocol> =>
-  (ledger8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
-    ledger8ModulePromise = undefined;
-    throw new Ledger8RuntimeMissingError('/v8', error);
-  }));
+  (ledger8ModulePromise ??= import('../../v8.js').then(
+    (module) => {
+      ledger8Module = module;
+      return module;
+    },
+    (error: unknown) => {
+      ledger8ModulePromise = undefined;
+      throw new Ledger8RuntimeMissingError('/v8', error);
+    }
+  ));

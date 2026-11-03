@@ -111,3 +111,13 @@ kind `'unknown-record-era'` is removed. `UnknownRecordEraError` and its code sta
 that still date a record by its block. A `protocolVersion` that is not a non-negative integer is still
 refused, as kind `'malformed-protocol-version'`, because the raw record carries it.
 
+## Amendment — the state reads take their era from the envelope (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+`RawContractState` and the raw reads are removed. Every state read now returns a `LedgerState`
+whose `era` is read from the envelope of its bytes, so the amendment above applies to all of them:
+a `protocolVersion` this build cannot place withholds only the upper-bound check. The provider no
+longer decodes, so a decode failure of a state is reported where the caller decodes it, without
+attributing an era beyond the one the envelope names: as `LedgerStateDecodeFailedError` for a
+decoder error that is not a `MidnightJsError`, and as the decoder's own error otherwise, so a
+framework decoder's `DeserializationError` reaches the caller unchanged.

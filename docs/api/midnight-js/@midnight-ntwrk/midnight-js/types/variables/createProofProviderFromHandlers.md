@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,45 +8,46 @@
 
 > `const` **createProofProviderFromHandlers**: (`handlers`) => [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one handler per ledger era it serves.
+Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one handler per ledger era.
 
-The `supportedEras` declaration is computed from the handlers supplied, so it
-cannot disagree with what the provider actually does.
+`supportedEras` is computed from the handlers given, so it cannot disagree
+with what the provider does. Each handle is routed to the handler of its own
+era, and the answer is sealed in that same era, so a handler never sees a
+handle and cannot answer in the wrong era.
 
-`currentEra` is called with `handlers` as `this`; a retained-era handler is
-called with no `this`.
+Every handler is called with `handlers` as `this`.
 
 ## Parameters
 
 ### handlers
 
-[`ProofProviderHandlers`](../interfaces/ProofProviderHandlers.md)
+[`ProofProviderHandlers`](../type-aliases/ProofProviderHandlers.md)
 
-The current-era handler, and one for each retained era served.
+One entry per ledger era.
 
 ## Returns
 
 [`ProofProvider`](../interfaces/ProofProvider.md)
 
-A [ProofProvider](../interfaces/ProofProvider.md) routing each request to its era's handler and
-         answering in the era the request arrived in.
+A [ProofProvider](../interfaces/ProofProvider.md) routing each handle to its era's handler.
 
 ## Throws
 
-UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
-        than `undefined`, is not a function. Raised at construction.
+UnusableEraEntryError if an era entry is neither `undefined` nor a
+        function. Raised at construction.
 
 ## Throws
 
-InvalidArgumentError if `handlers` is not an object, or `retainedEras`
-        is not a plain object keyed only by retained eras. Raised at construction.
+InvalidArgumentError if `handlers` is not an object, has no key for
+        a ledger era, or serves no era (every entry `undefined`). Raised at
+        construction.
 
 ## Example
 
 ```typescript
 const proofProvider = createProofProviderFromHandlers({
-  currentEra: (tx) => tx.prove(provingProvider, CostModel.initialCostModel()),
-  retainedEras: { v8: (txBytes) => proveV8Transaction(txBytes, provingProvider) }
+  v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
+  v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
 });
-// proofProvider.supportedEras === ['v9', 'v8']
+// proofProvider.supportedEras is ['v8', 'v9']
 ```

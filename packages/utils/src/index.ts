@@ -14,16 +14,16 @@
  */
 
 export * from './assertion-utils';
-export * from './contract-state-envelope';
+export * from './contract-state-version';
 export * from './date-utils';
 export * from './deserialization';
 export * from './error-codes';
 export * from './hex-utils';
-export * from './ledger-parameters-envelope';
+export * from './ledger-parameters-version';
 export * from './midnight-config';
 export * from './midnight-providers';
+export * from './networks';
 export * from './password-validation';
-export * from './require-ledger9';
 export * from './security-utils';
 export * from './serialized-tag';
 export * from './signing-key-utils';

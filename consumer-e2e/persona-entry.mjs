@@ -96,7 +96,7 @@ try {
 
 // 4. The retained era's runtime is reached only through the framework's loader,
 //    and must resolve to exactly one physical copy -- two would make objects
-//    minted by one unusable by the other (Ledger8InstanceMismatchError).
+//    minted by one unusable by the other (wasm-bindgen: `expected instance of`).
 if (personaName === 'retained') {
   try {
     const protocol = await import('@midnight-ntwrk/midnight-js-protocol');
@@ -107,7 +107,7 @@ if (personaName === 'retained') {
     }
     // `protocol` is the one package that may resolve the retained runtime, and it
     // must see exactly one copy of it -- two would make objects minted by one
-    // unusable by the other (Ledger8InstanceMismatchError). Unresolvable counts as
+    // unusable by the other (wasm-bindgen: `expected instance of`). Unresolvable counts as
     // a failure, not as zero: an assertion that passes when it cannot look is
     // worse than no assertion.
     let retainedRuntimePath;

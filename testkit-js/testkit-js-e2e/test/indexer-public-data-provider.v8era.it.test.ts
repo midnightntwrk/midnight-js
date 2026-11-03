@@ -14,7 +14,7 @@
  */
 
 import { type IndexerPublicDataProvider,indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { networkHeadVersion, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { latestNetworkLedgerVersion, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { createLogger, getTestEnvironment, type TestEnvironment } from '@midnight-ntwrk/testkit-js';
 import fetch from 'cross-fetch';
 import path from 'path';
@@ -93,7 +93,7 @@ describe('Indexer API on a pre-fork (ledger v8) network', () => {
     // Arrange / Act: the two resolvers answer different questions -- which era a
     // transaction built now lands in, and which era produced a record -- and tag
     // their errors with different codes. On a settled network they must agree.
-    const headEra = await networkHeadVersion(publicDataProvider);
+    const headEra = await latestNetworkLedgerVersion(publicDataProvider);
     const recordEra = versionOfRecord({ protocolVersion: await publicDataProvider.queryLatestProtocolVersion() });
 
     // Assert.
@@ -104,11 +104,9 @@ describe('Indexer API on a pre-fork (ledger v8) network', () => {
   test('dates a state read on a pre-fork network without refusing it', async () => {
     // Arrange / Act: an absent contract is the read path's cheapest exercise --
     // it still resolves the era of the read before it can answer.
-    const raw = await publicDataProvider.queryRawContractState(UNDEPLOYED_CONTRACT_ADDRESS);
-    const parsed = await publicDataProvider.queryContractState(UNDEPLOYED_CONTRACT_ADDRESS);
+    const read = await publicDataProvider.queryContractState(UNDEPLOYED_CONTRACT_ADDRESS);
 
     // Assert: null, not a thrown era failure.
-    expect(raw).toBeNull();
-    expect(parsed).toBeNull();
+    expect(read).toBeNull();
   });
 });

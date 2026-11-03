@@ -17,13 +17,6 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import {
-  type CoinPublicKey,
-  createConstructorContext,
-  emptyZswapLocalState,
-  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   LedgerParameters,
   sampleCoinPublicKey,
@@ -31,10 +24,18 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import {
+  type CoinPublicKey,
+  createConstructorContext,
+  emptyZswapLocalState,
+  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { createProverKey,
   createVerifierKey,
   createZKIR,
+  LedgerTransaction,
   type ProverKey,
   type VerifierKey,
   ZKConfigProvider,
@@ -148,5 +149,5 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     encryptionPublicKey
   );
 
-  return result.private.unprovenTx;
+  return LedgerTransaction.unwrap(result.private.unprovenTx, 'v9');
 };

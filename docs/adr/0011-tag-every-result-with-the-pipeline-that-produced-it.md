@@ -107,3 +107,10 @@ reader to this ADR to learn why. `result.era` is now a `LedgerVersion`,
   a post-fork head pin the order.
 
 The sections above keep the names that were current when they were written.
+
+## Amendment — no per-era transaction member left (2026-10-26)
+
+Issue #1533. The Consequences above give `private.txBytes` as a member that differs per era. Both
+eras now carry `private.unprovenTx`, a transaction handle
+([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)). The handle's own `era`
+names the ledger that produced the transaction; `result.era` still names the pipeline.

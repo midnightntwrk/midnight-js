@@ -18,29 +18,32 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
-  type ContractsErrorCode,
+  DeserializationError,
+  errorCategory,
   hasErrorCode,
-  TagParseError
+  UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
-  EraArtifactMismatchError,
-  HeadStateEraMismatchError,
+  EraMismatchError,
+  type EraMismatchReason,
   IndexerInconsistencyError,
-  Ledger8DeployOnLedger9Error} from '../errors';
+  NetworkVersionStateMismatchError
+} from '../errors';
 import {
   assertEraCompatible,
+  decodeLedger9ContractState,
   ERA_PAIRING,
   resolveArtifactEra,
   resolveContractStateEra,
   resolveOperationEra
 } from '../internal/era';
 import { NEITHER_ERA_CONTRACT_MESSAGE } from '../ledger8-contract';
-import { createMockCompiledContract } from './test-mocks';
+import { contractStateRead, createMockCompiledContract } from './test-mocks';
 
 // The shared hard-fork fixture tree. Reached by relative path rather than through a package
 // dependency: `testkit-js` depends on `midnight-js-contracts`, so declaring it as a dependency
@@ -63,11 +66,7 @@ interface RawCurrentEraContract {
   initialState(options: unknown): Promise<unknown>;
 }
 
-const rawState = (raw: Uint8Array, protocolVersion: number, version: LedgerVersion): RawContractState => ({
-  version,
-  protocolVersion,
-  raw
-});
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateRead => contractStateRead(raw, protocolVersion);
 
 // Spelled as a `Mock` over the real signature rather than `ReturnType<typeof vi.fn>`, which is the
 // un-parameterised mock type and drops the call signature -- so the spy would not satisfy
@@ -91,10 +90,10 @@ const rejectingHeadSource = (error: Error): { readonly queryLatestProtocolVersio
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
 
-// A bundle declaring the retained toolchain, which is what the retained-era path of the dispatch
-// reads. Declared here rather than mocked per test: every case below that reaches it wants the same
-// answer, and the cases that must NOT reach it assert that separately.
+// One bundle per toolchain, which is what the dispatch reads for either shape. Declared here rather
+// than mocked per test: every case below wants one of the two answers.
 const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+const LEDGER9_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.20.0' };
 
 describe('resolveArtifactEra: which execution pipeline an artifact belongs to', () => {
   it('routes the current-era CompiledContract container to the ledger9 pipeline', async () => {
@@ -103,22 +102,13 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     const container = createMockCompiledContract();
 
     // Act + Assert
-    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 
-  it('does not consult the artifact bundle for a current-era container', async () => {
-    // The container declares its own era with an own `tag`, so the current era buys no round trip
-    // and needs no file it does not already ship. A bundle that would REFUSE proves it was never
-    // asked.
-    const refusingBundle = {
-      getArtifactRuntimeVersion: async (): Promise<string> => {
-        throw new Error('the current-era path must not read the artifact bundle');
-      }
-    };
-
-    await expect(resolveArtifactEra(createMockCompiledContract(), refusingBundle)).resolves.toBe(
-      'v9' satisfies LedgerVersion
-    );
+  it('refuses a current-era container served with a retained bundle', async () => {
+    await expect(resolveArtifactEra(createMockCompiledContract(), LEDGER8_BUNDLE)).rejects.toMatchObject({
+      reason: 'ledger8-artifacts-in-ledger9-container'
+    });
   });
 
   it('routes an object with the retained-era shape to the retained-era pipeline', async () => {
@@ -155,16 +145,16 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
       expect(rawCurrentEraContract.initialState.constructor.name).toBe('AsyncFunction');
 
       await expect(resolveArtifactEra(rawCurrentEraContract, LEDGER8_BUNDLE)).rejects.toBeInstanceOf(
-        EraArtifactMismatchError
+        EraMismatchError
       );
       const error = await resolveArtifactEra(rawCurrentEraContract, LEDGER8_BUNDLE).catch(
         (thrown: unknown) => thrown
       );
-      expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('unwrapped-ledger9-contract');
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect((error as EraMismatchError).reason).toBe('unwrapped-ledger9-contract');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
       // The message has to name the actual mistake, because the fix is one step: wrap it.
-      expect((error as EraArtifactMismatchError).message).toMatch(/CompiledContract/);
+      expect((error as EraMismatchError).message).toMatch(/CompiledContract/);
     });
   });
 
@@ -178,11 +168,11 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
   ])('refuses %s as belonging to neither era', async (_label, candidate) => {
     const error = await resolveArtifactEra(candidate, LEDGER8_BUNDLE).catch((thrown: unknown) => thrown);
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
-    expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
-    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH)).toBe(true);
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect((error as EraMismatchError).reason).toBe('unrecognised-contract-shape');
+    expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
     // The single settled wording, reused rather than re-invented here.
-    expect((error as EraArtifactMismatchError).message).toContain(NEITHER_ERA_CONTRACT_MESSAGE);
+    expect((error as EraMismatchError).message).toContain(NEITHER_ERA_CONTRACT_MESSAGE);
   });
 
   it.each([
@@ -206,8 +196,8 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
 
     const error = await resolveArtifactEra(candidate, LEDGER8_BUNDLE).catch((thrown: unknown) => thrown);
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
-    expect((error as EraArtifactMismatchError).reason).toBe('unrecognised-contract-shape');
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect((error as EraMismatchError).reason).toBe('unrecognised-contract-shape');
   });
 
   it('deliberately does NOT discriminate on the compact-js CompiledContract brand', async () => {
@@ -224,7 +214,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     expect('pipe' in container).toBe(false);
     // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
     // the spread that drops the brand.
-    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 });
 
@@ -247,37 +237,49 @@ const ACCEPTED_CELLS: readonly (DispatchCell & { readonly route: string })[] = [
   { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'deploy', route: 'v9' },
   { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v9', kind: 'call', route: 'keep-state' },
   { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'call', route: 'v8' },
-  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' }
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'deploy', route: 'v8' },
+  { artifact: 'current-era (0.18)', pipeline: 'v9', head: 'v9', kind: 'maintenance', route: 'v9' },
+  { artifact: 'retained-era (0.16)', pipeline: 'v8', head: 'v8', kind: 'maintenance', route: 'v8' }
 ];
 
 // Every cell it refuses, with the class and the registered code each refusal must carry.
 const REFUSED_CELLS: readonly (DispatchCell & {
-  readonly errorClass: new (...args: never[]) => Error;
-  readonly code: ContractsErrorCode;
+  readonly reason: EraMismatchReason;
 })[] = [
   {
     artifact: 'current-era (0.18)',
     pipeline: 'v9',
     head: 'v8',
     kind: 'call',
-    errorClass: EraArtifactMismatchError,
-    code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH
+    reason: 'ledger9-artifact-on-ledger8-network'
   },
   {
     artifact: 'current-era (0.18)',
     pipeline: 'v9',
     head: 'v8',
     kind: 'deploy',
-    errorClass: EraArtifactMismatchError,
-    code: CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH
+    reason: 'ledger9-artifact-on-ledger8-network'
   },
   {
     artifact: 'retained-era (0.16)',
     pipeline: 'v8',
     head: 'v9',
     kind: 'deploy',
-    errorClass: Ledger8DeployOnLedger9Error,
-    code: CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9
+    reason: 'ledger8-deploy-on-ledger9-network'
+  },
+  {
+    artifact: 'current-era (0.18)',
+    pipeline: 'v9',
+    head: 'v8',
+    kind: 'maintenance',
+    reason: 'ledger9-artifact-on-ledger8-network'
+  },
+  {
+    artifact: 'retained-era (0.16)',
+    pipeline: 'v8',
+    head: 'v9',
+    kind: 'maintenance',
+    reason: 'ledger8-maintenance-on-ledger9-network'
   }
 ];
 
@@ -296,7 +298,8 @@ const ALL_HEADS: Record<LedgerVersion, LedgerVersion> = {
 
 const ALL_KINDS: Record<OperationKind, OperationKind> = {
   call: 'call',
-  deploy: 'deploy'
+  deploy: 'deploy',
+  maintenance: 'maintenance'
 };
 
 // The values the run-time guards exist for, asserted back in one named place so the negative tests
@@ -314,15 +317,14 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     expect(() => assertEraCompatible(pipeline, head, kind)).not.toThrow();
   });
 
-  it.each(REFUSED_CELLS)('refuses a $artifact $kind on a $head head', ({ pipeline, head, kind, errorClass, code }) => {
+  it.each(REFUSED_CELLS)('refuses a $artifact $kind on a $head head', ({ pipeline, head, kind, reason }) => {
     try {
       assertEraCompatible(pipeline, head, kind);
       expect.unreachable(`assertEraCompatible accepted ${pipeline}/${head}/${kind}`);
     } catch (error) {
-      expect(error).toBeInstanceOf(errorClass);
-      // The registered code, not just the class: a consumer branches on `code`, and swapping two
-      // code assignments between classes type-checks and would leave an instanceof-only suite green.
-      expect(hasErrorCode(error, code)).toBe(true);
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect((error as EraMismatchError).reason).toBe(reason);
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
     }
   });
 
@@ -355,8 +357,8 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       assertEraCompatible('v9', 'v8', 'call');
       expect.unreachable('a current-era artifact was accepted on a pre-fork head');
     } catch (error) {
-      expect(error).toBeInstanceOf(EraArtifactMismatchError);
-      expect((error as EraArtifactMismatchError).reason).toBe('ledger9-artifact-on-ledger8-head');
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect((error as EraMismatchError).reason).toBe('ledger9-artifact-on-ledger8-network');
     }
   });
 
@@ -365,9 +367,22 @@ describe('the era dispatch table: artifact era x network head era x operation ki
       assertEraCompatible('v8', 'v9', 'deploy');
       expect.unreachable('a retained-era deploy was accepted on a post-fork head');
     } catch (error) {
-      expect(error).toBeInstanceOf(Ledger8DeployOnLedger9Error);
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.LEDGER8_DEPLOY_ON_LEDGER9)).toBe(true);
-      expect((error as Ledger8DeployOnLedger9Error).message).toMatch(/runtime-deploy|0\.18 artifacts/);
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect((error as EraMismatchError).reason).toBe('ledger8-deploy-on-ledger9-network');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+      expect((error as EraMismatchError).message).toMatch(/runtime-deploy|0\.18 artifacts/);
+    }
+  });
+
+  it('points a retained-era maintenance update on a post-fork head at the recompiled artifact', () => {
+    try {
+      assertEraCompatible('v8', 'v9', 'maintenance');
+      expect.unreachable('a retained-era maintenance update was accepted on a post-fork head');
+    } catch (error) {
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect((error as EraMismatchError).reason).toBe('ledger8-maintenance-on-ledger9-network');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+      expect((error as EraMismatchError).message).toMatch(/Recompile the contract with the ledger 9/);
     }
   });
 
@@ -386,7 +401,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   // `Object.prototype`, which is exactly what these tests exist to rule out.
   //
   // These tests pin the VALUE blamed, and deliberately not the message.
-  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string => {
+  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string | undefined => {
     try {
       assertEraCompatible(pipeline, head, 'call');
       return expect.unreachable(`assertEraCompatible ruled on ${String(pipeline)}/${String(head)}`);
@@ -416,8 +431,8 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     ];
 
     for (const coerces of coercing) {
-      expect(refusedEra(asArtifactEra(coerces), 'v9')).toBe(String(coerces));
-      expect(refusedEra('v9', asHeadEra(coerces))).toBe(String(coerces));
+      expect(refusedEra(asArtifactEra(coerces), 'v9')).toBe('object');
+      expect(refusedEra('v9', asHeadEra(coerces))).toBe('object');
     }
   });
 
@@ -429,7 +444,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
     const notCalls: readonly unknown[] = ['Deploy', 'DEPLOY', 'deploy ', '', undefined, null, 0, {}];
 
     for (const notCall of notCalls) {
-      expect(() => assertEraCompatible('v8', 'v9', asOperationKind(notCall))).toThrow(Ledger8DeployOnLedger9Error);
+      expect(() => assertEraCompatible('v8', 'v9', asOperationKind(notCall))).toThrow(EraMismatchError);
     }
     expect(() => assertEraCompatible('v8', 'v9', 'call')).not.toThrow();
   });
@@ -462,7 +477,7 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   it('refuses a retained-era deploy but NOT a retained-era call on the same head', () => {
     // The two differ only in `kind`; without this pairing, a refusal that rejected every
     // retained-era operation on a v9 head would satisfy the deploy assertion just as well.
-    expect(() => assertEraCompatible('v8', 'v9', 'deploy')).toThrow(Ledger8DeployOnLedger9Error);
+    expect(() => assertEraCompatible('v8', 'v9', 'deploy')).toThrow(EraMismatchError);
     expect(() => assertEraCompatible('v8', 'v9', 'call')).not.toThrow();
   });
 });
@@ -473,7 +488,7 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
 
     const resolved = await resolveOperationEra(pdp);
 
-    // One read, not two: the naive shape asks `networkHeadVersion` for the era and then asks the
+    // One read, not two: the naive shape asks `latestNetworkLedgerVersion` for the era and then asks the
     // provider again for the integer, which is a second network round trip and, at the fork
     // boundary, a second and possibly DIFFERENT answer inside one operation.
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
@@ -505,6 +520,26 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
   });
 });
 
+describe('decodeLedger9ContractState: a corrupt body behind a valid tag', () => {
+  it("reports the framework decoder's DeserializationError, not a decoder the caller never passed", () => {
+    const corruptBody = readHexFixture('state-tampered-bytes.hex');
+
+    let caught: unknown;
+    try {
+      decodeLedger9ContractState(rawState(corruptBody, 2_000_000), 'contract-address', 'createUnprovenCallTx', 'queryContractState');
+    } catch (error: unknown) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DeserializationError);
+    expect(hasErrorCode(caught, UTILS_ERROR_CODES.DESERIALIZATION_FAILED)).toBe(true);
+    expect(errorCategory(caught)).toBe('INTEGRITY');
+    expect(caught).toMatchObject({
+      context: { caller: '@midnight-ntwrk/midnight-js-contracts:createUnprovenCallTx' }
+    });
+  });
+});
+
 describe("resolveContractStateEra: which era's decoder owns the bytes an operation fetched", () => {
   const ledger8Envelope = readHexFixture('state-v8.hex');
   const ledger9Envelope = readHexFixture('state-migrated-v9.hex');
@@ -526,7 +561,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   ])('answers the retained era for a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
-    await expect(resolveContractStateEra(head, rawState(ledger8Envelope, headInt, head), pdp)).resolves.toBe('v8');
+    await expect(resolveContractStateEra(head, rawState(ledger8Envelope, headInt), pdp)).resolves.toBe('v8');
 
     // No re-read at all: the head plays no part in accepting a retained envelope, so there is
     // nothing to disambiguate.
@@ -538,7 +573,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
 
     // A same-era minor node bump, and a different era entirely, reach the same answer.
     for (const headInt of [LEDGER8_HEAD, 1_000_001, LEDGER9_HEAD, 2_001_000]) {
-      await expect(resolveContractStateEra('v9', rawState(ledger8Envelope, headInt, 'v9'), pdp)).resolves.toBe('v8');
+      await expect(resolveContractStateEra('v9', rawState(ledger8Envelope, headInt), pdp)).resolves.toBe('v8');
     }
 
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -550,7 +585,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     // These bytes cannot be decoded by either era. The answer still names the era of the TAG, which
     // is only possible if the tag was read and the body was not: a decode would have raised a decode
     // failure instead of returning.
-    await expect(resolveContractStateEra('v9', rawState(ledger9EnvelopeCorruptBody, LEDGER9_HEAD, 'v9'), pdp)).resolves.toBe(
+    await expect(resolveContractStateEra('v9', rawState(ledger9EnvelopeCorruptBody, LEDGER9_HEAD), pdp)).resolves.toBe(
       'v9'
     );
   });
@@ -561,7 +596,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     // Whether the caller's artifacts fit it is a question about the KEYS, and it is asked elsewhere.
     const pdp = headSource();
 
-    await expect(resolveContractStateEra('v9', rawState(ledger9Envelope, LEDGER9_HEAD, 'v9'), pdp)).resolves.toBe('v9');
+    await expect(resolveContractStateEra('v9', rawState(ledger9Envelope, LEDGER9_HEAD), pdp)).resolves.toBe('v9');
 
     // No re-read: the head is not in question here.
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -574,17 +609,17 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = headSource(LEDGER9_HEAD);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
-      expect(error).toBeInstanceOf(HeadStateEraMismatchError);
-      expect((error as HeadStateEraMismatchError).head).toBe<LedgerVersion>('v8');
-      expect((error as HeadStateEraMismatchError).stateEra).toBe<LedgerVersion>('v9');
-      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.HEAD_STATE_ERA_MISMATCH)).toBe(true);
-      expect((error as HeadStateEraMismatchError).message).toMatch(/re-read|re-run/i);
+      expect(error).toBeInstanceOf(NetworkVersionStateMismatchError);
+      expect((error as NetworkVersionStateMismatchError).networkVersion).toBe<LedgerVersion>('v8');
+      expect((error as NetworkVersionStateMismatchError).stateEra).toBe<LedgerVersion>('v9');
+      expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH)).toBe(true);
+      expect((error as NetworkVersionStateMismatchError).message).toMatch(/re-read|re-run/i);
       // Direction-neutral on purpose: the check establishes that the two readings disagree, not
       // which of them moved.
-      expect((error as HeadStateEraMismatchError).message).not.toMatch(/was behind|was ahead/i);
+      expect((error as NetworkVersionStateMismatchError).message).not.toMatch(/was behind|was ahead/i);
     }
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
@@ -595,7 +630,7 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = headSource(LEDGER8_HEAD);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('an inconsistent indexer response was accepted');
     } catch (error) {
       expect(error).toBeInstanceOf(IndexerInconsistencyError);
@@ -614,30 +649,33 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
     const pdp = rejectingHeadSource(transportFailure);
 
     try {
-      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD, 'v8'), pdp);
+      await resolveContractStateEra('v8', rawState(ledger9Envelope, LEDGER8_HEAD), pdp);
       expect.unreachable('a failed fresh head read was treated as agreement');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       // The transport failure is propagated, never swallowed.
       expect((error as Error).cause).toBe(transportFailure);
-      expect((error as Error).message).toMatch(/re-read the network head/i);
+      expect((error as Error).message).toMatch(/read the network's ledger version again/i);
       // Both eras survive into the message, so the unresolved question is still legible.
       expect((error as Error).message).toContain("'v8'");
       expect((error as Error).message).toContain("'v9'");
     }
   });
+});
 
-  it('refuses bytes that are not a contract-state envelope at all', async () => {
-    // A real, well-formed, tagged payload of the WRONG TYPE: a verifier key. Its tag parses
-    // cleanly, so this is not caught by tag parsing -- it is caught by the envelope not being one
-    // this framework recognises as a contract state.
-    const verifierKey = Uint8Array.from(
-      readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'))
+describe('resolveContractStateEra reads only a SerializedState', () => {
+  it('refuses a record whose contract state is not a SerializedState, the shape of a pre-5.0.0 provider', async () => {
+    const queryLatestProtocolVersion = vi.fn();
+    const preFiveRecord = { protocolVersion: 2_000_000, contractState: { version: 'v9', state: new Uint8Array() } };
+
+    // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
+    const rejection = await resolveContractStateEra('v9', preFiveRecord, { queryLatestProtocolVersion }).then(
+      () => undefined,
+      (error: unknown) => error
     );
-    const pdp = headSource();
 
-    await expect(
-      resolveContractStateEra('v9', rawState(verifierKey, LEDGER9_HEAD, 'v9'), pdp)
-    ).rejects.toThrow(TagParseError);
+    expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(rejection).toMatchObject({ requestedVersion: undefined, context: 'queryContractState' });
+    expect(queryLatestProtocolVersion).not.toHaveBeenCalled();
   });
 });

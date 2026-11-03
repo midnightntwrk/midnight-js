@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,7 @@
 # Class: Ledger8RuntimeMissingError
 
 Thrown when a lazily-loaded subpath export carrying the retained pre-fork
-runtime could not be acquired at all. Raised by `loadLedger8`
+runtime could not be acquired at all. Raised by `loadLedger8Protocol`
 (`lib/v8/load.ts`) and `loadLedger8Engine` (`lib/v8/load-engine.ts`), and
 surfaced through `createLedger8Engine` and `loadLedgerEra('v8')`.
 
@@ -19,7 +19,7 @@ that WAS acquired and then handed over incomplete.
 
 **subpath**
 
-Which chunk failed to load — see [RetainedEraSubpath](../type-aliases/RetainedEraSubpath.md).
+Which chunk failed to load — see [Ledger8Subpath](../type-aliases/Ledger8Subpath.md).
 
 ## Param
 
@@ -31,7 +31,7 @@ The underlying module-resolution or initialisation failure,
 ## See
 
  - [ModuleGraphAndLazyLoading](../../documents/ModuleGraphAndLazyLoading.md)
- - [EraSeam](../../documents/EraSeam.md)
+ - [EraBoundary](../../documents/EraBoundary.md)
 
 ## Extends
 
@@ -47,7 +47,7 @@ The underlying module-resolution or initialisation failure,
 
 ##### subpath
 
-[`RetainedEraSubpath`](../type-aliases/RetainedEraSubpath.md)
+[`Ledger8Subpath`](../type-aliases/Ledger8Subpath.md)
 
 ##### cause
 
@@ -85,4 +85,4 @@ The underlying module-resolution or initialisation failure,
 
 ### subpath
 
-> `readonly` **subpath**: [`RetainedEraSubpath`](../type-aliases/RetainedEraSubpath.md)
+> `readonly` **subpath**: [`Ledger8Subpath`](../type-aliases/Ledger8Subpath.md)

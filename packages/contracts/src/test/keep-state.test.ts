@@ -40,14 +40,21 @@ import {
   type ComposeCallOptions,
   type ContractBalance,
   type Ledger8CircuitOptions,
+  type Ledger8Engine,
   type Ledger8EngineContract,
   type LedgerEra,
+  loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractState, LedgerParameters, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
-  type RawContractState,
-  type VersionedFinalizedTransaction,
-  type VersionedTransaction,
+  type ContractStateAndParametersRead,
+  type ContractStateRead,
+  type FinalizedTx,
+  InvalidSerializedStateError,
+  LedgerTransaction,
+  type UnboundTx,
+  type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
@@ -55,14 +62,23 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   EraInvariantViolationError,
-  HeadStateEraMismatchError,
+  EraMismatchError,
   IndexerInconsistencyError,
-  Ledger8ArtifactOnLedger9StateError,
-  LedgerParametersUnservedError} from '../errors';
-import { type Ledger8ExecuteRequest, runLedger8CallPipeline } from '../internal/ledger8-pipeline';
+  LedgerParametersUnservedError,  NetworkVersionStateMismatchError,
+  PublicStatesEraMismatchError,
+  VerifierKeyMismatchError
+} from '../errors';
+import {
+  type Ledger8ExecuteRequest,
+  type Ledger8MaintenanceRequest,
+  runLedger8CallPipeline
+} from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
-import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
+import type { Ledger8CallOptionsWithInitialStates, Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
+import { createLedger8UnprovenCallTx, createLedger8UnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 
 /**
@@ -84,7 +100,7 @@ import {
   type ReplayState,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { contractStateAndParametersRead, contractStateRead, createMockFinalizedTxData, createMockLedger8FinalizedTxData, createMockProviders } from './test-mocks';
 import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // See `./v8-native.test.ts` for both redirects: the artifact's own runtime
@@ -121,34 +137,31 @@ const STAND_IN_VERIFIER_KEY = Uint8Array.from(
 );
 
 interface SeenPayloads {
-  proveTx?: VersionedTransaction<unknown>;
-  balanceTx?: VersionedTransaction<unknown>;
-  submitTx?: VersionedFinalizedTransaction;
+  proveTx?: UnprovenTx;
+  balanceTx?: UnboundTx;
+  submitTx?: FinalizedTx;
+  /** What `proveTx` answered with, so the next stage can be checked against it. */
+  proven?: UnboundTx;
+  /** What `balanceTx` answered with. */
+  balanced?: FinalizedTx;
 }
 
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
   readonly seen: SeenPayloads;
 };
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => ({
-  version: protocolVersion === PRE_FORK_PROTOCOL_VERSION ? 'v8' : 'v9',
-  protocolVersion,
-  raw,
-  // Served from the SAME read as `raw`, which is what a real provider does and what the pipeline
-  // now requires. The initial parameters stand in for the content -- a chain serves different
-  // numbers -- but they are the CURRENT era's bytes, which is what dates them to this block.
-  ledgerParameters: LedgerParameters.initialParameters().serialize()
-});
+// Served from the SAME read as `raw`, which is what a real provider does and what the pipeline
+// now requires. The initial parameters stand in for the content -- a chain serves different
+// numbers -- but they are the CURRENT era's bytes, which is what dates them to this block.
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndParametersRead =>
+  contractStateAndParametersRead(raw, protocolVersion, LedgerParameters.initialParameters().serialize());
 
 /**
- * The same record with the block's parameters missing, which is what a `PublicDataProvider` that
- * does not serve them produces. `RawContractState.ledgerParameters` is optional, so such a provider
- * is type-correct and the omission cannot be caught at the provider interface.
+ * The same record with the block's parameters missing, which is what a `PublicDataProvider` written
+ * in JavaScript, out of reach of the provider types, can still produce.
  */
-const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): RawContractState => {
-  const { ledgerParameters: _omitted, ...withoutParameters } = rawState(raw, protocolVersion);
-  return withoutParameters;
-};
+const rawStateWithoutParameters = (raw: Uint8Array, protocolVersion: number): ContractStateRead =>
+  contractStateRead(raw, protocolVersion);
 
 describe('the keep-state pipeline (previous-toolchain contract, post-fork head)', () => {
   let recording: CoinReceiverRecording;
@@ -191,20 +204,22 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     const seen: SeenPayloads = {};
 
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(envelope, POST_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation(async (tx: UnprovenTx) => {
       seen.proveTx = tx;
-      return Promise.resolve(tx);
+      seen.proven = await unboundLike(tx);
+      return seen.proven;
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation(async (tx: UnboundTx) => {
       seen.balanceTx = tx;
-      return Promise.resolve(tx);
+      seen.balanced = await finalizedLike(tx);
+      return seen.balanced;
     });
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');
     });
@@ -290,8 +305,9 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ContractState.deserialize(registry!).operation(CIRCUIT_ID)?.verifierKey).toEqual(chainKey);
 
     // The CURRENT era tagged this one, and the retained tag does not match it.
-    expect(txTagPrefix(result.txBytes, LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
-    expect(txTagPrefix(result.txBytes, LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
+    expect(result.unprovenTx.era).toBe('v9');
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER9_TX_TAG)).toBe(LEDGER9_TX_TAG);
+    expect(txTagPrefix(result.unprovenTx.serialize(), LEDGER8_TX_TAG)).not.toBe(LEDGER8_TX_TAG);
   });
 
   it('carries the recorded coin movement in the GUARANTEED segment here too', async () => {
@@ -393,7 +409,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // What must agree is the record and the HEAD the operation resolved.
     providers.publicDataProvider.watchForTxData = vi
       .fn()
-      .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8', tx: undefined as never });
+      .mockResolvedValue(createMockLedger8FinalizedTxData());
 
     const rejection = await submitCallTx(providers, callOptions()).then(
       () => undefined,
@@ -415,7 +431,130 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
+    expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('createLedger8UnprovenCallTx builds a v9 keep-state handle that submitTx submits on this head', async () => {
+    const providers = postForkProviders(v6Envelope);
+
+    const built = await createLedger8UnprovenCallTx(providers, callOptions());
+    const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+
+    expect(built.era).toBe('v8');
+    expect(built.private.unprovenTx.era).toBe('v9');
+    expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+    expect(record.era).toBe('v9');
+  });
+
+  describe('createLedger8UnprovenCallTxFromInitialStates', () => {
+    const fromStates = async (
+      providers: RetainedProviders,
+      states: Pick<
+        Ledger8CallOptionsWithInitialStates<CoinReceiver016Contract, typeof CIRCUIT_ID>,
+        'head' | 'initialContractState' | 'ledgerParameters'
+      >
+    ) =>
+      createLedger8UnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          ...states,
+          coinPublicKey: recording.coinPublicKey,
+          config: { networkId: NETWORK_ID, ttlSeconds: 3600 }
+        },
+        providers.walletProvider.getEncryptionPublicKey()
+      );
+
+    const ledger9Parameters = () => ({ era: 'v9' as const, parameters: LedgerParameters.initialParameters() });
+
+    it('builds a v9 keep-state handle from a retained state the caller read, reading nothing from the network', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v9');
+      expect(built.private.result).toStrictEqual(recording.transcript.result);
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('builds a v9 handle from a ledger 9 state the caller read', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v9', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.private.unprovenTx.era).toBe('v9');
+    });
+
+    it('refuses a ledger 9 state on a ledger 8 head as a caller mistake, not a fork crossing', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const rejection = await fromStates(providers, {
+        head: 'v8',
+        initialContractState: { era: 'v9', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect((rejection as InvalidArgumentError).message).toContain('options.initialContractState');
+      expect((rejection as InvalidArgumentError).message).toContain('options.head');
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses a head that names no ledger era before comparing it with the state', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+
+      const rejection = await fromStates(providers, {
+        // @ts-expect-error - a JavaScript caller that left the head out
+        head: undefined,
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses ledger parameters of another era than the head, before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+
+      const rejection = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
+        ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() }
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(PublicStatesEraMismatchError);
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    it('refuses a state labelled with an era its bytes do not carry', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const rejection = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: { era: 'v8', state: ContractState.deserialize(ledger9Envelope) },
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidSerializedStateError);
+    });
   });
 
   it('passes the providers.config TTL to the wallet on the current-era path', async () => {
@@ -429,45 +568,33 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(ttl?.getTime()).toBeLessThanOrEqual(Date.now() + 30_000);
   });
 
-  it('hands every provider method the CURRENT-era variant, as a live ledger transaction', async () => {
+  it('hands every provider method a v9 handle', async () => {
     const providers = postForkProviders(v6Envelope);
 
     await submitCallTx(providers, callOptions());
 
-    // The `version` tag names the LEDGER RUNTIME that produced the payload, not
+    // The handle's era names the LEDGER RUNTIME that produced the transaction, not
     // the toolchain that produced the contract. A keep-state transaction is an
     // ordinary current-era transaction that happens to carry a retained-era
-    // call, so it crosses as the current era's live handle -- the framework and the
-    // providers share that runtime. Tagging it `'v8'` would claim the retained
-    // runtime built it, which is false, and would send a current-era-only
-    // provider looking for a runtime it does not need.
-    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(payload).toBeDefined();
-      expect(payload?.version).toBe('v9');
-      // The WRITE surface's current-era variant carries `tx`, and carries no
-      // `txBytes` at all -- the two variants are genuinely different shapes.
-      expect(payload).not.toHaveProperty('txBytes');
-    }
-
-    // A LIVE HANDLE, not merely a `'v9'` tag over anything.
-    // `readLedger9Transaction` could be replaced with `() => undefined` and
-    // every assertion above would still pass, handing `undefined` down the
-    // whole chain: `{ version: 'v9', tx: undefined }` satisfies both the tag
-    // check and the absence of `txBytes`.
-    for (const payload of [providers.seen.proveTx, providers.seen.balanceTx, providers.seen.submitTx]) {
-      expect(payload?.version === 'v9' ? payload.tx : undefined).toBeInstanceOf(Transaction);
-    }
+    // call, so it crosses as a v9 handle. Sealing it `'v8'` would claim the
+    // retained runtime built it, which is false.
+    expect(LedgerTransaction.isLedgerTransaction(providers.seen.proveTx)).toBe(true);
+    expect(providers.seen.proveTx?.era).toBe('v9');
+    expect(providers.seen.proveTx?.stage).toBe('Unproven');
+    // THE CHAIN: `balanceTx` must receive exactly what `proveTx` answered, and
+    // `submitTx` exactly what `balanceTx` answered. The stand-in answers are in
+    // the era they were handed, so an era assertion on them would hold by
+    // construction.
+    expect(providers.seen.balanceTx).toBe(providers.seen.proven);
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 
   it('refuses a provider that answers this current-era flow in the retained era', async () => {
     const providers = postForkProviders(v6Envelope);
-    // A broken or mis-pointed provider: it accepted a current-era payload and
-    // answered with retained-era bytes. Nothing in the provider method types ties a
-    // provider's output era to its input era, so this is checked rather than
-    // assumed.
-    providers.proofProvider.proveTx = vi
-      .fn()
-      .mockResolvedValue({ version: 'v8', txBytes: Uint8Array.from([1, 2, 3]) });
+    // A broken or mis-pointed provider: it accepted a v9 handle and answered
+    // with a v8 one. Nothing in the provider method types ties a provider's
+    // output era to its input era, so this is checked rather than assumed.
+    providers.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v8.Unbound());
 
     let caught: unknown;
     try {
@@ -499,9 +626,9 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(HeadStateEraMismatchError);
-    expect((caught as HeadStateEraMismatchError).head).toBe('v8');
-    expect((caught as HeadStateEraMismatchError).stateEra).toBe('v9');
+    expect(caught).toBeInstanceOf(NetworkVersionStateMismatchError);
+    expect((caught as NetworkVersionStateMismatchError).networkVersion).toBe('v8');
+    expect((caught as NetworkVersionStateMismatchError).stateEra).toBe('v9');
     // The re-read is the second head read, and it happens ONLY on a
     // disagreement -- which is why the happy path above reads the head once.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
@@ -523,22 +650,8 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     }
 
     expect(caught).toBeInstanceOf(IndexerInconsistencyError);
-    expect((caught as IndexerInconsistencyError).head).toBe('v8');
+    expect((caught as IndexerInconsistencyError).networkVersion).toBe('v8');
     expect((caught as IndexerInconsistencyError).stateEra).toBe('v9');
-  });
-
-  it("routes on the ENVELOPE, not on the record's own era label, so keep-state is not gated on a label", async () => {
-    // The record LABELS itself current-era -- that label is derived from its
-    // `protocolVersion` alone and is explicitly not a verified statement about
-    // the bytes -- while the bytes carry a retained envelope. The envelope is
-    // what decides, so this is read by the retained decoder and the call runs.
-    const providers = postForkProviders(v6Envelope);
-    const served = (await providers.publicDataProvider.queryRawContractState('')) as RawContractState;
-    expect(served.version).toBe('v9');
-
-    const finalized = await submitCallTx(providers, callOptions());
-
-    expect(finalized.circuitId).toBe(CIRCUIT_ID);
   });
 
   it('refuses to compose when the read surface served no ledger parameters, before proving', async () => {
@@ -549,7 +662,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     // AFTER the caller had paid for proving. The sentinel exists for callers with no read surface;
     // this caller must not reach it by accident.
     const providers = postForkProviders(v6Envelope);
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawStateWithoutParameters(v6Envelope, POST_FORK_PROTOCOL_VERSION));
 
@@ -589,19 +702,50 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
-  it('reads a current-era envelope with the CURRENT decoder even when the record mislabels itself as retained', async () => {
-    // The mirror, and the one a label-based route would get wrong in the
-    // dangerous direction: the label AGREES with the retained pipeline while
-    // the bytes are current-era. Routing on the label would hand current-era
-    // bytes to the retained decoder, which refuses them on the envelope tag.
-    // The envelope decides which decoder may read the bytes; it does not decide
-    // whether the caller's artifacts fit the contract.
+  it('refuses to compose against ledger parameters of another era than the head, before proving', async () => {
     const providers = postForkProviders(v6Envelope);
-    providers.publicDataProvider.queryRawContractState = vi
+    const ledger8Parameters = (await loadLedger8Protocol()).LedgerParameters.initialParameters().serialize();
+    providers.publicDataProvider.queryContractState = vi
       .fn()
-      .mockResolvedValue({ ...rawState(ledger9Envelope, POST_FORK_PROTOCOL_VERSION), version: 'v8' });
+      .mockResolvedValue(contractStateAndParametersRead(v6Envelope, POST_FORK_PROTOCOL_VERSION, ledger8Parameters));
 
-    await expect(submitCallTx(providers, callOptions())).resolves.toBeDefined();
+    const log: OrchestrationLog = [];
+    let caught: unknown;
+    try {
+      await runLedger8CallPipeline<ReplayState>({
+        era: recordEraCalls(currentEra, log),
+        retainedEra: recordEraCalls(retainedEra, log),
+        engine: createReplayEngine(recording, log),
+        publicDataProvider: providers.publicDataProvider,
+        head: 'v9',
+        contract,
+        contractAddress: recording.contractAddress,
+        circuitId: CIRCUIT_ID,
+        args: [recording.receivedCoin],
+        coinPublicKey: recording.coinPublicKey,
+        privateState: {},
+        localVerifierKey: STAND_IN_VERIFIER_KEY,
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        encryptionPublicKey: createEncryptionPublicKeyResolver(
+          NETWORK_ID,
+          recording.coinPublicKey,
+          providers.walletProvider.getEncryptionPublicKey()
+        )
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(PublicStatesEraMismatchError);
+    expect(caught).toMatchObject({
+      contractAddress: recording.contractAddress,
+      field: 'ledgerParameters',
+      expected: 'v9',
+      received: 'v8'
+    });
+    expect(log).not.toContain('era.composeCallTx');
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
   });
 
   it('calls a MIGRATED contract again, whose state is current-era but whose keys are still retained', async () => {
@@ -623,7 +767,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     // Read with the CURRENT decoder, which is the only way these bytes decode at all: the retained
     // decoder refuses a `contract-state[v8]` envelope on the tag.
-    expect(providers.publicDataProvider.queryRawContractState).toHaveBeenCalledTimes(1);
+    expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a current-era state whose key is not the one the local artifact carries', async () => {
@@ -642,8 +786,11 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ArtifactOnLedger9StateError);
-    expect((caught as Ledger8ArtifactOnLedger9StateError).contractAddress).toBe(recording.contractAddress);
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect(caught).toMatchObject({ reason: 'ledger8-artifact-on-ledger9-contract', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+    expect((caught as EraMismatchError).message).toContain(recording.contractAddress);
+    expect((caught as EraMismatchError).contractAddress).toBe(recording.contractAddress);
+    expect((caught as EraMismatchError).cause).toBeInstanceOf(VerifierKeyMismatchError);
     // Refused before anything is paid for: a proof against a key the chain does
     // not hold is rejected on submission, which is the late failure this
     // ordering exists to prevent.
@@ -652,7 +799,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
 
   it('refuses before any provider round trip when no contract is deployed at the address', async () => {
     const providers = postForkProviders(v6Envelope);
-    providers.publicDataProvider.queryRawContractState = vi.fn().mockResolvedValue(null);
+    providers.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(null);
 
     await expect(submitCallTx(providers, callOptions())).rejects.toMatchObject({
       name: 'ContractNotFoundError',
@@ -704,4 +851,9 @@ type _RequestAgreesOnTheState = Assert<
 // neither the contract nor the real cause.
 type _RequestContractSatisfiesTheEngine = Assert<
   Ledger8ExecuteRequest['contract'] extends Ledger8EngineContract ? true : false
+>;
+// The same pin for the maintenance request, whole: every member it threads has to be one the
+// engine's own request accepts, the contract above all.
+type _MaintenanceRequestSatisfiesTheEngine = Assert<
+  Ledger8MaintenanceRequest extends Parameters<Ledger8Engine['composeMaintenanceTx']>[0] ? true : false
 >;

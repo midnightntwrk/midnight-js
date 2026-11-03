@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -101,12 +101,6 @@ Re-exports [CONTRACTS_ERROR_CODES](../../utils/variables/CONTRACTS_ERROR_CODES.m
 ### ContractsErrorCode
 
 Re-exports [ContractsErrorCode](../../utils/type-aliases/ContractsErrorCode.md)
-
-***
-
-### contractStateEnvelopeVersion
-
-Re-exports [contractStateEnvelopeVersion](../../utils/variables/contractStateEnvelopeVersion.md)
 
 ***
 
@@ -236,9 +230,27 @@ Re-exports [isValidSigningKey](../../utils/variables/isValidSigningKey.md)
 
 ***
 
-### ledgerParametersEnvelopeVersion
+### Ledger8ValueUnsupportedError
 
-Re-exports [ledgerParametersEnvelopeVersion](../../utils/variables/ledgerParametersEnvelopeVersion.md)
+Re-exports [Ledger8ValueUnsupportedError](../../utils/classes/Ledger8ValueUnsupportedError.md)
+
+***
+
+### Ledger9Variant
+
+Re-exports [Ledger9Variant](../../utils/type-aliases/Ledger9Variant.md)
+
+***
+
+### ledgerVersionOfContractState
+
+Re-exports [ledgerVersionOfContractState](../../utils/variables/ledgerVersionOfContractState.md)
+
+***
+
+### ledgerVersionOfLedgerParameters
+
+Re-exports [ledgerVersionOfLedgerParameters](../../utils/variables/ledgerVersionOfLedgerParameters.md)
 
 ***
 
@@ -392,6 +404,12 @@ Re-exports [ProviderErrorCode](../../utils/type-aliases/ProviderErrorCode.md)
 
 ***
 
+### requireLedger9
+
+Re-exports [requireLedger9](../../utils/variables/requireLedger9.md)
+
+***
+
 ### SOURCE\_PACKAGES
 
 Re-exports [SOURCE_PACKAGES](../../utils/variables/SOURCE_PACKAGES.md)
@@ -425,6 +443,12 @@ Re-exports [ttlOneHour](../../utils/variables/ttlOneHour.md)
 ### UnhandledUnionMemberError
 
 Re-exports [UnhandledUnionMemberError](../../utils/classes/UnhandledUnionMemberError.md)
+
+***
+
+### UnrecognisedEraTagError
+
+Re-exports [UnrecognisedEraTagError](../../utils/classes/UnrecognisedEraTagError.md)
 
 ***
 

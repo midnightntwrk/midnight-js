@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
 import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 

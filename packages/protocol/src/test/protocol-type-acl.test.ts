@@ -68,6 +68,7 @@ const typeOnlyExportNames = (program: ts.Program, entryName: string): string[] =
 describe('Protocol type ACL', () => {
   let barrelTypeNames: string[];
   let engineTypeNames: string[];
+  let transactionTypeNames: string[];
 
   // Both entries are read from one program: building a second one over the
   // same source graph doubles the cost and answers the same. Asking the
@@ -76,9 +77,13 @@ describe('Protocol type ACL', () => {
   // — so the timeout belongs here, on the one compiler run, rather than on
   // the assertions or on the whole package.
   beforeAll(() => {
-    const program = ts.createProgram([entryPath('index'), entryPath('engine')], compilerOptions());
+    const program = ts.createProgram(
+      [entryPath('index'), entryPath('engine'), entryPath('transaction')],
+      compilerOptions()
+    );
     barrelTypeNames = typeOnlyExportNames(program, 'index');
     engineTypeNames = typeOnlyExportNames(program, 'engine');
+    transactionTypeNames = typeOnlyExportNames(program, 'transaction');
   }, 60_000);
 
   it('publishes exactly this type surface from the barrel', () => {
@@ -110,7 +115,6 @@ describe('Protocol type ACL', () => {
       // writing for without these.
       'CurrentLedgerVersion',
       'DeployResultPojo',
-      'DownConvertStage',
       'EncodedStateValue',
       'Ledger8CircuitOptions',
       'Ledger8ConstructorOptions',
@@ -119,7 +123,6 @@ describe('Protocol type ACL', () => {
       // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8EngineContract',
-      'Ledger8InstanceAxis',
       'Ledger8Protocol',
       // Named by `Ledger8ConstructorOptions.signingKey` and reported back
       // on `ConstructorResultPojo`. The retained era's signing key is a
@@ -130,6 +133,7 @@ describe('Protocol type ACL', () => {
       'LedgerEra',
       'LedgerParametersOption',
       'LedgerVersion',
+      'MaintenanceAuthorityMismatchReason',
       'MidnightJsErrorCategory',
       'MidnightJsErrorCodeFormat',
       'PartitionContext',
@@ -138,6 +142,8 @@ describe('Protocol type ACL', () => {
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
       'RetainedLedgerVersion',
+      'StateConversionStage',
+      'StateKind',
       'TranscriptPojo',
       'VerifierKeyReader',
       'VersionedRecord',
@@ -147,6 +153,10 @@ describe('Protocol type ACL', () => {
       // factory cannot declare one outside the call it passes it to.
       'ZswapOfferFactory'
     ]);
+  });
+
+  it('publishes exactly this type surface from the ./transaction subpath', () => {
+    expect(transactionTypeNames).toEqual(['FrameworkInstanceCheck', 'LedgerTransactionTypes', 'TransactionStage']);
   });
 
   it('publishes exactly this type surface from the ./engine subpath', () => {
@@ -169,6 +179,9 @@ describe('Protocol type ACL', () => {
       // `Ledger8CircuitOptions.contract` is one of these, so a consumer
       // building the container cannot declare it without this name.
       'Ledger8EngineContract',
+      // `Ledger8Engine.composeMaintenanceTx` takes one, and the update inside it.
+      'Ledger8MaintenanceRequest',
+      'Ledger8MaintenanceUpdateRequest',
       'Ledger8SigningKey',
       'TranscriptPojo',
       // `runLedger8Constructor` TAKES one: deployment registers verifier keys,

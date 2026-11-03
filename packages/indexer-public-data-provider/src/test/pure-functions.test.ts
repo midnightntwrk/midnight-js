@@ -13,21 +13,23 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   FailEntirely,
   FailFallible,
+  LedgerTransaction,
   SegmentFail,
   SegmentSuccess,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import { parseSerializedTag, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import {
   correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
+  parseHexTransaction,
   toSegmentStatus,
   toSegmentStatusMap,
   toTxStatus,
@@ -45,7 +47,9 @@ import {
 } from '../errors';
 import type { TransactionResult } from '../gen/schema-types';
 import { extractRegularDeployTransaction } from '../mapping';
-import { LEDGER9_ERA_PROTOCOL_VERSION,mintLedger9ContractStateHex, mintLedger9LedgerParametersBytes } from './state-fixtures';
+import {
+  mintLedger9TransactionHex
+} from './state-fixtures';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -491,104 +495,24 @@ describe('deserialization adapter wiring (issue-816)', () => {
   const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
   const garbageHex = 'ffffff';
 
-  /**
-   * A state that gets past the envelope and era checks and then fails to
-   * decode: a real v9 envelope with its body overwritten. Plain garbage no
-   * longer reaches the deserializer at all, so it can no longer prove this
-   * wiring.
-   */
-  const TAG_BYTES = 32;
-  const envelopedGarbageHex = (): string => {
-    const hex = mintLedger9ContractStateHex();
-    const bodyBytes = hex.length / 2 - TAG_BYTES;
-    if (bodyBytes <= 0) {
-      throw new Error('test setup: the minted state is too short to keep an envelope and corrupt a body');
-    }
-    return hex.slice(0, TAG_BYTES * 2) + 'ff'.repeat(bodyBytes);
-  };
+  test('parseHexTransaction returns a finalized handle of the era it is given', async () => {
+    const hex = mintLedger9TransactionHex();
 
-  test('parseHexContractState throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexContractState } = await import('..');
-    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+    const handle = await parseHexTransaction('v9', hex);
 
-    let caught: unknown;
-    try {
-      parseHexContractState(envelopedGarbageHex(), LEDGER9_ERA_PROTOCOL_VERSION);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(isDeserializationError(caught)).toBe(true);
-    if (isDeserializationError(caught)) {
-      expect(caught.context.caller).toBe(`${PKG}:parseHexContractState`);
-      expect(caught.context.source).toBe('compact-runtime');
-    }
-  });
-
-  test('parseHexZswapState throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexZswapState } = await import('..');
-    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
-
-    let caught: unknown;
-    try {
-      parseHexZswapState(garbageHex);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(isDeserializationError(caught)).toBe(true);
-    if (isDeserializationError(caught)) {
-      expect(caught.context.caller).toBe(`${PKG}:parseHexZswapState`);
-      expect(caught.context.source).toBe('ledger');
-    }
+    expect(LedgerTransaction.isLedgerTransaction(handle)).toBe(true);
+    expect([handle.era, handle.stage]).toEqual(['v9', 'Finalized']);
+    expect(toHex(handle.serialize())).toBe(hex);
   });
 
   test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexTransaction } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
-    let caught: unknown;
-    try {
-      parseHexTransaction(garbageHex);
-    } catch (e) {
-      caught = e;
-    }
+    const caught = await parseHexTransaction('v9', garbageHex).catch((e: unknown) => e);
 
     expect(isDeserializationError(caught)).toBe(true);
     if (isDeserializationError(caught)) {
       expect(caught.context.caller).toBe(`${PKG}:parseHexTransaction`);
-      expect(caught.context.source).toBe('ledger');
-    }
-  });
-
-  /**
-   * The parameters twin of {@link envelopedGarbageHex}, and it exists for the same reason: since
-   * the parameters path dates the envelope before decoding, plain garbage is refused by the TAG
-   * PARSER for carrying no envelope at all -- before any era decision -- and so no longer reaches
-   * the deserializer to prove this wiring. The tag is measured off the minted bytes rather than
-   * assumed to be a fixed width; the two families' tags differ in length.
-   */
-  const envelopedGarbageParametersHex = (): string => {
-    const bytes = mintLedger9LedgerParametersBytes();
-    // `+ 1` for the colon the tag is terminated by, which belongs to the envelope, not the body.
-    const tagBytes = parseSerializedTag(bytes).tag.length + 1;
-    return toHex(bytes).slice(0, tagBytes * 2) + 'ff'.repeat(bytes.length - tagBytes);
-  };
-
-  test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexLedgerParameters } = await import('..');
-    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
-
-    let caught: unknown;
-    try {
-      parseHexLedgerParameters(envelopedGarbageParametersHex());
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(isDeserializationError(caught)).toBe(true);
-    if (isDeserializationError(caught)) {
-      expect(caught.context.caller).toBe(`${PKG}:parseHexLedgerParameters`);
       expect(caught.context.source).toBe('ledger');
     }
   });

@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import * as contracts from '../contracts';
@@ -30,7 +33,7 @@ import type {
 } from '../index';
 import * as midnightJs from '../index';
 import * as networkId from '../network-id';
-import * as protocol from '../protocol';
+import * as ledger9Protocol from '../protocol/v9';
 import * as types from '../types';
 import * as utils from '../utils';
 
@@ -66,9 +69,9 @@ const EXPECTED_BARREL_EXPORTS = [
   'UnknownLedgerVersionError',
   'UnknownProtocolVersionError',
   'contracts',
-  'networkHeadVersion',
+  'latestNetworkLedgerVersion',
+  'ledger9Protocol',
   'networkId',
-  'protocol',
   'types',
   'utils',
   'versionOfRecord'
@@ -85,7 +88,7 @@ const captureThrown = (run: () => unknown): unknown => {
   throw new Error('expected the call to throw, but it returned normally');
 };
 
-// The async sibling of `captureThrown`. `networkHeadVersion` is the barrel's
+// The async sibling of `captureThrown`. `latestNetworkLedgerVersion` is the barrel's
 // only construct-path resolver, and it rejects rather than throws.
 const captureRejected = async (run: () => Promise<unknown>): Promise<unknown> => {
   try {
@@ -143,15 +146,15 @@ describe('ledger version vocabulary', () => {
     expect(midnightJs.versionOfRecord(record)).toBe('v8');
   });
 
-  it('should resolve the era at the network head', async () => {
-    await expect(midnightJs.networkHeadVersion(headSource(2_000_000))).resolves.toBe('v9');
+  it('should resolve the era of the latest block', async () => {
+    await expect(midnightJs.latestNetworkLedgerVersion(headSource(2_000_000))).resolves.toBe('v9');
   });
 });
 
 describe('ledger version failures', () => {
   it('should let a caller tell the read path from the construct path by code', async () => {
     const fromRead = captureThrown(() => midnightJs.versionOfRecord({ protocolVersion: 9_000_000 }));
-    const fromConstruct = await captureRejected(() => midnightJs.networkHeadVersion(headSource(9_000_000)));
+    const fromConstruct = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(9_000_000)));
 
     expect(
       midnightJs.utils.hasErrorCode(fromRead, midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)
@@ -178,7 +181,7 @@ describe('ledger version failures', () => {
   });
 
   it('should reject with the error class the barrel publishes, carrying the path and reason', async () => {
-    const thrown = await captureRejected(() => midnightJs.networkHeadVersion(headSource(1.5)));
+    const thrown = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(1.5)));
     expect(thrown).toBeInstanceOf(midnightJs.UnknownProtocolVersionError);
     // Narrows without a cast, and only succeeds if the class the barrel
     // publishes is the same module instance the thrown error was built from.
@@ -192,10 +195,10 @@ describe('ledger version failures', () => {
     expect(reason).toBe('malformed');
   });
 
-  it('should propagate a head-source rejection unchanged', async () => {
+  it('should propagate a version-source rejection unchanged', async () => {
     const cause = new Error('indexer unreachable');
     const thrown = await captureRejected(() =>
-      midnightJs.networkHeadVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })
+      midnightJs.latestNetworkLedgerVersion({ queryLatestProtocolVersion: () => Promise.reject(cause) })
     );
 
     expect(thrown).toBe(cause);
@@ -212,7 +215,7 @@ describe('retained-era error classes', () => {
   it('should pair each published error class with its published code', () => {
     expect(
       midnightJs.utils.hasErrorCode(
-        new midnightJs.Ledger8RuntimeMissingError('/engine', new Error('resolution failed')),
+        new midnightJs.Ledger8RuntimeMissingError('/v8/engine', new Error('resolution failed')),
         midnightJs.PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING
       )
     ).toBe(true);
@@ -262,7 +265,7 @@ describe('retained-era error classes', () => {
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
     const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
     const inconsistentEra: LedgerVersion = new midnightJs.StateInconsistentError('v9', new Error('boom')).version;
-    const requested: string = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
+    const requested: string | undefined = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
 
     expect([subpath, stage, option, decodedEra, inconsistentEra, requested]).toEqual([
       '/v8',
@@ -312,20 +315,28 @@ describe('sub-path exports', () => {
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  it('should export protocol sub-path with same members as namespace', () => {
-    expect(protocol).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.protocol).sort();
-    const subpathKeys = Object.keys(protocol).sort();
+  it('should export the protocol/v9 sub-path with same members as the ledger9Protocol namespace', () => {
+    expect(ledger9Protocol).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.ledger9Protocol).sort();
+    const subpathKeys = Object.keys(ledger9Protocol).sort();
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  // The names the protocol sub-path carries AT RUNTIME, asserted by strict
+  // The names the protocol/v9 sub-path carries AT RUNTIME, asserted by strict
   // equality. `Contract` is deliberately absent: it is an interface merged
   // with a types-only namespace, so it has no runtime binding to re-export.
   // Listing it here is what fails when it is re-exported in value position --
-  // which emits a name into `dist/protocol.d.ts` that `dist/protocol.js` does
+  // which emits a name into `dist/protocol/v9.d.ts` that `dist/protocol/v9.js` does
   // not have, and breaks a consumer under any transpile-only pipeline.
-  it('should carry only the protocol names that exist at runtime', () => {
-    expect(Object.keys(protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
+  it('should carry only the protocol/v9 names that exist at runtime', () => {
+    expect(Object.keys(ledger9Protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
+  });
+
+  it('publishes the ledger 9 protocol names only under protocol/v9', () => {
+    const subpaths = Object.keys(
+      (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports
+    );
+
+    expect(subpaths.filter((subpath) => subpath.startsWith('./protocol'))).toEqual(['./protocol/v9']);
   });
 });

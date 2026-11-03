@@ -23,15 +23,12 @@ import {
   type ComposeOption,
   ComposeOptionError,
   type ComposeStage,
-  DownConvertFailedError,
-  Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
-  MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
+  StateConversionFailedError,
   StateDecodeFailedError,
   StateInconsistentError,
-  UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
@@ -41,32 +38,22 @@ import {
 const packageNamesIn = (message: string): string[] =>
   [...message.matchAll(/@[a-z0-9.-]+\/[a-z0-9.-]+/g)].map(([name]) => name).sort();
 
-// Which package managers the remediation covers. A published error must not
-// prescribe the one this repo happens to use, so this is asserted exhaustively:
-// dropping one, or narrowing back to a single tool, fails.
-const whyCommandsIn = (message: string): string[] =>
-  ['npm why', 'yarn why', 'pnpm why', 'bun pm why'].filter((command) =>
-    new RegExp(`\\b${command}\\b`).test(message)
-  );
-
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
     expect(PROTOCOL_ERROR_CODES).toEqual({
       UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
       UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
-      LEDGER8_INSTANCE_MISMATCH: 'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
-      DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
-      MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
+      STATE_CONVERSION_FAILED: 'MIDNIGHT_JS_P_STATE_CONVERSION_FAILED',
       COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
       COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
       STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
       STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
-      UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS',
       PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
-      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED'
+      CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
+      MAINTENANCE_AUTHORITY_MISMATCH: 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH'
     });
   });
 
@@ -87,12 +74,6 @@ describe('resilience to the dual-publish scope rewrite', () => {
 
   it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
     expect(source).not.toContain('@midnight-ntwrk/');
-  });
-
-  it('names two distinct scopes in the remediation hint, not one twice', () => {
-    const names = packageNamesIn(new Ledger8InstanceMismatchError('onchain-runtime-v3').message);
-
-    expect(new Set(names).size).toBe(names.length);
   });
 });
 
@@ -152,11 +133,11 @@ describe('Ledger8RuntimeMissingError', () => {
   // The two chunks pull different retained-era dependencies, so a message that
   // names the wrong one sends an operator to an entry point that loaded fine.
   it('names the engine subpath, not the v8 one, when the engine chunk is what failed', () => {
-    const error = new Ledger8RuntimeMissingError('/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
+    const error = new Ledger8RuntimeMissingError('/v8/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
 
-    expect(error.subpath).toBe('/engine');
-    expect(error.message).toContain('midnight-js-protocol/engine');
-    expect(error.message).not.toContain('midnight-js-protocol/v8');
+    expect(error.subpath).toBe('/v8/engine');
+    expect(error.message).toContain('midnight-js-protocol/v8/engine');
+    expect(error.message).not.toMatch(/midnight-js-protocol\/v8(?!\/engine)/);
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 });
@@ -205,68 +186,25 @@ describe('instanceof', () => {
   });
 });
 
-describe('Ledger8InstanceMismatchError', () => {
-  it('carries the LEDGER8_INSTANCE_MISMATCH code, names the axis, and remediates tool-agnostically', () => {
-    const error = new Ledger8InstanceMismatchError('onchain-runtime-v3');
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8InstanceMismatchError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.axis).toBe('onchain-runtime-v3');
-    expect(error.message).toContain('onchain-runtime-v3');
-    expect(error.message).toContain('dual-instantiation');
-    expect(packageNamesIn(error.message)).toEqual([
-      '@midnight-ntwrk/onchain-runtime-v3',
-      '@midnightntwrk/onchain-runtime-v3'
-    ]);
-    expect(whyCommandsIn(error.message)).toEqual(['npm why', 'yarn why', 'pnpm why', 'bun pm why']);
-  });
-});
-
-describe('DownConvertFailedError', () => {
-  it('carries the DOWN_CONVERT_FAILED code, preserves the cause, and names the failing stage', () => {
+describe('StateConversionFailedError', () => {
+  it('carries the STATE_CONVERSION_FAILED code, preserves the cause, and names the failing stage', () => {
     const cause = new Error('tag v8 != v6');
 
-    const error = new DownConvertFailedError('v9 envelope extraction', cause);
+    const error = new StateConversionFailedError('v9 state read', cause);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('DownConvertFailedError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+    expect(error.name).toBe('StateConversionFailedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED);
     expect(error.cause).toBe(cause);
-    expect(error.message).toContain('v9 envelope extraction');
+    expect(error.message).toContain('v9 state read');
   });
 
   it('never includes a hex or byte dump in its own message', () => {
     const cause = new Error('out of range for u64');
 
-    const error = new DownConvertFailedError('state down-convert', cause);
+    const error = new StateConversionFailedError('state conversion', cause);
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
-  });
-});
-
-describe('MerkleNotRehashedError', () => {
-  it('carries the MERKLE_NOT_REHASHED code and a descriptive, bounded message', () => {
-    const error = new MerkleNotRehashedError();
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('MerkleNotRehashedError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
-    expect(error.message).toMatch(/rehash/i);
-    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
-  });
-
-  // The vendor binding for root() is fallible: it rethrows a Rust Err rather
-  // than always resolving to a value or undefined. That throw has to keep the
-  // MERKLE_NOT_REHASHED code instead of being demoted to a generic
-  // down-convert failure, so the class must be able to carry a cause.
-  it('preserves a wrapped cause when the vendor accessor threw', () => {
-    const cause = new Error('tree not rehashed');
-
-    const error = new MerkleNotRehashedError(cause);
-
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
-    expect(error.cause).toBe(cause);
   });
 });
 
@@ -289,6 +227,35 @@ describe('UnknownLedgerVersionError', () => {
 
     expect(error.requestedVersion).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
+  });
+
+  it('names the call that read the version when one is given', () => {
+    const error = new UnknownLedgerVersionError(undefined, 'watchForTxData');
+
+    expect(error.context).toBe('watchForTxData');
+    expect(error.message).toContain('watchForTxData');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+  });
+
+  it.each([undefined, null])('reports a value with no era as an undefined requestedVersion (%s)', (missing) => {
+    const error = new UnknownLedgerVersionError(missing, 'watchForTxData');
+
+    expect(error.requestedVersion).toBeUndefined();
+    expect(error.message).toContain('carried no era');
+  });
+
+  it('names the kind of a non-scalar value rather than its contents', () => {
+    const error = new UnknownLedgerVersionError({ era: 'v9' });
+
+    expect(error.requestedVersion).toBe('object');
+  });
+
+  it('gives the protocolVersionToLedger advice only when the caller passed the version', () => {
+    const passed = new UnknownLedgerVersionError('v10');
+    const served = new UnknownLedgerVersionError('v10', 'queryContractState');
+
+    expect(passed.message).toContain('protocolVersionToLedger');
+    expect(served.message).not.toContain('protocolVersionToLedger');
   });
 });
 
@@ -438,7 +405,8 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'deploy-verifier-key': true,
   'deploy-unknown-circuit': true,
   'deploy-ambiguous-circuit': true,
-  'deploy-verifier-key-blob': true
+  'deploy-verifier-key-blob': true,
+  'maintenance-update': true
 };
 const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
 
@@ -478,6 +446,7 @@ const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
   guaranteedZswapOfferBytes: true,
   ledgerParametersBytes: true,
   networkId: true,
+  newSigningKey: true,
   signingKey: true,
   ttl: true,
   verifierKeys: true,
@@ -640,7 +609,7 @@ describe('Ledger8RuntimeInvalidError', () => {
   // A caller that never passed the pre-fork runtime, or passed one missing the
   // binding, is a distinct fault from bad envelope bytes and has a distinct
   // remediation. It therefore needs its own code: reporting it as
-  // DOWN_CONVERT_FAILED points the caller at bytes that are fine.
+  // STATE_CONVERSION_FAILED points the caller at bytes that are fine.
   it('carries its own code and names the member that was missing', () => {
     const error = new Ledger8RuntimeInvalidError('deserialize');
 
@@ -648,7 +617,7 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.name).toBe('Ledger8RuntimeInvalidError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID);
     expect(error.missingMember).toBe('deserialize');
-    expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+    expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.STATE_CONVERSION_FAILED);
   });
 
   // `loadLedger8Protocol()` resolves @midnightntwrk/ledger-v8, which exports its own
@@ -663,18 +632,6 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.message).toMatch(/no accessor/i);
     expect(error.message).not.toMatch(/byte|envelope/i);
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
-  });
-});
-
-describe('UnknownLedger8AxisError', () => {
-  it('carries its own code and keeps the offending axis out of the message', () => {
-    const error = new UnknownLedger8AxisError('__proto__');
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('UnknownLedger8AxisError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS);
-    expect(error.requestedAxis).toBe('__proto__');
-    expect(error.message).not.toContain('__proto__');
   });
 });
 
@@ -706,22 +663,4 @@ describe('the code every published class carries', () => {
       PROTOCOL_ERROR_CODES.STATE_INCONSISTENT
     ]);
   });
-});
-
-// The axis is interpolated into the remediation hint via a lookup table. A
-// plain object literal resolves `constructor` through Object.prototype and
-// renders `@scope/function Object() { [native code] }` as a package name to
-// trace. Reachable only past the guard's own axis validation, so this pins the
-// table itself rather than a live path.
-describe('the axis package-name table', () => {
-  it.each(['constructor', 'toString', '__proto__'])(
-    'does not resolve the prototype member %s into a package name',
-    (axis) => {
-      // @ts-expect-error - the table is indexed by a closed union; this is the untyped-JS case
-      const { message } = new Ledger8InstanceMismatchError(axis);
-
-      expect(message).not.toContain('native code');
-      expect(message).not.toContain('[object');
-    }
-  );
 });

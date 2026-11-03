@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EraDeclaringProvider
 
-What every provider on a transaction seam states about the eras it serves.
+What every provider of a transaction method states about the eras it serves.
 
 ## Properties
 

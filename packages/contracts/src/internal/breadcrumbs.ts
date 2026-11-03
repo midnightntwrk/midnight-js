@@ -61,7 +61,7 @@ export type HeadReadingProvenance =
 
 /** The head integer was read, and placed on the era timeline. */
 export interface HeadResolutionBreadcrumb {
-  readonly decision: 'head-resolution';
+  readonly decision: 'network-version-read';
   /** The era the head integer resolved to. */
   readonly version: LedgerVersion;
   /**
@@ -118,7 +118,7 @@ export interface EncodingBreadcrumb {
   readonly decision: 'encoding';
   /** The era the envelope tag declares. */
   readonly version: LedgerVersion;
-  readonly source: 'contract-state-envelope-tag';
+  readonly source: 'contract-state-version-tag';
 }
 
 /**
@@ -215,7 +215,7 @@ export const emitHeadResolution = (
   readingProvenance: HeadReadingProvenance
 ): void =>
   emit(sink, {
-    decision: 'head-resolution',
+    decision: 'network-version-read',
     version: reading.head,
     protocolVersion: reading.headProtocolVersion,
     source: 'public-data-provider',
@@ -256,7 +256,7 @@ export const emitPipelineSelection = (
  * @param envelopeEra The era read from the tag in front of the state bytes.
  */
 export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: LedgerVersion): void =>
-  emit(sink, { decision: 'encoding', version: envelopeEra, source: 'contract-state-envelope-tag' });
+  emit(sink, { decision: 'encoding', version: envelopeEra, source: 'contract-state-version-tag' });
 
 /**
  * Reports a stored signing-key entry the retained era could not read as its

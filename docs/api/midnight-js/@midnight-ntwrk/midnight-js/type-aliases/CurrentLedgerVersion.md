@@ -1,0 +1,9 @@
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js](../README.md) / [](../README.md) / CurrentLedgerVersion
+
+# Type Alias: CurrentLedgerVersion
+
+> **CurrentLedgerVersion** = *typeof* [`CURRENT_LEDGER_VERSION`](../variables/CURRENT_LEDGER_VERSION.md)

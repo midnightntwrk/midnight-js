@@ -14,6 +14,7 @@
  */
 
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,6 +22,7 @@ import { submitReplaceAuthorityTx } from '../../governance/submit-replace-author
 import { createUnprovenReplaceAuthorityTx } from '../../governance/unproven-tx';
 import { submitLedger9Payload } from '../../submit-tx';
 import {
+  contractStateReadStub,
   createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
@@ -28,11 +30,27 @@ import {
   createMockFinalizedTxData,
   createMockProviders,
   createMockSigningKey,
-  createMockUnprovenTx
-} from '../test-mocks';
+  createMockUnprovenTx} from '../test-mocks';
 
 vi.mock('../../submit-tx');
 vi.mock('../../governance/unproven-tx');
+
+// The framework decodes a read with its own runtime; these stand in for the decoded objects.
+const decode = vi.hoisted(() => ({
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  ...decode
+}));
+
+const servingLedger9 = (state: unknown) => {
+  decode.deserializeLedger9CompactContractState.mockReturnValue(state);
+  return vi.fn().mockResolvedValue(contractStateReadStub('v9'));
+};
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -70,7 +88,7 @@ describe('submitReplaceAuthorityTx', () => {
     it('should successfully submit replace authority transaction and update signing key', async () => {
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
@@ -95,7 +113,7 @@ describe('submitReplaceAuthorityTx', () => {
       );
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
   });
 
@@ -114,7 +132,7 @@ describe('submitReplaceAuthorityTx', () => {
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
 
       await expect(
@@ -127,13 +145,13 @@ describe('submitReplaceAuthorityTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
-      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
+    it('should throw TxFailedError when transaction fails', async () => {
+      const { TxFailedError } = await import('../../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
 
@@ -142,7 +160,18 @@ describe('submitReplaceAuthorityTx', () => {
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
 
-      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
+      const failure = await replaceAuthorityFn(mockNewAuthority).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'replace-authority',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        record: failedTxData
+      });
+      expect((failure as InstanceType<typeof TxFailedError>).signingKey).toBe(mockNewAuthority);
+      expect((failure as Error).message).not.toContain(mockNewAuthority.value);
+      expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
     });
   });
 });

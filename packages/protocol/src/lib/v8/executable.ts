@@ -49,11 +49,10 @@ import {
   ComposeFailedError,
   ComposeOptionError,
   ContractExecutionError,
-  DownConvertFailedError,
   findCodedCause,
   InvalidArgumentError,
-  InvariantViolationError
-} from '../../errors';
+  InvariantViolationError,
+  StateConversionFailedError} from '../../errors';
 import type { EncodedStateValue } from '../era/envelope';
 import type { PartitionContext } from '../shared/compose-types';
 import { type ContractStatePojo, describeValue, isContractBalance } from '../shared/contract-state';
@@ -69,7 +68,7 @@ import { type ContractStatePojo, describeValue, isContractBalance } from '../sha
  * a valid Schnorr scalar is a cryptographic property this cannot check, and the
  * runtime's own `Malformed Schnorr signing key` already names it.
  */
-const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
+export const LEDGER8_SIGNING_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
 /**
  * The signature kind this era's maintenance authority accepts.
@@ -84,6 +83,10 @@ const LEDGER8_SIGNATURE_KIND = 'schnorr' as const;
 
 /** A retained-era signing key: 32 bytes of hex. @see {@link LEDGER8_SIGNING_KEY_PATTERN} */
 export type Ledger8SigningKey = string;
+
+/** A retained-era key as the tagged `SigningKey` compact-js reads. */
+export const toPlatformSigningKey = (signingKey: Ledger8SigningKey): SigningKey.SigningKey =>
+  SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND);
 
 /**
  * A retained-era contract, as the caller holds it: the CONSTRUCTED artifact the
@@ -128,7 +131,7 @@ const LEDGER8_CONTRACT_TAG = 'ledger8-contract';
  * own `ZKConfiguration` reader, and {@link zkConfigurationLayer} replaces that
  * service outright, so nothing ever resolves it.
  */
-const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
+export const containerFor = <PS>(contract: Ledger8EngineContract): CompiledContract.CompiledContract<
   Contract.Contract<PS>,
   PS,
   never
@@ -303,7 +306,7 @@ export interface Ledger8ConstructorOptions<C extends Ledger8EngineContract, PS> 
  * there is nothing a config round trip would add except a second place for the
  * values to disagree.
  */
-const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
+export const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): Layer.Layer<Configuration.Keys> =>
   Layer.succeed(
     Configuration.Keys,
     Configuration.Keys.of({
@@ -311,7 +314,7 @@ const keysLayer = (coinPk: string, signingKey: Ledger8SigningKey | undefined): L
       getSigningKey: () =>
         signingKey === undefined
           ? Option.none()
-          : Option.some(SigningKey.make(signingKey, LEDGER8_SIGNATURE_KIND))
+          : Option.some(toPlatformSigningKey(signingKey))
     })
   );
 
@@ -377,7 +380,7 @@ const withPinnedClock = <A, E, R>(nowSeconds: number | undefined, effect: Effect
  * deploy composition was the only thing that checked coverage. It now fails
  * before a state is built at all.
  */
-const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
+export const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfiguration.ZKConfiguration> =>
   Layer.succeed(
     ZKConfiguration.ZKConfiguration,
     ZKConfiguration.ZKConfiguration.of({
@@ -411,20 +414,20 @@ const zkConfigurationLayer = (read: VerifierKeyReader): Layer.Layer<ZKConfigurat
   );
 
 /**
- * The verifier-key reader a CIRCUIT call is given.
+ * The verifier-key reader a CIRCUIT call or a MAINTENANCE update is given.
  *
  * `ContractExecutable` declares `ZKConfiguration` in its context for every
- * method, but only `initialize` and the maintenance operations read a key — a
- * circuit call needs none, which is measured, not assumed. Providing a reader
- * that refuses keeps that fact enforced: were a future version to read a key
- * during a circuit call, this fails by name instead of silently serving
- * `Option.none()` and composing a call with a blank key slot.
+ * method, but only `initialize` reads a key — a circuit call needs none, and a
+ * maintenance update is handed the key it inserts, which is measured, not
+ * assumed. Providing a reader that refuses keeps that fact enforced: were a
+ * future version to read a key there, this fails by name instead of silently
+ * serving `Option.none()` and composing a transaction with a blank key slot.
  */
 export const refuseVerifierKeyRead: VerifierKeyReader = (provableCircuitId) =>
   Promise.reject(
     new InvariantViolationError(
-      `a ledger 8 circuit call read the verifier key for '${provableCircuitId}'. Circuit calls are ` +
-        'not supposed to read ZK configuration; only deployment and maintenance are.'
+      `a ledger 8 circuit call or maintenance update read the verifier key for '${provableCircuitId}'. ` +
+        'Only deployment is supposed to read ZK configuration.'
     )
   );
 
@@ -505,7 +508,7 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
  *
  * @param state The era-neutral encoded primary state.
  * @returns The decoded state value.
- * @throws DownConvertFailedError at stage `'state down-convert'` when the
+ * @throws StateConversionFailedError at stage `'state conversion'` when the
  *   decoded value does not re-encode to its source, with the mismatch on
  *   `cause`.
  * @see {@link RetainedEraExecution}
@@ -515,8 +518,8 @@ const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue =
   try {
     const decoded = glue.StateValue.decode(state);
     if (!structurallyEqual(decoded.encode(), state)) {
-      throw new DownConvertFailedError(
-        'state down-convert',
+      throw new StateConversionFailedError(
+        'state conversion',
         new Error(`decoded StateValue did not re-encode to its source (source tag '${state.tag}')`)
       );
     }
@@ -526,7 +529,7 @@ const decodeExecutableStateValue = (state: EncodedStateValue): glue.StateValue =
     // field \`tag\``, `unknown variant \`x\`` -- carrying neither `code` nor
     // `stage`. Coding them here is what the retired `downConvertForExecution`
     // did, and what `fail-closed-decoding.md` still promises a caller.
-    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
+    throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 
@@ -562,8 +565,8 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
   // @see FailClosedDecoding
   const { balance } = contractState;
   if (!isContractBalance(balance)) {
-    throw new DownConvertFailedError(
-      'state down-convert',
+    throw new StateConversionFailedError(
+      'state conversion',
       new Error(
         `a contract state carries no usable balance (received ${describeValue(balance)}), so it cannot be ` +
           'executed against. Read it from a contract-state snapshot rather than assembling one; a contract ' +
@@ -584,7 +587,7 @@ const executableStateFrom = (contractState: ContractStatePojo): glue.ContractSta
     // colour `isContractBalance` admits by name but the runtime cannot read,
     // and `data` refuses a `ChargedState` from another physical copy. Neither
     // carries a `code` a caller can branch on.
-    throw cause instanceof DownConvertFailedError ? cause : new DownConvertFailedError('state down-convert', cause);
+    throw cause instanceof StateConversionFailedError ? cause : new StateConversionFailedError('state conversion', cause);
   }
 };
 

@@ -17,7 +17,6 @@ import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  Ledger8PayloadUnsupportedError,
   ProviderEraUnsupportedError} from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
@@ -157,7 +156,7 @@ describe('a current-era submission checks the transaction providers at its entry
     providers = createMockProviders();
   });
 
-  const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: { version: 'v9', tx: createMockUnprovenTx() } };
+  const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: createMockUnprovenTx() };
 
   const withProofEras = (eras: readonly LedgerVersion[]): MockProviders => ({
     ...providers,
@@ -179,19 +178,20 @@ describe('a current-era submission checks the transaction providers at its entry
   });
 
   // Defence in depth: the declaration is a claim by the implementation, and the
-  // narrowing in each method is what actually enforces the payload variant. A provider that
+  // routing in each method is what actually enforces the era. A provider that
   // declares an era it does not serve must still fail the way it failed before
   // this check existed, not silently succeed.
   it('does not weaken the runtime narrowing when a provider declares an era it cannot serve', async () => {
     const lying = withProofEras(BOTH_ERAS);
-    lying.proofProvider.proveTx = vi.fn().mockRejectedValue(new Ledger8PayloadUnsupportedError('proveTx', 3));
+    const runtimeRefusal = new ProviderEraUnsupportedError('proveTx', 'v9', ['v8']);
+    lying.proofProvider.proveTx = vi.fn().mockRejectedValue(runtimeRefusal);
 
     const rejection = await submitTx(lying, options).then(
       () => undefined,
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(Ledger8PayloadUnsupportedError);
+    expect(rejection).toBe(runtimeRefusal);
     expect(lying.proofProvider.proveTx).toHaveBeenCalled();
   });
 });

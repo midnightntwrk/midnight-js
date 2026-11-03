@@ -25,7 +25,7 @@ answer can describe.
 **Which era will a transaction I am building now land in?** No record answers
 this. The transaction lands in a future block. The only available signal is the
 network's current head version, which `PublicDataProvider.queryLatestProtocolVersion`
-reports and `networkHeadVersion` (`packages/protocol/src/version.ts`) resolves
+reports and `latestNetworkLedgerVersion` (`packages/protocol/src/version.ts`) resolves
 to a `LedgerVersion`. The distinction is already in the error surface: an
 `UnknownProtocolVersionError` carries `path: 'construct' | 'read'` precisely
 because these are two paths.
@@ -81,7 +81,7 @@ Concretely:
 needs the head reading, and it resolves the era in three steps:
 
 1. Read the head version fresh, immediately before composing, and resolve it
-   with `networkHeadVersion`. One request per deploy — the rarest write in the
+   with `latestNetworkLedgerVersion`. One request per deploy — the rarest write in the
    framework, once per contract.
 2. Compose with the era that resolves to. A version the client cannot place on
    the era timeline is a refusal (`UnknownProtocolVersionError` with
@@ -200,3 +200,11 @@ read off the envelope of `raw`, the era that wrote the bytes. `protocolVersion` 
 the data, per record, and still dates the block; on an enforced read it bounds the envelope from
 above. `VersionedFinalizedTxData.version` is still derived from `protocolVersion`, because a
 transaction is written by the era of the block that includes it.
+
+## Amendment — the era of a state lives on the state (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+`RawContractState` is removed. Every state read returns a `LedgerState`, whose `era` is read off
+the envelope of its bytes, as the amendment above describes for `RawContractState.version`. The
+record's `protocolVersion` still dates the block and, on an enforced read, bounds the state's era
+from above. The rule of this ADR is unchanged.

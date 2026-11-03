@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,29 +8,29 @@
 
 > **DeployContractOptionsShared**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & `object`
 
-What both [deployContract](../functions/deployContract.md) option arms carry, and nothing either arm
+What both [deployContract](../functions/deployContract.md) option variants carry, and nothing either variant
 decides. Identical to [ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md) except
 the `signingKey` is now optional, since [deployContract](../functions/deployContract.md) will generate a
 fresh signing key in the event that `signingKey` is undefined.
 
-Neither arm extends the other. Written as an intersection alias, an arm
+Neither variant extends the other. Written as an intersection alias, a variant
 declaring `privateStateId: PrivateStateId` over a base declaring
 `privateStateId?: never` collapses that member to `never` and leaves the
-private-state arm uninhabitable — so the pairing rule can only be stated by
-making the two arms siblings over this.
+private-state variant uninhabitable — so the pairing rule can only be stated by
+making the two variants siblings over this.
 
 Ledger8DeployContractOptionsShared plays the same role for the
-retained era, which arrives there by a different route: its arms are
+retained era, which arrives there by a different route: its variants are
 interfaces, and an interface redeclaring the member is rejected outright as an
 incompatible extension. This era cannot use interfaces, because `args` reaches
-both arms through the [ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md)
+both variants through the [ContractConstructorOptionsWithArguments](ContractConstructorOptionsWithArguments.md)
 conditional and an interface cannot extend a conditional type.
 
 PUBLISHED, unlike its retained-era counterpart, purely so the two members
 below keep a documented page of their own: TypeDoc inlines the members an
 interface inherits, but renders an unexported alias as bare text, which would
 delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the
-reference for both arms.
+reference for both variants.
 
 ## Type Declaration
 

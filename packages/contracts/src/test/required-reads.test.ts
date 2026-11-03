@@ -13,15 +13,33 @@
  * limitations under the License.
  */
 
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError } from '../errors';
+import { EraMismatchError } from '../errors';
 import {
   getExistingSigningKey,
   queryExistingContractState,
   requireDeployedContract
 } from '../internal/required-reads';
-import { createMockContractAddress, createMockContractState, createMockSigningKey } from './test-mocks';
+import { contractStateReadStub,createMockContractAddress, createMockContractState, createMockSigningKey } from './test-mocks';
+
+// The framework decodes a read with its own runtime; these stand in for the decoded objects.
+const decode = vi.hoisted(() => ({
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  ...decode
+}));
+
+const servingLedger9 = (state: unknown) => {
+  decode.deserializeLedger9CompactContractState.mockReturnValue(state);
+  return vi.fn().mockResolvedValue(contractStateReadStub('v9'));
+};
 
 describe('requireDeployedContract', () => {
   const contractAddress = createMockContractAddress();
@@ -49,7 +67,7 @@ describe('queryExistingContractState', () => {
 
   it('returns the on-chain state of the queried address', async () => {
     const state = createMockContractState();
-    const queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state });
+    const queryContractState = servingLedger9(state);
 
     const result = await queryExistingContractState({ queryContractState }, contractAddress);
 
@@ -58,12 +76,16 @@ describe('queryExistingContractState', () => {
   });
 
   it('refuses a state written by the v8 ledger, naming the read', async () => {
-    const queryContractState = vi.fn().mockResolvedValue({ version: 'v8', stateBytes: new Uint8Array([1]) });
+    const queryContractState = vi.fn().mockResolvedValue(contractStateReadStub('v8'));
 
     const rejection = queryExistingContractState({ queryContractState }, contractAddress);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ contractAddress, operation: 'queryExistingContractState' });
+    await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
+    await expect(rejection).rejects.toMatchObject({
+      reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+      message: expect.stringContaining(contractAddress)
+    });
+    await expect(rejection).rejects.toMatchObject({ message: expect.stringContaining('queryExistingContractState') });
   });
 
   it('refuses an address with no state as ContractNotFoundError', async () => {

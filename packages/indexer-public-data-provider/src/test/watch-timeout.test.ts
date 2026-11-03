@@ -14,7 +14,7 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { WatchOptions } from '@midnight-ntwrk/midnight-js-types';
 import { type WatchTarget, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
 import * as Rx from 'rxjs';
@@ -155,8 +155,10 @@ describe('watchFor* with maxWaitMs', () => {
 
     const state = await buildProvider(watchQuery).watchForContractState(ADDRESS, { maxWaitMs: 1000 });
 
-    expect(state.version).toBe('v9');
-    expect(state.version === 'v9' && Buffer.from(state.state.serialize()).toString('hex')).toBe(contractStateHex);
+    expect([state.contractState.era, Buffer.from(state.contractState.serialize()).toString('hex')]).toEqual([
+      'v9',
+      contractStateHex
+    ]);
   });
 
   test('watchForUnshieldedBalances resolves with the balances when they appear before the bound', async () => {
@@ -172,7 +174,7 @@ describe('watchFor* with maxWaitMs', () => {
 
     const record = await buildProvider(watchQuery).watchForDeployTxData(ADDRESS, { maxWaitMs: 1000 });
 
-    expect([record.version, record.txId, record.txHash]).toEqual(['v9', TX_ID, transaction.hash]);
+    expect([record.era, record.txId, record.txHash]).toEqual(['v9', TX_ID, transaction.hash]);
   });
 
   test('watchForTxData resolves with the record when it appears before the bound', async () => {
@@ -180,7 +182,7 @@ describe('watchFor* with maxWaitMs', () => {
 
     const record = await buildProvider(watchQuery).watchForTxData(TX_ID, { maxWaitMs: 1000 });
 
-    expect([record.version, record.txId, record.txHash]).toEqual(['v9', TX_ID, transaction.hash]);
+    expect([record.era, record.txId, record.txHash]).toEqual(['v9', TX_ID, transaction.hash]);
   });
 
   test.each(watchCalls)('%s holds the largest bound a timer can hold, then times out', async (_operation, _target, call) => {

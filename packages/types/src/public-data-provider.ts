@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Observable } from 'rxjs';
 
+import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from './contract-state-read';
 import type { BlockHash, UnshieldedBalances } from './midnight-types';
-import type { RawContractState } from './raw-contract-state';
-import type { VersionedContractState, VersionedFinalizedTxData, VersionedPublicStates } from './versioned';
+import type { FinalizedTxRead } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -90,8 +90,8 @@ export type BlockInfo = {
    * `UnknownProtocolVersionError` for a version this build cannot place on the
    * era timeline.
    *
-   * Implementations MUST report the era of *this* block, never the network
-   * head's, so a block read from before a hard fork keeps reporting the era it
+   * Implementations MUST report the era of *this* block, never that of the
+   * network's latest block, so a block read from before a hard fork keeps reporting the era it
    * was produced in.
    *
    * Implementations carry the integer through as the network reported it, and
@@ -375,10 +375,14 @@ export interface PublicDataProvider {
   queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
 
   /**
-   * Retrieves the on-chain state of a contract, tagged with the ledger era that wrote it. If no
-   * block hash or block height are provided, the contract state at the address in the latest block
-   * is returned. A v8-era state is returned as the stored bytes, never translated to the v9 encoding.
+   * Retrieves the on-chain state of a contract as bytes, with the ledger parameters of the block
+   * that dates the read. If no block hash or block height are provided, the contract state at the
+   * address in the latest block is returned. Decode the state with your own runtime:
+   * `read.contractState.deserialize({ v9: ContractState })`.
    * Immediately returns null if no matching data is found.
+   * @throws When the state or the ledger parameters are not well-formed bytes of a known era, when
+   * the state is newer than the block a pinned read names, or when the ledger parameters are of
+   * another era than their block.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -386,12 +390,14 @@ export interface PublicDataProvider {
   queryContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<VersionedContractState | null>;
+  ): Promise<ContractStateAndParametersRead | null>;
 
   /**
    * Retrieves the zswap chain state (token balances), the contract state of the contract at the
-   * given address, and the ledger parameters in effect on the associated block, tagged with the
-   * ledger era that wrote them. All three are retrieved in a single query to ensure consistency.
+   * given address, and the ledger parameters in effect on the associated block, each as bytes with
+   * the era of the ledger that wrote them. All three are written by the ledger of one era. On a read
+   * with no block given, the contract state is looked up separately from the block, so near the hard
+   * fork it can come from another block than the ledger parameters and the zswap chain state.
    * Immediately returns null if no matching data is found.
    * @throws When the contract state and the ledger parameters were written by different eras.
    * @param contractAddress The address of the contract of interest.
@@ -401,16 +407,16 @@ export interface PublicDataProvider {
   queryZSwapAndContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<VersionedPublicStates | null>;
+  ): Promise<PublicStatesRead | null>;
 
   /**
    * Retrieves the contract state in the deploy's record for the contract at the given contract address,
-   * or in the latest update's record when the contract has been updated, tagged with the ledger era
-   * that wrote it. A v8-era record is returned as the stored bytes, never translated to the v9 encoding.
+   * or in the latest update's record when the contract has been updated, as bytes with the era
+   * of the ledger that wrote them.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    */
-  queryDeployContractState(contractAddress: ContractAddress): Promise<VersionedContractState | null>;
+  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractStateRead | null>;
 
   /**
    * Retrieves the unshielded balances associated with a specific contract address.
@@ -424,12 +430,12 @@ export interface PublicDataProvider {
   ): Promise<UnshieldedBalances | null>;
 
   /**
-   * Retrieves the contract state of the contract with the given address, tagged with the ledger era
-   * that wrote it. Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
+   * Retrieves the contract state of the contract with the given address, as bytes with the era
+   * of the ledger that wrote them. Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
    * @param contractAddress The address of the contract of interest.
    * @param options Bounds the wait; see {@link WatchOptions}.
    */
-  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<VersionedContractState>;
+  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<ContractStateRead>;
 
   /**
    * Waits for unshielded balances to appear for the given contract address,
@@ -452,7 +458,7 @@ export interface PublicDataProvider {
    *
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    */
-  watchForDeployTxData(contractAddress: ContractAddress, options?: WatchOptions): Promise<VersionedFinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress, options?: WatchOptions): Promise<FinalizedTxRead>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
@@ -466,12 +472,15 @@ export interface PublicDataProvider {
    *
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    */
-  watchForTxData(txId: TransactionId, options?: WatchOptions): Promise<VersionedFinalizedTxData>;
+  watchForTxData(txId: TransactionId, options?: WatchOptions): Promise<FinalizedTxRead>;
 
   /**
-   * Creates a stream of contract states, each tagged with the ledger era that wrote it. The
-   * observable emits a value every time a state is either created or updated at the given address.
-   * A replay that starts before the hard fork emits the pre-fork states as v8 values and carries on.
+   * Creates a stream of contract states, each as bytes with the era of the ledger that wrote
+   * them. The observable emits a value every time a state is either created or updated at the given
+   * address. A replay that starts before the hard fork emits the pre-fork states with
+   * `contractState.era === 'v8'` and carries on. A stream carries no ledger parameters: a caller that
+   * needs them reads {@link queryContractState} with `{ type: 'blockHash', blockHash }` from the same
+   * record.
    * Waits indefinitely for matching data to appear.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
@@ -483,41 +492,7 @@ export interface PublicDataProvider {
   contractStateObservable(
     address: ContractAddress,
     config: ContractStateObservableConfig
-  ): Observable<PositionedRecord<VersionedContractState>>;
-
-  /**
-   * Creates a stream of contract states as the raw serialized bytes the network
-   * returned, without deserializing them, each tagged with the ledger era that
-   * wrote it. The observable emits a value every time a state is either
-   * created or updated at the given address.
-   * Waits indefinitely for matching data to appear.
-   *
-   * THE STREAMING COUNTERPART OF {@link queryRawContractState}. Prefer it over
-   * {@link contractStateObservable} when the caller decodes the bytes itself.
-   *
-   * {@link RawContractState.version} is the era read off the envelope of
-   * {@link RawContractState.raw}; {@link RawContractState.protocolVersion}
-   * dates the block that served it.
-   *
-   * {@link RawContractState.ledgerParameters} MAY BE ABSENT ON A STREAM even
-   * where the same implementation serves it on
-   * {@link queryRawContractState}. The parameters are a per-block blob, and a
-   * stream may have no cheap way to obtain one per emission; an implementation
-   * is free to refuse that cost. A caller that needs the parameters for a
-   * streamed state reads {@link queryRawContractState} with
-   * `{ type: 'blockHash', blockHash }` from the same {@link PositionedRecord}.
-   *
-   * @param address The address of the contract of interest.
-   * @param config The configuration for the observable.
-   * @returns One {@link PositionedRecord} per value, carrying the block that
-   *   served it. Passing its `blockHeight` or `blockHash` back as the config
-   *   resumes the stream from that block; values from that block may be
-   *   delivered again.
-   */
-  rawContractStateObservable(
-    address: ContractAddress,
-    config: ContractStateObservableConfig
-  ): Observable<PositionedRecord<RawContractState>>;
+  ): Observable<PositionedRecord<ContractStateRead>>;
 
   /**
    * Retrieves an observable that tracks the unshielded balances for a specific contract address.
@@ -589,7 +564,7 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the protocol-version integer reported by the network's current
-   * head block.
+   * latest block.
    *
    * Implementations MAY serve this from a cache, on ONE condition: the cached
    * answer must expire by itself, on a bound short relative to block time. A
@@ -598,38 +573,17 @@ export interface PublicDataProvider {
    * PREFER THE `protocolVersion` ON A READ wherever the era of *existing* data
    * is the question — it dates the block the read resolved and costs no extra
    * request. For a contract state that block can be newer than the bytes; the
-   * era that wrote the bytes is the record's `version`. Reach for this method only where there is no
+   * era that wrote the bytes is `contractState.era`. Reach for this method only where there is no
    * record to date: the deploy path.
    *
    * The answer is a LOWER BOUND on the era of the block that will include a
    * transaction built from it, never a guarantee. A caller that must be certain
    * confirms afterwards, from the `protocolVersion` on the finalized record.
    *
-   * @throws Implementation-specific error when the network reports no head
+   * @throws Implementation-specific error when the network reports no latest
    *   block at all.
-   * @see {@link ReadingTheHeadEra} for why the cache must expire by itself, and
+   * @see {@link ReadingTheNetworkLedgerVersion} for why the cache must expire by itself, and
    *   why this member takes no "give me a fresh one" option.
    */
   queryLatestProtocolVersion(): Promise<number>;
-
-  /**
-   * Retrieves the on-chain state of a contract as the raw serialized bytes the
-   * network returned, without deserializing them, tagged with the ledger era
-   * that wrote them.
-   *
-   * For callers that decode the bytes themselves: they narrow on
-   * {@link RawContractState.version} and then hand the bytes to that era's
-   * deserializer. Both eras' envelopes are returned unchanged. The era is read
-   * off the envelope the bytes carry.
-   *
-   * Immediately returns null if no matching data is found.
-   *
-   * @param contractAddress The address of the contract of interest.
-   * @param config The configuration of the query.
-   *               If `undefined` returns the latest state.
-   */
-  queryRawContractState(
-    contractAddress: ContractAddress,
-    config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<RawContractState | null>;
 }

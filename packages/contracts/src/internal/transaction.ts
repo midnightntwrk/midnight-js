@@ -13,33 +13,41 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
-  type Ledger9PublicStates,
+  LedgerTransaction,
   type LoggerProvider,
   type PrivateStateId,
+  type PublicStatesRead,
+  SerializedState,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import type { Ledger9Variant } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type CallResult } from '../call';
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9CallResult } from '../call';
+import { type Ledger9ContractProviders } from '../contract-providers';
 import {
-  CallTxFailedError,
-  MixedEraScopeError,
-  ScopedTransactionEraUnsupportedError,
-  ScopedTransactionIdentityMismatchError} from '../errors';
-import { type ContractStates } from '../get-states';
+  EraMismatchError,
+  ScopedTransactionIdentityMismatchError,
+  TxFailedError
+} from '../errors';
 import { type Ledger9PayloadSubmitOptions, submitLedger9Payload } from '../submit-tx';
 import type * as Transaction from '../transaction';
-import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+import { type Ledger9FinalizedCallTxData, type Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
-import { acquireHeadEra, type HeadVersionSource, readHeadEra, type ResolvedOperationEra } from './era';
+import {
+  acquireHeadEra,
+  type HeadEraReading,
+  type HeadVersionSource,
+  type Ledger9ContractStates,
+  type Ledger9PublicStates,
+  readHeadEra,
+  type ResolvedOperationEra
+} from './era';
 
 /** @internal */
 export interface CachedStateIdentity {
@@ -50,7 +58,9 @@ export interface CachedStateIdentity {
 /** @internal */
 export interface CachedStatesWithIdentity<PS> {
   readonly identity: CachedStateIdentity;
-  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
+  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
+  /** The public states as read, as bytes. Its contract state is the one the scope started from. */
+  readonly read: PublicStatesRead;
   /**
    * The hash of the block the states were read as of. A scoped transaction is a single chain
    * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
@@ -62,7 +72,7 @@ export interface CachedStatesWithIdentity<PS> {
 
 /** @internal The states pinned to a block within a scoped transaction. */
 export interface PinnedContractStates<PS> {
-  readonly states: Ledger9Variant<ContractStates<PS>> | Ledger9PublicStates;
+  readonly states: Ledger9ContractStates<PS> | Ledger9PublicStates;
   readonly blockHash: string;
 }
 
@@ -90,10 +100,33 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
     ]);
 
   return {
-    unprovenTx: current.unprovenTx.merge(next.unprovenTx),
+    unprovenTx: LedgerTransaction.seal(
+      'v9',
+      'Unproven',
+      LedgerTransaction.unwrap(current.unprovenTx, 'v9').merge(LedgerTransaction.unwrap(next.unprovenTx, 'v9'))
+    ),
     circuitId: Array.from(circuitIds)
   };
 };
+
+/**
+ * Makes the ONE head read of a scope and breadcrumbs it, before any refusal.
+ *
+ * @internal
+ */
+export const readScopeHead = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<HeadEraReading> => {
+  const reading = await readHeadEra(pdp);
+  emitHeadResolution(logger, reading, 'operation-start');
+  return reading;
+};
+
+/**
+ * The refusal of a scope on a head era that composes one call per transaction.
+ *
+ * @internal
+ */
+export const scopeRefusal = (head: LedgerVersion): EraMismatchError =>
+  new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${head}'.` });
 
 /**
  * Resolves the ONE era reading a scope runs under, and refuses a scope the head
@@ -115,24 +148,23 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  *
  * @internal
  * @param pdp The read surface, for the single head read.
- * @param logger The optional logger the head-resolution breadcrumb is written to.
+ * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The era facts the scope runs under.
- * @throws ScopedTransactionEraUnsupportedError if the head era composes only one call
+ * @throws EraMismatchError with reason `'scope-on-ledger8-network'` if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
- * @see {@link StaleHeadRemediation} for why both properties of this placement
+ * @see {@link ForkCrossedRemediation} for why both properties of this placement
  *      are load-bearing.
  */
 export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<ResolvedOperationEra> => {
-  const reading = await readHeadEra(pdp);
-  emitHeadResolution(logger, reading, 'operation-start');
+  const reading = await readScopeHead(pdp, logger);
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
   // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
   // instead of being told what to do about its scope.
   if (reading.head !== 'v9') {
-    throw new ScopedTransactionEraUnsupportedError(reading.head);
+    throw scopeRefusal(reading.head);
   }
 
   return acquireHeadEra(reading);
@@ -142,9 +174,9 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
 export class TransactionContextImpl<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.TransactionContext<C, PCK> {
+> implements Transaction.Ledger9TransactionContext<C, PCK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
-  readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
   /**
    * The era facts this scope resolved when it was created, or `undefined` for a
@@ -153,7 +185,7 @@ export class TransactionContextImpl<
    * OPTIONAL, and the two cases are genuinely different rather than one being a
    * degraded form of the other. A scope created through
    * `withContractScopedTransaction` always carries a reading, resolved once by
-   * {@link resolveScopeEra}. A context built for a SINGLE call outside any
+   * {@link readScopeHead}. A context built for a SINGLE call outside any
    * scope carries none, because the current-era single-call path resolves no
    * era of its own and reading the head for it would add a network round trip
    * to every call in the framework to answer a question that path does not ask.
@@ -172,12 +204,12 @@ export class TransactionContextImpl<
    * circuit merged into the scope and becomes an array.
    */
   currentUnsubmittedCall:
-    | { readonly callTxData: UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
+    | { readonly callTxData: Ledger9UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
     | undefined;
   submitTxOptions: Ledger9PayloadSubmitOptions<PCK> | undefined = undefined;
 
   constructor(
-    providers: ContractProviders<C, PCK>,
+    providers: Ledger9ContractProviders<C, PCK>,
     options?: Transaction.ScopedTransactionOptions,
     resolvedEra?: ResolvedOperationEra
   ) {
@@ -195,8 +227,12 @@ export class TransactionContextImpl<
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
    * for validated access to cached states within scoped transactions.
    */
-  getCurrentStates(): Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates | undefined {
-    return this.cachedStates?.states;
+  getCurrentStates(): PublicStatesRead | undefined {
+    if (!this.cachedStates) {
+      return undefined;
+    }
+    const { read, states } = this.cachedStates;
+    return { ...read, contractState: SerializedState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](
@@ -215,13 +251,13 @@ export class TransactionContextImpl<
     return { states: this.cachedStates.states, blockHash: this.cachedStates.blockHash };
   }
 
-  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
+  getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
     return this.currentUnsubmittedCall === undefined
       ? undefined
       : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateId];
   }
 
-  async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
+  async [Submit](): Promise<Ledger9FinalizedCallTxData<C, PCK>> {
     const current = this.currentUnsubmittedCall;
     if (current === undefined) {
       throw new InvalidArgumentError('No calls were submitted.');
@@ -229,13 +265,13 @@ export class TransactionContextImpl<
     const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
     const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
-      throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
+      throw new TxFailedError('call', finalizedTxData, { circuitId: this.submitTxOptions!.circuitId ?? circuitId });
     }
     if (privateStateId) {
       await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
-      era: CURRENT_LEDGER_VERSION,
+      era: 'v9',
       circuitId,
       private: unprovenCallTxData.private,
       public: {
@@ -247,14 +283,15 @@ export class TransactionContextImpl<
   }
 
   [CacheStates](
-    states: Ledger9Variant<ContractStates<Contract.PrivateState<C>>> | Ledger9PublicStates,
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
+    read: PublicStatesRead,
     identity: CachedStateIdentity,
     blockHash: string
   ): void {
-    this.cachedStates = { states, identity, blockHash };
+    this.cachedStates = { states, read, identity, blockHash };
   }
 
-  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
+  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: Ledger9UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
     this.currentUnsubmittedCall = { callTxData: callData, privateStateId, circuitId };
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
@@ -280,7 +317,8 @@ export class TransactionContextImpl<
     // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
     // stays pinned to the block its states were first read at.
     this[CacheStates](
-      { version: 'v9', contractState, zswapChainState, ledgerParameters, privateState },
+      { contractState, zswapChainState, ledgerParameters, privateState },
+      this.cachedStates.read,
       this.cachedStates.identity,
       this.cachedStates.blockHash
     );
@@ -292,9 +330,9 @@ export const mergeUnsubmittedCallTxData = <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 >(
-  txCtx: Transaction.TransactionContext<C, PCK>,
+  txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
   circuitId: PCK,
-  callData: UnsubmittedCallTxData<C, PCK>,
+  callData: Ledger9UnsubmittedCallTxData<C, PCK>,
   privateStateId?: PrivateStateId
 ): void => {
   txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
@@ -316,13 +354,13 @@ export const isTransactionContext = <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   u: unknown
-): u is Transaction.TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
+): u is Transaction.Ledger9TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
 
 /**
  * Refuses a retained-era call that was handed a scope to join.
  *
- * Reachable only from JavaScript today — the retained-era `submitCallTx`
- * overload declares no scope parameter — and still checked.
+ * Reachable only from JavaScript today — the retained-era `submitCallTx` and
+ * `createUnprovenCallTx` overloads declare no scope parameter — and still checked.
  *
  * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
  * scope is the mixed-era refusal; anything else is a malformed argument.
@@ -333,23 +371,28 @@ export const isTransactionContext = <
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
  * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
- * @throws MixedEraScopeError if a real transaction context was passed.
+ * @param entryPoint The public function the caller called, named in the refusal.
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
- * @see {@link StaleHeadRemediation} for why a retained-era call cannot join a
+ * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
-export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionContext: unknown): void => {
+export const assertScopeAdmitsLedger8Call = (
+  circuitId: string,
+  transactionContext: unknown,
+  entryPoint: 'submitCallTx' | 'createUnprovenCallTx'
+): void => {
   if (transactionContext === undefined) {
     return;
   }
   if (isTransactionContext(transactionContext)) {
-    throw new MixedEraScopeError(circuitId);
+    throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
   }
   throw new InvalidArgumentError(
-    `submitCallTx was passed a third argument that is not a transaction context (received ` +
+    `${entryPoint} was passed a third argument that is not a transaction context (received ` +
       `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
       `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
-      `submit this call as its own transaction.`
+      `run this call as its own transaction.`
   );
 };
 
@@ -391,9 +434,9 @@ const runScope = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  outerTxCtx: Transaction.TransactionContext<C, PCK> | undefined,
+  providers: Ledger9ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  outerTxCtx: Transaction.Ledger9TransactionContext<C, PCK> | undefined,
   txOptions: Transaction.ScopedTransactionOptions | undefined,
   scopeEra: ResolvedOperationEra | undefined
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -411,7 +454,7 @@ const runScope = async <
       return await innerTxCtx[Submit]();
     }
 
-    // ...otherwise, return the `CallResult` from the last submitted call within the scope of the transaction context.
+    // ...otherwise, return the `Ledger9CallResult` from the last submitted call within the scope of the transaction context.
     const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
       //disable-next-line: no-throw-literal
@@ -420,8 +463,8 @@ const runScope = async <
     // ANNOTATED, not asserted: this function answers both scope cases and so
     // returns `any`, which on its own would let a member fall off this rebuild
     // and reach a caller as `undefined` at a non-optional member.
-    const nestedCallResult: CallResult<C, PCK> = {
-      era: CURRENT_LEDGER_VERSION,
+    const nestedCallResult: Ledger9CallResult<C, PCK> = {
+      era: 'v9',
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         nextContractStateEncoded: unprovenCallTxData.public.nextContractStateEncoded,
@@ -459,23 +502,23 @@ const runScope = async <
  */
 export const scoped: {
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    providers: Ledger9ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
-  ): Promise<FinalizedCallTxData<C, PCK>>,
+  ): Promise<Ledger9FinalizedCallTxData<C, PCK>>,
   <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-    providers: ContractProviders<C, PCK>,
-    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-    txCtx: Transaction.TransactionContext<C, PCK>,
+    providers: Ledger9ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+    txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
     options?: Transaction.ScopedTransactionOptions
-  ): Promise<CallResult<C, PCK>>
+  ): Promise<Ledger9CallResult<C, PCK>>
 } = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  providers: Ledger9ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
@@ -502,10 +545,11 @@ export const scopedTransaction = async <
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, PCK>,
-  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions
-): Promise<FinalizedCallTxData<C, PCK>> => {
+  providers: Ledger9ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.Ledger9TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
+  ledger9Reading?: HeadEraReading & { readonly head: 'v9' }
+): Promise<Ledger9FinalizedCallTxData<C, PCK>> => {
   // The third argument is DISCRIMINATED, not assumed to be options, and the
   // guard is not decorative: this parameter is declared as options on the
   // public entry point, so a JavaScript caller passing a transaction context
@@ -513,18 +557,22 @@ export const scopedTransaction = async <
   // into it -- would otherwise have it read as an options bag. A fresh scope
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
-  // it was handed" failure `MixedEraScopeError` exists to stop, one case over.
+  // it was handed" failure `'ledger8-call-in-scope'` exists to stop, one case over.
   const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,
     // which is what keeps it at one read per scope, and the outer scope is the
-    // one that submits -- so this returns that scope's `CallResult`, exactly as
+    // one that submits -- so this returns that scope's `Ledger9CallResult`, exactly as
     // it did before.
     return runScope<C, PCK>(providers, fn, outerTxCtx, undefined, undefined);
   }
 
   const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const scopeEra = await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider);
+  // A reading the caller already took and admitted as ledger 9 is acquired, not read again.
+  const scopeEra =
+    ledger9Reading === undefined
+      ? await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider)
+      : await acquireHeadEra(ledger9Reading);
 
   return runScope<C, PCK>(providers, fn, undefined, options, scopeEra);
 };

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -29,8 +29,8 @@ a value of a type derived from this one.
 
 ## Extended by
 
-- [`CallResultPrivate`](../../contracts/namespaces/Ledger8/interfaces/CallResultPrivate.md)
-- [`CallResultPrivate`](../../../midnight-js-contracts/index/namespaces/Ledger8/interfaces/CallResultPrivate.md)
+- [`Ledger8CallResultPrivate`](../../contracts/interfaces/Ledger8CallResultPrivate.md)
+- [`Ledger8CallResultPrivate`](../../../midnight-js-contracts/index/interfaces/Ledger8CallResultPrivate.md)
 
 ## Type Parameters
 

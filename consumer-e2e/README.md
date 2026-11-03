@@ -68,7 +68,7 @@ Two conventions follow from the check, both recorded at their call sites:
   time — every entry point normalises an absent `args` to the empty tuple — and
   it is what lets a helper generic over many circuits typecheck at all.
 - **The framework is imported the way a consumer imports it.** Entry points come
-  off `@midnight-ntwrk/midnight-js-contracts`; `networkHeadVersion` and
+  off `@midnight-ntwrk/midnight-js-contracts`; `latestNetworkLedgerVersion` and
   `CompiledContract` come off the `@midnight-ntwrk/midnight-js` barrel, not
   `protocol`'s root. The single remaining non-consumer import is
   `loadLedgerEra`, and it is a gap in `contracts` rather than a shortcut taken
@@ -112,6 +112,28 @@ boundary, which is why `retainedProvidersFor` names it `fork-retained-${key}`
 with **no era in it**. It used to carry one, which gave every twin two stores
 and made the signing key and any private state unmeasurable across the fork. A
 real dApp has one store and does not re-key it when the chain forks.
+
+### Maintenance across the fork (`simple` shard)
+
+The shard that installs both `simple` artifacts also maintains the retained
+`simple` contract on both sides of the boundary. All three legs replace the
+maintenance authority, because that leaves every circuit the other legs call
+untouched:
+
+- **before the fork**, with the retained artifact, through the v8 overload of
+  `submitReplaceAuthorityTx`. The leg asserts a `v8` result on a `v8` record and
+  that the store now holds the new key. (c3) then asserts that this key, not the
+  deploy's, survived the fork;
+- **after the fork, retained artifact**: refused with
+  `EraMismatchError` with reason `'ledger8-maintenance-on-ledger9-network'`. The proof and submission providers in this
+  leg refuse to be reached, and the stored key must be unchanged;
+- **after the fork, recompiled artifact**: through the v9 path, from the same
+  store, with the key the first leg stored. This is the only place the run
+  observes that the fork translation kept the maintenance authority. If the
+  committee or the counter were lost, the ledger would refuse the signature or
+  the counter, and this row would be red.
+
+Other shards record a `skipped:` row for these legs rather than none.
 
 ### `private-counter`: the only twin with private state
 
@@ -158,7 +180,7 @@ wrote. The answer has to be nothing.
 
 One more thing runs in the fork window itself: retained calls driven from the
 moment enactment starts until the head flips, recording whether any met the
-boundary and was refused with `StaleHeadError`.
+boundary and was refused with `ForkCrossedDuringOperationError`.
 
 It is a **probe, not a leg** — losing the race colours nothing. Hitting it means a
 call being in exactly the wrong part of a window `enactFork()` takes about 3m41s
@@ -171,10 +193,10 @@ mid-crossing in that window, so a refusal from that direction is expected and is
 
 **One thing it does colour, and it is not the race.** If the chain answered
 *none* of the calls, the run observed nothing about the boundary at all — a proof
-server down, a wallet that never settled, or a `StaleHeadError` that stopped
+server down, a wallet that never settled, or a `ForkCrossedDuringOperationError` that stopped
 being raised and now arrives unrecognised. Each produces a row identical to a
 healthy miss, and this probe is the only place in the run that can see
-`StaleHeadError` on a live chain, so a silent one would be that regression
+`ForkCrossedDuringOperationError` on a live chain, so a silent one would be that regression
 reaching a release unobserved. A run where at least one call was admitted is
 healthy whether or not it met the fork.
 
@@ -205,7 +227,7 @@ The undiagnosed refusals are the informative part. Each was a real refusal that
 ([`packages/contracts/src/internal/stale-head.ts`](../packages/contracts/src/internal/stale-head.ts))
 re-threw unchanged, which places them BEFORE the indexer's head flipped: the
 re-read reported no movement, and saying nothing about a fork there is exactly
-right. The window in which a live call can observe `StaleHeadError` is therefore
+right. The window in which a live call can observe `ForkCrossedDuringOperationError` is therefore
 not the fork window, but the part of it after the indexer catches up.
 
 Three legs replace that race with something a gate can rest on, and they are
@@ -243,12 +265,12 @@ wallet, and another slice of the fork window, to assert nothing new.
 | a rejection whose head RE-READ FAILS is reported undiagnosed | the operation, the era it starts on | the refusal; the re-read throws |
 | a rejection under a head that moved BACKWARDS | the operation, the post-fork era it starts on, the payload variant it took | the refusal, and the re-read's answer |
 
-The first reads `kind`, `startEra` and `freshEra` off the `StaleHeadError` --
+The first reads `kind`, `startEra` and `freshEra` off the `ForkCrossedDuringOperationError` --
 the three that decide which remediation wording it carries -- and also
 `circuitId` and `contractAddress`, which are what that remediation's first step
 sends an operator to go and read; without those two the leg would pass on an
 error naming a different operation. The other two read `reason` off the
-`SubmitRejectionUndiagnosedError`. The `head-read-failed` one also asserts that
+`SubmitRejectionUndiagnosedError`. The `network-version-read-failed` one also asserts that
 the error carries **both** failures, in order, and that the second of them is the
 injected one, since carrying only one is the defect its `errors` list (rejection first)
 exists to rule out; and that the injected reading was consulted exactly once, so
@@ -361,7 +383,7 @@ The check is symmetric — it refuses a disagreement in either direction:
 if (stateEra === head) return;
 const fresh = await readHeadEra(pdp);
 if (fresh.head !== stateEra) throw new IndexerInconsistencyError(fresh.head, stateEra);
-throw new HeadStateEraMismatchError(head, stateEra);
+throw new NetworkVersionStateMismatchError(head, stateEra);
 ```
 
 The spec's delivered design is **asymmetric**: "the envelope decides, the block
@@ -442,7 +464,8 @@ from the fork node relative to `compose.yml`, changed nothing.
 ### Pinning the retained runtime is a consumer requirement, not a harness detail
 
 The personas pin `@midnight-ntwrk/onchain-runtime-v3` explicitly. Without it the
-deploy fails with `Ledger8InstanceMismatchError`, because
+deploy failed with an instance-mismatch error (since removed, together with the
+runtime guard that raised it), because
 `compact-runtime@0.16` asks for `^3.0.0` while `protocol` pins one exact version
 and a resolver satisfies both with two different copies. Note that the error's own
 remediation text blames the two npm scopes; here both copies were on the *same*

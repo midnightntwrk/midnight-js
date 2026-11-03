@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Module, ModuleThunk } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { Module, ModuleThunk } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { describe, expect, it, vi } from 'vitest';
 
 import { bundledContractModuleProvider } from '../bundled-contract-module-provider';

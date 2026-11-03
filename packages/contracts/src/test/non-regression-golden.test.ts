@@ -17,7 +17,20 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import {
+  type AlignedValue,
+  communicationCommitment,
+  type ContractAction,
+  type ContractCall,
+  type PartitionedTranscript,
+  type PreProof,
+  sampleEncryptionPublicKey,
+  Transaction,
+  type Transcript,
+  ZswapChainState
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type CircuitContext,
   type CircuitResults,
@@ -28,20 +41,8 @@ import {
   decodeZswapLocalState,
   type EncodedZswapLocalState,
   type ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type AlignedValue,
-  communicationCommitment,
-  type ContractAction,
-  type ContractCall,
-  type PartitionedTranscript,
-  type PreProof,
-  sampleEncryptionPublicKey,
-  type Transcript,
-  ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { type MidnightConfig, Transaction } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 import { Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

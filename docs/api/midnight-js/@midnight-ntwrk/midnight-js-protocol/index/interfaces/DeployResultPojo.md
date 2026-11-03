@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ All three are plain data.
 ## See
 
  - [VerifierKeys](../../documents/VerifierKeys.md) for why the address cannot be recomputed.
- - [EraSeam](../../documents/EraSeam.md)
+ - [EraBoundary](../../documents/EraBoundary.md)
 
 ## Properties
 

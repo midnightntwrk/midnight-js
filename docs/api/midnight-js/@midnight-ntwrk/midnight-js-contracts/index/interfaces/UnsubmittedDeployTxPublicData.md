@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@ Base type for public data relevant to an unsubmitted deployment transaction.
 
 ## Extended by
 
-- [`FinalizedDeployTxPublicData`](FinalizedDeployTxPublicData.md)
+- [`Ledger9FinalizedDeployTxPublicData`](Ledger9FinalizedDeployTxPublicData.md)
 
 ## Properties
 

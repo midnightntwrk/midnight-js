@@ -14,7 +14,6 @@
  */
 
 import { fc } from '@fast-check/vitest';
-import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type AlignedValue,
@@ -38,7 +37,8 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { parseEncPublicKeyToHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { expect, vi } from 'vitest';

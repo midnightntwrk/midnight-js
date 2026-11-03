@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -22,7 +22,8 @@ they may not.
 > `readonly` **circuitId**: `string`
 
 The entry point this operation ran. A deploy has no circuit of its own and
-reports the constructor's own name, `'initialState'`.
+reports the constructor's own name, `'initialState'`; a maintenance
+authority replacement reports NO\_CIRCUIT.
 
 ***
 
@@ -37,20 +38,20 @@ at a different address and would not overwrite the first.
 
 ***
 
-### head
+### kind
 
-> `readonly` **head**: `"v8"` \| `"v9"`
+> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md)
 
-The era the network head was on when this operation started.
-
-One field, two uses, and they are the same fact: it decides which arm of
-the provider seams the transaction crossed on, and it is the `startEra` a
-fork diagnosis compares a fresh reading against.
+Whether this operation deploys a contract, calls one already deployed, or maintains one.
 
 ***
 
-### kind
+### networkVersion
 
-> `readonly` **kind**: [`StaleHeadOperationKind`](../type-aliases/StaleHeadOperationKind.md)
+> `readonly` **networkVersion**: `"v8"` \| `"v9"`
 
-Whether this operation deploys a contract or calls one already deployed.
+The ledger version the network was on when this operation started.
+
+One field, two uses, and they are the same fact: it is the era of the
+transaction carried across the provider methods, and it is the `startEra` a
+fork diagnosis compares a fresh reading against.

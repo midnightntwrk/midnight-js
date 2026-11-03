@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -36,12 +36,21 @@ Compare against [id](#id) to detect catch-up / whether more events exist.
 
 ***
 
+### payloadVersion
+
+> `readonly` **payloadVersion**: `number`
+
+Payload schema version — selects the (future) per-event payload decoder.
+Iteration-1 events are `payloadVersion: 1`. Not a ledger era.
+
+***
+
 ### protocolVersion
 
 > `readonly` **protocolVersion**: `number`
 
 Protocol version of the block this event was emitted in, as the network
-reported it. Distinct from [version](#version): this one says which ledger era
+reported it. Distinct from [payloadVersion](#payloadversion): this one says which ledger era
 wrote [raw](#raw), so a consumer decoding those bytes knows which runtime
 to decode them with. Resolve it with `versionOfRecord` from
 `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
@@ -68,12 +77,3 @@ Indexer-internal `BIGSERIAL` row id of the emitting transaction — **not**
 the chain transaction hash. To fetch the chain transaction, issue a
 separate query. Note the asymmetry with [ContractEventFilterBase.transactionHash](ContractEventFilterBase.md#transactionhash),
 which narrows by chain hash.
-
-***
-
-### version
-
-> `readonly` **version**: `number`
-
-Payload schema version — selects the (future) per-event payload decoder.
-Iteration-1 events are `version: 1`.

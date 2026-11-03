@@ -82,7 +82,7 @@ const EXPECTED_PATHS: Readonly<Record<string, readonly string[]>> = {
   ],
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY: [],
   CONTRACT_STATE_QUERY: ['block.protocolVersion'],
-  RAW_CONTRACT_STATE_QUERY: ['block.protocolVersion'],
+  CONTRACT_STATE_WITH_PARAMETERS_QUERY: ['block.protocolVersion'],
   CONTRACT_STATE_SUB: ['contractActions.stateAt.protocolVersion'],
   CONTRACT_AND_ZSWAP_STATE_QUERY: ['block.protocolVersion'],
   UNSHIELDED_BALANCE_QUERY: [],

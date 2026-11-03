@@ -13,8 +13,27 @@
  * limitations under the License.
  */
 
-import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import {
+  type AlignedValue,
+  type CoinPublicKey,
+  type CoinSecretKey,
+  type DustSecretKey,
+  type EncPublicKey,
+  type EncryptionSecretKey,
+  LedgerParameters,
+  type PartitionedTranscript,
+  sampleCoinPublicKey,
+  sampleContractAddress,
+  sampleDustSecretKey,
+  sampleEncryptionPublicKey,
+  type ShieldedCoinInfo,
+  type TokenType,
+  type ZswapChainState,
+  type ZswapSecretKeys,
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   assert as compactAssert,
   ChargedState,
@@ -26,57 +45,37 @@ import {
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type AlignedValue,
-  type Binding,
-  type Bindingish,
-  type CoinPublicKey,
-  type CoinSecretKey,
-  type DustSecretKey,
-  type EncPublicKey,
-  type EncryptionSecretKey,
-  LedgerParameters,
-  type PartitionedTranscript,
-  type Proof,
-  type Proofish,
-  sampleCoinPublicKey,
-  sampleContractAddress,
-  sampleDustSecretKey,
-  sampleEncryptionPublicKey,
-  type ShieldedCoinInfo,
-  type SignatureEnabled,
-  type Signaturish,
-  type TokenType,
-  type UnprovenTransaction,
-  type ZswapChainState,
-  type ZswapSecretKeys,
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_VERSION, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
-  type FinalizedTxData,
+  type ContractStateAndParametersRead,
+  type ContractStateRead,
   type Ledger8FinalizedTxData,
+  type Ledger9FinalizedTxData,
   type MidnightConfig,
   type PrivateStateId,
   type ProverKey,
+  type PublicStatesRead,
+  SerializedState,
   SucceedEntirely,
-  type Transaction,
   type TxStatus,
+  type UnprovenTx,
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
+import { ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import type { Mock } from 'vitest';
 
-import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
-import { type ContractConstructorResult } from '../call-constructor';
-import type { ContractProviders } from '../contract-providers';
-import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { type Ledger9CallOptions, type Ledger9CallOptionsWithPrivateState } from '../call';
+import { type Ledger9ContractConstructorResult } from '../call-constructor';
+import type { Ledger9ContractProviders } from '../contract-providers';
+import { type Ledger9UnsubmittedCallTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
+import { handles } from './ledger-transaction-fixtures';
 
 export const createMockContractAddress = () => sampleContractAddress();
 
@@ -199,55 +198,11 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
   ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-export const createMockUnprovenTx = (): UnprovenTransaction => ({
-  addCalls: vi.fn(),
-  addZswapOffer: vi.fn(),
-  addIntent: vi.fn(),
-  eraseProofs: vi.fn(),
-  identifiers: vi.fn(),
-  merge: vi.fn(),
-  serialize: vi.fn(),
-  imbalances: vi.fn(),
-  bind: vi.fn(),
-  wellFormed: vi.fn(),
-  transactionHash: vi.fn(),
-  fees: vi.fn(),
-  intents: undefined,
-  fallibleOffer: undefined,
-  guaranteedOffer: undefined,
-  bindingRandomness: 0n,
-  rewards: undefined,
-  mockProve: vi.fn(),
-  prove: vi.fn(),
-  eraseSignatures: vi.fn(),
-  cost: vi.fn(),
-  feesWithMargin: vi.fn()
-});
+export const createMockUnprovenTx = (): UnprovenTx => handles.v9.Unproven();
 
-export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
-  addCalls: vi.fn(),
-  addZswapOffer: vi.fn(),
-  addIntent: vi.fn(),
-  eraseProofs: vi.fn(),
-  identifiers: vi.fn().mockReturnValue(['test-tx-id']),
-  merge: vi.fn(),
-  serialize: vi.fn(),
-  imbalances: vi.fn(),
-  bind: vi.fn().mockReturnValue(new Uint8Array(0)),
-  wellFormed: vi.fn(),
-  transactionHash: vi.fn(),
-  fees: vi.fn(),
-  intents: undefined,
-  fallibleOffer: undefined,
-  guaranteedOffer: undefined,
-  bindingRandomness: 0n,
-  rewards: undefined,
-  eraseSignatures: vi.fn(),
-  cost: vi.fn(),
-  feesWithMargin: vi.fn(),
-  mockProve: vi.fn(),
-  prove: vi.fn()
-});
+const MOCK_FINALIZED_TX = await handles.v9.Finalized();
+
+const MOCK_LEDGER8_FINALIZED_TX = await handles.v8.Finalized();
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   type: 'shielded',
@@ -269,9 +224,14 @@ const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
  */
 export const MOCK_CONFIG: MidnightConfig = { networkId: 'undeployed', ttlSeconds: 3600 };
 
+const NETWORK_ID_PATTERN = /network_id: "([^"]*)"/;
+
+export const networkIdOf = (tx: { toString(compact?: boolean): string }): string | undefined =>
+  NETWORK_ID_PATTERN.exec(tx.toString(false))?.[1];
+
 const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
 
-export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
+export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   config: MOCK_CONFIG,
   midnightProvider: {
     supportedEras: MOCK_SUPPORTED_ERAS,
@@ -295,11 +255,8 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     queryContractEvents: vi.fn(),
     contractEventsObservable: vi.fn(),
     // The head-version read answers with the v9-era protocol version the rest
-    // of these mocks assume; the raw-state read reports "no state at this
-    // address" until a test overrides it.
-    queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION),
-    queryRawContractState: vi.fn().mockResolvedValue(null),
-    rawContractStateObservable: vi.fn()
+    // of these mocks assume.
+    queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION)
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),
@@ -317,9 +274,8 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
-    // The CURRENT-era value, because this is the current-era provider set. A retained value here
-    // would be read by nothing today and would silently route a regression into the retained
-    // pipeline instead of failing at the era decision.
+    // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
+    // it, and a ledger 9 container served with a retained value is refused.
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.20.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
@@ -340,13 +296,13 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   }
 });
 
-export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
-  version: 'v9',
+export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger9FinalizedTxData => ({
+  era: 'v9',
   status: status,
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],
   blockHeight: 100,
-  tx: {} as Transaction<SignatureEnabled, Proof, Binding>,
+  tx: MOCK_FINALIZED_TX,
   txHash: 'hash',
   blockHash: 'hash',
   segmentStatusMap: undefined,
@@ -369,13 +325,13 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 
 export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntirely): Ledger8FinalizedTxData => ({
   ...createMockFinalizedTxData(status),
-  version: 'v8',
-  tx: {} as Ledger8FinalizedTxData['tx'],
+  era: 'v8',
+  tx: MOCK_LEDGER8_FINALIZED_TX,
   // A node 1.x protocolVersion, which the resolver in `midnight-js-protocol` maps to ledger v8.
   protocolVersion: 1_000_000
 });
 
-export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
+export const createMockUnprovenDeployTxData = (overrides: Partial<Ledger9UnsubmittedDeployTxData<Contract.Any>> = {}): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
@@ -432,7 +388,7 @@ export const createMockContractCall = (
   communicationCommitment: overrides.communicationCommitment ?? Option.none()
 });
 
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       nextContractState: StateValue.newNull(),
@@ -458,7 +414,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
     calls: overrides.calls ?? []
 });
 
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockCallOptions = (overrides: Partial<Ledger9CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9CallOptions<Contract.Any, AnyProvableCircuitId> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],
@@ -471,13 +427,13 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   ...overrides
 });
 
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<Ledger9CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides
 });
 
-export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
+export const createMockConstructorResult = (): Ledger9ContractConstructorResult<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
@@ -500,5 +456,79 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
     getVerifierKey(_: string): Promise<VerifierKey> {
       return Promise.resolve(verifierKeys[0][1]);
     }
+    override getArtifactRuntimeVersion(): Promise<string> {
+      return Promise.resolve('0.20.0');
+    }
   })();
 }
+
+/**
+ * The record a `PublicDataProvider` serves for these bytes: the version comes from the bytes' own
+ * version tag, as the indexer provider reads it.
+ */
+export const contractStateRead = (raw: Uint8Array, protocolVersion: number): ContractStateRead => ({
+  protocolVersion,
+  contractState: SerializedState.fromBytes(ledgerVersionOfContractState(raw), 'ContractState', raw)
+});
+
+/** {@link contractStateRead} with the ledger parameters `queryContractState` serves beside the state. */
+export const contractStateAndParametersRead = (
+  raw: Uint8Array,
+  protocolVersion: number,
+  ledgerParameters: Uint8Array
+): ContractStateAndParametersRead => ({
+  ...contractStateRead(raw, protocolVersion),
+  ledgerParameters: SerializedState.fromBytes(
+    ledgerVersionOfLedgerParameters(ledgerParameters),
+    'LedgerParameters',
+    ledgerParameters
+  )
+});
+
+const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
+
+/**
+ * A contract-state record whose bytes are only the version tag of `version`. For a test that mocks
+ * the decoder, or that must be refused before anything decodes.
+ */
+export const contractStateReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): ContractStateRead => ({
+  protocolVersion,
+  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
+});
+
+/** {@link contractStateReadStub} with ledger parameters that are only the version tag of `version`. */
+export const contractStateAndParametersReadStub = (
+  version: LedgerVersion,
+  protocolVersion = 2_000_000
+): ContractStateAndParametersRead => ({
+  ...contractStateReadStub(version, protocolVersion),
+  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+});
+
+type Serializable = { serialize(): Uint8Array };
+
+/**
+ * The record a `PublicDataProvider` serves for v9 public states built in a test. The contract state
+ * is only its version tag: a test that reads it back mocks the framework's contract-state decoder.
+ */
+export const publicStatesRead = (
+  states: { readonly zswapChainState: Serializable; readonly ledgerParameters: Serializable },
+  protocolVersion = 2_000_000
+): PublicStatesRead => ({
+  protocolVersion,
+  contractState: contractStateReadStub('v9').contractState,
+  zswapChainState: SerializedState.fromBytes('v9', 'ZswapChainState', states.zswapChainState.serialize()),
+  ledgerParameters: SerializedState.fromBytes('v9', 'LedgerParameters', states.ledgerParameters.serialize())
+});
+
+
+/**
+ * A record of public states whose bytes are only the version tags of `version`. For a test that
+ * mocks the decoders, or that must be refused before anything decodes.
+ */
+export const publicStatesReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): PublicStatesRead => ({
+  protocolVersion,
+  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
+  zswapChainState: SerializedState.fromBytes(version, 'ZswapChainState', tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
+  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+});

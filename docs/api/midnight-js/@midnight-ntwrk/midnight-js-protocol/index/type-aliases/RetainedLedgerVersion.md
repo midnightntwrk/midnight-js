@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,8 +8,12 @@
 
 > **RetainedLedgerVersion** = `Exclude`\<[`LedgerVersion`](LedgerVersion.md), [`CurrentLedgerVersion`](CurrentLedgerVersion.md)\>
 
-Every era this build still speaks but does not run live — the eras that
-cross a package boundary as serialized bytes.
+Every era this build still speaks but does not run live: its runtime is
+loaded only on demand, through `loadLedger8Protocol`.
+
+"Retained" is relative: today the set is ledger 8 (`'v8'`). At the next hard
+fork the then-current ledger joins it. Code bound to one ledger is named
+after that ledger (`Ledger8*`) instead.
 
 Defined as the complement of [CURRENT\_LEDGER\_VERSION](../variables/CURRENT_LEDGER_VERSION.md), so a further
 era joins this set by being added to [LEDGER\_VERSIONS](../variables/LEDGER_VERSIONS.md) and nothing

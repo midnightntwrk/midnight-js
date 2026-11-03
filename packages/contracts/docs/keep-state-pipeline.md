@@ -22,7 +22,9 @@ Three modules implement it, and the split is deliberate:
 
 Which pipeline an operation is allowed to take at all is a separate thread — see
 [EraDispatch](./era-dispatch.md). The verifier-key check it performs is
-[VerificationPath](./verification-path.md).
+[VerificationPath](./verification-path.md). How the retained flow sits behind
+one router per role, and what happens to it when an era is added or removed, is
+[ADR 0021](../../../docs/adr/0021-mirror-per-era-functions-and-route-each-role-once.md).
 
 ## No retained-runtime dependency, not even in development
 
@@ -161,7 +163,7 @@ with an output of the same call is a transient, and the offer builder assembles
 it from the pair alone; an input with no such pairing has to be located in the
 chain's Merkle tree of commitments, which needs the contract's Zswap CHAIN state
 — and the retained-era pipeline reads none. Such a call is refused with
-`Ledger8ShieldedSpendUnsupportedError`.
+`Ledger8CallUnsupportedError` with reason `'shielded-spend'`.
 
 The check shares the offer builder's own SERIALIZERS, so the two agree on coin
 identity. The PAIRING itself is not shared: the builder consumes a matched
@@ -200,7 +202,7 @@ the same resolver, exactly as the current era passes them. Anyone not in those
 sources resolves to `undefined`.
 
 The refusal is raised BEFORE the offer is built, as
-`Ledger8RecipientUnmappableError`, naming the circuit and the recipient, and
+`Ledger8CallUnsupportedError` with reason `'unmappable-recipient'`, naming the circuit and the recipient, and
 telling the caller to add the recipient to
 `additionalCoinEncPublicKeyMappings`. A refusal is the one answer that cannot
 lose a recipient's coin.
@@ -216,7 +218,7 @@ member, by decision. Retained deploys run only before the fork, so no contract
 that must keep its state after the fork depends on them, and widening the
 deploy options belongs with the first constructor that needs it. Until then a
 constructor that pays a third party is refused with the same
-`Ledger8RecipientUnmappableError`, with `circuitId` set to `'initialState'` and
+`Ledger8CallUnsupportedError` (reason `'unmappable-recipient'`), with `circuitId` set to `'initialState'` and
 a message that names the constructor and says the deploy takes no mappings.
 
 ## Reading the private state, and why an empty id is an error
@@ -243,32 +245,33 @@ untouched. Nothing errors at any stage.
 
 ## Passing the transaction to the providers
 
-The `version` tag on a provider payload names the ledger runtime that produced
-the bytes — NOT the toolchain that produced the contract. A retained-era
+The era of a transaction handle names the ledger runtime that produced the
+transaction — NOT the toolchain that produced the contract. A retained-era
 contract's call is composed against whichever era the network head is on, so the
 two heads hand the providers genuinely different things:
 
-| head | composed by | crosses as | unwrapped with |
-| ---- | ----------- | ---------- | ------------- |
-| `v8` | the retained ledger | `{ version: 'v8', txBytes }` | `unwrapLedger8ProviderResult` |
-| `v9` | the current ledger | `{ version: 'v9', tx }` | `unwrapLedger9ProviderResult` |
+| head | composed by | sealed as | provider answers checked with |
+| ---- | ----------- | --------- | ----------------------------- |
+| `v8` | the retained ledger | a `v8` `UnprovenTx` | `requireProviderResult(…, 'v8', …)` |
+| `v9` | the current ledger | a `v9` `UnprovenTx` | `requireProviderResult(…, 'v9', …)` |
 
 On a post-fork head the transaction is an ORDINARY current-era transaction that
 happens to carry a retained-era call, so it is passed to the providers exactly as every
-current-era transaction is — as a live handle, because the framework and the
-providers share the current runtime. Tagging it `'v8'` would say the retained runtime
-produced it, which is false, and would send a current-era-only provider looking
-for a runtime it does not need.
+current-era transaction is — as a v9 handle. Sealing it as `'v8'` would say the
+retained runtime produced it, which is false, and would send a current-era-only
+provider looking for a runtime it does not need.
 
-The composition returns bytes either way, so the post-fork path reads them back
-into a live transaction. That is not a re-encode across eras: they are this
-package's OWN era's bytes, produced moments earlier by the same runtime that
-reads them. The three deserialization markers — signature-enabled, unproven,
-unbound — are exactly what `composeCallTx` documents its output as.
+The composition returns bytes either way. `sealComposed` reads them back with
+`deserializeTransactionAtStage(era, 'Unproven', txBytes)` from
+`@midnight-ntwrk/midnight-js-protocol/transaction` and seals the result in that
+same era. That is not a re-encode across eras: they are the composing era's OWN
+bytes, produced moments earlier by the same runtime that reads them. The era
+comes from the head the composition ran on, never from the bytes.
 
-A provider that does not serve the pre-fork payload variant refuses it on the way IN, at the
-first provider method, with `Ledger8PayloadUnsupportedError` — before anything is proven, which
-is the point of leaving that guard in `types` rather than lifting it here.
+A provider that does not serve the v8 era refuses a v8 handle on the way IN, at
+the first provider method, with `ProviderEraUnsupportedError` — before anything
+is proven. The pipeline also checks the declarations with
+`assertProvidersSupportEra` before it composes anything.
 
 ### Sanitizing a provider's own failure
 
@@ -278,7 +281,7 @@ provider call of every submit path in the package, not only this pipeline's.
 
 This framework's OWN coded errors pass through UNCHANGED when they carry no
 `cause`. They then hold no external payload, and a caller narrowing on
-`Ledger8PayloadUnsupportedError` — the refusal a current-era-only provider raises on
+`ProviderEraUnsupportedError` — the refusal a current-era-only provider raises on
 the way in — or on `EraInvariantViolationError` has to keep seeing them. A coded
 error that carries a `cause` — `ProofServerError` wrapping a transport failure,
 say — holds external material on that cause, so it is sanitized like any other
@@ -335,7 +338,7 @@ still byte-matches the local verifier key against the slot the chain holds —
 exactly the checks that make a later call against this contract safe, done once
 at attach time so a mis-dispatch is caught there instead of at the first call.
 
-The deploy record is returned version-tagged rather than narrowed: a retained-era
+The deploy record is returned era-tagged rather than narrowed: a retained-era
 contract's deployment record belongs to whichever era was current when it was
 deployed, and refusing the pre-fork variant here would refuse every contract this
 pipeline exists to keep callable.
@@ -365,7 +368,7 @@ rather than silently skipped.
 `deployContract`, called with a retained-era contract, composes, submits and waits, and hands back a
 `Ledger8DeployedContract`. It is reachable only on a PRE-FORK head: the retained
 era has no post-fork deployment, so the era pairing table refuses a retained
-artifact against a post-fork head with `Ledger8DeployOnLedger9Error`, raised before
+artifact against a post-fork head with `EraMismatchError` (reason `'ledger8-deploy-on-ledger9-network'`), raised before
 the constructor runs.
 
 ### The maintenance authority
@@ -393,7 +396,7 @@ era boundary needed no new field: `ComposeDeployOptions` already carries the
 serialized `contractStateBytes`, which is where the authority lives.
 
 The key is the caller's own when one is supplied, and a freshly sampled one
-otherwise. Either way it is reported on `Ledger8DeployedContract.signingKey` and
+otherwise. Either way it is reported at `deployTxData.private.signingKey` and
 stored against the minted address through `privateStateProvider.setSigningKey`,
 which is where the current era's deploy writes its own key too.
 
@@ -457,8 +460,8 @@ private state. That order is load-bearing. A deploy the chain refused must leave
 no local private state ahead of it, and on this path that matters more than on the
 call path: a deploy mints a fresh nonce, so a second attempt lands at a DIFFERENT
 address, and repeating one that in fact finalized leaves two copies of the
-contract on chain. `Ledger8DeployTxFailedError` carries that remediation, which
-is why it is a separate class from `Ledger8CallTxFailedError`.
+contract on chain. `TxFailedError` with `operation` `'deploy'` carries that remediation,
+which differs from the one for a failed call.
 
 The address is named on the private-state provider BEFORE the write. A provider
 namespaces every entry by the address last named and refuses a write before any
@@ -509,8 +512,8 @@ mode recorded above is why passing `undefined` down instead is not an option.
 ## The signing key on the attach path
 
 `Ledger8FindDeployedContractOptions.signingKey` is honoured: a key supplied there
-is stored against the contract address, and `Ledger8FoundContract.signingKey`
-reports whatever is then held — the key a deploy on this machine persisted, when
+is stored against the contract address, and `deployTxData.private.signingKey`
+on the found handle reports whatever is then held — the key a deploy on this machine persisted, when
 the caller supplies none. `undefined` there means either nothing stored or an
 entry this framework did not write; the breadcrumb above is what separates the
 two.
@@ -520,10 +523,9 @@ It diverges from the current era in THREE cases, each deliberate.
 **1. Nothing is sampled.** Where `setOrGetInitialSigningKey` samples a fresh key
 when the store holds none, the retained-era path reports `undefined`. A key sampled at
 attach time bears no relation to the authority the chain already holds for a
-contract this caller did not deploy, and the retained era has no governance API
-at all, so there is no maintenance interface on `Ledger8FoundContract` for such a
-key to be used through. Storing one would put a key on record that can maintain
-nothing and report it as though it could.
+contract this caller did not deploy, so a maintenance update signed with it is
+refused (`MaintenanceAuthorityMismatchError`). Storing one would put a key on
+record that can maintain nothing and report it as though it could.
 
 **2. An unusable or unreadable entry reads as absent**, and the attach still
 succeeds — where the current era reports whatever the store answered, unchecked.
@@ -532,12 +534,12 @@ The blast-radius argument for the content half is at
 
 **3. A supplied key is REFUSED rather than reported back.** A supplied key is
 validated through the read's own rule before it is stored, where the current era
-stores whatever it was handed. `Ledger8SigningKey` is `string`, so
-`signingKey: ''` type-checks; stored unchecked it would be reported on THIS
+stores whatever it was handed. The option is the current era's `SigningKey`, so
+`{ tag: 'ecdsa', value }` and `{ tag: 'schnorr', value: '' }` type-check; stored unchecked it would be reported on THIS
 attach and read as absent on the NEXT one, out of the same store, with nothing
 erroring either time — and the entry it replaced would already be gone. The
 caller passed this value in this call, so a refusal is cheap here in a way it is
-not in case 2. The refusal is `Ledger8SigningKeyUnusableError`, raised BEFORE the
+not in case 2. The refusal is `Ledger8SigningKeyError` with reason `'unusable'`, raised BEFORE the
 write, so a refused key replaces nothing.
 
 The supplied-key guard is `!== undefined`, where the current era's rule uses
@@ -549,12 +551,24 @@ A supplied key REPLACES whatever is held for that address rather than falling
 back to it, because replacing is the documented remedy for an entry this
 framework cannot use.
 
+### One key shape on the public surface
+
+A retained-era key is published as the current era's `SigningKey`,
+`{ tag: 'schnorr', value }`, on every member a caller reads or writes: the
+deploy and find options, `deployTxData.private.signingKey`, and the deploy
+errors that carry the key. That is the shape the store already holds it in, so
+a key read off a handle can be written back, exported or passed to the other
+era unchanged. The bare hex string the retained runtime signs with stays
+inside: `requireLedger8SigningKey` unwraps a supplied key at the entry, and
+refuses one that is not `schnorr` or not 64 hex characters, before anything is
+composed or stored.
+
 ### Why the reported key is always present and possibly `undefined`
 
-`Ledger8FoundContract.signingKey` is declared as `Ledger8SigningKey | undefined`
-rather than as an optional member. It is written on every attach,
+`deployTxData.private.signingKey` on `Ledger8FoundContract` is declared as
+`SigningKey | undefined` rather than as an optional member. It is written on every attach,
 `exactOptionalPropertyTypes` is off in this package, and an optional member
-invites `found.signingKey!` at a call site where the absent case is the ordinary
+invites `found.deployTxData.private.signingKey!` at a call site where the absent case is the ordinary
 one.
 
 It is REQUIRED on `Ledger8DeployedContract`, and that is the whole difference
@@ -564,8 +578,59 @@ caller supplied one.
 
 `undefined` collapses three cases — nothing stored; something stored this
 framework did not write; the entry could not be read at all. Neither of the last
-two fails the attach, because nothing on this path CONSUMES the key: the retained
-era exposes no maintenance interface, so a circuit call would otherwise stop
-working over a value it never reads. Both are reported to the logger provider as
-a DEBUG-level dispatch breadcrumb, which is the only place the three are
-distinguishable.
+two fails the attach, because a circuit call never CONSUMES the key, and would
+otherwise stop working over a value it never reads. On the attach, both are
+reported to the logger provider as a DEBUG-level dispatch breadcrumb, which is
+the only place the three are distinguishable.
+
+The maintenance interfaces on the same handle do consume the key, and for them
+the same three cases are a refusal, `Ledger8SigningKeyError` with reason `'unavailable'`, raised
+before anything is composed: a maintenance update cannot proceed without the key.
+An unreadable store is carried on that error's `cause`.
+
+## Contract maintenance on the retained era
+
+`submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx` and
+`submitReplaceAuthorityTx`, and the interfaces built on them, take a retained-era
+artifact through the same overloads the current era's artifact takes, and dispatch on
+the artifact's era like `deployContract` and `submitCallTx`. The retained path is
+`submitLedger8MaintenanceTx`, in this order:
+
+1. Refuse a circuit the artifact does not declare, and a replacement key the
+   retained era cannot sign with (`Ledger8SigningKeyError`, reason `'unusable'`). No head, state
+   or key is read yet.
+2. Acquire the era. A post-fork head is refused with
+   `EraMismatchError` (reason `'ledger8-maintenance-on-ledger9-network'`) before the signing key is read.
+3. Read the signing key. Missing, unusable or unreadable is
+   `Ledger8SigningKeyError` with reason `'unavailable'`.
+4. Read ONE snapshot, check the slot the update targets (an insert needs it empty, a
+   remove needs a key in it), and hand the snapshot's own bytes to the engine.
+5. The engine builds and signs the update through compact-js, after checking the
+   authority can be signed for the way compact-js signs: one signature, by its first
+   committee member (`MaintenanceAuthorityMismatchError` otherwise). See
+   `packages/protocol/docs/retained-era-execution.md`.
+6. Prove, balance and submit as a v8 `UnprovenTx` handle, with
+   `kind: 'maintenance'` for the fork-crossing diagnosis.
+7. Refuse a record from any era but ledger 8, then a non-success status with
+   `TxFailedError` (`operation` `'insert-verifier-key'`, `'remove-verifier-key'`
+   or `'replace-authority'`). A maintenance update sits
+   in the guaranteed part of the transaction, so the messages say what to read
+   before retrying, and a replacement's error carries the new key on `signingKey`.
+   For a REPLACEMENT, every failure after the transaction may have landed — a
+   submission rejected while the head moved (`ForkCrossedDuringOperationError`,
+   `SubmitRejectionUndiagnosedError`), a record that cannot be read back, carries
+   no era tag, or comes from another era — is raised as
+   `Ledger8UnconfirmedError` (`operation` `'replace-authority'`) with that failure on `cause`. It
+   carries the new key, which is not stored, because the replacement may have
+   landed and the old key would then authorize nothing.
+8. After a confirmed replacement, store the new key. A store that refuses it raises
+   `Ledger8NotStoredError` (`operation` `'replace-authority'`, `stage` `'signing-key'`), which carries the key: the old one no longer
+   authorizes anything.
+
+The result is `{ era: 'v8', public: Ledger8FinalizedTxData }`. The record is always
+the ledger 8 one, because step 2 refuses every other head.
+
+The engine is handed the chain's serialized state rather than the decoded
+`ContractStatePojo`: the decoded form carries no maintenance authority, and the
+update is signed against that authority's counter and committee.
+

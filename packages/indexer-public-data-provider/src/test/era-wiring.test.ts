@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as codec from '../codec';
@@ -30,7 +30,7 @@ import { toFinalizedDeployTxData, toFinalizedTxData } from '../mapping';
 // imports, so a plain `const` here would be in the temporal dead zone when the
 // factory runs.
 const { decodeRecordTransaction } = vi.hoisted(() => ({
-  decodeRecordTransaction: vi.fn(() => Promise.resolve({ version: 'v9', tx: 'decoded-tx' }))
+  decodeRecordTransaction: vi.fn(() => Promise.resolve({ era: 'v9', tx: 'decoded-tx' }))
 }));
 
 vi.mock('../codec', async (importOriginal) => ({
@@ -108,7 +108,7 @@ describe('finalized-record era wiring', () => {
     // sentinel is how that shows. Without this the test name promised more
     // than it checked, and a record-builder that dropped `tx` would pass.
     expect(record.tx).toBe('decoded-tx');
-    expect(record.version).toBe('v9');
+    expect(record.era).toBe('v9');
     expect(record.protocolVersion).toBe(LEDGER9_PROTOCOL_VERSION);
   });
 

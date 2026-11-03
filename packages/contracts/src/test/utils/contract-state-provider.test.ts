@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PublicDataProvider, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ContractStateUnsupportedError } from '../../errors';
+import { EraMismatchError } from '../../errors';
 import { makeCalleeStateResolver } from '../../internal/utils';
+import { publicStatesReadStub } from '../test-mocks';
 
 const BLOCK_HASH = 'ab'.repeat(32);
 const OTHER_BLOCK_HASH = 'cd'.repeat(32);
@@ -39,12 +41,24 @@ const providerWith = (
   queryZSwapAndContractState: PublicDataProvider['queryZSwapAndContractState']
 ): PublicDataProvider => ({ queryZSwapAndContractState } as unknown as PublicDataProvider);
 
-const ledger9States = (zswapChainState: ZswapChainState, contractState: ContractState) => ({
-  version: 'v9',
-  zswapChainState,
-  contractState,
-  ledgerParameters: {}
-});
+// The framework decodes a read with its own runtime; these stand in for the decoded objects.
+const decode = vi.hoisted(() => ({
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  ...decode
+}));
+
+/** A served record that decodes to these states. Decodes are queued in the order reads are made. */
+const ledger9States = (zswapChainState: ZswapChainState, contractState: ContractState): PublicStatesRead => {
+  decode.deserializeLedger9CompactContractState.mockReturnValueOnce(contractState);
+  decode.deserializeLedger9ZswapChainState.mockReturnValueOnce(zswapChainState);
+  return publicStatesReadStub('v9');
+};
 
 describe('makeCalleeStateResolver', () => {
   it('exposes the pinned block hash and an initially empty resolved-states map', () => {
@@ -113,18 +127,17 @@ describe('makeCalleeStateResolver', () => {
   });
 
   it('refuses a callee whose state was written by the v8 ledger', async () => {
-    const query = vi.fn().mockResolvedValue({
-      version: 'v8',
-      zswapChainState: ZSWAP_STATE,
-      stateBytes: new Uint8Array([1]),
-      ledgerParametersBytes: new Uint8Array([2])
-    });
+    const query = vi.fn().mockResolvedValue(publicStatesReadStub('v8'));
     const resolver = makeCalleeStateResolver(providerWith(query), BLOCK_HASH);
 
     const rejection = resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);
 
-    await expect(rejection).rejects.toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-    await expect(rejection).rejects.toMatchObject({ contractAddress: ADDRESS, operation: 'makeCalleeStateResolver' });
+    await expect(rejection).rejects.toBeInstanceOf(EraMismatchError);
+    await expect(rejection).rejects.toMatchObject({
+      reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH',
+      message: expect.stringContaining(String(ADDRESS))
+    });
+    await expect(rejection).rejects.toMatchObject({ message: expect.stringContaining('makeCalleeStateResolver') });
     expect(resolver.resolvedStates.has(String(ADDRESS))).toBe(false);
   });
 

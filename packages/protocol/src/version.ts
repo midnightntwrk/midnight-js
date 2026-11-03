@@ -22,25 +22,29 @@ import {
   RETAINED_LEDGER_VERSIONS,
   type RetainedLedgerVersion
 } from './lib/shared/ledger-version';
+import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, type StateKind } from './lib/shared/state-tags';
 
 // Declared in the leaf module `./lib/shared/ledger-version`, which `./errors`
 // can also reach; declaring it here would close a cycle — see ModuleGraphAndLazyLoading.
 export {
   CURRENT_LEDGER_VERSION,
   type CurrentLedgerVersion,
+  LEDGER_STATE_KINDS,
+  LEDGER_STATE_TAGS,
   LEDGER_VERSIONS,
   type LedgerVersion,
   RETAINED_LEDGER_VERSIONS,
-  type RetainedLedgerVersion
+  type RetainedLedgerVersion,
+  type StateKind
 };
 
 /**
- * Anything that can report the network's current head protocol version —
- * typically an indexer or node client. Consumed by {@link networkHeadVersion}.
+ * Anything that can report the network's latest protocol version —
+ * typically an indexer or node client. Consumed by {@link latestNetworkLedgerVersion}.
  */
 export interface ProtocolVersionSource {
   /**
-   * @returns The network's current head `protocolVersion` integer.
+   * @returns The network's latest `protocolVersion` integer.
    */
   queryLatestProtocolVersion(): Promise<number>;
 }
@@ -83,8 +87,8 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
  *
  * Most call sites should not call this directly. Prefer
  * {@link versionOfRecord} for a `protocolVersion` read off an existing
- * indexer/node record, or {@link networkHeadVersion} for the network's
- * current head version — both tag the resulting error with the correct
+ * indexer/node record, or {@link latestNetworkLedgerVersion} for the network's
+ * latest ledger version — both tag the resulting error with the correct
  * `path` automatically. Pass `path` explicitly here only when neither helper
  * fits the call site.
  *
@@ -125,7 +129,7 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
   protocolVersionToLedger(record.protocolVersion, 'read');
 
 /**
- * Queries `source` for the network's current head protocol version and
+ * Queries `source` for the network's latest protocol version and
  * resolves it to a {@link LedgerVersion}.
  *
  * The source is expected to read the network on every call. This is the
@@ -135,11 +139,11 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
  * states the same prohibition as a requirement on its implementations; this
  * parameter is a structural type, so nothing here can enforce it. See ADR 0007.
  *
- * @param source The indexer or node client to ask for the head version.
- * @returns A promise for the {@link LedgerVersion} at the network head.
+ * @param source The indexer or node client to ask for the latest version.
+ * @returns A promise for the {@link LedgerVersion} of the network's latest block.
  * @throws {@link UnknownProtocolVersionError} tagged with the `construct`
  * path, on the same two conditions as {@link protocolVersionToLedger}. A
  * rejection from `source.queryLatestProtocolVersion()` propagates unchanged.
  */
-export const networkHeadVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
+export const latestNetworkLedgerVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
   protocolVersionToLedger(await source.queryLatestProtocolVersion(), 'construct');

@@ -51,7 +51,7 @@ const DIST_INDEX_PATH = 'dist/index.js';
 const PROTOCOL_BARREL = '@midnight-ntwrk/midnight-js-protocol';
 
 /** The subpaths carrying the retained pre-fork runtime. Off the eager path in any form. */
-const LEDGER8_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/engine`];
+const LEDGER8_SUBPATHS = [`${PROTOCOL_BARREL}/v8`, `${PROTOCOL_BARREL}/v8/engine`];
 
 // Never skipped when dist/ is absent: a skip is reported as a pass, so the gate
 // would silently stop guarding. Turbo's `test` task dependsOn `build`, so dist/
@@ -128,7 +128,7 @@ describe('dist laziness gate', () => {
     const barrel = await import('@midnight-ntwrk/midnight-js');
 
     expect(typeof barrel.versionOfRecord).toBe('function');
-    expect(typeof barrel.networkHeadVersion).toBe('function');
+    expect(typeof barrel.latestNetworkLedgerVersion).toBe('function');
     expect(barrel.LEDGER_VERSIONS).toEqual(['v8', 'v9']);
     expect(typeof barrel.UnknownProtocolVersionError).toBe('function');
   });

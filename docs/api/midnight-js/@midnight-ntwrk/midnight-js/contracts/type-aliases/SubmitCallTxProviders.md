@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,11 +6,11 @@
 
 # Type Alias: SubmitCallTxProviders\<C, PCK\>
 
-> **SubmitCallTxProviders**\<`C`, `PCK`\> = [`ContractProviders`](ContractProviders.md)\<`C`\> \| [`SubmitTxProviders`](SubmitTxProviders.md)\<`C`, `PCK`\>
+> **SubmitCallTxProviders**\<`C`, `PCK`\> = [`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\> \| [`SubmitTxProviders`](SubmitTxProviders.md)\<`C`, `PCK`\>
 
 The provider set a call entry point accepts.
 
-Two arms, because a call does not always need private state. The arm WITHOUT
+Two variants, because a call does not always need private state. The variant WITHOUT
 `privateStateProvider` is valid only for options that name no
 `privateStateId`; naming one without the provider is refused with
 [IncompleteCallTxPrivateStateConfig](../classes/IncompleteCallTxPrivateStateConfig.md) before any provider is touched.

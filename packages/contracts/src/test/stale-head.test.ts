@@ -39,27 +39,30 @@ import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerVersion, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
-  Ledger8PayloadUnsupportedError,
-  type RawContractState,
-  type VersionedFinalizedTransaction,
-  type VersionedTransaction,
+  type ContractStateAndParametersRead,
+  type FinalizedTx,
+  ProviderEraUnsupportedError,
+  type UnboundTx,
+  type UnprovenTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ForkCrossedDuringOperationError,
+  Ledger8UnconfirmedError,
   ProviderFailedError,
-  StaleHeadError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
-import { runLedger8Deploy } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitLedger8DeployTx } from '../submit-deploy-tx';
+import { finalizedLike, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
   type CoinReceiverRecording,
@@ -70,7 +73,7 @@ import {
   readHfHexFixture,
   txTagPrefix
 } from './ledger8-replay';
-import { createMockFinalizedTxData, createMockProviders } from './test-mocks';
+import { contractStateAndParametersRead, createMockFinalizedTxData, createMockProviders } from './test-mocks';
 
 // Both redirects are `./v8-native.test.ts`'s -- see that file for why each is
 // needed. The artifact's own runtime check needs an import-time stub, and the
@@ -117,9 +120,13 @@ const headSource = (...protocolVersions: readonly number[]): { queryLatestProtoc
 
 /** What a provider method was handed, captured for assertion. */
 interface SeenPayloads {
-  proveTx?: VersionedTransaction<unknown>;
-  balanceTx?: VersionedTransaction<unknown>;
-  submitTx?: VersionedFinalizedTransaction;
+  proveTx?: UnprovenTx;
+  balanceTx?: UnboundTx;
+  submitTx?: FinalizedTx;
+  /** What `proveTx` answered with, so the next stage can be checked against it. */
+  proven?: UnboundTx;
+  /** What `balanceTx` answered with. */
+  balanced?: FinalizedTx;
 }
 
 type RetainedProviders = Ledger8ContractProviders<CoinReceiver016Contract, typeof CIRCUIT_ID> & {
@@ -137,16 +144,13 @@ beforeAll(async () => {
   currentLedgerParameters = LedgerParameters.initialParameters().serialize();
 });
 
-const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState => {
-  const preFork = protocolVersion === PRE_FORK_PROTOCOL_VERSION;
-  return {
-    version: preFork ? 'v8' : 'v9',
-    protocolVersion,
+// Served from the same read as `raw`, and dated by the same block, as a real provider does.
+const rawState = (raw: Uint8Array, protocolVersion: number): ContractStateAndParametersRead =>
+  contractStateAndParametersRead(
     raw,
-    // Served from the same read as `raw`, and dated by the same block, as a real provider does.
-    ledgerParameters: preFork ? retainedLedgerParameters : currentLedgerParameters
-  };
-};
+    protocolVersion,
+    protocolVersion === PRE_FORK_PROTOCOL_VERSION ? retainedLedgerParameters : currentLedgerParameters
+  );
 
 /**
  * A submission provider that RECORDS what it was handed and then rejects.
@@ -156,7 +160,7 @@ const rawState = (raw: Uint8Array, protocolVersion: number): RawContractState =>
  * rather than a refusal raised before anything was composed.
  */
 const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
-  vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+  vi.fn().mockImplementation((tx: FinalizedTx) => {
     seen.submitTx = tx;
     return Promise.reject(rejection);
   });
@@ -167,17 +171,24 @@ const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
 const OPERATION_CONTRACT_ADDRESS = '0200aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
 
 const callOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'call',
   circuitId: CIRCUIT_ID,
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
 const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
-  head,
+  networkVersion: head,
   kind: 'deploy',
   // A deploy has no circuit of its own and reports the constructor's own name.
   circuitId: 'initialState',
+  contractAddress: OPERATION_CONTRACT_ADDRESS
+});
+
+const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerVersion = 'v8'): SubmittedOperation => ({
+  networkVersion: head,
+  kind: 'maintenance',
+  circuitId,
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
@@ -200,11 +211,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.STALE_HEAD)).toBe(true);
-    expect((caught as StaleHeadError).startEra).toBe('v8');
-    expect((caught as StaleHeadError).freshEra).toBe('v9');
-    expect((caught as StaleHeadError).kind).toBe('call');
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION)).toBe(true);
+    expect((caught as ForkCrossedDuringOperationError).startEra).toBe('v8');
+    expect((caught as ForkCrossedDuringOperationError).freshEra).toBe('v9');
+    expect((caught as ForkCrossedDuringOperationError).kind).toBe('call');
     // THE FRESH READ, asserted as a read and not merely as an outcome: the
     // whole decision is worthless if the handler compares the era the operation
     // started from against itself.
@@ -235,8 +246,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
-    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as ForkCrossedDuringOperationError).circuitId).toBe(CIRCUIT_ID);
     // On the error AND in the text: a caller reading a log rather than catching
     // the class has to be able to follow the same instruction.
     expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
@@ -253,7 +264,7 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect((caught as StaleHeadError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(OPERATION_CONTRACT_ADDRESS);
     expect((caught as Error).message).toContain(OPERATION_CONTRACT_ADDRESS);
     // A deploy mints a fresh nonce, so "just deploy again" is how a caller ends
     // up with two contracts on chain. The text has to say so.
@@ -276,9 +287,9 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caught = error;
     }
 
-    expect(caught).not.toBeInstanceOf(StaleHeadError);
+    expect(caught).not.toBeInstanceOf(ForkCrossedDuringOperationError);
     expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-moved-backwards');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-went-backwards');
     expect((caught as Error).message).not.toMatch(/crossed the ledger fork/);
     // Same restraint as the indexer-inconsistency refusal: never assert a fork
     // nothing observed establishes, and point at the read surface instead.
@@ -303,8 +314,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
       caughtDeploy = error;
     }
 
-    expect(caughtDeploy).toBeInstanceOf(StaleHeadError);
-    expect((caughtDeploy as StaleHeadError).kind).toBe('deploy');
+    expect(caughtDeploy).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caughtDeploy as ForkCrossedDuringOperationError).kind).toBe('deploy');
     const deployMessage = (caughtDeploy as Error).message;
     // A deploy cannot be re-run at all once the head has crossed: the retained
     // era has no post-fork deployment. So the second step is a different step,
@@ -313,6 +324,61 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(deployMessage).toContain('runtime-deploy chapter');
     expect(deployMessage).not.toMatch(/re-run/);
     expect(deployMessage).not.toBe((caughtCall as Error).message);
+  });
+
+  it('gives a MAINTENANCE update its own message: verify first, then recompile, never re-run', async () => {
+    // Arrange
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    // Act
+    const caught = await handleSubmitRejection(pdp, maintenanceOperation(), wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    if (!(caught instanceof ForkCrossedDuringOperationError)) throw caught;
+    expect(caught.kind).toBe('maintenance');
+    expect(caught.message).toContain(OPERATION_CONTRACT_ADDRESS);
+    expect(caught.message).toContain(`'${CIRCUIT_ID}'`);
+    expect(caught.message.indexOf('did not finalize')).toBeGreaterThan(-1);
+    expect(caught.message.indexOf('did not finalize')).toBeLessThan(caught.message.indexOf('recompile'));
+    expect(caught.message).not.toMatch(/re-run/);
+  });
+
+  it('names no circuit in the MAINTENANCE message for an authority replacement', async () => {
+    // Arrange
+    const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
+
+    // Act
+    const caught = await handleSubmitRejection(pdp, maintenanceOperation(NO_CIRCUIT), wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caught as Error).message).not.toContain(NO_CIRCUIT);
+    expect((caught as Error).message).toContain('maintenance authority');
+  });
+
+  it.each([
+    [
+      'network-version-read-failed',
+      { queryLatestProtocolVersion: vi.fn().mockRejectedValue(new Error('indexer unreachable')) },
+      maintenanceOperation(NO_CIRCUIT)
+    ],
+    ['network-version-went-backwards', headSource(PRE_FORK_PROTOCOL_VERSION), maintenanceOperation(NO_CIRCUIT, 'v9')]
+  ])('calls a MAINTENANCE update by its name when the rejection cannot be diagnosed (%s)', async (_reason, pdp, operation) => {
+    // Act
+    const caught = await handleSubmitRejection(pdp, operation, wrappedRejection()).catch(
+      (error: unknown) => error
+    );
+
+    // Assert
+    expect(caught).toBeInstanceOf(SubmitRejectionUndiagnosedError);
+    expect((caught as Error).message).toMatch(/^This maintenance update was built/);
+    expect((caught as Error).message).not.toContain(NO_CIRCUIT);
+    expect((caught as Error).message).not.toMatch(/\bcall\b/);
   });
 
   it('RE-THROWS the rejection unchanged when a fresh read reports the same era', async () => {
@@ -338,11 +404,11 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
   });
 
   it("keeps this framework's own coded refusals unwrapped, and makes no head read for one", async () => {
-    // A provider that does not serve the pre-fork variant refuses on the way IN.
+    // A provider that does not serve the pre-fork era refuses on the way IN.
     // That is not fork evidence, a caller narrowing on it must keep seeing it,
     // and asking the network about it would be a round trip for nothing.
     const pdp = headSource(POST_FORK_PROTOCOL_VERSION);
-    const refusal = new Ledger8PayloadUnsupportedError('submitTx', PRE_FORK_PROTOCOL_VERSION);
+    const refusal = new ProviderEraUnsupportedError('submitTx', 'v8', ['v9']);
 
     await expect(handleSubmitRejection(pdp, callOperation(), refusal)).rejects.toBe(refusal);
     expect(pdp.queryLatestProtocolVersion).not.toHaveBeenCalled();
@@ -383,13 +449,13 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     // And the proximate failure is on `cause` too, so a consumer that only
     // walks cause chains still learns why no diagnosis was made.
     expect((caught as { readonly cause?: unknown }).cause).toBe(transportFailure);
-    expect((caught as Error).message).toContain('could not be re-read');
-    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('head-read-failed');
+    expect((caught as Error).message).toContain('could not be read again');
+    expect((caught as SubmitRejectionUndiagnosedError).reason).toBe('network-version-read-failed');
   });
 
   it('keeps the AggregateError shape after leaving AggregateError', async () => {
-    const headReadFailure = new Error('indexer unreachable');
-    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(headReadFailure) };
+    const networkVersionReadFailure = new Error('indexer unreachable');
+    const pdp = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(networkVersionReadFailure) };
     const rejection = wrappedRejection();
 
     const error = await handleSubmitRejection(pdp, callOperation(), rejection).catch((e: unknown) => e);
@@ -397,8 +463,8 @@ describe('handleSubmitRejection (the fork-crossing decision, exercised directly)
     expect(error).toBeInstanceOf(SubmitRejectionUndiagnosedError);
     expect(error).not.toBeInstanceOf(AggregateError);
     if (!(error instanceof SubmitRejectionUndiagnosedError)) throw error;
-    expect(error.errors).toEqual([rejection, headReadFailure]);
-    expect(error.cause).toBe(headReadFailure);
+    expect(error.errors).toEqual([rejection, networkVersionReadFailure]);
+    expect(error.cause).toBe(networkVersionReadFailure);
     expect([error.code, error.category]).toEqual(['MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED', 'UNCERTAIN']);
   });
 
@@ -474,20 +540,22 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     const seen: SeenPayloads = {};
 
     providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, PRE_FORK_PROTOCOL_VERSION));
     providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
-    providers.proofProvider.proveTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.proofProvider.proveTx = vi.fn().mockImplementation(async (tx: UnprovenTx) => {
       seen.proveTx = tx;
-      return Promise.resolve(tx);
+      seen.proven = await unboundLike(tx);
+      return seen.proven;
     });
-    providers.walletProvider.balanceTx = vi.fn().mockImplementation((tx: VersionedTransaction<unknown>) => {
+    providers.walletProvider.balanceTx = vi.fn().mockImplementation(async (tx: UnboundTx) => {
       seen.balanceTx = tx;
-      return Promise.resolve(tx);
+      seen.balanced = await finalizedLike(tx);
+      return seen.balanced;
     });
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       seen.submitTx = tx;
       return Promise.resolve('retained-era-tx-id');
     });
@@ -523,13 +591,13 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect((caught as StaleHeadError).startEra).toBe('v8');
-    expect((caught as StaleHeadError).freshEra).toBe('v9');
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((caught as ForkCrossedDuringOperationError).startEra).toBe('v8');
+    expect((caught as ForkCrossedDuringOperationError).freshEra).toBe('v9');
     // The identifiers come from the operation the ENTRY POINT actually ran,
     // which is what proves they are threaded rather than defaulted.
-    expect((caught as StaleHeadError).circuitId).toBe(CIRCUIT_ID);
-    expect((caught as StaleHeadError).contractAddress).toBe(recording.contractAddress);
+    expect((caught as ForkCrossedDuringOperationError).circuitId).toBe(CIRCUIT_ID);
+    expect((caught as ForkCrossedDuringOperationError).contractAddress).toBe(recording.contractAddress);
     expect((caught as Error).message).toContain(recording.contractAddress);
     expect((caught as Error).message).toMatch(/did not.*finalize|not finalize/);
     expect((caught as Error).message).toMatch(/re-run/);
@@ -537,7 +605,8 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
     // The transaction really did reach `submitTx` -- this is a submit-time
     // failure, not a refusal before anything was composed.
-    expect(providers.seen.submitTx?.version).toBe('v8');
+    expect(providers.seen.proveTx?.era).toBe('v8');
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 
   it('SANITIZES the rejection it carries: no transaction or witness material survives onto the error', async () => {
@@ -564,7 +633,7 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
+    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
     // SERIALIZED the way a logger would serialize it -- own properties, cause
     // chain and all -- and then checked for the fixture bytes. This assertion
     // is what keeps the sanitization true across the extra wrapping layer the
@@ -585,27 +654,27 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
       .mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+    providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]);
 
     let caught: unknown;
     try {
-      await runLedger8Deploy(providers, {
-        contract,
-        args: [],
-        privateState: {},
-        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-      });
+      await submitLedger8DeployTx(providers, { compiledContract: contract });
     } catch (error) {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(StaleHeadError);
-    expect((caught as StaleHeadError).kind).toBe('deploy');
-    expect((caught as Error).message).toContain('runtime-deploy chapter');
-    expect((caught as Error).message).not.toMatch(/re-run/);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    const forkCrossed = (caught as Ledger8UnconfirmedError).cause;
+    expect(forkCrossed).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((forkCrossed as ForkCrossedDuringOperationError).kind).toBe('deploy');
+    expect((forkCrossed as Error).message).toContain('runtime-deploy chapter');
+    expect((forkCrossed as Error).message).not.toMatch(/re-run/);
     // The address the composition MINTED, read off the deploy record rather
     // than off anything the caller supplied -- a deploy supplies none.
-    expect((caught as StaleHeadError).contractAddress.length).toBeGreaterThan(0);
-    expect((caught as Error).message).toContain((caught as StaleHeadError).contractAddress);
+    const { contractAddress } = forkCrossed as ForkCrossedDuringOperationError;
+    expect(contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect((forkCrossed as Error).message).toContain(`'${String(contractAddress)}'`);
+    expect((caught as Ledger8UnconfirmedError).contractAddress).toBe(contractAddress);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {
@@ -624,30 +693,30 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       new Error('node refused the transaction')
     );
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(StaleHeadError);
+    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(ForkCrossedDuringOperationError);
     // The transaction the pre-fork attempt built was composed by the RETAINED
     // ledger, which is what makes the second attempt a different composition
     // rather than a retry of the same bytes.
-    const preForkPayload = providers.seen.submitTx;
-    expect(preForkPayload?.version).toBe('v8');
-    const preForkBytes = preForkPayload?.version === 'v8' ? preForkPayload.txBytes : undefined;
-    expect(txTagPrefix(preForkBytes!, LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
+    const preForkComposed = providers.seen.proveTx;
+    assert(preForkComposed !== undefined);
+    expect(preForkComposed.era).toBe('v8');
+    expect(txTagPrefix(preForkComposed.serialize(), LEDGER8_TX_TAG)).toBe(LEDGER8_TX_TAG);
 
     // THE RE-RUN. Nothing has called this contract since the fork, and an indexer older than
     // 4.4.0-rc.6 serves such a contract untranslated (midnight-indexer #1605) -- so `raw` is still
     // the very same retained-era envelope, which is precisely what sends the re-run down the
     // keep-state path.
     //
-    // What does move is the BLOCK the read is dated by. `queryRawContractState` answers as of the
+    // What does move is the BLOCK the read is dated by. `queryContractState` answers as of the
     // chain tip, so once the head has crossed, the record it returns carries a post-fork
     // `protocolVersion` and that block's post-fork ledger parameters. Re-dating it here rather than
     // re-serving the pre-fork record is not a convenience: a record dated before the fork, served
     // after it, is a shape no chain produces, and keeping it would have this test assert against
     // parameters the current-era composer cannot read. Nothing in the caller's code changes.
-    providers.publicDataProvider.queryRawContractState = vi
+    providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(v6Envelope, POST_FORK_PROTOCOL_VERSION));
-    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: VersionedFinalizedTransaction) => {
+    providers.midnightProvider.submitTx = vi.fn().mockImplementation((tx: FinalizedTx) => {
       providers.seen.submitTx = tx;
       return Promise.resolve('keep-state-tx-id');
     });
@@ -657,9 +726,9 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect(finalized.circuitId).toBe(CIRCUIT_ID);
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     // The keep-state path: an ORDINARY current-era transaction carrying a
-    // retained-era call, so it is passed to the providers as a live handle rather than
-    // as retained-era bytes.
-    expect(providers.seen.submitTx?.version).toBe('v9');
-    expect(providers.seen.submitTx).not.toHaveProperty('txBytes');
+    // retained-era call, so it is passed to the providers as a v9 handle.
+    expect(providers.seen.proveTx?.era).toBe('v9');
+    expect(providers.seen.balanceTx).toBe(providers.seen.proven);
+    expect(providers.seen.submitTx).toBe(providers.seen.balanced);
   });
 });

@@ -15,7 +15,7 @@
 
 import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables } from '@apollo/client/core';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractEvent, PositionedRecord, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
 
@@ -65,9 +65,8 @@ export type FeedRecord<T> = PositionedRecord<T> & Identified;
 /**
  * Turns one served contract action into a stream element.
  *
- * The single point of variation between the decoded and the raw contract-state
- * stream: {@link blockOffsetToState$} is written once and bound twice by the
- * provider.
+ * Kept apart from {@link blockOffsetToState$} so the feed can be tested with a
+ * mapper of the test's own.
  *
  * @param hexState The action's serialized state, in the indexer's hex encoding.
  * @param protocolVersion The protocol version of the block the state is dated by

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -9,9 +9,11 @@
 ## Classes
 
 - [DeserializationError](classes/DeserializationError.md)
+- [Ledger8ValueUnsupportedError](classes/Ledger8ValueUnsupportedError.md)
 - [PasswordValidationError](classes/PasswordValidationError.md)
 - [TagParseError](classes/TagParseError.md)
 - [UnhandledUnionMemberError](classes/UnhandledUnionMemberError.md)
+- [UnrecognisedEraTagError](classes/UnrecognisedEraTagError.md)
 - [ZkArtifactContractInfoError](classes/ZkArtifactContractInfoError.md)
 - [ZkArtifactIntegrityError](classes/ZkArtifactIntegrityError.md)
 
@@ -32,6 +34,7 @@
 - [Classification](type-aliases/Classification.md)
 - [ContractsErrorCode](type-aliases/ContractsErrorCode.md)
 - [Direction](type-aliases/Direction.md)
+- [Ledger9Variant](type-aliases/Ledger9Variant.md)
 - [MidnightJsErrorCategory](type-aliases/MidnightJsErrorCategory.md)
 - [MidnightJsErrorCode](type-aliases/MidnightJsErrorCode.md)
 - [ParsedHexString](type-aliases/ParsedHexString.md)
@@ -76,7 +79,6 @@
 - [assertValidMidnightConfig](functions/assertValidMidnightConfig.md)
 - [classify](functions/classify.md)
 - [computeSha256Hex](functions/computeSha256Hex.md)
-- [contractStateEnvelopeVersion](functions/contractStateEnvelopeVersion.md)
 - [createMidnightProviders](functions/createMidnightProviders.md)
 - [decodeLedgerStateValue](functions/decodeLedgerStateValue.md)
 - [deserializeCompactContractState](functions/deserializeCompactContractState.md)
@@ -93,13 +95,15 @@
 - [isHex](functions/isHex.md)
 - [isMidnightJsError](functions/isMidnightJsError.md)
 - [isValidSigningKey](functions/isValidSigningKey.md)
-- [ledgerParametersEnvelopeVersion](functions/ledgerParametersEnvelopeVersion.md)
+- [ledgerVersionOfContractState](functions/ledgerVersionOfContractState.md)
+- [ledgerVersionOfLedgerParameters](functions/ledgerVersionOfLedgerParameters.md)
 - [parseCoinPublicKeyToHex](functions/parseCoinPublicKeyToHex.md)
 - [parseEncPublicKeyToHex](functions/parseEncPublicKeyToHex.md)
 - [parseHex](functions/parseHex.md)
 - [parseSerializedTag](functions/parseSerializedTag.md)
 - [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
 - [parseZkArtifactRuntimeVersion](functions/parseZkArtifactRuntimeVersion.md)
+- [requireLedger9](functions/requireLedger9.md)
 - [toHex](functions/toHex.md)
 - [ttlOneHour](functions/ttlOneHour.md)
 - [validatePassword](functions/validatePassword.md)

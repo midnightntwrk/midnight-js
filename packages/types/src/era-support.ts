@@ -63,9 +63,9 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
  * CALL THIS AT THE START OF AN OPERATION. The placement is the point: proving is
  * the expensive step and it is the first of the three transaction methods.
  *
- * It does not make the providers safe by itself. A declaration is a claim, so each
- * provider still narrows its own payload and still reports
- * `Ledger8PayloadUnsupportedError` when a declaration turns out to be wrong.
+ * It does not make the providers safe by itself. A declaration is a claim, so a
+ * provider built from per-era handlers still refuses an era it has no handler
+ * for when the handle arrives, before doing any work.
  *
  * Generic in the era, so a further ledger era needs no change here.
  *
@@ -73,8 +73,7 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
  * @param providers The three providers the transaction will pass through.
  * @throws ProviderEraUnsupportedError naming the first method, in pipeline order,
  *         that does not declare `era`.
- * @see {@link ProviderEraDeclarations} for why the declaration is not trusted, and
- * why this refusal stays distinct from `Ledger8PayloadUnsupportedError`.
+ * @see {@link ProviderEraDeclarations} for why the declaration is not trusted.
  */
 export const assertProvidersSupportEra = (era: LedgerVersion, providers: TransactionProviders): void => {
   for (const [key, methodName] of PROVIDERS_IN_PIPELINE_ORDER) {

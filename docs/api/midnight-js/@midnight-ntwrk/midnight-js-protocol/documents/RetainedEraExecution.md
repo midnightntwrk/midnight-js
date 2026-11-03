@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -27,7 +27,7 @@ ran against — is gone. Why, and what the move cost, is in
 `docs/adr/0015-retained-era-execution-on-compact-js.md`.
 
 The error classes named here are described in [FailClosedDecoding](FailClosedDecoding.md), which owns
-the division of labour between `DownConvertFailedError`,
+the division of labour between `StateConversionFailedError`,
 `StateDecodeFailedError`, `StateInconsistentError` and
 `Ledger8RuntimeInvalidError`; the refusal ordering
 on the composition legs is in [ComposeRefusalOrder](ComposeRefusalOrder.md).
@@ -42,17 +42,17 @@ before it builds anything:
 1. **The balance**, by `isContractBalance`, described below.
 2. **The primary state**, by `decodeExecutableStateValue`: decode through the
    retained runtime's `StateValue.decode`, re-encode the result, and refuse a
-   value that did not come back as `DownConvertFailedError` at stage
-   `'state down-convert'`.
+   value that did not come back as `StateConversionFailedError` at stage
+   `'state conversion'`.
 
 That second check catches loss at every depth — a shortened array, a dropped
 map entry, a changed cell, a substituted subtree — rather than only a wholesale
 collapse to `null`. It costs one extra encode plus a deep comparison per call,
-and that is deliberate: the alternative is a seam that can hand a circuit
+and that is deliberate: the alternative is an execution path that can hand a circuit
 silently wrong data.
 
-It is CROSS-CODEC in production, which is the point. A contract an earlier
-post-fork call migrated carries a current-era envelope while still executing on
+It is CROSS-CODEC in production, which is the point. A contract the fork
+translated carries a current-era envelope while still executing on
 the retained toolchain, so `readLedger8Snapshot`
 (`packages/contracts/src/internal/ledger8-pipeline.ts`) reads it with the HEAD
 era's reader — the state is then encoded by ledger-v9 and decoded here by the
@@ -62,7 +62,7 @@ way a shape one side writes and the other merely tolerates would decode without
 complaint.
 
 It is also reachable with the REAL decoder, not only an injected one — which
-matters, because the seam takes a bare `EncodedStateValue` a caller can
+matters, because execution takes a bare `EncodedStateValue` a caller can
 assemble by hand. Measured against the pinned runtime: a map whose entries are
 in non-canonical order decodes and re-encodes canonicalised, and a value
 carrying a member the decoder does not declare loses it. Both are refused.
@@ -95,7 +95,7 @@ took.
 
 The refusal is a runtime one, not only a type. `tsc` reaches neither a
 JavaScript caller nor an options object assembled dynamically, and both
-`RunRetainedCircuitOptions` and `ContractStatePojo` are on the published
+`Ledger8CircuitOptions` and `ContractStatePojo` are on the published
 surface. It covers more than nullish: `new Map(...)` turns an empty array, an
 empty `Set` and an empty string alike into an empty map, and a JSON round trip
 turns a `Map` into a plain object — `structuredClone` carries a `Map`,
@@ -110,7 +110,7 @@ layer in. Total, because `Map.prototype`'s members reject a foreign receiver: a
 proxied map and an object that merely inherits the prototype both make `size`
 and iteration throw, and a guard reading them plainly propagates that `TypeError`
 instead of refusing. Neither can serve as a balance — `new Map(...)` throws on
-the same receiver — so both are refused, carrying this seam's diagnosis rather
+the same receiver — so both are refused, carrying this module's diagnosis rather
 than the vendor's.
 
 ## Structural equality over the encoded algebra
@@ -148,7 +148,7 @@ The retired layer carried `assertMerkleTreesRehashed`, which walked a decoded
 `StateValue` and refused any bounded Merkle tree whose node hashes had not been
 computed. It did not come back with the round trip, and the reason is not that
 the condition became unlikely — it is that the condition cannot be expressed in
-what this seam receives.
+what execution receives.
 
 Execution takes an already-encoded `EncodedStateValue`. A tree's rehash state
 does not survive that encoding. Measured against the pinned runtime: a
@@ -160,11 +160,10 @@ The retired suite had already recorded the same fact from the other side —
 "a real `encode()`/`decode()` round trip materializes tree hashes, so the only
 way a never-rehashed tree can reach the walk is an injected decode" — and every
 negative test it had for the walk drove it through a fake decoder. The current
-seam has no injection point, so a guard here would be one that cannot fire.
+execution path has no injection point, so a guard here would be one that cannot fire.
 
-`MerkleNotRehashedError` stays on the published surface with its code, rather
-than disappearing from a consumer's error taxonomy as a side effect of an
-internal refactor. Its docstring records that nothing raises it.
+The error the walk raised, `MerkleNotRehashedError`, was removed before 5.0.0
+together with its code, because nothing could raise it.
 
 ## What the round trip does not cover
 
@@ -173,8 +172,8 @@ tree encodes as its height and leaves, never its node hashes, so a tree whose
 internal hashes were re-materialized differently across the fork boundary still
 re-encodes byte-identically here — which is the same vendor property the
 section above rests on, read from the other direction. Comparing roots across
-the boundary needs the source-side tree, which this seam never sees; it belongs
-at the envelope seam.
+the boundary needs the source-side tree, which execution never sees; it belongs
+at the envelope.
 
 ## The era pin
 
@@ -201,16 +200,16 @@ in [DualInstantiationGuard](DualInstantiationGuard.md).
 
 ## Circuit dispatch
 
-`runRetainedCircuit` runs one circuit by asking compact-js's
+`runLedger8Circuit` runs one circuit by asking compact-js's
 `ContractExecutable` for it, by branded `ProvableCircuitId`. compact-js indexes
 `provableCircuits`, so that — not `impureCircuits` — is the map
-`RetainedContract` declares and the one a caller's artifact is read through.
+`Ledger8EngineContract` declares and the one a caller's artifact is read through.
 
 A caller still passes the CONSTRUCTED artifact the previous toolchain
 generates, which is not compact-js's `CompiledContract`: that container is a
 recipe, a class plus witnesses instantiated fresh per operation, while this
 era's callers hold an instance whose witnesses are already bound. `containerFor`
-adapts one to the other at this seam, in one place, so the adaptation does not
+adapts one to the other here, in one place, so the adaptation does not
 land on every consumer — and it is the single type assertion the module needs.
 
 The retained era has no cross-contract call, so its execution adapter
@@ -269,7 +268,7 @@ and the node rejects that as unbalanced on submission.
 
 ## Constructor execution
 
-`runRetainedConstructor` runs a retained contract's constructor through the
+`runLedger8Constructor` runs a retained contract's constructor through the
 same `ContractExecutable`, as `initialize`.
 
 It FAILS EARLIER AND HARDER than the leg it replaced. `initialize` registers a
@@ -287,10 +286,71 @@ at position 0` — and the refusal never renders the key itself, which on the
 sampled path is the only copy in existence.
 
 `contractState` on the result is a retained-era HANDLE, so it does not go
-straight into a deploy: both `composeV8DeployTx` and the era facade's
+straight into a deploy: both `composeLedger8DeployTx` and the era facade's
 `composeDeployTx` take the state as bytes, which is what `.serialize()` on that
 handle produces. The deploy-side consequences — and why the address cannot be
 recomputed — are in [VerifierKeys](VerifierKeys.md) and [ComposeRefusalOrder](ComposeRefusalOrder.md).
+
+## Contract maintenance
+
+`composeMaintenanceTx` on the engine (`lib/v8/maintenance.ts`) composes an
+UNPROVEN v8 transaction carrying one maintenance update: insert a verifier key,
+remove one, or replace the maintenance authority. The update itself is built
+and signed by compact-js's ledger 8 `ContractExecutable` --
+`addOrReplaceContractOperation`, `removeContractOperation` and
+`replaceContractMaintenanceAuthority` -- on the same `containerFor`,
+`keysLayer` and `runOrRethrow` the circuit and constructor paths use. The
+signing key reaches compact-js as the CURRENT authority key on
+`Configuration.Keys`; the ZK configuration is the refusing reader, because none
+of the three operations reads a key. This module adds only what compact-js
+does not do, and wraps compact-js's `maintenanceUpdate` into an intent and a
+transaction.
+
+It reads the contract's FULL state from the bytes the chain holds, as the
+ledger 8 runtime's `ContractState` compact-js takes, never from a
+`ContractStatePojo`. The decoded POJO carries no maintenance authority, and
+compact-js builds the update against the authority's counter; a default
+authority rebuilt in its place carries neither the real counter nor the real
+committee, and the ledger refuses the update only at submission, after a proof
+has been paid for.
+
+compact-js signs every update once, at committee index 0. Before anything is
+signed, this module checks that the authority can accept that: it has a
+committee, its threshold is one signature, and the signing key's verifying key
+IS the committee's first member. It refuses otherwise with
+`MaintenanceAuthorityMismatchError`, whose `reason` names which check failed
+(`'empty-committee'`, `'threshold-above-one'`, `'not-first-member'`). A
+threshold above one would otherwise compose and prove an update the ledger
+refuses at submission.
+That is the one guard against the shared signing-key slot: both eras store
+their key under the same contract address, so the key a caller holds for an
+address may be one the other era stored. Requiring index 0 rather than any
+member costs nothing for contracts this framework deploys -- every deploy and
+every replacement builds a one-key committee -- and a key at another index
+would only produce a signature the ledger refuses. The refusal names the
+address and renders no key, signing or verifying.
+
+Malformed `signingKey` and `newSigningKey` values are `ComposeOptionError`s,
+for the reason the constructor's is: compact-js's own refusal names neither the
+option nor the era. So is a `signingKey` of the right form that is not a
+Schnorr scalar the ledger 8 runtime can read. Unreadable state bytes are
+`ComposeOptionError` naming `'contractStateBytes'`.
+
+Everything refused after that is `ComposeFailedError` at stage
+`'maintenance-update'`, with the refusing library's own failure on `cause`:
+platform-js refusing the contract address, compact-js refusing one of the steps
+it keeps apart (building the update, creating it with the address and counter,
+reading the data to sign, signing, attaching the signature), or the ledger
+refusing the signed update when it is wrapped into the transaction. compact-js
+keeps those steps apart so that a second installed copy of the ledger package
+is not misread as a bad key, and the `cause` keeps that distinction. One
+exception: a failure that already carries a coded midnight-js error on its
+`cause` chain -- the refusing verifier-key reader's `InvariantViolationError`,
+say -- is rethrown as that error, not wrapped, so an internal invariant breach
+is never reported as a caller's refusal.
+
+Whether the targeted verifier-key slot is occupied is the caller's decision,
+made against the same state, and is not checked here.
 
 ## Binding the result back onto v9
 
@@ -333,8 +393,9 @@ place for the values to disagree.
 
 `zkConfigurationLayer` adapts a plain `VerifierKeyReader` into the service
 `initialize` reads keys through, so no Effect type reaches a caller. A circuit
-call substitutes `refuseVerifierKeyRead`, which refuses by name: a call reuses
-the key already registered on-chain and has no business reading one.
+call and a maintenance update substitute `refuseVerifierKeyRead`, which refuses
+by name: a call reuses the key already registered on-chain, and a maintenance
+update is handed the key it inserts, so neither has any business reading one.
 
 The clock is pinned with `Effect.withClock`, NOT with a `Layer` over
 `Clock.Clock`. The clock is one of Effect's DEFAULT services — it lives on the

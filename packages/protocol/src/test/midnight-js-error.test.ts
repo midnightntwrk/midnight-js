@@ -22,23 +22,21 @@ import {
   ComposeOptionError,
   ConfigurationError,
   ContractExecutionError,
-  DownConvertFailedError,
   EnvironmentUnsupportedError,
   InvalidArgumentError,
   InvariantViolationError,
-  Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
-  MerkleNotRehashedError,
+  MaintenanceAuthorityMismatchError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError,
   PayloadNotATransactionError,
   PROTOCOL_ERROR_CATEGORIES,
   PROTOCOL_ERROR_CODES,
+  StateConversionFailedError,
   StateDecodeFailedError,
   StateInconsistentError,
   TRANSACTION_TAG_PREFIX,
-  UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
@@ -105,18 +103,16 @@ describe('protocol error classes', () => {
     ['InvariantViolationError', new InvariantViolationError('x')],
     ['UnknownProtocolVersionError', new UnknownProtocolVersionError(99, 'read', 'unknown')],
     ['Ledger8RuntimeMissingError', new Ledger8RuntimeMissingError('/v8', underlying)],
-    ['Ledger8InstanceMismatchError', new Ledger8InstanceMismatchError('onchain-runtime-v3')],
-    ['DownConvertFailedError', new DownConvertFailedError('state down-convert', underlying)],
-    ['MerkleNotRehashedError', new MerkleNotRehashedError(underlying)],
+    ['StateConversionFailedError', new StateConversionFailedError('state conversion', underlying)],
     ['ComposeFailedError', new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', underlying)],
     ['ComposeOptionError', new ComposeOptionError('v8', 'networkId', underlying)],
     ['StateDecodeFailedError', new StateDecodeFailedError('v8', underlying)],
     ['StateInconsistentError', new StateInconsistentError('v8', underlying)],
     ['Ledger8RuntimeInvalidError', new Ledger8RuntimeInvalidError('ledger')],
-    ['UnknownLedger8AxisError', new UnknownLedger8AxisError('x')],
     ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
     ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
-    ['ContractExecutionError', new ContractExecutionError('x')]
+    ['ContractExecutionError', new ContractExecutionError('x')],
+    ['MaintenanceAuthorityMismatchError', new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member')]
   ];
 
   it('every exported error class extends MidnightJsError', () => {
@@ -152,9 +148,9 @@ describe('protocol error classes', () => {
 
     // Assert
     expect(error.message).toEqual(
-      `Refusing to prove a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
+      `Refusing to read a 5-byte payload that does not begin with the '${TRANSACTION_TAG_PREFIX}' tag of a serialized ` +
         'ledger transaction. Pass the bytes of a transaction produced by a sanctioned composition function; a contract ' +
-        'state, a Zswap offer or a proof preimage is not a transaction and cannot be proved.'
+        'state, a Zswap offer or a proof preimage is not a transaction.'
     );
   });
 
@@ -176,7 +172,8 @@ describe('protocol error classes', () => {
 
   it.each([
     [new ContractExecutionError('circuit failed', { cause: new Error('assert') }), 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED', 'REJECTED'],
-    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY']
+    [new StateInconsistentError('v8', new Error('no operation')), 'MIDNIGHT_JS_P_STATE_INCONSISTENT', 'INTEGRITY'],
+    [new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member'), 'MIDNIGHT_JS_P_MAINTENANCE_AUTHORITY_MISMATCH', 'USAGE']
   ] as const)('new protocol class %# carries code and category', (error, code, category) => {
     expect([error.code, error.category, error.message.length > 0]).toEqual([code, category, true]);
   });

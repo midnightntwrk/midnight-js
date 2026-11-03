@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -39,7 +39,7 @@ failed call, why no code of its own is registered, and why the key is never rend
 
 ##### txData
 
-[`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 The record the read surface reported.
 
@@ -51,7 +51,7 @@ The address this deployment composed.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key the deployment's maintenance authority was built
 from — sampled when the caller named none, and then this is its only copy.
@@ -106,7 +106,7 @@ The address this deployment composed.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key the deployment's maintenance authority was built
 from — sampled when the caller named none, and then this is its only copy.
@@ -115,7 +115,7 @@ from — sampled when the caller named none, and then this is its only copy.
 
 ### txData
 
-> `readonly` **txData**: [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **txData**: [`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
 The record the read surface reported.
 
@@ -125,20 +125,21 @@ The record the read surface reported.
 
 #### Get Signature
 
-> **get** **record**(): [`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> **get** **record**(): [`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either arm on this class.
+See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 
-[`VersionedFinalizedTxData`](../../../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.
 
 #### Overrides
 

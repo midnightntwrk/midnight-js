@@ -328,3 +328,42 @@ Only the record moves. The rest of the note above stands: the retained handle ke
 `signingKey`, `initialPrivateState`, `initialZswapState` and the initial contract state at the
 top level, because a found handle's `deployTxData` still has no private half.
 
+## Amendment — the deployer's data moves under `deployTxData` (2026-10-16)
+
+Issue #1514. This supersedes "The layout stays as it is" above and the last paragraph of the
+#1508 amendment. Both rested on one fact: a found handle's `deployTxData` had no private half to
+nest a key in. It now has one. `Ledger8FoundContract.deployTxData` is
+`{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey,
+initialPrivateState } }`, where `initialPrivateState` is `undefined` for an attach that named no
+private-state id, and `Ledger8DeployedContract.deployTxData` adds `initialContractState`
+and `initialContractStateBytes` to `public` and `initialZswapState` to `private`. The top-level
+members are removed.
+
+`deployTxData` therefore has the same shape on every found or deployed handle in both eras, so
+`deployTxData.private.signingKey` reads without branching on `era`. The retained key is published
+as the current era's `SigningKey`, `{ tag: 'schnorr', value }`, which is the shape the store
+already holds it in; the bare hex string the retained runtime signs with stays off the `contracts`
+surface. A deployed handle's record is typed as the ledger 8 one, because a retained-era deploy runs
+only on a pre-fork head.
+
+The handle-and-bytes rule above is unchanged: `initialContractState` and
+`initialContractStateBytes` both stay, now under `deployTxData.public`.
+
+## Amendment — the retained call result carries a transaction handle (2026-10-26)
+
+Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
+`Ledger8CallResultPrivate` no longer publishes the composed transaction as bytes. It carries
+`unprovenTx: UnprovenTx`, a transaction handle: a v8 handle before the fork, a v9 handle after it.
+Every package from `types` up now speaks transaction handles in its public API. The rule for
+`LedgerEra` is unchanged: it still returns plain data, including the composed transaction's bytes.
+
+## Amendment — the read surface hands out no state handle (2026-10-28)
+
+Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+`getAnyEraContractState` and `AnyEraContractState` are removed, and with them the plain-data read
+of a contract state from `contracts`. `PublicDataProvider` now returns every state as a
+`LedgerState` of bytes, decoded by the caller's own runtime. The note above on the `Uint8Array`
+members of `RawContractState` no longer applies: that type is removed. The internal
+`Ledger8SnapshotBytes` in `contracts` reuses the member names `raw` and `ledgerParameters`; it is
+not public, so this ADR's naming rule does not bind it. The rules for the retained-era result types
+and for `LedgerEra` are unchanged.

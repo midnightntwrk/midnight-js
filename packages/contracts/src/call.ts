@@ -13,28 +13,27 @@
  * limitations under the License.
  */
 
-import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import {
+  type EncodedStateValue,
+  type EncPublicKey,
+  type LedgerParameters,
+  type ZswapChainState
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
   type LogEvent,
   type StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type EncodedStateValue,
-  type EncPublicKey,
-  type LedgerParameters,
-  type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { CurrentLedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Describes the target of a circuit invocation.
  */
-export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
+export interface Ledger9CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
   /**
    * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
    * keys for coins created during circuit execution.
@@ -60,10 +59,10 @@ export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.Pr
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+export type Ledger9CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   Contract.CircuitParameters<C, PCK> extends []
-    ? CallOptionsBase<C, PCK>
-    : CallOptionsBase<C, PCK> & {
+    ? Ledger9CallOptionsBase<C, PCK>
+    : Ledger9CallOptionsBase<C, PCK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
@@ -73,7 +72,7 @@ export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contrac
 /**
  * Data retrieved via providers that should be included in the call options.
  */
-export interface CallOptionsProviderDataDependencies {
+export interface Ledger9CallOptionsProviderDataDependencies {
   /**
    * The Zswap public key of the current user.
    */
@@ -99,18 +98,18 @@ export interface CallOptionsProviderDataDependencies {
 /**
  * Call options with circuit arguments and data
  */
-export type CallOptionsWithProviderDataDependencies<
+export type Ledger9CallOptionsWithProviderDataDependencies<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> = CallOptionsWithArguments<C, PCK> & CallOptionsProviderDataDependencies;
+> = Ledger9CallOptionsWithArguments<C, PCK> & Ledger9CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
-export type CallOptionsWithPrivateState<
+export type Ledger9CallOptionsWithPrivateState<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> = CallOptionsWithProviderDataDependencies<C, PCK> & {
+> = Ledger9CallOptionsWithProviderDataDependencies<C, PCK> & {
   /**
    * The private state to run the circuit against.
    */
@@ -120,9 +119,9 @@ export type CallOptionsWithPrivateState<
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
-  | CallOptionsWithProviderDataDependencies<C, PCK>
-  | CallOptionsWithPrivateState<C, PCK>;
+export type Ledger9CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  | Ledger9CallOptionsWithProviderDataDependencies<C, PCK>
+  | Ledger9CallOptionsWithPrivateState<C, PCK>;
 
 /**
  * The private (sensitive) portions of the call result.
@@ -139,13 +138,13 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
  * the JS `result` value alone), extract that field explicitly rather than
  * passing the whole object across a trust boundary.
  */
-export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+export type Ledger9CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   CallResultPrivateBase<Contract.CircuitReturnType<C, PCK>, Contract.PrivateState<C>>;
 
 /**
  * The public portions of the call result.
  */
-export interface CallResultPublic extends CallResultPublicBase {
+export interface Ledger9CallResultPublic extends CallResultPublicBase {
   /**
    * The public state resulting from executing the circuit.
    */
@@ -162,7 +161,7 @@ export interface CallResultPublic extends CallResultPublicBase {
    *
    * Derived from the handle rather than fetched again, so the two cannot
    * describe different states. It costs one encode per call; read
-   * {@link CallResultPublic.nextContractState} instead when the value never
+   * {@link Ledger9CallResultPublic.nextContractState} instead when the value never
    * leaves the process that produced it.
    *
    * @see ADR-0010 for the decision to publish the handle AND the bytes.
@@ -170,12 +169,12 @@ export interface CallResultPublic extends CallResultPublicBase {
   readonly nextContractStateEncoded: EncodedStateValue;
   /**
    * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-   * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single
+   * executor result and typed by `compact-runtime`'s `LogEvent`, published here as `Ledger9LogEvent`. This is the single
    * execution-wide list across the whole call tree (not just the root call), in emission order; each
    * event is tagged with its emitting contract's address, so a per-contract view is a filter over
    * that address.
    *
-   * Events are carried **raw** — decode on demand with `ContractLog.decodeAll` (re-exported from
+   * Events are carried **raw** — decode on demand with `Ledger9ContractLog.decodeAll` (re-exported from
    * this package). The decoder degrades gracefully and never throws, but it is `@experimental`: a
    * successful decode can still yield a silently-wrong payload, so treat decoded values with care.
    * Empty when the circuit emits no logs.
@@ -188,25 +187,25 @@ export interface CallResultPublic extends CallResultPublicBase {
  *
  * @remarks
  * **Privacy-sensitive type.** The `private` field is a
- * {@link CallResultPrivate} carrying ZK-confidential data. Treat the whole
+ * {@link Ledger9CallResultPrivate} carrying ZK-confidential data. Treat the whole
  * object as confidential when logging, serializing, or transmitting — read
  * only the `public` field or destructure specific non-sensitive fields rather
  * than spreading or stringifying the whole object.
  */
-export interface CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
+export interface Ledger9CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    *
    * @remarks Describes the **root** contract call (the circuit that was invoked). It is the
    * application-facing view; equivalent to the last entry of {@link calls}.
    */
-  readonly public: CallResultPublic;
+  readonly public: Ledger9CallResultPublic;
   /**
    * The private/sensitive data produced by the circuit execution.
    *
    * @remarks Describes the **root** contract call. Equivalent to the last entry of {@link calls}.
    */
-  readonly private: CallResultPrivate<C, PCK>;
+  readonly private: Ledger9CallResultPrivate<C, PCK>;
   /**
    * Proof data for every contract call made while executing the circuit, in execution-trace order:
    * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
@@ -218,11 +217,11 @@ export interface CallResult<C extends Contract.Any, PCK extends Contract.Provabl
    */
   readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
   /**
-   * The pipeline that produced this result: always the current era here.
+   * The pipeline that produced this result: always ledger 9 here.
    *
    * Read off the compiled artifact, NEVER off a transaction record — the two
    * facts disagree after the fork, and only this one says which module the
    * objects in this result came from.
    */
-  readonly era: CurrentLedgerVersion;
+  readonly era: 'v9';
 }

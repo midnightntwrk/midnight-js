@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -24,6 +24,14 @@ is no valid era to name.
 The offending value that was passed. Carried for
   programmatic use only; it is deliberately kept out of the message.
 
+## Param
+
+**context**
+
+The call that read the version off a value it was handed,
+  for example the provider method that returned a record. Named in the
+  message, so a caller can tell which provider produced the value.
+
 ## See
 
  - SharedTableDiscipline
@@ -37,11 +45,15 @@ The offending value that was passed. Carried for
 
 ### Constructor
 
-> **new UnknownLedgerVersionError**(`requestedVersion`): `UnknownLedgerVersionError`
+> **new UnknownLedgerVersionError**(`requestedVersion`, `context?`): `UnknownLedgerVersionError`
 
 #### Parameters
 
 ##### requestedVersion
+
+`string`
+
+##### context?
 
 `string`
 
@@ -72,6 +84,12 @@ The offending value that was passed. Carried for
 #### Overrides
 
 [`MidnightJsError`](MidnightJsError.md).[`code`](MidnightJsError.md#code)
+
+***
+
+### context?
+
+> `readonly` `optional` **context?**: `string`
 
 ***
 

@@ -14,9 +14,10 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
@@ -85,7 +86,7 @@ export const getCounterLedgerState = async (
     .queryContractState(contractAddress)
     .then((contractState) => {
       if (contractState == null) return null;
-      const ledger = CompiledDoubleCounter.ledger(requireLedger9(contractState, 'getCounterLedgerState').state.data);
+      const ledger = CompiledDoubleCounter.ledger(contractState.contractState.deserialize({ v9: ContractState }).data);
       return [ledger.ticker1, ledger.ticker2];
     });
   logger.info(`Ledger state: ${state}`);
@@ -108,14 +109,14 @@ export const deploy = async (
   return counterContract;
 };
 
-export const increment1 = async (counterContract: DeployedCounterContract, value: bigint): Promise<FinalizedTxData> => {
+export const increment1 = async (counterContract: DeployedCounterContract, value: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Incrementing...');
   const finalizedTxData = await counterContract.callTx.increment1(value);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };
 
-export const increment2 = async (counterContract: DeployedCounterContract, value: bigint): Promise<FinalizedTxData> => {
+export const increment2 = async (counterContract: DeployedCounterContract, value: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Incrementing...');
   const finalizedTxData = await counterContract.callTx.increment2(value);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);

@@ -17,7 +17,7 @@ import {
   type ContractEvent,
   type ContractEventCursor,
   type ContractEventQueryFilter,
-  type FinalizedTxData
+  type Ledger9FinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 import { createLogger } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
@@ -59,8 +59,8 @@ const logger = createLogger(
  */
 describe('Contract events — provider read surface (E2E)', () => {
   let env: EventsEnvironment;
-  let lifecycleTx: FinalizedTxData;
-  let spendTx: FinalizedTxData;
+  let lifecycleTx: Ledger9FinalizedTxData;
+  let spendTx: Ledger9FinalizedTxData;
 
   const query = (filter: Omit<ContractEventQueryFilter, 'contractAddress'> = {}): Promise<ContractEvent[]> =>
     env.publicDataProvider.queryContractEvents({ contractAddress: env.contractAddress, ...filter });

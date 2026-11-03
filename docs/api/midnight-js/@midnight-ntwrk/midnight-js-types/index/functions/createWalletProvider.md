@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,24 +8,19 @@
 
 > **createWalletProvider**(`impl`): [`WalletProvider`](../interfaces/WalletProvider.md)
 
-Lifts a v9-only wallet implementation into the version-tagged
-[WalletProvider](../interfaces/WalletProvider.md) interface.
+Lifts a v9-only wallet implementation into the [WalletProvider](../interfaces/WalletProvider.md)
+interface, unwrapping each handle on the way in and sealing the answer on the
+way out.
 
-USE THIS RATHER THAN TAGGING BY HAND. It keeps the `version` tag out of
-implementation code, where a hand-tagged implementation meets a compiler error
-that does not name the real problem.
-
-The returned provider serves v9 payloads only — `supportedEras` says so — and
-that is permanent rather than a gap: it lifts a v9-only implementation. It
-rejects a v8 payload with `V8PayloadUnsupportedError` and an untagged one with
-`UntaggedPayloadError`. To serve a retained era as well, use
+The returned provider serves v9 only — `supportedEras` says so — and refuses
+a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use
 [createWalletProviderFromHandlers](createWalletProviderFromHandlers.md).
 
 ## Parameters
 
 ### impl
 
-[`V9WalletProvider`](../interfaces/V9WalletProvider.md)
+[`Ledger9WalletProvider`](../interfaces/Ledger9WalletProvider.md)
 
 The v9-only wallet implementation to wrap.
 
@@ -33,19 +28,15 @@ The v9-only wallet implementation to wrap.
 
 [`WalletProvider`](../interfaces/WalletProvider.md)
 
-A [WalletProvider](../interfaces/WalletProvider.md) that narrows inbound payloads and tags
-         outbound ones.
-
-## See
-
-[SeamEraDeclarations](../../documents/SeamEraDeclarations.md) for the compiler error this avoids, and for
-why serving v9 payloads only is permanent rather than a gap.
+A [WalletProvider](../interfaces/WalletProvider.md) serving v9.
 
 ## Example
 
 ```typescript
+// The wallet runs its own copy of the ledger, so the transaction crosses as bytes.
 const walletProvider = createWalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  balanceTx: async (tx, ttl) =>
+    deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
   getCoinPublicKey: () => wallet.coinPublicKey,
   getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });

@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+export { dappConnectorNetwork, type DAppConnectorNetworkAPI } from './dapp-connector-network';
 export { dappConnectorProofProvider } from './dapp-connector-proof-provider';
 export {
   type DAppConnectorProvingAPI,
   dappConnectorProvingProvider} from './dapp-connector-proving-provider';
+export { type DAppConnectorWalletAPI, dappConnectorWalletProviders } from './dapp-connector-wallet-providers';

@@ -13,18 +13,27 @@
  * limitations under the License.
  */
 
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9ContractProviders } from '../contract-providers';
 import { BlankVerifierKeySlotError } from '../errors';
+import { TxFailedError } from '../errors';
+import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
+import type {
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8FinalizedMaintenanceTxData
+} from '../ledger8-contract';
 import { submitLedger9Payload } from '../submit-tx';
-import { RemoveVerifierKeyTxFailedError } from './errors';
+import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
 
 /**
@@ -41,41 +50,71 @@ import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Verifier key remains on the contract (unchanged)
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
+ * - `TxFailedError` is thrown with transaction data
  * - Verifier key may be partially removed but contract state is inconsistent
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
- * @param compiledContract The compiled contract for which the maintenance authority
- *                         should be updated.
+ * @param compiledContract The contract the circuit belongs to.
  * @param contractAddress The address of the contract containing the circuit for which
  *                        the verifier key should be removed.
  * @param circuitId The circuit for which the verifier key should be removed.
  *
- * @returns A promise that resolves with the finalized transaction data, or rejects if
- *          an error occurs along the way.
+ * @returns A promise that resolves with the finalized transaction data under `public`, tagged
+ *          with the pipeline's `era`, or rejects if an error occurs along the way.
  *
- * @throws {RemoveVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
- *         The error contains the finalized transaction data for debugging.
+ * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data for debugging. Raised by both eras;
+ *         `record.era` tells which.
+ * @throws {EraMismatchError} with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
+ * @throws {Ledger8SigningKeyError} with reason `'unavailable'` When the retained-era overload finds no usable key.
+ * @throws {MaintenanceAuthorityMismatchError} When the retained-era overload holds a key that is not
+ *         the contract's maintenance authority. Raised before anything is proven.
+ * @throws {InvalidArgumentError} When the contract state, or the retained-era artifact, declares no
+ *         such circuit. Raised before anything is composed.
+ * @throws {BlankVerifierKeySlotError} When the circuit's verifier key slot holds no key. Raised before
+ *         anything is composed.
  *
  * TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
  *       automatically rotated in this function. This likely involves storing key versions
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
-  providers: ContractProviders,
+export async function submitRemoveVerifierKeyTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  circuitId: Ledger8CircuitId<C>
+): Promise<Ledger8FinalizedMaintenanceTxData>;
+export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   circuitId: Contract.ProvableCircuitId<C>
-): Promise<FinalizedTxData> => {
+): Promise<Ledger9FinalizedMaintenanceTxData>;
+export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C> | string
+): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   assertValidMidnightConfig(providers.config);
+  if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
+    return {
+      era: 'v8',
+      public: await submitLedger8MaintenanceTx(providers, {
+        contract: compiledContract,
+        contractAddress,
+        update: { kind: 'remove-verifier-key', circuitId }
+      })
+    };
+  }
   assertIsContractAddress(contractAddress);
   const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
   const operation = contractState.operation(circuitId);
@@ -99,7 +138,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   );
   const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
-    throw new RemoveVerifierKeyTxFailedError(submitTxResult);
+    throw new TxFailedError('remove-verifier-key', submitTxResult, { contractAddress, circuitId });
   }
-  return submitTxResult;
-};
+  return { era: 'v9', public: submitTxResult };
+}

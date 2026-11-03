@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,

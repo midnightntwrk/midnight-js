@@ -18,6 +18,8 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import * as transaction from '../transaction';
+
 const PACKAGE_ROOT = resolve(__dirname, '../..');
 
 // Subpaths that address a file shipped as-is rather than a build entry.
@@ -71,6 +73,25 @@ const entryNamesBySubpath = (): Map<string, string[]> =>
       .map(([subpath, target]) => [subpath, [...new Set(collectTargetPaths(target).map(entryNameOf))]])
   );
 
+const LEDGER9_SUBPATHS: readonly (readonly [subpath: string, load: () => Promise<Record<string, unknown>>])[] = [
+  ['./v9', () => import('@midnightntwrk/ledger-v9')],
+  ['./v9/compact-runtime', () => import('@midnight-ntwrk/compact-runtime')],
+  ['./v9/compact-js', () => import('@midnight-ntwrk/compact-js')],
+  ['./v9/compact-js/effect', () => import('@midnight-ntwrk/compact-js/effect')],
+  ['./v9/compact-js/effect/Contract', () => import('@midnight-ntwrk/compact-js/effect/Contract')],
+  ['./v9/onchain-runtime', () => import('@midnightntwrk/onchain-runtime-v4')]
+];
+
+const REMOVED_SUBPATHS = [
+  './ledger',
+  './compact-runtime',
+  './compact-js',
+  './compact-js/effect',
+  './compact-js/effect/Contract',
+  './onchain-runtime',
+  './engine'
+];
+
 const sourceEntryNames = (): string[] =>
   readdirSync(resolve(PACKAGE_ROOT, 'src'), { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
@@ -98,5 +119,39 @@ describe('protocol export surface', () => {
     const exported = [...entryNamesBySubpath().values()].flat();
 
     expect([...new Set(exported)].sort()).toEqual(sourceEntryNames().sort());
+  });
+
+  it('publishes exactly the era-named ledger 9 subpaths', () => {
+    const eraNamed = [...entryNamesBySubpath().keys()].filter((subpath) => subpath === './v9' || subpath.startsWith('./v9/'));
+
+    expect(eraNamed.sort()).toEqual(LEDGER9_SUBPATHS.map(([subpath]) => subpath).sort());
+  });
+
+  it('publishes no subpath that leaves out the ledger it serves', () => {
+    const subpaths = [...entryNamesBySubpath().keys()];
+
+    expect(REMOVED_SUBPATHS.filter((removed) => subpaths.includes(removed))).toEqual([]);
+  });
+
+  it('serves the ledger 8 engine from ./v8/engine', () => {
+    expect(entryNamesBySubpath().get('./v8/engine')).toEqual(['engine']);
+  });
+
+  it.each(LEDGER9_SUBPATHS)('serves exactly the ledger 9 package from %s', async (subpath, load) => {
+    const entryName = entryNamesBySubpath().get(subpath)?.[0];
+    expect(entryName).toBeTypeOf('string');
+    const served: Record<string, unknown> = await import(`../${entryName}.ts`);
+    const upstream = await load();
+
+    expect(Object.keys(served).sort()).toEqual(Object.keys(upstream).sort());
+    expect(Object.keys(served).filter((name) => served[name] !== upstream[name])).toEqual([]);
+  });
+
+  it('publishes exactly the deserializer, the instance check and the stage reader from ./transaction', () => {
+    expect(Object.keys(transaction).sort()).toEqual([
+      'deserializeTransactionAtStage',
+      'isFrameworkLedgerTransaction',
+      'transactionStageOf'
+    ]);
   });
 });

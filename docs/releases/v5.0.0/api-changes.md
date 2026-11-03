@@ -106,7 +106,7 @@ type SigningKey = string; // hex
 type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 ```
 
-`ContractExecutableRuntimeOptions.signingKey` now uses the structured `SigningKey`.
+`Ledger9ContractExecutableRuntimeOptions.signingKey` now uses the structured `SigningKey`.
 
 ### Cross-contract call — new exports (#967)
 
@@ -119,14 +119,14 @@ export class ZKConfigRegistry {
 }
 export class ZKArtifactNotFoundError extends Error { readonly keyLocation: ContractKeyLocation; }
 
-// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/compact-js
+// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/v9/compact-js
 export type ContractKeyLocation = /* { contractAddress, circuitId, ... } */;
 export const encodeContractKeyLocation: (loc: ContractKeyLocation) => string;
 export const parseContractKeyLocation: (s: string) => ContractKeyLocation | undefined;
 export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 ```
 
-### Version-tagged provider methods (#1204)
+### Transaction handles at the provider methods (#1204, #1533)
 
 ```ts
 // Method names — closed, so a caught error's `method` can be switched on.
@@ -134,35 +134,126 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
-// Transaction payloads. No untagged form: a bare Uint8Array is never assignable.
-export interface Ledger8TransactionBytes { readonly version: 'v8'; readonly txBytes: Uint8Array; }
-export interface Ledger9Transaction<T>   { readonly version: 'v9'; readonly tx: T; }
-export type VersionedTransaction<T> = Ledger8TransactionBytes | Ledger9Transaction<T>;
-export type VersionedUnprovenTransaction  = VersionedTransaction<UnprovenTransaction>;
-export type VersionedUnboundTransaction   = VersionedTransaction<UnboundTransaction>;
-export type VersionedFinalizedTransaction = VersionedTransaction<FinalizedTransaction>;
+// One opaque handle per stage. The stage is in the type; the era is data on the handle, and in
+// the type too when it is known (`E` defaults to any era).
+export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
+export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
+export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersion = LedgerVersion> {
+  readonly era: E;
+  readonly stage: S;
+  serialize(): Uint8Array;
+  static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
+  static unwrap<E extends LedgerVersion, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
+  static require<S extends TransactionStage>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
+  static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage>;
+}
+export type UnprovenTx = LedgerTransaction<'Unproven'>;
+export type UnboundTx = LedgerTransaction<'Unbound'>;
+export type FinalizedTx = LedgerTransaction<'Finalized'>;
 
-// Read surface. A *different* union — its v8 variant carries `tx`, not `txBytes`.
+interface ProofProvider    { readonly supportedEras: readonly LedgerVersion[]; proveTx(tx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>; }
+interface WalletProvider   { readonly supportedEras: readonly LedgerVersion[]; balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>; /* key readers */ }
+interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; submitTx(tx: FinalizedTx): Promise<TransactionId>; }
+
+// Read surface: era-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
-export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly version: 'v8'; readonly tx: Ledger8FinalizedTransaction; }
-export type VersionedFinalizedTxData = Ledger8FinalizedTxData | FinalizedTxData;
+export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly era: 'v8'; readonly tx: LedgerTransaction<'Finalized', 'v8'>; }
+export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
-// Narrowing. Accepts the three transaction methods only — not the read surface.
-export const unwrapLedger9: <T>(payload: VersionedTransaction<T>, method: TransactionMethod) => T;
-export class Ledger8PayloadUnsupportedError extends Error { readonly code; readonly method: TransactionMethod; readonly byteLength?: number; }
-export class UntaggedPayloadError extends Error { readonly code; readonly method: ProviderMethod; readonly received: string; }
+// Refusals.
+export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
+export class InvalidTransactionHandleError extends MidnightJsError { readonly method: TransactionHandleMethod; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage' | 'not-a-transaction' | 'stage-mismatch'; readonly detail: string; }
+export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerVersion; readonly actual: LedgerVersion; }
 
-// Adapters: lift a v9-only implementation into the tagged interfaces.
-export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, untagged */ }
-export const createWalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
-export const createMidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+// Adapters: lift a v9-only implementation into the handle interfaces.
+export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, on v9 ledger objects */ }
+export const createLedger9WalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
+export const createLedger9MidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+
+// Per-era factories: one handler per ledger era, `undefined` for an era not served.
+export const createProofProviderFromHandlers: (handlers: ProofProviderHandlers) => ProofProvider;
+export const createWalletProviderFromHandlers: (handlers: WalletProviderHandlers) => WalletProvider;
+export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHandlers) => MidnightProvider;
 ```
 
-`FinalizedTxData` gained a required `version: 'v9'`. `ProofProvider.proveTx`,
-`WalletProvider.balanceTx` and `MidnightProvider.submitTx` take and return the
-tagged unions; `submitTx` still resolves a bare `TransactionId`.
-`PublicDataProvider.watchForTxData` / `watchForDeployTxData` now resolve
-`VersionedFinalizedTxData`.
+`Ledger9FinalizedTxData` gained a required `era: 'v9'`, and its `tx` is a
+`LedgerTransaction<'Finalized', 'v9'>`, so narrowing a record on `era`
+narrows `tx.era` with it. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
+`MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
+a bare `TransactionId`. `PublicDataProvider.watchForTxData` /
+`watchForDeployTxData` now resolve `FinalizedTxRead`; read its
+transaction with `LedgerTransaction.unwrap(record.tx, record.era)`.
+
+`@midnight-ntwrk/midnight-js-protocol/transaction` (new subpath) publishes
+`deserializeTransactionAtStage(era, stage, bytes)`, which reads bytes into the
+framework's own ledger copy, and the two checks `seal` runs:
+`isFrameworkLedgerTransaction(era, value)` and `transactionStageOf(tx)`, which
+reads a transaction's stage from its serialized tag.
+
+`utils.deserializeLedgerTransaction(era, bytes, ctx)` and the indexer's
+`parseHexTransaction(era, hex, details?)` take the era to read in and resolve a
+`LedgerTransaction<'Finalized', E>`; both are now async, because a v8 read loads
+the v8 runtime first.
+
+### On-chain state as bytes (#1550)
+
+```ts
+export type StateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
+export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
+export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
+export class SerializedState<K extends StateKind = StateKind, E extends LedgerVersion = LedgerVersion> {
+  readonly era: E;
+  readonly kind: K;
+  static fromBytes<E extends LedgerVersion, K extends StateKind>(era: E, kind: K, bytes: Uint8Array): SerializedState<K, E>;
+  static isSerializedState(value: unknown): value is SerializedState;
+  serialize(): Uint8Array;
+  deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>; // does not compile when D has no decoder for any era E can be
+}
+
+export interface ContractStateRead {
+  readonly protocolVersion: number;
+  readonly contractState: SerializedState<'ContractState'>;
+}
+export interface ContractStateAndParametersRead extends ContractStateRead {
+  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
+}
+export interface PublicStatesRead extends ContractStateAndParametersRead {
+  readonly zswapChainState: SerializedState<'ZswapChainState'>;
+}
+
+interface PublicDataProvider {
+  queryContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<ContractStateAndParametersRead | null>;
+  queryDeployContractState(address: ContractAddress): Promise<ContractStateRead | null>;
+  watchForContractState(address: ContractAddress): Promise<ContractStateRead>;
+  queryZSwapAndContractState(address: ContractAddress, config?: BlockHeightConfig | BlockHashConfig): Promise<PublicStatesRead | null>;
+  // queryRawContractState and rawContractStateObservable are removed.
+}
+
+export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export class InvalidSerializedStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidSerializedStateReason; }
+export class SerializedStateDecoderMissingError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
+export class SerializedStateDecodeFailedError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
+```
+
+In `contracts`:
+
+```ts
+interface Ledger9TransactionContext<C, PCK> {
+  getCurrentStates(): PublicStatesRead | undefined; // the running contract state, as bytes
+}
+export class PublicStatesEraMismatchError extends MidnightJsError {
+  readonly contractAddress: string;
+  readonly field: 'ledgerParameters' | 'zswapChainState';
+  readonly expected: LedgerVersion;
+  readonly received: LedgerVersion | undefined;
+}
+```
+
+Removed from `types`: `RawContractState`, `VersionedContractState`,
+`VersionedPublicStates`, `Ledger8ContractStateBytes`, `Ledger9ContractState`,
+`Ledger8PublicStates`, `Ledger9PublicStates`. Decode a state with the runtime
+your contract was compiled against:
+`read.contractState.deserialize({ v9: ContractState })`.
 
 ### Positioned stream records (#1399)
 
@@ -174,8 +265,7 @@ export type PositionedRecord<T> = {
 };
 
 interface PublicDataProvider {
-  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<VersionedContractState>>; // VersionedContractState since #1508
-  rawContractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<RawContractState>>;
+  contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<ContractStateRead>>; // ContractStateRead since #1550
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<PositionedRecord<UnshieldedBalances>>;
 }
 ```
@@ -207,37 +297,37 @@ interface MidnightProviders {
 
 | Symbol | Change |
 |--------|--------|
-| `CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
+| `Ledger9CallOptionsProviderDataDependencies` | new required `config: MidnightConfig` (so `createUnprovenCallTxFromInitialStates` options carry it) |
 | `createUnprovenDeployTxFromVerifierKeys` | new last parameter `config: MidnightConfig` |
-| `UnprovenCallTxProvidersBase`, `UnprovenDeployTxProviders` | now include `config` |
+| `UnprovenCallTxProvidersBase`, `Ledger9UnprovenDeployTxProviders` | now include `config` |
 | `submitTx` / `submitTxAsync` and every entry point that submits | read `providers.config` and pass its TTL to `walletProvider.balanceTx(tx, ttl)` |
 
 
-### `CallResultPublic.events` + `ContractLog` re-export (#1083)
+### `Ledger9CallResultPublic.logEvents` + `Ledger9ContractLog` re-export (#1083)
 
 ```ts
-interface CallResultPublic {
+interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
+  readonly logEvents: readonly Ledger9LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
 }
 
-// re-exported from compact-js through the barrel — reachable as contracts.ContractLog
-export const ContractLog: {
-  decodeAll(events: readonly LogEvent[]): DecodedLog[]; // lenient — never throws
+// re-exported from compact-js through the barrel — reachable as contracts.Ledger9ContractLog
+export const Ledger9ContractLog: {
+  decodeAll(events: readonly Ledger9LogEvent[]): DecodedLog[]; // lenient — never throws
 };
 ```
 
-The single `events` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.events)`.
+The single `logEvents` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.Ledger9ContractLog.decodeAll(result.public.logEvents)`.
 
 ### Era-invariant error (#1204)
 
 ```ts
 // Thrown when a provider or the read surface answers in a ledger era the flow
 // cannot accept. `expected` is the era it can accept -- for the current era's
-// flows that is 'v9'; the retained era's finalizing path passes the network
-// head, because a retained-era call is recorded by whichever ledger the head is
-// on. `received` is the era that actually came back. A payload whose tag is
-// missing or unrecognised raises UntaggedPayloadError instead.
+// flows that is 'v9'; the retained era's finalizing path passes the network's
+// current ledger version, because a retained-era call is recorded by whichever
+// ledger the network is on. `received` is the era that actually came back. A
+// value that is not a handle raises InvalidTransactionHandleError instead.
 export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
   readonly method: ProviderMethod; // from midnight-js-types
@@ -248,7 +338,7 @@ export class EraInvariantViolationError extends Error {
 }
 ```
 
-`submitTx` returns `VersionedFinalizedTxData`, tagged with the head's era (#1508).
+`submitTx` returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction (#1508).
 
 ### Found deploy record tagged by ledger era (#1408)
 
@@ -256,18 +346,241 @@ export class EraInvariantViolationError extends Error {
 export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
   readonly contractAddress: ContractAddress; // no initialContractState
 }
-export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | FinalizedDeployTxPublicData;
+export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
   readonly era: CurrentLedgerVersion;
   readonly public: FoundDeployTxPublicData;
-  readonly private: UnsubmittedDeployTxPrivateData<C>;
+  readonly private: Ledger9UnsubmittedDeployTxPrivateData<C>;
 }
 // FoundContract<C>['deployTxData'] is now FoundDeployTxData<C>
 ```
 
 `findDeployedContract` accepts a contract deployed before the ledger fork and
-reports its deploy record tagged `v8`. Narrow on `version` before reading `tx` or
+reports its deploy record tagged `v8`. Narrow on `era` before reading `tx` or
 `initialContractState`.
+
+### Retained-era deploy data and signing key (#1514)
+
+```ts
+export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
+  readonly era: 'v8';
+  readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
+  readonly private: {
+    readonly signingKey: SigningKey | undefined;
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+  };
+}
+export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends Ledger8FoundDeployTxData<C> {
+  readonly public: Ledger8FoundDeployTxData<C>['public'] & {
+    readonly initialContractState: { serialize(): Uint8Array };
+    readonly initialContractStateBytes: Uint8Array;
+  };
+  readonly private: {
+    readonly signingKey: SigningKey;
+    readonly initialPrivateState: Ledger8PrivateState<C>;
+    readonly initialZswapState: ZswapLocalState;
+  };
+}
+// Ledger8FoundContract<C>['deployTxData'] is Ledger8FoundDeployTxData<C>;
+// Ledger8DeployedContract<C>['deployTxData'] is Ledger8FinalizedDeployTxData<C>.
+// The top-level signingKey / initial* members are removed.
+```
+
+Every retained-era signing key on the public surface is the structured `SigningKey`:
+the `signingKey` deploy and find options, `deployTxData.private.signingKey`, and the
+`signingKey` member of `TxFailedError`, `Ledger8UnconfirmedError`
+and `Ledger8NotStoredError`. `Ledger8SigningKeyError.contractAddress`
+is optional: a refused deploy key has no address yet.
+
+### Contract maintenance in both eras (#1514)
+
+```ts
+export interface Ledger9FinalizedMaintenanceTxData {
+  readonly era: 'v9';
+  readonly public: Ledger9FinalizedTxData;
+}
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+
+export function submitInsertVerifierKeyTx<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress,
+  circuitId: Ledger8CircuitId<C>,
+  newVk: VerifierKey
+): Promise<Ledger8FinalizedMaintenanceTxData>;
+export function submitInsertVerifierKeyTx<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>,
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C>,
+  newVk: VerifierKey
+): Promise<Ledger9FinalizedMaintenanceTxData>;
+// submitRemoveVerifierKeyTx and submitReplaceAuthorityTx take the same two overloads;
+// so do createCircuitMaintenanceTxInterface(s) and createContractMaintenanceTxInterface.
+
+export interface Ledger8FinalizedMaintenanceTxData {
+  readonly era: 'v8';
+  readonly public: Ledger8FinalizedTxData;
+}
+export interface Ledger8CircuitMaintenanceTxInterface {
+  removeVerifierKey(): Promise<Ledger8FinalizedMaintenanceTxData>;
+  insertVerifierKey(newVk: VerifierKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+export type Ledger8CircuitMaintenanceTxInterfaces<C extends Ledger8Contract> = Record<
+  Ledger8CircuitId<C>,
+  Ledger8CircuitMaintenanceTxInterface
+>;
+export interface Ledger8ContractMaintenanceTxInterface {
+  replaceAuthority(newAuthority: SigningKey): Promise<Ledger8FinalizedMaintenanceTxData>;
+}
+// Ledger8FoundContract<C> and Ledger8DeployedContract<C> gain
+//   circuitMaintenanceTx: Ledger8CircuitMaintenanceTxInterfaces<C>
+//   contractMaintenanceTx: Ledger8ContractMaintenanceTxInterface
+// Its refusals are EraMismatchError (reason 'ledger8-maintenance-on-ledger9-network'),
+//   Ledger8SigningKeyError ('unavailable'), Ledger8NotStoredError ('replace-authority'),
+//   Ledger8UnconfirmedError ('replace-authority') and TxFailedError ('insert-verifier-key',
+//   'remove-verifier-key', 'replace-authority').
+```
+
+`SubmittedOperationKind` gains `'maintenance'`. `@midnight-ntwrk/midnight-js-protocol` gains:
+
+- `Ledger8Engine.composeMaintenanceTx(request: Ledger8MaintenanceRequest): Promise<Uint8Array>`, with
+  the `Ledger8MaintenanceRequest` and `Ledger8MaintenanceUpdateRequest` types;
+- `MaintenanceAuthorityMismatchError` with its `MaintenanceAuthorityMismatchReason`, and the code
+  `PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH`;
+- `'maintenance-update'` on `ComposeStage` and `'newSigningKey'` on `ComposeOption`. Both unions are
+  closed, so an exhaustive `switch` over either must handle the new member (see breaking-changes.md).
+
+### Ledger 8 types are flat exports (#1561)
+
+```ts
+// Before: types only through the namespace
+import { type Ledger8 } from '@midnight-ntwrk/midnight-js-contracts';
+type T = Ledger8.FoundContract<C>;
+
+// After: 37 flat Ledger8* types
+import { type Ledger8FoundContract } from '@midnight-ntwrk/midnight-js-contracts';
+type T = Ledger8FoundContract<C>;
+```
+
+### Types for both eras carry no prefix (#1566)
+
+```ts
+// A name without a ledger prefix is valid for every era
+export type AnyContract = Ledger8Contract | Ledger9Contract;
+export type FinalizedMaintenanceTxData = Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData;
+// A call of any contract, in either era; `result` and `nextPrivateState` are `unknown`
+export type AnyFinalizedCallTxData = /* ledger 9 widest, circuit values opaque */ | Ledger8FinalizedCallTxData<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+export type AnySubmittedCallTx = /* ledger 9 widest, circuit values opaque */ | Ledger8SubmittedCallTx<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>;
+// `ContractProviders` requires its contract: `ContractProviders<C, PCK?>`
+```
+
+Removed: `AnyEraContract`, `AnyEraFinalizedCallTxData`, `AnyEraSubmittedCallTx`,
+`AnyEraFoundContract`, `AnyEraDeployedContract`, `AnyEraMaintenanceTxData`. See
+breaking-changes.md section 24. The error classes are in the next section.
+
+### Every name bound to ledger 9 carries the ledger number (#1574)
+
+```ts
+// contracts: the old low-level names route on the era; the ledger 9 bodies are named after it
+export function createUnprovenCallTx(/* ledger 8 overload, then the unchanged ones */): Promise<Ledger8UnsubmittedCallTxData<C, PCK> | Ledger9UnsubmittedCallTxData<C, PCK>>; // routes on the era (#1524)
+export function createLedger9UnprovenCallTx(/* same overloads */): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+// likewise createLedger9UnprovenCallTxFromInitialStates, createLedger9UnprovenDeployTx,
+// createLedger9UnprovenDeployTxFromVerifierKeys, submitLedger9DeployTx, withLedger9ContractScopedTransaction
+export const isLedger9TransactionContext: (u: unknown) => u is Ledger9TransactionContext<Contract.Any>;
+export type Ledger9CircuitId<C extends Ledger9Contract> = Contract.ProvableCircuitId<C>;
+export type SubmitTxProviders<C extends AnyContract, PCK extends CircuitIdOf<C>> = /* the provider set of C's era, without privateStateProvider */;
+export function submitTx<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
+  options: SubmitTxOptions<PCK>
+): Promise<FinalizedTxRead>;
+// new EraMismatchReason: 'contract-era-unsupported'
+```
+
+### Every contract's artifacts declare their runtime version (#1526)
+
+```ts
+// new EraMismatchReason: 'ledger8-artifacts-in-ledger9-container'
+// ZKConfigProvider.getArtifactRuntimeVersion(): unchanged signature; now read by every contract operation
+```
+
+### Ledger 8 low-level functions (#1524)
+
+```ts
+export function createLedger8UnprovenCallTx(providers: Ledger8ContractProviders<C, PCK>, options: Ledger8CallTxOptions<C, PCK>): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+export function createLedger8UnprovenCallTxFromInitialStates(zkConfigProvider: ZKConfigProvider<string>, options: Ledger8CallOptionsWithInitialStates<C, PCK>, walletEncryptionPublicKey: EncPublicKey): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+export function createLedger8UnprovenDeployTx(providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>, options: Ledger8UnprovenDeployTxOptions<C>): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+export function createLedger8UnprovenDeployTxFromVerifierKeys(zkConfigProvider: ZKConfigProvider<string>, coinPublicKey: CoinPublicKey, options: Ledger8UnprovenDeployTxOptions<C>, encryptionPublicKey: EncPublicKey, config: MidnightConfig): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+export function submitLedger8DeployTx(providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>, options: Ledger8DeployContractOptions<C>): Promise<Ledger8FinalizedDeployTxData<C>>;
+// new types: Ledger8CallOptionsWithInitialStates, Ledger8Serializable, Ledger8UnprovenDeployTxOptions(Base), Ledger8UnsubmittedDeployTxData
+```
+
+The five routers gained a ledger 8 overload and route a ledger 8 contract to these functions
+instead of refusing it.
+
+Renamed with the `Ledger9` prefix or infix: the ledger 9 call, constructor, deploy, find and
+unsubmitted-data types, `TransactionContext`, `CrossContractConfig`, `ContractLog`,
+`LogEvent`, `createProofProvider`, `createWalletProvider`, `createMidnightProvider`,
+`makeContractExecutableRuntime`, `ContractExecutableRuntimeOptions` and the five `utils`
+state deserializers. `Ledger8DeployTxData` is `Ledger8FinalizedDeployTxData`. The barrel
+subpath `./protocol` is `./protocol/v9` and its namespace `ledger9Protocol`. See
+breaking-changes.md section 26.
+
+### One error class per fault (#1557)
+
+The `Ledger8` namespace is removed. These are the final classes; see
+[breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557) for the old name of each one.
+
+```ts
+// contracts
+class TxFailedError extends MidnightJsError {
+  constructor(operation: 'deploy' | 'replace-authority', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; signingKey: SigningKey });
+  constructor(operation: 'insert-verifier-key' | 'remove-verifier-key', record: FinalizedTxRead,
+    details: { contractAddress: ContractAddress; circuitId: string });
+  constructor(operation: 'call', record: FinalizedTxRead,
+    details: { circuitId: string | readonly string[]; contractAddress?: ContractAddress });
+  readonly operation: TxFailedOperation; // 'call' | 'deploy' | 'insert-verifier-key' | 'remove-verifier-key' | 'replace-authority'
+  readonly record: FinalizedTxRead;
+  readonly contractAddress?: ContractAddress; // never set by a ledger 9 call
+  readonly circuitId?: string | readonly string[];
+  readonly signingKey?: SigningKey; // not enumerable; never in the message
+}
+class EraMismatchError extends MidnightJsError {
+  constructor(reason: EraMismatchReason, options?: EraMismatchOptions); // options: { detail?, contractAddress?, circuitId?, cause? }
+  readonly reason: EraMismatchReason;
+  readonly detail?: string;
+  readonly contractAddress?: ContractAddress;
+  readonly circuitId?: string;
+}
+class Ledger8SigningKeyError {
+  constructor(reason: 'unusable', contractAddress?: string);
+  constructor(reason: 'unavailable', contractAddress: string, options?: ErrorOptions);
+  readonly reason: 'unusable' | 'unavailable';
+  readonly contractAddress?: string;
+}
+class Ledger8UnconfirmedError { readonly operation: Ledger8KeyedOperation; readonly contractAddress: string; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8NotStoredError { readonly operation: Ledger8KeyedOperation; readonly stage: Ledger8NotStoredStage; readonly signingKey: SigningKey } // signingKey not enumerable
+class Ledger8CallUnsupportedError { readonly reason: Ledger8CallUnsupportedReason; readonly circuitId: string; readonly recipientCoinPublicKey?: string }
+class Ledger8AmbiguousEntryPointError {
+  constructor(contractAddress: string, circuitId: string, matchCount: number);
+  readonly contractAddress: string;
+  readonly circuitId: string;
+  readonly matchCount: number;
+}
+// Types exported with them: TxFailedOperation, TxFailedDetails, EraMismatchReason, EraMismatchOptions,
+//   Ledger8SigningKeyReason, Ledger8KeyedOperation, Ledger8NotStoredStage, Ledger8CallUnsupportedReason.
+```
+
+`UnknownLedgerVersionError` (protocol) now also covers a value with no era, with a `requestedVersion` of
+`undefined`. It is ENVIRONMENT. Its constructor takes the raw value (`unknown`), and `requestedVersion` is
+`string | undefined`. Removed from `utils`: `UnrecognisedEraTagError`,
+`Ledger8ValueUnsupportedError`, `requireLedger9`, and the codes `LEDGER8_VALUE_UNSUPPORTED` and
+`UNRECOGNISED_ERA_TAG`. Removed from `contracts`: `AnyEraTxFailedError`, `CallTxFailedError`,
+`DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`,
+`ReplaceMaintenanceAuthorityTxFailedError`, `EraArtifactMismatchError`, `ScopedTransactionEraUnsupportedError`,
+`MixedEraScopeError`, `UnknownResultEraError`, and the `Ledger8` namespace with every member.
+`CONTRACTS_ERROR_CODES.ERA_ARTIFACT_MISMATCH` is `ERA_MISMATCH`.
 
 ---
 
@@ -303,10 +616,10 @@ export function isRegularTransaction(/* ... */): boolean;
 
 New typed error variants accompany the event surface (e.g. `IndexerDataError.unknownAddressKind` for an unrecognized address kind; unknown `__typename` / missing-field cases continue to fail fast).
 
-Era resolution (#1204) — the `version` on a finalized record is derived from the
+Era resolution (#1204) — the `era` on a finalized record is derived from the
 record's own `protocolVersion`, never asserted, and that answer also selects the
 ledger runtime the record is decoded with. `watchForTxData` and
-`watchForDeployTxData` therefore resolve `VersionedFinalizedTxData` and really
+`watchForDeployTxData` therefore resolve `FinalizedTxRead` and really
 do produce both variants; the pre-fork runtime is acquired lazily, so a session that
 meets no v8-era record never instantiates it.
 
@@ -329,6 +642,13 @@ export class DecoderEraUnsupportedError extends IndexerError {
 }
 ```
 
+On-chain state as bytes (#1550) — `parseHexContractState`,
+`parseHexLedgerParameters` and `parseHexZswapState` are removed: the provider
+decodes no state. `IndexerDataError` kinds `unsupported-decode-era` and
+`unsupported-parameters-era` are removed, and `malformed-zswap-encoding`,
+`malformed-zswap-state` and `parameters-era-disagreement` are new.
+`queryContractState` now serves the block's ledger parameters too.
+
 Internally the provider was split into 7 layered files (#960): `config.ts`, `transport.ts` (`ApolloHandle = { client, dispose }`), `provider.ts` (`class IndexerPublicDataProvider`), `observables.ts`, `events-filter.ts`, `events-mapping.ts`, and `index.ts`.
 
 ---
@@ -346,10 +666,12 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }>;
 // Declared in `@midnight-ntwrk/midnight-js-types` and also readable from its
 // `./errors` leaf subpath; re-exported here, so either import works.
+// The era and transaction-handle codes; the other provider codes are omitted here.
 export const PROVIDER_ERROR_CODES: Readonly<{
-  LEDGER8_PAYLOAD_UNSUPPORTED: string; UNTAGGED_PAYLOAD: string;
   DECODER_ERA_UNSUPPORTED: string; UNKNOWN_RECORD_ERA: string;
-  PROVIDER_ERA_UNSUPPORTED: string;
+  PROVIDER_ERA_UNSUPPORTED: string; UNUSABLE_ERA_ENTRY: string;
+  FOREIGN_LEDGER_TRANSACTION: string; INVALID_TRANSACTION_HANDLE: string;
+  TRANSACTION_ERA_MISMATCH: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;
@@ -371,7 +693,7 @@ export function hasForeignErrorCode<C extends string>(
   error: unknown, code: C extends MidnightJsErrorCode ? never : C
 ): error is Error & { code: C };
 
-// Exhaustiveness guard for the version-tagged unions (#1254). Closes the
+// Exhaustiveness guard for the era-tagged unions (#1254). Closes the
 // `default` case of a `switch` so a future era variant cannot fall through unhandled.
 // Never renders `value` into its message; `context` is required and locates the throw.
 export function assertNever(value: never, context: string): never;
@@ -411,8 +733,8 @@ export class DeserializationError extends Error {
 export function isDeserializationError(value: unknown): value is DeserializationError;
 
 // 6 typed wrappers (primary API)
-export function deserializeContractState(/* ... */): /* ... */;
-// ... decodeLedgerStateValue, etc.
+export function deserializeLedger9ContractState(/* ... */): /* ... */;
+// ... decodeLedger9StateValue, etc.
 
 // Escape hatch (sync-only)
 export function withDeserializationContext<T>(/* ... */): T;
@@ -422,15 +744,34 @@ export function withDeserializationContext<T>(/* ... */): T;
 
 ## `@midnight-ntwrk/midnight-js-protocol`
 
-Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md)):
+Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md)). The ledger-bound subpaths are now named after ledger 9, see the next section:
 
 | Subpath | Now resolves to |
 |---------|-----------------|
-| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
-| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
-| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
-| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
+| `/v9` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| `/v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
+| `/v9/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
+| `/v9/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
+
+### Era-named ledger 9 subpaths (#1536)
+
+New subpaths name ledger 9 and keep that meaning at every later fork. The
+unnamed subpaths they replace are removed (see
+[breaking-changes.md](./breaking-changes.md#21-unnamed-protocol-subpaths-removed-1536)):
+
+| New subpath | Replaces (removed) |
+|---|---|
+| `/v9` | `/ledger` |
+| `/v9/compact-runtime` | `/compact-runtime` |
+| `/v9/compact-js` | `/compact-js` |
+| `/v9/compact-js/effect` | `/compact-js/effect` |
+| `/v9/compact-js/effect/Contract` | `/compact-js/effect/Contract` |
+| `/v9/onchain-runtime` | `/onchain-runtime` |
+
+The root namespaces `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime`
+are removed too. Import the matching `/v9` subpath as a namespace instead
+(`import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9'`).
 
 ## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
 

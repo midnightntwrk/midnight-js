@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,34 +6,92 @@
 
 # Function: createContractMaintenanceTxInterface()
 
-> **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`ContractMaintenanceTxInterface`](../interfaces/ContractMaintenanceTxInterface.md)
+## Call Signature
 
-Creates a [ContractMaintenanceTxInterface](../interfaces/ContractMaintenanceTxInterface.md).
+> **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger8ContractMaintenanceTxInterface`](../interfaces/Ledger8ContractMaintenanceTxInterface.md)
 
-## Type Parameters
+Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or the retained era's
+`Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
 
-### C
+### Type Parameters
 
-`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+#### C
 
-## Parameters
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
-### providers
+### Parameters
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)
+#### providers
+
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 The providers to use to build transactions.
 
-### compiledContract
+#### compiledContract
 
-[`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
+`C`
 
-### contractAddress
+The contract the interface is for.
+
+#### contractAddress
 
 `string`
 
 The ledger address of the contract.
 
-## Returns
+### Returns
 
-[`ContractMaintenanceTxInterface`](../interfaces/ContractMaintenanceTxInterface.md)
+[`Ledger8ContractMaintenanceTxInterface`](../interfaces/Ledger8ContractMaintenanceTxInterface.md)
+
+### Throws
+
+InvalidArgumentError If `contractAddress` is malformed.
+
+### Throws
+
+EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.
+
+## Call Signature
+
+> **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`Ledger9ContractMaintenanceTxInterface`](../interfaces/Ledger9ContractMaintenanceTxInterface.md)
+
+Creates a [Ledger9ContractMaintenanceTxInterface](../interfaces/Ledger9ContractMaintenanceTxInterface.md), or the retained era's
+`Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+### Parameters
+
+#### providers
+
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)
+
+The providers to use to build transactions.
+
+#### compiledContract
+
+[`CompiledContract`](https://github.com/midnightntwrk/midnight-sdk)\<`C`, `any`\>
+
+The contract the interface is for.
+
+#### contractAddress
+
+`string`
+
+The ledger address of the contract.
+
+### Returns
+
+[`Ledger9ContractMaintenanceTxInterface`](../interfaces/Ledger9ContractMaintenanceTxInterface.md)
+
+### Throws
+
+InvalidArgumentError If `contractAddress` is malformed.
+
+### Throws
+
+EraArtifactMismatchError If `compiledContract` has neither toolchain's shape.

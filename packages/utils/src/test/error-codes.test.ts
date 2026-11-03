@@ -104,22 +104,22 @@ describe('every error-code group', () => {
 
 describe('hasErrorCode', () => {
   it('returns true and narrows when the error carries the exact requested code', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE });
 
-    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(true);
-    if (hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)) {
-      expect(error.code).toBe(PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(true);
+    if (hasErrorCode(error, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)) {
+      expect(error.code).toBe(PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE);
     }
   });
 
   it('returns false when the code does not match the requested one', () => {
     const error: unknown = Object.assign(new Error('boom'), { code: 'SOME_OTHER_CODE' });
 
-    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED)).toBe(false);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE)).toBe(false);
   });
 
   it('rejects a typo of a real code at compile time', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE });
 
     // The `@ts-expect-error` IS the assertion: it fails the build if the typo
     // ever starts compiling. A runtime `toBe(false)` cannot catch this, because
@@ -130,7 +130,7 @@ describe('hasErrorCode', () => {
     // Covering the assertion too would let this test stay green through a change
     // that removed the with-code overload outright.
     // @ts-expect-error -- not a member of MidnightJsErrorCode
-    const matched: boolean = hasErrorCode(error, 'MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTD');
+    const matched: boolean = hasErrorCode(error, 'MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDEL');
 
     expect(matched).toBe(false);
   });
@@ -142,7 +142,7 @@ describe('hasErrorCode', () => {
   it('returns false for non-Error values', () => {
     expect(hasErrorCode('not an error')).toBe(false);
     expect(hasErrorCode(undefined)).toBe(false);
-    expect(hasErrorCode({ code: PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED })).toBe(false);
+    expect(hasErrorCode({ code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE })).toBe(false);
   });
 
   it('returns false when the code property is not a string', () => {
@@ -235,7 +235,7 @@ describe('hasForeignErrorCode', () => {
     // in `hasErrorCode` undone by its own escape hatch. The directive covers
     // the call alone, and it fails the build if the call ever compiles.
     // @ts-expect-error -- a member of MidnightJsErrorCode belongs in hasErrorCode
-    const call = () => hasForeignErrorCode(econnrefused(), PROVIDER_ERROR_CODES.LEDGER8_PAYLOAD_UNSUPPORTED);
+    const call = () => hasForeignErrorCode(econnrefused(), PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE);
 
     // The runtime half. A JavaScript caller reaches this guard with no compiler
     // in the way at all, so the constraint alone would leave them unserved.
@@ -270,8 +270,8 @@ describe('error categories', () => {
 
   it('marks exactly these codes as safe to retry', () => {
     expect(codesIn('TRANSIENT')).toEqual([
-      'MIDNIGHT_JS_C_HEAD_READ_FAILED',
-      'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
+      'MIDNIGHT_JS_C_NETWORK_VERSION_READ_FAILED',
+      'MIDNIGHT_JS_C_NETWORK_VERSION_STATE_MISMATCH',
       'MIDNIGHT_JS_PR_INDEXER_QUERY_FAILED',
       'MIDNIGHT_JS_PR_PROOF_SERVER_UNAVAILABLE',
       'MIDNIGHT_JS_PR_ZK_ARTIFACT_FETCH_FAILED'
@@ -280,8 +280,8 @@ describe('error categories', () => {
 
   it('marks every submission whose outcome is unknown as UNCERTAIN, never as TRANSIENT', () => {
     expect(codesIn('UNCERTAIN')).toEqual([
-      'MIDNIGHT_JS_C_LEDGER8_DEPLOY_UNCONFIRMED',
-      'MIDNIGHT_JS_C_STALE_HEAD',
+      'MIDNIGHT_JS_C_FORK_CROSSED_DURING_OPERATION',
+      'MIDNIGHT_JS_C_LEDGER8_UNCONFIRMED',
       'MIDNIGHT_JS_C_SUBMIT_REJECTION_UNDIAGNOSED',
       'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
     ]);

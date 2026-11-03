@@ -14,7 +14,7 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 import type { Logger } from 'pino';
@@ -63,28 +63,28 @@ export const deploy = async (
   return blockTimeContract;
 };
 
-export const testBlockTimeLt = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<FinalizedTxData> => {
+export const testBlockTimeLt = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Testing block time less than...');
   const finalizedTxData = await blockTimeContract.callTx.testBlockTimeLt(time);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };
 
-export const testBlockTimeGte = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<FinalizedTxData> => {
+export const testBlockTimeGte = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Testing block time greater than or equal...');
   const finalizedTxData = await blockTimeContract.callTx.testBlockTimeGte(time);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };
 
-export const testBlockTimeGt = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<FinalizedTxData> => {
+export const testBlockTimeGt = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Testing block time greater than...');
   const finalizedTxData = await blockTimeContract.callTx.testBlockTimeGt(time);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };
 
-export const testBlockTimeLte = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<FinalizedTxData> => {
+export const testBlockTimeLte = async (blockTimeContract: DeployedBlockTimeContract, time: bigint): Promise<Ledger9FinalizedTxData> => {
   logger.info('Testing block time less than or equal...');
   const finalizedTxData = await blockTimeContract.callTx.testBlockTimeLte(time);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);

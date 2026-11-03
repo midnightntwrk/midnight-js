@@ -22,18 +22,14 @@ import { createApolloClient } from './transport';
 
 export {
   correlateDeployTxId,
-  type EnvelopeUpperBound,
   type IndexerUtxo,
-  parseHexContractState,
-  parseHexLedgerParameters,
   parseHexTransaction,
-  parseHexZswapState,
   toSegmentStatus,
   toSegmentStatusMap,
   toTxStatus,
   toUnshieldedBalances,
-  toUnshieldedUtxos
-} from './codec';
+  toUnshieldedUtxos,
+  type UpperBoundCheck} from './codec';
 export { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE, DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export * from './errors';
 export { getAllContractEvents } from './get-all-contract-events';

@@ -295,14 +295,14 @@ export const CONTRACT_STATE_QUERY = gql(
   }`
 );
 
-// The call path's single request: the block whose protocol version dates the
-// state, and the state itself, in one document. Composition buys ONE ROUND
+// `queryContractState`'s single request: the block whose protocol version dates
+// the state, its ledger parameters, and the state itself, in one document. Composition buys ONE ROUND
 // TRIP, not one consistent snapshot — the indexer resolves Query-root siblings
 // concurrently, from independent reads, so the two fields can still disagree.
 // With no offset the block field resolves to the head block.
-export const RAW_CONTRACT_STATE_QUERY = gql(
+export const CONTRACT_STATE_WITH_PARAMETERS_QUERY = gql(
   `
-  query RAW_CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+  query CONTRACT_STATE_WITH_PARAMETERS_QUERY($address: HexEncoded!, $offset: BlockOffset) {
     block(offset: $offset) {
       protocolVersion
       ledgerParameters

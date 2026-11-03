@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@
 Resolves one ledger era to a [LedgerEra](../interfaces/LedgerEra.md) bound to it.
 
 This is the only sanctioned way to reach either era's operations. Pass the
-version resolved from a record or from the network head (see
+version resolved from a record or from the network's latest block (see
 `protocolVersionToLedger` in `../../version.ts`) rather than a string chosen
 by hand.
 
@@ -46,5 +46,5 @@ underlying cause.
 
 ## See
 
- - [EraSeam](../../documents/EraSeam.md)
+ - [EraBoundary](../../documents/EraBoundary.md)
  - [SharedTableDiscipline](../../documents/SharedTableDiscipline.md)

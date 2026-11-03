@@ -18,7 +18,7 @@ import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKe
 import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
-import { EraArtifactMismatchError } from '../errors';
+import { EraMismatchError } from '../errors';
 import { type ArtifactRuntimeVersionSource, resolveArtifactEra } from '../internal/era';
 import { createMockCompiledContract } from './test-mocks';
 
@@ -47,17 +47,44 @@ const transpiledCurrentEraShape = (): object => ({
 });
 
 describe('resolveArtifactEra: the era comes from what the artifact declares', () => {
-  it('places a current-era container without consulting the artifact set at all', async () => {
-    // Arrange: the container carries its own era marker -- an own `tag` no build step rewrites --
-    // so the current era pays nothing for this dispatch.
+  it('places a ledger 9 container from the runtime version its compiler recorded', async () => {
     const source = declaring('0.20.0');
 
-    // Act
     const era = await resolveArtifactEra(createMockCompiledContract(), source);
 
-    // Assert
     expect(era).toBe<LedgerVersion>('v9');
-    expect(source.getArtifactRuntimeVersion).not.toHaveBeenCalled();
+    expect(source.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a ledger 9 container whose artifacts declare the ledger 8 toolchain, naming the version', async () => {
+    const source = declaring('0.16.0');
+
+    const error = await resolveArtifactEra(createMockCompiledContract(), source).catch((thrown: unknown) => thrown);
+
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect(error).toMatchObject({ reason: 'ledger8-artifacts-in-ledger9-container' });
+    expect((error as EraMismatchError).message).toMatch(/0\.16\.0/);
+  });
+
+  it('refuses a ledger 9 container whose runtime version this framework cannot place, naming it', async () => {
+    const source = declaring('0.99.0');
+
+    await expect(resolveArtifactEra(createMockCompiledContract(), source)).rejects.toMatchObject({
+      reason: 'unknown-artifact-runtime-version'
+    });
+    await expect(resolveArtifactEra(createMockCompiledContract(), source)).rejects.toThrow(/0\.99\.0/);
+  });
+
+  it('refuses a ledger 9 container whose artifacts declare nothing', async () => {
+    const unavailable = new ZkArtifactContractInfoError('no contract-info.json at https://cdn.example/compiler/');
+
+    const error = await resolveArtifactEra(createMockCompiledContract(), refusing(unavailable)).catch(
+      (thrown: unknown) => thrown
+    );
+
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
+    expect((error as EraMismatchError).cause).toBe(unavailable);
   });
 
   it('places a retained artifact from the runtime version its compiler recorded', async () => {
@@ -81,7 +108,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     const source = declaring('0.20.0');
 
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toBeInstanceOf(
-      EraArtifactMismatchError
+      EraMismatchError
     );
     await expect(resolveArtifactEra(transpiledCurrentEraShape(), source)).rejects.toMatchObject({
       reason: 'unwrapped-ledger9-contract'
@@ -111,9 +138,9 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
     const error = await resolveArtifactEra(retainedShape(), source).catch((thrown: unknown) => thrown);
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
-    expect((error as EraArtifactMismatchError).cause).toBe(unavailable);
+    expect((error as EraMismatchError).cause).toBe(unavailable);
   });
 
   it('separates a provider that CANNOT declare an era from artifacts that do not', async () => {
@@ -138,11 +165,14 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
       (thrown: unknown) => thrown
     );
 
-    expect(error).toBeInstanceOf(EraArtifactMismatchError);
+    expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'provider-cannot-declare-era' });
-    expect((error as EraArtifactMismatchError).cause).toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
+    expect((error as EraMismatchError).cause).toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
     // The base class names the provider that could not answer; that naming must survive the wrap.
-    expect(((error as EraArtifactMismatchError).cause as Error).message).toMatch(/ArtifactOnlyProvider/);
+    expect(((error as EraMismatchError).cause as Error).message).toMatch(/ArtifactOnlyProvider/);
+    await expect(resolveArtifactEra(createMockCompiledContract(), new ArtifactOnlyProvider())).rejects.toMatchObject({
+      reason: 'provider-cannot-declare-era'
+    });
   });
 
   it.each([

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,7 @@
 # Class: StateInconsistentError
 
 Thrown by `decodeContractState` (`lib/shared/contract-state.ts`) when the
-era's decoder read the envelope but the state it produced is internally
+era's decoder read the bytes but the state it produced is internally
 inconsistent: it declares an entry point it resolves no operation for, holds
 a verifier key that will not hash, or resolves no usable balance.
 

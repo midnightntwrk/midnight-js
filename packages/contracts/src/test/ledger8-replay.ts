@@ -47,8 +47,8 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { ComposeCallOptions, ContractBalance, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { expect } from 'vitest';
 
 import type {
@@ -468,6 +468,12 @@ export const createReplayEngine = (
       state.setOperation(entryPoint.circuitId, operation);
     }
     return state.serialize();
+  },
+  // Nothing in the recording is a maintenance update, so the double refuses one rather than
+  // inventing bytes; the maintenance suites install their own engine.
+  composeMaintenanceTx: (): Promise<Uint8Array> => {
+    log.push('engine.composeMaintenanceTx');
+    return Promise.reject(new Error('the replay engine has no recorded maintenance update'));
   },
   executeConstructor: async (options): Promise<Ledger8ConstructedState> => {
     log.push('engine.executeConstructor');

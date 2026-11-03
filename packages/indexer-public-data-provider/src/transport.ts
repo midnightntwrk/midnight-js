@@ -88,6 +88,45 @@ export type ApolloHandle = {
   dispose(): Promise<void>;
 };
 
+const URL_WITH_QUERY = /\b((?:https?|wss?):\/\/[^\s?#"'<>]+)\?[^\s"'<>]*/gi;
+
+const redactUrlQueries = (text: string): string => text.replace(URL_WITH_QUERY, '$1?<redacted>');
+
+const redactInPlace = (error: Error, key: 'message' | 'stack'): void => {
+  const text = error[key];
+  const redacted = text === undefined ? undefined : redactUrlQueries(text);
+  if (redacted !== text) {
+    Object.defineProperty(error, key, { value: redacted, writable: true, configurable: true });
+  }
+};
+
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
+const withoutRequestURL = async (response: Response): Promise<Response> =>
+  new Response(NULL_BODY_STATUSES.has(response.status) ? null : await response.text(), {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+
+/**
+ * Wraps `fetch` so URL query strings, which can hold an API token such as a Blockfrost `project_id`, stay out of
+ * the message and stack of a failed request's error, which is rethrown, and out of the response, which loses its URL.
+ */
+export const withRedactedUrlQueries =
+  (fetchImpl: typeof fetch): typeof fetch =>
+  async (input, init) => {
+    try {
+      return await withoutRequestURL(await fetchImpl(input, init));
+    } catch (error) {
+      if (error instanceof Error) {
+        redactInPlace(error, 'message');
+        redactInPlace(error, 'stack');
+      }
+      throw error;
+    }
+  };
+
 /**
  * Constructs the Apollo client used by the indexer public data provider.
  * Queries flow through an HTTP link wrapped in a retry link with exponential
@@ -103,7 +142,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
    * browsers, both of which negotiate compression on their own. That is what
    * satisfies the indexer's HTTP-response compression contract with no configuration.
    */
-  const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
+  const httpLink = new HttpLink({ fetch: withRedactedUrlQueries(fetch), uri: validated.queryURLString });
   const retryLink = new RetryLink({
     delay: {
       initial: 1000,

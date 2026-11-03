@@ -21,7 +21,7 @@ Four decisions get a breadcrumb: `HeadResolutionBreadcrumb`,
 
 The fourth is there for the opposite reason to the other three. It is the one era
 discrimination in this package that neither refuses nor returns a value a caller
-can inspect: `Ledger8FoundContract.signingKey` is `undefined` either way, so
+can inspect: `deployTxData.private.signingKey` on the found handle is `undefined` either way, so
 without the breadcrumb "nothing was ever stored" and "an entry was there and this
 framework could not use it" are indistinguishable to an operator.
 
@@ -76,7 +76,7 @@ tell them apart would read as one operation contradicting itself.
 decides between reporting a fork crossing with a re-run remediation and
 reporting a rejection nothing could diagnose, and it is the only reading taken
 after bytes were already on the wire. See
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## What each breadcrumb carries, and why
 
@@ -114,12 +114,15 @@ it out rather than present-and-undefined.
 
 ### Encoding
 
-This is the byte-level answer, read from the bytes themselves rather than from
-`RawContractState.version`, which a provider outside this framework may set wrongly.
+This is the byte-level answer: `contractState.era` on the read record. Only
+`SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
+does not match `era`, so the era is the era of these exact bytes. A record whose
+contract state is not a `SerializedState` is refused before this breadcrumb, as
+`UnknownLedgerVersionError`.
 
 It carries no head integer and no reading provenance, because dating an envelope
 is not a head reading. When the era it reports disagrees with the head, the
-re-read that follows is reported as its own head-resolution breadcrumb.
+re-read that follows is reported as its own network-version-read breadcrumb.
 
 ## Privacy
 

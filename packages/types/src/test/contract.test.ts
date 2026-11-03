@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
+import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { exitResultOrError, makeContractExecutableRuntime } from '../contract';
+import { exitResultOrError, makeLedger9ContractExecutableRuntime } from '../contract';
 import { ZkArtifactFetchError } from '../errors';
 import { type ProverKey, type VerifierKey, type ZKIR } from '../midnight-types';
 import { ZKConfigProvider } from '../zk-config-provider';
@@ -39,12 +39,12 @@ class UnusedZKConfigProvider extends ZKConfigProvider<string> {
 const COIN_PUBLIC_KEY = '00'.repeat(32);
 
 const readConfiguredSigningKey = (signingKey: SigningKey): Promise<Option.Option<SigningKey>> =>
-  makeContractExecutableRuntime(new UnusedZKConfigProvider(), {
+  makeLedger9ContractExecutableRuntime(new UnusedZKConfigProvider(), {
     coinPublicKey: COIN_PUBLIC_KEY,
     signingKey
   }).runPromise(Configuration.Keys.pipe(Effect.map((keys) => keys.getSigningKey())));
 
-describe('makeContractExecutableRuntime', () => {
+describe('makeLedger9ContractExecutableRuntime', () => {
   it('preserves the kind of a schnorr signing key', async () => {
     const signingKey = sampleSigningKey('schnorr');
 

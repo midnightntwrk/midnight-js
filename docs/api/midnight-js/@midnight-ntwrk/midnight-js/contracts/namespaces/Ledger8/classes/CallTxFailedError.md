@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -10,8 +10,8 @@ An error indicating that a retained-era call was recorded on chain with a
 status other than `SucceedEntirely`.
 
 The retained-era counterpart of [CallTxFailedError](../../../classes/CallTxFailedError.md), which cannot be
-reused because it carries a current-era `FinalizedTxData` where a retained
-call is recorded as a version-tagged [VersionedFinalizedTxData](../../../../types/type-aliases/VersionedFinalizedTxData.md).
+reused because it carries a `Ledger9FinalizedTxData` where a retained
+call is recorded as an era-tagged [FinalizedTxRead](../../../../types/type-aliases/FinalizedTxRead.md).
 
 Carries no registered error code of its own. Branch on the class, or on the
 inherited [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#code), and read the record off
@@ -19,7 +19,7 @@ inherited [AnyEraTxFailedError.code](../../../classes/AnyEraTxFailedError.md#cod
 
 ## See
 
-[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why this arm registers no code, and for the
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for why this retained-era class registers no code, and for the
 local-versus-chain consequence the message states per status.
 
 ## Extends
@@ -36,7 +36,7 @@ local-versus-chain consequence the message states per status.
 
 ##### txData
 
-[`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
 ##### circuitId
 
@@ -90,7 +90,7 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### txData
 
-> `readonly` **txData**: [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+> `readonly` **txData**: [`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
 ## Accessors
 
@@ -98,20 +98,21 @@ process. Subclasses inherit it rather than each declaring their own.
 
 #### Get Signature
 
-> **get** **record**(): [`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+> **get** **record**(): [`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
-See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either arm on this class.
+See [AnyEraTxFailedError.record](../../../classes/AnyEraTxFailedError.md#record). Either variant on this class.
 
 ##### Returns
 
-[`VersionedFinalizedTxData`](../../../../types/type-aliases/VersionedFinalizedTxData.md)
+[`FinalizedTxRead`](../../../../types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.
 
 #### Overrides
 

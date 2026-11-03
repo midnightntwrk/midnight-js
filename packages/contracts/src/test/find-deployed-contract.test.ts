@@ -13,18 +13,20 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
-import { UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, Ledger8ContractStateUnsupportedError,PrivateStateNotFoundError } from '../errors';
-import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
+import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
+import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
 import {
+  contractStateAndParametersReadStub,
+  contractStateReadStub,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -33,8 +35,7 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockVerifierKeys
-} from './test-mocks';
+  createMockVerifierKeys} from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
@@ -43,6 +44,14 @@ vi.mock('../tx-interfaces', () => ({
 vi.mock('../governance/tx-interfaces', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
+}));
+
+// The framework decodes the read with its own runtime; the mock contract state stands in for the result.
+const deserializeLedger9CompactContractState = vi.hoisted(() => vi.fn());
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  deserializeLedger9CompactContractState
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
@@ -63,15 +72,13 @@ describe('findDeployedContract', () => {
 
   const setupCommonMocks = () => {
     vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
-      version: 'v9',
-      state: contractState
-    });
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({ version: 'v9', state: contractState });
+    deserializeLedger9CompactContractState.mockReturnValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v9'));
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractStateAndParametersReadStub('v9'));
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
-  const expectBasicResult = (result: FoundContract<Contract.Any>) => {
+  const expectBasicResult = (result: Ledger9FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
     // IDENTITY, not shape: the handle promises the artifact the caller passed
     // and the address it asked for. A key-set parity gate proves both members
@@ -81,7 +88,7 @@ describe('findDeployedContract', () => {
     expect(result.contractAddress).toBe(contractAddress);
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
-    assert(result.deployTxData.public.version === 'v9');
+    assert(result.deployTxData.public.era === 'v9');
     expect(result.deployTxData.public.initialContractState).toBe(contractState);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
@@ -114,25 +121,21 @@ describe('findDeployedContract', () => {
       );
 
     it('rejects an untagged deploy record, the pre-5.0.0 shape', async () => {
-      const { version: _dropped, ...untaggedRecord } = finalizedTxData;
-      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(
-        untaggedRecord as unknown as midnightJsTypes.FinalizedTxData
-      );
+      const { era: _dropped, ...untaggedRecord } = finalizedTxData;
+      // @ts-expect-error the pre-5.0.0 record carries no version
+      vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(untaggedRecord);
 
       const rejection = await rejectionOf();
 
-      assert(rejection instanceof UntaggedPayloadError);
-      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
-      expect(rejection.method).toBe('watchForDeployTxData');
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBeUndefined();
     });
   });
 
   describe('a v9 deploy record whose deploy state is served from the other era', () => {
     it('refuses the attach rather than reporting a v8 state as the v9 initial state', async () => {
-      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue({
-        version: 'v8',
-        stateBytes: new Uint8Array([1, 2, 3])
-      });
+      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v8'));
 
       const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
         () => undefined,
@@ -149,7 +152,7 @@ describe('findDeployedContract', () => {
   });
 
   describe('a v9 deploy record whose deploy state carries no era tag', () => {
-    it('rejects the untagged deploy state as an untagged payload, not as the other era', async () => {
+    it('rejects the untagged deploy state as the shape of a pre-5.0.0 provider, not as the other era', async () => {
       providers.publicDataProvider.queryDeployContractState = vi.fn().mockResolvedValue(contractState);
 
       const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
@@ -157,8 +160,24 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UntaggedPayloadError);
-      expect(rejection.method).toBe('queryDeployContractState');
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBeUndefined();
+      expect(rejection.context).toBe('queryDeployContractState');
+    });
+
+    it('rejects a deploy state that is not an object with the coded error naming the operation, not a TypeError', async () => {
+      providers.publicDataProvider.queryDeployContractState = vi.fn().mockResolvedValue('v9');
+
+      const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      assert(rejection instanceof UnknownLedgerVersionError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(rejection.requestedVersion).toBeUndefined();
+      expect(rejection.context).toBe('queryDeployContractState');
     });
   });
 
@@ -175,7 +194,7 @@ describe('findDeployedContract', () => {
       const result = await findDeployedContract(providers, { compiledContract, contractAddress });
 
       expect(result.contractAddress).toBe(contractAddress);
-      expect(result.deployTxData.public.version).toBe('v8');
+      expect(result.deployTxData.public.era).toBe('v8');
       expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
       expect(result.deployTxData.public.txId).toBe(ledger8DeployRecord.txId);
       expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
@@ -253,18 +272,18 @@ describe('findDeployedContract', () => {
     });
 
     it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
-      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue({
-        version: 'v8',
-        stateBytes: new Uint8Array([1])
-      });
+      vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractStateAndParametersReadStub('v8'));
 
       const rejection = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
         () => undefined,
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(Ledger8ContractStateUnsupportedError);
-      expect(rejection).toMatchObject({ contractAddress, operation: 'findDeployedContract' });
+      expect(rejection).toBeInstanceOf(EraMismatchError);
+      expect(rejection).toMatchObject({ reason: 'ledger8-contract-state-unsupported', code: 'MIDNIGHT_JS_C_ERA_MISMATCH' });
+      expect((rejection as EraMismatchError).message).toContain(contractAddress);
+      expect((rejection as EraMismatchError).contractAddress).toBe(contractAddress);
+      expect((rejection as EraMismatchError).message).toContain('findDeployedContract');
       expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
     });
 

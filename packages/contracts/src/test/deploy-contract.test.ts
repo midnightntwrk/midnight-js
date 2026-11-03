@@ -13,30 +13,30 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
-import { type ContractProviders } from '../contract-providers';
-import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
+import { type Ledger9ContractProviders } from '../contract-providers';
+import { deployContract, type Ledger9DeployContractOptionsBase, type Ledger9DeployedContract } from '../deploy-contract';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
-import type { submitDeployTx } from '../submit-deploy-tx';
-import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import type { submitLedger9DeployTx } from '../submit-deploy-tx';
+import { type Ledger9FinalizedDeployTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
-  createMockSigningKey
+  createMockSigningKey,
+  createMockUnprovenTx
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({
-  submitDeployTx: vi.fn()
+  submitLedger9DeployTx: vi.fn()
 }));
 
 vi.mock('../tx-interfaces', () => ({
@@ -49,18 +49,18 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  let mockSubmitDeployTx: MockedFunction<typeof submitDeployTx>;
+  let mockSubmitDeployTx: MockedFunction<typeof submitLedger9DeployTx>;
 
   // The tests resolve unsubmitted-level tx data where the real function
   // returns finalized-level data; the code under test forwards the value
   // opaquely, so the missing finalized fields are never read.
-  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): FinalizedDeployTxData<Contract.Any> =>
-    data as FinalizedDeployTxData<Contract.Any>;
-  let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
-  let providers: ContractProviders;
-  let baseOptions: DeployContractOptionsBase<Contract.Any>;
+  const asFinalized = (data: Ledger9UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
+    data as Ledger9FinalizedDeployTxData<Contract.Any>;
+  let mockDeployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>;
+  let providers: Ledger9ContractProviders;
+  let baseOptions: Ledger9DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
+  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       ...createMockFinalizedTxData(),
@@ -71,15 +71,15 @@ describe('deployContract', () => {
       signingKey: createMockSigningKey(),
       initialPrivateState,
       initialZswapState: {} as ZswapLocalState,
-      unprovenTx: {} as UnprovenTransaction,
+      unprovenTx: createMockUnprovenTx(),
       newCoins: []
     }
   });
 
   const assertDeployResult = (
-    result: DeployedContract<Contract.Any>,
-    deployTxData: UnsubmittedDeployTxData<Contract.Any>,
-    options: DeployContractOptionsBase<Contract.Any> = baseOptions
+    result: Ledger9DeployedContract<Contract.Any>,
+    deployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>,
+    options: Ledger9DeployContractOptionsBase<Contract.Any> = baseOptions
   ) => {
     expect(result).toBeDefined();
     // IDENTITY, not shape: see the same pair in find-deployed-contract.test.ts.
@@ -94,8 +94,8 @@ describe('deployContract', () => {
   };
 
   beforeEach(async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    mockSubmitDeployTx = vi.mocked(submitDeployTx);
+    const { submitLedger9DeployTx } = await import('../submit-deploy-tx');
+    mockSubmitDeployTx = vi.mocked(submitLedger9DeployTx);
     vi.clearAllMocks();
 
     providers = createMockProviders();

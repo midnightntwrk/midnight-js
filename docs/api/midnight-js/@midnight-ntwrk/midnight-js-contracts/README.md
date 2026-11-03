@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@
 - [KeepStatePipeline](documents/KeepStatePipeline.md)
 - [OverloadTyping](documents/OverloadTyping.md)
 - [RetainedEraNamespace](documents/RetainedEraNamespace.md)
-- [StaleHeadRemediation](documents/StaleHeadRemediation.md)
+- [ForkCrossedRemediation](documents/ForkCrossedRemediation.md)
 - [VerificationPath](documents/VerificationPath.md)
 
 ## Modules

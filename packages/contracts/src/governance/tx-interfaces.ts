@@ -13,14 +13,24 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type FinalizedTxData, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '../contract-providers';
+import { type Ledger9ContractProviders } from '../contract-providers';
+import { hasLedger8ContractShape } from '../internal/era';
+import type {
+  Ledger8CircuitId,
+  Ledger8CircuitMaintenanceTxInterface,
+  Ledger8CircuitMaintenanceTxInterfaces,
+  Ledger8Contract,
+  Ledger8ContractMaintenanceTxInterface,
+  Ledger8ContractProviders
+} from '../ledger8-contract';
+import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
@@ -29,101 +39,162 @@ import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
  * An interface for creating maintenance transactions for a specific circuit defined in a
  * given contract.
  */
-export interface CircuitMaintenanceTxInterface {
+export interface Ledger9CircuitMaintenanceTxInterface {
   /**
    * Constructs and submits a transaction that removes the current verifier key stored
    * on the blockchain for this circuit at this contract's address.
    */
-  removeVerifierKey(): Promise<FinalizedTxData>;
+  removeVerifierKey(): Promise<Ledger9FinalizedMaintenanceTxData>;
   /**
    * Constructs and submits a transaction that adds a new verifier key to the
    * blockchain for this circuit at this contract's address.
    *
    * @param newVk The new verifier key to add for this circuit.
    */
-  insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData>;
+  insertVerifierKey(newVk: VerifierKey): Promise<Ledger9FinalizedMaintenanceTxData>;
 }
 
 /**
- * Creates a {@link CircuitMaintenanceTxInterface}.
+ * Creates a {@link Ledger9CircuitMaintenanceTxInterface}, or the retained era's
+ * `Ledger8CircuitMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+ *
+ * The contract's shape only picks which overload each method calls; the era itself is resolved by
+ * that call, when the method runs.
  *
  * @param providers The providers to use to create and submit transactions.
  * @param circuitId The circuit ID the interface is for.
+ * @param compiledContract The contract the circuit belongs to.
  * @param contractAddress The address of the deployed contract for which this
  *                        interface is being created.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
-export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: ContractProviders<C, PCK>,
+export function createCircuitMaintenanceTxInterface<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  circuitId: Ledger8CircuitId<C>,
+  compiledContract: C,
+  contractAddress: ContractAddress
+): Ledger8CircuitMaintenanceTxInterface;
+export function createCircuitMaintenanceTxInterface<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: Ledger9ContractProviders<C, PCK>,
   circuitId: PCK,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
-): CircuitMaintenanceTxInterface => {
+): Ledger9CircuitMaintenanceTxInterface;
+export function createCircuitMaintenanceTxInterface<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  circuitId: Contract.ProvableCircuitId<C>,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress
+): Ledger9CircuitMaintenanceTxInterface | Ledger8CircuitMaintenanceTxInterface {
   assertIsContractAddress(contractAddress);
+  // Both branches are the same expression: the narrowing is what lets each call resolve an overload.
+  if (hasLedger8ContractShape(compiledContract)) {
+    return {
+      removeVerifierKey: () => submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId),
+      insertVerifierKey: (newVk: VerifierKey) =>
+        submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, circuitId, newVk)
+    };
+  }
   return {
-    removeVerifierKey(): Promise<FinalizedTxData> {
-      return submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId);
-    },
-    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData> {
-      return submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, circuitId, newVk);
-    }
+    removeVerifierKey: () => submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId),
+    insertVerifierKey: (newVk: VerifierKey) =>
+      submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, circuitId, newVk)
   };
-};
+}
 
 /**
  * A set of maintenance transaction creation interfaces, one for each circuit defined in
  * a given contract, keyed by the circuit name.
  */
-export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ProvableCircuitId<C>, CircuitMaintenanceTxInterface>;
+export type Ledger9CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ProvableCircuitId<C>, Ledger9CircuitMaintenanceTxInterface>;
 
 /**
- * Creates a {@link CircuitMaintenanceTxInterfaces}.
+ * Creates a {@link Ledger9CircuitMaintenanceTxInterfaces}, or the retained era's
+ * `Ledger8CircuitMaintenanceTxInterfaces` for a contract the retained Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract to use to execute circuits.
  * @param contractAddress The ledger address of the contract.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
-export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Any>(
-  providers: ContractProviders<C>,
+export function createCircuitMaintenanceTxInterfaces<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress
+): Ledger8CircuitMaintenanceTxInterfaces<C>;
+export function createCircuitMaintenanceTxInterfaces<C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
-): CircuitMaintenanceTxInterfaces<C> => {
+): Ledger9CircuitMaintenanceTxInterfaces<C>;
+export function createCircuitMaintenanceTxInterfaces<C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress
+): Ledger9CircuitMaintenanceTxInterfaces<C> | Ledger8CircuitMaintenanceTxInterfaces<Ledger8Contract> {
   assertIsContractAddress(contractAddress);
+  if (hasLedger8ContractShape(compiledContract)) {
+    return Object.fromEntries(
+      Object.keys(compiledContract.provableCircuits).map((circuitId) => [
+        circuitId,
+        createCircuitMaintenanceTxInterface(providers, circuitId, compiledContract, contractAddress)
+      ])
+    );
+  }
   return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, compiledContract, contractAddress)
     }),
     {}
-  ) as CircuitMaintenanceTxInterfaces<C>;
-};
+  ) as Ledger9CircuitMaintenanceTxInterfaces<C>;
+}
 
 /**
  * Interface for creating maintenance transactions for a contract that was
  * deployed.
  */
-export interface ContractMaintenanceTxInterface {
+export interface Ledger9ContractMaintenanceTxInterface {
   /**
    * Constructs and submits a transaction that replaces the maintenance
    * authority stored on the blockchain for this contract.
    *
    * @param newAuthority The new contract maintenance authority for this contract.
    */
-  replaceAuthority(newAuthority: SigningKey): Promise<FinalizedTxData>;
+  replaceAuthority(newAuthority: SigningKey): Promise<Ledger9FinalizedMaintenanceTxData>;
 }
 
 /**
- * Creates a {@link ContractMaintenanceTxInterface}.
+ * Creates a {@link Ledger9ContractMaintenanceTxInterface}, or the retained era's
+ * `Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
+ * @param compiledContract The contract the interface is for.
  * @param contractAddress The ledger address of the contract.
+ * @throws InvalidArgumentError If `contractAddress` is malformed.
+ * @throws EraMismatchError If `compiledContract` has neither toolchain's shape.
  */
-export const createContractMaintenanceTxInterface = <C extends Contract.Any>(
-  providers: ContractProviders,
+export function createContractMaintenanceTxInterface<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  compiledContract: C,
+  contractAddress: ContractAddress
+): Ledger8ContractMaintenanceTxInterface;
+export function createContractMaintenanceTxInterface<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
-): ContractMaintenanceTxInterface => {
+): Ledger9ContractMaintenanceTxInterface;
+export function createContractMaintenanceTxInterface<C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any> | Ledger8Contract, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress
+): Ledger9ContractMaintenanceTxInterface | Ledger8ContractMaintenanceTxInterface {
   assertIsContractAddress(contractAddress);
-  return {
-    replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress)
-  };
-};
+  // Both branches are the same expression: the narrowing is what lets the call resolve an overload.
+  if (hasLedger8ContractShape(compiledContract)) {
+    return { replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress) };
+  }
+  return { replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress) };
+}

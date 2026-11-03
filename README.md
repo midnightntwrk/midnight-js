@@ -28,7 +28,7 @@ yarn add @midnight-ntwrk/midnight-js-level-private-state-provider \
 
 ```typescript
 import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js/types';
+import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js/types';
 import { createMidnightProviders } from '@midnight-ntwrk/midnight-js/utils';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
@@ -53,8 +53,8 @@ const providers = createMidnightProviders({
   }),
   zkConfigProvider,
   proofProvider: httpClientProofProvider({ url: 'https://proof-server.example.com', zkConfigProvider }),
-  walletProvider: createWalletProvider(myWallet),
-  midnightProvider: createMidnightProvider((tx) => myWallet.submitTx(tx)),
+  walletProvider: createLedger9WalletProvider(myWallet),
+  midnightProvider: createLedger9MidnightProvider((tx) => myWallet.submitTx(tx)),
   config: { networkId: 'preview', ttlSeconds: 3600 }
 });
 
@@ -71,14 +71,37 @@ const result = await deployed.callTx.increment();
 
 What the snippet expects from you:
 
-- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js.
+- `myWallet` is your wallet integration. It implements `balanceTx`, `getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized transactions. For one built on `@midnightntwrk/wallet-sdk`, see [`MidnightWalletProvider`](testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts) in testkit-js. In a browser with a wallet extension, see [In a browser](#in-a-browser).
 - `myContract` is your compiled Compact contract. See [Contracts](#contracts).
 - `PRIVATE_STATE_PASSWORD` encrypts private state at rest. It needs at least 16 characters, at least 3 of uppercase, lowercase, digits and special characters, no more than 3 identical characters in a row, and no sequences such as `1234` or `abcd`.
 - `createMidnightProviders` checks at start-up that every required provider and the `config` are present.
 
+### In a browser
+
+In a browser dApp, the user's wallet extension (for example Lace) proves, balances and submits. Build those three providers from the wallet's `ConnectedAPI` with `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider`. Add the packages this needs:
+
+```bash
+yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider @midnight-ntwrk/midnight-js-protocol
+```
+
+```typescript
+import {
+  dappConnectorProofProvider,
+  dappConnectorWalletProviders
+} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+
+const connectedAPI = await initialAPI.connect('preview');
+
+const proofProvider = await dappConnectorProofProvider(connectedAPI, zkConfigProvider, CostModel.initialCostModel());
+const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(connectedAPI);
+```
+
+`initialAPI` is the wallet's entry in `window.midnight`. Pass the three providers to `createMidnightProviders` in place of `httpClientProofProvider`, `createLedger9WalletProvider` and `createLedger9MidnightProvider` above. All three serve ledger 8 and ledger 9 transactions. The connector takes no TTL, so the wallet picks the expiry and `config.ttlSeconds` has no effect on balancing ([midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102)).
+
 ### Ledger eras
 
-`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createWalletProvider` and `createMidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createLedger9WalletProvider` and `createLedger9MidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## Examples
 
@@ -113,7 +136,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
 | [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
 | [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
-| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
+| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof, wallet and midnight providers delegating to a DApp Connector wallet |
 | [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
 | [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
@@ -122,7 +145,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Deprecated global network id (use `MidnightProviders.config`) |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
-| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
+| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |
 | [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture
@@ -137,6 +160,7 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
 | PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
 | ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
+| WalletProvider, MidnightProvider | your wallet integration, or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
 | ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnightntwrk/dapp-connector-api |
 | Wallet | @midnightntwrk/wallet-sdk |
@@ -252,7 +276,7 @@ yarn lint:fix
 
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Detailed guide for working on packages, debugging, and Turborepo commands
 - **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Vite + WASM Resolution](./docs/guides/vite-wasm-resolution.md)** — Fixing WASM dual-instantiation in Vite monorepo setups
+- **[Vite + WASM Resolution](./docs/guides/vite-wasm-resolution.md)** — Fixing duplicate WASM copies in Vite monorepo setups
 
 ## Contributing
 
@@ -282,8 +306,8 @@ New functionality must include unit and integration tests (TDD — tests first).
 | Private State | State updated by witnesses, stored on user's device |
 | Circuit | Smart contract function that can be executed and proven |
 | ZKIR | Zero-Knowledge Intermediate Representation |
-| Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerVersion`, the `currentEra` handler slot) stay correct across forks |
-| Retained era | A ledger before the last hard fork that this build still serves, as serialized bytes. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerVersion`, `retainedEras`, `RetainedEraProver`) stay correct across forks |
+| Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerVersion`) stay correct across forks |
+| Retained era | A ledger before the last hard fork that this build still serves. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerVersion`) stay correct across forks |
 | `Ledger8*` / `Ledger9*` | Names bound to one ledger. They never change meaning at a fork |
 
 ## Detailed

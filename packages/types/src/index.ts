@@ -15,9 +15,10 @@
 
 export * from './call-result-base';
 export * from './contract';
-export * from './era-entries';
+export * from './contract-state-read';
 export * from './era-support';
 export * from './errors';
+export * from './ledger-transaction';
 export * from './logger-provider';
 export * from './midnight-config';
 export * from './midnight-provider';
@@ -26,11 +27,9 @@ export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
-export * from './raw-contract-state';
-export * from './unwrap-ledger9';
+export * from './serialized-state';
 export * from './versioned';
 export * from './wallet-provider';
 export * from './zk-config-provider';
 export * from './zk-config-registry';
 export * from './zk-key-location';
-export { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';

@@ -31,24 +31,6 @@ const compilerOptions = (): ts.CompilerOptions => {
 };
 
 /**
- * Resolves a namespace re-export (`export * as Ledger8 from ...`) to the module
- * it stands for, so its members can be pinned the same way the barrel's own
- * are.
- *
- * Throws rather than returning the barrel when the name is absent: a namespace
- * silently swapped for the module itself would compare the retained era's
- * member list against the whole package and report a difference nobody can
- * read.
- */
-const namespaceSymbol = (checker: ts.TypeChecker, moduleSymbol: ts.Symbol, name: string): ts.Symbol => {
-  const exported = checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.getName() === name);
-  if (!exported) {
-    throw new Error(`${BARREL} exports no namespace named '${name}'`);
-  }
-  return exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
-};
-
-/**
  * The names the barrel exports that carry NO runtime meaning, read from the
  * source with the compiler's own resolution.
  *
@@ -62,7 +44,7 @@ const namespaceSymbol = (checker: ts.TypeChecker, moduleSymbol: ts.Symbol, name:
  * `packages/protocol/src/test/protocol-type-acl.test.ts`. Deliberately
  * duplicated rather than shared: neither package depends on the other's tests.
  */
-const typeOnlyExportNames = (namespaceExport?: string): string[] => {
+const typeOnlyExportNames = (): string[] => {
   const program = ts.createProgram([BARREL], compilerOptions());
   const checker = program.getTypeChecker();
   const source = program.getSourceFile(BARREL);
@@ -73,10 +55,8 @@ const typeOnlyExportNames = (namespaceExport?: string): string[] => {
   if (!moduleSymbol) {
     throw new Error(`${BARREL} resolves to no module symbol`);
   }
-  const container = namespaceExport === undefined ? moduleSymbol : namespaceSymbol(checker, moduleSymbol, namespaceExport);
-
   return checker
-    .getExportsOfModule(container)
+    .getExportsOfModule(moduleSymbol)
     .filter((exported) => {
       const resolved = exported.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exported) : exported;
       return (resolved.flags & ts.SymbolFlags.Value) === 0;
@@ -88,131 +68,156 @@ const typeOnlyExportNames = (namespaceExport?: string): string[] => {
 describe('Contracts type ACL', () => {
   it('publishes exactly this type surface', () => {
     expect(typeOnlyExportNames()).toEqual([
-      'AnyEraContractState',
-      'AnyEraContractStateReadSurface',
-      'AnyEraDeployedContract',
-      'AnyEraFinalizedCallTxData',
-      'AnyEraFoundContract',
-      'AnyEraSubmittedCallTx',
-      'CallOptions',
-      'CallOptionsBase',
-      'CallOptionsProviderDataDependencies',
-      'CallOptionsWithArguments',
-      'CallOptionsWithPrivateState',
-      'CallOptionsWithProviderDataDependencies',
-      'CallResult',
+      'AnyContract',
+      'AnyFinalizedCallTxData',
+      'AnySubmittedCallTx',
       'CallResultPrivate',
-      'CallResultPublic',
       'CallTxOptions',
       'CallTxOptionsBase',
       'CallTxOptionsWithPrivateStateId',
       'CircuitCallTxInterface',
-      'CircuitMaintenanceTxInterface',
+      'CircuitIdOf',
       'CircuitMaintenanceTxInterfaces',
-      'ContractConstructorOptions',
-      'ContractConstructorOptionsBase',
       'ContractConstructorOptionsProviderDataDependencies',
-      'ContractConstructorOptionsWithArguments',
-      'ContractConstructorOptionsWithPrivateState',
-      'ContractConstructorOptionsWithProviderDataDependencies',
-      'ContractConstructorResult',
-      'ContractMaintenanceTxInterface',
       'ContractProviders',
       'ContractStates',
       'ContractTypeMismatch',
-      'CrossContractConfig',
       'DeployContractOptions',
       'DeployContractOptionsBase',
-      'DeployContractOptionsShared',
       'DeployContractOptionsWithPrivateState',
       'DeployedContract',
-      'DeployTxOptions',
-      'DeployTxOptionsBase',
-      'DeployTxOptionsWithPrivateState',
-      'DeployTxOptionsWithPrivateStateId',
-      'EraArtifactMismatchOptions',
-      'EraArtifactMismatchReason',
+      'EraMismatchOptions',
+      'EraMismatchReason',
       'FinalizedCallTxData',
-      'FinalizedCallTxPublicData',
       'FinalizedDeployTxData',
-      'FinalizedDeployTxDataBase',
-      'FinalizedDeployTxPublicData',
+      'FinalizedMaintenanceTxData',
       'FindDeployedContractOptions',
-      'FindDeployedContractOptionsBase',
-      'FindDeployedContractOptionsExistingPrivateState',
-      'FindDeployedContractOptionsStorePrivateState',
       'FoundContract',
       'FoundDeployTxData',
       'FoundDeployTxPublicData',
+      'Ledger8CallOptionsWithInitialStates',
+      'Ledger8CallResultPrivate',
+      'Ledger8CallResultPublic',
+      'Ledger8CallTxOptions',
+      'Ledger8CallTxOptionsBase',
+      'Ledger8CallTxOptionsWithPrivateStateId',
+      'Ledger8CallTxTarget',
+      'Ledger8CallUnsupportedReason',
+      'Ledger8Circuit',
+      'Ledger8CircuitCallTxInterface',
+      'Ledger8CircuitContext',
+      'Ledger8CircuitId',
+      'Ledger8CircuitMaintenanceTxInterface',
+      'Ledger8CircuitMaintenanceTxInterfaces',
+      'Ledger8CircuitParameters',
+      'Ledger8CircuitResult',
+      'Ledger8CircuitReturnType',
+      'Ledger8ConstructorParameters',
+      'Ledger8Contract',
+      'Ledger8ContractCall',
+      'Ledger8ContractCallPublic',
+      'Ledger8ContractMaintenanceTxInterface',
+      'Ledger8ContractProviders',
+      'Ledger8DeployContractOptions',
+      'Ledger8DeployContractOptionsBase',
+      'Ledger8DeployContractOptionsWithPrivateState',
+      'Ledger8DeployedContract',
+      'Ledger8FinalizedCallTxData',
+      'Ledger8FinalizedCallTxPublicData',
+      'Ledger8FinalizedDeployTxData',
+      'Ledger8FinalizedMaintenanceTxData',
+      'Ledger8FindDeployedContractOptions',
+      'Ledger8FoundContract',
+      'Ledger8FoundDeployTxData',
       'Ledger8FoundDeployTxPublicData',
-      'LogEvent',
+      'Ledger8InitialStateResult',
+      'Ledger8KeyedOperation',
+      'Ledger8NotStoredStage',
+      'Ledger8PrivateState',
+      'Ledger8Serializable',
+      'Ledger8SigningKeyReason',
+      'Ledger8SubmittedCallTx',
+      'Ledger8UnprovenDeployTxOptions',
+      'Ledger8UnprovenDeployTxOptionsBase',
+      'Ledger8UnsubmittedCallTxData',
+      'Ledger8UnsubmittedDeployTxData',
+      'Ledger8Witness',
+      'Ledger9CallOptions',
+      'Ledger9CallOptionsBase',
+      'Ledger9CallOptionsProviderDataDependencies',
+      'Ledger9CallOptionsWithArguments',
+      'Ledger9CallOptionsWithPrivateState',
+      'Ledger9CallOptionsWithProviderDataDependencies',
+      'Ledger9CallResult',
+      'Ledger9CallResultPrivate',
+      'Ledger9CallResultPublic',
+      'Ledger9CallTxOptions',
+      'Ledger9CallTxOptionsBase',
+      'Ledger9CallTxOptionsWithPrivateStateId',
+      'Ledger9CircuitCallTxInterface',
+      'Ledger9CircuitId',
+      'Ledger9CircuitMaintenanceTxInterface',
+      'Ledger9CircuitMaintenanceTxInterfaces',
+      'Ledger9Contract',
+      'Ledger9ContractConstructorOptions',
+      'Ledger9ContractConstructorOptionsBase',
+      'Ledger9ContractConstructorOptionsWithArguments',
+      'Ledger9ContractConstructorOptionsWithPrivateState',
+      'Ledger9ContractConstructorOptionsWithProviderDataDependencies',
+      'Ledger9ContractConstructorResult',
+      'Ledger9ContractMaintenanceTxInterface',
+      'Ledger9ContractProviders',
+      'Ledger9CrossContractConfig',
+      'Ledger9DeployContractOptions',
+      'Ledger9DeployContractOptionsBase',
+      'Ledger9DeployContractOptionsShared',
+      'Ledger9DeployContractOptionsWithPrivateState',
+      'Ledger9DeployedContract',
+      'Ledger9DeployTxOptions',
+      'Ledger9DeployTxOptionsBase',
+      'Ledger9DeployTxOptionsWithPrivateState',
+      'Ledger9DeployTxOptionsWithPrivateStateId',
+      'Ledger9FinalizedCallTxData',
+      'Ledger9FinalizedCallTxPublicData',
+      'Ledger9FinalizedDeployTxData',
+      'Ledger9FinalizedDeployTxDataBase',
+      'Ledger9FinalizedDeployTxPublicData',
+      'Ledger9FinalizedMaintenanceTxData',
+      'Ledger9FindDeployedContractOptions',
+      'Ledger9FindDeployedContractOptionsBase',
+      'Ledger9FindDeployedContractOptionsExistingPrivateState',
+      'Ledger9FindDeployedContractOptionsStorePrivateState',
+      'Ledger9FoundContract',
+      'Ledger9FoundDeployTxData',
+      'Ledger9LogEvent',
+      'Ledger9SubmitCallTxProviders',
+      'Ledger9SubmittedCallTx',
+      'Ledger9SubmitTxProviders',
+      'Ledger9TransactionContext',
+      'Ledger9UnprovenCallTxProvidersWithPrivateState',
+      'Ledger9UnprovenDeployTxOptions',
+      'Ledger9UnprovenDeployTxProviders',
+      'Ledger9UnsubmittedCallTxData',
+      'Ledger9UnsubmittedCallTxPrivateData',
+      'Ledger9UnsubmittedDeployTxData',
+      'Ledger9UnsubmittedDeployTxDataBase',
+      'Ledger9UnsubmittedDeployTxPrivateData',
+      'Ledger9UnsubmittedDeployTxPrivateDataFull',
+      'Ledger9UnsubmittedDeployTxPublicData',
+      'Ledger9UnsubmittedTxData',
       'ScopedTransactionOptions',
-      'StaleHeadOperationKind',
-      'SubmitCallTxProviders',
       'SubmitRejectionUndiagnosedCause',
       'SubmittedCallTx',
+      'SubmittedContractOperation',
       'SubmittedOperation',
+      'SubmittedOperationKind',
+      'SubmittedTransaction',
       'SubmitTxOptions',
       'SubmitTxProviders',
-      'TransactionContext',
+      'TxFailedDetails',
+      'TxFailedOperation',
       'UnprovenCallTxProvidersBase',
-      'UnprovenCallTxProvidersWithPrivateState',
-      'UnprovenDeployTxOptions',
-      'UnprovenDeployTxProviders',
-      'UnsubmittedCallTxData',
-      'UnsubmittedCallTxPrivateData',
-      'UnsubmittedDeployTxData',
-      'UnsubmittedDeployTxDataBase',
-      'UnsubmittedDeployTxPrivateData',
-      'UnsubmittedDeployTxPrivateDataFull',
-      'UnsubmittedDeployTxPublicData',
-      'UnsubmittedTxData'
-    ]);
-  });
-
-  /**
-   * @given the `Ledger8` namespace the barrel re-exports
-   * @when its type-only members are read with the compiler's own resolution
-   * @then they equal the pinned set exactly
-   *
-   * The retained-era family left the flat surface, and the list above stopped
-   * covering it with it. Pinned here instead: dropping this suite would leave
-   * ~30 published types with no gate at all, which is the surface the previous
-   * list existed to guard.
-   */
-  it('publishes exactly this retained-era type surface', () => {
-    expect(typeOnlyExportNames('Ledger8')).toEqual([
-      'CallResultPrivate',
-      'CallResultPublic',
-      'CallTxOptions',
-      'CallTxOptionsBase',
-      'CallTxOptionsWithPrivateStateId',
-      'CallTxTarget',
-      'Circuit',
-      'CircuitCallTxInterface',
-      'CircuitContext',
-      'CircuitId',
-      'CircuitParameters',
-      'CircuitResult',
-      'CircuitReturnType',
-      'ConstructorParameters',
-      'Contract',
-      'ContractCall',
-      'ContractCallPublic',
-      'ContractProviders',
-      'DeployContractOptions',
-      'DeployContractOptionsBase',
-      'DeployContractOptionsWithPrivateState',
-      'DeployedContract',
-      'FinalizedCallTxData',
-      'FinalizedCallTxPublicData',
-      'FindDeployedContractOptions',
-      'FoundContract',
-      'InitialStateResult',
-      'PrivateState',
-      'SubmittedCallTx',
-      'UnsubmittedCallTxData',
-      'Witness'
+      'UnsubmittedCallTxData'
     ]);
   });
 });

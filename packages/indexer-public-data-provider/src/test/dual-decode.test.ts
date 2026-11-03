@@ -19,9 +19,13 @@ import { fileURLToPath } from 'node:url';
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { type ReadMethod, SucceedEntirely, type VersionedFinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type FinalizedTxRead,
+  LedgerTransaction,
+  type ReadMethod,
+  SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
 import { DeserializationError, hasErrorCode, PROVIDER_ERROR_CODES, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -143,7 +147,7 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   it('decodes a v9 record through the statically bound runtime, byte-unchanged', async () => {
     const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex));
 
-    expect(record.version).toBe('v9');
+    expect(record.era).toBe('v9');
     // Re-serialized rather than merely non-null: proves the bytes went through
     // the v9 runtime instead of being handed back untouched.
     expect(toHex(record.tx.serialize())).toBe(ledger9TransactionHex);
@@ -152,8 +156,19 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   it('decodes a v8 record through the lazily loaded runtime, byte-unchanged', async () => {
     const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex));
 
-    expect(record.version).toBe('v8');
+    expect(record.era).toBe('v8');
     expect(toHex(record.tx.serialize())).toBe(ledger8TransactionHex);
+  });
+
+  it.each([
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, (): string => ledger9TransactionHex],
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, (): string => ledger8TransactionHex]
+  ])('seals a %s record transaction in a finalized handle of the era the record is tagged with', async (era, protocolVersion, raw) => {
+    const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw()));
+
+    expect(LedgerTransaction.isLedgerTransaction(record.tx)).toBe(true);
+    expect(record.era).toBe(era);
+    expect([record.tx.era, record.tx.stage]).toEqual([record.era, 'Finalized']);
   });
 
   it('decodes a v8 deploy record on watchForDeployTxData too', async () => {
@@ -162,11 +177,11 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
       transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex)
     );
 
-    expect(record.version).toBe('v8');
+    expect(record.era).toBe('v8');
     expect(record.txId).toBe(TX_ID);
   });
 
-  // The version-truth invariant, stated on both variants: the discriminant is not
+  // The era-truth invariant, stated on both variants: the discriminant is not
   // merely present, it is the answer the era resolver gives for the
   // `protocolVersion` sitting on the same record. A stamped literal would pass
   // on one variant and fail on the other.
@@ -176,8 +191,8 @@ describe('per-record dual decode on the finalized-transaction read path', () => 
   ])('carries a %s discriminant that agrees with the record own protocolVersion', async (era, protocolVersion, raw) => {
     const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, raw()));
 
-    expect(record.version).toBe(protocolVersionToLedger(record.protocolVersion, 'read'));
-    expect(record.version).toBe(era);
+    expect(record.era).toBe(protocolVersionToLedger(record.protocolVersion, 'read'));
+    expect(record.era).toBe(era);
   });
 });
 
@@ -193,7 +208,7 @@ describe('the read surface returns the decoded record, on both read methods and 
 
     const record = await provider.watchForDeployTxData(CONTRACT_ADDRESS);
 
-    expect(record.version).toBe(era);
+    expect(record.era).toBe(era);
     expect(toHex(record.tx.serialize())).toBe(raw());
     expect(record.txId).toBe(TX_ID);
   });
@@ -238,7 +253,7 @@ describe('the read surface returns the decoded record, on both read methods and 
     const record = await build(ledger9TransactionHex);
 
     expect({ ...record, tx: 'omitted' }).toEqual({
-      version: 'v9',
+      era: 'v9',
       tx: 'omitted',
       status: SucceedEntirely,
       txId: TX_ID,
@@ -263,7 +278,7 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
       [0, 1, 2].map(() => toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex)))
     );
 
-    expect(records.map((record) => record.version)).toEqual(['v9', 'v9', 'v9']);
+    expect(records.map((record) => record.era)).toEqual(['v9', 'v9', 'v9']);
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
@@ -277,7 +292,7 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
     );
     const modules = await Promise.all(loadLedger8Spy.mock.results.map((result) => result.value));
 
-    expect(records.map((record) => record.version)).toEqual(Array.from({ length: RECORD_COUNT }, () => 'v8'));
+    expect(records.map((record) => record.era)).toEqual(Array.from({ length: RECORD_COUNT }, () => 'v8'));
     expect(loadLedger8Spy).toHaveBeenCalled();
     // One physical load is the claim, and a single module identity is how that
     // shows from here. Deliberately not a call count: a memo added inside the
@@ -288,18 +303,18 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
   it('awaits the acquisition inside the query method, so the caller sees a resolved record', async () => {
     const provider = providerReturning(transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex));
 
-    const record: VersionedFinalizedTxData = await provider.watchForTxData(TX_ID);
+    const record: FinalizedTxRead = await provider.watchForTxData(TX_ID);
 
-    expect(record.version).toBe('v8');
+    expect(record.era).toBe('v8');
     expect(loadLedger8Spy).toHaveBeenCalledTimes(1);
   });
 
   it('resolves a v9 record through the query method without touching the v8 runtime', async () => {
     const provider = providerReturning(transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex));
 
-    const record: VersionedFinalizedTxData = await provider.watchForTxData(TX_ID);
+    const record: FinalizedTxRead = await provider.watchForTxData(TX_ID);
 
-    expect(record.version).toBe('v9');
+    expect(record.era).toBe('v9');
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 });
@@ -326,12 +341,13 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
   // use for.
   const LAZY_ACCESSORS = ['loadLedger8Protocol', 'loadLedger8Engine'] as const;
 
-  it('reaches the v8 era through loadLedger8Protocol and through no other accessor', () => {
+  it('reaches the v8 era only through utils.deserializeLedgerTransaction, naming no protocol accessor', () => {
     const referenced = LAZY_ACCESSORS.filter((accessor) =>
       sources().some(({ text }) => new RegExp(`\\b${accessor}\\b`).test(text))
     );
 
-    expect([...referenced].sort()).toEqual(['loadLedger8Protocol']);
+    expect(referenced).toEqual([]);
+    expect(sources().some(({ text }) => /\bdeserializeLedgerTransaction\b/.test(text))).toBe(true);
   });
 
   // Every way a module specifier can be LINKED at runtime. `[^;]*?` spans the
@@ -361,7 +377,7 @@ describe('the module graph keeps both retained-era chunks off the eager path', (
     const FORBIDDEN = [
       '@midnightntwrk/ledger-v8',
       '@midnight-ntwrk/midnight-js-protocol/v8',
-      '@midnight-ntwrk/midnight-js-protocol/engine'
+      '@midnight-ntwrk/midnight-js-protocol/v8/engine'
     ];
 
     const linked = runtimeSpecifiers();
@@ -540,7 +556,7 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     // now go through `parseHex`.
     const record = await toFinalizedTxData(TX_ID, transactionAt(protocolVersion, `0x${raw()}`));
 
-    expect(record.version).toBe(era);
+    expect(record.era).toBe(era);
     expect(toHex(record.tx.serialize())).toBe(raw());
   });
 });

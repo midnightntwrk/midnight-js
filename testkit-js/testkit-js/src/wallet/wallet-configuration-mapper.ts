@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type DefaultConfiguration,
   DefaultForkSchedule,

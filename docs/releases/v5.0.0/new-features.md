@@ -15,7 +15,7 @@ const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig
 
 - **No address registration.** The binding from a call to its artifacts is *derived* by joining on the verifier key: each key location embeds the SHA-256 of the call's deployed verifier key (known at assembly from the contract's resolved on-chain state), and resolution selects the source whose local verifier key for that circuit matches. The join is exactly the predicate the chain enforces (a proof must verify against the deployed key), so it is immune to redeploys, multiple deployments of one contract, and circuit-name collisions across contracts. Resolutions are memoized.
 - `resolveKeyLocation()` returns `undefined` for non-contract key locations (e.g. a `midnight/` protocol builtin) and throws `ZKArtifactNotFoundError` when a contract location's embedded hash matches no source.
-- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
+- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/v9/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
 
 Cross-contract call assembly resolves on-chain state at a chosen block via the new **"as-of" endpoint** on `PublicDataProvider`:
 
@@ -30,7 +30,7 @@ const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeigh
 // `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol`.
 // It is the era of *that* block, so a block read at an explicit offset from before a hard fork keeps
 // reporting the era it was produced in, unlike `queryLatestProtocolVersion()`, which always reports
-// the head. (For `queryBlock()` with no offset the two agree, by definition.)
+// the latest block. (For `queryBlock()` with no offset the two agree, by definition.)
 ```
 
 ---
@@ -114,20 +114,20 @@ Notable schema-driven decisions:
 
 ---
 
-## MIP-0002 log events on `CallResult` (#1083)
+## MIP-0002 log events on `Ledger9CallResult` (#1083)
 
 The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
 
-`CallResultPublic` now carries them:
+`Ledger9CallResultPublic` now carries them:
 
 ```ts
-interface CallResultPublic {
+interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
+  readonly logEvents: readonly Ledger9LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
 }
 ```
 
-Events are carried **raw** (no eager decode). Decode them with the `ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
+Events are carried **raw** (no eager decode). Decode them with the `Ledger9ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
 
 ```ts
 import { contracts } from '@midnight-ntwrk/midnight-js';
@@ -135,10 +135,10 @@ import { contracts } from '@midnight-ntwrk/midnight-js';
 const result = await callTx(/* ... */);
 
 // lenient: never throws — undecodable entries are skipped
-const logs = contracts.ContractLog.decodeAll(result.public.events);
+const logs = contracts.Ledger9ContractLog.decodeAll(result.public.logEvents);
 ```
 
-The single `events` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
+The single `logEvents` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
 
 ---
 
@@ -211,12 +211,12 @@ Foundation for issue #816. A new `deserialization` module in `@midnight-ntwrk/mi
 
 ```ts
 import {
-  deserializeContractState,
+  deserializeLedger9ContractState,
   isDeserializationError,
 } from '@midnight-ntwrk/midnight-js-utils';
 
 try {
-  const state = deserializeContractState(bytes);
+  const state = deserializeLedger9ContractState(bytes);
 } catch (error) {
   if (isDeserializationError(error)) {
     error.classification; // 'version-mismatch' | 'generic-param-mismatch' | 'format-mismatch' | 'unknown'
@@ -228,7 +228,7 @@ try {
 
 - `DeserializationError` with classification, direction inference, per-source mitigation hints, and structural-tag extraction.
 - `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).
-- 6 typed wrappers (`deserializeContractState`, …, `decodeLedgerStateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
+- 6 typed wrappers (`deserializeLedger9ContractState`, …, `decodeLedger9StateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
 
 ---
 
@@ -269,3 +269,24 @@ No API change is required — construct the provider as before and compression i
 ## Contract-event GraphQL schema enhancements (#971, #975)
 
 The generated contract-event GraphQL schema was enhanced with transaction references and beta markers, richer contract-event types, and **dust generation** support — underpinning the `PublicDataProvider` event surface above.
+
+## Low-level functions for ledger 8 contracts (#1524)
+
+A contract produced by the ledger 8 toolchain now has the same low-level functions as a ledger 9
+one: `createLedger8UnprovenCallTx`, `createLedger8UnprovenCallTxFromInitialStates`,
+`createLedger8UnprovenDeployTx`, `createLedger8UnprovenDeployTxFromVerifierKeys` and
+`submitLedger8DeployTx`. The unprefixed routers (`createUnprovenCallTx`, …, `submitDeployTx`)
+send a ledger 8 contract to them.
+
+A builder stores nothing. Submit what it built with `submitTx`:
+
+```ts
+const built = await createLedger8UnprovenCallTx(providers, callOptions);
+// 'v8' before the fork, 'v9' after it: the call keeps the contract's ledger 8 verifier keys.
+console.log(built.private.unprovenTx.era);
+const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+```
+
+`createLedger8UnprovenCallTxFromInitialStates` runs a call on states the caller read, with every
+era stated: `head`, `initialContractState: { era, state }` and `ledgerParameters: { era, parameters }`.
+A ledger 8 deploy works only before the fork.

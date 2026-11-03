@@ -21,8 +21,8 @@ import * as path from 'node:path';
 import type * as currentRuntimeModule from '@midnight-ntwrk/compact-runtime';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { type EncodedStateValue, loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
-import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type * as CompactContract from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 
 import { hfFixturePath } from '../src/fixtures-hf';
 

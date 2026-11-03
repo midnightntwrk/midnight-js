@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ held coins are.
 
 ## See
 
-[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for what the retained arm is missing and why this
+[ErrorTaxonomy](../../../../documents/ErrorTaxonomy.md) for what the retained-era path is missing and why this
 refuses before the offer is built.
 
 ## Extends

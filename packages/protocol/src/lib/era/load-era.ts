@@ -87,7 +87,7 @@ const createLedger8Era = async (): Promise<LedgerEra> => {
  * Resolves one ledger era to a {@link LedgerEra} bound to it.
  *
  * This is the only sanctioned way to reach either era's operations. Pass the
- * version resolved from a record or from the network head (see
+ * version resolved from a record or from the network's latest block (see
  * `protocolVersionToLedger` in `../../version.ts`) rather than a string chosen
  * by hand.
  *
@@ -118,7 +118,7 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
       // `const unhandled: never` is a compile-time exhaustiveness gate, and the
       // runtime rejection is not redundant with it -- see SharedTableDiscipline.
       const unhandled: never = version;
-      return Promise.reject(new UnknownLedgerVersionError(String(unhandled)));
+      return Promise.reject(new UnknownLedgerVersionError(unhandled));
     }
   }
 };

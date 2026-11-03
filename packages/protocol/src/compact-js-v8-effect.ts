@@ -14,11 +14,11 @@
  */
 
 /**
- * compact-js's RETAINED-era (ledger 8) entry, re-exported.
+ * compact-js's ledger 8 entry, re-exported.
  *
- * Published for the same reason the current era's entry is: only
+ * Published for the same reason `./v9/compact-js/effect` is: only
  * `packages/protocol/src/` may import compact-js directly, so a downstream
- * package that has to name a retained-era value reaches it through here.
+ * package that has to name a ledger 8 value reaches it through here.
  *
  * `executeCircuit` does NOT take one of these containers — it takes a
  * {@link Ledger8EngineContract}, the constructed artifact the previous toolchain

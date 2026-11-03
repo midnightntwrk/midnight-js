@@ -12,56 +12,88 @@ place, so a docstring can state what an error means and leave why it is shaped
 that way here.
 
 The code is `packages/contracts/src/errors.ts`. The remediation an error asks
-for is a separate thread — see [StaleHeadRemediation](./stale-head-remediation.md).
+for is a separate thread — see [ForkCrossedRemediation](./stale-head-remediation.md).
 The order a retained-era operation runs in, which fixes where each refusal can
 sit, is [KeepStatePipeline](./keep-state-pipeline.md).
 
-## One class to catch, two record types underneath
+## One class per fault
 
-`AnyEraTxFailedError` is the class to catch for "this framework submitted a
+Each fault is one class. A field on it says which case it was: `operation`,
+`reason` or `stage`. Classes are merged only inside one category (ADR 0017), so
+a caller never has to read the field to learn what to do about the fault. The
+field only tells it which case it is in.
+
+A wrong-era fault stays split by who is at fault:
+
+| Class | Category | Who is at fault |
+|---|---|---|
+| `EraMismatchError` | USAGE | The caller passed a value of the wrong era. |
+| `EraInvariantViolationError` | INTERNAL | A provider or the framework broke the era rule. |
+| `PublicStatesEraMismatchError`, `IndexerInconsistencyError` | INTEGRITY | The data served does not agree with itself. |
+| `UnknownLedgerVersionError` | ENVIRONMENT | The provider or midnight-js is too old for the value. |
+
+## One class to catch for a failed transaction
+
+`TxFailedError` is the class to catch for "this framework submitted a
 transaction and the chain recorded it as something other than success", in
-either era.
+either era. A v4-style `catch (e) { if (e instanceof TxFailedError) ... }`
+around a ledger 8 call catches it.
 
-It exists because the two eras cannot share a record TYPE. The current era
-submits and accepts only v9, so its record is `FinalizedTxData`. A retained-era
-call is recorded by whichever era the network head is on, so its record is the
-version-tagged union `VersionedFinalizedTxData` — which is not assignable to the
-v9 variant. Narrowing the current era's member to the union would change a type
-consumers already read, so that was not available either. Hence a retained-era
-class of its own rather than an extension of `TxFailedError`, and a base that
-declares the union.
+Its constructor is `TxFailedError(operation, record, details)`:
 
-Each subclass keeps its own historical member — `finalizedTxData` on the current
-era's, `txData` on the retained one — so nothing reading those breaks.
-`AnyEraTxFailedError.record` is the member to write new code against, and it
-needs narrowing on `version` before `tx` is touched.
+- `operation` is `'call'`, `'deploy'`, `'insert-verifier-key'`,
+  `'remove-verifier-key'` or `'replace-authority'`.
+- `record` is the era-tagged `FinalizedTxRead` the chain reported. Narrow on
+  `record.era` before `record.tx` is touched. The message names the status, the
+  transaction id and hash, the block height and the failed segments; every
+  other field is read from `record`.
+- `contractAddress`, `circuitId` and `signingKey` are optional members. The
+  constructor requires the ones each operation always has: `contractAddress`
+  and `signingKey` for a deploy or a replacement, `contractAddress` and
+  `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
+  call never sets `contractAddress`, because a scope can call several
+  contracts; `circuitId` is then a list.
 
-### Why the shared code sits on the base
+### Why the shared code sits on the class
 
 The code is the contract (ADR 0017); `instanceof` is a convenience. It is
 identity-based: with two copies of this package resolved in one process it
 returns `false`, and a failed transaction walks past a correctly written handler.
-`AnyEraTxFailedError.code` is the branch that always works.
+`TxFailedError.code` is the branch that always works.
 
-Subclasses inherit that code rather than each declaring their own. What a caller
-needs to distinguish is WHICH transaction failed — which the class and the
-record already answer — not a finer code.
+One code, `TX_FAILED`, covers every operation. What a caller needs to
+distinguish is WHICH operation failed, which `operation` already answers, not a
+finer code.
 
 ## Which errors carry a registered code, and which do not
 
-Every class here carries a registered code (ADR 0017). The retained era's
-recorded-failure classes — `Ledger8CallTxFailedError` and
-`Ledger8DeployTxFailedError` — carry none of their OWN: they inherit `TX_FAILED`.
-That era's record type is expected to converge with the current era's, and a
-finer code promised now would outlive the shape it describes. A caller branches
-on `TX_FAILED` and reads the record itself off `txData` rather than parsing a
-message.
+Every class here carries a registered code (ADR 0017). The ledger 8 classes
+that remain carry one each, and they describe what the caller must do next, not
+the record:
 
-The post-submission classes are different: `Ledger8DeployUnconfirmedError` and
-`Ledger8DeployNotStoredError` describe what the caller must do next, not the
-record, so each has a code of its own. `LEDGER8_DEPLOY_UNCONFIRMED` is
-`UNCERTAIN`, because the deployment may still land.
+- `Ledger8SigningKeyError` (`LEDGER8_SIGNING_KEY`, USAGE), `reason` `'unusable'`
+  or `'unavailable'`.
+- `Ledger8UnconfirmedError` (`LEDGER8_UNCONFIRMED`, UNCERTAIN), `operation`
+  `'deploy'` or `'replace-authority'`. It is `UNCERTAIN` because the deployment
+  or the replacement may still land.
+- `Ledger8NotStoredError` (`LEDGER8_NOT_STORED`, ENVIRONMENT), `operation`
+  `'deploy'` or `'replace-authority'`, and `stage` `'signing-key'` or
+  `'private-state'`.
+- `Ledger8CallUnsupportedError` (`LEDGER8_CALL_UNSUPPORTED`, USAGE), `reason`
+  `'shielded-spend'` or `'unmappable-recipient'`.
+- `Ledger8AmbiguousEntryPointError` (`LEDGER8_AMBIGUOUS_ENTRY_POINT`,
+  INTEGRITY).
 
+The four reason and stage types are exported flat, next to the classes:
+`Ledger8SigningKeyReason`, `Ledger8KeyedOperation`, `Ledger8NotStoredStage` and
+`Ledger8CallUnsupportedReason`. There is no `Ledger8` namespace
+([ADR 0013](../../../docs/adr/0013-publish-the-retained-era-as-one-namespace.md)).
+
+Every refusal for a value of the wrong era is one `EraMismatchError`
+(`ERA_MISMATCH`), and its `reason` says which. Where the old classes carried a
+typed field the merged class cannot hold (`networkVersion`, `circuitId`,
+`received`, `contractAddress`, `operation`), the value is in the message,
+through `detail`.
 `SubmitRejectionUndiagnosedError` is the exception that proves the rule: it has
 its own code, and **the code of the rejection it carries must not be copied onto
 it**. The two name different things — one is what the network did, the other is
@@ -69,15 +101,23 @@ that no diagnosis of it could be made.
 
 ## Refuse before the caller pays
 
-Three refusals exist to convert a late, paid-for failure into an early, free
+Four refusals exist to convert a late, paid-for failure into an early, free
 one. Each replaced a real failure mode, and the placement is the point.
 
 ### `LedgerParametersUnservedError`
 
-`RawContractState.ledgerParameters` is optional: a provider that cannot serve
-them is still a usable provider, and the bundled indexer provider always does
-serve them. But this pipeline has just read the chain, so an absent parameter set
-*here* is a provider that did not serve them, not a caller with no read surface.
+`queryContractState` returns a `ContractStateAndParametersRead`, whose
+`ledgerParameters` is required, and the bundled indexer provider refuses a block
+that carries none. A provider written in JavaScript is out of reach of the
+types, though, and this pipeline has just read the chain, so an absent parameter
+set *here* is a provider that did not serve them, not a caller with no read
+surface.
+
+Only parameters that are absent (`undefined` or `null`) are taken as unserved.
+Parameters served in a shape that is not a `SerializedState` are refused with
+`UnknownLedgerVersionError` instead, because the provider did serve something, in
+the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
+fault.
 
 It is raised instead of substituting the ledger's initial parameters, which is
 what happened before and is the failure this class exists to replace: the
@@ -90,14 +130,43 @@ The compatibility path still exists for a caller that genuinely cannot read the
 chain, but it has to be selected by name — `INITIAL_LEDGER_PARAMETERS` in
 `midnight-js-protocol`.
 
-### `Ledger8ShieldedSpendUnsupportedError`
+### `PublicStatesEraMismatchError`
+
+A call is built from the contract state, the ledger parameters and the zswap
+chain state of one read. A `PublicStatesRead` is typed as one era, but a
+provider written in JavaScript can serve parameters or a zswap state of another
+era, or none. The v8 pipeline composes for the head's era, and checks the era of
+the parameters it read against that era the same way, with `expected` the head. Decoding those would
+fail inside the runtime with a message that tells the dApp to pass a decoder it
+never passes. So the era of each state is checked before anything is decoded,
+and the refusal names the state and the provider as the fault.
+
+Before that check each state is rebuilt with `SerializedState.fromBytes` from its
+`era`, `kind` and `serialize()`. `SerializedState.isSerializedState` answers `false` for
+a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+and a dApp can end up with two copies the same way it ends up with two runtimes.
+Refusing such a state would name a provider fault where there is none. The
+rebuild checks the tag again, so forged bytes and a state of another kind are
+still refused, with `InvalidSerializedStateError` (`tag-mismatch`). A state that is
+present but names no known era is not "missing": it is refused with
+`UnknownLedgerVersionError`. Its `requestedVersion` is `undefined` when the
+value carried no era at all, and the message points to an outdated provider. A
+state with a known era but no `serialize()` still gives `InvalidSerializedStateError`.
+
+A framework decoder that fails on the bytes after a valid tag throws its own
+`DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).
+`SerializedState.deserialize` rethrows it unchanged, so the error does not tell the
+dApp to pass a decoder it never passed.
+
+### `Ledger8CallUnsupportedError`, reason `'shielded-spend'`
 
 Building a transaction's Zswap offer for a spend of a coin the contract already
 holds on chain needs the contract's Zswap CHAIN state, to locate the coin's
 commitment in the chain's Merkle tree. The retained-era pipeline does not read
 one. A coin the same call produced needs no chain state — it is paired with its
 own output as a transient — which is why only spends of previously held coins
-are refused.
+are refused. The other reason, `'unmappable-recipient'`, refuses a shielded
+payment to a recipient whose encryption key cannot be resolved.
 
 Raised BEFORE the offer is built rather than left to fail deeper. Without it the
 condition surfaced as a bare assertion inside the offer builder, naming neither
@@ -108,7 +177,7 @@ The fix is to supply the retained-era path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
-### `ScopedTransactionEraUnsupportedError`
+### `EraMismatchError`, reason `'scope-on-ledger8-network'`
 
 The pre-fork era composes exactly one call per transaction and refuses a longer
 list, which leaves a pre-fork scope nothing to batch into.
@@ -127,7 +196,7 @@ that region carries the key.
 
 ### The two post-submission classes
 
-`Ledger8DeployUnconfirmedError` covers the window where the chain's answer is
+`Ledger8UnconfirmedError` with `operation` `'deploy'` covers the window where the chain's answer is
 unknown: the read surface rejecting, a record whose version tag is missing or
 unrecognised, and a record arriving from an era the head this deployment composed
 on cannot have recorded. One class over all of them, because the caller's action
@@ -144,7 +213,7 @@ with. An era violation reaching `cause` unchanged is what keeps
 `cause instanceof EraInvariantViolationError`, its method and its registered code
 reachable.
 
-`Ledger8DeployNotStoredError` is the case where the answer arrived and it was
+`Ledger8NotStoredError` with `operation` `'deploy'` is the case where the answer arrived and it was
 success, but the private-state provider refused to record it locally. The
 contract exists, its maintenance authority is built from this error's key, and
 deploying again is the one thing a caller must not do.
@@ -154,29 +223,34 @@ can strand it. One class over the whole after-success region is what makes the
 region's guarantee checkable: no `await` in it may reject without the key riding
 along.
 
-`Ledger8DeployUnconfirmedError` is reachable only AFTER submission. Every refusal
+`Ledger8UnconfirmedError` is reachable only AFTER submission. Every refusal
 ahead of it is raised with no key having been sampled.
 
 ### The key is named, never rendered
 
-`Ledger8DeployTxFailedError.signingKey` and `Ledger8DeployNotStoredError.signingKey`
-are referenced in their classes' documentation but never interpolated into a
-message. An error message reaches logs and issue trackers, and this is the only
-copy of the authority over a deployment that landed.
+`TxFailedError.signingKey` (after a failed deploy or replacement),
+`Ledger8UnconfirmedError.signingKey` and `Ledger8NotStoredError.signingKey` are
+referenced in their classes' documentation but never interpolated into a
+message. An error message reaches logs and issue trackers, and each may be the
+only copy of the authority over a deployment or a replacement that landed.
+
+The key is not enumerable either. `Object.keys`, object spread, `JSON.stringify`
+and a logger that serializes the properties of an error leave it out; the
+caller reads it as `error.signingKey`.
 
 ## Why a failed deploy is not a failed call
 
-`Ledger8DeployTxFailedError` is separate from `Ledger8CallTxFailedError` because
-the remediation is — the same reason `StaleHeadError` writes a deploy's
-remediation separately. A failed call can simply be run again. A failed deploy
+A failed deploy and a failed call are the same class, `TxFailedError`, but the
+remediation in the message differs by `operation` — the same reason
+`ForkCrossedDuringOperationError` writes a deploy's remediation separately. A failed call can simply be run again. A failed deploy
 cannot be retried blindly: a deploy mints a fresh nonce, so a second attempt
 lands at a DIFFERENT address, and repeating one that in fact finalized leaves two
 copies of the contract on chain.
 
 ## Messages state the consequence per status
 
-Both retained-era recorded-failure classes state the local-versus-chain
-consequence per STATUS, because the two differ.
+`TxFailedError` states the local-versus-chain consequence per STATUS, because the
+two differ.
 
 With the whole transaction rejected, nothing landed. With a fallible-phase
 failure, every guaranteed effect is kept — and this pipeline places every
@@ -202,7 +276,7 @@ cause chains still lands somewhere useful. The rejection is always the FIRST
 entry of `errors`.
 
 The two undiagnosable conditions and what each asks of a caller are in
-[StaleHeadRemediation](./stale-head-remediation.md).
+[ForkCrossedRemediation](./stale-head-remediation.md).
 
 ## Related reading
 

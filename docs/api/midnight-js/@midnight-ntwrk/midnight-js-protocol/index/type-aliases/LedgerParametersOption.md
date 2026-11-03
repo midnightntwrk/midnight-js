@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -22,4 +22,4 @@ parameters are era-tagged and dated per block, so a second read could answer for
 
 ## See
 
-[EraSeam](../../documents/EraSeam.md)
+[EraBoundary](../../documents/EraBoundary.md)

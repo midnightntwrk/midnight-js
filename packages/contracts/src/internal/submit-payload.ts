@@ -14,30 +14,29 @@
  */
 
 /**
- * Prove, balance and submit, once per PAYLOAD era: the only place in this package that calls the
- * three transaction methods.
- *
- * Named after the era of the payload that crosses the providers, never after the contract or the
- * pipeline that built it. A contract compiled for the v8 toolchain still crosses as a v9 payload on
- * a post-fork head.
+ * Prove, balance and submit: the only place in this package that calls the three transaction
+ * methods. The era is the one the transaction handle carries, never the contract's or the
+ * pipeline's: a contract compiled for the v8 toolchain still crosses as a v9 handle on a post-fork
+ * head.
  *
  * Every rejection from a provider becomes {@link ProviderFailedError}, with the provider's own
  * failure sanitized onto `cause`, whichever era and whichever entry point. The callers own the
  * preconditions: the provider-era and config checks run before these, once.
  */
 
-import type { Transaction, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
+  FinalizedTx,
   MidnightConfig,
   MidnightProvider,
   ProofProvider,
   ProviderMethod,
+  UnprovenTx,
   WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ProviderFailedError } from '../errors';
-import { unwrapLedger8ProviderResult, unwrapLedger9ProviderResult } from './era';
+import { requireProviderResult } from './era';
 
 declare const __DEBUG__: boolean;
 
@@ -158,7 +157,9 @@ const redact = (text: string): string => {
  * name, a redacted message, a redacted stack and a redacted `cause` chain.
  *
  * The provider's ENUMERABLE PROPERTIES are the one thing DROPPED. Everything
- * else — class name, message, stack and `cause` chain — is kept REDACTED.
+ * else — class name, message, stack and `cause` chain — is kept REDACTED. The
+ * `code` of this framework's own coded errors is kept as it is: it is a
+ * published constant, and a caller matches on it with `hasErrorCode`.
  *
  * @param cause Whatever the provider rejected with — `unknown`, because a
  * rejection is not obliged to be an `Error`.
@@ -179,6 +180,9 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
   if (isErrorLike(cause) && typeof cause.stack === 'string') {
     rebuilt.stack = redact(cause.stack);
   }
+  if (hasErrorCode(cause)) {
+    Object.defineProperty(rebuilt, 'code', { value: cause.code, enumerable: true });
+  }
   // `AggregateError.errors` is where `fetch` reports the per-address failures
   // behind a connection error, and it is an own property, so it does not travel
   // with the message or the cause chain.
@@ -198,8 +202,8 @@ const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
  * {@link ProviderFailedError} with the failure sanitized onto `cause`.
  *
  * This framework's OWN coded errors pass through UNCHANGED when they carry no
- * `cause`: a caller narrowing on `Ledger8PayloadUnsupportedError` or
- * {@link EraInvariantViolationError} has to keep seeing them. One that carries a
+ * `cause`: a caller narrowing on `ProviderEraUnsupportedError`,
+ * `InvalidTransactionHandleError` or {@link EraInvariantViolationError} has to keep seeing them. One that carries a
  * `cause` -- a transport failure under `ProofServerError`, say -- holds external
  * material and is sanitized like any other rejection. `hasErrorCode` is the
  * registry-backed test, so a foreign coded error is always sanitized.
@@ -239,14 +243,13 @@ const sanitizedSubmit =
   (call) =>
     atProviderMethod('submitTx', circuitId, call);
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const logTransaction = (circuitId: CircuitIds, tx: Transaction<any, any, any>): void => {
+const logTransaction = (circuitId: CircuitIds, tx: FinalizedTx): void => {
   if (process.env.MN_DEBUG?.toLowerCase() !== 'true') {
     return;
   }
   const circuitIds = Array.isArray(circuitId) ? circuitId.join('-') : circuitId ?? 'unknown-circuit';
   try {
-    console.log(`Submit tx: ${circuitIds} : ${tx}`);
+    console.log(`Submit tx: ${circuitIds} : ${tx.era} ${tx.stage}`);
     console.log(`Serialized tx has length ${tx.serialize().length}`);
   } catch (error) {
     console.error('Failed to write debug transaction logs:', error instanceof Error ? error.message : String(error));
@@ -254,66 +257,45 @@ const logTransaction = (circuitId: CircuitIds, tx: Transaction<any, any, any>): 
 };
 
 /**
- * Proves, balances and submits a v9 transaction as `{ version: 'v9', tx }` payloads.
+ * Proves, balances and submits a transaction handle, in the handle's own era.
+ *
+ * Each provider answer is checked before it is passed on: it has to be a handle
+ * of this package, at the next stage, in the era that was sent.
  *
  * @param providers The proof, wallet and submission providers.
- * @param unprovenTx The live v9 transaction.
+ * @param unprovenTx The unproven transaction handle.
  * @param circuitId The circuit, or circuits, named in any refusal.
  * @param submit How the `submitTx` call is run. Defaults to the sanitizing wrapper.
  * @returns The transaction id the network assigned.
  * @throws ProviderFailedError if a provider rejects.
- * @throws EraInvariantViolationError if a provider answers with a v8 payload.
+ * @throws InvalidTransactionHandleError if a provider answers with something
+ *         other than a handle at the next stage.
+ * @throws EraInvariantViolationError if a provider answers in the other era.
  */
-export const proveBalanceSubmitLedger9Payload = async (
+export const proveBalanceSubmit = async (
   providers: PayloadSubmitProviders,
-  unprovenTx: UnprovenTransaction,
+  unprovenTx: UnprovenTx,
   circuitId: CircuitIds,
   submit: SubmitRunner = sanitizedSubmit(circuitId)
 ): Promise<string> => {
-  const proven = unwrapLedger9ProviderResult(
-    await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v9', tx: unprovenTx })),
+  const { era } = unprovenTx;
+  const proven = requireProviderResult(
+    await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx(unprovenTx)),
+    era,
+    'Unbound',
     'proveTx',
     circuitId
   );
   const balanceTtl = intentTtl(providers.config);
-  const balanced = unwrapLedger9ProviderResult(
-    await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v9', tx: proven }, balanceTtl)),
+  const balanced = requireProviderResult(
+    await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx(proven, balanceTtl)),
+    era,
+    'Finalized',
     'balanceTx',
     circuitId
   );
   if (__DEBUG__) {
     logTransaction(circuitId, balanced);
   }
-  return submit(() => providers.midnightProvider.submitTx({ version: 'v9', tx: balanced }));
-};
-
-/**
- * Proves, balances and submits a v8 transaction as `{ version: 'v8', txBytes }` payloads.
- *
- * @param providers The proof, wallet and submission providers.
- * @param txBytes The serialized v8 transaction.
- * @param circuitId The circuit, or circuits, named in any refusal.
- * @param submit How the `submitTx` call is run. Defaults to the sanitizing wrapper.
- * @returns The transaction id the network assigned.
- * @throws ProviderFailedError if a provider rejects.
- * @throws EraInvariantViolationError if a provider answers with a v9 payload.
- */
-export const proveBalanceSubmitLedger8Payload = async (
-  providers: PayloadSubmitProviders,
-  txBytes: Uint8Array,
-  circuitId: CircuitIds,
-  submit: SubmitRunner = sanitizedSubmit(circuitId)
-): Promise<string> => {
-  const proven = unwrapLedger8ProviderResult(
-    await atProviderMethod('proveTx', circuitId, () => providers.proofProvider.proveTx({ version: 'v8', txBytes })),
-    'proveTx',
-    circuitId
-  );
-  const balanceTtl = intentTtl(providers.config);
-  const balanced = unwrapLedger8ProviderResult(
-    await atProviderMethod('balanceTx', circuitId, () => providers.walletProvider.balanceTx({ version: 'v8', txBytes: proven }, balanceTtl)),
-    'balanceTx',
-    circuitId
-  );
-  return submit(() => providers.midnightProvider.submitTx({ version: 'v8', txBytes: balanced }));
+  return submit(() => providers.midnightProvider.submitTx(balanced));
 };

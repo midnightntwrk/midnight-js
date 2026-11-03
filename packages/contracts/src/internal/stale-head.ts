@@ -25,16 +25,17 @@
  * {@link ProviderFailedError} by the provider-call wrapper in `./submit-payload.ts`;
  * do not add a second sanitizer here that could redact differently.
  *
- * @see {@link StaleHeadRemediation} for why a rejection is diagnosed at all,
+ * @see {@link ForkCrossedRemediation} for why a rejection is diagnosed at all,
  *      and why the re-read is a real second reading of the network.
  */
 
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
-import { StaleHeadError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
+import { ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
 import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import { type HeadEraReading, type HeadVersionSource, readHeadEra } from './era';
+import { atProviderMethod, type SubmitRunner } from './submit-payload';
 
 /**
  * Where an era sits on the timeline, for comparing two readings by DIRECTION
@@ -65,7 +66,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * The fresh read is BREADCRUMBED, with its own `'post-rejection-re-read'`
  * provenance. It is the only head reading taken after bytes were already on
  * the wire, and it is the reading the verdict below rests on, so an operator
- * asked to act on a {@link StaleHeadError} needs the integer it returned —
+ * asked to act on a {@link ForkCrossedDuringOperationError} needs the integer it returned —
  * see `./breadcrumbs.ts`.
  *
  * @param pdp The read surface, for the one fresh head read. Declared as the
@@ -73,20 +74,20 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * sees exactly which member is consulted; a full `PublicDataProvider`
  * satisfies it.
  * @param operation Which operation was rejected: the era it started against,
- * whether it is a call or a deploy, and the identifiers its remediation has to
+ * its kind, and the identifiers its remediation has to
  * name so a caller with several operations in flight can act on it.
  * @param rejection Whatever `submitTx` rejected with — `unknown`, because
  * a rejection is not obliged to be an `Error`.
  * @param logger The optional logger the post-rejection head reading is written to.
  * @returns Never; the returned promise always rejects.
- * @throws StaleHeadError if a fresh head read reports a LATER era.
+ * @throws ForkCrossedDuringOperationError if a fresh head read reports a LATER era.
  * @throws SubmitRejectionUndiagnosedError if the fresh read reports an earlier
  * era, or if the read itself rejects — so neither failure is lost while the
  * question is unresolved, and both arrive carrying a registered code. A head
  * integer that cannot be placed on the era timeline arrives here too, on the
- * `'head-read-failed'` case, carried on `headReadFailure`.
+ * `'network-version-read-failed'` case, carried on `networkVersionReadFailure`.
  * @throws the rejection unchanged in every other case.
- * @see {@link StaleHeadRemediation} for the four outcomes and the remediation
+ * @see {@link ForkCrossedRemediation} for the four outcomes and the remediation
  *      each one carries.
  */
 export const handleSubmitRejection = async (
@@ -106,17 +107,17 @@ export const handleSubmitRejection = async (
 
   let freshReading: HeadEraReading;
   try {
-    // `readHeadEra` rather than `networkHeadVersion`: the same one round trip
+    // `readHeadEra` rather than `latestNetworkLedgerVersion`: the same one round trip
     // and the same `'construct'` era mapping, but it also yields the raw head
     // integer -- which is the value an operator acting on the verdict below
     // actually needs, and which the breadcrumb reports.
     freshReading = await readHeadEra(pdp);
-  } catch (headReadFailure) {
+  } catch (networkVersionReadFailure) {
     // Nothing is dropped: reporting only the transport failure hides what happened to the
     // transaction, and reporting only the rejection claims a diagnosis that was never made.
     throw new SubmitRejectionUndiagnosedError(operation, rejection, {
-      reason: 'head-read-failed',
-      headReadFailure
+      reason: 'network-version-read-failed',
+      networkVersionReadFailure
     });
   }
 
@@ -125,15 +126,40 @@ export const handleSubmitRejection = async (
   emitHeadResolution(logger, freshReading, 'post-rejection-re-read');
 
   const freshEra = freshReading.head;
-  const movement = eraPosition(freshEra) - eraPosition(operation.head);
+  const movement = eraPosition(freshEra) - eraPosition(operation.networkVersion);
   if (movement === 0) {
     // Not a fork. Re-thrown exactly as the provider-call wrapper built it.
     throw rejection;
   }
   if (movement < 0) {
     // The head went BACKWARDS, which no chain does. Undiagnosable, not a fork claim.
-    throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'head-moved-backwards', freshEra });
+    throw new SubmitRejectionUndiagnosedError(operation, rejection, { reason: 'network-version-went-backwards', freshEra });
   }
 
-  throw new StaleHeadError(operation, freshEra, rejection);
+  throw new ForkCrossedDuringOperationError(operation, freshEra, rejection);
 };
+
+/**
+ * The submit step of an operation, with a rejection handed to {@link handleSubmitRejection}: the one
+ * place a rejected submission is diagnosed as a fork crossing, whoever submits. `atProviderMethod`
+ * still sanitizes the provider's failure; the diagnosis runs on its result.
+ *
+ * @param pdp The read surface, for the head re-read.
+ * @param operation Which operation is submitting, and the head era it read.
+ * @param circuitIds The circuits the provider-failure wrapper names.
+ * @param logger The optional logger the re-read breadcrumb is written to.
+ */
+export const diagnosedSubmit =
+  (
+    pdp: HeadVersionSource,
+    operation: SubmittedOperation,
+    circuitIds: string | readonly string[] | undefined,
+    logger?: BreadcrumbSink
+  ): SubmitRunner =>
+  async (call) => {
+    try {
+      return await atProviderMethod('submitTx', circuitIds, call);
+    } catch (rejection) {
+      return handleSubmitRejection(pdp, operation, rejection, logger);
+    }
+  };

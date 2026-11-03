@@ -34,23 +34,27 @@ import { setTimeout as delay } from 'node:timers/promises';
 // the published surface and nothing else, so reaching past it here would prove
 // the framework works through a door its users do not have.
 //
-// The entry points come off `contracts`, their own package. `networkHeadVersion`
+// The entry points come off `contracts`, their own package. `latestNetworkLedgerVersion`
 // and `CompiledContract` are published too, but on the BARREL -- `protocol`'s
 // root is not a consumer-facing import, and taking them off it made this file
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
-// `src/protocol.ts` for the published set.
+// `src/protocol/v9.ts` for the published set.
 import {
+  createLedger8UnprovenCallTx,
+  createLedger8UnprovenDeployTx,
   deployContract,
+  EraMismatchError,
   findDeployedContract,
-  getAnyEraContractState,
-  StaleHeadError,
+  ForkCrossedDuringOperationError,
   SubmitRejectionUndiagnosedError,
   submitCallTx,
-  submitCallTxAsync
+  submitCallTxAsync,
+  submitReplaceAuthorityTx,
+  submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { networkHeadVersion, protocol } from '@midnight-ntwrk/midnight-js';
+import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
 
-const { CompiledContract } = protocol;
+const { CompiledContract } = ledger9Protocol;
 
 const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
 
@@ -283,9 +287,15 @@ const envelopeTag = (raw) => {
 const sampleEnvelope = async (publicDataProvider, contractAddress, samples, everyMs) => {
   const seen = [];
   for (let i = 0; i < samples; i += 1) {
-    const state = await publicDataProvider.queryRawContractState(contractAddress).catch(() => null);
+    const state = await publicDataProvider.queryContractState(contractAddress).catch((error) => ({ error }));
     const head = await publicDataProvider.queryLatestProtocolVersion().catch(() => null);
-    seen.push(state === null ? `head=${head} state=absent` : `head=${head} tag=${envelopeTag(state.raw)}`);
+    seen.push(
+      state === null
+        ? `head=${head} state=absent`
+        : 'error' in state
+          ? `head=${head} error=${state.error?.name ?? String(state.error)}`
+          : `head=${head} tag=${envelopeTag(state.contractState.serialize())}`
+    );
     if (i + 1 < samples) {
       await delay(everyMs);
     }
@@ -302,13 +312,14 @@ const sampleEnvelope = async (publicDataProvider, contractAddress, samples, ever
 const STREAM_WATCH_MS = 60_000;
 
 /**
- * Reports a version-tagged contract state: its era, and for a v9 state the number of
- * operations the decoded state carries.
+ * Reports a contract-state read: the era of its bytes, how many there are, and the era of the
+ * block's ledger parameters. Nothing is decoded: the read hands back bytes in both eras.
  */
-const describeVersionedState = (state) =>
-  state.version === 'v9'
-    ? { version: 'v9', decoded: true, operations: state.state.operations().length }
-    : { version: state.version, decoded: false, stateBytes: state.stateBytes.length };
+const describeStateRead = (state) => ({
+  version: state.contractState.era,
+  stateBytes: state.contractState.serialize().length,
+  ledgerParameters: state.ledgerParameters?.era ?? 'absent'
+});
 
 /**
  * Collects a contract-state stream's records up to and including its first v9 one.
@@ -336,8 +347,8 @@ const recordsUntilFirstLedger9 = (publicDataProvider, contractAddress, streamCon
     );
     subscription = publicDataProvider.contractStateObservable(contractAddress, streamConfig).subscribe({
       next: ({ value, blockHeight }) => {
-        seen.push({ version: value.version, blockHeight });
-        if (value.version === 'v9') {
+        seen.push({ version: value.contractState.era, blockHeight });
+        if (value.contractState.era === 'v9') {
           finish(() => resolve(seen));
         }
       },
@@ -423,8 +434,8 @@ const settled = async (watch, ms, since) => {
  */
 const contractPresent = (publicDataProvider, contractAddress) =>
   publicDataProvider
-    .queryRawContractState(contractAddress)
-    .then((state) => (state === null ? 'absent' : envelopeTag(state.raw)))
+    .queryContractState(contractAddress)
+    .then((state) => (state === null ? 'absent' : envelopeTag(state.contractState.serialize())))
     .catch((error) => `unreadable: ${describeError(error).split('\n')[0]}`);
 
 /**
@@ -464,13 +475,19 @@ const decodeAnswer = async (run) => {
  */
 const waitForContract = async (publicDataProvider, contractAddress, timeoutMs) => {
   const deadline = Date.now() + timeoutMs;
+  let lastError;
   for (;;) {
-    const state = await publicDataProvider.queryRawContractState(contractAddress).catch(() => null);
+    const state = await publicDataProvider.queryContractState(contractAddress).catch((error) => {
+      lastError = error;
+      return null;
+    });
     if (state !== null) {
       return state;
     }
     if (Date.now() >= deadline) {
-      throw new Error(`the indexer never served state for ${contractAddress} after its deploy was submitted`);
+      throw new Error(`the indexer never served state for ${contractAddress} after its deploy was submitted`, {
+        cause: lastError
+      });
     }
     await delay(2_000);
   }
@@ -480,7 +497,7 @@ const waitForContract = async (publicDataProvider, contractAddress, timeoutMs) =
 const waitForHead = async (publicDataProvider, era, timeoutMs) => {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
-    const seen = await networkHeadVersion(publicDataProvider);
+    const seen = await latestNetworkLedgerVersion(publicDataProvider);
     if (seen === era) {
       return seen;
     }
@@ -1045,13 +1062,13 @@ const deployRetained = async (key, providers) => {
   return {
     txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
-    indexedAs: state.version,
-    envelope: envelopeTag(state.raw),
+    indexedAs: state.contractState.era,
+    envelope: envelopeTag(state.contractState.serialize()),
     // The key the path persisted for this address, CARRIED IN PROCESS ONLY so the
     // post-fork `findDeployedContract` leg has something to compare against that
     // was observed rather than assumed. `reportableDeployment` is what keeps it
     // off the report -- see there for why that is not optional.
-    signingKey: deployed.signingKey
+    signingKey: deployed.deployTxData.private.signingKey
   };
 };
 
@@ -1150,7 +1167,7 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
   return {
     circuitId: call.circuitId,
     status: submitted.public.status,
-    version: submitted.public.version,
+    version: submitted.public.era,
     txId: submitted.public.txId,
     ...(submitted.private.result === undefined ? {} : { result: String(submitted.private.result) })
   };
@@ -1192,25 +1209,31 @@ const callRetained = async (key, providers, contractAddress, call, context) => {
  * source yet, so it is a fixture change rather than a harness one.
  */
 const readRetainedLedger = async (key, providers, contractAddress, read) => {
-  const [{ ledger }, runtime] = await Promise.all([
+  const [{ ledger }, runtime, currentRuntime] = await Promise.all([
     import(`@midnight-ntwrk/fork-retained-${key}`),
-    import(`@midnight-ntwrk/fork-retained-${key}/runtime`)
+    import(`@midnight-ntwrk/fork-retained-${key}/runtime`),
+    import('@midnight-ntwrk/fork-current-baseline/runtime')
   ]);
 
-  // `getAnyEraContractState`, not `queryContractState`: this one hands back the
-  // raw bytes with the era read off the envelope's OWN tag, which is what the
-  // retained runtime below decodes. That lets ONE call site serve both sides of
-  // the boundary: one read answers `v8` below the boundary and `v9` above it.
-  const state = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
+  // ONE read serves both sides of the boundary: its bytes are `v8` below it and `v9` above it,
+  // once the fork has migrated the contract.
+  const state = await providers.publicDataProvider.queryContractState(contractAddress);
   if (state === null) {
     throw new Error(`the indexer served no contract state for '${key}' at ${contractAddress}`);
   }
 
-  // ADR-0010: what crosses is plain data. `state.state` is an `EncodedStateValue`
-  // and the twin's OWN runtime turns it back into a handle. Handing over a handle
-  // minted anywhere else -- the framework's module included -- is what `ledger()`
-  // refuses with `expected instance of ChargedState`.
-  return read(ledger(runtime.StateValue.decode(state.state)));
+  // Decoded by the dApp's OWN runtimes, never by the framework's: `ledger()` refuses a handle
+  // minted by any other copy with `expected instance of ChargedState`. The twin's runtime reads a
+  // v8 state. It cannot read a v9 one, so the current runtime reads that, and the state value
+  // crosses to the twin's runtime as plain data.
+  const stateValue = state.contractState.deserialize({
+    v8: { deserialize: (bytes) => runtime.ContractState.deserialize(bytes).data.state },
+    v9: {
+      deserialize: (bytes) =>
+        runtime.StateValue.decode(currentRuntime.ContractState.deserialize(bytes).data.state.encode())
+    }
+  });
+  return read(ledger(stateValue));
 };
 
 /**
@@ -1346,7 +1369,7 @@ const IN_FLIGHT_PROBE_TIMEOUT = IN_FLIGHT_DEADLINE + IN_FLIGHT_CALL_TIMEOUT + 60
  * documents what happens to a transaction built against the pre-fork ledger that
  * is still in flight when the fork applies: the chain rejects it, and
  * `handleSubmitRejection` re-reads the head, sees the era move forward, and
- * raises `StaleHeadError` with the two-step remediation rather than a decode
+ * raises `ForkCrossedDuringOperationError` with the two-step remediation rather than a decode
  * failure. Until now nothing observed that on a live chain -- it is covered by
  * unit tests against mocks, and `consumer-e2e/README.md` recorded the deploy
  * branch as unreachable from any entry point at all.
@@ -1407,7 +1430,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
       );
       attempts.push({ outcome: 'admitted', txId: submitted.public.txId, tookMs: Date.now() - startedAt });
     } catch (error) {
-      if (error instanceof StaleHeadError) {
+      if (error instanceof ForkCrossedDuringOperationError) {
         attempts.push({
           outcome: 'stale-head',
           kind: error.kind,
@@ -1437,10 +1460,10 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   // Losing the race is the expected outcome and must never fail the run -- that
   // is the whole reason this is a probe. But a run where the chain answered NONE
   // of the calls is not evidence about the boundary at all: it is a proof server
-  // down, a wallet that never settled, or a `StaleHeadError` that stopped being
+  // down, a wallet that never settled, or a `ForkCrossedDuringOperationError` that stopped being
   // raised and now arrives as an unrecognised refusal. Each of those produces a
   // row indistinguishable from a healthy miss, and this probe is the run's ONLY
-  // live coverage of `StaleHeadError`, so a silent one would be the regression
+  // live coverage of `ForkCrossedDuringOperationError`, so a silent one would be the regression
   // reaching a release unobserved.
   //
   // `admitted` is the floor deliberately: the probe is healthy the moment the
@@ -1491,7 +1514,7 @@ let deployment;
 
 // ── (a) pre-fork: operates on a ledger-8 head ─────────────────────────────────
 
-await leg('pre-fork head era', () => networkHeadVersion(session.providers.publicDataProvider));
+await leg('pre-fork head era', () => latestNetworkLedgerVersion(session.providers.publicDataProvider));
 
 // The contract every leg below the boundary is measured against, deployed
 // through `deployContract`'s retained-era path -- the entry point a consumer has, and
@@ -1499,7 +1522,7 @@ await leg('pre-fork head era', () => networkHeadVersion(session.providers.public
 // pre-fork dApp that would already have deployed on the previous framework
 // major, and it is now also the run's only coverage of that path: the path is
 // reachable ONLY against a pre-fork head, and refuses a post-fork one with
-// `Ledger8DeployOnLedger9Error`, so nothing after the boundary can exercise it.
+// `EraMismatchError`, so nothing after the boundary can exercise it.
 //
 // This leg used to compose the deploy by hand against protocol's era facade,
 // because the path refused before reading any head. That made the deploy a
@@ -1519,8 +1542,8 @@ await leg('pre-fork retained deploy', async () => {
   return {
     txId: deployed.deployTxData.public.txId,
     contractAddress: deployed.contractAddress,
-    indexedAs: state.version,
-    envelope: envelopeTag(state.raw)
+    indexedAs: state.contractState.era,
+    envelope: envelopeTag(state.contractState.serialize())
   };
 });
 
@@ -1548,12 +1571,55 @@ await leg('pre-fork retained call', async () => {
   return { txId: submitted.public.txId };
 });
 
-// (a) continued: THE DECODED READ SURFACE, which nothing in this run has ever
-// walked. Every leg above reads state through `queryRawContractState`, because
-// that is what a retained contract needs -- so what a dApp meets when it calls
-// the DECODING members has only ever been inferred from the decoder's source.
-// These probes measure it, on a contract that really is deployed and really does
-// carry a retained envelope.
+// (a) continued: THE LOW-LEVEL LEDGER 8 FUNCTIONS (#1524). Build with the ledger 8 builder, submit
+// with `submitTx`, on a contract of their own so the baseline legs keep their contract. ONE shard:
+// every shard would otherwise run the same legs and answer the same question.
+const MEASURES_LOW_LEVEL = covers(SELECTED.current, 'simple');
+/** @type {{ contractAddress: string } | undefined} */
+let lowLevelDeployment;
+
+/** Throws unless the handle and the record carry the expected era, and the record succeeded. */
+const assertSubmitted = (built, record, era) => {
+  if (built.private.unprovenTx.era !== era || record.era !== era || record.status !== types.SucceedEntirely) {
+    throw new Error(
+      `expected a '${era}' transaction recorded as '${era}' and succeeded, got handle '${built.private.unprovenTx.era}', ` +
+        `record '${record.era}', status '${record.status}'`
+    );
+  }
+  return { txId: record.txId, era: record.era };
+};
+
+if (MEASURES_LOW_LEVEL) {
+  await leg('pre-fork low-level ledger 8 deploy, then submitTx', async () => {
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenDeployTx(session.providers, { compiledContract: new Contract({}), args: [] });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx });
+    const submitted = assertSubmitted(built, record, 'v8');
+    await waitForContract(session.providers.publicDataProvider, built.public.contractAddress, 5 * 60_000);
+    lowLevelDeployment = { contractAddress: built.public.contractAddress };
+    return { ...submitted, contractAddress: built.public.contractAddress };
+  });
+
+  await leg('pre-fork low-level ledger 8 call, then submitTx', async () => {
+    if (lowLevelDeployment === undefined) {
+      throw new Error('the low-level deploy above did not complete');
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenCallTx(session.providers, {
+      compiledContract: new Contract({}),
+      contractAddress: lowLevelDeployment.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: []
+    });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+    return assertSubmitted(built, record, 'v8');
+  });
+}
+
+// (a) continued: THE READ SURFACE ACROSS THE BOUNDARY. These probes record what
+// each read member hands back for a contract that really is deployed and really
+// does carry a retained envelope: bytes, with the era of the ledger that wrote
+// them, in both eras.
 //
 // ONE SHARD. The baseline contract they read is deployed by every shard, so
 // without a gate the same measurement would run once per shard and answer the
@@ -1571,7 +1637,7 @@ const MEASURES_READ_SURFACE = covers(SELECTED.current, 'simple') && deployment !
 
 if (covers(SELECTED.current, 'simple') && deployment === undefined) {
   // ONE honest row beats nine false refusals.
-  observed['decoded read surface'] = 'skipped: the pre-fork baseline deploy did not complete';
+  observed['read surface'] = 'skipped: the pre-fork baseline deploy did not complete';
 }
 
 // Opened BEFORE the boundary and deliberately not stopped here: what this
@@ -1587,15 +1653,10 @@ let streamHeldAcrossTheBoundary;
 let streamMarkBeforeTheFork;
 
 if (MEASURES_READ_SURFACE) {
-  await probe('pre-fork decoded read of the retained contract', () =>
+  await probe('pre-fork read of the retained contract', () =>
     decodeAnswer(async () => {
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      // `queryContractState` answers `null` before it reaches the decoder, and a
-      // v8 state is handed back as its stored bytes, so `decoded` is claimed only
-      // for a v9 state.
-      return state === null
-        ? { decoded: false, note: 'the indexer served no state, so no decode was attempted' }
-        : describeVersionedState(state);
+      return state === null ? { note: 'the indexer served no state' } : describeStateRead(state);
     })
   );
 
@@ -1670,6 +1731,59 @@ for (const entry of RETAINED_MATRIX.filter(
     }
     return { unknownIdAnswers: answer === null || answer === undefined ? 'nothing' : 'a state' };
   });
+}
+
+// (a) continued: the retained `simple` twin's maintenance authority, replaced
+// before the fork through the v8 overload of the governance entry point. The
+// post-fork legs in (c5) maintain the SAME contract from the SAME store, so the
+// pair is what shows the authority and the stored key cross the fork.
+//
+// Gated on the shard that installs BOTH `simple` artifacts: (c5) needs the
+// recompiled one, and replace-authority -- rather than removing or inserting a
+// verifier key -- leaves every circuit the other legs call untouched.
+const MAINTAINS_ACROSS_THE_FORK = covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple');
+
+/**
+ * A fresh maintenance key from the current runtime the `simple` wrapper installs.
+ *
+ * Its default kind is `schnorr` and its value 64 hex characters, which is the one
+ * key shape BOTH eras' maintenance paths accept.
+ */
+const sampleMaintenanceKey = async (key = 'simple') =>
+  (await import(`@midnight-ntwrk/fork-current-${key}/runtime`)).sampleSigningKey();
+
+/** By tag and value: the store and the caller each hold their own `{ tag, value }` object. */
+const sameSigningKey = (left, right) =>
+  left !== undefined && left !== null && right !== undefined && left.tag === right.tag && left.value === right.value;
+
+if (MAINTAINS_ACROSS_THE_FORK) {
+  await leg('pre-fork retained simple, maintenance authority replaced', async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const providers = retainedProvidersFor('v8', session.wallet, 'simple');
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const newKey = await sampleMaintenanceKey();
+    const replaced = await submitReplaceAuthorityTx(
+      providers,
+      new Contract(retainedWitnesses('simple')),
+      deployed.contractAddress
+    )(newKey);
+    if (replaced.era !== 'v8' || replaced.public.era !== 'v8') {
+      throw new Error(`expected a v8 result on a v8 record; got '${replaced.era}' on '${replaced.public.era}'`);
+    }
+    if (!sameSigningKey(await providers.privateStateProvider.getSigningKey(deployed.contractAddress), newKey)) {
+      throw new Error('the store does not hold the key the authority was replaced with');
+    }
+    // The key (c3) asserts survived the fork is now this one, not the deploy's.
+    deployed.signingKey = newKey;
+    return { era: replaced.era, version: replaced.public.era, status: replaced.public.status, txId: replaced.public.txId };
+  });
+} else {
+  await leg('pre-fork retained simple, maintenance authority replaced', () =>
+    "skipped: this shard does not install both 'simple' artifacts"
+  );
 }
 
 // (a) continued, as a probe rather than an assertion: what a consumer sees if
@@ -1763,7 +1877,7 @@ const parkSubmission = (providers) => {
         // payload these legs exist to submit.
         supportedEras: midnightProvider.supportedEras,
         submitTx: async (tx) => {
-          reachSubmit(tx.version);
+          reachSubmit(tx.era);
           if (await letGone) {
             throw new Error('the parked submission was discarded rather than sent');
           }
@@ -1963,7 +2077,7 @@ const callWithRefusedSubmission = async (headAnswer) => {
     midnightProvider: {
       supportedEras: session.providers.midnightProvider.supportedEras,
       submitTx: (tx) => {
-        submittedVersion = tx.version;
+        submittedVersion = tx.era;
         refused = true;
         return Promise.reject(new Error('the node refused the transaction'));
       }
@@ -2030,7 +2144,7 @@ if (DRIVES_STALE_HEAD) {
     // after the boundary -- and then the integer below is a post-fork one, the
     // backwards-head leg replays it as though it were not, and two legs go red
     // for a timing fact neither of their messages would name.
-    const head = await networkHeadVersion(session.providers.publicDataProvider);
+    const head = await latestNetworkLedgerVersion(session.providers.publicDataProvider);
     if (head !== 'v8') {
       throw new Error(
         `the head already reports '${head}', so the fork landed before this leg could park a pre-fork call`
@@ -2116,8 +2230,8 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     // says only that a provider rejected and puts the provider's own failure on
     // `cause`, so a message alone would say a transaction was refused and never
     // say by what -- on the most likely red this leg has.
-    if (!(refusal instanceof StaleHeadError)) {
-      throw new Error(`expected StaleHeadError; got ${describeError(refusal)}`, { cause: refusal });
+    if (!(refusal instanceof ForkCrossedDuringOperationError)) {
+      throw new Error(`expected ForkCrossedDuringOperationError; got ${describeError(refusal)}`, { cause: refusal });
     }
     // The two eras and `kind` decide which remediation wording the error
     // carries; `circuitId` and `contractAddress` are what its first step sends
@@ -2125,13 +2239,13 @@ if (DRIVES_STALE_HEAD && parkedStaleHead !== undefined) {
     // that named a different operation.
     if (refusal.kind !== 'call' || refusal.startEra !== 'v8' || refusal.freshEra !== 'v9') {
       throw new Error(
-        `StaleHeadError reported kind '${refusal.kind}', startEra '${refusal.startEra}', freshEra '${refusal.freshEra}'`,
+        `ForkCrossedDuringOperationError reported kind '${refusal.kind}', startEra '${refusal.startEra}', freshEra '${refusal.freshEra}'`,
         { cause: refusal }
       );
     }
     if (refusal.circuitId !== CIRCUIT_ID || refusal.contractAddress !== deployment.contractAddress) {
       throw new Error(
-        `StaleHeadError named circuit '${refusal.circuitId}' at '${refusal.contractAddress}', which is not the parked call`,
+        `ForkCrossedDuringOperationError named circuit '${refusal.circuitId}' at '${refusal.contractAddress}', which is not the parked call`,
         { cause: refusal }
       );
     }
@@ -2187,27 +2301,7 @@ if (MEASURES_READ_SURFACE) {
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      return state === null
-        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, ...describeVersionedState(state) };
-    })
-  );
-
-  // The era-agnostic read, on the same contract at the same moment. The row above
-  // decodes only a v9 state and hands a v8 one back as bytes; this one decodes
-  // both, so the pair says what each read gives a consumer for the same envelope.
-  // The two are SEPARATE REQUESTS, so each carries the envelope it actually saw;
-  // a reader compares them only when both report the same tag.
-  await probe('post-fork era-agnostic read of the same contract', () =>
-    decodeAnswer(async () => {
-      const state = await getAnyEraContractState(session.providers.publicDataProvider, deployment.contractAddress);
-      return state === null
-        ? 'the indexer served no state'
-        : {
-            version: state.version,
-            protocolVersion: state.protocolVersion,
-            entryPoints: state.entryPoints.map((entryPoint) => entryPoint.circuitId)
-          };
+      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeStateRead(state) };
     })
   );
 
@@ -2216,10 +2310,10 @@ if (MEASURES_READ_SURFACE) {
       type: 'blockHash',
       blockHash: deployment.deployBlockHash
     });
-    if (state?.version !== 'v8') {
-      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.version ?? 'null'}'`);
+    if (state?.contractState.era !== 'v8') {
+      throw new Error(`expected the state at the pre-fork deploy block tagged 'v8', got '${state?.contractState.era ?? 'null'}'`);
     }
-    return describeVersionedState(state);
+    return describeStateRead(state);
   });
 
   await probe('the pre-fork contract-state stream, after the boundary moved under it', async () => {
@@ -2271,7 +2365,7 @@ if (MEASURES_READ_SURFACE) {
 // translation of the current state must not reach it.
 const expectLedger8DeployState = async (name, publicDataProvider, contractAddress) => {
   const deployState = await publicDataProvider.queryDeployContractState(contractAddress);
-  const version = deployState === null ? 'absent' : deployState.version;
+  const version = deployState === null ? 'absent' : deployState.contractState.era;
   if (version !== 'v8') {
     failures.push(`${name}: expected queryDeployContractState to report the deploy state tagged 'v8', got '${version}'`);
   }
@@ -2342,10 +2436,10 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       contractAddress: deployed.contractAddress
     });
 
-    if (found.deployTxData.public.version !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    if (found.deployTxData.public.era !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
     }
-    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.version };
+    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.era };
   });
 }
 
@@ -2368,6 +2462,23 @@ await leg('post-fork keep-state call through the same call site', async () => {
   return { txId: submitted.public.txId };
 });
 
+if (MEASURES_LOW_LEVEL) {
+  await leg('post-fork low-level ledger 8 call builds a keep-state ledger 9 transaction, then submitTx', async () => {
+    if (lowLevelDeployment === undefined) {
+      throw new Error('the pre-fork low-level deploy did not complete');
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
+    const built = await createLedger8UnprovenCallTx(session.providers, {
+      compiledContract: new Contract({}),
+      contractAddress: lowLevelDeployment.contractAddress,
+      circuitId: CIRCUIT_ID,
+      args: []
+    });
+    const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+    return assertSubmitted(built, record, 'v9');
+  });
+}
+
 // (c) continued: the same three reads, now that the keep-state call above has
 // written to the contract and re-versioned its envelope. This is what separates
 // "the decoding surface is unusable across the fork" from "it is unusable until
@@ -2378,9 +2489,7 @@ if (MEASURES_READ_SURFACE) {
     decodeAnswer(async () => {
       const envelope = await contractPresent(session.providers.publicDataProvider, deployment.contractAddress);
       const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
-      return state === null
-        ? { envelope, decoded: false, note: 'the indexer served no state, so no decode was attempted' }
-        : { envelope, ...describeVersionedState(state) };
+      return state === null ? { envelope, note: 'the indexer served no state' } : { envelope, ...describeStateRead(state) };
     })
   );
 
@@ -2466,7 +2575,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // read pre-fork private state -- `round` reaches 14 only if it did -- and
     // this is the store saying the same thing directly, types included.
     const privateState = await checkPrivateState(label, entry, 'postFork', providers, deployed.contractAddress);
-    const state = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
+    const state = await providers.publicDataProvider.queryContractState(deployed.contractAddress);
     return {
       contractAddress: deployed.contractAddress,
       calls: outcome,
@@ -2474,7 +2583,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
       ...(privateState ?? {}),
       // The envelope after the call, so a keep-state write that re-versions the
       // state is distinguishable from one that leaves it in the retained shape.
-      envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.raw)
+      envelopeAfterCall: state === null ? 'absent' : envelopeTag(state.contractState.serialize())
     };
   });
 }
@@ -2650,8 +2759,8 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // Recorded before the attempt, so the outcome can be read against what the
     // chain actually held rather than against an assumption about it. The fork
     // translated the envelope, so it should already read current-era here.
-    const before = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
-    const envelopeBefore = before === null ? 'absent' : envelopeTag(before.raw);
+    const before = await providers.publicDataProvider.queryContractState(deployed.contractAddress);
+    const envelopeBefore = before === null ? 'absent' : envelopeTag(before.contractState.serialize());
 
     // `secondCall` where the twin declares one, and the post-fork call's own
     // circuit otherwise. A twin needs its own third call only when reusing the
@@ -2674,10 +2783,10 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // and the probe it replaced.
     const outcome = await callRetained(entry.key, providers, deployed.contractAddress, call, context);
 
-    const after = await providers.publicDataProvider.queryRawContractState(deployed.contractAddress);
+    const after = await providers.publicDataProvider.queryContractState(deployed.contractAddress);
     return {
       envelopeBefore,
-      envelopeAfter: after === null ? 'absent' : envelopeTag(after.raw),
+      envelopeAfter: after === null ? 'absent' : envelopeTag(after.contractState.serialize()),
       ...outcome,
       // Where the twin can prove it, that the call was ADMITTED is not enough:
       // the ledger field has to have moved again. Four of the seven can, and for
@@ -2754,12 +2863,19 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     // attach reports after it. Compared only when the deploy actually reported
     // one -- an absent key on both sides is a different finding from a key that
     // changed, and saying "they match" about two undefineds would hide it.
+    const foundSigningKey = found.deployTxData.private.signingKey;
+    // By tag and value: both handles carry their own `{ tag, value }` object, so identity says nothing.
+    const signingKeySurvived =
+      deployed.signingKey !== undefined &&
+      foundSigningKey !== undefined &&
+      foundSigningKey.tag === deployed.signingKey.tag &&
+      foundSigningKey.value === deployed.signingKey.value;
     if (deployed.signingKey === undefined) {
       failures.push(`${name}: the pre-fork deploy reported no signing key, so there is nothing to have survived`);
-    } else if (found.signingKey !== deployed.signingKey) {
+    } else if (!signingKeySurvived) {
       failures.push(
         `${name}: the stored signing key did not survive the fork -- the attach reports ` +
-          `${found.signingKey === undefined ? 'none' : 'a different key'}`
+          `${foundSigningKey === undefined ? 'none' : 'a different key'}`
       );
     }
     // THE HANDLE IS USED, not just inspected, where the twin declares an
@@ -2778,7 +2894,7 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
     return {
       contractAddress: found.contractAddress,
       callable,
-      signingKeySurvived: deployed.signingKey !== undefined && found.signingKey === deployed.signingKey,
+      signingKeySurvived,
       ...(called === undefined ? {} : { afterFindCall: { circuitId: called.circuitId, txId: called.public.txId } }),
       ...((await checkLedgerState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {}),
       ...((await checkPrivateState(name, entry, 'afterFind', providers, deployed.contractAddress)) ?? {})
@@ -2822,8 +2938,8 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       contractAddress: deployed.contractAddress
     });
 
-    if (found.deployTxData.public.version !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.version}'`);
+    if (found.deployTxData.public.era !== 'v8') {
+      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
     }
     if (found.deployTxData.public.contractAddress !== deployed.contractAddress) {
       failures.push(`${name}: the deploy record names a different contract address`);
@@ -2836,21 +2952,118 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       failures.push(`${name}: ledger ${state.label} went from ${before} to ${after}, expected ${before + 1n}`);
     }
     return {
-      deployRecordVersion: found.deployTxData.public.version,
+      deployRecordVersion: found.deployTxData.public.era,
       afterFindCall: { circuitId: called.circuitId, txId: called.public.txId },
       [state.label]: { before: before.toString(), after: after.toString() }
     };
   });
 }
 
+// ── (c5) the same contract, maintained after the fork ─────────────────────────
+//
+// Two answers, both against the contract (a) replaced the authority on, from the
+// store that holds that key:
+//
+// - the v8 artifact is refused on the v9 head before anything is proven or
+//   submitted -- the proof and submission providers here refuse to be reached;
+// - the RECOMPILED artifact, through the v9 entry point, replaces the authority
+//   again with the stored key. That is only possible if the fork translation kept
+//   the maintenance authority's committee and counter, which nothing else in this
+//   run observes.
+if (MAINTAINS_ACROSS_THE_FORK) {
+  const refusedName = 'a migrated simple, v8 maintenance refused after the fork';
+  await leg(refusedName, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const base = retainedProvidersFor('v9', session.wallet, 'simple');
+    const reached = [];
+    const providers = {
+      ...base,
+      proofProvider: {
+        supportedEras: base.proofProvider.supportedEras,
+        proveTx: () => {
+          reached.push('proveTx');
+          return Promise.reject(new Error('proveTx must not be reached'));
+        }
+      },
+      midnightProvider: {
+        supportedEras: base.midnightProvider.supportedEras,
+        submitTx: () => {
+          reached.push('submitTx');
+          return Promise.reject(new Error('submitTx must not be reached'));
+        }
+      }
+    };
+    const keyBefore = await base.privateStateProvider.getSigningKey(deployed.contractAddress);
+    const { Contract } = await import('@midnight-ntwrk/fork-retained-simple');
+    const error = await submitReplaceAuthorityTx(
+      providers,
+      new Contract(retainedWitnesses('simple')),
+      deployed.contractAddress
+    )(await sampleMaintenanceKey()).then(
+      () => undefined,
+      (refusal) => refusal
+    );
+    if (!(error instanceof EraMismatchError) || error.reason !== 'ledger8-maintenance-on-ledger9-network') {
+      throw new Error(
+        `expected EraMismatchError with reason 'ledger8-maintenance-on-ledger9-network'; got ${describeError(error)}`,
+        { cause: error }
+      );
+    }
+    if (reached.length > 0) {
+      throw new Error(`the refused update still reached ${reached.join(', ')}`);
+    }
+    if (!sameSigningKey(await base.privateStateProvider.getSigningKey(deployed.contractAddress), keyBefore)) {
+      throw new Error('the refused update changed the stored key');
+    }
+    return { refusedWith: error.name, reached: 'nothing' };
+  });
+
+  const recompiledName = 'a migrated simple, authority replaced after the fork with recompiled artifacts';
+  await leg(recompiledName, async () => {
+    const deployed = retainedDeployments.get('simple');
+    if (deployed === undefined) {
+      return 'skipped: its pre-fork deploy did not complete';
+    }
+    const zkConfigPath = config.matrixZkConfigPaths?.simple;
+    if (zkConfigPath === undefined) {
+      throw new Error("the driver passed no current-era ZK artifact path for 'simple'");
+    }
+    const { Contract } = await import('@midnight-ntwrk/fork-current-simple');
+    const compiledContract = CompiledContract.withCompiledFileAssets(
+      CompiledContract.withVacantWitnesses(CompiledContract.make('Simple', Contract)),
+      zkConfigPath
+    );
+    // The retained twin's store, under the recompiled artifacts: a recompiled dApp
+    // keeps its store, and that store holds the key (a) replaced the authority with.
+    const providers = providersFor(testkit, 'v9', session.wallet, {
+      zkConfigPath,
+      privateStateStoreName: 'fork-retained-simple'
+    });
+    const newKey = await sampleMaintenanceKey();
+    const replaced = await submitReplaceAuthorityTx(providers, compiledContract, deployed.contractAddress)(newKey);
+    if (replaced.era !== 'v9') {
+      throw new Error(`expected a v9 result; got '${replaced.era}'`);
+    }
+    if (!sameSigningKey(await providers.privateStateProvider.getSigningKey(deployed.contractAddress), newKey)) {
+      throw new Error('the store does not hold the key the authority was replaced with');
+    }
+    return { era: replaced.era, status: replaced.public.status, txId: replaced.public.txId };
+  });
+} else {
+  await leg('maintenance after the fork', () => "skipped: this shard does not install both 'simple' artifacts");
+}
+
 // ── (d) reads its own pre-fork history ────────────────────────────────────────
 
 await leg('reads its own pre-fork history', async () => {
-  const state = await session.providers.publicDataProvider.queryRawContractState(deployment.contractAddress);
+  const state = await session.providers.publicDataProvider.queryContractState(deployment.contractAddress);
   if (state === null) {
     throw new Error('the contract deployed before the fork is no longer readable after it');
   }
-  return { version: state.version, protocolVersion: state.protocolVersion };
+  return { version: state.contractState.era, protocolVersion: state.protocolVersion };
 });
 
 // ── (e) the rest of the contract surface, on a chain that carries v8 history ──
@@ -2990,6 +3203,29 @@ const compiledContractFor = async (entry, zkConfigPath) => {
   );
 };
 
+/**
+ * Reads a current-era twin's ledger the way a dApp does: the read hands back bytes and the dApp
+ * decodes them with the `ContractState` of the runtime its contract was compiled against. A state
+ * decoded by any other copy is refused by `ledger()` with `expected instance of ChargedState`.
+ */
+const readOwnLedger = async (entry, providers, contractAddress) => {
+  const [{ ledger }, runtime] = await Promise.all([
+    import(`@midnight-ntwrk/fork-current-${entry.key}`),
+    import(`@midnight-ntwrk/fork-current-${entry.key}/runtime`)
+  ]);
+  try {
+    const state = await providers.publicDataProvider.queryContractState(contractAddress);
+    if (state === null) {
+      throw new Error('the indexer served no contract state');
+    }
+    ledger(state.contractState.deserialize({ v9: runtime.ContractState }).data);
+    return { ledgerReadBy: 'own runtime', stateVersion: state.contractState.era };
+  } catch (error) {
+    failures.push(`post-fork ${entry.key}: reading the ledger with the contract's own runtime failed: ${describeError(error)}`);
+    return { ledgerReadBy: `FAILED: ${describeError(error)}` };
+  }
+};
+
 const runMatrixContract = async (entry) => {
   const zkConfigPath = config.matrixZkConfigPaths?.[entry.key];
   if (zkConfigPath === undefined) {
@@ -3053,7 +3289,12 @@ const runMatrixContract = async (entry) => {
     }
   }
 
-  return { contractAddress, deployTxId: deployed.deployTxData.public.txId, calls };
+  return {
+    contractAddress,
+    deployTxId: deployed.deployTxData.public.txId,
+    calls,
+    ...(await readOwnLedger(entry, providers, contractAddress))
+  };
 };
 
 for (const entry of MATRIX.filter((candidate) => covers(SELECTED.current, candidate.key))) {
@@ -3089,8 +3330,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-read-failed' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
+    if (error.reason !== 'network-version-read-failed' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-read-failed' call; got '${error.reason}' as '${error.kind}'`, { cause: error });
     }
     // EXACTLY ONE injected read. The wrapper answers every head read taken after
     // the refusal, so a framework that took a second one somewhere else on this
@@ -3123,8 +3364,8 @@ if (DRIVES_STALE_HEAD) {
     if (!(error instanceof SubmitRejectionUndiagnosedError)) {
       throw new Error(`expected SubmitRejectionUndiagnosedError; got ${describeError(error)}`, { cause: error });
     }
-    if (error.reason !== 'head-moved-backwards' || error.kind !== 'call') {
-      throw new Error(`expected a 'head-moved-backwards' call; got '${error.reason}' as '${error.kind}'`, {
+    if (error.reason !== 'network-version-went-backwards' || error.kind !== 'call') {
+      throw new Error(`expected a 'network-version-went-backwards' call; got '${error.reason}' as '${error.kind}'`, {
         cause: error
       });
     }

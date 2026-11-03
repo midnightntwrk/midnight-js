@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -11,13 +11,13 @@ injected pre-fork runtime cannot be used — it was not passed at all, or the
 binding the decoder needs is absent from it.
 
 `downConvertForExecution` and the shared-instance guard used to raise it too;
-both are gone with the hand-maintained execution layer, so the envelope
+both are gone with the hand-maintained execution layer, so the contract-state
 decoder is now its only source.
 
 Nothing is wrong with the caller's input here. Distinct from
 [Ledger8RuntimeMissingError](Ledger8RuntimeMissingError.md), which reports the v8 chunk failing to
-load at all, and from [DownConvertFailedError](DownConvertFailedError.md), which reports an
-envelope or state that could not be turned into an executable pre-fork
+load at all, and from [StateConversionFailedError](StateConversionFailedError.md), which reports a
+serialized state that could not be turned into an executable pre-fork
 state.
 
 ## Param

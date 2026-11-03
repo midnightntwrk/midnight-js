@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -33,7 +33,7 @@ So the shape was decided on two other grounds:
 - The cost equality is an accident of `contracts` reaching for the root.
   `export * as protocol` would convert that accident into a load-bearing
   constraint, blocking the very optimisation someone will eventually want.
-- A wholesale namespace would publish `loadLedger8`, `loadLedger8Engine`,
+- A wholesale namespace would publish `loadLedger8Protocol`, `loadLedger8Engine`,
   `ledger` and `onchainRuntime` from the barrel — the opposite of keeping the
   retained-era runtime off the eager path.
 
@@ -54,8 +54,11 @@ compared against qualifies on the same grounds, which is why `NO_CIRCUIT`
 travels with `ComposeFailedError`: it is the value that error's `circuitId`
 carries when the refusal names no circuit. That rule is why
 `VersionResolutionPath` is present (the error's `path`) and why
-`RetainedEraSubpath`, `ComposeStage` and `ComposeOption` came in with the
-classes whose payloads name them.
+`Ledger8Subpath`, `ComposeStage` and `ComposeOption` came in with the
+classes whose payloads name them. `CURRENT_LEDGER_VERSION` and
+`CurrentLedgerVersion` qualify the same way: a current-era result's `era` (on
+the `contracts` results) is compared against them, and without them a barrel
+consumer would have to write `'v9'` by hand and update it at the next fork.
 
 Two deliberate exclusions:
 
@@ -64,7 +67,7 @@ Two deliberate exclusions:
   `'construct'`. A consumer holding a record's `protocolVersion` naturally
   writes `protocolVersionToLedger(record.protocolVersion)`, gets an error
   tagged `construct`, and a handler written for the `read` code silently does
-  not fire. `versionOfRecord` and `networkHeadVersion` cover both paths and tag
+  not fire. `versionOfRecord` and `latestNetworkLedgerVersion` cover both paths and tag
   each one automatically, so the raw resolver adds a footgun and no capability.
 - **`ProtocolErrorCode`.** Nothing on this surface names it. EVERY published
   class declares `code` as its own literal, so a `switch` over
@@ -97,30 +100,29 @@ protocol errors reach a barrel consumer directly:
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
 | `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
-| `PayloadNotATransactionError` | `lib/prove`, as a `proveTx` rejection | none; caught, not constructed |
+| `PayloadNotATransactionError` | `deserializeTransactionAtStage` (`./transaction`) | none; caught, not constructed |
 | `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure; `errors` — every failure when several arrived together |
 
 `hasErrorCode` narrows only to `Error & { code }`, so without the class a
 consumer could detect one of these and then not read the field that decides the
-remediation — `Ledger8InstanceMismatchError` builds its whole "run `yarn why`
-on these packages" advice out of `axis`. Reading it would have required a cast,
+remediation — `Ledger8RuntimeMissingError` names the failed chunk only on
+`subpath`. Reading it would have required a cast,
 which this repo does not accept. Publishing each class next to its code is what
 closes that.
 
 `PayloadNotATransactionError` is the one that does not come from the era
-pipeline: a proof provider raises it from `proveV8Transaction`, and it reaches
-application code as a `proveTx` rejection out of `contracts.deployContract` or
-`submitCallTx`. Its constructor is private and its only public member is
-`code`, so it is published purely so a consumer can `instanceof` it.
+pipeline: `deserializeTransactionAtStage` raises it when bytes are not a
+transaction of the requested era and stage. Its constructor is private and its
+public members are `code` and `category`, which `hasErrorCode` and
+`errorCategory` already read, so the class adds no field a consumer would
+otherwise miss. It is published so the barrel's class set matches its code set.
 
-The remaining codes in the table differ. `DOWN_CONVERT_FAILED` has a live
+The remaining codes in the table differ. `STATE_CONVERSION_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
 a state that does not decode or does not re-encode to its source.
-`LEDGER8_INSTANCE_MISMATCH` and `MERKLE_NOT_REHASHED` have none: the
-construction-time instance guard and the Merkle-rehash walk were retired with
-the hand-maintained execution layer, and `packages/protocol/src/errors.ts` says
-so on both classes. They stay published because a consumer may still switch on
-the code. `UNKNOWN_LEDGER8_AXIS` is in the same position.
+`LEDGER8_INSTANCE_MISMATCH` and its class were removed: nothing raised them,
+and the WASM-instance fault they described is now reported by
+`ForeignLedgerTransactionError`, raised by `LedgerTransaction.seal` in `types`.
 
 ## The error base and the general errors
 

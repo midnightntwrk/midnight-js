@@ -13,19 +13,12 @@
  * limitations under the License.
  */
 
-import type {
-  Binding,
-  Proof,
-  SignatureEnabled,
-  Transaction,
-  TransactionHash,
-  TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTransaction as Ledger8FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versioned';
+import type { LedgerTransaction } from '../ledger-transaction';
+import type { BlockHash, Fees, Ledger9FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
+import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -35,13 +28,13 @@ import type { Ledger8FinalizedTxData, VersionedFinalizedTxData } from '../versio
 // test failures; a plain `yarn test` runs them. Running these bodies at
 // runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
-// Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
+// Spelled out independently of `Ledger9FinalizedTxData` (no `Omit`/`keyof` derived
 // from it) so the equality check below actually pins the v9 variant's shape
-// instead of reflexively restating it. Keep in step with `FinalizedTxData`
+// instead of reflexively restating it. Keep in step with `Ledger9FinalizedTxData`
 // and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
 type Ledger9FinalizedTxDataFixture = {
-  readonly version: 'v9';
-  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+  readonly era: 'v9';
+  readonly tx: LedgerTransaction<'Finalized', 'v9'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -57,13 +50,11 @@ type Ledger9FinalizedTxDataFixture = {
   readonly unshielded: UnshieldedUtxos;
 };
 
-// The v8 mirror of the fixture above. The v8 variant has no producer yet, so it
-// gets the least review pressure of anything in this union — which is exactly
-// why it needs its own field-for-field pin rather than being covered only by
-// the discriminant check.
+// The v8 mirror of the fixture above, pinned field for field rather than
+// covered only by the discriminant check.
 type Ledger8FinalizedTxDataFixture = {
-  readonly version: 'v8';
-  readonly tx: Ledger8FinalizedTransaction;
+  readonly era: 'v8';
+  readonly tx: LedgerTransaction<'Finalized', 'v8'>;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -79,10 +70,10 @@ type Ledger8FinalizedTxDataFixture = {
   readonly unshielded: UnshieldedUtxos;
 };
 
-describe('VersionedFinalizedTxData', () => {
+describe('FinalizedTxRead', () => {
   it('is exhaustively narrowable, so the default branch receives never', () => {
-    const describeVersion = (data: VersionedFinalizedTxData) => {
-      switch (data.version) {
+    const describeVersion = (data: FinalizedTxRead) => {
+      switch (data.era) {
         case 'v8':
           return `v8:${data.txId}`;
         case 'v9':
@@ -102,24 +93,12 @@ describe('VersionedFinalizedTxData', () => {
     expectTypeOf(describeVersion).returns.toEqualTypeOf<string>();
   });
 
-  it('rejects access to the v9-shaped tx field before the discriminant is narrowed', () => {
-    const data = {} as VersionedFinalizedTxData;
-
-    // @ts-expect-error `data.tx` on the unnarrowed union is
-    // `Ledger8FinalizedTxData['tx'] | FinalizedTxData['tx']` (a v8 transaction object
-    // or a v9 one) — not assignable to the v9-only `FinalizedTxData['tx']` type
-    // required here without first narrowing on `data.version`.
-    const ledger9Tx: FinalizedTxData['tx'] = data.tx;
-
-    expectTypeOf(ledger9Tx).not.toBeAny();
-  });
-
   it('pins the v9 variant field-for-field — fails if any field is dropped, added, or retyped', () => {
     // Bidirectional: catches a field being dropped (fixture would then demand
-    // a field FinalizedTxData no longer has), added (FinalizedTxData would
+    // a field Ledger9FinalizedTxData no longer has), added (Ledger9FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
     // type breaks assignability in at least one direction).
-    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<FinalizedTxData>();
+    expectTypeOf<Ledger9FinalizedTxDataFixture>().toEqualTypeOf<Ledger9FinalizedTxData>();
   });
 
   it('has exactly the v8 and v9 variants — fails if a variant is silently removed, a third variant added, or a discriminant widened', () => {
@@ -128,10 +107,10 @@ describe('VersionedFinalizedTxData', () => {
     // the actual union; adding a third variant (with its own literal `version`)
     // or widening a variant's `version` to a non-literal grows it — either way
     // it stops equaling the hardcoded `'v8' | 'v9'`.
-    expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
+    expectTypeOf<FinalizedTxRead['era']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 
-  it('pins the v8 variant field-for-field, so the producerless variant cannot drift', () => {
+  it('pins the v8 variant field-for-field, so it cannot drift on its own', () => {
     // `Ledger8FinalizedTxData` inherits from `FinalizedTxRecord`, which stops the
     // two variants diverging as fields are added to the *base*. It does not stop a
     // field being added to this variant alone, nor an inherited field being

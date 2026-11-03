@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -36,8 +36,8 @@ wrapping it here would mislead.
 - [`IndexerSubscriptionDataError`](IndexerSubscriptionDataError.md)
 - [`IndexerProviderConfigError`](IndexerProviderConfigError.md)
 - [`IndexerInvariantError`](IndexerInvariantError.md)
-- [`EraUnsupportedError`](EraUnsupportedError.md)
-- [`EraUnresolvableError`](EraUnresolvableError.md)
+- [`DecoderEraUnsupportedError`](DecoderEraUnsupportedError.md)
+- [`UnknownRecordEraError`](UnknownRecordEraError.md)
 - [`IndexerPayloadTooLargeError`](IndexerPayloadTooLargeError.md)
 
 ## Constructors

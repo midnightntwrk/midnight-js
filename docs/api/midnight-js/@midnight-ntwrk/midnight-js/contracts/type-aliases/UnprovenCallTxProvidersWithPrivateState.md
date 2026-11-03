@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: UnprovenCallTxProvidersWithPrivateState\<C\>
 
-> **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
+> **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
 
 Same providers as [UnprovenCallTxProvidersBase](UnprovenCallTxProvidersBase.md) with an additional private
 state provider to store the new private state resulting from the circuit call -

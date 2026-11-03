@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ a third-party service, or a node itself.
 
 The ledger eras THIS INSTANCE serves. See
 [ProofProvider.supportedEras](ProofProvider.md#supportederas) — the field means the same on all three
-transaction seams, and all three are read together before an operation
+transaction providers, and all three are read together before an operation
 starts.
 
 ## Methods
@@ -32,22 +32,21 @@ Submit a transaction to the network to be consensed upon.
 
 ##### tx
 
-[`VersionedFinalizedTransaction`](../type-aliases/VersionedFinalizedTransaction.md)
+[`FinalizedTx`](../type-aliases/FinalizedTx.md)
 
-The version-tagged finalized transaction to submit: `{ version: 'v9', tx }` for a
-          live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+The finalized transaction handle to submit.
 
 #### Returns
 
 `Promise`\<`string`\>
 
-The transaction identifier of the submitted transaction. Not version-tagged — a
-         transaction identifier is era-independent.
+The transaction identifier of the submitted transaction. A transaction identifier is
+         era-independent.
 
 #### Throws
 
-V8PayloadUnsupportedError if the implementation does not handle v8 payloads.
+InvalidTransactionHandleError if `tx` is not a finalized handle of this package.
 
 #### Throws
 
-UntaggedPayloadError if `version` is missing or unrecognised.
+ProviderEraUnsupportedError if the implementation does not serve the handle's era.

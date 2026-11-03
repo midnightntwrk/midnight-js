@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,37 +8,35 @@
 
 > **createWalletProviderFromHandlers**(`handlers`): [`WalletProvider`](../interfaces/WalletProvider.md)
 
-Assembles a [WalletProvider](../interfaces/WalletProvider.md) from one handler per ledger era it serves.
+Assembles a [WalletProvider](../interfaces/WalletProvider.md) from one handler per ledger era.
 
 The counterpart to `createProofProviderFromHandlers`, with the same guarantees:
-`supportedEras` is computed from the handlers supplied, the tag never appears in
-implementation code, and an answer is always tagged as the era the request
-carried.
+`supportedEras` is computed from the handlers given, each handle is routed to
+its own era's handler, and the answer is sealed in that same era.
 
-`currentEra` and the key readers are called with `handlers` as `this`; a
-retained-era handler is called with no `this`.
+Every handler and both key readers are called with `handlers` as `this`.
 
 ## Parameters
 
 ### handlers
 
-[`WalletProviderHandlers`](../interfaces/WalletProviderHandlers.md)
+[`WalletProviderHandlers`](../type-aliases/WalletProviderHandlers.md)
 
-The current-era handler, any retained-era handlers, and the two key readers.
+One entry per ledger era, and the two key readers.
 
 ## Returns
 
 [`WalletProvider`](../interfaces/WalletProvider.md)
 
-A [WalletProvider](../interfaces/WalletProvider.md) routing each request to its era's handler.
+A [WalletProvider](../interfaces/WalletProvider.md) routing each handle to its era's handler.
 
 ## Throws
 
-UnusableEraEntryError if `currentEra`, or a `retainedEras` entry other
-        than `undefined`, is not a function. Raised at construction.
+UnusableEraEntryError if an era entry is neither `undefined` nor a
+        function. Raised at construction.
 
 ## Throws
 
-InvalidArgumentError if `handlers` is not an object, `retainedEras` is
-        not a plain object keyed only by retained eras, or a key reader is not
-        a function. Raised at construction.
+InvalidArgumentError if `handlers` is not an object, has no key for a
+        ledger era, serves no era (every entry `undefined`), or a key reader is
+        not a function. Raised at construction.

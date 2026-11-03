@@ -74,25 +74,64 @@ import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
 
-// Submit a deploy transaction
+// Submit a deploy transaction (routes on the contract's era, like deployContract)
 await submitDeployTx(providers, deployOptions);
 
-// Generic transaction submission. Tag the transaction with the era that wrote it;
-// submitTx reads the network head and accepts only a transaction of the head's era.
-await submitTx(providers, { unprovenTx: { version: 'v9', tx: unprovenTx } });
-await submitTx(providers, { unprovenTx: { version: 'v8', txBytes } });
+// Generic transaction submission. Pass a transaction handle; it carries the era
+// that wrote the transaction. submitTx reads the network's current ledger version and
+// accepts only a transaction of that era.
+const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+const record = await submitTx(providers, { unprovenTx });
+
+// The record's tx is a FinalizedTx handle of the record's era.
+const finalized = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
-`submitTx` reads the network head once. The transaction's era must match it:
+`LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
+get from `createUnprovenCallTx` or `createUnprovenDeployTx`
+(`result.private.unprovenTx`) is already sealed, so you pass it on as it is.
 
-| input | head | what happens |
+`submitTx` reads the network's current ledger version once. The transaction's era must match it:
+
+| input | network | what happens |
 |---|---|---|
-| v9 | v9 | proved, balanced and submitted as v9 payloads |
-| v8 | v8 | proved, balanced and submitted as v8 payloads |
-| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read v8 bytes |
-| v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+| v9 | v9 | proved, balanced and submitted as v9 handles |
+| v8 | v8 | proved, balanced and submitted as v8 handles |
+| v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
+| v9 | v8 | refused with `EraMismatchError` before proving |
 
-It returns `VersionedFinalizedTxData`, tagged with the head's era.
+It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
+
+### Low-level functions per ledger era
+
+The low-level functions build a transaction without submitting it, or deploy and wait. Each
+unprefixed name routes on the era the contract's artifacts declare; the per-era functions serve
+one era only and refuse the other with `EraMismatchError` (`reason: 'contract-era-unsupported'`).
+
+| Router | Ledger 9 | Ledger 8 |
+|---|---|---|
+| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` | `createLedger8UnprovenCallTx` |
+| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` | `createLedger8UnprovenCallTxFromInitialStates` |
+| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` | `createLedger8UnprovenDeployTx` |
+| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` | `createLedger8UnprovenDeployTxFromVerifierKeys` |
+| `submitDeployTx` | `submitLedger9DeployTx` | `submitLedger8DeployTx` |
+
+A builder stores nothing. Submit what it built with `submitTx`, and store the private state
+yourself once the transaction is final:
+
+```typescript
+const built = await createUnprovenCallTx(providers, callOptions);
+// After the fork a ledger 8 call builds a ledger 9 transaction; the handle says which.
+const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+if (record.status === 'SucceedEntirely') {
+  await providers.privateStateProvider.set(privateStateId, built.private.nextPrivateState);
+}
+```
+
+Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
+scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era and each
+state with the era that wrote it (`{ era, state }`), because the fork translates a ledger 8
+contract's state into a ledger 9 one.
 
 ### Maintenance Operations
 
@@ -103,15 +142,20 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Insert a verifier key for a circuit
-await submitInsertVerifierKeyTx(providers, options);
+// Remove the verifier key a circuit holds, then insert one
+await submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, 'increment');
+const inserted = await submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, 'increment', newVk);
+inserted.public.status; // every result is { era, public }
 
-// Remove a verifier key
-await submitRemoveVerifierKeyTx(providers, options);
-
-// Replace contract maintenance authority
-await submitReplaceAuthorityTx(providers, options);
+// Replace contract maintenance authority; the new key is stored once the chain records it
+await submitReplaceAuthorityTx(providers, compiledContract, contractAddress)(newSigningKey);
 ```
+
+All three take either era's artifact. A ledger 8 artifact maintains a contract
+only before the fork and answers `{ era: 'v8', public: Ledger8FinalizedTxData }`;
+after the fork it is refused with `EraMismatchError` (reason `'ledger8-maintenance-on-ledger9-network'`), and the
+same function with the recompiled ledger 9 artifact maintains the migrated
+contract with the same stored key.
 
 ### State Queries
 
@@ -133,38 +177,24 @@ const publicStates = await getPublicStates(providers.publicDataProvider, contrac
 const balances = await getUnshieldedBalances(providers.publicDataProvider, contractAddress);
 ```
 
-`getStates` and `getPublicStates` return the states tagged with the ledger era
-that wrote them (`version: 'v8' | 'v9'`). A v9 block's states are decoded; a v8
-block's contract state and ledger parameters come back as the stored bytes
-(`stateBytes`, `ledgerParametersBytes`). Narrow on `version`, or use
-`requireLedger9` from `@midnight-ntwrk/midnight-js-utils` when your code handles
-only v9:
+`getStates` and `getPublicStates` return the public states as bytes: each of
+`contractState`, `zswapChainState` and `ledgerParameters` is a `SerializedState`
+with the `era` of the ledger that wrote it. Decode one with your own
+runtime — the one your contract was compiled against — so your contract's
+`ledger()` accepts the result:
 
 ```typescript
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ledger } from './managed/counter/contract/index.js';
 
-const { contractState, ledgerParameters } = requireLedger9(publicStates, 'readCounter');
+// Throws SerializedStateDecoderMissingError if the state was written by the v8 ledger.
+const counter = ledger(publicStates.contractState.deserialize({ v9: ContractState }).data);
 ```
 
-To decode a contract state of either era, use `getAnyEraContractState`:
-
-```typescript
-import { getAnyEraContractState } from '@midnight-ntwrk/midnight-js-contracts';
-// `StateValue` and the contract class both come from YOUR OWN generated contract
-// module and its Compact runtime — not from the framework. That is the point:
-// `read.state` is plain data precisely so your runtime can accept it.
-import { StateValue } from './managed/counter/contract/index.cjs';
-import { Counter } from './managed/counter/contract/index.cjs';
-
-const read = await getAnyEraContractState(providers.publicDataProvider, contractAddress);
-
-if (read !== null) {
-  // `read.version` is the era that WROTE the bytes, read off the
-  // envelope — not the era of the block that dated the read.
-  // `read.state` is encoded, so decode it with your own contract's runtime.
-  const ledgerState = Counter.ledger(StateValue.decode(read.state));
-}
-```
+A contract that may predate the fork passes a decoder per era: `v8` with the
+`ContractState` of the ledger 8 runtime, `v9` with the current one. See the indexer provider's
+README, "Reading a contract that may predate the fork", for a contract compiled
+with the ledger 8 toolchain.
 
 ### Transaction Interfaces
 
@@ -174,6 +204,13 @@ import {
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface
 } from '@midnight-ntwrk/midnight-js-contracts';
+```
+
+Each factory takes a ledger 8 or a ledger 9 contract and builds the interface for that contract's era:
+
+```typescript
+const callTx = createCircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId);
+await callTx.increment();
 ```
 
 ### Utility Functions
@@ -205,6 +242,33 @@ type ContractProviders = {
 };
 ```
 
+## Type Names and Ledger Eras
+
+A flat name such as `FoundContract<C>` picks the ledger 8 or ledger 9 variant
+from the contract type, so `FoundContract<typeof MyContract>` is always the
+type of the toolchain that compiled `MyContract`. The entry points return the
+era-named type: `Ledger9FoundContract<C>` or `Ledger8FoundContract<C>`.
+
+In generic code the contract is unknown, so name the era:
+
+```typescript
+const read = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  data: Ledger9FinalizedCallTxData<C, PCK>
+) => data.public;
+```
+
+To accept a call of any contract in either era, use `AnyFinalizedCallTxData`
+or `AnySubmittedCallTx`. Their `result` and `nextPrivateState` are `unknown`;
+narrow on `era` or with `isLedger8Result`:
+
+```typescript
+const onCall = (result: AnyFinalizedCallTxData) =>
+  isLedger8Result(result) ? result.public.txId : result.public.logEvents;
+```
+
+A flat name with no contract parameter is the union of every era:
+`FinalizedMaintenanceTxData`, `AnyContract`. For a handle, name both contracts: `FoundContract<MyContract | MyLedger8Contract>`.
+
 ## Exports
 
 ```typescript
@@ -230,7 +294,6 @@ import {
   // State queries
   getStates,
   getPublicStates,
-  getAnyEraContractState,
   getUnshieldedBalances,
 
   // Transaction interfaces
@@ -238,8 +301,8 @@ import {
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface,
   CircuitCallTxInterface,
-  CircuitMaintenanceTxInterface,
-  ContractMaintenanceTxInterface,
+  Ledger9CircuitMaintenanceTxInterface,
+  Ledger9ContractMaintenanceTxInterface,
 
   // Utilities
   verifierKeysEqual,
@@ -247,20 +310,43 @@ import {
 
   // Types
   ContractProviders,
-  CallOptions,
-  CallResult,
+  Ledger9CallOptions,
+  Ledger9CallResult,
   FinalizedDeployTxData,
   UnsubmittedCallTxData,
-  UnsubmittedDeployTxData,
+  Ledger9UnsubmittedDeployTxData,
 
   // Errors
-  CallTxFailedError,
-  DeployTxFailedError,
   ContractTypeError,
   EraInvariantViolationError,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```
+
+## Handling Errors
+
+One class covers one fault. A field on it says which case it was.
+
+```typescript
+import { EraMismatchError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+
+try {
+  await submitCallTx(providers, options);
+} catch (error) {
+  if (error instanceof TxFailedError) {
+    // error.operation is 'call', 'deploy', 'insert-verifier-key', 'remove-verifier-key' or 'replace-authority'.
+    // error.record is what the chain recorded, in either era. The message names the status,
+    // the transaction and the failed segments; read every other field from the record.
+  } else if (error instanceof EraMismatchError) {
+    // error.reason says which era mistake it was.
+  }
+  throw error;
+}
+```
+
+`TxFailedError.signingKey` is set after a failed deploy or replacement. Keep the key. It is not
+enumerable, so object spread, `JSON.stringify` and a logger that serializes the properties of an error
+leave it out.
 
 ## Architecture Documents
 
@@ -272,12 +358,12 @@ docstring resolves to it.
 | Document | What it explains |
 |---|---|
 | [Overload typing](./docs/overload-typing.md) | Why the retained-era contract types are hand-written, what discriminates the two toolchain eras, how openness is expressed without `any`, and why overload order is load-bearing |
-| [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network head era are each established, why the artifact check is structural rather than branded, and which pairings may run |
+| [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network's ledger version are each established, why the artifact check is structural rather than branded, and which pairings may run |
 | [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
 | [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a retained-era deploy is refused |
-| [Stale-head remediation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
-| [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four head readings and their provenance, the privacy rule, and the one fault that is swallowed |
-| [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, which errors register a code and which deliberately do not, the three refusals that fire before a caller pays, and the after-submission region the signing key rides through |
+| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
+| [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four network version readings and their provenance, the privacy rule, and the one fault that is swallowed |
+| [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, how the ledger 8 names are used, the code every class registers, the four refusals that fire before a caller pays, and the after-submission region the signing key rides through |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
 parameters, what it returns and what it throws. Anything that answers "why is

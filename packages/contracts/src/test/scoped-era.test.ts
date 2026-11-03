@@ -32,20 +32,20 @@
  */
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeadReadFailedError, MixedEraScopeError, ScopedTransactionEraUnsupportedError } from '../errors';
+import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
 import { resolveArtifactEra } from '../internal/era';
 import { assertScopeAdmitsLedger8Call, scopedTransaction, TransactionContextImpl } from '../internal/transaction';
 import { submitCallTx } from '../submit-call-tx';
 import { submitLedger9Payload } from '../submit-tx';
-import { withContractScopedTransaction } from '../transaction';
-import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
+import { withContractScopedTransaction, withLedger9ContractScopedTransaction } from '../transaction';
+import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
 import {
   createMockCompiledContract,
   createMockContractAddress,
@@ -106,11 +106,11 @@ describe('per-scope era resolution', () => {
     providers = createMockProviders();
     compiledContract = createMockCompiledContract();
     contractAddress = createMockContractAddress();
-    vi.mocked(createUnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
+    vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(createMockUnprovenCallTxData());
     vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
   });
 
-  const callOptions = (): CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
+  const callOptions = (): Ledger9CallTxOptions<Contract.Any, AnyProvableCircuitId> => ({
     compiledContract,
     contractAddress,
     circuitId: 'testCircuit' as AnyProvableCircuitId,
@@ -169,7 +169,7 @@ describe('per-scope era resolution', () => {
   it('logs a coded failure of the submit step too, and passes it through unchanged', async () => {
     // Arrange
     onPostForkHead();
-    const failure = new HeadReadFailedError('head read failed');
+    const failure = new NetworkVersionReadFailedError('network version read failed');
     vi.mocked(submitLedger9Payload).mockRejectedValue(failure);
     const { logged, error: logError } = withErrorLog();
 
@@ -184,7 +184,7 @@ describe('per-scope era resolution', () => {
 
     // Assert
     expect(error).toBe(failure);
-    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: HeadReadFailedError: head read failed");
+    expect(logError).toHaveBeenCalledExactlyOnceWith({ err: failure, scopeName: 'myScope', phase: 'submitting' }, "Scoped transaction 'myScope' failed while submitting: NetworkVersionReadFailedError: network version read failed");
     expect(logError.mock.calls[0]?.[0]?.err).toBe(failure);
   });
 
@@ -236,7 +236,7 @@ describe('per-scope era resolution', () => {
     // could answer differently mid-scope and leave the batched transaction
     // composed half against each era.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    expect(createUnprovenCallTx).toHaveBeenCalledTimes(2);
+    expect(createLedger9UnprovenCallTx).toHaveBeenCalledTimes(2);
     expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
   });
 
@@ -251,15 +251,16 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('scope-on-ledger8-network');
     // The CODE, not only the class: a consumer that cannot import this
     // package's classes branches on `code`.
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
-    expect((caught as ScopedTransactionEraUnsupportedError).head).toBe('v8');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+    expect((caught as EraMismatchError).message).toContain("'v8'");
     // Refused at CREATION: the body never ran, so no circuit was executed and
     // no private state was touched on a scope that could never be submitted.
     expect(body).not.toHaveBeenCalled();
-    expect(createUnprovenCallTx).not.toHaveBeenCalled();
+    expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
     expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
@@ -281,8 +282,9 @@ describe('per-scope era resolution', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.SCOPED_TRANSACTION_ERA_UNSUPPORTED)).toBe(true);
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('scope-on-ledger8-network');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
     // NOTHING was acquired: not the era it refuses, and not any other.
     expect(eraLoadSlot.acquired).toEqual([]);
   });
@@ -313,8 +315,8 @@ describe('per-scope era resolution', () => {
     const message = (caught as Error).message;
     // Way one: drop the batching and submit each call on its own.
     expect(message).toContain('submitCallTx');
-    // Way two: keep the batching and run the scope after the fork.
-    expect(message).toMatch(/crossed the fork|after the fork/);
+    // Way two: keep the batching and run the scope once the network is on ledger 9.
+    expect(message).toContain('once the network is on the ledger 9 era');
     // And it says WHY, so the refusal does not read as an arbitrary limitation.
     expect(message).toContain('one call');
   });
@@ -368,6 +370,55 @@ describe('per-scope era resolution', () => {
     // And no head read either -- a nested call inherits the outer scope's one
     // reading rather than taking a second.
     expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+  });
+
+  const SCOPE_ENTRY_POINTS = [
+    ['withContractScopedTransaction', withContractScopedTransaction],
+    ['withLedger9ContractScopedTransaction', withLedger9ContractScopedTransaction]
+  ] as const;
+
+  it.each(SCOPE_ENTRY_POINTS)('%s reads the head once and breadcrumbs it before refusing a pre-fork head', async (_name, scoped) => {
+    providers.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(PRE_FORK_PROTOCOL_VERSION);
+    const debug = vi.fn();
+    const body = vi.fn(async () => undefined);
+
+    const rejection = await scoped({ ...providers, loggerProvider: { debug, isLevelEnabled: () => true } }, body).catch(
+      (error: unknown) => error
+    );
+
+    expect(rejection).toMatchObject({ reason: 'scope-on-ledger8-network' });
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    expect(debug.mock.calls.map(([breadcrumb]) => breadcrumb.decision)).toEqual(['network-version-read']);
+    expect(body).not.toHaveBeenCalled();
+  });
+
+  it.each(SCOPE_ENTRY_POINTS)('%s reads the head once on a post-fork head and submits the scope', async (_name, scoped) => {
+    onPostForkHead();
+
+    await scoped(providers, async (txCtx) => {
+      await submitCallTx(providers, callOptions(), txCtx);
+    });
+
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(SCOPE_ENTRY_POINTS)('%s nests into a context passed as its third argument without a head read', async (_name, scoped) => {
+    onPostForkHead();
+    const outer = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(providers, undefined);
+
+    await scoped(
+      providers,
+      async (txCtx) => {
+        expect(txCtx).toBe(outer);
+        await submitCallTx(providers, callOptions(), txCtx);
+      },
+      // @ts-expect-error the parameter is declared as options; a JavaScript caller can still pass a context
+      outer
+    );
+
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(submitLedger9Payload).not.toHaveBeenCalled();
   });
 
   it('carries the era it resolved on the scope, so nothing downstream re-reads the head', async () => {
@@ -427,21 +478,23 @@ describe('a retained-era call handed a scope', () => {
 
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', scope);
+      assertScopeAdmitsLedger8Call('retainedCircuit', scope, 'submitCallTx');
     } catch (error) {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(MixedEraScopeError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE)).toBe(true);
-    expect((caught as MixedEraScopeError).circuitId).toBe('retainedCircuit');
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+    expect((caught as EraMismatchError).message).toContain('retainedCircuit');
+    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
     // The remediation has to say where the call CAN go, because the caller's
     // batching intent cannot be honoured either way.
     expect((caught as Error).message).toContain('submitCallTx');
   });
 
   it('runs normally when it was handed no scope at all', () => {
-    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined)).not.toThrow();
+    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined, 'submitCallTx')).not.toThrow();
   });
 
   it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
@@ -471,9 +524,11 @@ describe('a retained-era call handed a scope', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(MixedEraScopeError);
-    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.MIXED_ERA_SCOPE)).toBe(true);
-    expect((caught as MixedEraScopeError).circuitId).toBe('retainedCircuit');
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('ledger8-call-in-scope');
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
+    expect((caught as EraMismatchError).message).toContain('retainedCircuit');
+    expect((caught as EraMismatchError).circuitId).toBe('retainedCircuit');
   });
 
   it.each([
@@ -486,13 +541,13 @@ describe('a retained-era call handed a scope', () => {
     // contract-scoped transaction" would name a scope it never had.
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', bad);
+      assertScopeAdmitsLedger8Call('retainedCircuit', bad, 'submitCallTx');
     } catch (error) {
       caught = error;
     }
 
     expect(caught).toBeInstanceOf(InvalidArgumentError);
-    expect(caught).not.toBeInstanceOf(MixedEraScopeError);
+    expect(caught).not.toBeInstanceOf(EraMismatchError);
     expect((caught as Error).message).toContain('is not a transaction context');
     // And it says where a real one comes from, so the mistake is fixable.
     expect((caught as Error).message).toContain('withContractScopedTransaction');
@@ -522,7 +577,8 @@ describe('where the two fork-window behaviours meet', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ScopedTransactionEraUnsupportedError);
+    expect(caught).toBeInstanceOf(EraMismatchError);
+    expect((caught as EraMismatchError).reason).toBe('scope-on-ledger8-network');
     // The head is read ONCE. Nothing re-reads it looking for a fork, because
     // there is no submission to diagnose -- the scope was refused before one
     // could exist.

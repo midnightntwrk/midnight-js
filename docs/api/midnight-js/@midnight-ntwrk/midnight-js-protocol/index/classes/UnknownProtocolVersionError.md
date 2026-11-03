@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -7,7 +7,7 @@
 # Class: UnknownProtocolVersionError
 
 Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
-`networkHeadVersion`) when a raw `protocolVersion` integer cannot be
+`latestNetworkLedgerVersion`) when a raw `protocolVersion` integer cannot be
 resolved to a `LedgerVersion`. Those live in `./version`, which imports this
 module -- the dependency stays one-way, so they are named here rather than
 linked.

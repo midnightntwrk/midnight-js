@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -33,15 +33,10 @@ shared registry object at runtime.
 table whose mutation would reroute contract-state bytes to the wrong era's
 codec, and it should not be the one left writable.
 
-Both era arms handed out by `loadLedgerEra`
+Both era objects handed out by `loadLedgerEra`
 (`packages/protocol/src/lib/era/load-era.ts`) are frozen for the matching
 reason: a memoised era is one object shared by every caller in the process, so
 an unfrozen one lets any consumer reassign `composeCallTx` for all the others.
-
-The same construction — `Object.freeze` over an `Object.assign` onto
-`Object.create(null)` — is used for `AXIS_BARE_PACKAGE_NAMES` in
-`packages/protocol/src/errors.ts`, and `PUBLISHED_SCOPES` in the same module is
-frozen as a plain array for the reason `LEDGER_VERSIONS` is.
 
 ## Null-prototype lookup tables
 
@@ -63,14 +58,6 @@ Both are typed as an `EncodedStateValue`, and neither throws. That is the whole
 argument: the failure mode of a plain object literal here is not an exception,
 it is a plausible-looking value flowing on as if a decode had happened.
 
-`AXIS_BARE_PACKAGE_NAMES` in `packages/protocol/src/errors.ts` is
-null-prototype and frozen for the reason `ENVELOPE_DECODERS` is: the value
-indexing it is only type-checked for TypeScript callers, and a plain object
-literal would resolve an `Object.prototype` member into the package name a
-remediation hint tells the reader to trace. `KNOWN_AXES` in the retired
-`lib/v8/instance-guard.ts` was the sibling case; the table it guarded is gone
-with the runtime probe, but the error that reads this one still ships.
-
 The same exposure is why `UnknownLedgerVersionError`
 (`packages/protocol/src/errors.ts`) exists at all. TypeScript callers cannot
 produce it, because `version` is typed as `LedgerVersion`; it exists for the
@@ -79,12 +66,6 @@ string threaded from an indexer response would otherwise reach an era-keyed
 decision — and, where that decision is a lookup table rather than a `switch`,
 could resolve an inherited `Object.prototype` member and yield a
 plausible-looking non-era.
-
-There is a second closed union this package declares for the same reason, the
-ledger-8 instance axis. Nothing validates it at a boundary any more — the guard
-that did was retired — but the union and its error still ship, and the argument
-for why the axis was never only a label is recorded with them; see
-[DualInstantiationGuard](DualInstantiationGuard.md).
 
 ## Own-property lookups where a null prototype is not available
 
@@ -128,11 +109,6 @@ union any more — `structurallyEqual` compares the ENCODED algebra structurally
 rather than switching on a variant tag — so a vendor bump that adds a variant no
 longer fails a build here. Why that walk did not come back is in
 [RetainedEraExecution](RetainedEraExecution.md).
-
-`KNOWN_AXES` and `AXIS_BARE_PACKAGE_NAMES` reach the same property through
-`satisfies` rather than an assignment: the duplication of the one axis literal
-is checked, not trusted — `satisfies` fails to compile if `Ledger8InstanceAxis`
-gains a member the table does not name.
 
 ## Why the runtime guard is not redundant with it
 
@@ -219,10 +195,10 @@ would cost.
 
 ## Related documents
 
-- [DualInstantiationGuard](DualInstantiationGuard.md) — the ledger-8 instance axis, and why
-  `onchain-runtime-v3` is the only one asserted.
+- [DualInstantiationGuard](DualInstantiationGuard.md) — the duplicate-install error, and why
+  `onchain-runtime-v3` is the only package it names.
 - [FailClosedDecoding](FailClosedDecoding.md) — what the decode guarantees once a decoder has been
   selected, and how the failure classes divide the work between them.
 - [ModuleGraphAndLazyLoading](ModuleGraphAndLazyLoading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
   and which modules are build entries.
-- [EraSeam](EraSeam.md) — why the era arms are memoised per era and what crosses the seam.
+- [EraBoundary](EraBoundary.md) — why the era objects are memoised per era and what crosses the boundary.

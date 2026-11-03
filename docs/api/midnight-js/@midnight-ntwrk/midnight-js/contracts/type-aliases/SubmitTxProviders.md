@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: SubmitTxProviders\<C, PCK\>
 
-> **SubmitTxProviders**\<`C`, `PCK`\> = `Omit`\<[`ContractProviders`](ContractProviders.md)\<`C`, `PCK`\>, `"privateStateProvider"`\>
+> **SubmitTxProviders**\<`C`, `PCK`\> = `Omit`\<[`Ledger9ContractProviders`](Ledger9ContractProviders.md)\<`C`, `PCK`\>, `"privateStateProvider"`\>
 
 Providers required to submit an unproven deployment transaction. Since [submitTx](../variables/submitTx.md) doesn't
 manipulate private state, the private state provider can be omitted.

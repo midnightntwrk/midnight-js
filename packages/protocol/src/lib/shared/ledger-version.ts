@@ -27,7 +27,7 @@ export const LEDGER_VERSIONS = Object.freeze(['v8', 'v9'] as const);
 export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
 
 /**
- * The era whose objects this build hands out live, through `./ledger`.
+ * The era whose objects this build links eagerly, today through `./v9`.
  *
  * "Current" is relative: today it is ledger 9 (`'v9'`). At the next hard fork it
  * moves to the new ledger and ledger 9 joins {@link RetainedLedgerVersion}. Code
@@ -46,8 +46,8 @@ export const CURRENT_LEDGER_VERSION = 'v9' as const satisfies LedgerVersion;
 export type CurrentLedgerVersion = typeof CURRENT_LEDGER_VERSION;
 
 /**
- * Every era this build still speaks but does not run live — the eras that
- * cross a package boundary as serialized bytes.
+ * Every era this build still speaks but does not run live: its runtime is
+ * loaded only on demand, through `loadLedger8Protocol`.
  *
  * "Retained" is relative: today the set is ledger 8 (`'v8'`). At the next hard
  * fork the then-current ledger joins it. Code bound to one ledger is named

@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
-  "version": "5.0.0-rc.4",
+  "version": "5.0.0-rc.5",
   "type": "module",
   "description": "Barrel package for Midnight.js core framework",
   "types": "dist/index.d.ts",
@@ -17,9 +17,9 @@
       "types": "./dist/network-id.d.ts",
       "default": "./dist/network-id.js"
     },
-    "./protocol": {
-      "types": "./dist/protocol.d.ts",
-      "default": "./dist/protocol.js"
+    "./protocol/v9": {
+      "types": "./dist/protocol/v9.d.ts",
+      "default": "./dist/protocol/v9.js"
     },
     "./types": {
       "types": "./dist/types.d.ts",

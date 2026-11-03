@@ -73,9 +73,9 @@ one file, and a declaration named `Ledger8X` is published as `Ledger8.X`.
 - **Negative:** a type-only consumer cannot use `import type { Ledger8 }` and
   then `instanceof Ledger8.CallTxFailedError` (TS1361). One import now serves
   both positions.
-- **Follow-ups:** the FORK-WINDOW group -- `StaleHeadError`,
+- **Follow-ups:** the FORK-WINDOW group -- `ForkCrossedDuringOperationError`,
   `SubmitRejectionUndiagnosedError` and their payload types,
-  `HeadStateEraMismatchError`, `EraArtifactMismatchError`,
+  `NetworkVersionStateMismatchError`, `EraArtifactMismatchError`,
   `ScopedTxEraUnsupportedError`, `MixedEraScopeError` -- also disappears when the
   window closes and stays flat here, because filing it under a name that says
   `Ledger8` would misname it. Its removal is a separate change, and whether it
@@ -122,3 +122,82 @@ Issue #1489. The decision is unchanged.
   and here the era that recorded the deployment.
 - `ScopedTxEraUnsupportedError`, one of the fork-window refusals published flat,
   is `ScopedTransactionEraUnsupportedError`.
+
+## Amendment — one flat `Ledger8` error is removed (2026-10-26)
+
+Issue #1533. Of the two errors the Follow-ups name, the instance-mismatch error and its code are
+removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised by
+`LedgerTransaction.seal` ([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)).
+`Ledger8RuntimeMissingError` stays flat in `protocol`.
+
+## Amendment — ledger 9 gets flat `Ledger9*` names, and flat names pick the era (2026-10-28)
+
+Issue #1536. Every ledger 9 result, option and interface type that has a `Ledger8` member is now
+named `Ledger9*` (`Ledger9FoundContract`, ...). The unprefixed name of a type with a contract
+parameter is an alias that picks the variant from the contract type, `Ledger8` branch first:
+`Ledger9Contract` is `Contract.Any`, which a ledger 8 artifact also satisfies, so only
+`Ledger8Contract` tells the eras apart. Inside a generic function `C` is unknown and the alias stays
+unresolved, so generic code names the era. A type without a contract parameter keeps only its
+`Ledger9*` name.
+
+The ledger 9 variants are flat exports, not a `Ledger9` namespace. The entry points return them,
+and a dApp that emits declarations must be able to name what it infers: a type reachable only
+through a namespace re-export fails with TS4023 ("cannot be named"). The `Ledger8` namespace has
+the same defect; flat `Ledger8*` exports are a follow-up.
+
+
+## Amendment — ledger 8 types are flat `Ledger8*` names; the namespace keeps the errors (2026-10-28)
+
+Issue #1561. The decision changes for types.
+
+- The 37 retained-era types are flat exports under their declared names (`Ledger8FoundContract`,
+  `Ledger8DeployedContract`, ...). The `Ledger8` namespace has no type members.
+- The 18 retained-era error classes stay in the `Ledger8` namespace (`Ledger8.CallTxFailedError`).
+
+Why types: the entry points return the retained types by their declared names. A dApp built with
+`declaration: true` that exports a value inferred from a ledger 8 call must be able to name that
+type, and a type reachable only through a namespace re-export fails with TS4023. This is the same
+reason the ledger 9 types are flat (#1536).
+
+Why not errors: no entry point returns an error type. A consumer reaches one only through its own
+`Ledger8.X`, which declaration emit prints back unchanged. Moving the errors is left to #1557.
+
+Consequences: the "one name instead of 37" benefit is gone for types; withdrawing the retained era
+now also deletes the flat `Ledger8*` type block in `src/index.ts`. The declaration names and the
+published names agree for types, so the "divergent names" negative applies only to the errors.
+
+## Amendment — the namespace is removed (2026-10-29)
+
+Issue #1557. The decision changes for errors. There is no `Ledger8` namespace any more, and no
+`Ledger8.X` name of any kind.
+
+- The 18 retained-era error classes are gone as 18 classes. Most are merged into the 12 classes below
+  ([ADR 0017](./0017-error-codes-are-the-contract.md) has the rule). Five stay as flat `Ledger8*Error`
+  exports, with the four types on their public fields (`Ledger8SigningKeyReason`,
+  `Ledger8KeyedOperation`, `Ledger8NotStoredStage`, `Ledger8CallUnsupportedReason`).
+- `packages/contracts/docs/retained-era-namespace.md` is deleted. Its membership rule has nothing left
+  to decide. `error-taxonomy.md` explains the ledger 8 names now.
+
+| Class | Package | Category | Replaces |
+|---|---|---|---|
+| `TxFailedError` | contracts | REJECTED | `AnyEraTxFailedError`, `TxFailedError`, `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`, `ReplaceMaintenanceAuthorityTxFailedError`, and the five `Ledger8.*TxFailedError` classes |
+| `EraMismatchError` | contracts | USAGE | `EraArtifactMismatchError`, `Ledger8.DeployOnLedger9Error`, `Ledger8.MaintenanceOnLedger9Error`, `Ledger8.ArtifactOnLedger9StateError`, `Ledger8.ContractStateUnsupportedError`, `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`, `UnknownResultEraError` |
+| `UnknownLedgerVersionError` | protocol | ENVIRONMENT | itself, `UnrecognisedEraTagError` |
+| `Ledger8SigningKeyError` | contracts | USAGE | `Ledger8.SigningKeyUnusableError`, `Ledger8.SigningKeyUnavailableError` |
+| `Ledger8UnconfirmedError` | contracts | UNCERTAIN | `Ledger8.DeployUnconfirmedError`, `Ledger8.ReplaceAuthorityUnconfirmedError` |
+| `Ledger8NotStoredError` | contracts | ENVIRONMENT | `Ledger8.DeployNotStoredError`, `Ledger8.SigningKeyNotStoredError` |
+| `Ledger8CallUnsupportedError` | contracts | USAGE | `Ledger8.ShieldedSpendUnsupportedError`, `Ledger8.RecipientUnmappableError` |
+| `Ledger8AmbiguousEntryPointError` | contracts | INTEGRITY | itself; it now carries `contractAddress` |
+| `EraInvariantViolationError`, `PublicStatesEraMismatchError`, `IndexerInconsistencyError`, `TransactionEraMismatchError` | contracts, types | INTERNAL, INTEGRITY, USAGE | unchanged |
+
+`Ledger8ValueUnsupportedError` and `requireLedger9` are removed with no replacement. Code that handles
+one era narrows with `switch (value.era)`, closed by `assertNever`.
+
+Why: the namespace existed so the retained era could be withdrawn in one step. The errors were the
+only members left, and 18 classes for two eras was more than a caller could tell apart. A merged class
+carries a `reason` or `operation` field, so one `catch` handles the fault and the field says which case
+it was. A `TxFailedError` thrown by a ledger 8 call is now caught by the same `instanceof` as in v4.
+
+Consequences: withdrawing the retained era now deletes the flat `Ledger8*` block in `src/index.ts` and
+the reasons that name ledger 8. Nothing else is published under a `Ledger8` name that has to be
+removed as a group.

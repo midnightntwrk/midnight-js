@@ -14,9 +14,10 @@
  */
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { Ledger9FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
@@ -107,7 +108,7 @@ export const getCounterLedgerState = async (
     .queryContractState(contractAddress)
     .then((contractState) =>
       contractState != null
-        ? CompiledCounter.ledger(requireLedger9(contractState, 'getCounterLedgerState').state.data).round
+        ? CompiledCounter.ledger(contractState.contractState.deserialize({ v9: ContractState }).data).round
         : null
     );
   logger.info(`Ledger state: ${state}`);
@@ -128,7 +129,7 @@ export const deploy = async (
   return counterContract;
 };
 
-export const increment = async (counterContract: DeployedCounterContract): Promise<FinalizedTxData> => {
+export const increment = async (counterContract: DeployedCounterContract): Promise<Ledger9FinalizedTxData> => {
   logger.info('Incrementing...');
   const finalizedTxData = await counterContract.callTx.increment();
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);

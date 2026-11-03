@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
 
 ***
 
@@ -19,7 +19,7 @@ caller to investigate the indexer over a problem that is somewhere else entirely
 From `@midnight-ntwrk/midnight-js-utils`. Bytes that will not decode, whichever
 era's runtime read them.
 
-It carries the era, the `protocolVersion`, the seam and the record on its
+It carries the era, the `protocolVersion`, the method and the record on its
 `context.details`. Wrapped as an `IndexerError`, all of that becomes a detail of
 "the indexer failed", which is the wrong first question.
 

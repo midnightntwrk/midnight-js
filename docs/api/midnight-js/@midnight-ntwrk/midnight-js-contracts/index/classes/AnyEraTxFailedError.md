@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ non-success status, in EITHER era. The one class to catch.
 Each subclass keeps its own historical member -- `finalizedTxData` on the
 current era's, `txData` on the retained one -- so nothing reading those
 breaks. [AnyEraTxFailedError.record](#record) is the member to write new code
-against, and it needs narrowing on `version` before `tx` is touched.
+against, and it needs narrowing on `era` before `tx` is touched.
 
 ## See
 
@@ -104,11 +104,12 @@ process. Subclasses inherit it rather than each declaring their own.
 
 ### record
 
-> `abstract` `readonly` **record**: [`VersionedFinalizedTxData`](../../../midnight-js/types/type-aliases/VersionedFinalizedTxData.md)
+> `abstract` `readonly` **record**: [`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)
 
-The finalized record the chain reported, version-tagged.
+The finalized record the chain reported, tagged with its era.
 
 #### Remarks
 
-Narrow on `record.version` before reading `record.tx`: the handle
-belongs to the ledger runtime the tag names.
+`record.tx` is a `FinalizedTx` in the era `record.era` names.
+Read it with `LedgerTransaction.unwrap(record.tx, record.era)`, after
+narrowing on `record.era`.

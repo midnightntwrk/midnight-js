@@ -18,7 +18,7 @@ import {
   createProvingPayload,
   parseCheckResult,
   type ProvingKeyMaterial,
-  type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+  type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   InvalidProtocolSchemeError,
   ProofServerError,

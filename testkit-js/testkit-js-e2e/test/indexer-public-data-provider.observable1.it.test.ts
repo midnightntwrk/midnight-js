@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
-  type FinalizedTxData,
+  type ContractStateRead,
   type FinalizedTxRecord,
+  type Ledger9FinalizedTxData,
   type PositionedRecord,
-  type PublicDataProvider,
-  type VersionedContractState
+  type PublicDataProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { requireLedger9 } from '@midnight-ntwrk/midnight-js-utils';
 import {
   createLogger,
   getTestEnvironment,
@@ -50,17 +50,17 @@ describe('Indexer API', () => {
   let testEnvironment: TestEnvironment;
 
   let deployedContractObserved: DeployedCounterContract;
-  let incrementFinalizedTxData: FinalizedTxData;
+  let incrementFinalizedTxData: Ledger9FinalizedTxData;
 
   const expectObservedContractStatesToEqual = async (
-    observable$: Observable<PositionedRecord<VersionedContractState>>,
+    observable$: Observable<PositionedRecord<ContractStateRead>>,
     expected: readonly (readonly [round: bigint, writtenBy: FinalizedTxRecord])[]
   ): Promise<void> => {
     const records = await firstValueFrom(
       observable$.pipe(timeout({ each: STATE_WAIT_MS }), take(expected.length), toArray())
     );
     const states = records.map(({ value, blockHeight, blockHash }) => ({
-      state: requireLedger9(value, 'contractStateObservable').state,
+      state: value.contractState.deserialize({ v9: ContractState }),
       blockHeight,
       blockHash
     }));

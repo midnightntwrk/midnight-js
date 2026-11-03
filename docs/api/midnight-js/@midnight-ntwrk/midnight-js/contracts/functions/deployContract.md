@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
 
 ***
 
@@ -8,13 +8,13 @@
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8DeployedContract`](../interfaces/Ledger8DeployedContract.md)\<`C`\>\>
 
-The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
 the raw contract instance rather than inside a `CompiledContract` container.
 
-Reachable only on a PRE-FORK head: the retained era has no post-fork deployment, so a retained
-artifact against a post-fork head is refused with `Ledger8DeployOnV9Error`. Recompile with the
+Reachable only BEFORE THE FORK: the retained era has no post-fork deployment, so a retained
+artifact after the fork is refused with `Ledger8DeployOnLedger9Error`. Recompile with the
 current toolchain and deploy that artifact instead; the retained artifact keeps working for calls
 against contracts deployed before the fork.
 
@@ -22,8 +22,8 @@ A verifier key is registered for every entry point the artifact declares.
 
 A maintenance authority of one key at threshold 1 is registered, that key being
 `options.signingKey` or a freshly sampled one. Once the chain has recorded the deployment the key
-is stored against the minted address through `providers.privateStateProvider` and reported on
-`Ledger8DeployedContract.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
+is stored against the minted address through `providers.privateStateProvider` and reported at
+`deployTxData.private.signingKey`. THAT PROVIDER IS THE ONLY COPY besides the returned handle:
 the key is not on chain and not derivable from anything that is, so a store that is lost or
 cleared leaves a contract on which no verifier key can ever be inserted, removed or replaced by
 anyone.
@@ -32,21 +32,21 @@ anyone.
 
 #### C
 
-`C` *extends* [`Contract`](../namespaces/Ledger8/interfaces/Contract.md)\<`unknown`\>
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../namespaces/Ledger8/type-aliases/ContractProviders.md)\<`C`, [`CircuitId`](../namespaces/Ledger8/type-aliases/CircuitId.md)\<`C`\>\>
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
 
 #### options
 
-[`DeployContractOptions`](../namespaces/Ledger8/type-aliases/DeployContractOptions.md)\<`C`\>
+[`Ledger8DeployContractOptions`](../type-aliases/Ledger8DeployContractOptions.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`DeployedContract`](../namespaces/Ledger8/interfaces/DeployedContract.md)\<`C`\>\>
+`Promise`\<[`Ledger8DeployedContract`](../interfaces/Ledger8DeployedContract.md)\<`C`\>\>
 
 ### See
 
@@ -56,7 +56,7 @@ maintenance authority this builds.
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9DeployedContract`](../interfaces/Ledger9DeployedContract.md)\<`C`\>\>
 
 Deploys a contract that declares no private state, so no private state id is required.
 
@@ -70,19 +70,19 @@ Deploys a contract that declares no private state, so no private state id is req
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`, [`ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>, `unknown`\>
 
 #### options
 
-[`DeployContractOptionsBase`](../type-aliases/DeployContractOptionsBase.md)\<`C`\>
+[`Ledger9DeployContractOptionsBase`](../type-aliases/Ledger9DeployContractOptionsBase.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
+`Promise`\<[`Ledger9DeployedContract`](../interfaces/Ledger9DeployedContract.md)\<`C`\>\>
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9DeployedContract`](../interfaces/Ledger9DeployedContract.md)\<`C`\>\>
 
 Deploys a contract that declares private state, naming where to store the initial state.
 
@@ -96,12 +96,12 @@ Deploys a contract that declares private state, naming where to store the initia
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+[`Ledger9ContractProviders`](../type-aliases/Ledger9ContractProviders.md)\<`C`\>
 
 #### options
 
-[`DeployContractOptionsWithPrivateState`](../type-aliases/DeployContractOptionsWithPrivateState.md)\<`C`\>
+[`Ledger9DeployContractOptionsWithPrivateState`](../type-aliases/Ledger9DeployContractOptionsWithPrivateState.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
+`Promise`\<[`Ledger9DeployedContract`](../interfaces/Ledger9DeployedContract.md)\<`C`\>\>

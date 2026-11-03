@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../../../../../README.md)
 
 ***
 
@@ -11,7 +11,7 @@ the chain did with it could not be confirmed.
 
 Covers every way that step fails: the read surface rejecting, a record whose
 version tag is missing or unrecognised, and a record arriving from an era the
-head this deployment composed on cannot have recorded. The message states
+network this deployment composed on cannot have recorded. The message states
 which condition was hit.
 
 DO NOT DEPLOY AGAIN on seeing this. The transaction may still finalize, this
@@ -19,8 +19,8 @@ error holds the only copy of the signing key, and the address has to be
 checked first.
 
 Branch on `cause` for the underlying failure — an unreachable indexer, a
-timeout, an untagged payload, an era violation. It is wrapped rather than
-replaced, so `cause instanceof EraInvariantViolationError`, its seam and its
+timeout, a value that is not a transaction handle, an era violation. It is wrapped rather than
+replaced, so `cause instanceof EraInvariantViolationError`, its method and its
 registered code all stay reachable.
 
 Reachable only AFTER submission. Every refusal ahead of it is raised with no
@@ -50,7 +50,7 @@ The address the submitted deployment composed.
 
 ##### signingKey
 
-`string`
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key that deployment's maintenance authority was built
 from - sampled when the caller named none, and then this is its only copy.
@@ -103,7 +103,7 @@ The address the submitted deployment composed.
 
 ### signingKey
 
-> `readonly` **signingKey**: `string`
+> `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The key that deployment's maintenance authority was built
 from - sampled when the caller named none, and then this is its only copy.

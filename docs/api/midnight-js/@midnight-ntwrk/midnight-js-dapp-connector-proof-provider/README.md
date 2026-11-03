@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.4**](../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.5**](../../README.md)
 
 ***
 
@@ -9,8 +9,10 @@
 ## Type Aliases
 
 - [DAppConnectorProvingAPI](type-aliases/DAppConnectorProvingAPI.md)
+- [DAppConnectorWalletAPI](type-aliases/DAppConnectorWalletAPI.md)
 
 ## Functions
 
 - [dappConnectorProofProvider](functions/dappConnectorProofProvider.md)
 - [dappConnectorProvingProvider](functions/dappConnectorProvingProvider.md)
+- [dappConnectorWalletProviders](functions/dappConnectorWalletProviders.md)

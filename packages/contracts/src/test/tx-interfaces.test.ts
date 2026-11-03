@@ -15,6 +15,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { EraMismatchError } from '../errors';
+import type { Ledger8Contract, Ledger8ContractProviders } from '../ledger8-contract';
 import {
   createCallTxOptions,
   createCircuitCallTxInterface,
@@ -28,6 +30,19 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-call-tx');
+
+const createLedger8Contract = (): Ledger8Contract => {
+  const circuit = vi.fn();
+  return {
+    witnesses: {},
+    circuits: { increment: circuit },
+    impureCircuits: { increment: circuit },
+    provableCircuits: { increment: circuit },
+    initialState: () => {
+      throw new Error('not called by this test');
+    }
+  };
+};
 
 describe('tx-interfaces', () => {
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
@@ -105,6 +120,77 @@ describe('tx-interfaces', () => {
         args
       });
     });
+    it('should keep an empty private state ID for a ledger 9 contract, as for a ledger 8 one', () => {
+      const circuitId = 'testCircuit';
+
+      const options = createCallTxOptions(mockCompiledContract, circuitId, mockContractAddress, '', undefined, [] as never);
+
+      expect(options).toStrictEqual({
+        additionalCoinEncPublicKeyMappings: undefined,
+        compiledContract: mockCompiledContract,
+        circuitId,
+        contractAddress: mockContractAddress,
+        privateStateId: ''
+      });
+    });
+
+    it('should create ledger 8 call tx options without args or private state ID', () => {
+      const ledger8Contract = createLedger8Contract();
+
+      const options = createCallTxOptions(ledger8Contract, 'increment', mockContractAddress, undefined, undefined, [] as never);
+
+      expect(options).toStrictEqual({
+        compiledContract: ledger8Contract,
+        circuitId: 'increment',
+        contractAddress: mockContractAddress
+      });
+    });
+
+    it('should pass key mappings, private state ID and args through for a ledger 8 contract', () => {
+      const ledger8Contract = createLedger8Contract();
+      const mappings = new Map([['coin-public-key', 'enc-public-key']]);
+
+      const options = createCallTxOptions(
+        ledger8Contract,
+        'increment',
+        mockContractAddress,
+        mockPrivateStateId,
+        mappings,
+        ['arg1'] as never
+      );
+
+      expect(options).toStrictEqual({
+        compiledContract: ledger8Contract,
+        circuitId: 'increment',
+        contractAddress: mockContractAddress,
+        additionalCoinEncPublicKeyMappings: mappings,
+        privateStateId: mockPrivateStateId,
+        args: ['arg1']
+      });
+    });
+
+    it('should refuse a contract of neither era', () => {
+      const act = () =>
+        createCallTxOptions({ nonsense: true } as never, 'increment', mockContractAddress, undefined, undefined, [] as never);
+
+      expect(act).toThrow(EraMismatchError);
+      expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
+    });
+
+    it('should refuse a ledger 9 contract that is not wrapped in a CompiledContract', () => {
+      const unwrappedLedger9Contract = {
+        ...createLedger8Contract(),
+        initialState: async () => {
+          throw new Error('not called by this test');
+        }
+      };
+
+      const act = () =>
+        createCallTxOptions(unwrappedLedger9Contract as never, 'increment', mockContractAddress, undefined, undefined, [] as never);
+
+      expect(act).toThrow(EraMismatchError);
+      expect(act).toThrow(expect.objectContaining({ reason: 'unwrapped-ledger9-contract' }));
+    });
   });
 
   describe('createCircuitCallTxInterface', () => {
@@ -180,7 +266,7 @@ describe('tx-interfaces', () => {
       );
     });
 
-    it('should strip TransactionContext from circuit call arguments', async () => {
+    it('should strip Ledger9TransactionContext from circuit call arguments', async () => {
       const { submitCallTx } = await import('../submit-call-tx');
       const { TransactionContextImpl } = await import('../internal/transaction');
       vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);
@@ -205,7 +291,7 @@ describe('tx-interfaces', () => {
       );
     });
 
-    it('should not include TransactionContext in args when it is the only argument', async () => {
+    it('should not include Ledger9TransactionContext in args when it is the only argument', async () => {
       const { submitCallTx } = await import('../submit-call-tx');
       const { TransactionContextImpl } = await import('../internal/transaction');
       vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);
@@ -235,6 +321,39 @@ describe('tx-interfaces', () => {
         expect.not.objectContaining({ args: expect.anything() }),
         txCtx
       );
+    });
+
+    it('should build the ledger 8 interface for a ledger 8 contract', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      vi.mocked(submitCallTx).mockResolvedValue(mockFinalizedTxData as never);
+      const ledger8Contract = createLedger8Contract();
+      const ledger8Providers: Ledger8ContractProviders<Ledger8Contract, string> = mockProviders;
+
+      const callInterface = createCircuitCallTxInterface(
+        ledger8Providers,
+        ledger8Contract,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+      await (callInterface.increment as (...args: unknown[]) => Promise<unknown>)('arg1');
+
+      expect(Object.keys(callInterface)).toEqual(['increment']);
+      expect(mockProviders.privateStateProvider.setContractAddress).not.toHaveBeenCalled();
+      expect(submitCallTx).toHaveBeenCalledWith(ledger8Providers, {
+        compiledContract: ledger8Contract,
+        contractAddress: mockContractAddress,
+        circuitId: 'increment',
+        privateStateId: mockPrivateStateId,
+        args: ['arg1']
+      });
+    });
+
+    it('should refuse a contract of neither era', () => {
+      const act = () =>
+        createCircuitCallTxInterface(mockProviders, { nonsense: true } as never, mockContractAddress, undefined);
+
+      expect(act).toThrow(EraMismatchError);
+      expect(act).toThrow(expect.objectContaining({ reason: 'unrecognised-contract-shape' }));
     });
   });
 });

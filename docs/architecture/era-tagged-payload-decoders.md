@@ -5,12 +5,14 @@ runtime, and states which era each of those decoders is allowed to be.
 
 ## The rule every public value follows
 
-`version: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
-envelope; `protocolVersion` is the era of the block that dated the read. A value whose shape depends
-on the era is a `Versioned*` union whose v8 variant carries the stored bytes and whose v9 variant
-carries the decoded object. A consumer narrows it with `switch (value.version)` closed by
-`assertNever`, or with `requireLedger9` when only v9 is handled. `era` appears only on `contracts`
-pipeline results. See ADR 0006, amendment of 2026-10-16.
+`era: 'v8' | 'v9'` on a public value is the ledger era that WROTE it, read from the payload's
+envelope; `protocolVersion` is the era of the block that dated the read. A value read from the
+network — a contract state, ledger parameters, a zswap chain state — is a `SerializedState`: the bytes
+and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
+finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
+`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
+narrows it with `switch (record.era)` closed by `assertNever`. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
+its `public.era` names the ledger that recorded the transaction.
 
 ## The defect class
 
@@ -28,7 +30,7 @@ around it, and a failure that only appears against a chain that has crossed the 
 | 1 | keep-state envelope check (`assertRetainedStateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
 | 2 | `composeCallTx` operation registry, `packages/protocol` | contract state | fixed — the registry is re-expressed for the composing era |
 | 3 | `assemble-call.ts` partitioner | ledger parameters | fixed — the chain's own parameters are carried in as bytes |
-| 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed here |
+| 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed, then removed: the read no longer decodes (ADR 0020) |
 
 The numbering the envelopes use is per payload family and the families collide, so no era can be
 derived from a `[vN]` by arithmetic or by analogy with another family's table:
@@ -40,16 +42,11 @@ derived from a `[vN]` by arithmetic or by analogy with another family's table:
 | zswap chain state | `midnight:zswap-ledger-state[v5]` | `midnight:zswap-ledger-state[v5]` |
 
 Every row above is measured against bytes minted by both real runtimes, never assumed from another
-family's numbering. The two era tables in
-`packages/utils/src/{contract-state,ledger-parameters}-envelope.ts` are pinned by those
-measurements, in two places:
-
-- **ledger parameters** and **zswap chain state** —
-  `packages/indexer-public-data-provider/src/test/ledger-parameters.test.ts`, which asserts the
-  literal tag each runtime writes.
-- **contract state** — `packages/indexer-public-data-provider/src/test/raw-contract-state.test.ts`,
-  which asserts the mapping rather than the literal tag: a runtime that changed its tag fails there
-  because the minted bytes stop resolving to their era.
+family's numbering. The rows live in one table, `LEDGER_STATE_TAGS` in
+`packages/protocol/src/lib/shared/state-tags.ts`, which `SerializedState.fromBytes` in `types` and the
+`ledgerVersionOf*` readers in `utils` both read. It is pinned by
+`packages/protocol/src/test/state-tags.test.ts`, which mints every kind with both runtimes and
+asserts the literal tag each one writes.
 
 The zswap row is the one exception in kind: the same test mints it empty and carrying retained past
 roots, and asserts the bytes are identical and that each era reads the other's. A payload with no
@@ -80,11 +77,15 @@ grep -rnE '\.deserialize[<(]|deserialize(Ledger|Compact|Zswap)' --include='*.ts'
 
 ### Decoders that are correct because the era is chosen per payload
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `toVersionedContractState` and
-  `toVersionedPublicStates` read the envelope first and decode only a v9 one, handing a v8 one on
-  as bytes; `toRawContractState` tags the record by the envelope; `parseHexContractState` and
-  `parseHexLedgerParameters` stay v9-only and refuse an era they cannot read;
+- `packages/indexer-public-data-provider/src/codec.ts` — `toContractStateRead` and
+  `toPublicStatesRead` decode nothing: they read the version tag of each payload and wrap the bytes
+  in a `SerializedState` of that version. The caller decodes with its own runtime (ADR 0020).
   `decodeRecordTransaction` dispatches per record to a table with one entry per era.
+- `packages/types/src/serialized-state.ts` — `SerializedState.deserialize` calls only the decoder for the
+  value's own version.
+- `packages/contracts/src/internal/era.ts` — `decodeLedger9ContractState` and
+  `decodeLedger9PublicStates` decode a read with the framework's copy, only to build a transaction,
+  and refuse a v8 state with `EraMismatchError` (reason `'ledger8-contract-state-unsupported'`) before any decode.
 - `packages/protocol/src/lib/era/envelope.ts` — both eras are named explicitly.
 
 ### Decoders that are correct because the code path owns the era
@@ -100,19 +101,24 @@ the same way, and one does not classify it at all:
 - `packages/protocol/src/lib/shared/contract-state.ts` — wraps a `deserialize` failure in
   `StateDecodeFailedError` and any later failure in `StateInconsistentError`, not
   `ComposeOptionError`; takes the era's module slice as an argument
-- `packages/protocol/src/lib/v8/prove.ts` — **no wrapper.** `proveLedger8Transaction` runs
-  `assertSerializedTransaction` on the bytes and then calls `v8.Transaction.deserialize` with
-  nothing around it, so a raw decoder failure escapes unclassified. The era is still the path's own,
-  so this is a diagnosis gap rather than a wrong-era decode — but it is the one site here whose
-  failure does not name the provider method.
+- `packages/protocol/src/lib/shared/ledger-transaction.ts` — `deserializeTransactionAtStage`. The
+  era and the stage come from the caller, never from the bytes. Bytes without a transaction tag, and
+  bytes the era's runtime refuses at that stage (`undecodable`, the refusal on `cause`), fail as
+  `PayloadNotATransactionError`. `proveLedger8Transaction` no longer decodes: it takes a live v8
+  object and only proves it.
 
-### Decoders that are correct because the payload is version-tagged at the provider method
+### Decoders that are correct because the era comes from the request
 
-The provider methods carry `{ version, tx | txBytes }`, so the era is on the payload rather than
-inferred (ADR 0006).
+The provider methods carry transaction handles, and each handle carries its era, so a decoder at
+a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0019).
 
-- `packages/indexer-public-data-provider/src/codec.ts` — `parseLedger8HexTransaction`
-- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — both adopt functions
+- `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransaction(era, …)`, chosen by
+  the record's own era
+- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet` and
+  `finalizedFromWallet`, chosen by the era of the handle the wallet provider received
+- `packages/dapp-connector-proof-provider/src/dapp-connector-wallet-providers.ts` —
+  `deserializeTransactionAtStage(era, 'Finalized', …)`, chosen by the era of the handle passed to
+  `balanceTx`
 
 ### Decoders that never see chain bytes
 
@@ -123,10 +129,11 @@ inferred (ADR 0006).
 
 ### The typed wrappers themselves
 
-`packages/utils/src/deserialization/typed-wrappers.ts` holds five fixed-era decoders
-(`deserializeLedgerContractState`, `deserializeCompactContractState`, `deserializeZswapChainState`,
-`deserializeLedgerTransaction`, `deserializeLedgerParameters`). They are era-fixed by construction
-and deliberately so: each is the *current* era's decoder plus a `caller` marker, and every verdict
+`packages/utils/src/deserialization/typed-wrappers.ts` holds five ledger 9 decoders
+(`deserializeLedger9ContractState`, `deserializeLedger9CompactContractState`, `deserializeLedger9ZswapChainState`,
+`deserializeLedger9Parameters`, `decodeLedger9StateValue`) and one that takes the era as an argument,
+`deserializeLedgerTransaction(era, bytes, ctx)`. The five are era-fixed by construction
+and deliberately so: each is the ledger 9 decoder plus a `caller` marker, and every verdict
 above about a call site is a verdict about which wrapper that site picks and what it checks first.
 They are correct as a layer — a wrapper cannot date bytes it is not told the era of — so the
 obligation sits with the callers, which is what the rest of this table records.
@@ -148,14 +155,15 @@ are two lines to fix and do not touch the era branch; they are listed here so th
 these methods sees all of it.
 
 **`DAppConnectorWalletAdapter`** (`testkit-js/testkit-js/src/wallet/dapp-connector-wallet-adapter.ts`)
-decodes DApp-supplied transaction hex with the current era's `LedgerTransaction` at three points
-(`balanceAndProveTransaction`, and both submit paths). Unlike its sibling
-`wallet/wallet-transaction.ts`, these do not receive a version-tagged payload — the adapter
+decodes nothing with a ledger itself: at three points (`balanceAndProveTransaction`, and both
+submit paths) it hands the DApp-supplied hex to the wallet SDK as bytes, with
+`wallet.adoptTransaction(fromHex(tx), stage)`, and the wallet picks the era. Unlike its sibling
+`wallet/wallet-transaction.ts`, these do not receive a transaction handle — the adapter
 implements the connector API, whose shape is fixed by the connector rather than by us, so the era
-cannot be carried on the payload without changing that API. Testkit only, and the bytes originate
+cannot be carried with the transaction without changing that API. Testkit only, and the bytes originate
 from a wallet this process just handed a transaction to, so the era is in practice the composing
-era. Recorded rather than changed because the fix is an ADR-0006-shaped method change to a
-third-party-facing interface, not a local guard.
+era. Recorded rather than changed because the fix is a method change to a third-party-facing
+interface, not a local guard.
 
 **The fork window between the head read and the state read.** A retained-era operation resolves the
 head era first (`acquireLedger8Runtime`) and reads the contract state after it
@@ -180,8 +188,8 @@ not run. Testkit only, and not on the path of any defect above.
 
 - [The fork-crossing e2e environment](./fork-e2e-environment.md)
 - `packages/protocol/docs/shared-table-discipline.md` — why a table indexed by a value must not
-  resolve an unexpected key through `Object.prototype`, and why a tag table must not be copied. Both
-  envelope tables in `packages/utils` satisfy that by being keyed by ERA and searched rather than
-  keyed by tag and indexed, which also makes a new `LedgerVersion` with no tag a build failure.
+  resolve an unexpected key through `Object.prototype`, and why a tag table must not be copied.
+  `LEDGER_STATE_TAGS` satisfies that by being keyed by kind and ERA, and searched rather than keyed
+  by tag and indexed, which also makes a new `LedgerVersion` with no tag a build failure.
 - `packages/protocol/docs/fail-closed-decoding.md` — what a decode guarantees once the era is settled
 - `packages/contracts/docs/keep-state-pipeline.md` — the retained-era read path

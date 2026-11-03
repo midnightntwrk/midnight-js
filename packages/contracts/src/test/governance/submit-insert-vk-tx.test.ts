@@ -15,9 +15,10 @@
 
 import { readFileSync } from 'node:fs';
 
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,6 +26,7 @@ import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx'
 import { createUnprovenInsertVerifierKeyTx } from '../../governance/unproven-tx';
 import { submitLedger9Payload } from '../../submit-tx';
 import {
+  contractStateReadStub,
   createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
@@ -32,8 +34,7 @@ import {
   createMockFinalizedTxData,
   createMockProviders,
   createMockSigningKey,
-  createMockUnprovenTx
-} from '../test-mocks';
+  createMockUnprovenTx} from '../test-mocks';
 
 vi.mock('../../submit-tx');
 vi.mock('../../governance/unproven-tx');
@@ -44,6 +45,23 @@ const createKeyedOperation = (): ContractOperation => {
     readFileSync(new URL('../resources/compiled/shielded-map/keys/deposit.verifier', import.meta.url))
   );
   return operation;
+};
+
+// The framework decodes a read with its own runtime; these stand in for the decoded objects.
+const decode = vi.hoisted(() => ({
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof MidnightJsUtils>()),
+  ...decode
+}));
+
+const servingLedger9 = (state: unknown) => {
+  decode.deserializeLedger9CompactContractState.mockReturnValue(state);
+  return vi.fn().mockResolvedValue(contractStateReadStub('v9'));
 };
 
 describe('submitInsertVerifierKeyTx', () => {
@@ -83,7 +101,7 @@ describe('submitInsertVerifierKeyTx', () => {
       const circuitId = 'testCircuit';
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
@@ -114,14 +132,14 @@ describe('submitInsertVerifierKeyTx', () => {
         mockProviders.config
       );
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
 
     it('should insert a key into a registered operation that carries no verifier key', async () => {
       const circuitId = 'testCircuit';
       const mockFinalizedTxData = createMockFinalizedTxData();
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(new ContractOperation());
 
@@ -137,7 +155,7 @@ describe('submitInsertVerifierKeyTx', () => {
       );
 
       expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
-      expect(result).toBe(mockFinalizedTxData);
+      expect(result).toEqual({ era: 'v9', public: mockFinalizedTxData });
     });
   });
 
@@ -156,7 +174,7 @@ describe('submitInsertVerifierKeyTx', () => {
     });
 
     it('refuses a contract this caller holds no signing key for as InvalidArgumentError', async () => {
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(undefined);
 
@@ -173,7 +191,7 @@ describe('submitInsertVerifierKeyTx', () => {
     it('should reject before submitting when the operation already carries a verifier key', async () => {
       const circuitId = 'testCircuit';
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockContractState.operation = vi.fn().mockReturnValue(createKeyedOperation());
 
       await expect(
@@ -188,23 +206,36 @@ describe('submitInsertVerifierKeyTx', () => {
       expect(submitLedger9Payload).not.toHaveBeenCalled();
     });
 
-    it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
-      const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
+    it('should throw TxFailedError when transaction fails', async () => {
+      const { TxFailedError } = await import('../../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
-      mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue({ version: 'v9', state: mockContractState });
+      mockProviders.publicDataProvider.queryContractState = servingLedger9(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
 
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitLedger9Payload).mockResolvedValue(failedTxData);
 
-      await expect(
-        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
-      ).rejects.toThrow(InsertVerifierKeyTxFailedError);
+      const failure = await submitInsertVerifierKeyTx(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId,
+        mockVerifierKey
+      ).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(TxFailedError);
+      expect(failure).toMatchObject({
+        operation: 'insert-verifier-key',
+        code: 'MIDNIGHT_JS_C_TX_FAILED',
+        contractAddress: mockContractAddress,
+        circuitId,
+        record: failedTxData
+      });
     });
   });
 });
