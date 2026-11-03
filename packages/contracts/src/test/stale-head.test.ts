@@ -672,8 +672,9 @@ describe('the fork-crossing failure through the retained-era entry points', () =
     expect((caught as Error).message).not.toMatch(/re-run/);
     // The address the composition MINTED, read off the deploy record rather
     // than off anything the caller supplied -- a deploy supplies none.
-    expect((caught as ForkCrossedDuringOperationError).contractAddress.length).toBeGreaterThan(0);
-    expect((caught as Error).message).toContain((caught as ForkCrossedDuringOperationError).contractAddress);
+    const { contractAddress } = caught as ForkCrossedDuringOperationError;
+    expect(contractAddress).toMatch(/^[0-9a-f]+$/);
+    expect((caught as Error).message).toContain(`'${String(contractAddress)}'`);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {
