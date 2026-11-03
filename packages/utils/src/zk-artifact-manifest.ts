@@ -95,78 +95,46 @@ const asOptionalString = (value: unknown): string | undefined =>
 export const computeSha256Hex = (bytes: Uint8Array): string => bytesToHex(sha256(bytes));
 
 /**
- * Scans raw JSON text for a duplicate object key, returning the first duplicated key it finds.
- *
- * `JSON.parse` silently collapses duplicate keys and keeps the last one, so a duplicate is
- * invisible in the parsed value: the only layer where the ambiguity is still visible is the raw
- * text. Keys are compared after JSON string decoding, so a key spelled with an escape (for
- * example `"cle\u0061r.verifier"`) still counts as a duplicate of its plain spelling. Strings
- * inside arrays and string values are never mistaken for keys, and braces inside a string value
- * are never mistaken for structure.
- *
- * Ported from compact-js's `ZKManifest` duplicate-key scan (midnightntwrk/midnight-sdk#277),
- * which fixed the same bug there; the two parsers must agree on the same manifest input.
+ * Returns the first object key that `json` repeats within one object, comparing keys after JSON
+ * string decoding. `json` must already be valid JSON: `JSON.parse` keeps only the last of repeated
+ * keys, so the raw text is the only place a duplicate is still visible.
  */
 const findDuplicateKey = (json: string): string | undefined => {
-  const stack: (Set<string> | null)[] = []; // Set → keys seen in an object frame; null → array frame
+  const stack: (Set<string> | null)[] = [];
   let awaitingKey = false;
-  const n = json.length;
   let i = 0;
-  while (i < n) {
+  while (i < json.length) {
     const ch = json[i];
-    switch (ch) {
-      case '{':
-        stack.push(new Set());
-        awaitingKey = true;
-        i++;
-        break;
-      case '[':
-        stack.push(null);
-        awaitingKey = false;
-        i++;
-        break;
-      case '}':
-      case ']':
-        stack.pop();
-        awaitingKey = false;
-        i++;
-        break;
-      case ',':
-        awaitingKey = stack[stack.length - 1] instanceof Set;
-        i++;
-        break;
-      case ':':
-        awaitingKey = false;
-        i++;
-        break;
-      case '"': {
-        // Find the closing quote, honouring backslash escapes so a `\"` (or a `{`/`}`) inside a string
-        // value is never mistaken for structure.
-        const start = i++;
-        while (i < n && json[i] !== '"') {
-          if (json[i] === '\\') i++; // skip the escaped character
-          i++;
-        }
-        if (i >= n) return undefined; // unterminated string → let JSON.parse report it
-        i++; // consume the closing quote
-        const top = stack[stack.length - 1];
-        if (awaitingKey && top instanceof Set) {
-          let key: string;
-          try {
-            key = JSON.parse(json.slice(start, i)) as string; // decode escapes for a faithful compare
-          } catch {
-            return undefined;
-          }
-          if (top.has(key)) return key;
-          top.add(key);
-        }
-        awaitingKey = false;
-        break;
+    if (ch === '"') {
+      const start = i++;
+      while (json[i] !== '"') {
+        i += json[i] === '\\' ? 2 : 1;
       }
-      default:
-        i++;
-        break;
+      i++;
+      const top = stack.at(-1);
+      if (awaitingKey && top instanceof Set) {
+        const key = JSON.parse(json.slice(start, i)) as string;
+        if (top.has(key)) return key;
+        top.add(key);
+      }
+      awaitingKey = false;
+      continue;
     }
+    if (ch === '{') {
+      stack.push(new Set());
+      awaitingKey = true;
+    } else if (ch === '[') {
+      stack.push(null);
+      awaitingKey = false;
+    } else if (ch === '}' || ch === ']') {
+      stack.pop();
+      awaitingKey = false;
+    } else if (ch === ',') {
+      awaitingKey = stack.at(-1) instanceof Set;
+    } else if (ch === ':') {
+      awaitingKey = false;
+    }
+    i++;
   }
   return undefined;
 };
@@ -175,23 +143,21 @@ const findDuplicateKey = (json: string): string | undefined => {
  * Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
  * one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates
  * each file entry, and throws {@link ZkArtifactIntegrityError} on any structural violation. A
- * duplicate object key at any level also throws: `JSON.parse` would keep only the last occurrence,
- * so an ambiguous manifest could certify an artifact its reviewer never saw.
+ * key repeated within one object also throws, so a manifest pinned by its hash cannot certify an
+ * entry other than the one a reader of its text sees.
  */
 export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
-  // Reject duplicate keys before decoding: by the time `JSON.parse` returns, the duplicates have
-  // already been merged and the honest entry a reviewer pinned has been silently replaced.
-  const duplicateKey = findDuplicateKey(rawJson);
-  if (duplicateKey !== undefined) {
-    throw new ZkArtifactIntegrityError(
-      `ZK artifact manifest contains a duplicate key "${duplicateKey}"; an ambiguous manifest cannot be trusted as an integrity check`
-    );
-  }
   let root: unknown;
   try {
     root = JSON.parse(rawJson);
   } catch (error) {
     throw new ZkArtifactIntegrityError('ZK artifact manifest is not valid JSON', { cause: error });
+  }
+  const duplicateKey = findDuplicateKey(rawJson);
+  if (duplicateKey !== undefined) {
+    throw new ZkArtifactIntegrityError(
+      `ZK artifact manifest contains a duplicate key "${duplicateKey}"; an ambiguous manifest cannot be trusted as an integrity check`
+    );
   }
   if (!isJsonObject(root)) {
     throw new ZkArtifactIntegrityError('ZK artifact manifest must be a JSON object');
@@ -212,9 +178,6 @@ export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
         continue; // ignore the `type` discriminator and nested sub-directories (depth > 1)
       }
       const key = `${dirName}/${childName}`;
-      // Unreachable while duplicate raw keys are rejected above (each directory name and each
-      // child name within it is unique in the parsed object); kept as a defensive check in case
-      // the flattening ever changes.
       if (files.has(key)) {
         throw new ZkArtifactIntegrityError(`Duplicate entry "${key}" in ZK artifact manifest`);
       }

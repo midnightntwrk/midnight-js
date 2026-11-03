@@ -297,9 +297,6 @@ describe('Node ZK config Provider', () => {
       const dir = await buildBaseDir();
       const entry = (hash: string): string =>
         `{"type":"file","size":${SET_TOPIC_VERIFIER.length},"hash":"${hash}"}`;
-      // The honest entry first, a forged entry second: JSON.parse keeps the last one, so without a
-      // raw-text duplicate check the pin (which covers exactly these bytes) would certify the
-      // forged entry instead of the one a reviewer read.
       const rawManifest =
         `{"manifest-version":"1","keys":{"type":"directory",` +
         `"set_topic.verifier":${entry(computeSha256Hex(SET_TOPIC_VERIFIER))},` +

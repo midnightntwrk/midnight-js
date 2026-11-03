@@ -111,10 +111,16 @@ describe('parseZkArtifactManifest', () => {
     ).not.toThrow();
   });
 
-  // A *duplicate flattened key* cannot arise from a parsed object (keys are unique once parsed and
-  // each key is prefixed by its top-level directory name), so the `files.has(key)` guard stays
-  // defensive-only. A duplicate in the RAW text is a different matter: `JSON.parse` collapses it to
-  // the last occurrence before any check runs, so raw duplicates are rejected up front instead.
+  it('throws when two directories flatten to the same "dir/file" key', () => {
+    const raw = JSON.stringify({
+      'manifest-version': '1',
+      keys: { type: 'directory', 'a/b.prover': { type: 'file', size: 3, hash: BYTES_SHA256 } },
+      'keys/a': { type: 'directory', 'b.prover': { type: 'file', size: 3, hash: OTHER_HASH } }
+    });
+
+    expect(() => parseZkArtifactManifest(raw)).toThrow(/Duplicate entry "keys\/a\/b\.prover"/);
+  });
+
   describe('duplicate keys in the raw JSON text', () => {
     const fileEntry = (hash: string): string => `{"type":"file","size":3,"hash":"${hash}"}`;
 
@@ -148,10 +154,22 @@ describe('parseZkArtifactManifest', () => {
       expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "clear\.verifier"/);
     });
 
+    it('reports malformed JSON as invalid even when it also repeats a key', () => {
+      const raw = `{"manifest-version":"1","keys":{},"keys":{}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/is not valid JSON/);
+    });
+
     it('accepts the same file name in two different directories', () => {
-      const manifest = parseZkArtifactManifest(manifestJson(BYTES_SHA256));
-      expect(manifest.files.has('keys/increment.prover')).toBe(true);
-      expect(manifest.files.has('zkir/increment.bzkir')).toBe(true);
+      const raw =
+        `{"manifest-version":"1",` +
+        `"keys":{"type":"directory","c.verifier":${fileEntry(BYTES_SHA256)}},` +
+        `"zkir":{"type":"directory","c.verifier":${fileEntry(OTHER_HASH)}}}`;
+
+      const manifest = parseZkArtifactManifest(raw);
+
+      expect(manifest.files.get('keys/c.verifier')?.hash).toBe(BYTES_SHA256);
+      expect(manifest.files.get('zkir/c.verifier')?.hash).toBe(OTHER_HASH);
     });
 
     it('does not mistake repeated strings in an array or braces in a string value for keys', () => {
