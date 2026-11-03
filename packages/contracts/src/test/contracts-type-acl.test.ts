@@ -134,7 +134,6 @@ describe('Contracts type ACL', () => {
       'Ledger8KeyedOperation',
       'Ledger8NotStoredStage',
       'Ledger8PrivateState',
-      'Ledger8Serializable',
       'Ledger8SigningKeyReason',
       'Ledger8SubmittedCallTx',
       'Ledger8UnprovenDeployTxOptions',

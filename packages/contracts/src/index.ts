@@ -164,7 +164,6 @@ export type {
   Ledger8FoundDeployTxData,
   Ledger8InitialStateResult,
   Ledger8PrivateState,
-  Ledger8Serializable,
   Ledger8SubmittedCallTx,
   Ledger8UnprovenDeployTxOptions,
   Ledger8UnprovenDeployTxOptionsBase,

@@ -36,7 +36,10 @@ import {
   type Ledger9UnboundTransaction,
   LedgerTransaction,
   type ProofProvider,
-  type ProveTxConfig} from '@midnight-ntwrk/midnight-js-types';
+  type ProveTxConfig,
+  SerializedLedgerParameters,
+  SerializedZswapChainState
+} from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -106,9 +109,9 @@ describe('Proof server integration', () => {
         contractAddress: unprovenDeployTxResult.public.contractAddress,
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState(),
+        initialZswapChainState: SerializedZswapChainState.fromBytes('v9', new ZswapChainState().serialize()),
         initialPrivateState: unprovenDeployTxResult.private.initialPrivateState,
-        ledgerParameters: LedgerParameters.initialParameters(),
+        ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
         config: MIDNIGHT_CONFIG
       },
       encryptionPublicKey

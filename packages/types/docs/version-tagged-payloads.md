@@ -17,9 +17,10 @@ This package handles that fact in three ways:
   (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle carries its era as data
   and checks the WASM instance when it is made.
 - A value the ledger wrote and the read side returns — a contract state, ledger
-  parameters, a zswap chain state — is a **`SerializedState`**: the bytes, plus the
-  era of the ledger that wrote them. The caller decodes it with its own
-  runtime.
+  parameters, a zswap chain state — is a **serialized state**, one class per kind
+  (`SerializedContractState`, `SerializedLedgerParameters`,
+  `SerializedZswapChainState`): the bytes, plus the era of the ledger that wrote
+  them. The caller decodes it with its own runtime.
 - A finalized-transaction record (`FinalizedTxRead`) carries an `era`
   discriminant.
 
@@ -74,24 +75,29 @@ comes from the request, never from the bytes.
 
 ## On-chain state is bytes, decoded by the caller
 
-`SerializedState<K, E>` holds the bytes the ledger wrote, a `kind`
-(`'ContractState'`, `'LedgerParameters'` or `'ZswapChainState'`) and an `era`
-(`'v8'` or `'v9'`), like `LedgerTransaction`. The reads return it inside a
-record: `ContractStateAndParametersRead` from `queryContractState`,
+There is one class per kind of state: `SerializedContractState<E>`,
+`SerializedLedgerParameters<E>` and `SerializedZswapChainState<E>`. Each holds the
+bytes the ledger wrote and an `era` (`'v8'` or `'v9'`), like `LedgerTransaction`.
+There is no public `kind`: the class is the kind, so the three classes are not
+assignable to each other, and a `<'v9'>` value is not assignable to `<'v8'>`. The
+reads return them inside a record: `ContractStateAndParametersRead` from `queryContractState`,
 `ContractStateRead` from `watchForContractState`, `queryDeployContractState`
 and `contractStateObservable`, and `PublicStatesRead` from
 `queryZSwapAndContractState`.
 
-- `SerializedState.fromBytes(era, kind, bytes)` makes one, and nothing else can. It
-  checks that the bytes start with the tag the ledger of `era` writes for `kind`
+- The class's own `fromBytes(era, bytes)` makes one, for example
+  `SerializedContractState.fromBytes(era, bytes)`, and nothing else can. It
+  checks that the bytes start with the tag the ledger of `era` writes for that kind
   (`LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`), and
   refuses other bytes with `InvalidSerializedStateError`. A zswap chain state has the
   same tag in v8 and v9, so the check accepts it under either era.
-- `SerializedState.isSerializedState(value)` tells a `SerializedState` of this copy of the
-  package from a look-alike object. A `SerializedState` made by a second installed
-  copy of this package gives `false`. The `contracts` package does not refuse
-  such a state: it rebuilds it from its bytes with `fromBytes`, which checks the
-  tag again.
+- Each class has a guard: `SerializedContractState.isSerializedContractState`,
+  `SerializedLedgerParameters.isSerializedLedgerParameters` and
+  `SerializedZswapChainState.isSerializedZswapChainState`. It tells a value of this
+  copy of the package from a look-alike object, and from the other two classes. A
+  value made by a second installed copy of this package gives `false`. The
+  `contracts` package does not refuse such a state: it rebuilds it from its bytes
+  with `fromBytes`, which checks the tag again.
 - `state.serialize()` returns a copy of the bytes. `fromBytes` copies too, so a
   Node `Buffer` passed in shares no memory with the state.
 - `state.deserialize({ v9: ContractState })` decodes with the decoder for the
@@ -106,7 +112,10 @@ and `contractStateObservable`, and `PublicStatesRead` from
 - The bytes are a private field, so `structuredClone`, `postMessage` and JSON
   drop them. Send `serialize()` and `era`, and rebuild with `fromBytes`.
 
-The shape is the same in every era, so the next fork changes no read type.
+The shape is the same in every era, so the next fork changes no read type. The
+`contracts` package uses the same classes for every full ledger state on its API
+too, except `Ledger9ContractConstructorResult.nextContractState`: the states a caller passes to build a call, `initialContractState` on the
+deploy and found handles, `verifyContractState` and `ContractTypeError`.
 
 A finalized-transaction record names its era `era` too, and its `tx` is a
 `FinalizedTx` of that same era: `record.tx.era === record.era`. Read it with
@@ -114,7 +123,7 @@ A finalized-transaction record names its era `era` too, and its `tx` is a
 
 ## Three things the tag does not establish
 
-**It does not validate the body.** `SerializedState.fromBytes` checks the tag at
+**It does not validate the body.** `fromBytes` checks the tag at
 the front of the bytes, nothing after it. A decoder that refuses the body is
 reporting a real disagreement, not a bug in the reader.
 
@@ -174,7 +183,8 @@ does not use. That is wrong on any chain that has been running, not only across 
 fork — see `packages/contracts/docs/error-taxonomy.md` for what it cost before a
 refusal existed.
 
-They are a `SerializedState` for the same reason the contract state is: only the
+They are a `SerializedLedgerParameters` for the same reason the contract state is a
+`SerializedContractState`: only the
 era that wrote them can read them, and the caller holds the runtime.
 
 The member is required on `ContractStateAndParametersRead` and on

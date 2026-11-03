@@ -15,7 +15,7 @@
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractState, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { FailFallible } from '@midnight-ntwrk/midnight-js-types';
+import { FailFallible, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CATEGORIES,
   CONTRACTS_ERROR_CODES,
@@ -57,7 +57,7 @@ const cases: readonly Case[] = [
   ['ForkCrossedDuringOperationError', new errors.ForkCrossedDuringOperationError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, 'v9', CAUSE), CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION, 'UNCERTAIN'],
   ['SubmitRejectionUndiagnosedError', new errors.SubmitRejectionUndiagnosedError({ networkVersion: 'v8', kind: 'call', circuitId: 'increment', contractAddress: ADDRESS }, CAUSE, { reason: 'network-version-read-failed', networkVersionReadFailure: CAUSE }), CONTRACTS_ERROR_CODES.SUBMIT_REJECTION_UNDIAGNOSED, 'UNCERTAIN'],
   ['TxFailedError', new errors.TxFailedError('call', finalizedTxData, { circuitId: 'increment' }), CONTRACTS_ERROR_CODES.TX_FAILED, 'REJECTED'],
-  ['ContractTypeError', new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
+  ['ContractTypeError', new errors.ContractTypeError(SerializedContractState.fromBytes('v9', new ContractState().serialize()), noMismatch, ADDRESS), CONTRACTS_ERROR_CODES.CONTRACT_TYPE_MISMATCH, 'USAGE'],
   ['IncompleteCallTxPrivateStateConfig', new errors.IncompleteCallTxPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteDeployContractPrivateStateConfig', new errors.IncompleteDeployContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_DEPLOY_PRIVATE_STATE_CONFIG, 'USAGE'],
   ['IncompleteFindContractPrivateStateConfig', new errors.IncompleteFindContractPrivateStateConfig(), CONTRACTS_ERROR_CODES.INCOMPLETE_FIND_PRIVATE_STATE_CONFIG, 'USAGE'],
@@ -162,6 +162,6 @@ describe('contracts error classes', () => {
   });
 
   it('ContractTypeError keeps a name of its own', () => {
-    expect(new errors.ContractTypeError(new ContractState(), noMismatch, ADDRESS).name).toBe('ContractTypeError');
+    expect(new errors.ContractTypeError(SerializedContractState.fromBytes('v9', new ContractState().serialize()), noMismatch, ADDRESS).name).toBe('ContractTypeError');
   });
 });

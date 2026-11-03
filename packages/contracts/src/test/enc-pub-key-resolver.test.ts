@@ -24,10 +24,10 @@ import {
   createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
-  createMockContractState,
   createMockEncryptionPublicKey,
   createMockFinalizedTxData,
   createMockProviders,
+  createMockSerializedContractState,
   createMockSigningKey,
   createMockUnprovenTx
 } from './test-mocks';
@@ -51,7 +51,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
       public: {
         ...createMockFinalizedTxData(),
         contractAddress: createMockContractAddress(),
-        initialContractState: createMockContractState()
+        initialContractState: createMockSerializedContractState()
       },
       private: {
         signingKey: createMockSigningKey(),

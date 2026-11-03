@@ -24,7 +24,7 @@ import {
   type LoggerProvider,
   type PrivateStateId,
   type PublicStatesRead,
-  SerializedState,
+  SerializedContractState,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -86,6 +86,43 @@ export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-j
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
+
+/**
+ * @internal The states a scope caches between its calls, decoded by the framework's own runtime.
+ */
+export interface ScopeStateCache<C extends Contract.Any> {
+  readonly [CacheStates]: (
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
+    read: PublicStatesRead,
+    identity: CachedStateIdentity,
+    blockHash: string
+  ) => void;
+  readonly [GetCurrentStatesForIdentity]: (identity: CachedStateIdentity) => PinnedContractStates<Contract.PrivateState<C>> | undefined;
+}
+
+const hasScopeStateCache = <C extends Contract.Any>(context: object): context is ScopeStateCache<C> =>
+  typeof Reflect.get(context, CacheStates) === 'function' &&
+  typeof Reflect.get(context, GetCurrentStatesForIdentity) === 'function';
+
+/**
+ * @internal The state cache of a transaction context, or `undefined` when there is no context.
+ *
+ * @throws InvalidArgumentError if the context was not made by a scoped transaction.
+ */
+export const scopeStateCacheOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  context: Transaction.Ledger9TransactionContext<C, PCK> | undefined
+): ScopeStateCache<C> | undefined => {
+  if (context === undefined) {
+    return undefined;
+  }
+  if (!hasScopeStateCache<C>(context)) {
+    throw new InvalidArgumentError(
+      'The transaction context was not made by withContractScopedTransaction, so it holds no scope states. ' +
+        'Pass the context the scope handed to your function.'
+    );
+  }
+  return context;
+};
 
 const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
   current: Ledger9PayloadSubmitOptions<PCK> | undefined,
@@ -174,7 +211,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
 export class TransactionContextImpl<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.Ledger9TransactionContext<C, PCK> {
+> implements Transaction.Ledger9TransactionContext<C, PCK>, ScopeStateCache<C> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
@@ -232,7 +269,7 @@ export class TransactionContextImpl<
       return undefined;
     }
     const { read, states } = this.cachedStates;
-    return { ...read, contractState: SerializedState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
+    return { ...read, contractState: SerializedContractState.fromBytes('v9', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](

@@ -14,10 +14,11 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   Ledger8FinalizedTxData,
   Ledger9FinalizedTxData,
+  SerializedContractState,
   SubmittedCallTxBase,
   UnprovenTx,
   UnsubmittedTxDataBase
@@ -58,9 +59,10 @@ export interface Ledger9UnsubmittedDeployTxPublicData {
    */
   readonly contractAddress: ContractAddress;
   /**
-   * The initial public state of the contract deployed to the blockchain.
+   * The initial public state of the contract deployed to the blockchain, as bytes. Decode it with
+   * your own runtime: `initialContractState.deserialize({ v9: ContractState })`.
    */
-  readonly initialContractState: ContractState;
+  readonly initialContractState: SerializedContractState<'v9'>;
 }
 
 /**
@@ -180,10 +182,6 @@ export interface Ledger9FinalizedDeployTxDataBase<C extends Contract.Any> extend
  * The public data of a deployment found on chain whose deploy transaction was
  * recorded by the ledger-8 runtime, i.e. a contract deployed before the ledger fork.
  *
- * Carries no `initialContractState`: the deploy-time state of a ledger-8 contract
- * cannot be decoded by the current runtime. Read the current state with
- * `PublicDataProvider.queryContractState`.
- *
  * @remarks Unlike the other `Ledger8*` types, it outlives the retained pipeline:
  * it is part of `Ledger9FoundDeployTxData`.
  *
@@ -194,12 +192,19 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
    * The ledger address of the contract that was deployed.
    */
   readonly contractAddress: ContractAddress;
+  /**
+   * The deploy-time state of the contract, as `queryDeployContractState` serves it. Its `era` names
+   * the ledger that wrote these bytes, which can differ from the era of the deploy record. Decode it
+   * with your own runtime of that era.
+   */
+  readonly initialContractState: SerializedContractState;
 }
 
 /**
  * The public data of a deployment found on chain, discriminated by the ledger
  * era that recorded the deploy transaction. Narrow on `era` before reading
- * `tx` or `initialContractState`; `contractAddress` is present on both variants.
+ * `tx`. `contractAddress` and `initialContractState` are present on both
+ * variants; the era of `initialContractState` is its own, read it from the state.
  */
 export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 

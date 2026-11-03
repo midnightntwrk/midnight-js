@@ -20,7 +20,7 @@ import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type PrivateStateId,
-  SerializedState
+  SerializedContractState
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -219,7 +219,7 @@ describe('TransactionContextImpl identity validation', () => {
       const result = txCtx.getCurrentStates();
 
       expect(Object.keys(result ?? {}).sort()).toEqual(['contractState', 'ledgerParameters', 'protocolVersion', 'zswapChainState']);
-      expect(SerializedState.isSerializedState(result?.contractState)).toBe(true);
+      expect(SerializedContractState.isSerializedContractState(result?.contractState)).toBe(true);
       expect(result?.contractState.era).toBe('v9');
       expect(result?.contractState.serialize()).toEqual(contractState.serialize());
       expect(result?.ledgerParameters).toBe(MOCK_READ.ledgerParameters);

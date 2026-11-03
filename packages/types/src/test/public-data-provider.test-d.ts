@@ -29,7 +29,7 @@ import type {
   PublicDataProvider,
   WatchOptions
 } from '../public-data-provider';
-import type { SerializedState } from '../serialized-state';
+import type { SerializedContractState, SerializedLedgerParameters, SerializedZswapChainState } from '../serialized-state';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -42,20 +42,20 @@ import type { SerializedState } from '../serialized-state';
 // restating them.
 type ContractStateReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: SerializedState<'ContractState'>;
+  readonly contractState: SerializedContractState;
 };
 
 type ContractStateAndParametersReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: SerializedState<'ContractState'>;
-  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
+  readonly contractState: SerializedContractState;
+  readonly ledgerParameters: SerializedLedgerParameters;
 };
 
 type PublicStatesReadFixture = {
   readonly protocolVersion: number;
-  readonly contractState: SerializedState<'ContractState'>;
-  readonly ledgerParameters: SerializedState<'LedgerParameters'>;
-  readonly zswapChainState: SerializedState<'ZswapChainState'>;
+  readonly contractState: SerializedContractState;
+  readonly ledgerParameters: SerializedLedgerParameters;
+  readonly zswapChainState: SerializedZswapChainState;
 };
 
 type PositionedRecordFixture<T> = {

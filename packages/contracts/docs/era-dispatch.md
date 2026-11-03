@@ -401,12 +401,13 @@ frozen nor null-prototyped.
 fetched contract state belong to different ledger eras.
 
 The envelope is `contractState.era` on the read record. Only
-`SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
-does not match `era`, so the decoder is still chosen for these exact bytes.
-`SerializedState.isSerializedState` is not the gate: it answers `false` for a state made
-by a second installed copy of the types package. Instead every state is rebuilt
-from its `era`, `kind` and `serialize()` with `fromBytes`, which checks the tag
-again (`InvalidSerializedStateError`, `tag-mismatch`, for forged bytes). A record
+`SerializedContractState.fromBytes` makes a `SerializedContractState`, and it refuses
+bytes whose tag does not match `era`, so the decoder is still chosen for these exact
+bytes. `SerializedContractState.isSerializedContractState` is not the gate: it answers
+`false` for a state made by a second installed copy of the types package. Instead
+every state is rebuilt from its `era` and `serialize()` with the `fromBytes` of the
+class of its kind, which checks the tag again (`InvalidSerializedStateError`,
+`tag-mismatch`, for forged bytes or a state of another kind). A record
 whose contract state has none of those, such as one a provider outside this
 framework built by hand in the pre-5.0.0 shape, is refused as
 `UnknownLedgerVersionError`.

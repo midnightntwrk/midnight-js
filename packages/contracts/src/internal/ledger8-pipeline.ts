@@ -45,7 +45,7 @@ import {
   type ContractStateAndParametersRead,
   LedgerTransaction,
   type PublicDataProvider,
-  type SerializedState,
+  type SerializedLedgerParameters,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
@@ -64,7 +64,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { eraTagOf, ownSerializedState, resolveContractStateEra } from './era';
+import { eraTagOf, ownLedgerParameters, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -273,7 +273,7 @@ export interface Ledger8SnapshotBytes {
    * The ledger parameters of the block that dates the read, when the provider serves them. Kept with
    * their era, which the composer checks against its own.
    */
-  readonly ledgerParameters?: SerializedState<'LedgerParameters'>;
+  readonly ledgerParameters?: SerializedLedgerParameters;
 }
 
 /**
@@ -307,17 +307,17 @@ export interface Ledger8Snapshot {
  * The ledger parameters served beside the state, or `undefined` when the provider served none.
  *
  * @throws UnknownLedgerVersionError if the parameters are served in a shape that is not a
- * `SerializedState`.
+ * `SerializedLedgerParameters`.
  * @throws InvalidSerializedStateError if they are not ledger parameters written by the era they name.
  */
 const servedLedgerParameters = (
   read: ContractStateAndParametersRead
-): SerializedState<'LedgerParameters'> | undefined => {
+): SerializedLedgerParameters | undefined => {
   const served: unknown = read.ledgerParameters;
   if (served === undefined || served === null) {
     return undefined;
   }
-  const parameters = ownSerializedState(served, 'LedgerParameters');
+  const parameters = ownLedgerParameters(served);
   if (parameters === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }
@@ -380,7 +380,7 @@ export const decodeLedger8Snapshot = (
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
  * @throws UnknownLedgerVersionError if the ledger parameters are served in a shape that is not a
- * `SerializedState`.
+ * `SerializedLedgerParameters`.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
@@ -956,13 +956,6 @@ export interface Ledger8DeployPipelineResult {
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
   readonly initialContractStateBytes: Uint8Array;
-  /**
-   * The same state as a LIVE handle, as the constructor built it. Published
-   * under ADR-0010 next to the bytes rather than instead of them: the handle is
-   * valid only while the retained runtime that produced it is loaded, and only
-   * the bytes survive a clone, a worker transfer or storage.
-   */
-  readonly initialContractState: Ledger8ConstructedState['contractState'];
   readonly nextPrivateState: unknown;
   /** The Zswap local state the constructor ended on. */
   readonly initialZswapState: ZswapLocalState;
@@ -1054,7 +1047,6 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
     unprovenTx: await sealComposed(request.era.version, deployed.txBytes),
     contractAddress: deployed.contractAddress,
     initialContractStateBytes: deployed.initialContractStateBytes,
-    initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
     guaranteedZswapOfferBytes,

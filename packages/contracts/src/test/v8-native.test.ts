@@ -63,6 +63,8 @@ import {
   LedgerTransaction,
   ProofServerError,
   ProviderEraUnsupportedError,
+  SerializedContractState,
+  SerializedLedgerParameters,
   type TxStatus,
   type UnboundTx,
   type UnprovenTx,
@@ -922,7 +924,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
       expect(snapshot.state.ledgerParameters).toBeUndefined();
     });
 
-    it('refuses ledger parameters served in a shape that is not a SerializedState, rather than taking them as absent', async () => {
+    it('refuses ledger parameters served in a shape that is not a SerializedLedgerParameters, rather than taking them as absent', async () => {
       await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnknownLedgerVersionError);
     });
 
@@ -2539,12 +2541,11 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(deployed.contractAddress.length).toBeGreaterThan(0);
     // The key the authority was built from, which only the deployer ever holds.
     expect(deployed.deployTxData.private.signingKey).toEqual(SAMPLED_KEY);
-    // The LIVE handle beside the bytes, as the retained constructor built it.
+    // The bytes the address was derived from, as a ledger 8 serialized state.
+    expect(SerializedContractState.isSerializedContractState(deployed.deployTxData.public.initialContractState)).toBe(true);
+    expect(deployed.deployTxData.public.initialContractState.era).toBe('v8');
     expect(deployed.deployTxData.public.initialContractState.serialize()).toEqual(v6Envelope);
-    // The bytes the address was derived from are the same state as the handle.
-    expect(deployed.deployTxData.public.initialContractStateBytes).toEqual(
-      deployed.deployTxData.public.initialContractState.serialize()
-    );
+    expect(deployed.deployTxData.public).not.toHaveProperty('initialContractStateBytes');
     // This deploy named no private state, so the constructor was handed
     // `undefined` and threaded it back. Presence is asserted separately: a
     // handle that dropped the member entirely would otherwise read the same.
@@ -3099,15 +3100,15 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     it('createUnprovenCallTxFromInitialStates', async () => {
       const providers = deployProviders();
-      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+      const { LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
 
       const built = await createUnprovenCallTxFromInitialStates(
         providers.zkConfigProvider,
         {
           ...callOptions(),
           head: 'v8',
-          initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
-          ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() },
+          initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+          ledgerParameters: SerializedLedgerParameters.fromBytes('v8', Ledger8Parameters.initialParameters().serialize()),
           coinPublicKey: recording.coinPublicKey,
           config: providers.config
         },
@@ -3121,16 +3122,16 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     it('createUnprovenCallTxFromInitialStates refuses a cross-contract config for a ledger 8 contract', async () => {
       const providers = deployProviders();
-      const { ContractState: Ledger8ContractState, LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+      const { LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
 
-      // @ts-expect-error - the ledger 8 overload takes no cross-contract config
       const caught: unknown = await createUnprovenCallTxFromInitialStates(
         providers.zkConfigProvider,
         {
           ...callOptions(),
+          // @ts-expect-error - the ledger 8 overload takes no cross-contract config, and no other overload fits
           head: 'v8',
-          initialContractState: { era: 'v8', state: Ledger8ContractState.deserialize(v6Envelope) },
-          ledgerParameters: { era: 'v8', parameters: Ledger8Parameters.initialParameters() },
+          initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+          ledgerParameters: SerializedLedgerParameters.fromBytes('v8', Ledger8Parameters.initialParameters().serialize()),
           coinPublicKey: recording.coinPublicKey,
           config: providers.config
         },
@@ -3208,7 +3209,8 @@ describe('deploying a retained-era contract through deployContract', () => {
       expect(built.era).toBe('v8');
       expect(built.private.unprovenTx.era).toBe('v8');
       expect(built.public.contractAddress.length).toBeGreaterThan(0);
-      expect(built.public.initialContractStateBytes).toBeInstanceOf(Uint8Array);
+      expect(built.public.initialContractState.era).toBe('v8');
+      expect(built.public.initialContractState.serialize()).toEqual(v6Envelope);
       expect(built.private.signingKey).toEqual(SAMPLED_KEY);
       expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
       expect(providers.midnightProvider.submitTx).not.toHaveBeenCalled();
@@ -3631,6 +3633,9 @@ describe('attaching to a retained-era contract already on chain', () => {
     providers.publicDataProvider.queryContractState = vi
       .fn()
       .mockResolvedValue(rawState(envelope, protocolVersion));
+    providers.publicDataProvider.queryDeployContractState = vi
+      .fn()
+      .mockResolvedValue(rawState(envelope, protocolVersion));
     providers.publicDataProvider.watchForDeployTxData = vi.fn().mockResolvedValue(createMockFinalizedTxData());
     return providers;
   };
@@ -3655,6 +3660,9 @@ describe('attaching to a retained-era contract already on chain', () => {
     expect(found.deployTxData.public.era).toBe('v9');
     expect(found.deployTxData.public.txId).toBe(createMockFinalizedTxData().txId);
     expect(found.deployTxData.public.contractAddress).toBe(recording.contractAddress);
+    // The deploy-time state as served, undecoded: the caller decodes it with its own runtime.
+    expect(found.deployTxData.public.initialContractState.era).toBe('v8');
+    expect(found.deployTxData.public.initialContractState.serialize()).toEqual(v6Envelope);
     expect(Object.keys(found).sort()).toEqual([
       'callTx',
       'circuitMaintenanceTx',

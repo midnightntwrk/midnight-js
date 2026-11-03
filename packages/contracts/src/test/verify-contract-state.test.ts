@@ -15,10 +15,20 @@
 
 import { readFileSync } from 'node:fs';
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { createVerifierKey, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import {
+  createVerifierKey,
+  InvalidSerializedStateError,
+  PROVIDER_ERROR_CODES,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
+import { UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { ContractTypeError } from '../errors';
@@ -45,18 +55,23 @@ const keyedOperation = (key: Uint8Array = DEPLOYED_KEY): ContractOperation => {
   return operation;
 };
 
-const stateWith = (operations: [string, ContractOperation][]): ContractState => {
+const decodedStateWith = (operations: [string, ContractOperation][]): ContractState => {
   const state = new ContractState();
   operations.forEach(([circuitId, operation]) => state.setOperation(circuitId, operation));
   return state;
 };
 
+const serialized = (state: ContractState): SerializedContractState<'v9'> => SerializedContractState.fromBytes('v9', state.serialize());
+
+const stateWith = (operations: [string, ContractOperation][]): SerializedContractState<'v9'> =>
+  serialized(decodedStateWith(operations));
+
 const localKeys = (...entries: [string, Uint8Array][]): [ProvableCircuitId, VerifierKey][] =>
   entries.map(([circuitId, bytes]) => [ProvableCircuitId(circuitId), createVerifierKey(bytes)]);
 
-const expectThrows = <E extends Error>(fn: () => unknown, ctor: new (...args: never[]) => E): E => {
+const expectThrows = async <E extends Error>(fn: () => Promise<unknown>, ctor: new (...args: never[]) => E): Promise<E> => {
   try {
-    fn();
+    await fn();
   } catch (error) {
     if (error instanceof ctor) {
       return error;
@@ -68,22 +83,22 @@ const expectThrows = <E extends Error>(fn: () => unknown, ctor: new (...args: ne
 
 describe('verifyContractState', () => {
   describe('states it accepts', () => {
-    it('should accept a state whose deployed key equals the local key', () => {
+    it('should accept a state whose deployed key equals the local key', async () => {
       const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
 
-      expect(() => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state)).not.toThrow();
+      await expect(verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state)).resolves.toBeUndefined();
     });
 
-    it('should accept any state when the client holds no verifier keys', () => {
-      expect(() => verifyContractState([], new ContractState())).not.toThrow();
+    it('should accept any state when the client holds no verifier keys', async () => {
+      await expect(verifyContractState([], serialized(new ContractState()))).resolves.toBeUndefined();
     });
   });
 
   describe('states it rejects', () => {
-    it('should reject a state whose deployed key differs from the local key', () => {
+    it('should reject a state whose deployed key differs from the local key', async () => {
       const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, new Uint8Array([1, 2, 3])]), state),
         ContractTypeError
       );
@@ -93,12 +108,12 @@ describe('verifyContractState', () => {
 
     // The local and deployed keys have equal length here, so `verifierKeysEqual`'s length
     // short-circuit cannot decide the comparison and the byte-wise check has to run.
-    it('should reject a deployed key of the same length carrying different bytes', () => {
+    it('should reject a deployed key of the same length carrying different bytes', async () => {
       const tampered = new Uint8Array(DEPLOYED_KEY);
       tampered[tampered.length - 1] ^= 0xff;
       const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, tampered]), state),
         ContractTypeError
       );
@@ -106,21 +121,22 @@ describe('verifyContractState', () => {
       expect(error.mismatchedCircuitIds).toEqual([CIRCUIT_ID]);
     });
 
-    it('should reject a state that registers no operation for the circuit', () => {
-      const error = expectThrows(
-        () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), new ContractState()),
+    it('should reject a state that registers no operation for the circuit', async () => {
+      const error = await expectThrows(
+        () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), serialized(new ContractState())),
         ContractTypeError
       );
 
       expect(error.missingCircuitIds).toEqual([CIRCUIT_ID]);
     });
 
-    it('should reject a state whose operation resolves but carries no verifier key', () => {
-      const state = stateWith([[CIRCUIT_ID, keylessOperation()]]);
-      expect(state.operation(CIRCUIT_ID)).toBeDefined();
-      expect(state.operation(CIRCUIT_ID)?.verifierKey).toBeUndefined();
+    it('should reject a state whose operation resolves but carries no verifier key', async () => {
+      const decoded = decodedStateWith([[CIRCUIT_ID, keylessOperation()]]);
+      expect(decoded.operation(CIRCUIT_ID)).toBeDefined();
+      expect(decoded.operation(CIRCUIT_ID)?.verifierKey).toBeUndefined();
+      const state = serialized(decoded);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
@@ -128,13 +144,13 @@ describe('verifyContractState', () => {
       expect(error.keylessCircuitIds).toEqual([CIRCUIT_ID]);
     });
 
-    it('should reject an operation left keyless by a serialize/deserialize round trip', () => {
-      const roundTripped = ContractState.deserialize(stateWith([[CIRCUIT_ID, keylessOperation()]]).serialize());
+    it('should reject an operation left keyless by a serialize/deserialize round trip', async () => {
+      const roundTripped = ContractState.deserialize(decodedStateWith([[CIRCUIT_ID, keylessOperation()]]).serialize());
       expect(roundTripped.operation(CIRCUIT_ID)).toBeDefined();
       expect(roundTripped.operation(CIRCUIT_ID)?.verifierKey).toBeUndefined();
 
-      const error = expectThrows(
-        () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), roundTripped),
+      const error = await expectThrows(
+        () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), serialized(roundTripped)),
         ContractTypeError
       );
 
@@ -143,13 +159,13 @@ describe('verifyContractState', () => {
   });
 
   describe('which circuits it reports', () => {
-    it('should report only the circuits that fail, leaving matching ones out', () => {
+    it('should report only the circuits that fail, leaving matching ones out', async () => {
       const state = stateWith([
         [CIRCUIT_ID, keyedOperation()],
         [OTHER_CIRCUIT_ID, keylessOperation()]
       ]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY], [OTHER_CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
@@ -159,13 +175,13 @@ describe('verifyContractState', () => {
       expect(error.mismatchedCircuitIds).toEqual([]);
     });
 
-    it('should report every failing circuit in the order the local keys were given', () => {
+    it('should report every failing circuit in the order the local keys were given', async () => {
       const state = stateWith([
         [CIRCUIT_ID, keylessOperation()],
         [OTHER_CIRCUIT_ID, keylessOperation()]
       ]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY], [OTHER_CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
@@ -173,14 +189,14 @@ describe('verifyContractState', () => {
       expect(error.circuitIds).toEqual([CIRCUIT_ID, OTHER_CIRCUIT_ID]);
     });
 
-    it('should sort each failing circuit into the condition that actually applies', () => {
+    it('should sort each failing circuit into the condition that actually applies', async () => {
       const absent = ProvableCircuitId('transfer');
       const state = stateWith([
         [CIRCUIT_ID, keylessOperation()],
         [OTHER_CIRCUIT_ID, keyedOperation()]
       ]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () =>
           verifyContractState(
             localKeys(
@@ -200,13 +216,13 @@ describe('verifyContractState', () => {
   });
 
   describe('the message it produces', () => {
-    const keylessError = (): ContractTypeError =>
+    const keylessError = (): Promise<ContractTypeError> =>
       expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), stateWith([[CIRCUIT_ID, keylessOperation()]])),
         ContractTypeError
       );
 
-    const mismatchError = (): ContractTypeError =>
+    const mismatchError = (): Promise<ContractTypeError> =>
       expectThrows(
         () =>
           verifyContractState(
@@ -219,28 +235,28 @@ describe('verifyContractState', () => {
     // The deployed state renders a keyless operation exactly like a keyed one, so a message built
     // only from the state dump reads identically for both conditions and sends the user after the
     // wrong remediation.
-    it('should describe a keyless slot differently from a key mismatch', () => {
-      expect(keylessError().message).not.toEqual(mismatchError().message);
+    it('should describe a keyless slot differently from a key mismatch', async () => {
+      expect((await keylessError()).message).not.toEqual((await mismatchError()).message);
     });
 
-    it('should tell the user that recompiling cannot fix a keyless slot', () => {
-      const message = keylessError().message;
+    it('should tell the user that recompiling cannot fix a keyless slot', async () => {
+      const message = (await keylessError()).message;
 
       expect(message).toContain(CIRCUIT_ID);
       expect(message).toContain('no verifier key');
       expect(message).not.toContain('differs from the local one');
     });
 
-    it('should name a key mismatch as a differing key', () => {
-      const message = mismatchError().message;
+    it('should name a key mismatch as a differing key', async () => {
+      const message = (await mismatchError()).message;
 
       expect(message).toContain(CIRCUIT_ID);
       expect(message).toContain('differs from the local one');
       expect(message).not.toContain('no verifier key');
     });
 
-    it('should include the contract address when one is given', () => {
-      const error = expectThrows(
+    it('should include the contract address when one is given', async () => {
+      const error = await expectThrows(
         () =>
           verifyContractState(
             localKeys([CIRCUIT_ID, DEPLOYED_KEY]),
@@ -253,13 +269,13 @@ describe('verifyContractState', () => {
       expect(error.message).toContain('0200deadbeef');
     });
 
-    it('should keep the message bounded when the deployed state is large', () => {
+    it('should keep the message bounded when the deployed state is large', async () => {
       const operations: [string, ContractOperation][] = Array.from({ length: 200 }, (_, index) => [
         `circuit_${index}`,
         keyedOperation()
       ]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), stateWith(operations)),
         ContractTypeError
       );
@@ -268,19 +284,21 @@ describe('verifyContractState', () => {
       expect(error.message).toContain(CIRCUIT_ID);
     });
 
-    it('should still carry the full state on the error when the message is truncated', () => {
+    it('should carry the deployed state on the error as the serialized state it was given', async () => {
       const state = stateWith([[CIRCUIT_ID, keylessOperation()]]);
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
 
-      expect(error.contractState).toBe(state);
+      expect(SerializedContractState.isSerializedContractState(error.contractState)).toBe(true);
+      expect(error.contractState.era).toBe('v9');
+      expect(error.contractState.serialize()).toEqual(state.serialize());
     });
   });
 
-  describe('decoded states of both eras', () => {
+  describe('serialized states of both eras', () => {
     // THE STAND-IN KEY -- see `./v8-native.test.ts` for the full note. The accepting tests below
     // pass ONLY because both sides use the same stand-in: `coin-receiver-016` has no verifier key of
     // its own in this repo.
@@ -289,34 +307,31 @@ describe('verifyContractState', () => {
     );
     const RECEIVE_COIN_CIRCUIT_ID = ProvableCircuitId('receive_coin');
 
-    const ledger8State = async () => {
-      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
-      return Ledger8ContractState.deserialize(readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex'));
-    };
+    const ledger8State = () => SerializedContractState.fromBytes('v8', readHfHexFixture('coin-receiver-016', 'state-v6-envelope.hex'));
 
     it('should accept a ledger 8 state whose deployed key equals the local key', async () => {
-      const state = await ledger8State();
+      const state = ledger8State();
 
-      expect(() => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).not.toThrow();
+      await expect(verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).resolves.toBeUndefined();
     });
 
-    it('should reject a ledger 8 state whose deployed key differs, describing the ledger 8 state', async () => {
-      const state = await ledger8State();
+    it('should reject a ledger 8 state whose deployed key differs, carrying the ledger 8 state', async () => {
+      const state = ledger8State();
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
 
       expect(error.mismatchedCircuitIds).toEqual([RECEIVE_COIN_CIRCUIT_ID]);
-      expect(error.contractState).toBe(state);
-      expect(error.message).toContain(`Deployed state: ${state.toString(true).slice(0, 40)}`);
+      expect(error.contractState.era).toBe('v8');
+      expect(error.contractState.serialize()).toEqual(state.serialize());
     });
 
     it('should reject a ledger 8 state that registers no operation for the circuit', async () => {
-      const state = await ledger8State();
+      const state = ledger8State();
 
-      const error = expectThrows(
+      const error = await expectThrows(
         () => verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
@@ -324,10 +339,68 @@ describe('verifyContractState', () => {
       expect(error.missingCircuitIds).toEqual([CIRCUIT_ID]);
     });
 
-    it('should accept a decoded ledger 9 state whose deployed key equals the local key', () => {
-      const state = ContractState.deserialize(readHfHexFixture('coin-receiver-016', 'state-v9.hex'));
+    it('should accept a ledger 9 state whose deployed key equals the local key', async () => {
+      const state = SerializedContractState.fromBytes('v9', readHfHexFixture('coin-receiver-016', 'state-v9.hex'));
 
-      expect(() => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).not.toThrow();
+      await expect(verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).resolves.toBeUndefined();
+    });
+  });
+  describe('values it refuses before decoding', () => {
+    it('should accept a state made by a second installed copy of the types package', async () => {
+      const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
+      const fromAnotherTypesCopy = { era: state.era, serialize: () => state.serialize() };
+
+      await expect(
+        Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), fromAnotherTypesCopy])
+      ).resolves.toBeUndefined();
+    });
+
+    it('should refuse a state whose era this build does not know as an unknown ledger version', async () => {
+      const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
+      const fromNewerTypesCopy = { era: 'v10', serialize: () => state.serialize() };
+
+      const error = await expectThrows(
+        () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), fromNewerTypesCopy]),
+        UnknownLedgerVersionError
+      );
+
+      expect(error.requestedVersion).toBe('v10');
+    });
+
+    it('should refuse ledger parameters in place of a contract state by their tag', async () => {
+      const parameters = SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize());
+
+      const error = await expectThrows(
+        () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), parameters]),
+        InvalidSerializedStateError
+      );
+
+      expect(error).toMatchObject({ kind: 'ContractState', reason: 'tag-mismatch' });
+    });
+
+    it.each([
+      ['v9', UTILS_ERROR_CODES.DESERIALIZATION_FAILED],
+      ['v8', PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]
+    ] as const)('should refuse forged %s bytes behind a valid tag with a coded integrity error', async (era, code) => {
+      const forged = SerializedContractState.fromBytes(era, new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState[era]}:forged`));
+
+      const error = await verifyContractState(localKeys([CIRCUIT_ID, DEPLOYED_KEY]), forged).then(
+        () => undefined,
+        (rejection: unknown) => rejection
+      );
+
+      expect(error).toMatchObject({ code, category: 'INTEGRITY' });
+    });
+
+    it('should refuse a decoded contract state as an invalid argument', async () => {
+      const decoded = decodedStateWith([[CIRCUIT_ID, keyedOperation()]]);
+
+      const error = await expectThrows(
+        () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), decoded]),
+        InvalidArgumentError
+      );
+
+      expect(error.message).toContain('SerializedContractState');
     });
   });
 });
