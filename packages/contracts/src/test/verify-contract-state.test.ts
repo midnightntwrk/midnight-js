@@ -281,8 +281,13 @@ describe('verifyContractState', () => {
   });
 
   describe('decoded states of both eras', () => {
-    const RETAINED_KEY = new Uint8Array(readFileSync(hfFixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier')));
-    const RETAINED_CIRCUIT_ID = 'receive_coin';
+    // THE STAND-IN KEY -- see `./v8-native.test.ts` for the full note. The accepting tests below
+    // pass ONLY because both sides use the same stand-in: `coin-receiver-016` has no verifier key of
+    // its own in this repo.
+    const STAND_IN_VERIFIER_KEY = new Uint8Array(
+      readFileSync(hfFixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
+    );
+    const RECEIVE_COIN_CIRCUIT_ID = ProvableCircuitId('receive_coin');
 
     const ledger8State = async () => {
       const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
@@ -292,18 +297,18 @@ describe('verifyContractState', () => {
     it('should accept a ledger 8 state whose deployed key equals the local key', async () => {
       const state = await ledger8State();
 
-      expect(() => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, RETAINED_KEY]), state)).not.toThrow();
+      expect(() => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).not.toThrow();
     });
 
     it('should reject a ledger 8 state whose deployed key differs, describing the ledger 8 state', async () => {
       const state = await ledger8State();
 
       const error = expectThrows(
-        () => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, DEPLOYED_KEY]), state),
+        () => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, DEPLOYED_KEY]), state),
         ContractTypeError
       );
 
-      expect(error.mismatchedCircuitIds).toEqual([RETAINED_CIRCUIT_ID]);
+      expect(error.mismatchedCircuitIds).toEqual([RECEIVE_COIN_CIRCUIT_ID]);
       expect(error.contractState).toBe(state);
       expect(error.message).toContain(`Deployed state: ${state.toString(true).slice(0, 40)}`);
     });
@@ -319,11 +324,10 @@ describe('verifyContractState', () => {
       expect(error.missingCircuitIds).toEqual([CIRCUIT_ID]);
     });
 
-    it('should accept a ledger 9 state migrated from ledger 8, which keeps the ledger 8 key', () => {
+    it('should accept a decoded ledger 9 state whose deployed key equals the local key', () => {
       const state = ContractState.deserialize(readHfHexFixture('coin-receiver-016', 'state-v9.hex'));
 
-      expect(() => verifyContractState(localKeys([RETAINED_CIRCUIT_ID, RETAINED_KEY]), state)).not.toThrow();
+      expect(() => verifyContractState(localKeys([RECEIVE_COIN_CIRCUIT_ID, STAND_IN_VERIFIER_KEY]), state)).not.toThrow();
     });
   });
 });
-
