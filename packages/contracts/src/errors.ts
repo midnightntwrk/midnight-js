@@ -251,7 +251,8 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
     'Each Ledger8 or Ledger9 low-level function serves the contracts of its own era only. Call the function ' +
     'of the other era (createLedger8UnprovenCallTx for createLedger9UnprovenCallTx, and so on), or the ' +
-    'function without the era in its name (createUnprovenCallTx, createUnprovenDeployTx, submitDeployTx), ' +
+    'function without the era in its name (createUnprovenCallTx, createUnprovenCallTxFromInitialStates, ' +
+    'createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys, submitDeployTx), ' +
     'which serves contracts of both eras.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +

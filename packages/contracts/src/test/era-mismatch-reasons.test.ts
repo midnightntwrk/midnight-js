@@ -56,7 +56,10 @@ describe('EraMismatchError reasons that carry a detail', () => {
     const error = new EraMismatchError('contract-era-unsupported', { detail: "Function: submitLedger9DeployTx. Contract era: 'v8'." });
 
     expect(error.message).toContain('Call the function of the other era');
-    expect(error.message).toContain('createUnprovenCallTx, createUnprovenDeployTx, submitDeployTx');
+    expect(error.message).toContain(
+      'createUnprovenCallTx, createUnprovenCallTxFromInitialStates, createUnprovenDeployTx, ' +
+        'createUnprovenDeployTxFromVerifierKeys, submitDeployTx'
+    );
     expect(error.message).not.toContain('serve only contracts produced by the ledger 9 Compact toolchain');
   });
 });
