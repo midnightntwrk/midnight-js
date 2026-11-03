@@ -184,16 +184,47 @@ A container whose bundle declares the RETAINED toolchain is reported as
 `ledger8-artifacts-in-ledger9-container`: the provider serves another
 contract's artifacts, and the message names the declared version.
 
-### One decision, in two forms
+### One decision, routed by an exhaustive switch
 
-`resolveArtifactEra` makes the decision; `isLedger8Request` is that same,
-already-resolved answer in the narrowing form each era-dispatching entry point
-needs, so an entry point's body can drop the retained-era variant from its parameter
-union without a cast. It is not a second decision — it takes the era as an
-argument and only gives it a type predicate, because a type predicate cannot be
-asynchronous and the decision now is.
+`resolveArtifactEra` makes the decision. A router never reads that answer
+directly: it calls `resolveEraRequest` (or `resolveContractEraRequest` for the
+governance functions, which take the contract as their own argument). Both
+return the router's input tagged with its era — `{ era: 'v8'; … } | { era: 'v9'; … }`
+— so switching on `request.era` narrows the input to that era's type without a
+cast. The two resolvers build that tag with the type predicates
+`isLedger8Request` and `isLedger8Contract`; these are not a second decision.
 
-It replaces the provisional structural check that tested for `impureCircuits`
+Every router switches on the tagged request. In schematic form:
+
+```ts
+const request = await resolveEraRequest<Ledger8Options, Ledger9Options>(options, providers.zkConfigProvider);
+switch (request.era) {
+  case 'v8':
+    return ledger8XFlow(providers, request.options);
+  case 'v9':
+    return ledger9XFlow(providers, request.options);
+  default:
+    return assertNever(request, 'functionName');
+}
+```
+
+The seven public routers hand each era to a module-private `ledger8*Flow` /
+`ledger9*Flow` function next to the router; the low-level ones handle each era
+inline in the `switch`. The checks a router ran before the era was read (config,
+private-state pairing) stay in the router, ahead of the read. The router reads
+no head: a flow that needs one reads it itself.
+
+A new ledger era fails the build in two steps. Adding it to `LedgerVersion`
+fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`, and
+`assertNever(era)` in both resolvers; adding
+the missing variant then fails `assertNever` in every router — the seven public
+functions (`deployContract`, `findDeployedContract`, `submitCallTx`,
+`submitCallTxAsync` and the three governance `submit*` functions) and the
+low-level ones (`submitDeployTx`, `createUnprovenCallTx`,
+`createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
+`createUnprovenDeployTxFromVerifierKeys`).
+
+`resolveArtifactEra` replaces the provisional structural check that tested for `impureCircuits`
 alone and so answered `true` for a raw CURRENT-era contract instance, which
 carries that member too. That was the blind spot the provisional check
 documented and could not close; see [OverloadTyping](./overload-typing.md) for

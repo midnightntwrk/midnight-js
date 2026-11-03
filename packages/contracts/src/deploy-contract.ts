@@ -17,7 +17,7 @@ import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-pr
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';
@@ -26,7 +26,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { isLedger8Request, resolveArtifactEra } from './internal/era';
+import { resolveEraRequest } from './internal/era';
 import { deployLedger8Contract, toLedger8DeployEntryOptions } from './internal/ledger8-entry';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import {
@@ -181,6 +181,59 @@ const createDeployTxOptions = <C extends Contract.Any>(
   return deployTxOptions;
 };
 
+const ledger8DeployFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: AnyLedger8DeployContractOptions
+): Promise<AnyLedger8DeployedContract> => {
+  const deployTxData = await deployLedger8Contract(providers, toLedger8DeployEntryOptions(options));
+  const { contractAddress } = deployTxData.public;
+  return {
+    era: 'v8',
+    compiledContract: options.compiledContract,
+    contractAddress,
+    deployTxData,
+    // Built AFTER the chain has recorded the deployment, so a handle a caller receives names an
+    // address the chain actually holds a contract at.
+    callTx: createLedger8CircuitCallTxInterface(
+      providers,
+      options.compiledContract,
+      contractAddress,
+      'privateStateId' in options ? options.privateStateId : undefined
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, contractAddress)
+  };
+};
+
+const ledger9DeployFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9DeployContractOptions<C>
+): Promise<Ledger9DeployedContract<C>> => {
+  const deployTxData = await submitLedger9DeployTx(providers, createDeployTxOptions(options));
+  return {
+    era: 'v9',
+    compiledContract: options.compiledContract,
+    contractAddress: deployTxData.public.contractAddress,
+    deployTxData,
+    callTx: createCircuitCallTxInterface(
+      providers,
+      options.compiledContract,
+      deployTxData.public.contractAddress,
+      'privateStateId' in options ? options.privateStateId : undefined
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(
+      providers,
+      options.compiledContract,
+      deployTxData.public.contractAddress
+    ),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(
+      providers,
+      options.compiledContract,
+      deployTxData.public.contractAddress
+    )
+  };
+};
+
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
@@ -278,48 +331,16 @@ export async function deployContract<C extends Contract.Any>(
 ): Promise<Ledger9DeployedContract<C> | AnyLedger8DeployedContract> {
   assertValidMidnightConfig(providers.config);
   assertDeployPrivateStatePairing(options);
-  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  if (isLedger8Request<AnyLedger8DeployContractOptions>(options, artifactEra)) {
-    const deployTxData = await deployLedger8Contract(providers, toLedger8DeployEntryOptions(options));
-    const { contractAddress } = deployTxData.public;
-    return {
-      era: 'v8',
-      compiledContract: options.compiledContract,
-      contractAddress,
-      deployTxData,
-      // Built AFTER the chain has recorded the deployment, so a handle a caller receives names an
-      // address the chain actually holds a contract at.
-      callTx: createLedger8CircuitCallTxInterface(
-        providers,
-        options.compiledContract,
-        contractAddress,
-        'privateStateId' in options ? options.privateStateId : undefined
-      ),
-      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, contractAddress),
-      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, contractAddress)
-    };
+  const request = await resolveEraRequest<AnyLedger8DeployContractOptions, Ledger9DeployContractOptions<C>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
+    case 'v8':
+      return ledger8DeployFlow(providers, request.options);
+    case 'v9':
+      return ledger9DeployFlow(providers, request.options);
+    default:
+      return assertNever(request, 'deployContract');
   }
-  const deployTxData = await submitLedger9DeployTx(providers, createDeployTxOptions(options));
-  return {
-    era: 'v9',
-    compiledContract: options.compiledContract,
-    contractAddress: deployTxData.public.contractAddress,
-    deployTxData,
-    callTx: createCircuitCallTxInterface(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress,
-      'privateStateId' in options ? options.privateStateId : undefined
-    ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress
-    ),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress
-    )
-  };
 }

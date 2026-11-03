@@ -18,11 +18,11 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { TxFailedError } from '../errors';
-import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { resolveContractEraRequest } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import type {
@@ -34,6 +34,53 @@ import type {
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
+
+const ledger8InsertVerifierKeyFlow = async (
+  providers: Ledger9ContractProviders,
+  compiledContract: Ledger8Contract,
+  contractAddress: ContractAddress,
+  circuitId: string,
+  newVk: VerifierKey
+): Promise<Ledger8FinalizedMaintenanceTxData> => ({
+  era: 'v8',
+  public: await submitLedger8MaintenanceTx(providers, {
+    contract: compiledContract,
+    contractAddress,
+    update: { kind: 'insert-verifier-key', circuitId, verifierKey: newVk }
+  })
+});
+
+const ledger9InsertVerifierKeyFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C> | string,
+  newVk: VerifierKey
+): Promise<Ledger9FinalizedMaintenanceTxData> => {
+  assertIsContractAddress(contractAddress);
+  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
+  const existingVerifierKey: Uint8Array | undefined = contractState.operation(circuitId)?.verifierKey;
+  if (existingVerifierKey !== undefined && existingVerifierKey !== null) {
+    throw new InvalidArgumentError(`Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`);
+  }
+  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
+  const unprovenTx = await createUnprovenInsertVerifierKeyTx(
+    providers.zkConfigProvider,
+    compiledContract,
+    contractAddress,
+    circuitId,
+    newVk,
+    contractState,
+    signingKey,
+    providers.walletProvider.getCoinPublicKey(),
+    providers.config
+  );
+  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
+  if (submitTxResult.status !== SucceedEntirely) {
+    throw new TxFailedError('insert-verifier-key', submitTxResult, { contractAddress, circuitId });
+  }
+  return { era: 'v9', public: submitTxResult };
+};
 
 /**
  * Constructs and submits a transaction that adds a new verifier key to the
@@ -106,37 +153,13 @@ export async function submitInsertVerifierKeyTx<C extends Contract.Any>(
   newVk: VerifierKey
 ): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   assertValidMidnightConfig(providers.config);
-  if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
-    return {
-      era: 'v8',
-      public: await submitLedger8MaintenanceTx(providers, {
-        contract: compiledContract,
-        contractAddress,
-        update: { kind: 'insert-verifier-key', circuitId, verifierKey: newVk }
-      })
-    };
+  const request = await resolveContractEraRequest(compiledContract, providers.zkConfigProvider);
+  switch (request.era) {
+    case 'v8':
+      return ledger8InsertVerifierKeyFlow(providers, request.compiledContract, contractAddress, circuitId, newVk);
+    case 'v9':
+      return ledger9InsertVerifierKeyFlow(providers, request.compiledContract, contractAddress, circuitId, newVk);
+    default:
+      return assertNever(request, 'submitInsertVerifierKeyTx');
   }
-  assertIsContractAddress(contractAddress);
-  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
-  const existingVerifierKey: Uint8Array | undefined = contractState.operation(circuitId)?.verifierKey;
-  if (existingVerifierKey !== undefined && existingVerifierKey !== null) {
-    throw new InvalidArgumentError(`Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`);
-  }
-  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
-  const unprovenTx = await createUnprovenInsertVerifierKeyTx(
-    providers.zkConfigProvider,
-    compiledContract,
-    contractAddress,
-    circuitId,
-    newVk,
-    contractState,
-    signingKey,
-    providers.walletProvider.getCoinPublicKey(),
-    providers.config
-  );
-  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
-  if (submitTxResult.status !== SucceedEntirely) {
-    throw new TxFailedError('insert-verifier-key', submitTxResult, { contractAddress, circuitId });
-  }
-  return { era: 'v9', public: submitTxResult };
 }

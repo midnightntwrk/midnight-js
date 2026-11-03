@@ -641,36 +641,31 @@ export const requireLedger8Contract = async (
 };
 
 /**
- * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
+ * The type predicate {@link resolveEraRequest} uses to tag a router's options with the era
+ * {@link resolveArtifactEra} resolved.
  *
- * Not a second decision: the era is established in exactly one place, and this only gives that
- * established value a type predicate so an entry point's body can drop the retained-era variant from its
- * parameter union without a cast.
- *
- * Name the type parameter explicitly at each call site rather than letting it infer, so the
- * narrowing removes exactly the retained-era variant of that entry point's parameter union.
+ * Not a second decision: it reads only `era`, and narrows the options without a cast.
  *
  * @see {@link EraDispatch} for how `era` was established.
  *
- * @param _options The options object an entry point received. Read by the type system only -- the
- *                 decision was made from the artifact's declaration, not from this object.
+ * @param _options The options a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that object's contract.
  * @returns Whether this is a retained-era request.
  */
-export const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
+const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
   _options: { readonly compiledContract: unknown } | L,
   era: LedgerVersion
 ): _options is L => era === 'v8';
 
 /**
- * {@link isLedger8Request} for an entry point that takes the contract as its own argument rather than
- * on an options object: the governance functions.
+ * {@link isLedger8Request} for {@link resolveContractEraRequest}, which takes the contract as its
+ * own argument rather than on an options object.
  *
- * @param _compiledContract The contract an entry point received. Read by the type system only.
+ * @param _compiledContract The contract a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that contract.
  * @returns Whether this is a retained-era contract.
  */
-export const isLedger8Contract = <C extends object>(
+const isLedger8Contract = <C extends object>(
   _compiledContract: C | Ledger8Contract,
   era: LedgerVersion
 ): _compiledContract is Ledger8Contract => era === 'v8';
@@ -706,6 +701,39 @@ export const resolveEraRequest = async <
       return isLedger8Request<L8>(options, era) ? { era: 'v8', options } : { era: 'v9', options };
     default:
       return assertNever(era, 'resolveEraRequest');
+  }
+};
+
+/** A governance router's contract, tagged with the era its artifacts declare. */
+export type ContractEraRequest<C> =
+  | { readonly era: 'v8'; readonly compiledContract: Ledger8Contract }
+  | { readonly era: 'v9'; readonly compiledContract: C };
+
+// Compile-time gate: a new ledger era must get a variant here, and through it a case in every governance router.
+type _EveryEraHasAContractRequest = Assert<
+  [LedgerVersion] extends [ContractEraRequest<unknown>['era']] ? true : false
+>;
+
+/**
+ * {@link resolveEraRequest} for a router that takes the contract as its own argument rather than on
+ * an options object: the governance functions.
+ *
+ * @param compiledContract The contract a router received.
+ * @param source The artifact runtime version source, normally `zkConfigProvider`.
+ * @returns The contract, tagged with its era.
+ * @throws The refusals of {@link resolveArtifactEra}.
+ */
+export const resolveContractEraRequest = async <C extends object>(
+  compiledContract: C | Ledger8Contract,
+  source: ArtifactRuntimeVersionSource
+): Promise<ContractEraRequest<C>> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  switch (era) {
+    case 'v8':
+    case 'v9':
+      return isLedger8Contract(compiledContract, era) ? { era: 'v8', compiledContract } : { era: 'v9', compiledContract };
+    default:
+      return assertNever(era, 'resolveContractEraRequest');
   }
 };
 
