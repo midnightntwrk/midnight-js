@@ -191,30 +191,32 @@ directly: it calls `resolveEraRequest` (or `resolveContractEraRequest` for the
 governance functions, which take the contract as their own argument). Both
 return the router's input tagged with its era — `{ era: 'v8'; … } | { era: 'v9'; … }`
 — so switching on `request.era` narrows the input to that era's type without a
-cast. `isLedger8Request` and `isLedger8Contract` give the resolved era the type
-predicate the builders need; they are not a second decision.
+cast. The two resolvers build that tag with the type predicates
+`isLedger8Request` and `isLedger8Contract`; these are not a second decision.
 
-Every router has the same shape:
+Every router switches on the tagged request. In schematic form:
 
 ```ts
 const request = await resolveEraRequest<Ledger8Options, Ledger9Options>(options, providers.zkConfigProvider);
 switch (request.era) {
   case 'v8':
-    return ledger8CallFlow(providers, request.options);
+    return ledger8XFlow(providers, request.options);
   case 'v9':
-    return ledger9CallFlow(providers, request.options);
+    return ledger9XFlow(providers, request.options);
   default:
-    return assertNever(request, 'submitCallTx');
+    return assertNever(request, 'functionName');
 }
 ```
 
-Each era's flow is a module-private `ledger8*Flow` / `ledger9*Flow` function
-next to its router. The checks a router ran before the era was read (config,
+The seven public routers hand each era to a module-private `ledger8*Flow` /
+`ledger9*Flow` function next to the router; the low-level ones handle each era
+inline in the `switch`. The checks a router ran before the era was read (config,
 private-state pairing) stay in the router, ahead of the read. The router reads
 no head: a flow that needs one reads it itself.
 
 A new ledger era fails the build in two steps. Adding it to `LedgerVersion`
-fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`; adding
+fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`, and
+`assertNever(era)` in both resolvers; adding
 the missing variant then fails `assertNever` in every router — the seven public
 functions (`deployContract`, `findDeployedContract`, `submitCallTx`,
 `submitCallTxAsync` and the three governance `submit*` functions) and the
@@ -222,7 +224,7 @@ low-level ones (`submitDeployTx`, `createUnprovenCallTx`,
 `createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
 `createUnprovenDeployTxFromVerifierKeys`).
 
-It replaces the provisional structural check that tested for `impureCircuits`
+`resolveArtifactEra` replaces the provisional structural check that tested for `impureCircuits`
 alone and so answered `true` for a raw CURRENT-era contract instance, which
 carries that member too. That was the blind spot the provisional check
 documented and could not close; see [OverloadTyping](./overload-typing.md) for

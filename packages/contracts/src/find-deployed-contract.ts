@@ -439,7 +439,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
   // so both eras reach the same rule from this file.
   //
-  // AFTER the attach, for the order the current-era path below uses: a state seeded for a contract
+  // AFTER the attach, for the order `ledger9FindFlow` uses: a state seeded for a contract
   // whose verifier keys turn out not to match would outlive a find that failed.
   //
   // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
@@ -457,10 +457,9 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
   // refusal arrives at ATTACH time rather than at the first call.
   //
-  // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
-  // implementation signature has already widened the retained options to
-  // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
-  // overloads above are what type the caller.
+  // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: this
+  // flow takes the widened `AnyLedger8FindDeployedContractOptions`, so no narrower private state is
+  // in scope here. The `findDeployedContract` overloads are what type the caller.
   const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
     providers.privateStateProvider,
     options
