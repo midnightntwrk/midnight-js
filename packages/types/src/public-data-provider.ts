@@ -354,7 +354,7 @@ export interface WatchOptions {
    * shorter than that retry window reports an unreachable indexer as a
    * timeout.
    *
-   * Any other value, or any other option key, throws `InvalidArgumentError`
+   * Any other value throws `InvalidArgumentError`
    * synchronously, before a promise is returned.
    *
    * Implementations must honour this option; the bound holds only if they do.

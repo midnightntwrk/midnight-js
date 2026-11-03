@@ -19,7 +19,7 @@ import type { Observable } from 'rxjs';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { ContractStateAndParametersRead, ContractStateRead, PublicStatesRead } from '../contract-state-read';
-import type { WatchOperation, WatchTarget } from '../errors';
+import type { WatchOperation } from '../errors';
 import type { UnshieldedBalances } from '../midnight-types';
 import type {
   BlockHashConfig,
@@ -172,10 +172,6 @@ describe('PositionedRecord', () => {
 describe('the watchFor* surface', () => {
   it('WatchOperation names exactly the watchFor* methods of PublicDataProvider', () => {
     expectTypeOf<WatchOperation>().toEqualTypeOf<Extract<keyof PublicDataProvider, `watchFor${string}`>>();
-  });
-
-  it('WatchTarget covers every WatchOperation', () => {
-    expectTypeOf<WatchTarget['operation']>().toEqualTypeOf<WatchOperation>();
   });
 
   it('watchForUnshieldedBalances takes an optional bound', () => {

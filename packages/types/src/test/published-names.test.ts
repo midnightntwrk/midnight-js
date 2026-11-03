@@ -171,7 +171,6 @@ const EXPECTED_PUBLISHED_NAMES = [
   'WalletProviderHandlers',
   'WatchOperation',
   'WatchOptions',
-  'WatchTarget',
   'WatchTimeoutError',
   'ZkArtifactFetchError',
   'ZKArtifactNotFoundError',

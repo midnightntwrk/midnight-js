@@ -264,33 +264,28 @@ watchForTxData(
 ): Promise<FinalizedTxRead>
 ```
 
-Each method waits indefinitely unless you pass `maxWaitMs`. With it, the call
-rejects with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`,
-category `UNCERTAIN`) once that many milliseconds pass without the indexer
-reporting the data, and polling stops:
+Each method waits indefinitely unless you pass `maxWaitMs`. Then it rejects
+with `WatchTimeoutError` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`, category
+`UNCERTAIN`) when the indexer has not reported the data in time, and polling
+stops:
 
 ```typescript
-import { WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types';
+import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 try {
   const record = await provider.watchForTxData(txId, { maxWaitMs: 120_000 });
 } catch (e) {
-  if (e instanceof WatchTimeoutError) {
-    // e.target names the method and the txId or contractAddress it waited for
+  if (hasErrorCode(e, PROVIDER_ERROR_CODES.WATCH_TIMED_OUT)) {
+    // The transaction may still land: check the chain before submitting again.
   }
   throw e;
 }
 ```
 
-- A timeout does not mean the transaction failed: it may still land. Check the
-  chain before submitting it again.
-- The bound covers the indexer poll only. Building the record afterwards is not
-  bounded.
-- Indexer requests are retried on network failure (5 attempts, backoff up to
-  10 s). A `maxWaitMs` shorter than that window reports an unreachable or
-  misconfigured indexer as a timeout.
-- An invalid `maxWaitMs`, or an unknown option key, throws
-  `InvalidArgumentError` synchronously: it is not a rejected promise.
+- The bound covers the indexer poll only, including its retries on network
+  failure. A short bound reports an unreachable indexer as a timeout.
+- An invalid `maxWaitMs` throws `InvalidArgumentError` synchronously.
 - `submitTx`, `deployContract` and `findDeployedContract` do not pass
   `maxWaitMs` through yet; they still wait indefinitely.
 

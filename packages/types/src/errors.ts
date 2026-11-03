@@ -67,14 +67,6 @@ export type WatchOperation =
   | 'watchForTxData';
 
 /**
- * What a `watchFor*` call waited for: the method, and the transaction id or
- * contract address it was given.
- */
-export type WatchTarget =
-  | { readonly operation: 'watchForTxData'; readonly txId: TransactionId }
-  | { readonly operation: Exclude<WatchOperation, 'watchForTxData'>; readonly contractAddress: ContractAddress };
-
-/**
  * Stable error-code strings for the providers.
  *
  * Most of the group belongs to the provider methods. Two sets do not, and are here
@@ -912,16 +904,17 @@ export class WatchTimeoutError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
 
   /**
-   * @param target The method that gave up waiting, and what it waited for.
+   * @param operation The method that gave up waiting.
+   * @param target The transaction id or contract address it waited for.
    * @param maxWaitMs The bound that elapsed.
    */
   constructor(
-    readonly target: WatchTarget,
+    readonly operation: WatchOperation,
+    readonly target: ContractAddress | TransactionId,
     readonly maxWaitMs: number
   ) {
-    const key = target.operation === 'watchForTxData' ? `txId ${target.txId}` : `contractAddress ${target.contractAddress}`;
     super(
-      `${target.operation} found nothing for ${key} within ${maxWaitMs} ms. It may still appear: ` +
+      `${operation} found nothing for ${target} within ${maxWaitMs} ms. It may still appear: ` +
         `if it depends on a transaction you submitted, check the chain before submitting again.`
     );
     this.name = 'WatchTimeoutError';

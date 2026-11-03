@@ -16,7 +16,7 @@
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { WatchOptions } from '@midnight-ntwrk/midnight-js-types';
-import { type WatchTarget, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
+import { type WatchOperation, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
 import * as Rx from 'rxjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
@@ -54,31 +54,31 @@ const transaction = regularTransactionRow({
 const contractStateHex = mintLedger9ContractStateHex();
 
 /** Each method, what it waits for, an indexer reply that does not satisfy it yet, and one that does. */
-const watchCalls: readonly [WatchTarget['operation'], WatchTarget, WatchCall, unknown, unknown][] = [
+const watchCalls: readonly [WatchOperation, string, WatchCall, unknown, unknown][] = [
   [
     'watchForContractState',
-    { operation: 'watchForContractState', contractAddress: ADDRESS },
+    ADDRESS,
     (p, o) => p.watchForContractState(ADDRESS, o),
     reply({ block: null, contract: null }),
     reply({ block: { protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION }, contract: { state: contractStateHex } })
   ],
   [
     'watchForUnshieldedBalances',
-    { operation: 'watchForUnshieldedBalances', contractAddress: ADDRESS },
+    ADDRESS,
     (p, o) => p.watchForUnshieldedBalances(ADDRESS, o),
     reply({ contractAction: null }),
     reply({ contractAction: { unshieldedBalances: [] } })
   ],
   [
     'watchForDeployTxData',
-    { operation: 'watchForDeployTxData', contractAddress: ADDRESS },
+    ADDRESS,
     (p, o) => p.watchForDeployTxData(ADDRESS, o),
     reply({ contractAction: null }),
     reply({ contractAction: { transaction } })
   ],
   [
     'watchForTxData',
-    { operation: 'watchForTxData', txId: TX_ID },
+    TX_ID,
     (p, o) => p.watchForTxData(TX_ID, o),
     reply({ transactions: [] }),
     reply({ transactions: [transaction] })
@@ -120,7 +120,7 @@ afterEach(() => {
 describe('watchFor* with maxWaitMs', () => {
   test.each(watchCalls)(
     '%s rejects with WatchTimeoutError and stops polling when only empty replies arrive in time',
-    async (_operation, target, call, emptyReply) => {
+    async (operation, target, call, emptyReply) => {
       const { watchQuery, isTornDown } = pollOf(Rx.timer(0, 5).pipe(Rx.map(() => emptyReply)));
 
       const error = await call(buildProvider(watchQuery), { maxWaitMs: 30 }).catch((e: unknown) => e);
@@ -129,6 +129,7 @@ describe('watchFor* with maxWaitMs', () => {
       expect(error).toMatchObject({
         code: 'MIDNIGHT_JS_PR_WATCH_TIMED_OUT',
         category: 'UNCERTAIN',
+        operation,
         target,
         maxWaitMs: 30
       });
@@ -228,11 +229,7 @@ describe('invalid options are refused before any request is issued', () => {
       (maxWaitMs): [string, WatchOptions] => [`maxWaitMs ${maxWaitMs}`, { maxWaitMs }]
     ),
     ['a string maxWaitMs', untypedOptions('{"maxWaitMs":"5000"}')],
-    ['a null maxWaitMs', untypedOptions('{"maxWaitMs":null}')],
-    ['a misspelled option', untypedOptions('{"timeoutMs":5000}')],
-    ['an unknown option next to maxWaitMs', untypedOptions('{"maxWaitMs":5000,"signal":true}')],
-    ['null options', untypedOptions('null')],
-    ['non-object options', untypedOptions('5000')]
+    ['a null maxWaitMs', untypedOptions('{"maxWaitMs":null}')]
   ];
   const cases = watchCalls.flatMap(([operation, , call]) =>
     invalidOptions.map(([label, options]) => [operation, label, options, call] as const)

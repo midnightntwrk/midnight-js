@@ -69,7 +69,7 @@ describe('types error classes', () => {
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
-    ['WatchTimeoutError', new WatchTimeoutError({ operation: 'watchForTxData', txId: 'abc' }, 5000)],
+    ['WatchTimeoutError', new WatchTimeoutError('watchForTxData', 'abc', 5000)],
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)],
     ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
     ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
@@ -267,23 +267,16 @@ describe('types error classes', () => {
   });
 
   it('WatchTimeoutError is uncertain and names what it waited for', () => {
-    const error = new WatchTimeoutError({ operation: 'watchForTxData', txId: 'abc' }, 5000);
+    const error = new WatchTimeoutError('watchForTxData', 'abc', 5000);
 
-    expect([error.code, error.category, error.target, error.maxWaitMs]).toEqual([
+    expect([error.code, error.category, error.operation, error.target, error.maxWaitMs]).toEqual([
       'MIDNIGHT_JS_PR_WATCH_TIMED_OUT',
       'UNCERTAIN',
-      { operation: 'watchForTxData', txId: 'abc' },
+      'watchForTxData',
+      'abc',
       5000
     ]);
-  });
-
-  it.each([
-    [{ operation: 'watchForTxData', txId: 'abc' }, 'txId abc'],
-    [{ operation: 'watchForContractState', contractAddress: 'c0ffee' }, 'contractAddress c0ffee']
-  ] as const)('WatchTimeoutError names the operation and the key it waited for', (target, key) => {
-    const error = new WatchTimeoutError(target, 5000);
-
-    expect(error.message).toContain(`${target.operation} found nothing for ${key} within 5000 ms`);
+    expect(error.message).toContain('watchForTxData found nothing for abc within 5000 ms');
   });
 
   it('ZKArtifactNotFoundError is an environment error', () => {
