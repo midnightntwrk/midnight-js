@@ -1378,10 +1378,11 @@ import { createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js/types';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js/protocol/v9';
 ```
 
-`createUnprovenCallTx`, `createUnprovenDeployTx`, `submitDeployTx`,
-`withContractScopedTransaction` and their siblings keep their names: they route on the era
-and refuse a ledger 8 contract with `EraMismatchError`. To call the ledger 9 body directly,
-use `createLedger9UnprovenCallTx` and the other `Ledger9` functions. Replace
+`createUnprovenCallTx`, `createUnprovenDeployTx`, `submitDeployTx` and their siblings keep
+their names: they route on the era, to the `Ledger9` function for a ledger 9 contract and to
+the `Ledger8` function for a ledger 8 one. `withContractScopedTransaction` refuses a ledger 8
+head with `EraMismatchError`. To call one era's body directly, use `createLedger9UnprovenCallTx`,
+`createLedger8UnprovenCallTx` and the other per-era functions. Replace
 `isTransactionContext` with `isLedger9TransactionContext`, and `submitTx<C, PCK>(…)` with
 `submitTx<PCK>(…)`. The barrel namespace `protocol` is `ledger9Protocol`.
 

@@ -483,7 +483,7 @@ breaking-changes.md section 24. The error classes are in the next section.
 
 ```ts
 // contracts: the old low-level names route on the era; the ledger 9 bodies are named after it
-export function createUnprovenCallTx(/* unchanged overloads */): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>; // refuses ledger 8
+export function createUnprovenCallTx(/* ledger 8 overload, then the unchanged ones */): Promise<Ledger8UnsubmittedCallTxData<C, PCK> | Ledger9UnsubmittedCallTxData<C, PCK>>; // routes on the era (#1524)
 export function createLedger9UnprovenCallTx(/* same overloads */): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
 // likewise createLedger9UnprovenCallTxFromInitialStates, createLedger9UnprovenDeployTx,
 // createLedger9UnprovenDeployTxFromVerifierKeys, submitLedger9DeployTx, withLedger9ContractScopedTransaction
@@ -496,6 +496,20 @@ export function submitTx<PCK extends AnyProvableCircuitId>(
 ): Promise<FinalizedTxRead>;
 // new EraMismatchReason: 'contract-era-unsupported'
 ```
+
+### Ledger 8 low-level functions (#1524)
+
+```ts
+export function createLedger8UnprovenCallTx(providers: Ledger8ContractProviders<C, PCK>, options: Ledger8CallTxOptions<C, PCK>): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+export function createLedger8UnprovenCallTxFromInitialStates(zkConfigProvider: ZKConfigProvider<string>, options: Ledger8CallOptionsWithInitialStates<C, PCK>, walletEncryptionPublicKey: EncPublicKey): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+export function createLedger8UnprovenDeployTx(providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>, options: Ledger8UnprovenDeployTxOptions<C>): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+export function createLedger8UnprovenDeployTxFromVerifierKeys(zkConfigProvider: ZKConfigProvider<string>, coinPublicKey: CoinPublicKey, options: Ledger8UnprovenDeployTxOptions<C>, encryptionPublicKey: EncPublicKey, config: MidnightConfig): Promise<Ledger8UnsubmittedDeployTxData<C>>;
+export function submitLedger8DeployTx(providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>, options: Ledger8DeployContractOptions<C>): Promise<Ledger8FinalizedDeployTxData<C>>;
+// new types: Ledger8CallOptionsWithInitialStates, Ledger8Serializable, Ledger8UnprovenDeployTxOptions(Base), Ledger8UnsubmittedDeployTxData
+```
+
+The five routers gained a ledger 8 overload and route a ledger 8 contract to these functions
+instead of refusing it.
 
 Renamed with the `Ledger9` prefix or infix: the ledger 9 call, constructor, deploy, find and
 unsubmitted-data types, `TransactionContext`, `CrossContractConfig`, `ContractLog`,

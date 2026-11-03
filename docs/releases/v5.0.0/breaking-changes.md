@@ -1395,21 +1395,21 @@ and the names of their own time for the renames of sections 22 and 24.
 | (none) | `Ledger9CircuitId<C>`, the counterpart of `Ledger8CircuitId<C>` |
 
 **`contracts` functions.** The ledger 9 implementation of each low-level function moved to
-a `Ledger9` name. The old name stays and routes on the era of the contract: a ledger 9
-contract runs the `Ledger9` function, and a contract produced by the ledger 8 toolchain is
-refused with `EraMismatchError` (`reason: 'contract-era-unsupported'`) after the era read
-and before any other provider call. The `Ledger9` functions check the same way that the
-artifacts declare ledger 9, and refuse any other era with the same reason. A ledger 9
-`CompiledContract` costs no extra read.
+a `Ledger9` name, and each gained a `Ledger8` counterpart (#1524). The old name stays and
+routes on the era of the contract: a ledger 9 contract runs the `Ledger9` function, a
+contract produced by the ledger 8 toolchain the `Ledger8` function. The per-era functions
+check that the artifacts declare their era and refuse any other with `EraMismatchError`
+(`reason: 'contract-era-unsupported'`). A routed operation reads the artifact era once; a
+ledger 9 `CompiledContract` costs no read.
 
-| Router (unchanged name) | Ledger 9 function |
-|---|---|
-| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` |
-| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` |
-| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` |
-| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` |
-| `submitDeployTx` | `submitLedger9DeployTx` |
-| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` |
+| Router (unchanged name) | Ledger 9 function | Ledger 8 function |
+|---|---|---|
+| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` | `createLedger8UnprovenCallTx` |
+| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` | `createLedger8UnprovenCallTxFromInitialStates` |
+| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` | `createLedger8UnprovenDeployTx` |
+| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` | `createLedger8UnprovenDeployTxFromVerifierKeys` |
+| `submitDeployTx` | `submitLedger9DeployTx` | `submitLedger8DeployTx` |
+| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` | (none: a ledger 8 call cannot join a scope) |
 
 The scoped-transaction router reads the network head once, as before, and refuses a ledger 8
 head with `EraMismatchError` (`reason: 'scope-on-ledger8-network'`). `isTransactionContext`

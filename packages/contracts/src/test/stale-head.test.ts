@@ -54,13 +54,14 @@ import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ForkCrossedDuringOperationError,
+  Ledger8UnconfirmedError,
   ProviderFailedError,
   SubmitRejectionUndiagnosedError,
   type SubmittedOperation} from '../errors';
-import { runLedger8Deploy } from '../internal/ledger8-entry';
 import { handleSubmitRejection } from '../internal/stale-head';
 import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitLedger8DeployTx } from '../submit-deploy-tx';
 import { finalizedLike, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 import {
@@ -653,28 +654,27 @@ describe('the fork-crossing failure through the retained-era entry points', () =
       .mockResolvedValueOnce(PRE_FORK_PROTOCOL_VERSION)
       .mockResolvedValue(POST_FORK_PROTOCOL_VERSION);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
+    providers.zkConfigProvider.getVerifierKeys = vi.fn().mockResolvedValue([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]);
 
     let caught: unknown;
     try {
-      await runLedger8Deploy(providers, {
-        contract,
-        args: [],
-        privateState: {},
-        resolveVerifierKeys: () => Promise.resolve(new Map([[CIRCUIT_ID, STAND_IN_VERIFIER_KEY]]))
-      });
+      await submitLedger8DeployTx(providers, { compiledContract: contract });
     } catch (error) {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(ForkCrossedDuringOperationError);
-    expect((caught as ForkCrossedDuringOperationError).kind).toBe('deploy');
-    expect((caught as Error).message).toContain('runtime-deploy chapter');
-    expect((caught as Error).message).not.toMatch(/re-run/);
+    expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
+    const forkCrossed = (caught as Ledger8UnconfirmedError).cause;
+    expect(forkCrossed).toBeInstanceOf(ForkCrossedDuringOperationError);
+    expect((forkCrossed as ForkCrossedDuringOperationError).kind).toBe('deploy');
+    expect((forkCrossed as Error).message).toContain('runtime-deploy chapter');
+    expect((forkCrossed as Error).message).not.toMatch(/re-run/);
     // The address the composition MINTED, read off the deploy record rather
     // than off anything the caller supplied -- a deploy supplies none.
-    const { contractAddress } = caught as ForkCrossedDuringOperationError;
+    const { contractAddress } = forkCrossed as ForkCrossedDuringOperationError;
     expect(contractAddress).toMatch(/^[0-9a-f]+$/);
-    expect((caught as Error).message).toContain(`'${String(contractAddress)}'`);
+    expect((forkCrossed as Error).message).toContain(`'${String(contractAddress)}'`);
+    expect((caught as Ledger8UnconfirmedError).contractAddress).toBe(contractAddress);
   });
 
   it('re-running after the flip lands on the KEEP-STATE pipeline, with no change to the call', async () => {

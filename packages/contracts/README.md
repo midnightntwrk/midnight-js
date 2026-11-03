@@ -74,7 +74,7 @@ import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
 
-// Submit a deploy transaction (ledger 9 contracts; deployContract deploys either era)
+// Submit a deploy transaction (routes on the contract's era, like deployContract)
 await submitDeployTx(providers, deployOptions);
 
 // Generic transaction submission. Pass a transaction handle; it carries the era
@@ -101,6 +101,37 @@ get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 | v9 | v8 | refused with `EraMismatchError` before proving |
 
 It returns `FinalizedTxRead`, tagged with the era of the block that recorded the transaction.
+
+### Low-level functions per ledger era
+
+The low-level functions build a transaction without submitting it, or deploy and wait. Each
+unprefixed name routes on the era the contract's artifacts declare; the per-era functions serve
+one era only and refuse the other with `EraMismatchError` (`reason: 'contract-era-unsupported'`).
+
+| Router | Ledger 9 | Ledger 8 |
+|---|---|---|
+| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` | `createLedger8UnprovenCallTx` |
+| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` | `createLedger8UnprovenCallTxFromInitialStates` |
+| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` | `createLedger8UnprovenDeployTx` |
+| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` | `createLedger8UnprovenDeployTxFromVerifierKeys` |
+| `submitDeployTx` | `submitLedger9DeployTx` | `submitLedger8DeployTx` |
+
+A builder stores nothing. Submit what it built with `submitTx`, and store the private state
+yourself once the transaction is final:
+
+```typescript
+const built = await createUnprovenCallTx(providers, callOptions);
+// After the fork a ledger 8 call builds a ledger 9 transaction; the handle says which.
+const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+if (record.status === 'SucceedEntirely') {
+  await providers.privateStateProvider.set(privateStateId, built.private.nextPrivateState);
+}
+```
+
+Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
+scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era and each
+state with the era that wrote it (`{ era, state }`), because the fork translates a ledger 8
+contract's state into a ledger 9 one.
 
 ### Maintenance Operations
 

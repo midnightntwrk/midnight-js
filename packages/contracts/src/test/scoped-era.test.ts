@@ -478,7 +478,7 @@ describe('a retained-era call handed a scope', () => {
 
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', scope);
+      assertScopeAdmitsLedger8Call('retainedCircuit', scope, 'submitCallTx');
     } catch (error) {
       caught = error;
     }
@@ -494,7 +494,7 @@ describe('a retained-era call handed a scope', () => {
   });
 
   it('runs normally when it was handed no scope at all', () => {
-    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined)).not.toThrow();
+    expect(() => assertScopeAdmitsLedger8Call('retainedCircuit', undefined, 'submitCallTx')).not.toThrow();
   });
 
   it('DELIVERS that refusal with its code intact, through the scope that raised it', async () => {
@@ -541,7 +541,7 @@ describe('a retained-era call handed a scope', () => {
     // contract-scoped transaction" would name a scope it never had.
     let caught: unknown;
     try {
-      assertScopeAdmitsLedger8Call('retainedCircuit', bad);
+      assertScopeAdmitsLedger8Call('retainedCircuit', bad, 'submitCallTx');
     } catch (error) {
       caught = error;
     }
