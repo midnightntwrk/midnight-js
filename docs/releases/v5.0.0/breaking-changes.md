@@ -2,7 +2,7 @@
 
 v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
-> Sections 12, 14 to 17, 19, 20, 23 and 29 show names that shipped only in 5.0.0 pre-releases. If you upgrade from v4, use section 25 for the final error names. [Section 25](#25-one-error-class-per-fault-1557) maps every one of them to its final class.
+> Sections 12, 14 to 17, 19, 20 and 23 show names that shipped only in 5.0.0 pre-releases. If you upgrade from v4, use section 25 for the final error names. [Section 25](#25-one-error-class-per-fault-1557) maps every one of them to its final class.
 
 ---
 
@@ -1542,12 +1542,12 @@ type to `LedgerEraFacade`.
 Unchanged: the `version` fields (on `LedgerEraFacade` and on the protocol error
 classes), `requestedVersion` on `UnknownLedgerEraError`, the `version`
 discriminant of the payloads, the `Versioned*` types, `envelopeVersion`, and the
-functions `latestNetworkLedgerVersion`, `ledgerVersionOfContractState` and
-`ledgerVersionOfLedgerParameters`.
+functions `latestNetworkLedgerVersion`, `ledgerVersionOfContractState`,
+`ledgerVersionOfLedgerParameters`, `versionOfRecord` and `protocolVersionToLedger`.
 
 compact-js names the same era by number. `Ledger.Era['ledger']` (for example
 `executable.era.ledger`) is `8` for `'v8'` and `9` for `'v9'`. compact-js
-exports no type for that number, and midnight-js needs no conversion from it.
+exports no named type for that number, and midnight-js needs no conversion from it.
 
 ## Non-breaking additions worth noting
 

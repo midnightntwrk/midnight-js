@@ -129,10 +129,10 @@ describe('LedgerTransaction.seal', () => {
     expect(String(error)).toContain('proveTx');
   });
 
-  it('refuses an era that is not a ledger version', () => {
+  it('refuses an era that is not a ledger era', () => {
     const tx = Transaction.fromParts(NETWORK_ID);
 
-    // @ts-expect-error 'v7' is not a ledger version
+    // @ts-expect-error 'v7' is not a ledger era
     const error = thrownBy(() => LedgerTransaction.seal('v7', 'Unproven', tx));
 
     expect(error).toBeInstanceOf(UnknownLedgerEraError);
@@ -191,7 +191,7 @@ describe('LedgerTransaction.unwrap', () => {
     (era) => {
       const handle = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
 
-      // @ts-expect-error the era is not a ledger version
+      // @ts-expect-error the era is not a ledger era
       const error = thrownBy(() => LedgerTransaction.unwrap(handle, era));
 
       expect(error).toBeInstanceOf(UnknownLedgerEraError);

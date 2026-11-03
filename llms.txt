@@ -463,7 +463,7 @@ import {
 // already read from the indexer.
 const era: LedgerEra = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
 
-// The network's current ledger version, asked of a provider on every call.
+// The network's current ledger era, asked of a provider on every call.
 const networkVersion: LedgerEra = await latestNetworkLedgerVersion(providers.publicDataProvider);
 ```
 

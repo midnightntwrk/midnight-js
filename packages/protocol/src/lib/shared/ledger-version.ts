@@ -69,7 +69,7 @@ export const RETAINED_LEDGER_ERAS = Object.freeze(['v8'] as const satisfies read
 // type-checking. The tuple wrapping is load-bearing — a bare
 // `Exclude<...> extends never` would distribute over the empty union and hold
 // no matter what the list says.
-const _everyRetainedVersionIsListed: [
+const _everyRetainedEraIsListed: [
   Exclude<RetainedLedgerEra, (typeof RETAINED_LEDGER_ERAS)[number]>
 ] extends [never]
   ? true

@@ -130,8 +130,8 @@ describe('barrel exports', () => {
   });
 });
 
-describe('ledger version vocabulary', () => {
-  it('should export the closed set of ledger versions', () => {
+describe('ledger era vocabulary', () => {
+  it('should export the closed set of ledger eras', () => {
     const eras: readonly LedgerEra[] = midnightJs.LEDGER_ERAS;
     expect(eras).toEqual(['v8', 'v9']);
   });
@@ -151,7 +151,7 @@ describe('ledger version vocabulary', () => {
   });
 });
 
-describe('ledger version failures', () => {
+describe('ledger era failures', () => {
   it('should let a caller tell the read path from the construct path by code', async () => {
     const fromRead = captureThrown(() => midnightJs.versionOfRecord({ protocolVersion: 9_000_000 }));
     const fromConstruct = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(9_000_000)));

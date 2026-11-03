@@ -102,7 +102,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra =
    *   (`not-a-transaction`), or `tx` is at another stage (`stage-mismatch`).
    * @throws ForeignLedgerTransactionError If `tx` is an object of another
    *   ledger copy, or `era` is v8 and the v8 ledger is not loaded yet.
-   * @throws UnknownLedgerEraError If `era` is not a ledger version.
+   * @throws UnknownLedgerEraError If `era` is not a ledger era.
    */
   static seal<E extends LedgerEra, S extends TransactionStage>(
     era: E,
@@ -139,7 +139,7 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra =
    * @returns The object that was sealed.
    * @throws InvalidTransactionHandleError If `handle` is not a handle of this
    *   copy of the package.
-   * @throws UnknownLedgerEraError If `era` is not a ledger version.
+   * @throws UnknownLedgerEraError If `era` is not a ledger era.
    * @throws TransactionEraMismatchError If the handle carries another era.
    */
   static unwrap<E extends LedgerEra, S extends TransactionStage>(

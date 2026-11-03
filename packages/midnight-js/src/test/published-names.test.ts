@@ -29,4 +29,18 @@ describe('published names', () => {
   it('follow the naming rules of the public API', () => {
     expect(namingViolations(names)).toEqual([]);
   });
+
+  it('does not publish the ledger era names renamed before 5.0.0', () => {
+    const renamed = [
+      'LedgerVersion',
+      'CurrentLedgerVersion',
+      'RetainedLedgerVersion',
+      'LEDGER_VERSIONS',
+      'CURRENT_LEDGER_VERSION',
+      'RETAINED_LEDGER_VERSIONS',
+      'UnknownLedgerVersionError'
+    ];
+
+    expect(names.filter((name) => renamed.includes(name))).toEqual([]);
+  });
 });

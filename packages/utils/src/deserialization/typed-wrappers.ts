@@ -150,7 +150,7 @@ const finalizedReaders: FinalizedReaders = Object.freeze({
  * @returns A finalized handle of `era`.
  * @throws {DeserializationError} On any underlying ledger deserialization
  *   failure, including bytes written by the other era.
- * @throws {UnknownLedgerEraError} If `era` is not a ledger version.
+ * @throws {UnknownLedgerEraError} If `era` is not a ledger era.
  * @throws {Ledger8RuntimeMissingError} If `era` is `'v8'` and the v8 runtime
  *   cannot be loaded.
  * @throws {ForeignLedgerTransactionError} If a duplicate install of the ledger

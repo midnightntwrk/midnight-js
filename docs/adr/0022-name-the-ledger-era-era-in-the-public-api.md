@@ -18,11 +18,11 @@ serialized tag.
 
 compact-js (`@midnight-ntwrk/compact-js` 3.0.0-rc) says "era" too. Its
 `Ledger.Era` describes facts about an era. Our `LedgerEra` was an object with
-methods bound to one era. Both names are reachable from
-`@midnight-ntwrk/midnight-js-protocol`, which re-exports compact-js's `Ledger`
-namespace.
+methods bound to one era. Both names are reachable from one package:
+`@midnight-ntwrk/midnight-js-protocol` exports `LedgerEra` from its root, and its
+`./v9/compact-js/effect` subpath re-exports compact-js's `Ledger` namespace.
 
-These names exist only in 5.0.0 release candidates. Renaming them is cheap
+These names exist only in 5.0.0 pre-releases. Renaming them is cheap
 before 5.0.0 final and needs 6.0.0 after it.
 
 ## Decision
@@ -45,14 +45,15 @@ We will use the word "era" for the ledger era in the public API. The values stay
 These stay unchanged, as a separate decision: fields named `version`
 (including `requestedVersion`), the payload discriminant `version`, the
 `Versioned*` types, `envelopeVersion`, and the functions
-`latestNetworkLedgerVersion` and `ledgerVersionOf*`.
+`latestNetworkLedgerVersion`, `ledgerVersionOf*`, `versionOfRecord` and
+`protocolVersionToLedger`.
 
 ## Consequences
 
 - **Positive:** one word for one concept. "Version" is left for the node
   version and the schema version.
-- **Negative:** `LedgerEra` changed meaning between release candidates. Code
-  written against an earlier 5.0.0 rc fails with
+- **Negative:** `LedgerEra` changed meaning between pre-releases. Code
+  written against an earlier 5.0.0 pre-release fails with
   `Property 'extractState' does not exist on type '"v8" | "v9"'` instead of
   "cannot find name". The error code string changed too, and a string
   comparison breaks without a type error. `breaking-changes.md` section 29
@@ -64,8 +65,8 @@ These stay unchanged, as a separate decision: fields named `version`
 
 - **Keep `LedgerVersion`.** Rejected: the rest of the API already says "era".
 - **Numbers `8 | 9`, as compact-js does.** Rejected: the provider payload tags
-  and the package names use `'v8' | 'v9'`, and compact-js does not export its
-  number type.
+  and the package names use `'v8' | 'v9'`, and compact-js exports no named
+  type for the number (only `Ledger.Era['ledger']`).
 - **`...Codec`, `...Binding`, `...StateReader` or `...Engine` for the facade.**
   Rejected: a codec only encodes; compact-js uses "binding" for its per-era
   module; the object also composes transactions; `Ledger8Engine` is a

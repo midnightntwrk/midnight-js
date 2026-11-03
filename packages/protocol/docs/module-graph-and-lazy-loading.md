@@ -42,10 +42,8 @@ what holds the retained `compact-runtime@0.16` glue and the
 ## Where `LEDGER_ERAS` lives, and the cycle it avoids
 
 `LEDGER_ERAS` is declared in `lib/shared/ledger-version.ts`, a leaf module
-that imports nothing, and is re-exported unchanged by `version.ts`, so the
-public surface is the one it always was. Consumers keep importing both
-`LEDGER_ERAS` and `LedgerEra` from `version.ts` — and from the root
-barrel — exactly as before.
+that imports nothing, and is re-exported unchanged by `version.ts`. Consumers import both
+`LEDGER_ERAS` and `LedgerEra` from `version.ts` and from the root barrel.
 
 Two modules need that set, and the dependency between them runs one way:
 `version.ts` imports `errors.ts` for the error it throws, while `errors.ts`

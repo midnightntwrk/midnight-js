@@ -152,8 +152,8 @@ describe('deserializeLedgerTransaction', () => {
     expect(isDeserializationError(caught)).toBe(true);
   });
 
-  it('refuses an era that is not a ledger version', async () => {
-    // @ts-expect-error 'v7' is not a ledger version
+  it('refuses an era that is not a ledger era', async () => {
+    // @ts-expect-error 'v7' is not a ledger era
     const caught = await deserializeLedgerTransaction('v7', garbage, { caller }).catch((e: unknown) => e);
 
     expect(caught).toBeInstanceOf(UnknownLedgerEraError);

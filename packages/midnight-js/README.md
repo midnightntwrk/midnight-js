@@ -42,7 +42,7 @@ import {
   CURRENT_LEDGER_ERA, // the current era, 'v9': the `era` of every current-era result
   type LedgerEra, // 'v8' | 'v9'
   versionOfRecord,    // a record carrying protocolVersion -> LedgerEra
-  latestNetworkLedgerVersion  // asks a source for the network's current ledger version -> LedgerEra
+  latestNetworkLedgerVersion  // asks a source for the network's current ledger era -> LedgerEra
 } from '@midnight-ntwrk/midnight-js';
 ```
 

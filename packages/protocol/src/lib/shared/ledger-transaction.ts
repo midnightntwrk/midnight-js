@@ -150,7 +150,7 @@ const assertKnownEra = (era: string): void => {
  * @throws PayloadNotATransactionError If `bytes` is not a serialized
  *   transaction, or the era's runtime cannot read it at `stage`; the runtime's
  *   refusal is on `cause`.
- * @throws UnknownLedgerEraError If `era` is not a ledger version.
+ * @throws UnknownLedgerEraError If `era` is not a ledger era.
  * @throws InvalidArgumentError If `stage` is not a transaction stage.
  * @throws Ledger8RuntimeMissingError If the v8 runtime cannot be loaded.
  */
@@ -183,7 +183,7 @@ export const deserializeTransactionAtStage = async <E extends LedgerEra, S exten
  * @param era The era the value claims to belong to.
  * @param value The value to check.
  * @returns See {@link FrameworkInstanceCheck}.
- * @throws UnknownLedgerEraError If `era` is not a ledger version.
+ * @throws UnknownLedgerEraError If `era` is not a ledger era.
  */
 export const isFrameworkLedgerTransaction = (era: LedgerEra, value: unknown): FrameworkInstanceCheck => {
   assertKnownEra(era);

@@ -202,7 +202,7 @@ describe('deserializeTransactionAtStage', () => {
     expect(`${String(rejection)} ${String((rejection as Error).cause)}`).not.toContain(bodyMarker);
   });
 
-  it('refuses an era that is not a ledger version', async () => {
+  it('refuses an era that is not a ledger era', async () => {
     const rejection = await rejectionOf(
       // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerEra
       deserializeTransactionAtStage('v7', 'Unproven', ledger9Bytes.Unproven)
@@ -232,7 +232,7 @@ describe('isFrameworkLedgerTransaction', () => {
     expect(isFrameworkLedgerTransaction('v9', { serialize: () => new Uint8Array() })).toBe('foreign-instance');
   });
 
-  it('refuses an era that is not a ledger version', () => {
+  it('refuses an era that is not a ledger era', () => {
     // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerEra
     expect(() => isFrameworkLedgerTransaction('v7', {})).toThrow(UnknownLedgerEraError);
   });

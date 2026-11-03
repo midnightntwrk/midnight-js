@@ -121,7 +121,7 @@ export const readEraTag = (record: unknown): string => describeEraTag(eraTagOf(r
 
 type StateReadMethod = 'queryContractState' | 'queryDeployContractState' | 'queryZSwapAndContractState';
 
-const isLedgerVersion = (value: unknown): value is LedgerEra => LEDGER_ERAS.some((era) => era === value);
+const isLedgerEra = (value: unknown): value is LedgerEra => LEDGER_ERAS.some((era) => era === value);
 
 const ownSerialized = <T>(
   value: unknown,
@@ -132,7 +132,7 @@ const ownSerialized = <T>(
     return undefined;
   }
   const era: unknown = Reflect.get(value, 'era');
-  if (!isLedgerVersion(era)) {
+  if (!isLedgerEra(era)) {
     return undefined;
   }
   const serialize: unknown = Reflect.get(value, 'serialize');

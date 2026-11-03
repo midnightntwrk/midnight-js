@@ -98,7 +98,7 @@ describe('reading a real migrated state', () => {
 // either precondition unmet reads the wrong bytes with the wrong era's reader,
 // which is the failure the envelope layer exists to make impossible.
 describe('the envelope reader refuses before it decodes', () => {
-  it('refuses a ledger version it has no decoder for, naming the value it was given', () => {
+  it('refuses a ledger era it has no decoder for, naming the value it was given', () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the caller this guards is an untyped JavaScript one
       extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v7' as any, ocrt3.ContractState)
