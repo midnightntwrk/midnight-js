@@ -52,7 +52,7 @@ import {
   submitReplaceAuthorityTx,
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { latestNetworkLedgerVersion, ledger9Protocol } from '@midnight-ntwrk/midnight-js';
+import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
 
 const { CompiledContract } = ledger9Protocol;
 
@@ -1580,7 +1580,7 @@ let lowLevelDeployment;
 
 /** Throws unless the handle and the record carry the expected era, and the record succeeded. */
 const assertSubmitted = (built, record, era) => {
-  if (built.private.unprovenTx.era !== era || record.era !== era || record.status !== 'SucceedEntirely') {
+  if (built.private.unprovenTx.era !== era || record.era !== era || record.status !== types.SucceedEntirely) {
     throw new Error(
       `expected a '${era}' transaction recorded as '${era}' and succeeded, got handle '${built.private.unprovenTx.era}', ` +
         `record '${record.era}', status '${record.status}'`
@@ -1594,9 +1594,10 @@ if (MEASURES_LOW_LEVEL) {
     const { Contract } = await import('@midnight-ntwrk/fork-retained-baseline');
     const built = await createLedger8UnprovenDeployTx(session.providers, { compiledContract: new Contract({}), args: [] });
     const record = await submitTx(session.providers, { unprovenTx: built.private.unprovenTx });
-    lowLevelDeployment = { contractAddress: built.public.contractAddress };
+    const submitted = assertSubmitted(built, record, 'v8');
     await waitForContract(session.providers.publicDataProvider, built.public.contractAddress, 5 * 60_000);
-    return { ...assertSubmitted(built, record, 'v8'), contractAddress: built.public.contractAddress };
+    lowLevelDeployment = { contractAddress: built.public.contractAddress };
+    return { ...submitted, contractAddress: built.public.contractAddress };
   });
 
   await leg('pre-fork low-level ledger 8 call, then submitTx', async () => {
