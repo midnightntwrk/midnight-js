@@ -495,8 +495,9 @@ export class ProviderFailedError extends MidnightJsError {
 }
 
 /**
- * Whether the operation a {@link ForkCrossedDuringOperationError} refuses was deploying a
- * contract, calling one already deployed, or maintaining one.
+ * Whether a contract operation was deploying a contract, calling one already deployed, or
+ * maintaining one. A {@link ForkCrossedDuringOperationError} can also carry `'transaction'`, for a
+ * transaction submitted with `submitTx` / `submitTxAsync`; see {@link SubmittedOperation}.
  *
  * The same discriminant the era pairing table takes, kept as its own type here
  * because it decides which of the genuinely different remediations the error
@@ -614,12 +615,12 @@ const forkCrossedMessage = (operation: SubmittedOperation, freshEra: LedgerVersi
   operation.kind === 'transaction'
     ? `This transaction was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
       `it${operation.circuitId === undefined ? '' : ` (circuit '${operation.circuitId}')`}; the network now reports ` +
-      `ledger '${freshEra}', so the network crossed the ledger fork between submitTx reading the network's ledger ` +
+      `ledger '${freshEra}', so the network crossed the ledger fork between reading the network's ledger ` +
       `version and submitting the transaction. Take two steps, in this order. First, verify the transaction did ` +
       `not finalize: a submission rejected while the fork was happening can still have been recorded, so check ` +
       `whether its effects are already on chain before doing anything that would repeat it. Then build the ` +
-      `transaction again: it reads the network's ledger version again and builds for the ledger the network now ` +
-      `reports, which a transaction built for ledger '${operation.networkVersion}' cannot be submitted to.`
+      `transaction again for ledger '${freshEra}': a transaction built for ledger '${operation.networkVersion}' ` +
+      `cannot be submitted to it.`
     : FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra);
 
 /**

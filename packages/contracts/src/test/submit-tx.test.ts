@@ -598,6 +598,19 @@ describe('submit-tx', () => {
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
       });
 
+      it('names no circuit when the caller passed an empty circuit list', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
+
+        const rejection = await submitTx(mockProviders, {
+          unprovenTx: await handles.v8.Unproven(),
+          circuitId: []
+        }).catch((error: unknown) => error);
+
+        expect(rejection).toBeInstanceOf(ForkCrossedDuringOperationError);
+        expect(rejection).toMatchObject({ kind: 'transaction', circuitId: undefined });
+        expect((rejection as ForkCrossedDuringOperationError).message).not.toContain("circuit ''");
+      });
+
       it('keeps the rejection as it is when the head has not moved', async () => {
         await rejectedOnV8Head(() => Promise.resolve(LEDGER8_HEAD));
 
@@ -641,6 +654,18 @@ describe('submit-tx', () => {
       it('does not read the head again when proving fails', async () => {
         await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
         mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(new Error('prover down'));
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not read the head again when balancing fails', async () => {
+        await rejectedOnV8Head(() => Promise.resolve(LEDGER9_HEAD));
+        mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(new Error('wallet down'));
 
         const rejection = await submitTx(mockProviders, { unprovenTx: await handles.v8.Unproven() }).catch(
           (error: unknown) => error

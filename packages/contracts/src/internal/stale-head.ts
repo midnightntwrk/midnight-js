@@ -74,7 +74,7 @@ const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era)
  * sees exactly which member is consulted; a full `PublicDataProvider`
  * satisfies it.
  * @param operation Which operation was rejected: the era it started against,
- * whether it is a call or a deploy, and the identifiers its remediation has to
+ * its kind, and the identifiers its remediation has to
  * name so a caller with several operations in flight can act on it.
  * @param rejection Whatever `submitTx` rejected with — `unknown`, because
  * a rejection is not obliged to be an `Error`.
