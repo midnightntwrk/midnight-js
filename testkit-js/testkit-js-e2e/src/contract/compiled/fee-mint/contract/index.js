@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -916,8 +916,8 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'mintWithShieldedFee': 'a12b894ea1941155ef02e77250eb16321d4d4efee780f513f409b48702ae0f30',
-  'mintWithUnshieldedFee': '872e3d717fb94c7e83c811ed3c9851480c65ec686dbcf48f3cd281acbc329763',
+  'mintWithShieldedFee': '0df1dda9a7515b9787d9666f38abe519a14e08a6c815658fbc2319c1e7bd9b69',
+  'mintWithUnshieldedFee': 'f749439d8a8ee7b2e94045975b40b2e2c991d07896a11e69d8d5fcb40c47f548',
 };
 
 export const circuitSignatures = {

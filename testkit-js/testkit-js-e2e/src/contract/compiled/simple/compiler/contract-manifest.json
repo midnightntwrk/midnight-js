@@ -1,15 +1,15 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.35.0",
-  "compiler-commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
-  "language-version": "0.27.0",
-  "runtime-version": "0.20.0",
+  "compiler-version": "0.36.0-rc.0",
+  "compiler-commit": "a5154e281c32f578d847a616f8a7e9e05df44171",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0-rc.0",
   "compiler": {
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 547,
-      "hash": "92f80638abd1efcac24672d4b51c9b5932d39870f9c837b92c11f0bedc044038"
+      "size": 557,
+      "hash": "75eefb01700bef76789edd00b8fed3854fa132a3fb3fa66b6928df9c4aba71cf"
     }
   },
   "contract": {
@@ -21,8 +21,8 @@
     },
     "index.js": {
       "type": "file",
-      "size": 11559,
-      "hash": "d69a0746c369464fa463a44630909770e587f6bc47f5f9c86baa54d3be48e12a"
+      "size": 11564,
+      "hash": "76f2119f033f4e372d5af935ce906d5c464bb3de74342f404677f3e467d7ae56"
     },
     "index.js.map": {
       "type": "file",
@@ -34,26 +34,26 @@
     "type": "directory",
     "noop.bzkir": {
       "type": "file",
-      "size": 64,
-      "hash": "833adb07e48001c8298bf203770b4dc2bf141c84e8c3a84d365894fc07c8bb3a"
+      "size": 102,
+      "hash": "5a47eac4e5660793ad2cfb49acf773a24707498773a4b23f88eb4e53e6e3598c"
     },
     "noop.zkir": {
       "type": "file",
-      "size": 784,
-      "hash": "53ea5208e5594c4bd7c3be6ce9447fa019968ce5f7654afec9c7c9e0c4ee8289"
+      "size": 362,
+      "hash": "6b894828e34f757fec5df0e5872a5fbede9c7cb8fa2fbbb20c7e827717914670"
     }
   },
   "keys": {
     "type": "directory",
     "noop.prover": {
       "type": "file",
-      "size": 14071,
-      "hash": "5b5e8ff644f16d11a90240f1be25011c53df2dde78e6c2edab8d73cfcf06e5a7"
+      "size": 58166,
+      "hash": "6fa13f54b055be31d4809c59dfd96b08e809641f43bc0d83951cbfb4162ac010"
     },
     "noop.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "62d768951a97c18af8cb385f8c0fe6488a4dbfbebce83ea08b21914a0ebe7789"
+      "size": 1353,
+      "hash": "e5e72349fbd569eb276a3945165659fc68daebc58b94a1d66e52b977027924ef"
     }
   }
 }

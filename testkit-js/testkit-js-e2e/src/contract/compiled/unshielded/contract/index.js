@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -1562,21 +1562,21 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'getUnshieldedBalanceGtTest': '0d8df5d0cab71a135e63606fceb46607eb236712757654a17c0e4cadb51db68d',
-  'getUnshieldedBalanceGteTest': '727366cba8899cc10987875c7b9af575d351c6e7698339f6642bee52caf42aea',
-  'getUnshieldedBalanceLtTest': '873586089e51d4272432de80e276a8e9ebf13a7c5d2b09f844d9b4db8c2649d1',
-  'getUnshieldedBalanceLteTest': '85c46d60f9b187a16386673778856b366d08fdadf1e9df6423525264c20ac92d',
-  'getUnshieldedBalanceTest': '31f6c65107af914e2841a9ecbf201ca12733b3d3b31186d3980267463e07eea7',
-  'mintUnshieldedToContractTest': '1831e4ccf84abd13f9b64a338b49085f0eb733a0263dc94099a3ef5a84c4de1e',
-  'mintUnshieldedToSelfTest': 'a8fd6fa9f65f07a991c5772c6409b1d2672923ef36153618c1f59e38f1b5aa00',
-  'mintUnshieldedToUserTest': '995709a8c8624b163da299ba6f8f48a5be3d54a3c503433fe9bf33677a6a950d',
-  'receiveNightTokens': '33e57b6ffe3dbd3510b93a38a599bc582b43513c73d0dc591969d0d680d90d4f',
-  'receiveUnshieldedTest': 'a3c403ecb5f1f3717e93cf10744c0a3545d4548bd8defd2b4871c8a1a0918828',
-  'sendNightTokensToRecipient': 'eb34e2c77715b2351d3aa36afd3144dfc2f0a63c6e35ba2e2353ba9f326c7ee4',
-  'sendNightTokensToUser': 'f6b8fb7bcb07fca13f90c7c7e5125a561164daaeca60f36c282156920b7e45be',
-  'sendUnshieldedToContractTest': 'e6eea63d035e5ca5de95da16d9bdb58eaeeec8645035e97db27e8ec5728e17b8',
-  'sendUnshieldedToSelfTest': '7727578b6a56689e9f1aa13e14c980e567be5803a247b55ec765e7722d6c73bc',
-  'sendUnshieldedToUserTest': '57a047d2f3d1dae12c475f49b452214ae8737c842db618d1e619183c96551954',
+  'getUnshieldedBalanceGtTest': '8c852892dfa17be7f7edb7be8c082104509f4ae4d154808d9697d9dda9cbc835',
+  'getUnshieldedBalanceGteTest': 'bdf8b95caba1614231facc24f6743c6be0d7eff6c2553f4d00b43a87a3bb1424',
+  'getUnshieldedBalanceLtTest': '995aadd1e766a272d5c2002fdba42e728f72683df6366f6054102553f8f22328',
+  'getUnshieldedBalanceLteTest': 'cdb413d232d27e812007ac30dade2c4fb0892ce33268575c33e39f0a4dcf1d0c',
+  'getUnshieldedBalanceTest': '76976272c25959a89773ecd08e1160aa9e528ed3512066a4ef00920046fdab47',
+  'mintUnshieldedToContractTest': 'ab0bf9a76b13c0d3c1d87f908f3808f4183fd07c561843bceb91dce542f79855',
+  'mintUnshieldedToSelfTest': '686bcc0d73a23264922c557bcf6655eee50ad8a4d1b891eabaf4cc3d4788d076',
+  'mintUnshieldedToUserTest': 'ba4fd566cba45c8fcbca474368b8ff15cdea3b74cb326cd8497235f64c0e396f',
+  'receiveNightTokens': 'cbde295ab5a2e46cd24200ad68bf1f887dbcf4b6548eda53f85b5289db7cc759',
+  'receiveUnshieldedTest': '4c79a3cd19d9dae2962df0206d59b48c17ae7dafb58878f0923429e5233797eb',
+  'sendNightTokensToRecipient': '28f0e69155eddd29cc59d4db2f55745ab028d087118c59c799e741cc8b375140',
+  'sendNightTokensToUser': '6571faf177d8da6f21f664b2d26ea7099846af66762b6cb6048a7110916dcfa5',
+  'sendUnshieldedToContractTest': '3a01e96809ba78ed72aeee8e064820d6c3fdc85bc9097653d354f87d6172e99c',
+  'sendUnshieldedToSelfTest': 'b81cadeee7f9dd5457024308bc7614950d3694fae87f7bd53327ce9a6781749b',
+  'sendUnshieldedToUserTest': 'ef86a73ffe903d3ed7d1aed34b99cc2e4be1307595ad567b28d1aff752899dd4',
 };
 
 export const circuitSignatures = {

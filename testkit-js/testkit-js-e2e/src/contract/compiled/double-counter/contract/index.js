@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(65535n, 2);
 
@@ -416,9 +416,9 @@ const _dummyContract = new Contract({
 });
 export const pureCircuits = {};
 export const expectedVk = {
-  'increment1': '5bd7d462f5df0d9eaaef16e2717fef381b4d94af744c7194b95526a592833911',
-  'increment2': '362accd320e4208cd1923b16fc2db0d074f5cea21056edce024d6eab049012f0',
-  'reset': 'ba6566901f91af02f274e9dbf7fca6a8752b924b162015f222728778e2729bc0',
+  'increment1': '62fd5923d4ce5abf861d3d0dd1c1223e945fd5fddea358d604a5681895eade29',
+  'increment2': '30646ef3da40ec137b1e1bb094367727dfa188da84c2825c4a707308fd02b024',
+  'reset': 'b89b55a80db335c73844a15cc958b71f1a2634a42215bf1246f411248882761b',
 };
 
 export const circuitSignatures = {

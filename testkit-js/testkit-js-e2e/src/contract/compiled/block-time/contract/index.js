@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -396,10 +396,10 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'testBlockTimeGt': 'c587bc4c304aed0033e95f9be75dc1083dc32a2ed08c065a8a0cf8d1df4aae57',
-  'testBlockTimeGte': 'f130299ec564947c2fdea587fefb31081ae0b304c0591a87ef206a4f8ae2c389',
-  'testBlockTimeLt': '47b4fc02b13302c7eebe11510d691abeb601937cad6090eeafaeabdc053c8ad8',
-  'testBlockTimeLte': 'c329e58501f4b81ccaeeb66a06dd024b4c424edf94430ea49de320467e30466b',
+  'testBlockTimeGt': '33cf9b33f449aef2d4c2a8ebd0accb289457bbe6307b33cbbfa2f087e6261cbc',
+  'testBlockTimeGte': 'a9e246249623268ed4208a43c1d7a8615cac39fa6240e05b3af295a980d062c7',
+  'testBlockTimeLt': 'ad61ccde31ac6df30f0fcc40e5e9a09cf2e8a969af204b4edcd52f68bf6f71aa',
+  'testBlockTimeLte': '161236d6764d915783a9f7a3a7930151dea2ddef2452c331e5e202b2af442b69',
 };
 
 export const circuitSignatures = {

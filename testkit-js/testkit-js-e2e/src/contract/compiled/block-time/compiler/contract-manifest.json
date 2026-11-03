@@ -1,15 +1,15 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.35.0",
-  "compiler-commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
-  "language-version": "0.27.0",
-  "runtime-version": "0.20.0",
+  "compiler-version": "0.36.0-rc.0",
+  "compiler-commit": "a5154e281c32f578d847a616f8a7e9e05df44171",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0-rc.0",
   "compiler": {
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 1696,
-      "hash": "61d3ff474286a6dcea96e828c59c474d018393f2a9421f384e1dff6fb7433b0d"
+      "size": 1706,
+      "hash": "692d3e5ca879694625c02d5c7b9fdd73660305481c883727e3be05536567d485"
     }
   },
   "contract": {
@@ -21,8 +21,8 @@
     },
     "index.js": {
       "type": "file",
-      "size": 21458,
-      "hash": "cf2c9956b018e08573d649aaa5d5acbb0379ea12b063006decb9f791562ba815"
+      "size": 21463,
+      "hash": "3b2c1f5ab8e9ab890495f4fdce87e5545233e82538b4e5b85300cdddeb0eb74f"
     },
     "index.js.map": {
       "type": "file",
@@ -34,86 +34,86 @@
     "type": "directory",
     "testBlockTimeGt.bzkir": {
       "type": "file",
-      "size": 99,
-      "hash": "232480763c11db8718d65c2098cc1a6b96eafa492d302f3edc81bde7fd9002ba"
+      "size": 205,
+      "hash": "2b9b21fbc7a7149d87fbe12b7ffd25e63d3bfcaa718a5708b898244c73df1ad1"
     },
     "testBlockTimeGt.zkir": {
       "type": "file",
-      "size": 1454,
-      "hash": "44c516a71d3a954c6900075c1fecaa6c9fa3e24b98bf22df51366d9b16fb676c"
+      "size": 784,
+      "hash": "5db6f55e1652b54032d49d5e21833d28640b6febc2fae8c0d4616013b244aa03"
     },
     "testBlockTimeGte.bzkir": {
       "type": "file",
-      "size": 105,
-      "hash": "41dd13eb24af72e2905bc7551c65a0180d751ae21da070dc1a9a94f951dbece2"
+      "size": 229,
+      "hash": "8c8d468f09346ba9e086ef0a250d7f625a84af5358f052abfa9fe281d797842b"
     },
     "testBlockTimeGte.zkir": {
       "type": "file",
-      "size": 1549,
-      "hash": "7221670a31d59ed572dca988c37d4afa0bb0d83960e61b52464368ff8eee553a"
+      "size": 872,
+      "hash": "d1cd974ee1a979485bc8304a5b618a7d72fbc26dc23c7145d2b76c9c071962e2"
     },
     "testBlockTimeLt.bzkir": {
       "type": "file",
-      "size": 99,
-      "hash": "c5822e4311624467316e93aabfa283c4f459756e283c550613e57c0327c70aee"
+      "size": 205,
+      "hash": "db13b58feabd705bf44644e38aaf9df260e27a5472ce4274c25e60ee1060ab67"
     },
     "testBlockTimeLt.zkir": {
       "type": "file",
-      "size": 1454,
-      "hash": "f073b3215877658de3bf7c8005eac0a8d01afb7eaff03597df91ffe46231476e"
+      "size": 784,
+      "hash": "37b7d08adef9f646929dc2ef7bfe8dd83f1625c99db345950cd37eec426a7add"
     },
     "testBlockTimeLte.bzkir": {
       "type": "file",
-      "size": 105,
-      "hash": "fecd888fda0735c1fbfe8fdf1bf70a3161c54acda6b4ffd28e7a316b57b5a5d2"
+      "size": 229,
+      "hash": "b58144c8e98032b72bac796b130a36c68e14082206b743a61287b9373b83bbd2"
     },
     "testBlockTimeLte.zkir": {
       "type": "file",
-      "size": 1549,
-      "hash": "54506b00e4ab5f42e71c786567564caa30d91e49616f5bb59089a21cf0269cc4"
+      "size": 872,
+      "hash": "d7e2268d5c9fd259a38fc927719ae6eae6454fc5c751339e3a3c48886a29c315"
     }
   },
   "keys": {
     "type": "directory",
     "testBlockTimeGt.prover": {
       "type": "file",
-      "size": 41369,
-      "hash": "a0d798e7638c96376cdac1be9f911ae861095d189fc94f174ae3334ec6e8a71f"
+      "size": 113565,
+      "hash": "6c489b55c4bd83b414c70a16aaf22841dec2682c78b57468b9cb849273ac8920"
     },
     "testBlockTimeGt.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "c587bc4c304aed0033e95f9be75dc1083dc32a2ed08c065a8a0cf8d1df4aae57"
+      "size": 1353,
+      "hash": "33cf9b33f449aef2d4c2a8ebd0accb289457bbe6307b33cbbfa2f087e6261cbc"
     },
     "testBlockTimeGte.prover": {
       "type": "file",
-      "size": 41480,
-      "hash": "045d61a911ab68bb39d234c86021902fd9aa9f0ad5d8dda0e53ca348e6cb9571"
+      "size": 113589,
+      "hash": "5a24cfa1ed176a9d74a7116b24bbf85266303b41b3be99b7e61db82e3183d6de"
     },
     "testBlockTimeGte.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "f130299ec564947c2fdea587fefb31081ae0b304c0591a87ef206a4f8ae2c389"
+      "size": 1353,
+      "hash": "a9e246249623268ed4208a43c1d7a8615cac39fa6240e05b3af295a980d062c7"
     },
     "testBlockTimeLt.prover": {
       "type": "file",
-      "size": 41367,
-      "hash": "c93a235386b951bf3f15cf88e0da5641e82be38ac44a663528d3b29e80359484"
+      "size": 113565,
+      "hash": "170232a1d2893deba8cdde9abf119737cec50fbce13454dc7097a0b25f5cb990"
     },
     "testBlockTimeLt.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "47b4fc02b13302c7eebe11510d691abeb601937cad6090eeafaeabdc053c8ad8"
+      "size": 1353,
+      "hash": "ad61ccde31ac6df30f0fcc40e5e9a09cf2e8a969af204b4edcd52f68bf6f71aa"
     },
     "testBlockTimeLte.prover": {
       "type": "file",
-      "size": 41479,
-      "hash": "b8efdd17481b968beeb6b4b2e281698778e188e0e8452b792ef1ca5c0d6ca8ba"
+      "size": 113589,
+      "hash": "4f1e720c38256b8b8191d18031f41f1689d1653b38ffc0409a5024c11d5319db"
     },
     "testBlockTimeLte.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "c329e58501f4b81ccaeeb66a06dd024b4c424edf94430ea49de320467e30466b"
+      "size": 1353,
+      "hash": "161236d6764d915783a9f7a3a7930151dea2ddef2452c331e5e202b2af442b69"
     }
   }
 }

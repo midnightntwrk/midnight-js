@@ -1,15 +1,15 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.35.0",
-  "compiler-commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
-  "language-version": "0.27.0",
-  "runtime-version": "0.20.0",
+  "compiler-version": "0.36.0-rc.0",
+  "compiler-commit": "a5154e281c32f578d847a616f8a7e9e05df44171",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0-rc.0",
   "compiler": {
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 710,
-      "hash": "8f3d3207dd189ba3731e52b3b39999f8761791dfaebf157c356903bcb6f22aea"
+      "size": 720,
+      "hash": "2ec5eb5ddcef896d838419a9bd0e085f7808a01b8389ae34ca8a69c96fdc22cb"
     }
   },
   "contract": {
@@ -21,8 +21,8 @@
     },
     "index.js": {
       "type": "file",
-      "size": 13117,
-      "hash": "664e73f9db143366f0124fc4c576c6b9d6c5a850761dbdeb1484775a9b173d0a"
+      "size": 13122,
+      "hash": "0d064ceeaf02aa60bc245321168f744f289a02598a1f70742ccb81ed7606baf5"
     },
     "index.js.map": {
       "type": "file",
@@ -34,26 +34,26 @@
     "type": "directory",
     "increment.bzkir": {
       "type": "file",
-      "size": 69,
-      "hash": "ad1e06fc2310f54c78a48bf2e401b594cca342dac374883819ff2e5b52e3bb6e"
+      "size": 124,
+      "hash": "80c53f3e6e8753f686accb06a162c43c82492b13856e30f6cf81366da7aeb54f"
     },
     "increment.zkir": {
       "type": "file",
-      "size": 884,
-      "hash": "0bd52d1a08001cc3a8af1b687cce93f70debbb3ab90867f70ce018df4085915a"
+      "size": 520,
+      "hash": "922b68e7e221d163f9db44de7b0e157dc8685368d6d17337d28e59a82e15c92c"
     }
   },
   "keys": {
     "type": "directory",
     "increment.prover": {
       "type": "file",
-      "size": 23149,
-      "hash": "e789fdde7c9642f9ef2d99c524da4c114308befde06ec5bf64e462801c686c0e"
+      "size": 58188,
+      "hash": "15ee09badcc9f5753f35401d135503d2d2e0233e1f39b9c20acda2db2d9dbdb5"
     },
     "increment.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "f226f0f3fae6e2e7f632d907b7803d87450225000645cc52e747775dc1b0459e"
+      "size": 1353,
+      "hash": "fe03a56441b43205cd34a2b080d2ad4657d79e7d3ce9f297351f6c0f321b163e"
     }
   }
 }

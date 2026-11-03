@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -1135,11 +1135,11 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'depositShielded': '079f937462bd68c6164b9435d70a8507144e59188cf65e95637e42b9b772daec',
-  'mintAndBurnShielded': 'a92faf7abfdbc8dc15eba023c83d74850d917019e43f7e53ca51628621fa55e9',
-  'mintAndSendImmediateShielded': '82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2',
-  'mintAndSendShielded': '82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2',
-  'mintShieldedTokens': 'cc3e2f221e0d8cb4986866c7838b0dd5a7a567bcff71c51ea99358993b0094df',
+  'depositShielded': '6326c17e1ec0f08a0f020ce7773ee00b9712ee52982f2bf9a7675a5de5d7c13a',
+  'mintAndBurnShielded': 'e39be04218c1d5c44950ad2f4d0cba8338e0a8313692c0975ff6cb10334d60e1',
+  'mintAndSendImmediateShielded': 'ce73ee7db66b8bd290b3ae9be05ad7c060463b76872909c04276423778c9193c',
+  'mintAndSendShielded': 'ce73ee7db66b8bd290b3ae9be05ad7c060463b76872909c04276423778c9193c',
+  'mintShieldedTokens': '4f481bf776e838eb1b7cdcb0dc40656f37ffda999efe6ce766111f2299fa081b',
 };
 
 export const circuitSignatures = {

@@ -131,7 +131,7 @@ describe('native package ranges a consumer resolves', () => {
     }
   );
 
-  // compact-js 3.0.0-rc.3 asks for `^1.0.0-rc.5` but protocol and the wallet SDK pin `1.0.0-rc.5`, therefore
+  // compact-js 3.0.0-rc.4 asks for `^1.0.0-rc.5` but protocol pins `1.0.0-rc.7` and the wallet SDK `1.0.0-rc.6`, therefore
   // moving protocol would only move the split. Expected to fail until compact-js pins it too; flip it then.
   it.fails('asks for @midnightntwrk/ledger-v9 with one range everywhere', () => {
     expectOneRange('@midnightntwrk/ledger-v9');

@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.20.0');
+__compactRuntime.checkRuntimeVersion('0.21.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(113);
 
@@ -1039,16 +1039,16 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'emitLifecycle': 'c243f9e5f77e653549df88e04de684597303b4340e594b38d1d64275c3a9719d',
-  'emitMisc': 'cca8c6279dc27634bd6fcdcf0d00e2b880d8f5fe8311baddb04747995ce3ef8e',
-  'emitShieldedBurn': '97ebabd1eb4655f268d8d8802bda094742801030eabaf61404e5a26b10f92410',
-  'emitShieldedMint': '08b2ab2081e5a04ab81bb5e31d46a55953c7b50c511689e19eb253dc9ac8ac97',
-  'emitShieldedReceive': 'd5a764706a54c383d57db1d45d0b20fd31d700342830fbb5aa014eff263ef1f1',
-  'emitShieldedSpend': '1630e831ae178f7f35792447792b5d698bbe6d58401386019c74203b44d0ba60',
-  'emitUnshieldedBurn': 'b41549697f188152436a59657183ec4ca162fdccdb6c1b1a715b3033c689bcb9',
-  'emitUnshieldedMint': 'edcfd323226a9f1459448830af37cbaaa4a97875466f36972fa743efc0ecf163',
-  'emitUnshieldedReceive': '07d3cbbe44cab6680798420c7c85cba4b1779211724f3ff347e59e448092804d',
-  'emitUnshieldedSpend': 'f7f4dfe824f3173ccb7ad28e20421f7b8a134b097d98f10e9f153a67cbb078e2',
+  'emitLifecycle': '6ed6607ece7eed40bf475a1c690c45c0484d1c83b6f537cc7f43a0335c27f500',
+  'emitMisc': '3bb3843c9ce7f9b1b2fbe737f8d30797d6847ce90bf709fd93523535aef4b0cf',
+  'emitShieldedBurn': 'f7a8131abb99b9fa6601d6ae5ef4a494ce1acf2eb3f0a9a3546e9e7a79df0d82',
+  'emitShieldedMint': '502def1731c0ad6263d143f9055fb3a3d1f7331b74901303e65ecbaa8acb107e',
+  'emitShieldedReceive': '0edb03c14b36b485dcc5d3866e239d201e09e78cec74d2b81d76b21fe8cbae79',
+  'emitShieldedSpend': 'c4361f1a3395ee63bc17fcadb73adafe10b80fa00238d3dcd3e69765d8563a8d',
+  'emitUnshieldedBurn': 'a70dfa749c519bb25de133d3e1512f32dd2de012f9d13aa7c9d4c73044a6ae87',
+  'emitUnshieldedMint': '09d22f5b543d26414dc90a09acfcff8c5edf94b83da61c39c930978212fd8f23',
+  'emitUnshieldedReceive': '25c191bc0f75ad0bc8f8c884a44f4b18754adedc9e28c2f408b6978853ad4ae2',
+  'emitUnshieldedSpend': 'ee09ea1e0c87ccf251ddb456124bb8c941ecbc4c594f786ea8f8c76fd077da97',
 };
 
 export const circuitSignatures = {

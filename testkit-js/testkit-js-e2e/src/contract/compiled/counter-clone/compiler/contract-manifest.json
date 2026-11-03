@@ -1,15 +1,15 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.35.0",
-  "compiler-commit": "debb05f9414b9d1e176741c2be289bb32233f0fc",
-  "language-version": "0.27.0",
-  "runtime-version": "0.20.0",
+  "compiler-version": "0.36.0-rc.0",
+  "compiler-commit": "a5154e281c32f578d847a616f8a7e9e05df44171",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0-rc.0",
   "compiler": {
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 1259,
-      "hash": "73f8f77a5184b03f40c1b47524fea3b7ac2914b0889d08aaa79d4e411d59651b"
+      "size": 1269,
+      "hash": "1730074ab9e70262659fcf84ab74ca2a95f567c6fa3a8336815c7f5586957555"
     }
   },
   "contract": {
@@ -21,8 +21,8 @@
     },
     "index.js": {
       "type": "file",
-      "size": 19302,
-      "hash": "3b9deda5e7615c54fbe0d1cc84015ee1fb66be81cd233d11c213a03f116a862c"
+      "size": 19307,
+      "hash": "91e5a23631336d7d2102de17e9cd57400fa0cca74d57634fbe6a9728b9d5fbbc"
     },
     "index.js.map": {
       "type": "file",
@@ -34,66 +34,66 @@
     "type": "directory",
     "decrement.bzkir": {
       "type": "file",
-      "size": 67,
-      "hash": "ba51a186ec5d195629fdc2ad4ccb05a1000718397fa8b5929342f48e4f92e6b6"
+      "size": 131,
+      "hash": "628ea3585b42f3cbda8d57b08cef66fbc9310088015a0d35a9e757acdc395133"
     },
     "decrement.zkir": {
       "type": "file",
-      "size": 838,
-      "hash": "f11ac31149498c354af98cfdedac3e18feb04c2f4a75b1bc9af6b5f9454393d9"
+      "size": 488,
+      "hash": "4b41a4f2fb566d97d7b2403cbffb85edb6eab2f2e2ca04ec04aa5ae471038576"
     },
     "increment.bzkir": {
       "type": "file",
-      "size": 66,
-      "hash": "6d94d849cd4d21df55c5129f93faef776fa50bf4602a798998d97604bd7e7732"
+      "size": 102,
+      "hash": "0af794d16527f17f6ec5953950a3208bfbdc97a2422bd0c0fae84bce21b60bc4"
     },
     "increment.zkir": {
       "type": "file",
-      "size": 823,
-      "hash": "06fab71ba3669e93c51deb75535cede4219d1e2a0209a7d4b9b17893e7132349"
+      "size": 362,
+      "hash": "b1487e292c5ea4c8bd8b50b3f46e238f5ad3f93b79854b99e0956bf6c400de7e"
     },
     "reset.bzkir": {
       "type": "file",
-      "size": 73,
-      "hash": "37a7785461d166c8e543a765be2cf74e3c5609413ce36ddeb23b5f5e9856c296"
+      "size": 126,
+      "hash": "7045114b9acf274ce6c33e635c0e6991af3ea1ce6ccbc288c201e11f442ffca8"
     },
     "reset.zkir": {
       "type": "file",
-      "size": 1003,
-      "hash": "20fd903ddb3c8f24fa7d05885c3c33a9a8f5a6ce8897bf3a630d3ca1bf3c8bf8"
+      "size": 394,
+      "hash": "183da5c1067150c8067193b6366fd28cef0046eecc676f08ff948508799a5d79"
     }
   },
   "keys": {
     "type": "directory",
     "decrement.prover": {
       "type": "file",
-      "size": 23152,
-      "hash": "076a9e3a0d696f337494a4bafdc1500b599eb5f32dc3b6a5bb2cf3ec25a37eaf"
+      "size": 58195,
+      "hash": "5ccf90ebf5612142bab8da31370ff883dcb65bcc5d5e8be65490e7c89316c7ab"
     },
     "decrement.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "4c8a5f487e927543cb9a1de7408674d4af301bfb5a21624aeac8ba30c75824f3"
+      "size": 1353,
+      "hash": "c1d0257fddf0245bcb67ce682f56a2192b2629412ba3652cf143d9068b9baa60"
     },
     "increment.prover": {
       "type": "file",
-      "size": 14104,
-      "hash": "0ed524e17465c615c91b4ff09a162d9f6637e84f40f9dee802a0f00a10f5f901"
+      "size": 58166,
+      "hash": "a189f1a8c08f51942ce570fc824104ba4a511049eab0dcc38998b7ac59abd22e"
     },
     "increment.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "d716883c5e0559ac659a426681ad15f0806fdf5502ee01329ff01e6d29618070"
+      "size": 1353,
+      "hash": "d4f0216437b05127e7d5feb65e84be0aeab2caa0ee3a1e751013068242b45b62"
     },
     "reset.prover": {
       "type": "file",
-      "size": 14105,
-      "hash": "48481ce1eec15e6b8d96037f646a9bdec6d5ad1f95f0862015542959131a299a"
+      "size": 58190,
+      "hash": "8c9af3d1d59ee595d8f5c251ccf5d0f98560d5fc7dfadbc462168f7da733ad4a"
     },
     "reset.verifier": {
       "type": "file",
-      "size": 1351,
-      "hash": "179ddb6838b25ecbe738853855f451794e13f517ffbf8123e263bd6aa96f53eb"
+      "size": 1353,
+      "hash": "224292ce6a49be56d95acd2cdc7b8598c6ab43b2065c420301f1ee9f62ef94ba"
     }
   }
 }
