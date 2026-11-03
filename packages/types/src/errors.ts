@@ -44,7 +44,12 @@ export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
  * The {@link PublicDataProvider} methods that report a contract state with
  * its era.
  */
-export type StateReadMethod = 'queryDeployContractState';
+export type StateReadMethod =
+  | 'queryContractState'
+  | 'queryZSwapAndContractState'
+  | 'queryDeployContractState'
+  | 'watchForContractState'
+  | 'contractStateObservable';
 
 /**
  * Every provider method at which a payload's ledger era is resolved or

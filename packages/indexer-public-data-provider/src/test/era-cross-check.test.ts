@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type ContractStateRead, InvalidSerializedStateError, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { assert, beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError } from '../errors';
+import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import {
   CONTRACT_AND_ZSWAP_STATE_QUERY,
@@ -66,6 +67,12 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
     () => undefined,
     (error: unknown) => error
   );
+
+const unknownRecordEraOf = (rejection: unknown) => {
+  assert(rejection instanceof UnknownRecordEraError);
+  expect(rejection.cause).toBeInstanceOf(UnknownProtocolVersionError);
+  return { method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef };
+};
 
 describe('queryContractState dates the state it reads', () => {
   let ledger8ParametersHex: string;
@@ -147,16 +154,23 @@ describe('queryContractState dates the state it reads', () => {
     expect(headRequestCount(query)).toBe(before + 1);
   });
 
-  test('serves an unpinned read whose dating block reports an unresolvable version', async () => {
-    // The version tag alone says who wrote the bytes: a version this client
-    // cannot place on the era timeline must not fail the read.
+  test.each([
+    { read: 'an unpinned', config: undefined },
+    { read: 'a pinned', config: { type: 'blockHeight', blockHeight: 7 } as const }
+  ])('refuses $read read whose dating block reports a version this client cannot place', async ({ config }) => {
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
         [CONTRACT_STATE_WITH_PARAMETERS_QUERY, stateResponse(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]
       ])
     );
 
-    await expect(buildProvider(query).queryContractState(ADDRESS)).resolves.not.toBeNull();
+    const rejection = await rejectionOf(buildProvider(query).queryContractState(ADDRESS, config));
+
+    expect(unknownRecordEraOf(rejection)).toEqual({
+      method: 'queryContractState',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
+      recordRef: ADDRESS
+    });
   });
 
   test('serves an unpinned read whose state is newer than the block dating it', async () => {
@@ -324,6 +338,20 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
     expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidSerializedStateError);
   });
 
+  test('refuses a triple whose block reports a version this client cannot place', async () => {
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]])
+    );
+
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+
+    expect(unknownRecordEraOf(rejection)).toEqual({
+      method: 'queryZSwapAndContractState',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
+      recordRef: ADDRESS
+    });
+  });
+
   test('refuses a pinned triple whose state is newer than the block dating it', async () => {
     const query = dispatchingQuery(
       new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), LEDGER8_ERA_PROTOCOL_VERSION)]])
@@ -387,5 +415,29 @@ describe('watchForContractState dates the state it reads', () => {
     const state = await provider.watchForContractState(ADDRESS);
 
     expect(stateHex(state)).toEqual({ version: 'v8', hex: hexState });
+  });
+
+  test('refuses a state whose dating block reports a version this client cannot place', async () => {
+    const watchQuery = vi.fn().mockReturnValue(
+      Rx.of({
+        data: {
+          block: { protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION },
+          contract: { state: mintLedger9ContractStateHex() }
+        },
+        dataState: 'complete',
+        loading: false,
+        networkStatus: 7,
+        partial: false
+      })
+    );
+    const provider = new IndexerPublicDataProvider(stubApolloHandle({ watchQuery }), 1000);
+
+    const rejection = await rejectionOf(provider.watchForContractState(ADDRESS));
+
+    expect(unknownRecordEraOf(rejection)).toEqual({
+      method: 'watchForContractState',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
+      recordRef: ADDRESS
+    });
   });
 });

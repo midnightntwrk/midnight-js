@@ -17,7 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { assert, describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError } from '../errors';
+import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { DEPLOY_CONTRACT_STATE_TX_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
@@ -27,7 +27,8 @@ import {
   mintLedger8ContractStateBytes,
   mintLedger8ContractStateHex,
   mintLedger9ContractStateBytes,
-  mintLedger9ContractStateHex
+  mintLedger9ContractStateHex,
+  UNRESOLVABLE_PROTOCOL_VERSION
 } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
@@ -100,6 +101,24 @@ describe('queryDeployContractState', () => {
       protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
       reportedVersion: 'v8',
       stateVersion: 'v9'
+    });
+  });
+
+  test('refuses a deploy state whose block reports a version this client cannot place', async () => {
+    const { provider } = providerAnswering(
+      answer('ContractDeploy', recordTransaction(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION))
+    );
+
+    const rejection = await provider.queryDeployContractState(ADDRESS).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    assert(rejection instanceof UnknownRecordEraError);
+    expect({ method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef }).toEqual({
+      method: 'queryDeployContractState',
+      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
+      recordRef: ADDRESS
     });
   });
 

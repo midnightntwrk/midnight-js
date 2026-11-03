@@ -25,7 +25,8 @@ import type {
   ContractStateRead,
   FinalizedTxRead,
   PublicStatesRead,
-  ReadMethod} from '@midnight-ntwrk/midnight-js-types';
+  ReadMethod,
+  StateReadMethod} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -52,7 +53,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
-import { DecoderEraUnsupportedError, IndexerDataError } from './errors';
+import { DecoderEraUnsupportedError, IndexerDataError, UnknownRecordEraError } from './errors';
 import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 /**
@@ -229,28 +230,6 @@ const isNewerEra = (left: LedgerEra, right: LedgerEra): boolean =>
   LEDGER_ERAS.indexOf(left) > LEDGER_ERAS.indexOf(right);
 
 /**
- * The era an indexer-reported `protocolVersion` resolves to, or `undefined`
- * when this client cannot place that integer on the era timeline at all.
- *
- * Unresolvable is a distinct answer from wrong, and the two must not be
- * conflated: the reported version is a cross-check on the version tag here, never
- * the authority on the bytes, so "I cannot place this integer" has to leave the
- * decode to the version tag rather than fail the caller's read. Only
- * {@link UnknownProtocolVersionError} is treated that way — anything else is a
- * real failure and propagates.
- */
-export const reportedEra = (protocolVersion: number): LedgerEra | undefined => {
-  try {
-    return protocolVersionToLedger(protocolVersion, 'read');
-  } catch (error) {
-    if (error instanceof UnknownProtocolVersionError) {
-      return undefined;
-    }
-    throw error;
-  }
-};
-
-/**
  * Whether the `protocolVersion` handed to {@link toContractStateRead} may be
  * trusted as an upper bound on the ledger version in the state's version tag.
  *
@@ -268,34 +247,31 @@ export const reportedEra = (protocolVersion: number): LedgerEra | undefined => {
  * of a fork, giving a newer version tag under an older block with nothing wrong
  * anywhere. Only the comparison is dropped; the version tag still decides
  * decodability, which is what actually keeps a wrong-era payload away from the
- * decoder.
+ * decoder. The `protocolVersion` must still resolve to an era: one this build
+ * cannot place is refused under `'skip'` as under `'check'`.
  */
 export type UpperBoundCheck = 'check' | 'skip';
 
-const assertStateNotNewerThanBlock = (
-  ledgerVersion: LedgerEra,
-  protocolVersion: number,
-  upperBound: UpperBoundCheck = 'check'
-): void => {
-  if (upperBound === 'skip') {
-    return;
-  }
-  const reportedVersion = reportedEra(protocolVersion);
-  if (reportedVersion !== undefined && isNewerEra(ledgerVersion, reportedVersion)) {
-    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, ledgerVersion);
-  }
-};
+/**
+ * The read a contract state is built for, so a refusal names the method and the contract.
+ */
+export interface StateReadContext {
+  readonly method: StateReadMethod;
+  readonly contractAddress: ContractAddress;
+  readonly upperBound?: UpperBoundCheck;
+}
 
-const assertWellFormedProtocolVersion = (protocolVersion: number): void => {
+const blockEra = (protocolVersion: number, context: StateReadContext): LedgerEra => {
   try {
-    protocolVersionToLedger(protocolVersion, 'read');
+    return protocolVersionToLedger(protocolVersion, 'read');
   } catch (error) {
-    if (error instanceof UnknownProtocolVersionError && error.reason === 'malformed') {
-      throw IndexerDataError.malformedProtocolVersion(protocolVersion, error);
-    }
     if (!(error instanceof UnknownProtocolVersionError)) {
       throw error;
     }
+    if (error.reason === 'malformed') {
+      throw IndexerDataError.malformedProtocolVersion(protocolVersion, error);
+    }
+    throw new UnknownRecordEraError(context.method, protocolVersion, { cause: error }, context.contractAddress);
   }
 };
 
@@ -309,18 +285,24 @@ const zswapBytes = (hexZswapState: string): Uint8Array => {
 const datedContractState = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: UpperBoundCheck }
+  context: StateReadContext
 ): SerializedContractState => {
-  assertWellFormedProtocolVersion(protocolVersion);
+  const blockVersion = blockEra(protocolVersion, context);
   const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
-  assertStateNotNewerThanBlock(ledgerVersion, protocolVersion, options?.upperBound);
+  if ((context.upperBound ?? 'check') === 'check' && isNewerEra(ledgerVersion, blockVersion)) {
+    throw IndexerDataError.eraDisagreement(protocolVersion, blockVersion, ledgerVersion);
+  }
   return SerializedContractState.fromBytes(ledgerVersion, raw);
 };
 
-const blockLedgerParameters = (hexParameters: string, protocolVersion: number): SerializedLedgerParameters => {
+const blockLedgerParameters = (
+  hexParameters: string,
+  protocolVersion: number,
+  context: StateReadContext
+): SerializedLedgerParameters => {
   const { raw, ledgerVersion } = parametersBytesAndLedgerVersion(hexParameters);
-  const blockVersion = reportedEra(protocolVersion);
-  if (blockVersion !== undefined && blockVersion !== ledgerVersion) {
+  const blockVersion = blockEra(protocolVersion, context);
+  if (blockVersion !== ledgerVersion) {
     throw IndexerDataError.parametersEraDisagreement(protocolVersion, blockVersion, ledgerVersion);
   }
   return SerializedLedgerParameters.fromBytes(ledgerVersion, raw);
@@ -346,23 +328,26 @@ const zswapChainState = (hexZswapState: string, era: LedgerEra): SerializedZswap
  * version tag newer than a checked dating block is {@link IndexerDataError.eraDisagreement}. A
  * `protocolVersion` that is not a non-negative integer is
  * {@link IndexerDataError.malformedProtocolVersion}, because it is copied onto the record; one this
- * build cannot place on the era timeline is kept.
+ * build cannot place on the era timeline is {@link UnknownRecordEraError}, as on a transaction read.
+ * Both are refused before the bytes are read.
  *
  * @param hexState The hex-encoded serialized contract state, as the indexer serves it.
  * @param protocolVersion The protocol-version integer of the block that dates the state.
- * @param options `upperBound` states whether `protocolVersion` certainly describes the same block as
- *                the bytes. Defaults to `'check'`. See {@link UpperBoundCheck}.
- * @throws {IndexerDataError} When the state is not hex-encoded, or is newer than a checked dating
- *   block.
+ * @param context The method and contract a refusal names. `upperBound` states whether
+ *                `protocolVersion` certainly describes the same block as the bytes. Defaults to
+ *                `'check'`. See {@link UpperBoundCheck}.
+ * @throws {UnknownRecordEraError} When `protocolVersion` maps to no ledger era this build knows.
+ * @throws {IndexerDataError} When `protocolVersion` is malformed, the state is not hex-encoded, or
+ *   the state is newer than a checked dating block.
  * @throws {TagParseError} When the state carries no supported version tag.
  */
 export const toContractStateRead = (
   hexState: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: UpperBoundCheck }
+  context: StateReadContext
 ): ContractStateRead => ({
   protocolVersion,
-  contractState: datedContractState(hexState, protocolVersion, options)
+  contractState: datedContractState(hexState, protocolVersion, context)
 });
 
 /**
@@ -372,18 +357,20 @@ export const toContractStateRead = (
  * The parameters and `protocolVersion` come from the same block, so parameters of another era than
  * that block are {@link IndexerDataError.parametersEraDisagreement}.
  *
- * @throws {IndexerDataError} When a payload is not hex-encoded, the state is newer than a checked
- *   dating block, or the parameters are of another era than their block.
+ * @throws {UnknownRecordEraError} When `protocolVersion` maps to no ledger era this build knows.
+ * @throws {IndexerDataError} When `protocolVersion` is malformed, a payload is not hex-encoded, the
+ *   state is newer than a checked dating block, or the parameters are of another era than their
+ *   block.
  * @throws {TagParseError} When a payload carries no supported version tag.
  */
 export const toContractStateAndParametersRead = (
   hexState: string,
   protocolVersion: number,
   hexLedgerParameters: string,
-  options?: { readonly upperBound?: UpperBoundCheck }
+  context: StateReadContext
 ): ContractStateAndParametersRead => ({
-  ...toContractStateRead(hexState, protocolVersion, options),
-  ledgerParameters: blockLedgerParameters(hexLedgerParameters, protocolVersion)
+  ...toContractStateRead(hexState, protocolVersion, context),
+  ledgerParameters: blockLedgerParameters(hexLedgerParameters, protocolVersion, context)
 });
 
 /**
@@ -403,13 +390,13 @@ export const toPublicStatesRead = (
   hexState: string,
   hexParameters: string,
   protocolVersion: number,
-  options?: { readonly upperBound?: UpperBoundCheck }
+  context: StateReadContext
 ): PublicStatesRead => {
   const { contractState, ledgerParameters } = toContractStateAndParametersRead(
     hexState,
     protocolVersion,
     hexParameters,
-    options
+    context
   );
   if (ledgerParameters.era !== contractState.era) {
     throw IndexerDataError.mixedEraPublicStates(contractState.era, ledgerParameters.era);

@@ -28,7 +28,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError } from '../errors';
+import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { CONTRACT_STATE_WITH_PARAMETERS_QUERY,HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
@@ -383,12 +383,16 @@ describe('queryContractState', () => {
       });
     });
 
-    test('tags the state by its version tag when the block reports a version this build cannot place', async () => {
-      const record = await providerServing(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION).queryContractState(
-        ADDRESS
-      );
+    test('refuses the state with UNKNOWN_RECORD_ERA when the block reports a version this build cannot place', async () => {
+      const rejection = await providerServing(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)
+        .queryContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
 
-      expect(record?.contractState.era).toBe('v9');
+      expect(rejection).toBeInstanceOf(UnknownRecordEraError);
+      expect((rejection as UnknownRecordEraError).code).toBe('MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA');
     });
 
     test('refuses a malformed protocol version rather than copying it onto the record', async () => {

@@ -20,7 +20,7 @@ import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
-import { IndexerDataError } from '../errors';
+import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import {
   BLOCK_QUERY,
@@ -207,16 +207,31 @@ describe('contractStateObservable — latest', () => {
     expect(rejection).toBeInstanceOf(TagParseError);
   });
 
-  test('tags a record by its version tag when its protocol version cannot be placed, and keeps going', async () => {
-    const hexState = mintLedger9ContractStateHex();
+  test('ends the stream on a record whose protocol version this client cannot place', async () => {
     const provider = buildProvider({
       watchQuery: dispatchingWatchQuery(latestPoll),
-      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [actionFrame(hexState, UNRESOLVABLE_PROTOCOL_VERSION, 10)])
+      subscribe: dispatchingSubscribe(CONTRACT_STATE_SUB, [
+        actionFrame(mintLedger9ContractStateHex(), LEDGER9_ERA_PROTOCOL_VERSION, 10),
+        actionFrame(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION, 11)
+      ])
     });
+    const seen: string[] = [];
 
-    const seen = await collect(provider.contractStateObservable(ADDRESS, { type: 'latest' }));
+    const rejection = await rejectionOf(
+      Rx.lastValueFrom(
+        provider
+          .contractStateObservable(ADDRESS, { type: 'latest' })
+          .pipe(Rx.tap(({ value }) => seen.push(value.contractState.era)))
+      )
+    );
 
-    expect(seen.map(({ value }) => value.contractState.era)).toEqual(['v9']);
+    expect(seen).toEqual(['v9']);
+    expect(rejection).toBeInstanceOf(UnknownRecordEraError);
+    expect({
+      method: (rejection as UnknownRecordEraError).method,
+      protocolVersion: (rejection as UnknownRecordEraError).protocolVersion,
+      recordRef: (rejection as UnknownRecordEraError).recordRef
+    }).toEqual({ method: 'contractStateObservable', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION, recordRef: ADDRESS });
   });
 
   test('ends the stream on a record whose version tag is newer than the block that dates it', async () => {

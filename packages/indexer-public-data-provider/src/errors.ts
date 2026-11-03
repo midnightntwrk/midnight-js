@@ -15,7 +15,7 @@
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadMethod } from '@midnight-ntwrk/midnight-js-types';
+import type { ReadMethod, StateReadMethod } from '@midnight-ntwrk/midnight-js-types';
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
@@ -450,7 +450,7 @@ export class UnknownRecordEraError extends IndexerError {
    * @param recordRef The record this happened on, when known.
    */
   constructor(
-    readonly method: ReadMethod,
+    readonly method: ReadMethod | StateReadMethod,
     readonly protocolVersion: number,
     options: { cause: unknown },
     readonly recordRef?: string

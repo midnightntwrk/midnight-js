@@ -364,6 +364,12 @@ export interface WatchOptions {
 
 /**
  * Interface for a public data service. This service retrieves public data from the blockchain.
+ *
+ * Every read that resolves a ledger era (the contract-state reads and the finalized-transaction
+ * reads) refuses a `protocolVersion` this build cannot place on the era timeline. Such an integer
+ * means the client is older than the network, so the read fails rather than decoding on a guess,
+ * whether the read is a query, a wait or a stream; a stream ends with the error. Implementations
+ * MUST follow this rule. {@link queryBlock} resolves no era and carries the integer through.
  */
 export interface PublicDataProvider {
   /**
@@ -383,6 +389,8 @@ export interface PublicDataProvider {
    * @throws When the state or the ledger parameters are not well-formed bytes of a known era, when
    * the state is newer than the block a pinned read names, or when the ledger parameters are of
    * another era than their block.
+   * @throws When the block that dates the state reports a `protocolVersion` this build cannot place
+   * on the era timeline. See {@link PublicDataProvider}.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -400,6 +408,8 @@ export interface PublicDataProvider {
    * fork it can come from another block than the ledger parameters and the zswap chain state.
    * Immediately returns null if no matching data is found.
    * @throws When the contract state and the ledger parameters were written by different eras.
+   * @throws When the block that dates the state reports a `protocolVersion` this build cannot place
+   * on the era timeline. See {@link PublicDataProvider}.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
    *               If `undefined` returns the latest states.
@@ -414,6 +424,8 @@ export interface PublicDataProvider {
    * or in the latest update's record when the contract has been updated, as bytes with the era
    * of the ledger that wrote them.
    * Immediately returns null if no matching data is found.
+   * @throws When the block that dates the state reports a `protocolVersion` this build cannot place
+   * on the era timeline. See {@link PublicDataProvider}.
    * @param contractAddress The address of the contract of interest.
    */
   queryDeployContractState(contractAddress: ContractAddress): Promise<ContractStateRead | null>;
@@ -432,6 +444,8 @@ export interface PublicDataProvider {
   /**
    * Retrieves the contract state of the contract with the given address, as bytes with the era
    * of the ledger that wrote them. Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
+   * @throws When the block that dates the state reports a `protocolVersion` this build cannot place
+   * on the era timeline. See {@link PublicDataProvider}.
    * @param contractAddress The address of the contract of interest.
    * @param options Bounds the wait; see {@link WatchOptions}.
    */
@@ -482,6 +496,8 @@ export interface PublicDataProvider {
    * needs them reads {@link queryContractState} with `{ type: 'blockHash', blockHash }` from the same
    * record.
    * Waits indefinitely for matching data to appear.
+   * The stream ends with an error on a record whose `protocolVersion` this build cannot place on the
+   * era timeline. See {@link PublicDataProvider}.
    * @param address The address of the contract of interest.
    * @param config The configuration for the observable.
    * @returns One {@link PositionedRecord} per value, carrying the block that
