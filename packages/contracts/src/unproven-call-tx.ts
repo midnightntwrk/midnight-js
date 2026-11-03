@@ -15,7 +15,7 @@
 
 import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type EncPublicKey, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -24,6 +24,7 @@ import { assertDefined, assertIsContractAddress, assertNever, assertValidMidnigh
 
 import type {
   Ledger9CallOptions,
+  Ledger9CallOptionsProviderDataDependencies,
   Ledger9CallOptionsWithArguments,
   Ledger9CallOptionsWithPrivateState,
   Ledger9CallOptionsWithProviderDataDependencies
@@ -32,6 +33,7 @@ import { type Ledger9ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import {
+  decodeLedger9InitialStates,
   decodeLedger9PublicStates,
   type Ledger9ContractStates,
   type Ledger9PublicStates,
@@ -84,51 +86,23 @@ export interface Ledger9CrossContractConfig {
   readonly moduleProvider?: ContractModuleProvider;
 }
 
-export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptionsWithProviderDataDependencies<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey,
-  crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
-
-export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptionsWithPrivateState<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey,
-  crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
-
 /**
- * Calls a circuit using the provided initial `states` and creates an unbalanced,
- * unproven, unsubmitted, call transaction.
- *
- * @param zkConfigProvider
- * @param options Configuration.
- * @param walletEncryptionPublicKey
- * @param crossContract Enables cross-contract calls; required for circuits that make them.
- * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
- *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
- *         ledger 8, before anything else.
- * @throws ConfigurationError If `options.config` is missing.
- * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
- *         whitespace.
- * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
- *
- * @remarks
- * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
- * the unproven transaction, ZK inputs/outputs, and next private state. See
- * that type for handling guidance before logging, serializing, or
- * transmitting the result.
+ * What a ledger 9 call needs besides its states: the circuit, its arguments, the caller's keys and
+ * the network settings.
  */
-export async function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+type Ledger9CallRequest<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Ledger9CallOptionsWithArguments<C, PCK> &
+  Pick<Ledger9CallOptionsProviderDataDependencies, 'coinPublicKey' | 'config'>;
+
+const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptions<C, PCK>,
+  options: Ledger9CallRequest<C, PCK>,
+  states: Ledger9PublicStates,
+  initialPrivateState: Contract.PrivateState<C> | undefined,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  await requireLedger9Contract(options.compiledContract, zkConfigProvider, 'createLedger9UnprovenCallTxFromInitialStates');
-  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters, config } = options;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> => {
+  const { compiledContract, contractAddress, coinPublicKey, config } = options;
+  const { contractState: initialContractState, zswapChainState: initialZswapChainState, ledgerParameters } = states;
   assertValidMidnightConfig(config, 'options.config');
   const { networkId } = config;
   assertIsContractAddress(contractAddress);
@@ -143,7 +117,6 @@ export async function createLedger9UnprovenCallTxFromInitialStates<C extends Con
   const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: options.coinPublicKey
   });
-  const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
 
   // When cross-contract calls are enabled, callee states are resolved lazily, on demand, from the
@@ -261,7 +234,62 @@ export async function createLedger9UnprovenCallTxFromInitialStates<C extends Con
     if (!error.cause.isCompactError) throw error;
     throw new ContractExecutionError(error.cause.message, { cause: error });
   }
+};
+
+export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptionsWithProviderDataDependencies<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+
+export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptionsWithPrivateState<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit using the provided initial `states` and creates an unbalanced,
+ * unproven, unsubmitted, call transaction.
+ *
+ * @param zkConfigProvider
+ * @param options Configuration.
+ * @param walletEncryptionPublicKey
+ * @param crossContract Enables cross-contract calls; required for circuits that make them.
+ * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
+ * @throws InvalidArgumentError If a state is not a serialized state, or the ledger parameters or the
+ *         zswap chain state were not written by the v9 ledger.
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` If the v8 ledger wrote
+ *         the contract state.
+ * @throws InvalidSerializedStateError If a state's bytes are not of its kind and era.
+ * @throws ConfigurationError If `options.config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ *
+ * @remarks
+ * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
+ * the unproven transaction, ZK inputs/outputs, and next private state. See
+ * that type for handling guidance before logging, serializing, or
+ * transmitting the result.
+ */
+export async function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptions<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
+  await requireLedger9Contract(options.compiledContract, zkConfigProvider, 'createLedger9UnprovenCallTxFromInitialStates');
+  const states = decodeLedger9InitialStates(options, options.contractAddress, 'createLedger9UnprovenCallTxFromInitialStates');
+  const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
+  return runLedger9Call(zkConfigProvider, options, states, initialPrivateState, walletEncryptionPublicKey, crossContract);
 }
+
 
 /**
  * Base type for configuration for a call transaction; identical to {@link Ledger9CallOptionsWithArguments}.
@@ -291,40 +319,21 @@ export type Ledger9CallTxOptions<C extends Contract.Any, PCK extends Contract.Pr
   | Ledger9CallTxOptionsBase<C, PCK>
   | Ledger9CallTxOptionsWithPrivateStateId<C, PCK>;
 
-const createCallOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+const createCallRequest = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   callTxOptions: Ledger9CallTxOptions<C, PCK>,
   coinPublicKey: CoinPublicKey,
-  ledgerParameters: LedgerParameters,
-  initialContractState: ContractState,
-  initialZswapChainState: ZswapChainState,
-  config: MidnightConfig,
-  initialPrivateState?: Contract.PrivateState<C>
-): Ledger9CallOptions<C, PCK> => {
-  const callOptionsBase = {
+  config: MidnightConfig
+): Ledger9CallRequest<C, PCK> => {
+  const request = {
     additionalCoinEncPublicKeyMappings: callTxOptions.additionalCoinEncPublicKeyMappings,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
-    circuitId: callTxOptions.circuitId
-  };
-  const callOptionsWithArguments =
-    'args' in callTxOptions
-      ? {
-          ...callOptionsBase,
-          args: callTxOptions.args
-        }
-      : callOptionsBase;
-  const callOptionsBaseWithProviderDataDependencies = {
-    ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, config.networkId),
-    initialContractState,
-    initialZswapChainState,
-    ledgerParameters,
+    circuitId: callTxOptions.circuitId,
+    ...('args' in callTxOptions ? { args: callTxOptions.args } : {}),
+    coinPublicKey,
     config
   };
-  const callOptions = initialPrivateState
-    ? { ...callOptionsBaseWithProviderDataDependencies, initialPrivateState }
-    : callOptionsBaseWithProviderDataDependencies;
-  return callOptions as Ledger9CallOptions<C, PCK>;
+  return request as Ledger9CallRequest<C, PCK>;
 };
 
 /**
@@ -351,7 +360,8 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
-  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  const cache = Transaction.scopeStateCacheOf(transactionContext);
+  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (cached) {
     return { states: cached.states as Ledger9ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
@@ -367,9 +377,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     ...decodeLedger9PublicStates(publicStates, options.contractAddress, 'createUnprovenCallTx'),
     privateState
   };
-  if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states, publicStates, identity, blockHash);
-  }
+  cache?.[Transaction.CacheStates](states, publicStates, identity, blockHash);
   return { states, blockHash };
 };
 
@@ -379,16 +387,15 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9PublicStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
-  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  const cache = Transaction.scopeStateCacheOf(transactionContext);
+  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (cached) {
     return { states: cached.states, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const read = await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash);
   const states = decodeLedger9PublicStates(read, options.contractAddress, 'createUnprovenCallTx');
-  if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
-  }
+  cache?.[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
   return { states, blockHash };
 };
 
@@ -485,40 +492,31 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
   // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const {
-      states: { zswapChainState, contractState, privateState, ledgerParameters },
-      blockHash
-    } = await getContractStates(providers, options, transactionContext);
-    return createLedger9UnprovenCallTxFromInitialStates(
+    const { states, blockHash } = await getContractStates(providers, options, transactionContext);
+    return runLedger9Call(
       providers.zkConfigProvider,
-      createCallOptions(
+      createCallRequest(
         options,
         parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-        ledgerParameters,
-        contractState,
-        zswapChainState,
-        providers.config,
-        privateState
+        providers.config
       ),
+      states,
+      states.privateState,
       providers.walletProvider.getEncryptionPublicKey(),
       { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
     );
   }
 
-  const {
-    states: { zswapChainState, contractState, ledgerParameters },
-    blockHash
-  } = await getContractPublicStates(providers, options, transactionContext);
-  return createLedger9UnprovenCallTxFromInitialStates(
+  const { states, blockHash } = await getContractPublicStates(providers, options, transactionContext);
+  return runLedger9Call(
     providers.zkConfigProvider,
-    createCallOptions(
+    createCallRequest(
       options,
       parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-      ledgerParameters,
-      contractState,
-      zswapChainState,
       providers.config
     ),
+    states,
+    undefined,
     providers.walletProvider.getEncryptionPublicKey(),
     { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
   );

@@ -20,6 +20,7 @@ import {
   protocolVersionToLedger,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
@@ -163,24 +164,43 @@ export const ownLedgerParameters = (value: unknown): SerializedLedgerParameters 
 export const ownZswapChainState = (value: unknown): SerializedZswapChainState | undefined =>
   ownSerialized(value, 'ZswapChainState', SerializedZswapChainState.fromBytes);
 
-const requireLedger9Read = (
-  read: ContractStateRead,
-  contractAddress: string,
-  operation: string,
-  servedBy: StateReadMethod
-): SerializedContractState => {
+/**
+ * The contract state of a read, rebuilt by this copy of the types package.
+ *
+ * @throws UnknownLedgerVersionError if the record carries no state of a known era, such as a state
+ *   in the shape of a pre-5.0.0 provider.
+ * @throws InvalidSerializedStateError if the state's bytes are not a contract state of its era.
+ */
+export const requireContractStateRead = (read: ContractStateRead, servedBy: StateReadMethod): SerializedContractState => {
   const contractState: unknown = read?.contractState;
   const state = ownContractState(contractState);
   if (state === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(contractState), servedBy);
   }
+  return state;
+};
+
+/**
+ * The contract state of a read, which a ledger 9 operation can run on only when the v9 ledger wrote
+ * it.
+ *
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote the state.
+ * @throws Everything {@link requireContractStateRead} raises.
+ */
+export const requireLedger9ContractStateRead = (
+  read: ContractStateRead,
+  contractAddress: string,
+  operation: string,
+  servedBy: StateReadMethod
+): SerializedContractState<'v9'> => {
+  const state = requireContractStateRead(read, servedBy);
   if (state.era === 'v8') {
     throw new EraMismatchError('ledger8-contract-state-unsupported', {
       detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
       contractAddress
     });
   }
-  return state;
+  return SerializedContractState.fromBytes('v9', state.serialize());
 };
 
 const requireLedger9Companion = <T extends { readonly era: LedgerVersion }>(
@@ -230,9 +250,29 @@ export const decodeLedger9ContractState = (
   operation: string,
   servedBy: StateReadMethod
 ): ContractState => {
-  const state = requireLedger9Read(read, contractAddress, operation, servedBy);
+  const state = requireLedger9ContractStateRead(read, contractAddress, operation, servedBy);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return state.deserialize({ v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) } });
+};
+
+const decodeLedger9States = (
+  contractState: SerializedContractState,
+  ledgerParameters: SerializedLedgerParameters,
+  zswapChainState: SerializedZswapChainState,
+  operation: string
+): Ledger9PublicStates => {
+  const caller = `${CONTRACTS_PACKAGE}:${operation}`;
+  return {
+    contractState: contractState.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) }
+    }),
+    ledgerParameters: ledgerParameters.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
+    }),
+    zswapChainState: zswapChainState.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
+    })
+  };
 };
 
 /**
@@ -251,20 +291,89 @@ export const decodeLedger9PublicStates = (
   contractAddress: string,
   operation: string
 ): Ledger9PublicStates => {
-  requireLedger9Read(read, contractAddress, operation, 'queryZSwapAndContractState');
+  const contractState = requireLedger9ContractStateRead(read, contractAddress, operation, 'queryZSwapAndContractState');
   const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', ownLedgerParameters, contractAddress);
   const zswapChainState = requireLedger9Companion(read, 'zswapChainState', ownZswapChainState, contractAddress);
-  const contractState = decodeLedger9ContractState(read, contractAddress, operation, 'queryZSwapAndContractState');
-  const caller = `${CONTRACTS_PACKAGE}:${operation}`;
-  return {
-    contractState,
-    ledgerParameters: ledgerParameters.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
-    }),
-    zswapChainState: zswapChainState.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
-    })
-  };
+  return decodeLedger9States(contractState, ledgerParameters, zswapChainState, operation);
+};
+
+/** The states a caller hands to a ledger 9 call, as the options name them. */
+export interface Ledger9InitialStates {
+  readonly initialContractState: SerializedContractState;
+  readonly initialZswapChainState: SerializedZswapChainState;
+  readonly ledgerParameters: SerializedLedgerParameters;
+}
+
+/**
+ * A state a caller passed in an option, rebuilt by this copy of the types package.
+ *
+ * @throws InvalidArgumentError if the value is not a serialized state that names a known era.
+ * @throws InvalidSerializedStateError if its bytes are not of the expected kind and era.
+ */
+export const requireStateOption = <T extends { readonly era: LedgerVersion }>(
+  value: unknown,
+  own: (value: unknown) => T | undefined,
+  option: string,
+  className: string
+): T => {
+  const state = own(value);
+  if (state === undefined) {
+    throw new InvalidArgumentError(
+      `options.${option} is not a ${className}. Pass the field of a PublicDataProvider read as it is, ` +
+        `or build one with ${className}.fromBytes(era, bytes).`
+    );
+  }
+  return state;
+};
+
+const requireLedger9OptionEra = <T extends { readonly era: LedgerVersion }>(state: T, option: keyof Ledger9InitialStates): T => {
+  if (state.era !== 'v9') {
+    throw new InvalidArgumentError(
+      `options.${option} was written by the ${state.era} ledger, but a ledger 9 call runs on v9 states. ` +
+        `Read the states of one block after the fork and pass them together.`
+    );
+  }
+  return state;
+};
+
+/**
+ * Decodes the states a caller passed to a ledger 9 call, with the framework's own runtime. A state
+ * made by a second installed copy of the types package is rebuilt from its bytes first.
+ *
+ * @throws InvalidArgumentError if a state is not a serialized state, or the ledger parameters or the
+ *   zswap chain state were not written by the v9 ledger.
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote
+ *   the contract state.
+ * @throws InvalidSerializedStateError if a state's bytes are not of its kind and era.
+ * @throws SerializedStateDecodeFailedError, or the decoder's own coded error, if the bytes after the
+ *   tag do not decode.
+ */
+export const decodeLedger9InitialStates = (
+  states: Ledger9InitialStates,
+  contractAddress: string,
+  operation: string
+): Ledger9PublicStates => {
+  const contractState = requireStateOption(
+    states.initialContractState,
+    ownContractState,
+    'initialContractState',
+    'SerializedContractState'
+  );
+  const zswapChainState = requireLedger9OptionEra(
+    requireStateOption(states.initialZswapChainState, ownZswapChainState, 'initialZswapChainState', 'SerializedZswapChainState'),
+    'initialZswapChainState'
+  );
+  const ledgerParameters = requireLedger9OptionEra(
+    requireStateOption(states.ledgerParameters, ownLedgerParameters, 'ledgerParameters', 'SerializedLedgerParameters'),
+    'ledgerParameters'
+  );
+  if (contractState.era === 'v8') {
+    throw new EraMismatchError('ledger8-contract-state-unsupported', {
+      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+      contractAddress
+    });
+  }
+  return decodeLedger9States(contractState, ledgerParameters, zswapChainState, operation);
 };
 
 const requireRecordHandle = <R extends FinalizedTxRead>(

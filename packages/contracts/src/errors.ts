@@ -15,7 +15,7 @@
 
 import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
@@ -23,7 +23,8 @@ import {
   type FinalizedTxRead,
   type PrivateStateId,
   type ProviderMethod,
-  SegmentFail
+  SegmentFail,
+  type SerializedContractState
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -1048,22 +1049,6 @@ export interface ContractTypeMismatch {
   readonly mismatched: AnyProvableCircuitId[];
 }
 
-const MAX_STATE_DESCRIPTION_CHARS = 2_000;
-
-const describeContractState = (contractState: ContractState): string => {
-  try {
-    const description = contractState.toString(true);
-    return description.length > MAX_STATE_DESCRIPTION_CHARS
-      ? `${description.slice(0, MAX_STATE_DESCRIPTION_CHARS)}… (truncated from ${description.length} characters; the full state is on 'error.contractState')`
-      : description;
-  } catch (error) {
-    // Deliberately narrow: this runs inside the error constructor, so letting a failure escape
-    // would destroy the ContractTypeError and take 'circuitIds' with it. The state itself stays
-    // reachable on 'error.contractState' for a caller that wants to inspect it.
-    return `<the deployed state could not be rendered: ${error instanceof Error ? error.message : String(error)}>`;
-  }
-};
-
 const describeMismatch = (mismatch: ContractTypeMismatch, contractAddress?: ContractAddress): string => {
   const subject = contractAddress === undefined ? 'The deployed contract' : `The contract at '${contractAddress}'`;
   const lines = [`${subject} is not the expected contract type.`];
@@ -1122,16 +1107,17 @@ export class ContractTypeError extends MidnightJsError {
   /**
    * Initializes a new {@link ContractTypeError}.
    *
-   * @param contractState The initial deployed contract state.
+   * @param contractState The deployed contract state that was checked, as bytes. Decode it with your
+   *   own runtime to inspect it: `error.contractState.deserialize({ v9: ContractState })`.
    * @param mismatch The circuits that failed to match, grouped by the condition that applied.
    * @param contractAddress The address the state was read from, when known.
    */
   constructor(
-    readonly contractState: ContractState,
+    readonly contractState: SerializedContractState,
     mismatch: ContractTypeMismatch,
     readonly contractAddress?: ContractAddress
   ) {
-    super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    super(describeMismatch(mismatch, contractAddress));
     this.name = 'ContractTypeError';
     this.missingCircuitIds = mismatch.missing;
     this.keylessCircuitIds = mismatch.keyless;

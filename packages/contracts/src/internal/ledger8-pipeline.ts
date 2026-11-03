@@ -956,13 +956,6 @@ export interface Ledger8DeployPipelineResult {
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
   readonly initialContractStateBytes: Uint8Array;
-  /**
-   * The same state as a LIVE handle, as the constructor built it. Published
-   * under ADR-0010 next to the bytes rather than instead of them: the handle is
-   * valid only while the retained runtime that produced it is loaded, and only
-   * the bytes survive a clone, a worker transfer or storage.
-   */
-  readonly initialContractState: Ledger8ConstructedState['contractState'];
   readonly nextPrivateState: unknown;
   /** The Zswap local state the constructor ended on. */
   readonly initialZswapState: ZswapLocalState;
@@ -1054,7 +1047,6 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
     unprovenTx: await sealComposed(request.era.version, deployed.txBytes),
     contractAddress: deployed.contractAddress,
     initialContractStateBytes: deployed.initialContractStateBytes,
-    initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
     guaranteedZswapOfferBytes,

@@ -38,22 +38,19 @@
  */
 
 import type {
-  ConstructorResultPojo,
   EncodedStateValue,
   LedgerVersion,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
 
 /**
- * The retained era's contract-state handle, and the state a retained-era
- * constructor builds.
+ * The retained era's contract-state handle.
  *
- * Both are DERIVED from the engine's own results rather than restated: they are
- * compact-js's ledger-8 types, and naming them structurally keeps this package
- * free of any dependency on the retained runtime.
+ * DERIVED from the engine's own results rather than restated: it is compact-js's
+ * ledger-8 type, and naming it structurally keeps this package free of any
+ * dependency on the retained runtime.
  */
 type Ledger8StateValue = TranscriptPojo['postContractState'];
-type Ledger8SerializableContractState = Pick<ConstructorResultPojo['contractState'], 'serialize'>;
 
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type {
@@ -71,6 +68,8 @@ import type {
   MidnightConfig,
   MidnightProviders,
   PrivateStateId,
+  SerializedContractState,
+  SerializedLedgerParameters,
   SubmittedCallTxBase,
   UnprovenTx,
   UnsubmittedTxDataBase,
@@ -314,14 +313,6 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8C
   | Ledger8CallTxOptionsWithPrivateStateId<C, PCK>;
 
 /**
- * A decoded ledger object of either era. Any runtime copy works: the framework reads only its
- * serialized bytes.
- */
-export interface Ledger8Serializable {
-  serialize(): Uint8Array;
-}
-
-/**
  * Configuration for building a retained-era call on states the caller read itself, with
  * `createLedger8UnprovenCallTxFromInitialStates`. Every era is stated, because after the fork a
  * retained-era contract's state may already be a ledger 9 one.
@@ -331,13 +322,13 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
     /** The era of the network head the transaction is built for. */
     readonly head: LedgerVersion;
     /**
-     * The contract state to run the circuit against, with the era of the ledger that wrote it:
-     * `'v8'` before the fork, `'v9'` after it. An indexer older than 4.4.0-rc.6 may still serve the
+     * The contract state to run the circuit against, as read: pass `read.contractState`. Its era is
+     * `'v8'` before the fork and `'v9'` after it. An indexer older than 4.4.0-rc.6 may still serve the
      * pre-fork `'v8'` bytes after the fork.
      */
-    readonly initialContractState: { readonly era: LedgerVersion; readonly state: Ledger8Serializable };
-    /** The ledger parameters of the block the state was read at, with the era that wrote them. */
-    readonly ledgerParameters: { readonly era: LedgerVersion; readonly parameters: Ledger8Serializable };
+    readonly initialContractState: SerializedContractState;
+    /** The ledger parameters of the block the state was read at, as read: pass `read.ledgerParameters`. */
+    readonly ledgerParameters: SerializedLedgerParameters;
     /** The Zswap public key of the current user. */
     readonly coinPublicKey: CoinPublicKey;
     /** Network and transaction settings, normally `providers.config`. */
@@ -818,7 +809,14 @@ export interface Ledger8FoundDeployTxData<C extends Ledger8Contract> {
    * whichever era was current at the time — narrow it with
    * `switch (deployTxData.public.era)`.
    */
-  readonly public: FinalizedTxRead & { readonly contractAddress: ContractAddress };
+  readonly public: FinalizedTxRead & {
+    readonly contractAddress: ContractAddress;
+    /**
+     * The deploy-time state of the contract, as `queryDeployContractState` serves it. Its `era`
+     * names the ledger that wrote these bytes. Decode it with your own runtime of that era.
+     */
+    readonly initialContractState: SerializedContractState;
+  };
   /**
    * What this device holds for the contract.
    *
@@ -884,9 +882,7 @@ export interface Ledger8UnsubmittedDeployTxData<C extends Ledger8Contract> {
     /** The address the composition minted, which no other deployment shares. */
     readonly contractAddress: ContractAddress;
     /** See {@link Ledger8FinalizedDeployTxData}. */
-    readonly initialContractState: Ledger8SerializableContractState;
-    /** The serialized state the contract address was derived from. */
-    readonly initialContractStateBytes: Uint8Array;
+    readonly initialContractState: SerializedContractState<'v8'>;
   };
   readonly private: {
     /**
@@ -928,18 +924,12 @@ export interface Ledger8FinalizedDeployTxData<C extends Ledger8Contract> extends
    */
   readonly public: Ledger8FoundDeployTxPublicData & {
     /**
-     * The state the contract was deployed with, as the LIVE handle the retained
-     * constructor built. See ADR-0010 for its lifetime, and prefer
-     * `initialContractStateBytes` for anything that has to outlive the runtime
-     * instance.
+     * The state the contract was deployed with: the bytes the contract address
+     * was derived from. A deploy mints a fresh nonce, so these bytes and that
+     * address belong to each other and to no other deployment. Decode it with
+     * your own ledger 8 runtime.
      */
-    readonly initialContractState: Ledger8SerializableContractState;
-    /**
-     * The same state, serialized — the bytes the contract address was derived
-     * from. A deploy mints a fresh nonce, so these bytes and that address belong
-     * to each other and to no other deployment.
-     */
-    readonly initialContractStateBytes: Uint8Array;
+    readonly initialContractState: SerializedContractState<'v8'>;
   };
   readonly private: {
     /**

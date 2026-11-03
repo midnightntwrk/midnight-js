@@ -27,10 +27,10 @@ import type { submitLedger9DeployTx } from '../submit-deploy-tx';
 import { type Ledger9FinalizedDeployTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
-  createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
+  createMockSerializedContractState,
   createMockSigningKey,
   createMockUnprovenTx
 } from './test-mocks';
@@ -65,7 +65,7 @@ describe('deployContract', () => {
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
-      initialContractState: createMockContractState()
+      initialContractState: createMockSerializedContractState()
     },
     private: {
       signingKey: createMockSigningKey(),

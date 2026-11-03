@@ -13,23 +13,30 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CircuitContext,
   type ContractModuleProvider,
-  type ContractState,
+  ContractState,
   type ContractStateProvider,
   StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type AnyProvableCircuitId, LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
+import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import {
+  type AnyProvableCircuitId,
+  InvalidSerializedStateError,
+  LedgerTransaction,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState
+} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
-import { GetCurrentStatesForIdentity, TransactionContextImpl } from '../internal/transaction';
+import { GetCurrentStatesForIdentity, MergeUnsubmittedCallTxData, TransactionContextImpl, TypeId } from '../internal/transaction';
 import { createUnprovenLedgerCallTx, makeCalleeStateResolver } from '../internal/utils';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -52,14 +59,6 @@ import {
   publicStatesReadStub
 } from './test-mocks';
 
-// The framework decodes the contract state with its own runtime; this stands in for the decoded object.
-const deserializeLedger9CompactContractState = vi.hoisted(() => vi.fn());
-
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof MidnightJsUtils>()),
-  deserializeLedger9CompactContractState
-}));
-
 vi.mock('../get-states', () => ({
   getStates: vi.fn(),
   getPublicStates: vi.fn()
@@ -67,8 +66,9 @@ vi.mock('../get-states', () => ({
 
 vi.mock('../internal/utils', async () => {
   const ledger = await import('@midnight-ntwrk/midnight-js-protocol/v9');
+  const runtime = await import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
   return {
-    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', StateValue.newNull(), ledger.Transaction.fromParts('undeployed')]),
+    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', new runtime.ContractState(), ledger.Transaction.fromParts('undeployed')]),
     createUnprovenLedgerCallTx: vi.fn(() => ledger.Transaction.fromParts('undeployed')),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
@@ -80,10 +80,18 @@ vi.mock('../internal/utils', async () => {
   };
 });
 
+const createContextRecordingCircuit = (seen: CircuitContext[]) => {
+  const circuit = createDefaultCircuit();
+  return vi.fn().mockImplementation((ctx: CircuitContext) => {
+    seen.push(ctx);
+    return circuit(ctx);
+  });
+};
+
 const BECH32M_UNDEPLOYED_COIN_PUBLIC_KEY = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
 
 describe('unproven-call-tx', () => {
-  let initialContractState: Promise<ContractState> | null = null;
+  let initialContractState: Promise<SerializedContractState<'v9'>> | null = null;
   const getInitialContractState = async () => {
     const _ = async () => {
       const deploy = await createUnprovenDeployTxFromVerifierKeys(
@@ -102,13 +110,12 @@ describe('unproven-call-tx', () => {
     return initialContractState || (initialContractState = _());
   }
 
-  const ledger9StatesDecodingTo = async (contractState: unknown) => {
-    deserializeLedger9CompactContractState.mockReturnValue(contractState);
-    return publicStatesRead({
+  const ledger9StatesDecodingTo = async (contractState: SerializedContractState) =>
+    publicStatesRead({
       zswapChainState: new ZswapChainState(),
-      ledgerParameters: LedgerParameters.initialParameters()
+      ledgerParameters: LedgerParameters.initialParameters(),
+      contractState
     });
-  };
 
   describe('createUnprovenCallTxFromInitialStates', () => {
     it('should create unproven call tx from initial states without private state', async () => {
@@ -203,14 +210,6 @@ describe('unproven-call-tx', () => {
     });
 
     const BLOCK_HASH = 'ab'.repeat(32);
-
-    const createContextRecordingCircuit = (seen: CircuitContext[]) => {
-      const circuit = createDefaultCircuit();
-      return vi.fn().mockImplementation((ctx: CircuitContext) => {
-        seen.push(ctx);
-        return circuit(ctx);
-      });
-    };
 
     it('pins the call to the block without enabling callees when no module provider is given', async () => {
       // Arrange
@@ -314,6 +313,133 @@ describe('unproven-call-tx', () => {
     });
   });
 
+  describe('createUnprovenCallTxFromInitialStates takes the states a read returns', () => {
+    const ledger9Read = async () =>
+      publicStatesRead({
+        zswapChainState: new ZswapChainState(),
+        ledgerParameters: LedgerParameters.initialParameters(),
+        contractState: await getInitialContractState()
+      });
+
+    const fromAnotherTypesCopy = (state: { readonly era: 'v8' | 'v9'; serialize(): Uint8Array }) => ({
+      era: state.era,
+      serialize: () => state.serialize()
+    });
+
+    const recordingContract = (seen: CircuitContext[]) =>
+      createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) });
+
+    const refusalOf = async (overrides: Record<string, unknown>, seen: CircuitContext[]): Promise<unknown> => {
+      const options = { ...createMockCallOptions({ compiledContract: recordingContract(seen) }), ...overrides };
+      try {
+        await Reflect.apply(createUnprovenCallTxFromInitialStates, undefined, [
+          createMockZKConfigProvider(),
+          options,
+          createMockEncryptionPublicKey()
+        ]);
+      } catch (error: unknown) {
+        return error;
+      }
+      throw new Error('expected the call to be refused');
+    };
+
+    it('runs the circuit on the fields a PublicDataProvider read returns, without the caller decoding them', async () => {
+      // Arrange
+      const seen: CircuitContext[] = [];
+      const read = await ledger9Read();
+      const options = createMockCallOptions({
+        compiledContract: recordingContract(seen),
+        initialContractState: read.contractState,
+        initialZswapChainState: read.zswapChainState,
+        ledgerParameters: read.ledgerParameters
+      });
+
+      // Act
+      const result = await createUnprovenCallTxFromInitialStates(createMockZKConfigProvider(), options, createMockEncryptionPublicKey());
+
+      // Assert
+      expect(seen).toHaveLength(1);
+      expect(result.private.unprovenTx.era).toBe('v9');
+    });
+
+    it('accepts states made by a second installed copy of the types package', async () => {
+      const read = await ledger9Read();
+      const options = {
+        ...createMockCallOptions(),
+        initialContractState: fromAnotherTypesCopy(read.contractState),
+        initialZswapChainState: fromAnotherTypesCopy(read.zswapChainState),
+        ledgerParameters: fromAnotherTypesCopy(read.ledgerParameters)
+      };
+
+      const result: unknown = await Reflect.apply(createUnprovenCallTxFromInitialStates, undefined, [
+        createMockZKConfigProvider(),
+        options,
+        createMockEncryptionPublicKey()
+      ]);
+
+      expect(result).toMatchObject({ era: 'v9', private: { unprovenTx: { era: 'v9' } } });
+    });
+
+    it('refuses a contract state written by the v8 ledger before running the circuit', async () => {
+      const seen: CircuitContext[] = [];
+      const v8State = SerializedContractState.fromBytes('v8', new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v8}:body`));
+
+      const error = await refusalOf({ initialContractState: v8State }, seen);
+
+      expect(error).toBeInstanceOf(EraMismatchError);
+      expect(error).toMatchObject({ reason: 'ledger8-contract-state-unsupported' });
+      expect(seen).toHaveLength(0);
+    });
+
+    it.each([
+      ['ledgerParameters', () => SerializedLedgerParameters.fromBytes('v8', new TextEncoder().encode(`${LEDGER_STATE_TAGS.LedgerParameters.v8}:body`))],
+      ['initialZswapChainState', () => SerializedZswapChainState.fromBytes('v8', new ZswapChainState().serialize())]
+    ] as const)('refuses %s written by the v8 ledger before running the circuit', async (field, make) => {
+      const seen: CircuitContext[] = [];
+
+      const error = await refusalOf({ [field]: make() }, seen);
+
+      expect(error).toBeInstanceOf(InvalidArgumentError);
+      expect(error).toMatchObject({ code: COMMON_ERROR_CODES.INVALID_ARGUMENT });
+      expect(String(error)).toContain(`options.${field}`);
+      expect(seen).toHaveLength(0);
+    });
+
+    it.each(['initialContractState', 'initialZswapChainState', 'ledgerParameters'])(
+      'refuses a decoded object in place of %s before running the circuit',
+      async (field) => {
+        const seen: CircuitContext[] = [];
+
+        const error = await refusalOf({ [field]: LedgerParameters.initialParameters() }, seen);
+
+        expect(error).toBeInstanceOf(InvalidArgumentError);
+        expect(String(error)).toContain(`options.${field}`);
+        expect(seen).toHaveLength(0);
+      }
+    );
+
+    it('refuses a state of another kind before running the circuit', async () => {
+      const seen: CircuitContext[] = [];
+      const read = await ledger9Read();
+
+      const error = await refusalOf({ initialContractState: read.ledgerParameters }, seen);
+
+      expect(error).toBeInstanceOf(InvalidSerializedStateError);
+      expect(error).toMatchObject({ kind: 'ContractState', reason: 'tag-mismatch' });
+      expect(seen).toHaveLength(0);
+    });
+
+    it('refuses forged bytes behind a valid tag with a coded error before running the circuit', async () => {
+      const seen: CircuitContext[] = [];
+      const forged = SerializedContractState.fromBytes('v9', new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v9}:forged`));
+
+      const error = await refusalOf({ initialContractState: forged }, seen);
+
+      expect(error).toBeInstanceOf(MidnightJsError);
+      expect(seen).toHaveLength(0);
+    });
+  });
+
   describe('createUnprovenCallTx', () => {
     it('decodes a Bech32m wallet key with providers.config.networkId', async () => {
       const { getPublicStates } = await import('../get-states');
@@ -356,6 +482,65 @@ describe('unproven-call-tx', () => {
       await createUnprovenCallTx(providers, options, transactionContext).catch(() => undefined);
 
       expect(lookUpScopeStates).toHaveBeenCalledTimes(1);
+    });
+
+    it('runs the second call of a scope on the state the first left, pinned to the block of the first read', async () => {
+      // Arrange
+      const { getPublicStates } = await import('../get-states');
+      vi.mocked(getPublicStates).mockClear();
+      vi.mocked(getPublicStates, { partial: true }).mockResolvedValue({
+        ...(await ledger9StatesDecodingTo(await getInitialContractState()))
+      });
+      const providers = { ...createMockProviders(), config: { networkId: 'preview', ttlSeconds: 60 } };
+      const seen: CircuitContext[] = [];
+      const options = {
+        compiledContract: createMockCompiledContract({ testCircuit: createContextRecordingCircuit(seen) }),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+      const scope = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(providers, undefined);
+      const runningState = StateValue.newArray();
+
+      // Act
+      const first = await createUnprovenCallTx(providers, options, scope);
+      scope[MergeUnsubmittedCallTxData]('testCircuit', { ...first, public: { ...first.public, nextContractState: runningState } });
+      await createUnprovenCallTx(providers, options, scope);
+
+      // Assert
+      expect(seen).toHaveLength(2);
+      const stateSeenBySecondCall = Object.values(seen[1]!.queryContexts)[0]!.state.state;
+      expect(stateSeenBySecondCall.encode()).toEqual(runningState.encode());
+      expect(seen[1]!.callContext.parentBlockHash).toBe(seen[0]!.callContext.parentBlockHash);
+      expect(getPublicStates).toHaveBeenCalledTimes(1);
+      expect(providers.publicDataProvider.queryBlock).toHaveBeenCalledTimes(1);
+      const current = scope.getCurrentStates();
+      expect(current?.contractState.deserialize({ v9: ContractState }).data.state.encode()).toEqual(runningState.encode());
+    });
+
+    it('refuses a transaction context that no scope made, before reading chain state', async () => {
+      const providers = { ...createMockProviders(), config: { networkId: 'preview', ttlSeconds: 60 } };
+      const scopeContext = new TransactionContextImpl<Contract.Any, AnyProvableCircuitId>(providers, undefined);
+      const handMade = {
+        [TypeId]: scopeContext[TypeId],
+        getAdditionalMappings: () => undefined,
+        getCurrentStates: () => undefined,
+        getLastUnsubmittedCallTxDataToTransact: () => undefined
+      };
+      const options = {
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      const rejection: unknown = await Reflect.apply(createUnprovenCallTx, undefined, [providers, options, handMade]).catch(
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(String(rejection)).toContain('withContractScopedTransaction');
+      expect(providers.publicDataProvider.queryBlock).not.toHaveBeenCalled();
     });
 
     it('refuses a missing providers.config before reading chain state', async () => {

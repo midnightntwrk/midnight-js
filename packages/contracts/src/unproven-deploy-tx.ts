@@ -24,6 +24,7 @@ import {
   makeLedger9ContractExecutableRuntime,
   type MidnightConfig,
   type PrivateStateId,
+  SerializedContractState,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -183,7 +184,7 @@ export async function createLedger9UnprovenDeployTxFromVerifierKeys<C extends Co
       era: 'v9',
       public: {
         contractAddress,
-        initialContractState
+        initialContractState: SerializedContractState.fromBytes('v9', initialContractState.serialize())
       },
       private: {
         // Compact.js returns the maintenance-authority key as a structured `SigningKey` ({ tag, value }),

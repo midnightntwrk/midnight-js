@@ -89,7 +89,10 @@ describe('findDeployedContract', () => {
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
     assert(result.deployTxData.public.era === 'v9');
-    expect(result.deployTxData.public.initialContractState).toBe(contractState);
+    expect(result.deployTxData.public.initialContractState.era).toBe('v9');
+    expect(result.deployTxData.public.initialContractState.serialize()).toEqual(
+      contractStateReadStub('v9').contractState.serialize()
+    );
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
     expect(result.contractMaintenanceTx).toBeDefined();
@@ -197,18 +200,31 @@ describe('findDeployedContract', () => {
       expect(result.deployTxData.public.era).toBe('v8');
       expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
       expect(result.deployTxData.public.txId).toBe(ledger8DeployRecord.txId);
-      expect(result.deployTxData.public).not.toHaveProperty('initialContractState');
       expect(result.callTx).toBeDefined();
       expect(result.circuitMaintenanceTx).toBeDefined();
       expect(result.contractMaintenanceTx).toBeDefined();
     });
 
-    it('never reads the deploy-time state, which this era cannot decode', async () => {
-      await findDeployedContract(providers, { compiledContract, contractAddress });
+    it('reports the deploy-time state as served, as bytes the caller decodes', async () => {
+      const deployState = contractStateReadStub('v8');
+      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(deployState);
 
-      expect(providers.publicDataProvider.queryDeployContractState).not.toHaveBeenCalled();
-      expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      assert(result.deployTxData.public.era === 'v8');
+      expect(result.deployTxData.public.initialContractState.era).toBe('v8');
+      expect(result.deployTxData.public.initialContractState.serialize()).toEqual(deployState.contractState.serialize());
+      expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
       expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+    });
+
+    it('reports a deploy-time state a later update wrote in the v9 ledger with its own era', async () => {
+      vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractStateReadStub('v9'));
+
+      const result = await findDeployedContract(providers, { compiledContract, contractAddress });
+
+      assert(result.deployTxData.public.era === 'v8');
+      expect(result.deployTxData.public.initialContractState.era).toBe('v9');
     });
 
     it('samples and stores a signing key when none is stored, exactly as for a current-era deploy', async () => {

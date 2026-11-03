@@ -57,7 +57,6 @@ import {
   type PublicDataProvider,
   type ReadMethod,
   SerializedContractState,
-  SerializedLedgerParameters,
   SucceedEntirely,
   type TransactionProviders,
   type UnprovenTx,
@@ -102,6 +101,10 @@ import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
   type HeadVersionSource,
+  ownContractState,
+  ownLedgerParameters,
+  requireContractStateRead,
+  requireStateOption,
   requireTaggedRecord,
   type ResolvedOperationEra,
   resolveOperationEra
@@ -126,6 +129,7 @@ import {
   requireLedger8SigningKey,
   toStoredLedger8SigningKey
 } from './ledger8-signing-key';
+import { requireDeployedContract } from './required-reads';
 import { diagnosedSubmit } from './stale-head';
 import { atProviderMethod, proveBalanceSubmit } from './submit-payload';
 import { createEncryptionPublicKeyResolver } from './utils';
@@ -337,6 +341,8 @@ export interface Ledger8FindRequest {
 /** The result of attaching to an already-deployed retained-era contract. */
 export interface Ledger8FoundState {
   readonly deployTxData: FinalizedTxRead;
+  /** The deploy-time state of the contract, as `queryDeployContractState` serves it. */
+  readonly initialContractState: SerializedContractState;
 }
 
 /**
@@ -417,12 +423,15 @@ export const findLedger8Contract = async (
   // in whichever era was current THEN, so either variant is a legitimate answer
   // here and there is no era to compare against. The current era's path narrows
   // to v9 at this same read because v9 is its only legitimate answer.
-  return {
-    deployTxData: requireTaggedRecord(
-      await providers.publicDataProvider.watchForDeployTxData(request.contractAddress),
-      'watchForDeployTxData'
-    )
-  };
+  const deployTxData = requireTaggedRecord(
+    await providers.publicDataProvider.watchForDeployTxData(request.contractAddress),
+    'watchForDeployTxData'
+  );
+  const deployState = requireDeployedContract(
+    await providers.publicDataProvider.queryDeployContractState(request.contractAddress),
+    request.contractAddress
+  );
+  return { deployTxData, initialContractState: requireContractStateRead(deployState, 'queryDeployContractState') };
 };
 
 /**
@@ -799,8 +808,8 @@ export const buildLedger8CallTx = async (
  * @returns The execution data of the call.
  * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
  * circuit, or `options.config` is invalid.
- * @throws UnknownLedgerVersionError if `options.head`, `options.initialContractState.era` or
- * `options.ledgerParameters.era` names no ledger era.
+ * @throws UnknownLedgerVersionError if `options.head` names no ledger era.
+ * @throws InvalidArgumentError if a state is not a serialized state.
  * @throws InvalidArgumentError if the state was written by a later ledger than `options.head`.
  * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
  * @throws Everything {@link composeLedger8Call} raises.
@@ -810,13 +819,25 @@ export const buildLedger8CallTxFromStates = async (
   options: AnyLedger8CallOptionsWithInitialStates,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<AnyLedger8UnsubmittedCallTxData> => {
-  const { head, initialContractState, ledgerParameters } = options;
+  const { head } = options;
   assertIsContractAddress(options.contractAddress);
   if (!Object.hasOwn(options.compiledContract.provableCircuits, options.circuitId)) {
     throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
   }
   assertValidMidnightConfig(options.config, 'options.config');
   assertEraCompatible('v8', head, 'call');
+  const initialContractState = requireStateOption(
+    options.initialContractState,
+    ownContractState,
+    'options.initialContractState',
+    'SerializedContractState'
+  );
+  const ledgerParameters = requireStateOption(
+    options.ledgerParameters,
+    ownLedgerParameters,
+    'options.ledgerParameters',
+    'SerializedLedgerParameters'
+  );
   if (LEDGER_VERSIONS.indexOf(initialContractState.era) > LEDGER_VERSIONS.indexOf(head)) {
     throw new InvalidArgumentError(
       `options.initialContractState was written by the '${initialContractState.era}' ledger, but options.head ` +
@@ -825,10 +846,7 @@ export const buildLedger8CallTxFromStates = async (
     );
   }
 
-  const state: Ledger8SnapshotBytes = {
-    raw: SerializedContractState.fromBytes(initialContractState.era, initialContractState.state.serialize()).serialize(),
-    ledgerParameters: SerializedLedgerParameters.fromBytes(ledgerParameters.era, ledgerParameters.parameters.serialize())
-  };
+  const state: Ledger8SnapshotBytes = { raw: initialContractState.serialize(), ledgerParameters };
   const { networkId } = options.config;
   const [era, engine, retainedEra] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);
   const localVerifierKey = await zkConfigProvider.getVerifierKey(options.circuitId);
@@ -1140,8 +1158,7 @@ export const toLedger8UnsubmittedDeployTxData = (deploy: Ledger8DeployPipelineRe
   era: 'v8',
   public: {
     contractAddress: deploy.contractAddress,
-    initialContractState: deploy.initialContractState,
-    initialContractStateBytes: deploy.initialContractStateBytes
+    initialContractState: SerializedContractState.fromBytes('v8', deploy.initialContractStateBytes)
   },
   private: {
     signingKey: toStoredLedger8SigningKey(deploy.signingKey),
@@ -1282,8 +1299,7 @@ export const deployLedger8Contract = async (
     public: {
       ...deployTxData,
       contractAddress: deploy.contractAddress,
-      initialContractState: deploy.initialContractState,
-      initialContractStateBytes: deploy.initialContractStateBytes
+      initialContractState: SerializedContractState.fromBytes('v8', deploy.initialContractStateBytes)
     },
     private: {
       signingKey,

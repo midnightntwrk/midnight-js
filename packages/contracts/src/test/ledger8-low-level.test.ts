@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
@@ -24,7 +26,8 @@ import {
   createMockCompiledContract,
   createMockContractAddress,
   createMockEncryptionPublicKey,
-  createMockProviders
+  createMockProviders,
+  createMockSerializedContractState
 } from './test-mocks';
 
 type Providers = ReturnType<typeof createMockProviders>;
@@ -52,8 +55,8 @@ const LEDGER8_FUNCTIONS: readonly (readonly [string, (providers: Providers) => P
         {
           ...ledger9CallOptions(),
           head: 'v9',
-          initialContractState: { era: 'v9', state: { serialize: () => new Uint8Array() } },
-          ledgerParameters: { era: 'v9', parameters: { serialize: () => new Uint8Array() } },
+          initialContractState: createMockSerializedContractState(),
+          ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
           coinPublicKey: createMockCoinPublicKey(),
           config: providers.config
         },

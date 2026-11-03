@@ -19,7 +19,6 @@ import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midn
 import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import type { Ledger9ContractStates, Ledger9PublicStates } from './internal/era';
 import * as Internal from './internal/transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from './tx-model';
 
@@ -40,15 +39,6 @@ export interface Ledger9TransactionContext<
     callData: Ledger9UnsubmittedCallTxData<C, PCK>,
     privateStateId?: PrivateStateId
   ) => void;
-  readonly [Internal.CacheStates]: (
-    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
-    read: PublicStatesRead,
-    identity: Internal.CachedStateIdentity,
-    blockHash: string
-  ) => void;
-  readonly [Internal.GetCurrentStatesForIdentity]: (
-    identity: Internal.CachedStateIdentity
-  ) => Internal.PinnedContractStates<Contract.PrivateState<C>> | undefined;
 
   /**
    * Gets the additional scoped {@link CoinPublicKey} to {@link EncPublicKey} mappings.

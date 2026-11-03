@@ -29,7 +29,7 @@ import {
   sampleEncryptionPublicKey,
   type ShieldedCoinInfo,
   type TokenType,
-  type ZswapChainState,
+  ZswapChainState,
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
@@ -38,7 +38,7 @@ import {
   assert as compactAssert,
   ChargedState,
   CompactError,
-  type ContractState,
+  ContractState,
   emptyZswapLocalState,
   finalizeCallProofData,  type Op,
   QueryContext,
@@ -333,11 +333,20 @@ export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntir
   protocolVersion: 1_000_000
 });
 
+const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
+
+/**
+ * A v9 contract state whose bytes are only its version tag. For a test that never decodes it, or
+ * that mocks the runtime.
+ */
+export const createMockSerializedContractState = (): SerializedContractState<'v9'> =>
+  SerializedContractState.fromBytes('v9', tagOnly(LEDGER_STATE_TAGS.ContractState.v9));
+
 export const createMockUnprovenDeployTxData = (overrides: Partial<Ledger9UnsubmittedDeployTxData<Contract.Any>> = {}): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
-    initialContractState: createMockContractState()
+    initialContractState: createMockSerializedContractState()
   },
   private: {
     unprovenTx: createMockUnprovenTx(),
@@ -422,9 +431,9 @@ export const createMockCallOptions = (overrides: Partial<Ledger9CallOptions<Cont
   args: [] as never[],
   contractAddress: createMockContractAddress(),
   coinPublicKey: createMockCoinPublicKey(),
-  initialContractState: createMockContractState(),
-  initialZswapChainState: {} as ZswapChainState,
-  ledgerParameters: LedgerParameters.initialParameters(),
+  initialContractState: SerializedContractState.fromBytes('v9', new ContractState().serialize()),
+  initialZswapChainState: SerializedZswapChainState.fromBytes('v9', new ZswapChainState().serialize()),
+  ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
   config: MOCK_CONFIG,
   ...overrides
 });
@@ -483,7 +492,6 @@ export const contractStateAndParametersRead = (
   ledgerParameters: SerializedLedgerParameters.fromBytes(ledgerVersionOfLedgerParameters(ledgerParameters), ledgerParameters)
 });
 
-const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
 
 /**
  * A contract-state record whose bytes are only the version tag of `version`. For a test that mocks
@@ -506,15 +514,20 @@ export const contractStateAndParametersReadStub = (
 type Serializable = { serialize(): Uint8Array };
 
 /**
- * The record a `PublicDataProvider` serves for v9 public states built in a test. The contract state
- * is only its version tag: a test that reads it back mocks the framework's contract-state decoder.
+ * The record a `PublicDataProvider` serves for v9 public states built in a test. Without a contract
+ * state the record carries one that is only its version tag: a test that reads it back mocks the
+ * framework's contract-state decoder.
  */
 export const publicStatesRead = (
-  states: { readonly zswapChainState: Serializable; readonly ledgerParameters: Serializable },
+  states: {
+    readonly zswapChainState: Serializable;
+    readonly ledgerParameters: Serializable;
+    readonly contractState?: SerializedContractState;
+  },
   protocolVersion = 2_000_000
 ): PublicStatesRead => ({
   protocolVersion,
-  contractState: contractStateReadStub('v9').contractState,
+  contractState: states.contractState ?? contractStateReadStub('v9').contractState,
   zswapChainState: SerializedZswapChainState.fromBytes('v9', states.zswapChainState.serialize()),
   ledgerParameters: SerializedLedgerParameters.fromBytes('v9', states.ledgerParameters.serialize())
 });
