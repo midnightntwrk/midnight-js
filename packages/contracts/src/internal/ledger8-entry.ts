@@ -250,9 +250,10 @@ export function assertLedger8TransactionProviders<P extends object>(
   providers: P,
   functionName: string
 ): asserts providers is P & Pick<Ledger8EntryProviders, 'publicDataProvider' | 'proofProvider' | 'midnightProvider'> {
-  const missing = (['publicDataProvider', 'proofProvider', 'midnightProvider'] as const).filter(
-    (name) => Reflect.get(providers, name) === undefined
-  );
+  const missing = (['publicDataProvider', 'proofProvider', 'midnightProvider'] as const).filter((name) => {
+    const provider: unknown = Reflect.get(providers, name);
+    return provider === undefined || provider === null;
+  });
   if (missing.length > 0) {
     throw new InvalidArgumentError(
       `${functionName} was given a ledger 8 contract without ${missing.map((name) => `'${name}'`).join(', ')}. ` +

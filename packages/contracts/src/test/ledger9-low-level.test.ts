@@ -117,6 +117,22 @@ describe('the unprefixed low-level routers', () => {
       expect(full.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
     }
   );
+
+  it.each(ROUTERS_NEEDING_TRANSACTION_PROVIDERS)(
+    '%s refuses a ledger 8 contract whose transaction providers are null',
+    async (name, route) => {
+      const full = ledger8Providers();
+
+      // @ts-expect-error - a JavaScript caller can pass the transaction providers as null
+      const rejection = await route({ ...full, proofProvider: null, midnightProvider: null }).catch(
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect((rejection as InvalidArgumentError).message).toContain(`${name} was given a ledger 8 contract without 'proofProvider', 'midnightProvider'`);
+      expect(full.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    }
+  );
 });
 
 describe('the Ledger9 low-level functions accept only a contract whose artifacts declare ledger 9', () => {
