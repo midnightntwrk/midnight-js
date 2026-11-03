@@ -41,7 +41,7 @@ import {
   type Ledger9CircuitMaintenanceTxInterfaces,
   type Ledger9ContractMaintenanceTxInterface} from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
-import { decodeLedger9ContractState, isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import { decodeLedger9ContractState, requireTaggedRecord, resolveEraRequest } from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   fromStoredLedger8SigningKey,
@@ -422,6 +422,133 @@ export interface Ledger9FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: Ledger9ContractMaintenanceTxInterface;
 }
 
+const ledger8FindFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: AnyLedger8FindDeployedContractOptions
+): Promise<AnyLedger8FoundContract> => {
+  const found = await findLedger8Contract(providers, {
+    contract: options.compiledContract,
+    contractAddress: options.contractAddress,
+    // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+    // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+    // what this costs and why both eras pay it.
+    circuitIds: Object.keys(options.compiledContract.provableCircuits)
+  });
+  // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
+  // providers and is a pure READ path -- widening it to write would put the one storage decision
+  // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
+  // so both eras reach the same rule from this file.
+  //
+  // AFTER the attach, for the order the current-era path below uses: a state seeded for a contract
+  // whose verifier keys turn out not to match would outlive a find that failed.
+  //
+  // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
+  // namespaces every private-state entry by the address last named and refuses a `get` or a
+  // `set` before any has been named, so the write below would otherwise either throw or land
+  // under whichever contract the process touched last -- and a later call, which names this
+  // address itself, would read its own key, find nothing, and report nothing.
+  //
+  // The signing-key calls further down need NONE of that: both take the address as an argument.
+  // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
+  // many words that it does not require `setContractAddress` first, and the level-backed provider
+  // keys those entries by the argument.
+  providers.privateStateProvider.setContractAddress(options.contractAddress);
+  // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
+  // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
+  // refusal arrives at ATTACH time rather than at the first call.
+  //
+  // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
+  // implementation signature has already widened the retained options to
+  // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
+  // overloads above are what type the caller.
+  const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
+    providers.privateStateProvider,
+    options
+  );
+  const signingKey = await setOrGetLedger8SigningKey(
+    providers.privateStateProvider,
+    options.contractAddress,
+    options.signingKey,
+    providers.loggerProvider
+  );
+  return {
+    era: 'v8',
+    compiledContract: options.compiledContract,
+    contractAddress: options.contractAddress,
+    deployTxData: {
+      era: 'v8',
+      public: { ...found.deployTxData, contractAddress: options.contractAddress },
+      private: { signingKey, initialPrivateState }
+    },
+    // Built AFTER the attach has checked every declared circuit's key, so a
+    // handle a caller receives is one whose circuits the chain can serve.
+    callTx: createLedger8CircuitCallTxInterface(
+      providers,
+      options.compiledContract,
+      options.contractAddress,
+      options.privateStateId
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, options.contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, options.contractAddress)
+  };
+};
+
+const ledger9FindFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9FindDeployedContractOptions<C>
+): Promise<Ledger9FoundContract<C>> => {
+  const { compiledContract, contractAddress } = options;
+  assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
+
+  const deployRecord = requireTaggedRecord(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
+  const deployPublicData = await queryFoundDeployTxPublicData(
+    providers.publicDataProvider,
+    deployRecord,
+    contractAddress
+  );
+
+  const currentContractState = decodeLedger9ContractState(
+    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
+    contractAddress,
+    'findDeployedContract',
+    'queryContractState'
+  );
+
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
+    ContractExecutable.make(compiledContract).getProvableCircuitIds()
+  );
+  verifyContractState(verifierKeys, currentContractState, contractAddress);
+
+  const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
+  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
+
+  return {
+    era: 'v9',
+    compiledContract,
+    contractAddress,
+    deployTxData: {
+      era: 'v9',
+      private: {
+        signingKey,
+        initialPrivateState
+      },
+      public: deployPublicData
+    },
+    callTx: createCircuitCallTxInterface(
+      providers,
+      compiledContract,
+      contractAddress,
+      'privateStateId' in options ? options.privateStateId : undefined
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
+  };
+};
+
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
@@ -522,122 +649,16 @@ export async function findDeployedContract<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
   options: Ledger9FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<Ledger9FoundContract<C> | AnyLedger8FoundContract> {
-  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
-    const found = await findLedger8Contract(providers, {
-      contract: options.compiledContract,
-      contractAddress: options.contractAddress,
-      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
-      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
-      // what this costs and why both eras pay it.
-      circuitIds: Object.keys(options.compiledContract.provableCircuits)
-    });
-    // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
-    // providers and is a pure READ path -- widening it to write would put the one storage decision
-    // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
-    // so both eras reach the same rule from this file.
-    //
-    // AFTER the attach, for the order the current-era path below uses: a state seeded for a contract
-    // whose verifier keys turn out not to match would outlive a find that failed.
-    //
-    // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
-    // namespaces every private-state entry by the address last named and refuses a `get` or a
-    // `set` before any has been named, so the write below would otherwise either throw or land
-    // under whichever contract the process touched last -- and a later call, which names this
-    // address itself, would read its own key, find nothing, and report nothing.
-    //
-    // The signing-key calls further down need NONE of that: both take the address as an argument.
-    // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
-    // many words that it does not require `setContractAddress` first, and the level-backed provider
-    // keys those entries by the argument.
-    providers.privateStateProvider.setContractAddress(options.contractAddress);
-    // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
-    // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
-    // refusal arrives at ATTACH time rather than at the first call.
-    //
-    // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
-    // implementation signature has already widened the retained options to
-    // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
-    // overloads above are what type the caller.
-    const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
-      providers.privateStateProvider,
-      options
-    );
-    const signingKey = await setOrGetLedger8SigningKey(
-      providers.privateStateProvider,
-      options.contractAddress,
-      options.signingKey,
-      providers.loggerProvider
-    );
-    return {
-      era: 'v8',
-      compiledContract: options.compiledContract,
-      contractAddress: options.contractAddress,
-      deployTxData: {
-        era: 'v8',
-        public: { ...found.deployTxData, contractAddress: options.contractAddress },
-        private: { signingKey, initialPrivateState }
-      },
-      // Built AFTER the attach has checked every declared circuit's key, so a
-      // handle a caller receives is one whose circuits the chain can serve.
-      callTx: createLedger8CircuitCallTxInterface(
-        providers,
-        options.compiledContract,
-        options.contractAddress,
-        options.privateStateId
-      ),
-      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, options.contractAddress),
-      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, options.contractAddress)
-    };
+  const request = await resolveEraRequest<AnyLedger8FindDeployedContractOptions, Ledger9FindDeployedContractOptions<C>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
+    case 'v8':
+      return ledger8FindFlow(providers, request.options);
+    case 'v9':
+      return ledger9FindFlow(providers, request.options);
+    default:
+      return assertNever(request, 'findDeployedContract');
   }
-  const { compiledContract, contractAddress } = options;
-  assertIsContractAddress(contractAddress);
-  providers.privateStateProvider.setContractAddress(contractAddress);
-
-  const deployRecord = requireTaggedRecord(
-    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
-    'watchForDeployTxData'
-  );
-  const deployPublicData = await queryFoundDeployTxPublicData(
-    providers.publicDataProvider,
-    deployRecord,
-    contractAddress
-  );
-
-  const currentContractState = decodeLedger9ContractState(
-    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
-    contractAddress,
-    'findDeployedContract',
-    'queryContractState'
-  );
-
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
-    ContractExecutable.make(compiledContract).getProvableCircuitIds()
-  );
-  verifyContractState(verifierKeys, currentContractState, contractAddress);
-
-  const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
-  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
-
-  return {
-    era: 'v9',
-    compiledContract,
-    contractAddress,
-    deployTxData: {
-      era: 'v9',
-      private: {
-        signingKey,
-        initialPrivateState
-      },
-      public: deployPublicData
-    },
-    callTx: createCircuitCallTxInterface(
-      providers,
-      compiledContract,
-      contractAddress,
-      'privateStateId' in options ? options.privateStateId : undefined
-    ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
-  };
 }

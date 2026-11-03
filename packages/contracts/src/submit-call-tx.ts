@@ -16,12 +16,12 @@
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
-import { isLedger8Request, resolveArtifactEra } from './internal/era';
+import { resolveEraRequest } from './internal/era';
 import { submitLedger8CallTx, submitLedger8CallTxAsync, toLedger8CallEntryOptions } from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
@@ -59,6 +59,67 @@ import {
 export type Ledger9SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | Ledger9ContractProviders<C>
   | Ledger9SubmitTxProviders<C, PCK>;
+
+const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
+  options: AnyLedger8CallTxOptions,
+  transactionContext: Ledger9TransactionContext<C, PCK> | undefined
+): Promise<AnyLedger8FinalizedCallTxData> => {
+  // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
+  // that machinery merges live current-era transactions, and a retained-era
+  // call is composed and submitted on its own, so there is nothing for it to
+  // merge into. A `transactionContext` is therefore REFUSED on this path
+  // rather than ignored -- ignoring it submitted a transaction the caller
+  // believed had been batched with the rest of its scope. The retained-era
+  // overload declares no parameter for one, so this is reachable from
+  // JavaScript only.
+  Transaction.assertScopeAdmitsLedger8Call(options.circuitId, transactionContext, 'submitCallTx');
+
+  return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
+};
+
+const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
+  options: Ledger9CallTxOptions<C, PCK>,
+  transactionContext: Ledger9TransactionContext<C, PCK> | undefined
+): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK>> => {
+  assertIsContractAddress(options.contractAddress);
+  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
+    .getProvableCircuitIds()
+    .find((circuitId) => circuitId as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
+  if (declaredCircuitId === undefined) {
+    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
+  }
+
+  const hasPrivateStateProvider = 'privateStateProvider' in providers;
+  const hasPrivateStateId = 'privateStateId' in options;
+
+  if (hasPrivateStateId && !hasPrivateStateProvider) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+  }
+
+  const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
+    Transaction.mergeUnsubmittedCallTxData(
+      txCtx,
+      options.circuitId,
+      await createLedger9UnprovenCallTx(providers, options, txCtx),
+      hasPrivateStateId ? options.privateStateId : undefined
+    );
+  };
+
+  // Narrowed, not widened: the `privateStateId`-without-provider pairing was
+  // already refused above, and `MidnightProviders` is invariant in `PCK`, so
+  // the declared `Ledger9ContractProviders<C>` -- whose `PCK` defaults to the whole
+  // circuit-id union -- is not assignable to the one-circuit instantiation
+  // this scope needs. The value is the same object either way.
+  return transactionContext
+    ? Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn, transactionContext)
+    : Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn)
+};
 
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
@@ -171,20 +232,29 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
   assertValidMidnightConfig(providers.config);
-  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
-    // The retained-era pipeline runs OUTSIDE the scoped-transaction machinery:
-    // that machinery merges live current-era transactions, and a retained-era
-    // call is composed and submitted on its own, so there is nothing for it to
-    // merge into. A `transactionContext` is therefore REFUSED on this path
-    // rather than ignored -- ignoring it submitted a transaction the caller
-    // believed had been batched with the rest of its scope. The retained-era
-    // overload declares no parameter for one, so this is reachable from
-    // JavaScript only.
-    Transaction.assertScopeAdmitsLedger8Call(options.circuitId, transactionContext, 'submitCallTx');
-
-    return submitLedger8CallTx(providers, toLedger8CallEntryOptions(options));
+  const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
+    case 'v8':
+      return ledger8CallFlow(providers, request.options, transactionContext);
+    case 'v9':
+      return ledger9CallFlow(providers, request.options, transactionContext);
+    default:
+      return assertNever(request, 'submitCallTx');
   }
+}
+
+const ledger8CallAsyncFlow = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
+  options: AnyLedger8CallTxOptions
+): Promise<AnyLedger8SubmittedCallTx> => submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
+
+const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
+  options: Ledger9CallTxOptions<C, PCK>
+): Promise<Ledger9SubmittedCallTx<C, PCK>> => {
   assertIsContractAddress(options.contractAddress);
   const declaredCircuitId = ContractExecutable.make(options.compiledContract)
     .getProvableCircuitIds()
@@ -204,24 +274,20 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
-  const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
-    Transaction.mergeUnsubmittedCallTxData(
-      txCtx,
-      options.circuitId,
-      await createLedger9UnprovenCallTx(providers, options, txCtx),
-      hasPrivateStateId ? options.privateStateId : undefined
-    );
-  };
+  const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);
 
-  // Narrowed, not widened: the `privateStateId`-without-provider pairing was
-  // already refused above, and `MidnightProviders` is invariant in `PCK`, so
-  // the declared `Ledger9ContractProviders<C>` -- whose `PCK` defaults to the whole
-  // circuit-id union -- is not assignable to the one-circuit instantiation
-  // this scope needs. The value is the same object either way.
-  return transactionContext
-    ? Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn, transactionContext)
-    : Transaction.scoped(providers as Ledger9ContractProviders<C, PCK>, callTxFn)
-}
+  const txId = await submitLedger9PayloadAsync(providers, {
+    unprovenTx: unprovenCallTxData.private.unprovenTx,
+    circuitId: options.circuitId
+  });
+
+  return {
+    era: 'v9',
+    circuitId: options.circuitId,
+    txId,
+    callTxData: unprovenCallTxData
+  };
+};
 
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
@@ -347,40 +413,16 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<Ledger9SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
   assertValidMidnightConfig(providers.config);
-  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
-    return submitLedger8CallTxAsync(providers, toLedger8CallEntryOptions(options));
+  const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
+    case 'v8':
+      return ledger8CallAsyncFlow(providers, request.options);
+    case 'v9':
+      return ledger9CallAsyncFlow(providers, request.options);
+    default:
+      return assertNever(request, 'submitCallTxAsync');
   }
-  assertIsContractAddress(options.contractAddress);
-  const declaredCircuitId = ContractExecutable.make(options.compiledContract)
-    .getProvableCircuitIds()
-    .find((circuitId) => circuitId as unknown as PCK === options.circuitId); // eslint-disable-line no-restricted-syntax
-  if (declaredCircuitId === undefined) {
-    throw new InvalidArgumentError(`Circuit '${options.circuitId}' is undefined`);
-  }
-
-  const hasPrivateStateProvider = 'privateStateProvider' in providers;
-  const hasPrivateStateId = 'privateStateId' in options;
-
-  if (hasPrivateStateId && !hasPrivateStateProvider) {
-    throw new IncompleteCallTxPrivateStateConfig();
-  }
-
-  if (hasPrivateStateProvider) {
-    providers.privateStateProvider.setContractAddress(options.contractAddress);
-  }
-
-  const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);
-
-  const txId = await submitLedger9PayloadAsync(providers, {
-    unprovenTx: unprovenCallTxData.private.unprovenTx,
-    circuitId: options.circuitId
-  });
-
-  return {
-    era: 'v9',
-    circuitId: options.circuitId,
-    txId,
-    callTxData: unprovenCallTxData
-  };
 }

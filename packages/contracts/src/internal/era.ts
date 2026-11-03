@@ -709,6 +709,39 @@ export const resolveEraRequest = async <
   }
 };
 
+/** A governance router's contract, tagged with the era its artifacts declare. */
+export type ContractEraRequest<C> =
+  | { readonly era: 'v8'; readonly compiledContract: Ledger8Contract }
+  | { readonly era: 'v9'; readonly compiledContract: C };
+
+// Compile-time gate: a new ledger era must get a variant here, and through it a case in every governance router.
+type _EveryEraHasAContractRequest = Assert<
+  [LedgerVersion] extends [ContractEraRequest<unknown>['era']] ? true : false
+>;
+
+/**
+ * {@link resolveEraRequest} for a router that takes the contract as its own argument rather than on
+ * an options object: the governance functions.
+ *
+ * @param compiledContract The contract a router received.
+ * @param source The artifact runtime version source, normally `zkConfigProvider`.
+ * @returns The contract, tagged with its era.
+ * @throws The refusals of {@link resolveArtifactEra}.
+ */
+export const resolveContractEraRequest = async <C extends object>(
+  compiledContract: C | Ledger8Contract,
+  source: ArtifactRuntimeVersionSource
+): Promise<ContractEraRequest<C>> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  switch (era) {
+    case 'v8':
+    case 'v9':
+      return isLedger8Contract(compiledContract, era) ? { era: 'v8', compiledContract } : { era: 'v9', compiledContract };
+    default:
+      return assertNever(era, 'resolveContractEraRequest');
+  }
+};
+
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
  *
