@@ -19,6 +19,9 @@
  * `protocolVersionToLedger` (`../version.ts`) for how a raw `protocolVersion`
  * integer maps onto it.
  *
+ * compact-js names the same era by number: its `Ledger.Era['ledger']` (for
+ * example `executable.era.ledger`) is `8` for `'v8'` and `9` for `'v9'`.
+ *
  * @see {@link SharedTableDiscipline} for why the array is frozen.
  * @see {@link ModuleGraphAndLazyLoading} for why the constant is declared in
  * this leaf module and re-exported by `../version.ts`.

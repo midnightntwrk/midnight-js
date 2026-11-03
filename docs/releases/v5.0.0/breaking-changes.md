@@ -2,7 +2,7 @@
 
 v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
-> Sections 12, 14 to 17, 19, 20 and 23 show names that shipped only in 5.0.0 pre-releases. If you upgrade from v4, use section 25 for the final error names. [Section 25](#25-one-error-class-per-fault-1557) maps every one of them to its final class.
+> Sections 12, 14 to 17, 19, 20, 23 and 29 show names that shipped only in 5.0.0 pre-releases. If you upgrade from v4, use section 25 for the final error names. [Section 25](#25-one-error-class-per-fault-1557) maps every one of them to its final class.
 
 ---
 
@@ -1501,6 +1501,53 @@ class MyZkConfigProvider extends ZKConfigProvider<string> {
   }
 }
 ```
+
+## 29. The ledger era is named "era", and `LedgerEra` changed meaning (#1506)
+
+This section affects you only if you built against a `5.0.0` pre-release. The
+names below were never in a 4.x release. The sections above already use the new
+names.
+
+Two names were in use for one thing: the type said "version" while the fields
+and functions around it said "era". The public API now says "era" everywhere.
+The values stay `'v8' | 'v9'`. There are no deprecated aliases.
+
+| Package | Before | After |
+|---|---|---|
+| `protocol` | `LedgerEra` (the object `loadLedgerEra` returns) | `LedgerEraFacade` |
+| `protocol` | `LedgerVersion` | `LedgerEra` |
+| `protocol` | `CurrentLedgerVersion` | `CurrentLedgerEra` |
+| `protocol` | `RetainedLedgerVersion` | `RetainedLedgerEra` |
+| `protocol` | `LEDGER_VERSIONS` | `LEDGER_ERAS` |
+| `protocol` | `CURRENT_LEDGER_VERSION` | `CURRENT_LEDGER_ERA` |
+| `protocol` | `RETAINED_LEDGER_VERSIONS` | `RETAINED_LEDGER_ERAS` |
+| `protocol` | `UnknownLedgerVersionError` | `UnknownLedgerEraError` |
+| `protocol` | `PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`) | `UNKNOWN_LEDGER_ERA` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`) |
+
+`LedgerEra`, `CurrentLedgerEra`, `LEDGER_ERAS`, `CURRENT_LEDGER_ERA`,
+`UnknownLedgerEraError` and `PROTOCOL_ERROR_CODES` are also on the
+`@midnight-ntwrk/midnight-js` barrel.
+
+**The error code string changed.** Code that compares `error.code` with the
+string `'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'` compiles but never matches.
+Compare with `PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA` instead.
+
+**`LedgerEra` changed meaning.** It was the object with `extractState`,
+`decodeContractState`, `composeCallTx` and `composeDeployTx`; it is now the
+string type `'v8' | 'v9'`. Old code does not fail with "cannot find name". It
+fails with an error such as
+`Property 'extractState' does not exist on type '"v8" | "v9"'`. Rename that
+type to `LedgerEraFacade`.
+
+Unchanged: the `version` fields (on `LedgerEraFacade` and on the protocol error
+classes), `requestedVersion` on `UnknownLedgerEraError`, the `version`
+discriminant of the payloads, the `Versioned*` types, `envelopeVersion`, and the
+functions `latestNetworkLedgerVersion`, `ledgerVersionOfContractState` and
+`ledgerVersionOfLedgerParameters`.
+
+compact-js names the same era by number. `Ledger.Era['ledger']` (for example
+`executable.era.ledger`) is `8` for `'v8'` and `9` for `'v9'`. compact-js
+exports no type for that number, and midnight-js needs no conversion from it.
 
 ## Non-breaking additions worth noting
 
