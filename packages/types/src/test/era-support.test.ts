@@ -13,28 +13,28 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it } from 'vitest';
 
 import { assertProvidersSupportEra, type TransactionProviders } from '../era-support';
 import { PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
 
-const declaring = (...eras: LedgerVersion[]) => ({ supportedEras: Object.freeze(eras) });
+const declaring = (...eras: LedgerEra[]) => ({ supportedEras: Object.freeze(eras) });
 
 const providers = (
-  proof: readonly LedgerVersion[],
-  wallet: readonly LedgerVersion[],
-  midnight: readonly LedgerVersion[]
+  proof: readonly LedgerEra[],
+  wallet: readonly LedgerEra[],
+  midnight: readonly LedgerEra[]
 ): TransactionProviders => ({
   proofProvider: declaring(...proof),
   walletProvider: declaring(...wallet),
   midnightProvider: declaring(...midnight)
 });
 
-const BOTH: readonly LedgerVersion[] = ['v8', 'v9'];
-const CURRENT_ONLY: readonly LedgerVersion[] = ['v9'];
+const BOTH: readonly LedgerEra[] = ['v8', 'v9'];
+const CURRENT_ONLY: readonly LedgerEra[] = ['v9'];
 
-const refusalFrom = (era: LedgerVersion, set: TransactionProviders): ProviderEraUnsupportedError => {
+const refusalFrom = (era: LedgerEra, set: TransactionProviders): ProviderEraUnsupportedError => {
   try {
     assertProvidersSupportEra(era, set);
   } catch (error) {

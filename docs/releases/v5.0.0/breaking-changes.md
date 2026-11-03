@@ -368,7 +368,7 @@ returns a `TransactionId`.
 ledger eras that instance serves:
 
 ```typescript
-readonly supportedEras: readonly LedgerVersion[];
+readonly supportedEras: readonly LedgerEra[];
 ```
 
 It is REQUIRED, so an implementation that does not have it stops compiling. The
@@ -468,8 +468,8 @@ subpath: `deserializeTransactionAtStage`, `isFrameworkLedgerTransaction`,
 with `InvalidArgumentError`, an argument that is not an unproven v8 transaction
 of the framework's ledger copy.
 
-**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
-`CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
+**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_ERA`,
+`CurrentLedgerEra`, `RETAINED_LEDGER_ERAS`, `RetainedLedgerEra`, on
 the barrel and on the `./version` subpath.
 
 **`@midnight-ntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
@@ -628,7 +628,7 @@ names.
 | `contracts` | the `seam` field on `EraInvariantViolationError` and `ProviderFailedError` | `method` |
 | `indexer-public-data-provider` | the `seam` field on `DecoderEraUnsupportedError` and `UnknownRecordEraError`, and the `seam` key in a decode failure's `context.details` | `method` |
 | `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
-| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
+| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerEra`, `CurrentLedgerEra`, `CURRENT_LEDGER_ERA` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
 | `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
 | `types` | `V8PayloadUnsupportedError` | removed in [18](#18-transactions-are-handles-1533) |
 | `types` | `PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`) | removed in [18](#18-transactions-are-handles-1533) |
@@ -812,7 +812,7 @@ names.
 "Current" and "retained" change meaning at every hard fork: today "current" is
 ledger 9 and "retained" is ledger 8. A name whose code is bound to one ledger
 now says which ledger (ADR 0018). Names that follow the era on purpose keep
-"current" / "retained": `CurrentLedgerVersion` and `RetainedLedgerVersion`. The
+"current" / "retained": `CurrentLedgerEra` and `RetainedLedgerEra`. The
 handler types that used to follow the era are gone: the factories now take one
 handler per ledger era ([18](#18-transactions-are-handles-1533)).
 The README glossary defines both terms.
@@ -1324,14 +1324,14 @@ the message. An exhaustive `switch` on `reason` must handle the seven new member
 `PublicStatesEraMismatchError`, `IndexerInconsistencyError` and `TransactionEraMismatchError` are
 unchanged.
 
-### 25c. No era: `UnknownLedgerVersionError`
+### 25c. No era: `UnknownLedgerEraError`
 
 | Before | After |
 |---|---|
-| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerVersionError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`, ENVIRONMENT). `requestedVersion` is `undefined` when the value carried no era |
+| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerEraError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`, ENVIRONMENT). `requestedVersion` is `undefined` when the value carried no era |
 | `Ledger8ValueUnsupportedError` (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`), `requireLedger9` | removed. Narrow with `switch (value.era)`, closed by `assertNever` |
 
-`UnknownLedgerVersionError.requestedVersion` is now `string | undefined`, and the constructor takes the
+`UnknownLedgerEraError.requestedVersion` is now `string | undefined`, and the constructor takes the
 raw value. A value that is an object or a function is reported by its kind, `'object'` or `'function'`.
 
 The category changes from USAGE to ENVIRONMENT. A value with no era means a provider written for a

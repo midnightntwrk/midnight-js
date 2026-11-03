@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 
 export const LEDGER_STATE_KINDS = Object.freeze(['ContractState', 'LedgerParameters', 'ZswapChainState'] as const);
 
@@ -37,15 +37,15 @@ export const LEDGER_STATE_TAGS = Object.freeze({
     v8: 'midnight:zswap-ledger-state[v5]',
     v9: 'midnight:zswap-ledger-state[v5]'
   })
-} as const satisfies Record<StateKind, Record<LedgerVersion, string>>);
+} as const satisfies Record<StateKind, Record<LedgerEra, string>>);
 
 type Assert<T extends true> = T;
-type TagOf<K extends StateKind, E extends LedgerVersion> = (typeof LEDGER_STATE_TAGS)[K][E];
+type TagOf<K extends StateKind, E extends LedgerEra> = (typeof LEDGER_STATE_TAGS)[K][E];
 type ErasSharingATag<K extends StateKind> = {
-  [A in LedgerVersion]: { [B in Exclude<LedgerVersion, A>]: TagOf<K, A> extends TagOf<K, B> ? A : never }[Exclude<
-    LedgerVersion,
+  [A in LedgerEra]: { [B in Exclude<LedgerEra, A>]: TagOf<K, A> extends TagOf<K, B> ? A : never }[Exclude<
+    LedgerEra,
     A
   >];
-}[LedgerVersion];
+}[LedgerEra];
 type _ContractStateTagsAreDistinct = Assert<[ErasSharingATag<'ContractState'>] extends [never] ? true : false>;
 type _LedgerParametersTagsAreDistinct = Assert<[ErasSharingATag<'LedgerParameters'>] extends [never] ? true : false>;

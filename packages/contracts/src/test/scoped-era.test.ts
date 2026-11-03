@@ -31,7 +31,7 @@
  * to be atomic about.
  */
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
@@ -75,7 +75,7 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,
-    loadLedgerEra: (version: LedgerVersion): Promise<Protocol.LedgerEraFacade> => {
+    loadLedgerEra: (version: LedgerEra): Promise<Protocol.LedgerEraFacade> => {
       eraLoadSlot.acquired.push(version);
       if (version === eraLoadSlot.rejectFor) {
         // The shape the real acquisition fails with when the lazy subpath
@@ -439,11 +439,11 @@ describe('per-scope era resolution', () => {
 
 describe('the era ordering the forward-only fork guard relies on', () => {
   it('lists the ledger eras in chronological order, oldest first', () => {
-    // `LEDGER_VERSIONS` is declared oldest-first, and the fork-crossing guard
+    // `LEDGER_ERAS` is declared oldest-first, and the fork-crossing guard
     // reads a MOVE DIRECTION off that index. Pinned here rather than assumed:
     // an era inserted out of order would silently invert the direction test and
     // make a backwards head move read as a forward fork crossing.
-    expect([...LEDGER_VERSIONS]).toEqual<readonly LedgerVersion[]>(['v8', 'v9']);
+    expect([...LEDGER_ERAS]).toEqual<readonly LedgerEra[]>(['v8', 'v9']);
   });
 });
 

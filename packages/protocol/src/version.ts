@@ -15,26 +15,26 @@
 
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
 import {
-  CURRENT_LEDGER_VERSION,
-  type CurrentLedgerVersion,
-  LEDGER_VERSIONS,
-  type LedgerVersion,
-  RETAINED_LEDGER_VERSIONS,
-  type RetainedLedgerVersion
+  CURRENT_LEDGER_ERA,
+  type CurrentLedgerEra,
+  LEDGER_ERAS,
+  type LedgerEra,
+  RETAINED_LEDGER_ERAS,
+  type RetainedLedgerEra
 } from './lib/shared/ledger-version';
 import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, type StateKind } from './lib/shared/state-tags';
 
 // Declared in the leaf module `./lib/shared/ledger-version`, which `./errors`
 // can also reach; declaring it here would close a cycle — see ModuleGraphAndLazyLoading.
 export {
-  CURRENT_LEDGER_VERSION,
-  type CurrentLedgerVersion,
+  CURRENT_LEDGER_ERA,
+  type CurrentLedgerEra,
+  LEDGER_ERAS,
   LEDGER_STATE_KINDS,
   LEDGER_STATE_TAGS,
-  LEDGER_VERSIONS,
-  type LedgerVersion,
-  RETAINED_LEDGER_VERSIONS,
-  type RetainedLedgerVersion,
+  type LedgerEra,
+  RETAINED_LEDGER_ERAS,
+  type RetainedLedgerEra,
   type StateKind
 };
 
@@ -63,17 +63,17 @@ export interface VersionedRecord {
 const NODE_MAJOR_TO_LEDGER = {
   1: 'v8',
   2: 'v9'
-} as const satisfies Partial<Record<number, LedgerVersion>>;
+} as const satisfies Partial<Record<number, LedgerEra>>;
 
-type MappedLedgerVersion = (typeof NODE_MAJOR_TO_LEDGER)[keyof typeof NODE_MAJOR_TO_LEDGER];
+type MappedLedgerEra = (typeof NODE_MAJOR_TO_LEDGER)[keyof typeof NODE_MAJOR_TO_LEDGER];
 
-// Compile-time-only guard: a `LEDGER_VERSIONS` member with no entry in the
+// Compile-time-only guard: a `LEDGER_ERAS` member with no entry in the
 // table above stops this assignment type-checking — see SharedTableDiscipline.
-const _allLedgerVersionsAreMapped: Exclude<LedgerVersion, MappedLedgerVersion> extends never ? true : never = true;
+const _allLedgerErasAreMapped: Exclude<LedgerEra, MappedLedgerEra> extends never ? true : never = true;
 
 // A typed function rather than a direct index, because a `number`-typed key
 // cannot index the `as const` table — see SharedTableDiscipline.
-const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number): LedgerVersion | undefined =>
+const lookupLedger = (table: Partial<Record<number, LedgerEra>>, key: number): LedgerEra | undefined =>
   table[key];
 
 /**
@@ -95,7 +95,7 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
  * @param protocolVersion The raw integer read from an indexer or node record.
  * @param path Which resolution path a failure is attributed to. Defaults to
  * `'construct'`, and decides which of the two error codes a failure carries.
- * @returns The {@link LedgerVersion} that `protocolVersion`'s node major maps
+ * @returns The {@link LedgerEra} that `protocolVersion`'s node major maps
  * onto.
  * @throws {@link UnknownProtocolVersionError} with `reason: 'malformed'` when
  * `protocolVersion` is not a non-negative integer, and with `reason: 'unknown'`
@@ -105,7 +105,7 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
 export const protocolVersionToLedger = (
   protocolVersion: number,
   path: VersionResolutionPath = 'construct'
-): LedgerVersion => {
+): LedgerEra => {
   if (!Number.isInteger(protocolVersion) || protocolVersion < 0) {
     throw new UnknownProtocolVersionError(protocolVersion, path, 'malformed');
   }
@@ -121,16 +121,16 @@ export const protocolVersionToLedger = (
  * transaction or block already read from the indexer).
  *
  * @param record Any object carrying a raw `protocolVersion` integer field.
- * @returns The {@link LedgerVersion} that record was written under.
+ * @returns The {@link LedgerEra} that record was written under.
  * @throws {@link UnknownProtocolVersionError} tagged with the `read` path, on
  * the same two conditions as {@link protocolVersionToLedger}.
  */
-export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
+export const versionOfRecord = (record: VersionedRecord): LedgerEra =>
   protocolVersionToLedger(record.protocolVersion, 'read');
 
 /**
  * Queries `source` for the network's latest protocol version and
- * resolves it to a {@link LedgerVersion}.
+ * resolves it to a {@link LedgerEra}.
  *
  * The source is expected to read the network on every call. This is the
  * construct path: the era being resolved is the one a transaction built now
@@ -140,10 +140,10 @@ export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
  * parameter is a structural type, so nothing here can enforce it. See ADR 0007.
  *
  * @param source The indexer or node client to ask for the latest version.
- * @returns A promise for the {@link LedgerVersion} of the network's latest block.
+ * @returns A promise for the {@link LedgerEra} of the network's latest block.
  * @throws {@link UnknownProtocolVersionError} tagged with the `construct`
  * path, on the same two conditions as {@link protocolVersionToLedger}. A
  * rejection from `source.queryLatestProtocolVersion()` propagates unchanged.
  */
-export const latestNetworkLedgerVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
+export const latestNetworkLedgerVersion = async (source: ProtocolVersionSource): Promise<LedgerEra> =>
   protocolVersionToLedger(await source.queryLatestProtocolVersion(), 'construct');

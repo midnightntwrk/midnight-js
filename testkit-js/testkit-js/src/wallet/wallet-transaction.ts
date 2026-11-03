@@ -17,7 +17,7 @@ import {
   deserializeTransactionAtStage,
   type LedgerTransactionTypes
 } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { ProtocolVersion, type WalletFacade, WalletTransaction } from '@midnightntwrk/wallet-sdk';
 // From the same copy `loadWalletLedger8()` loads at runtime.
 import type * as LedgerV8 from '@midnightntwrk/wallet-sdk/ledger/v8';
@@ -59,7 +59,7 @@ type Serializable = { readonly serialize: () => Uint8Array };
 
 type WalletDecoders = Readonly<Record<WalletStage, (bytes: Uint8Array) => Serializable>>;
 
-const walletDecoders: Readonly<Record<LedgerVersion, () => Promise<WalletDecoders>>> = Object.freeze({
+const walletDecoders: Readonly<Record<LedgerEra, () => Promise<WalletDecoders>>> = Object.freeze({
   v8: async () => {
     const { Transaction } = await loadWalletLedger8();
     return {
@@ -97,7 +97,7 @@ const activeEpoch = async (wallet: VersionedWallet): Promise<ProtocolVersion.Pro
  * framework's object is never passed to the SDK, whose ledger copy may be a
  * different WASM instance.
  */
-export const adoptInWallet = async <E extends LedgerVersion, S extends WalletStage>(
+export const adoptInWallet = async <E extends LedgerEra, S extends WalletStage>(
   wallet: VersionedWallet,
   era: E,
   stage: S,
@@ -113,7 +113,7 @@ export const adoptInWallet = async <E extends LedgerVersion, S extends WalletSta
  * The era is the one the transaction was handed over in, never re-derived from
  * the chain: a transaction does not change era while it is being balanced.
  */
-export const finalizedFromWallet = async <E extends LedgerVersion>(
+export const finalizedFromWallet = async <E extends LedgerEra>(
   wallet: VersionedWallet,
   era: E,
   handle: WalletTransaction<'Finalized'>

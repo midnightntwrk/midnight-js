@@ -14,7 +14,7 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -135,7 +135,7 @@ describe('LedgerTransaction.seal', () => {
     // @ts-expect-error 'v7' is not a ledger version
     const error = thrownBy(() => LedgerTransaction.seal('v7', 'Unproven', tx));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
     expect(error).toMatchObject({ requestedVersion: 'v7' });
   });
 
@@ -194,7 +194,7 @@ describe('LedgerTransaction.unwrap', () => {
       // @ts-expect-error the era is not a ledger version
       const error = thrownBy(() => LedgerTransaction.unwrap(handle, era));
 
-      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(error).toBeInstanceOf(UnknownLedgerEraError);
       expect(error).toMatchObject({ requestedVersion: era });
     }
   );

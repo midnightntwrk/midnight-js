@@ -45,7 +45,7 @@ import {
   type LedgerEraFacade,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
@@ -525,7 +525,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
         ledgerParameters: ledger9Parameters()
       }).catch((error: unknown) => error);
 
-      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
       expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
     });
 
@@ -602,7 +602,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
       expect(log).not.toContain('engine.executeCircuit');
     });
 
-    it('refuses a state whose era this build does not know as an unknown ledger version', async () => {
+    it('refuses a state whose era this build does not know as an unknown ledger era', async () => {
       const providers = postForkProviders(v6Envelope);
       const fromNewerTypesCopy = { era: 'v10', serialize: () => v6Envelope };
 
@@ -610,7 +610,7 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
         (error: unknown) => error
       );
 
-      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
       expect(rejection).toMatchObject({ requestedVersion: 'v10' });
       expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
     });

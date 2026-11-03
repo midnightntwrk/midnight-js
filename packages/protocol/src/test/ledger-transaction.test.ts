@@ -23,7 +23,7 @@ import {
   PayloadNotATransactionError,
   PROTOCOL_ERROR_CODES,
   TRANSACTION_TAG_PREFIX,
-  UnknownLedgerVersionError
+  UnknownLedgerEraError
 } from '../errors';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import {
@@ -204,11 +204,11 @@ describe('deserializeTransactionAtStage', () => {
 
   it('refuses an era that is not a ledger version', async () => {
     const rejection = await rejectionOf(
-      // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerVersion
+      // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerEra
       deserializeTransactionAtStage('v7', 'Unproven', ledger9Bytes.Unproven)
     );
 
-    expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
   });
 
   it('refuses a stage that is not a transaction stage', async () => {
@@ -233,8 +233,8 @@ describe('isFrameworkLedgerTransaction', () => {
   });
 
   it('refuses an era that is not a ledger version', () => {
-    // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerVersion
-    expect(() => isFrameworkLedgerTransaction('v7', {})).toThrow(UnknownLedgerVersionError);
+    // @ts-expect-error - the untyped-JS case: 'v7' is not a LedgerEra
+    expect(() => isFrameworkLedgerTransaction('v7', {})).toThrow(UnknownLedgerEraError);
   });
 
   it.each([

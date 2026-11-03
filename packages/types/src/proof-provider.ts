@@ -25,7 +25,7 @@ import {
   type SignatureEnabled,
   type Transaction
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
@@ -68,7 +68,7 @@ export interface ProofProvider {
    * claim — an era listed here but not served still fails at `proveTx`, just
    * later and after more work.
    */
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
 
   /**
    * Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
@@ -108,7 +108,7 @@ export interface ProofProvider {
  * `@midnight-ntwrk/midnight-js-protocol/transaction`.
  */
 export type ProofProviderHandlers = {
-  readonly [E in LedgerVersion]:
+  readonly [E in LedgerEra]:
     | ((tx: LedgerTransactionTypes[E]['Unproven'], config?: ProveTxConfig) => Promise<LedgerTransactionTypes[E]['Unbound']>)
     | undefined;
 };
@@ -142,7 +142,7 @@ export type ProofProviderHandlers = {
  */
 export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => {
   const served = readEraEntries('proveTx', handlers, 'handler');
-  const supportedEras = Object.freeze(LEDGER_VERSIONS.filter((era) => served[era] !== undefined));
+  const supportedEras = Object.freeze(LEDGER_ERAS.filter((era) => served[era] !== undefined));
   const route: Route<'Unproven', [ProveTxConfig?], TransactionsAt<'Unbound'>, UnboundTx> = {
     method: 'proveTx',
     stage: 'Unproven',

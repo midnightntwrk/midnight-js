@@ -14,7 +14,7 @@
  */
 
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_ERAS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { type Ledger9FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
@@ -130,7 +130,7 @@ describe('Indexer API', () => {
     expect(version).toEqual(payload.data.block.protocolVersion);
     // Resolving throws on a protocol version this client does not know, so
     // this also pins that the indexer's integer is one this client supports.
-    expect(LEDGER_VERSIONS).toContain(versionOfRecord({ protocolVersion: version }));
+    expect(LEDGER_ERAS).toContain(versionOfRecord({ protocolVersion: version }));
   });
 
   test('queryContractState - should return the exact state bytes the indexer serves, with the block ledger parameters, nothing decoded', async () => {

@@ -190,6 +190,6 @@ not run. Testkit only, and not on the path of any defect above.
 - `packages/protocol/docs/shared-table-discipline.md` — why a table indexed by a value must not
   resolve an unexpected key through `Object.prototype`, and why a tag table must not be copied.
   `LEDGER_STATE_TAGS` satisfies that by being keyed by kind and ERA, and searched rather than keyed
-  by tag and indexed, which also makes a new `LedgerVersion` with no tag a build failure.
+  by tag and indexed, which also makes a new `LedgerEra` with no tag a build failure.
 - `packages/protocol/docs/fail-closed-decoding.md` — what a decode guarantees once the era is settled
 - `packages/contracts/docs/keep-state-pipeline.md` — the retained-era read path

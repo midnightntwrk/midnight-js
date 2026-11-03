@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -109,16 +109,16 @@ describe('the era and verification-path errors a caller has to catch are reachab
   });
 
   it('retains the two eras on a head/state disagreement, so a caller can report which pair failed', () => {
-    const head: LedgerVersion = 'v9';
-    const stateEra: LedgerVersion = 'v8';
+    const head: LedgerEra = 'v9';
+    const stateEra: LedgerEra = 'v8';
 
     const mismatch = new NetworkVersionStateMismatchError(head, stateEra);
     const inconsistency = new IndexerInconsistencyError(head, stateEra);
 
     // Asserted on BOTH classes and in a fixed order: both constructors take two same-typed
-    // `LedgerVersion` parameters, so a swapped pair type-checks and would name the eras backwards.
-    expect([mismatch.networkVersion, mismatch.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
-    expect([inconsistency.networkVersion, inconsistency.stateEra]).toEqual<LedgerVersion[]>(['v9', 'v8']);
+    // `LedgerEra` parameters, so a swapped pair type-checks and would name the eras backwards.
+    expect([mismatch.networkVersion, mismatch.stateEra]).toEqual<LedgerEra[]>(['v9', 'v8']);
+    expect([inconsistency.networkVersion, inconsistency.stateEra]).toEqual<LedgerEra[]>(['v9', 'v8']);
   });
 
   it('names the refused entry point on both verifier-key failures', () => {

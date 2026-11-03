@@ -30,7 +30,7 @@ A wrong-era fault stays split by who is at fault:
 | `EraMismatchError` | USAGE | The caller passed a value of the wrong era. |
 | `EraInvariantViolationError` | INTERNAL | A provider or the framework broke the era rule. |
 | `PublicStatesEraMismatchError`, `IndexerInconsistencyError` | INTEGRITY | The data served does not agree with itself. |
-| `UnknownLedgerVersionError` | ENVIRONMENT | The provider or midnight-js is too old for the value. |
+| `UnknownLedgerEraError` | ENVIRONMENT | The provider or midnight-js is too old for the value. |
 
 ## One class to catch for a failed transaction
 
@@ -115,7 +115,7 @@ surface.
 
 Only parameters that are absent (`undefined` or `null`) are taken as unserved.
 Parameters served in a shape that is not a `SerializedLedgerParameters` are refused with
-`UnknownLedgerVersionError` instead, because the provider did serve something, in
+`UnknownLedgerEraError` instead, because the provider did serve something, in
 the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
 fault.
 
@@ -151,7 +151,7 @@ Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are
 still refused, with `InvalidSerializedStateError` (`tag-mismatch`). A state that is
 present but names no known era is not "missing": it is refused with
-`UnknownLedgerVersionError`. Its `requestedVersion` is `undefined` when the
+`UnknownLedgerEraError`. Its `requestedVersion` is `undefined` when the
 value carried no era at all, and the message points to an outdated provider. A
 state with a known era but no `serialize()` still gives `InvalidSerializedStateError`.
 

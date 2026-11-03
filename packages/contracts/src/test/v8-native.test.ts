@@ -40,7 +40,7 @@ import {
   loadLedger8Protocol,
   loadLedgerEra
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
@@ -925,7 +925,7 @@ describe('the retained-native pipeline (previous-toolchain contract, pre-fork he
     });
 
     it('refuses ledger parameters served in a shape that is not a SerializedLedgerParameters, rather than taking them as absent', async () => {
-      await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnknownLedgerVersionError);
+      await expect(snapshotWithParameters(retainedLedgerParameters)).rejects.toBeInstanceOf(UnknownLedgerEraError);
     });
 
     it('keeps the bytes of ledger parameters made by a second installed copy of the types package', async () => {
@@ -3485,7 +3485,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
     expect((caught as Ledger8UnconfirmedError).operation).toBe('deploy');
     expect((caught as Ledger8UnconfirmedError).signingKey).toEqual(SAMPLED_KEY);
-    expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(UnknownLedgerVersionError);
+    expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(UnknownLedgerEraError);
   });
 
   it('persists the signing key against the address it minted, in the shape the store takes', async () => {
@@ -3969,7 +3969,7 @@ describe('attaching to a retained-era contract already on chain', () => {
       .fn()
       .mockResolvedValue({ ...createMockFinalizedTxData(), era: version });
 
-    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UnknownLedgerVersionError);
+    await expect(findDeployedContract(providers, attachOptions())).rejects.toBeInstanceOf(UnknownLedgerEraError);
   });
 
   it('names the tag it actually received when it refuses one', async () => {
@@ -3980,8 +3980,8 @@ describe('attaching to a retained-era contract already on chain', () => {
 
     const caught = await findDeployedContract(providers, attachOptions()).catch((error: unknown) => error);
 
-    expect(caught).toBeInstanceOf(UnknownLedgerVersionError);
-    expect((caught as UnknownLedgerVersionError).requestedVersion).toBe('v10');
+    expect(caught).toBeInstanceOf(UnknownLedgerEraError);
+    expect((caught as UnknownLedgerEraError).requestedVersion).toBe('v10');
   });
 
   it('still accepts BOTH legitimate tags, which is what makes the refusal above about the shape', async () => {

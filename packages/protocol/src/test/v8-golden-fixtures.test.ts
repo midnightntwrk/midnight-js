@@ -21,7 +21,7 @@ import {
   Ledger8RuntimeInvalidError,
   PROTOCOL_ERROR_CODES,
   StateConversionFailedError,
-  UnknownLedgerVersionError
+  UnknownLedgerEraError
 } from '../errors';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from '../lib/era/envelope';
 import { structurallyEqual } from '../lib/v8/executable';
@@ -102,7 +102,7 @@ describe('the envelope reader refuses before it decodes', () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the caller this guards is an untyped JavaScript one
       extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v7' as any, ocrt3.ContractState)
-    ).toThrow(UnknownLedgerVersionError);
+    ).toThrow(UnknownLedgerEraError);
   });
 
   it('refuses a retained runtime that cannot deserialize, naming the missing binding', () => {

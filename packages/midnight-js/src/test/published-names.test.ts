@@ -23,7 +23,7 @@ const names = publishedNames(resolve(__dirname, '../..'));
 
 describe('published names', () => {
   it('reads every entry point the package publishes', () => {
-    expect(names).toContain('CURRENT_LEDGER_VERSION');
+    expect(names).toContain('CURRENT_LEDGER_ERA');
   });
 
   it('follow the naming rules of the public API', () => {

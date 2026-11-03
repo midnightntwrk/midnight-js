@@ -40,7 +40,7 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import type { LedgerVersion } from '../lib/shared/ledger-version';
+import type { LedgerEra } from '../lib/shared/ledger-version';
 
 /**
  * The tag both eras emit for a pre-proof Zswap offer. Measured by serializing
@@ -71,7 +71,7 @@ interface OfferLedger {
   readonly sampleEncryptionPublicKey: () => string;
 }
 
-const ERAS: Readonly<Record<LedgerVersion, OfferLedger>> = { v8: LedgerV8, v9: ledgerV9 };
+const ERAS: Readonly<Record<LedgerEra, OfferLedger>> = { v8: LedgerV8, v9: ledgerV9 };
 const ERA_NAMES = ['v8', 'v9'] as const;
 
 /** Serializes a single-output pre-proof offer on `era`. */

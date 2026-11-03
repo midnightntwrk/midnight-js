@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   isFrameworkLedgerTransaction,
   type LedgerTransactionTypes,
   type TransactionStage,
   transactionStageOf} from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import {
   ForeignLedgerTransactionError,
@@ -31,10 +31,10 @@ import { describeArgument } from './internal/read-era-entries';
 
 export type { LedgerTransactionTypes, TransactionStage };
 
-type EraSlot<S extends TransactionStage> = { readonly [E in LedgerVersion]?: LedgerTransactionTypes[E][S] };
+type EraSlot<S extends TransactionStage> = { readonly [E in LedgerEra]?: LedgerTransactionTypes[E][S] };
 
 const slotOf: {
-  readonly [E in LedgerVersion]: <S extends TransactionStage>(tx: LedgerTransactionTypes[E][S]) => EraSlot<S>;
+  readonly [E in LedgerEra]: <S extends TransactionStage>(tx: LedgerTransactionTypes[E][S]) => EraSlot<S>;
 } = Object.freeze({
   v8: (tx) => ({ v8: tx }),
   v9: (tx) => ({ v9: tx })
@@ -60,7 +60,7 @@ const SEALING: unique symbol = Symbol('LedgerTransaction.seal');
  * @typeParam S The stage the transaction is at.
  * @typeParam E The era the transaction belongs to; any era when not known.
  */
-export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersion = LedgerVersion> {
+export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra = LedgerEra> {
   readonly #slot: EraSlot<S>;
   readonly #serialize: () => Uint8Array;
 
@@ -102,9 +102,9 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
    *   (`not-a-transaction`), or `tx` is at another stage (`stage-mismatch`).
    * @throws ForeignLedgerTransactionError If `tx` is an object of another
    *   ledger copy, or `era` is v8 and the v8 ledger is not loaded yet.
-   * @throws UnknownLedgerVersionError If `era` is not a ledger version.
+   * @throws UnknownLedgerEraError If `era` is not a ledger version.
    */
-  static seal<E extends LedgerVersion, S extends TransactionStage>(
+  static seal<E extends LedgerEra, S extends TransactionStage>(
     era: E,
     stage: S,
     tx: LedgerTransactionTypes[E][S],
@@ -139,18 +139,18 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersi
    * @returns The object that was sealed.
    * @throws InvalidTransactionHandleError If `handle` is not a handle of this
    *   copy of the package.
-   * @throws UnknownLedgerVersionError If `era` is not a ledger version.
+   * @throws UnknownLedgerEraError If `era` is not a ledger version.
    * @throws TransactionEraMismatchError If the handle carries another era.
    */
-  static unwrap<E extends LedgerVersion, S extends TransactionStage>(
+  static unwrap<E extends LedgerEra, S extends TransactionStage>(
     handle: LedgerTransaction<S>,
     era: E
   ): LedgerTransactionTypes[E][S] {
     if (!LedgerTransaction.isLedgerTransaction(handle)) {
       throw new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', describeArgument(handle));
     }
-    if (!LEDGER_VERSIONS.includes(era)) {
-      throw new UnknownLedgerVersionError(era);
+    if (!LEDGER_ERAS.includes(era)) {
+      throw new UnknownLedgerEraError(era);
     }
     const slot = handle.#slot;
     const tx = Object.hasOwn(slot, era) ? slot[era] : undefined;

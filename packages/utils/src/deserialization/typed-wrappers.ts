@@ -14,7 +14,7 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type Binding,
@@ -28,7 +28,7 @@ import {
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
 
 import { withDeserializationContext } from './with-deserialization-context';
@@ -120,7 +120,7 @@ export const deserializeLedger9ZswapChainState = (
   );
 
 type FinalizedReaders = {
-  readonly [E in LedgerVersion]: () => Promise<(bytes: Uint8Array) => LedgerTransactionTypes[E]['Finalized']>;
+  readonly [E in LedgerEra]: () => Promise<(bytes: Uint8Array) => LedgerTransactionTypes[E]['Finalized']>;
 };
 
 const finalizedReaders: FinalizedReaders = Object.freeze({
@@ -150,19 +150,19 @@ const finalizedReaders: FinalizedReaders = Object.freeze({
  * @returns A finalized handle of `era`.
  * @throws {DeserializationError} On any underlying ledger deserialization
  *   failure, including bytes written by the other era.
- * @throws {UnknownLedgerVersionError} If `era` is not a ledger version.
+ * @throws {UnknownLedgerEraError} If `era` is not a ledger version.
  * @throws {Ledger8RuntimeMissingError} If `era` is `'v8'` and the v8 runtime
  *   cannot be loaded.
  * @throws {ForeignLedgerTransactionError} If a duplicate install of the ledger
  *   package decoded the bytes.
  */
-export const deserializeLedgerTransaction = async <E extends LedgerVersion>(
+export const deserializeLedgerTransaction = async <E extends LedgerEra>(
   era: E,
   bytes: Uint8Array,
   ctx: CallSiteContext
 ): Promise<LedgerTransaction<'Finalized', E>> => {
-  if (!LEDGER_VERSIONS.includes(era)) {
-    throw new UnknownLedgerVersionError(era);
+  if (!LEDGER_ERAS.includes(era)) {
+    throw new UnknownLedgerEraError(era);
   }
   const read = await finalizedReaders[era]();
   const tx = withDeserializationContext(

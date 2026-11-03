@@ -15,7 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 
-import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -355,13 +355,13 @@ describe('verifyContractState', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('should refuse a state whose era this build does not know as an unknown ledger version', async () => {
+    it('should refuse a state whose era this build does not know as an unknown ledger era', async () => {
       const state = stateWith([[CIRCUIT_ID, keyedOperation()]]);
       const fromNewerTypesCopy = { era: 'v10', serialize: () => state.serialize() };
 
       const error = await expectThrows(
         () => Reflect.apply(verifyContractState, undefined, [localKeys([CIRCUIT_ID, DEPLOYED_KEY]), fromNewerTypesCopy]),
-        UnknownLedgerVersionError
+        UnknownLedgerEraError
       );
 
       expect(error.requestedVersion).toBe('v10');

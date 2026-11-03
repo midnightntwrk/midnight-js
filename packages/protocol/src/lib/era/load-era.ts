@@ -15,9 +15,9 @@
 
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
-import { UnknownLedgerVersionError } from '../../errors';
+import { UnknownLedgerEraError } from '../../errors';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
-import type { LedgerVersion } from '../shared/ledger-version';
+import type { LedgerEra } from '../shared/ledger-version';
 import { composeEraLedger8CallTx, composeEraLedger8DeployTx } from '../v8/adapt';
 import { loadLedger8Protocol } from '../v8/load';
 import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
@@ -97,15 +97,15 @@ const createLedger8Era = async (): Promise<LedgerEraFacade> => {
  * @param version The era to resolve.
  * @returns The era facade bound to `version`. The same object on every call
  * for that era, and frozen.
- * @throws UnknownLedgerVersionError — as a rejection — if `version` is not a
- * member of `LEDGER_VERSIONS`.
+ * @throws UnknownLedgerEraError — as a rejection — if `version` is not a
+ * member of `LEDGER_ERAS`.
  * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
  * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
  * underlying cause.
  * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */
-export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEraFacade> => {
+export const loadLedgerEra = (version: LedgerEra): Promise<LedgerEraFacade> => {
   switch (version) {
     case 'v9':
       return (ledger9EraPromise ??= Promise.resolve(createLedger9Era()));
@@ -118,7 +118,7 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEraFacade> 
       // `const unhandled: never` is a compile-time exhaustiveness gate, and the
       // runtime rejection is not redundant with it -- see SharedTableDiscipline.
       const unhandled: never = version;
-      return Promise.reject(new UnknownLedgerVersionError(unhandled));
+      return Promise.reject(new UnknownLedgerEraError(unhandled));
     }
   }
 };

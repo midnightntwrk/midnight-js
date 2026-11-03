@@ -17,7 +17,7 @@ import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import type { ComposeCallOptions, ComposeCallResultPojo, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
 import type { ContractStatePojo } from '../shared/contract-state';
-import type { LedgerVersion } from '../shared/ledger-version';
+import type { LedgerEra } from '../shared/ledger-version';
 
 /**
  * The facade of one ledger era: an object bound to that one era, obtained
@@ -43,7 +43,7 @@ import type { LedgerVersion } from '../shared/ledger-version';
  */
 export interface LedgerEraFacade {
   /** The era this object is bound to — the value that was passed to `loadLedgerEra`. */
-  readonly version: LedgerVersion;
+  readonly version: LedgerEra;
 
   /**
    * Reads the primary state out of a raw, serialized contract-state envelope

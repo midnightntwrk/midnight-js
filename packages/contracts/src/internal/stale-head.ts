@@ -29,7 +29,7 @@
  *      and why the re-read is a real second reading of the network.
  */
 
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ForkCrossedDuringOperationError, SubmitRejectionUndiagnosedError,type SubmittedOperation } from '../errors';
@@ -41,11 +41,11 @@ import { atProviderMethod, type SubmitRunner } from './submit-payload';
  * Where an era sits on the timeline, for comparing two readings by DIRECTION
  * rather than merely by inequality.
  *
- * Read off `LEDGER_VERSIONS`, which is declared oldest-first, rather than
+ * Read off `LEDGER_ERAS`, which is declared oldest-first, rather than
  * restated here — a second ordering could disagree with it.
  * `src/test/scoped-era.test.ts` pins the order.
  */
-const eraPosition = (era: LedgerVersion): number => LEDGER_VERSIONS.indexOf(era);
+const eraPosition = (era: LedgerEra): number => LEDGER_ERAS.indexOf(era);
 
 /**
  * Diagnoses a rejected submission and throws — always.

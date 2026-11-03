@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_STATE_TAGS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   InvalidSerializedStateError,
   type PublicStatesRead,
@@ -43,7 +43,7 @@ vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
 const contractAddress = createMockContractAddress();
 const CALLER = { caller: '@midnight-ntwrk/midnight-js-contracts:createUnprovenCallTx' };
 
-const tagged = (era: LedgerVersion, kind: keyof typeof LEDGER_STATE_TAGS, body: string): Uint8Array =>
+const tagged = (era: LedgerEra, kind: keyof typeof LEDGER_STATE_TAGS, body: string): Uint8Array =>
   new TextEncoder().encode(`${LEDGER_STATE_TAGS[kind][era]}:${body}`);
 
 const ledger9Read = (): PublicStatesRead => ({
@@ -64,7 +64,7 @@ const rejectionOf = (act: () => unknown): unknown => {
 
 // What a serialized state made by a second installed copy of the types package looks like to this copy:
 // the same fields and methods, without this copy's private field.
-const fromAnotherTypesCopy = (state: { readonly era: LedgerVersion; serialize(): Uint8Array }) => ({
+const fromAnotherTypesCopy = (state: { readonly era: LedgerEra; serialize(): Uint8Array }) => ({
   era: state.era,
   serialize: () => state.serialize(),
   deserialize: () => {
@@ -109,14 +109,14 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
     const error = rejectionOf(() => decodeLedger9PublicStates(preFiveRecord, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
     expect(error).toMatchObject({
-      code: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+      code: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA',
       category: 'ENVIRONMENT',
       requestedVersion: undefined,
       context: 'queryZSwapAndContractState'
     });
-    expect((error as UnknownLedgerVersionError).message).toContain('pre-5.0.0 provider');
+    expect((error as UnknownLedgerEraError).message).toContain('pre-5.0.0 provider');
   });
 
   it.each(['ledgerParameters', 'zswapChainState'] as const)(
@@ -231,7 +231,7 @@ describe('decodeLedger9PublicStates', () => {
 
       const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(error).toBeInstanceOf(UnknownLedgerEraError);
       expect(error).toMatchObject({ context: 'queryZSwapAndContractState', requestedVersion: undefined });
       expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
     }
@@ -244,7 +244,7 @@ describe('decodeLedger9PublicStates', () => {
     // @ts-expect-error the contract state names an era newer than this build
     const error = rejectionOf(() => decodeLedger9PublicStates(read, contractAddress, 'createUnprovenCallTx'));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
     expect(error).toMatchObject({ requestedVersion: 'v10', category: 'ENVIRONMENT' });
     expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });

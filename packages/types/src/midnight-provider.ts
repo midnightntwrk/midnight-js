@@ -15,7 +15,7 @@
 
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route } from './internal/dispatch';
 import { readEraEntries } from './internal/read-era-entries';
@@ -32,7 +32,7 @@ export interface MidnightProvider {
    * transaction providers, and all three are read together before an operation
    * starts.
    */
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
 
   /**
    * Submit a transaction to the network to be consensed upon.
@@ -56,7 +56,7 @@ export interface MidnightProvider {
  * it on the way out.
  */
 export type MidnightProviderHandlers = {
-  readonly [E in LedgerVersion]: ((tx: LedgerTransactionTypes[E]['Finalized']) => Promise<TransactionId>) | undefined;
+  readonly [E in LedgerEra]: ((tx: LedgerTransactionTypes[E]['Finalized']) => Promise<TransactionId>) | undefined;
 };
 
 /**
@@ -78,8 +78,8 @@ export type MidnightProviderHandlers = {
  */
 export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHandlers): MidnightProvider => {
   const served = readEraEntries('submitTx', handlers, 'handler');
-  const supportedEras = Object.freeze(LEDGER_VERSIONS.filter((era) => served[era] !== undefined));
-  const route: Route<'Finalized', [], Readonly<Record<LedgerVersion, TransactionId>>, TransactionId> = {
+  const supportedEras = Object.freeze(LEDGER_ERAS.filter((era) => served[era] !== undefined));
+  const route: Route<'Finalized', [], Readonly<Record<LedgerEra, TransactionId>>, TransactionId> = {
     method: 'submitTx',
     stage: 'Finalized',
     handlers: served,

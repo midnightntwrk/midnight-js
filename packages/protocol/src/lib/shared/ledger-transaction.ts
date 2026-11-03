@@ -29,11 +29,11 @@ import {
   InvalidArgumentError,
   PayloadNotATransactionError,
   TRANSACTION_TAG_PREFIX,
-  UnknownLedgerVersionError
+  UnknownLedgerEraError
 } from '../../errors';
 import type * as Ledger8 from '../../v8.js';
 import { type Ledger8Protocol, loadedLedger8Protocol, loadLedger8Protocol } from '../v8/load';
-import { LEDGER_VERSIONS, type LedgerVersion } from './ledger-version';
+import { LEDGER_ERAS, type LedgerEra } from './ledger-version';
 
 /** The point in its life a transaction has reached: before proving, after proving, after binding. */
 export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
@@ -64,15 +64,15 @@ export type FrameworkInstanceCheck = 'own' | 'foreign-instance' | 'not-a-transac
 
 type Assert<T extends true> = T;
 type _EveryEraHasTransactionTypes = Assert<
-  [Exclude<LedgerVersion, keyof LedgerTransactionTypes>] extends [never] ? true : false
+  [Exclude<LedgerEra, keyof LedgerTransactionTypes>] extends [never] ? true : false
 >;
 type _NoTransactionTypesOutsideTheEraSet = Assert<
-  [Exclude<keyof LedgerTransactionTypes, LedgerVersion>] extends [never] ? true : false
+  [Exclude<keyof LedgerTransactionTypes, LedgerEra>] extends [never] ? true : false
 >;
 
 const TRANSACTION_STAGES: readonly string[] = Object.freeze(['Unproven', 'Unbound', 'Finalized'] satisfies TransactionStage[]);
 
-type StageDecoders<E extends LedgerVersion> = {
+type StageDecoders<E extends LedgerEra> = {
   readonly [S in TransactionStage]: (bytes: Uint8Array) => LedgerTransactionTypes[E][S];
 };
 
@@ -109,7 +109,7 @@ const ledger8DecodersOf = ({ Transaction }: Ledger8Protocol): StageDecoders<'v8'
     )
 });
 
-const decodersOf: { readonly [E in LedgerVersion]: () => Promise<StageDecoders<E>> } = Object.freeze({
+const decodersOf: { readonly [E in LedgerEra]: () => Promise<StageDecoders<E>> } = Object.freeze({
   v8: async () => ledger8DecodersOf(await loadLedger8Protocol()),
   v9: () => Promise.resolve(ledger9Decoders)
 });
@@ -132,8 +132,8 @@ const isTransactionShaped = (value: unknown): value is { serialize(): Uint8Array
   typeof value === 'object' && value !== null && typeof Reflect.get(value, 'serialize') === 'function';
 
 const assertKnownEra = (era: string): void => {
-  if (!LEDGER_VERSIONS.some((version) => version === era)) {
-    throw new UnknownLedgerVersionError(era);
+  if (!LEDGER_ERAS.some((version) => version === era)) {
+    throw new UnknownLedgerEraError(era);
   }
 };
 
@@ -150,11 +150,11 @@ const assertKnownEra = (era: string): void => {
  * @throws PayloadNotATransactionError If `bytes` is not a serialized
  *   transaction, or the era's runtime cannot read it at `stage`; the runtime's
  *   refusal is on `cause`.
- * @throws UnknownLedgerVersionError If `era` is not a ledger version.
+ * @throws UnknownLedgerEraError If `era` is not a ledger version.
  * @throws InvalidArgumentError If `stage` is not a transaction stage.
  * @throws Ledger8RuntimeMissingError If the v8 runtime cannot be loaded.
  */
-export const deserializeTransactionAtStage = async <E extends LedgerVersion, S extends TransactionStage>(
+export const deserializeTransactionAtStage = async <E extends LedgerEra, S extends TransactionStage>(
   era: E,
   stage: S,
   bytes: Uint8Array
@@ -183,9 +183,9 @@ export const deserializeTransactionAtStage = async <E extends LedgerVersion, S e
  * @param era The era the value claims to belong to.
  * @param value The value to check.
  * @returns See {@link FrameworkInstanceCheck}.
- * @throws UnknownLedgerVersionError If `era` is not a ledger version.
+ * @throws UnknownLedgerEraError If `era` is not a ledger version.
  */
-export const isFrameworkLedgerTransaction = (era: LedgerVersion, value: unknown): FrameworkInstanceCheck => {
+export const isFrameworkLedgerTransaction = (era: LedgerEra, value: unknown): FrameworkInstanceCheck => {
   assertKnownEra(era);
   if (!isTransactionShaped(value)) {
     return 'not-a-transaction';

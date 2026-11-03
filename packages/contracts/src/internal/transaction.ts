@@ -17,7 +17,7 @@ import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/error
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -162,7 +162,7 @@ export const readScopeHead = async (pdp: HeadVersionSource, logger?: BreadcrumbS
  *
  * @internal
  */
-export const scopeRefusal = (head: LedgerVersion): EraMismatchError =>
+export const scopeRefusal = (head: LedgerEra): EraMismatchError =>
   new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${head}'.` });
 
 /**

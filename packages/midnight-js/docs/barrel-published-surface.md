@@ -53,8 +53,8 @@ travels with `ComposeFailedError`: it is the value that error's `circuitId`
 carries when the refusal names no circuit. That rule is why
 `VersionResolutionPath` is present (the error's `path`) and why
 `Ledger8Subpath`, `ComposeStage` and `ComposeOption` came in with the
-classes whose payloads name them. `CURRENT_LEDGER_VERSION` and
-`CurrentLedgerVersion` qualify the same way: a current-era result's `era` (on
+classes whose payloads name them. `CURRENT_LEDGER_ERA` and
+`CurrentLedgerEra` qualify the same way: a current-era result's `era` (on
 the `contracts` results) is compared against them, and without them a barrel
 consumer would have to write `'v9'` by hand and update it at the next fork.
 
@@ -74,7 +74,7 @@ Two deliberate exclusions:
   they were declared as the wide alias until they were narrowed to make this
   paragraph true — they are examples, not the whole set, which also includes
   `UnknownProtocolVersionError` (a two-member union), `Ledger8RuntimeMissingError`,
-  `UnknownLedgerVersionError` and `PayloadNotATransactionError`. Declaring `code`
+  `UnknownLedgerEraError` and `PayloadNotATransactionError`. Declaring `code`
   as the alias on any class published here breaks the rule again. A consumer who wants the union as a *declaration* can reach
   `utils.MidnightJsErrorCode`, which is already published and is a strict
   superset.
@@ -97,7 +97,7 @@ protocol errors reach a barrel consumer directly:
 | `ComposeOptionError` | `lib/shared/compose-options.ts` and the era adapt legs | `version`, `option` |
 | `StateDecodeFailedError` | `lib/shared/contract-state.ts` | `version` |
 | `StateInconsistentError` | `lib/shared/contract-state.ts` | `version` |
-| `UnknownLedgerVersionError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
+| `UnknownLedgerEraError` | `contracts/src/internal/era.ts`, `lib/era/load-era.ts` | `requestedVersion` |
 | `PayloadNotATransactionError` | `deserializeTransactionAtStage` (`./transaction`) | none; caught, not constructed |
 | `ContractExecutionError` | `lib/v8/executable.ts`; `contracts` call and deploy builders on a Compact error; `types` `exitResultOrError` when several failures arrive together | `cause` — the underlying failure; `errors` — every failure when several arrived together |
 

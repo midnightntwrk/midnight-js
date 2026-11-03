@@ -15,7 +15,7 @@
 
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { FinalizedTx, UnboundTx, UnprovenTx } from '../ledger-transaction';
@@ -49,9 +49,9 @@ describe('provider methods', () => {
   });
 
   it('declare their eras against the shared era vocabulary', () => {
-    expectTypeOf<ProofProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
-    expectTypeOf<WalletProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
-    expectTypeOf<MidnightProvider['supportedEras']>().toEqualTypeOf<readonly LedgerVersion[]>();
+    expectTypeOf<ProofProvider['supportedEras']>().toEqualTypeOf<readonly LedgerEra[]>();
+    expectTypeOf<WalletProvider['supportedEras']>().toEqualTypeOf<readonly LedgerEra[]>();
+    expectTypeOf<MidnightProvider['supportedEras']>().toEqualTypeOf<readonly LedgerEra[]>();
   });
 });
 

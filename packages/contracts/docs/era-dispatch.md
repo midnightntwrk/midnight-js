@@ -21,7 +21,7 @@ is recorded in
 
 ## The pipeline is named by the ledger era, not the toolchain
 
-A pipeline is named by a `LedgerVersion`, `'v8'` or `'v9'` — the same values a
+A pipeline is named by a `LedgerEra`, `'v8'` or `'v9'` — the same values a
 payload's `era` and a provider's `supportedEras` use. Each member names the
 LEDGER ERA the pipeline executes against, never a toolchain version, because the toolchain
 moves independently of the ledger and a name pinned to it goes stale on the next
@@ -61,7 +61,7 @@ and that the property survives both a bundler and the object spread the
 container's own combinators perform.
 
 The container reads the declaration too, so the answer never depends on which
-era `CURRENT_LEDGER_VERSION` names. If the next ledger keeps the container
+era `CURRENT_LEDGER_ERA` names. If the next ledger keeps the container
 shape, a ledger 9 container stays on the ledger 9 pipeline the day that
 constant moves. The cost is one read per provider instance: both shipped
 providers cache the answer. `resolveArtifactEra` in
@@ -214,7 +214,7 @@ inline in the `switch`. The checks a router ran before the era was read (config,
 private-state pairing) stay in the router, ahead of the read. The router reads
 no head: a flow that needs one reads it itself.
 
-A new ledger era fails the build in two steps. Adding it to `LedgerVersion`
+A new ledger era fails the build in two steps. Adding it to `LedgerEra`
 fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`, and
 `assertNever(era)` in both resolvers; adding
 the missing variant then fails `assertNever` in every router — the seven public
@@ -327,7 +327,7 @@ the caller already holds; this decides only whether that pair may run, so it doe
 not restate the pair as a third value that could disagree with it.
 
 The rulings live in a DATA table, `ERA_PAIRING`, rather than in a chain of
-switches: one row per artifact era, one column per head era, both `LedgerVersion`. Each cell
+switches: one row per artifact era, one column per head era, both `LedgerEra`. Each cell
 holds one `EraPairing` verdict, `'run'`, `'call-only'` or
 `'artifact-newer-than-head'`, and `assertEraCompatible` turns that verdict and
 the operation kind into the refusal. `'call-only'` is where the deploy and
@@ -349,7 +349,7 @@ constructors are not ceremony to be simplified away — delete them and the gate
 goes with them, silently, while every test stays green.
 
 What the gate does and does not say: every pair of eras has to be ruled, so a
-member added to `LedgerVersion` is a build failure here until its row and its
+member added to `LedgerEra` is a build failure here until its row and its
 column are both written. What cannot happen is an era arriving unruled.
 
 ### Two fields, one set of values
@@ -410,7 +410,7 @@ class of its kind, which checks the tag again (`InvalidSerializedStateError`,
 `tag-mismatch`, for forged bytes or a state of another kind). A record
 whose contract state has none of those, such as one a provider outside this
 framework built by hand in the pre-5.0.0 shape, is refused as
-`UnknownLedgerVersionError`.
+`UnknownLedgerEraError`.
 
 The order is load-bearing:
 

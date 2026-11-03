@@ -38,11 +38,11 @@ directly, alongside the namespaces above:
 
 ```typescript
 import {
-  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
-  CURRENT_LEDGER_VERSION, // the current era, 'v9': the `era` of every current-era result
-  type LedgerVersion, // 'v8' | 'v9'
-  versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
-  latestNetworkLedgerVersion  // asks a source for the network's current ledger version -> LedgerVersion
+  LEDGER_ERAS,    // the closed, frozen set: ['v8', 'v9']
+  CURRENT_LEDGER_ERA, // the current era, 'v9': the `era` of every current-era result
+  type LedgerEra, // 'v8' | 'v9'
+  versionOfRecord,    // a record carrying protocolVersion -> LedgerEra
+  latestNetworkLedgerVersion  // asks a source for the network's current ledger version -> LedgerEra
 } from '@midnight-ntwrk/midnight-js';
 ```
 
@@ -120,7 +120,7 @@ too, so you can catch them and read their payload without a cast:
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
 | `StateInconsistentError` | `version` | contract-state bytes were read as that era, but the state is internally inconsistent |
-| `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
+| `UnknownLedgerEraError` | `requestedVersion` | an era outside `LEDGER_ERAS` was requested |
 | `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 
 ### What importing the barrel loads
@@ -150,7 +150,7 @@ import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
 import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
 
 // Ledger era vocabulary (named, not namespaced)
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js';
 
 // Sub-path imports (individual modules)
 import { ... } from '@midnight-ntwrk/midnight-js/contracts';

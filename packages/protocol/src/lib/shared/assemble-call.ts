@@ -32,7 +32,7 @@ import {
   type PartitionContext,
   type PartitionedCallTranscript
 } from './compose-types';
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 
 /**
  * The `QueryContext` capability {@link assembleCallPrototype} needs beyond
@@ -172,7 +172,7 @@ export interface AssembleCallOptions<TOperation> {
   readonly ledgerParametersBytes: LedgerParametersOption;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names -- see ComposeRefusalOrder.
-  readonly version: LedgerVersion;
+  readonly version: LedgerEra;
 }
 
 /**

@@ -25,7 +25,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
-import type { LedgerVersion } from '../lib/shared/ledger-version';
+import type { LedgerEra } from '../lib/shared/ledger-version';
 import { runLedger8Circuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath } from './fixtures';
 
@@ -88,7 +88,7 @@ const runReceiveCoin = async (): Promise<TranscriptPojo> => {
 // state. Written as a thunk per era rather than a shared options record: the
 // two `ContractState` types are distinct nominal WASM classes, so only the
 // call site can be shared, not the operands.
-const ASSEMBLE_PER_ERA: Readonly<Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext) => unknown>> =
+const ASSEMBLE_PER_ERA: Readonly<Record<LedgerEra, (transcript: TranscriptPojo, partitionContext: PartitionContext) => unknown>> =
   {
     v8: (transcript, partitionContext) => {
       const contractState = new LedgerV8.ContractState();
