@@ -117,3 +117,27 @@ from the shape of the code the compiler generated.
   cost: it would make the file mandatory for every existing consumer, which is a
   breaking change for artifacts that are already correctly placed by a
   declaration they carry.
+
+## Amendment — the container reads its declaration too (2026-11-03)
+
+Issue #1526. The decision stands: an artifact's era comes only from what the
+artifact declares. What changes is the first Decision bullet, and with it the
+rejected alternative "Cross-check the current era against `contract-info.json`
+too".
+
+- A `CompiledContract` container no longer places itself. Its bundle's
+  `runtime-version` is read like any other, and the container shape only
+  requires that declaration to name ledger 9. A container whose bundle declares
+  the ledger 8 toolchain is refused as `ledger8-artifacts-in-ledger9-container`.
+- Why: the container answer was `CURRENT_LEDGER_VERSION`, not ledger 9. If the
+  next ledger keeps the container shape, every ledger 9 container would be sent
+  to the next ledger's pipeline, without an error, the day that constant moves.
+  The retained refusal (`unwrapped-ledger9-contract`) compared against the same
+  constant, so it now compares against ledger 9 by name.
+- Cost, accepted: every contract operation reads the declaration. The shipped
+  providers cache it per instance, so it is one read per provider. Every bundle
+  must serve its manifest `runtime-version` or `compiler/contract-info.json`,
+  and every provider used for contract operations must implement
+  `getArtifactRuntimeVersion()`. The Consequences bullets "the current era pays
+  nothing" and "keeps working for current-era artifacts" no longer hold.
+- Landed in 5.0.0, with the other era breaking changes.

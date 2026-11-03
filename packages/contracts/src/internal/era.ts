@@ -23,7 +23,6 @@ import {
 import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
-  CURRENT_LEDGER_VERSION,
   LEDGER_VERSIONS,
   type StateKind
 } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -436,6 +435,13 @@ const hasOwnProperty = <K extends string>(value: object, key: K): value is objec
 /** What the artifact's own shape can establish, which is never an era on its own. */
 type ArtifactShape = 'ledger9-container' | 'ledger8-candidate';
 
+// The one era each shape admits. The era itself always comes from the artifacts' declaration;
+// the shape only refuses a declaration that contradicts it.
+const ERA_OF_SHAPE = Object.freeze({
+  'ledger9-container': 'v9',
+  'ledger8-candidate': 'v8'
+} as const satisfies Record<ArtifactShape, LedgerVersion>);
+
 /**
  * The one read {@link resolveArtifactEra} makes on the ZK config provider.
  *
@@ -484,9 +490,9 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
   if (!hasOwnProperty(compiledContract, 'impureCircuits')) {
     // The container carries a `tag` and none of the circuit collections. The `tag`'s VALUE is
     // chosen by the caller (`CompiledContract.make(tag, ctor)`) and says nothing about an era; what
-    // places this object is that only the current toolchain's container has this shape, and that
+    // identifies this object is that only the ledger 9 toolchain's container has this shape, and that
     // the property is an OWN one, so it survives both the spread its own combinators perform and
-    // any build step -- which is why this branch needs no artifact read. Requiring the `tag` as well
+    // any build step. The era still comes from the artifacts' declaration. Requiring the `tag` as well
     // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
     // being routed into the current-era pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
@@ -532,32 +538,31 @@ export const hasLedger8ContractShape = <L extends Ledger8Contract>(compiledContr
 /**
  * Decides which pipeline a caller's contract belongs to, from what the artifact DECLARES.
  *
- * Two answers, one per era, and neither rests on a property of generated JavaScript that a
- * consumer's build can rewrite. The current era arrives wrapped in a container whose own `tag`
- * survives every build step, so recognising that container is enough. The retained era has no such
- * container, so it is placed by the `runtime-version` its artifact set declares. The shape of the
- * generated code is consulted only to refuse.
+ * Every contract is placed by the `runtime-version` its artifact set declares, never by a property
+ * of generated JavaScript that a consumer's build can rewrite. The shape of the caller's object is
+ * consulted only to refuse: a ledger 9 container must declare a ledger 9 toolchain, and a ledger 8
+ * candidate a ledger 8 one.
  *
- * The artifact set is read ONLY for a retained candidate, so a current-era caller pays no round trip
- * for this and needs no file it does not already ship.
+ * The declaration is read for both shapes, so the answer does not depend on which era is current.
  *
  * @param compiledContract The value a caller passed as its contract.
  * @param source The ZK config provider serving that contract's artifacts.
  * @returns The pipeline that contract belongs to.
  * @throws EraMismatchError with reason `'unrecognised-contract-shape'` or
  * `'unwrapped-ledger9-contract'` before the provider is consulted at all;
- * `'artifact-era-undeclared'` when the provider cannot report a runtime version, carrying its
- * failure on `cause`; and `'unknown-artifact-runtime-version'` for a toolchain this framework
- * cannot place.
+ * `'artifact-era-undeclared'` when the artifacts do not declare a runtime version, and
+ * `'provider-cannot-declare-era'` when the provider cannot report one, each carrying its failure on
+ * `cause`; `'unknown-artifact-runtime-version'` for a toolchain this framework cannot place;
+ * `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare the
+ * ledger 8 toolchain; and `'unwrapped-ledger9-contract'` for a ledger 8 candidate whose artifacts
+ * declare the ledger 9 toolchain.
  * @see {@link EraDispatch} for the table this implements and why the era may not be inferred.
  */
 export const resolveArtifactEra = async (
   compiledContract: unknown,
   source: ArtifactRuntimeVersionSource
 ): Promise<LedgerVersion> => {
-  if (artifactShapeOf(compiledContract) === 'ledger9-container') {
-    return CURRENT_LEDGER_VERSION;
-  }
+  const shape = artifactShapeOf(compiledContract);
 
   let runtimeVersion: string;
   try {
@@ -582,11 +587,14 @@ export const resolveArtifactEra = async (
       detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
     });
   }
-  // A retained SHAPE whose artifacts declare the current toolchain is the mistake this dispatch
-  // exists to catch: a current-era contract passed raw, with its `async` erased by the caller's
-  // build. It reads as retained and is not.
-  if (era === CURRENT_LEDGER_VERSION) {
-    throw new EraMismatchError('unwrapped-ledger9-contract');
+  if (era !== ERA_OF_SHAPE[shape]) {
+    // A retained SHAPE whose artifacts declare the ledger 9 toolchain is a ledger 9 contract passed
+    // raw, with its `async` erased by the caller's build. It reads as retained and is not.
+    throw shape === 'ledger9-container'
+      ? new EraMismatchError('ledger8-artifacts-in-ledger9-container', {
+          detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
+        })
+      : new EraMismatchError('unwrapped-ledger9-contract');
   }
 
   return era;

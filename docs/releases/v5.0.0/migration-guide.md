@@ -1389,6 +1389,25 @@ head with `EraMismatchError`. To call one era's body directly, use `createLedger
 The full table is in
 [breaking-changes.md](./breaking-changes.md#26-every-name-bound-to-ledger-9-carries-the-ledger-number-1574).
 
+## Step 26 — Serve the runtime version with every contract's artifacts
+
+Every contract operation reads the `compact-runtime` version your artifacts declare, for ledger 9
+contracts too (#1526).
+
+- Serve the `compiler/` directory `compactc` emits from the same location as `keys/` and `zkir/`.
+  The shipped providers read `runtime-version` from `compiler/contract-manifest.json`, or from
+  `compiler/contract-info.json` when there is no manifest.
+- If you wrote your own `ZKConfigProvider`, override `getArtifactRuntimeVersion()` to return that
+  `runtime-version`. Without it every contract operation fails with `EraMismatchError` reason
+  `'provider-cannot-declare-era'`.
+
+If an operation fails with reason `'ledger8-artifacts-in-ledger9-container'`, the provider serves
+the artifacts of a contract built with the ledger 8 toolchain. Point it at the compiler output of
+the contract you pass.
+
+The details are in
+[breaking-changes.md](./breaking-changes.md#28-every-contracts-artifacts-must-declare-their-runtime-version-1526).
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -1422,3 +1441,4 @@ The full table is in
 - [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
 - [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.
 - [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from the bare `@midnight-ntwrk/midnight-js/protocol` subpath (without `/v9`).
+- [ ] Every artifact location serves `compiler/` beside `keys/` and `zkir/`, and every custom `ZKConfigProvider` overrides `getArtifactRuntimeVersion()` (Step 26).

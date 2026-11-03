@@ -150,6 +150,8 @@ export type EraMismatchReason =
   | 'provider-cannot-declare-era'
   /** An artifact set declaring a `compact-runtime` this framework places on no ledger era. */
   | 'unknown-artifact-runtime-version'
+  /** A ledger 9 `CompiledContract` container whose artifacts declare the ledger 8 toolchain. `detail` carries the declared version. */
+  | 'ledger8-artifacts-in-ledger9-container'
   /** A ledger 8 (pre-fork) contract submitted for deployment to a network that has crossed the fork. */
   | 'ledger8-deploy-on-ledger9-network'
   /** A ledger 8 (pre-fork) contract given to a maintenance update on a network that has crossed the fork. */
@@ -212,6 +214,11 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'These artifacts declare a compact-runtime this version of midnight-js places on no ledger era, so ' +
     'no pipeline can be chosen for them. Upgrade midnight-js to one that knows this toolchain, or ' +
     'rebuild the contract with a toolchain this version supports.',
+  'ledger8-artifacts-in-ledger9-container':
+    'The contract is a ledger 9 CompiledContract container, but the ZK config provider serves ' +
+    'artifacts that declare the ledger 8 (pre-fork) Compact toolchain, so the keys and the contract ' +
+    'do not belong together. Point the provider at the compiler output of this contract, built by ' +
+    'the ledger 9 Compact toolchain.',
   'ledger8-deploy-on-ledger9-network':
     'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
     'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +

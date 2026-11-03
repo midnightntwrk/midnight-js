@@ -457,6 +457,9 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
     getVerifierKey(_: string): Promise<VerifierKey> {
       return Promise.resolve(verifierKeys[0][1]);
     }
+    override getArtifactRuntimeVersion(): Promise<string> {
+      return Promise.resolve('0.20.0');
+    }
   })();
 }
 
