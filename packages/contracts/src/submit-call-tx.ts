@@ -154,7 +154,8 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *         The error contains the finalized transaction data and circuit ID for debugging.
  * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
- *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         container, or its artifacts declare no toolchain this framework can place or the other
+ *         era's toolchain. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'
  *         declared runtime version, and no other provider is consulted.
  *
@@ -288,7 +289,8 @@ export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends L
  *
  * @throws {EraMismatchError} When `options.compiledContract` belongs to neither Compact
  *         era, is a raw current-era contract instance passed instead of its `CompiledContract`
- *         container, or its artifacts declare no toolchain this framework can place. Raised before
+ *         container, or its artifacts declare no toolchain this framework can place or the other
+ *         era's toolchain. Raised before
  *         anything is built or submitted; the ZK config provider is asked for the artifacts'
  *         declared runtime version, and no other provider is consulted.
  *

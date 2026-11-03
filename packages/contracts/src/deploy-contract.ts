@@ -245,7 +245,8 @@ export async function deployContract<C extends Contract.Any>(
  * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, is
  *                                  a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
- *                                  toolchain this framework can place. Raised before anything is
+ *                                  toolchain this framework can place or the other era's
+ *                                  toolchain. Raised before anything is
  *                                  built or submitted; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.

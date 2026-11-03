@@ -1465,6 +1465,43 @@ reconcile(error.contractAddress);
 if (error.contractAddress !== undefined) reconcile(error.contractAddress);
 ```
 
+## 28. Every contract's artifacts must declare their runtime version (#1526)
+
+Every contract operation now reads the `compact-runtime` version the artifact set declares, for
+ledger 9 contracts too. Before, only a ledger 8 contract was read; a ledger 9 `CompiledContract`
+container was placed on ledger 9 from its shape alone. The shape now only checks the declaration:
+a container must declare a ledger 9 toolchain (`compact-runtime` 0.20).
+
+What you must do:
+
+- **Serve the declaration beside the keys.** `FetchZkConfigProvider` and `NodeZkConfigProvider`
+  read `runtime-version` from `compiler/contract-manifest.json`, or from
+  `compiler/contract-info.json` when the bundle has no manifest. A bundle that ships only `keys/`
+  and `zkir/` is refused with `EraMismatchError` reason `'artifact-era-undeclared'`.
+- **Implement `getArtifactRuntimeVersion()` on a custom `ZKConfigProvider`.** The base method
+  throws `ArtifactRuntimeVersionUnavailableError`. A provider that does not override it is now
+  refused on every contract operation with reason `'provider-cannot-declare-era'`. This includes
+  the low-level functions that take a `zkConfigProvider` argument, such as
+  `createLedger9UnprovenDeployTxFromVerifierKeys`. A provider mocked as an object literal in tests
+  needs the member too: without it the call fails with a `TypeError`, not with an era reason.
+
+New refusal: reason `'ledger8-artifacts-in-ledger9-container'`, for a ledger 9 container whose
+provider serves artifacts that declare the ledger 8 toolchain. Usually the provider points at
+another contract's compiler output.
+
+The shipped providers cache the version per provider instance, so it costs one read per
+provider, not one per call.
+
+```ts
+// A custom provider
+class MyZkConfigProvider extends ZKConfigProvider<string> {
+  // ...getZKIR, getProverKey, getVerifierKey
+  override async getArtifactRuntimeVersion(): Promise<string> {
+    return '0.20.0'; // the runtime-version compactc recorded for these artifacts
+  }
+}
+```
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

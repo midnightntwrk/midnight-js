@@ -497,6 +497,13 @@ export function submitTx<PCK extends AnyProvableCircuitId>(
 // new EraMismatchReason: 'contract-era-unsupported'
 ```
 
+### Every contract's artifacts declare their runtime version (#1526)
+
+```ts
+// new EraMismatchReason: 'ledger8-artifacts-in-ledger9-container'
+// ZKConfigProvider.getArtifactRuntimeVersion(): unchanged signature; now read by every contract operation
+```
+
 ### Ledger 8 low-level functions (#1524)
 
 ```ts

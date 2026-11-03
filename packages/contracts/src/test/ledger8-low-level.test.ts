@@ -95,12 +95,12 @@ describe('the Ledger8 low-level functions accept only a contract whose artifacts
     expect((rejection as EraMismatchError).message).toContain(`Function: ${name}. Contract era: 'v9'.`);
   });
 
-  it.each(LEDGER8_FUNCTIONS)('%s refuses before any provider call', async (_name, run) => {
+  it.each(LEDGER8_FUNCTIONS)('%s refuses after reading only the artifact era', async (_name, run) => {
     const providers = createMockProviders();
 
     await run(providers).catch(() => undefined);
 
     const calledMocks = providerMocks(providers).filter((mock) => mock.mock.calls.length > 0);
-    expect(calledMocks).toEqual([]);
+    expect(calledMocks).toEqual([providers.zkConfigProvider.getArtifactRuntimeVersion]);
   });
 });

@@ -308,21 +308,22 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     });
 
     it('places the real retained-era artifacts, and a current-era container as not', async () => {
-      // `resolveArtifactEra` is the single era decision. The retained artifacts are placed from the
-      // runtime version their bundle declares; the current-era container is placed from its own
-      // `tag`, without the bundle being consulted at all.
+      // `resolveArtifactEra` is the single era decision. Both shapes are placed from the runtime
+      // version their bundle declares; a container served with retained artifacts is refused.
       await expect(resolveArtifactEra(contract, zkConfigProvider)).resolves.toBe('v8');
       await expect(resolveArtifactEra(coinReceiverContract, zkConfigProvider)).resolves.toBe('v8');
       await expect(
         resolveArtifactEra({ tag: 'counter', pipe: (): void => undefined }, zkConfigProvider)
-      ).resolves.toBe('v9');
+      ).rejects.toMatchObject({ reason: 'ledger8-artifacts-in-ledger9-container' });
     });
 
     it('places a REAL current-era container, not just a hand-rolled stand-in', async () => {
       // `createMockCompiledContract` goes through `CompiledContract.make(...).pipe(withVacantWitnesses)`,
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
       // transient `make()` result and would keep passing if the check were widened.
-      await expect(resolveArtifactEra(createMockCompiledContract(), zkConfigProvider)).resolves.toBe('v9');
+      await expect(
+        resolveArtifactEra(createMockCompiledContract(), { getArtifactRuntimeVersion: async () => '0.20.0' })
+      ).resolves.toBe('v9');
     });
 
     it('refuses a RAW current-era contract instance, which also carries impureCircuits', async () => {

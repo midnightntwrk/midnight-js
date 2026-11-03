@@ -90,10 +90,10 @@ const rejectingHeadSource = (error: Error): { readonly queryLatestProtocolVersio
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
 
-// A bundle declaring the retained toolchain, which is what the retained-era path of the dispatch
-// reads. Declared here rather than mocked per test: every case below that reaches it wants the same
-// answer, and the cases that must NOT reach it assert that separately.
+// One bundle per toolchain, which is what the dispatch reads for either shape. Declared here rather
+// than mocked per test: every case below wants one of the two answers.
 const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
+const LEDGER9_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.20.0' };
 
 describe('resolveArtifactEra: which execution pipeline an artifact belongs to', () => {
   it('routes the current-era CompiledContract container to the ledger9 pipeline', async () => {
@@ -102,22 +102,13 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     const container = createMockCompiledContract();
 
     // Act + Assert
-    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 
-  it('does not consult the artifact bundle for a current-era container', async () => {
-    // The container declares its own era with an own `tag`, so the current era buys no round trip
-    // and needs no file it does not already ship. A bundle that would REFUSE proves it was never
-    // asked.
-    const refusingBundle = {
-      getArtifactRuntimeVersion: async (): Promise<string> => {
-        throw new Error('the current-era path must not read the artifact bundle');
-      }
-    };
-
-    await expect(resolveArtifactEra(createMockCompiledContract(), refusingBundle)).resolves.toBe(
-      'v9' satisfies LedgerVersion
-    );
+  it('refuses a current-era container served with a retained bundle', async () => {
+    await expect(resolveArtifactEra(createMockCompiledContract(), LEDGER8_BUNDLE)).rejects.toMatchObject({
+      reason: 'ledger8-artifacts-in-ledger9-container'
+    });
   });
 
   it('routes an object with the retained-era shape to the retained-era pipeline', async () => {
@@ -223,7 +214,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     expect('pipe' in container).toBe(false);
     // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
     // the spread that drops the brand.
-    await expect(resolveArtifactEra(container, LEDGER8_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
   });
 });
 
