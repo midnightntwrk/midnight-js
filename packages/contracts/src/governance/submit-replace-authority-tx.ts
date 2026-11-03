@@ -17,11 +17,11 @@ import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-pr
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { TxFailedError } from '../errors';
-import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { resolveContractEraRequest } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import type {
@@ -33,6 +33,49 @@ import type {
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
+
+const ledger8ReplaceAuthorityFlow = async (
+  providers: Ledger9ContractProviders,
+  compiledContract: Ledger8Contract,
+  contractAddress: ContractAddress,
+  newAuthority: SigningKey
+): Promise<Ledger8FinalizedMaintenanceTxData> => ({
+  era: 'v8',
+  public: await submitLedger8MaintenanceTx(providers, {
+    contract: compiledContract,
+    contractAddress,
+    update: { kind: 'replace-authority', newSigningKey: newAuthority }
+  })
+});
+
+const ledger9ReplaceAuthorityFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  newAuthority: SigningKey
+): Promise<Ledger9FinalizedMaintenanceTxData> => {
+  assertIsContractAddress(contractAddress);
+  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
+  const currentAuthority = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
+  const unprovenTx = await createUnprovenReplaceAuthorityTx(
+    providers.zkConfigProvider,
+    compiledContract,
+    contractAddress,
+    newAuthority,
+    contractState,
+    currentAuthority,
+    providers.walletProvider.getCoinPublicKey(),
+    providers.config
+  );
+  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
+  if (submitTxResult.status !== SucceedEntirely) {
+    throw new TxFailedError('replace-authority', submitTxResult, { contractAddress, signingKey: newAuthority });
+  }
+  // TODO: What if machine crashes right before the following set executes? How to recover?
+  //       Likely will need a history of pending transactions.
+  await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
+  return { era: 'v9', public: submitTxResult };
+};
 
 /**
  * Constructs and submits a transaction that replaces the maintenance
@@ -106,36 +149,14 @@ export function submitReplaceAuthorityTx<C extends Contract.Any>(
 ): (newAuthority: SigningKey) => Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   return async (newAuthority: SigningKey): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> => {
     assertValidMidnightConfig(providers.config);
-    if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
-      return {
-        era: 'v8',
-        public: await submitLedger8MaintenanceTx(providers, {
-          contract: compiledContract,
-          contractAddress,
-          update: { kind: 'replace-authority', newSigningKey: newAuthority }
-        })
-      };
+    const request = await resolveContractEraRequest(compiledContract, providers.zkConfigProvider);
+    switch (request.era) {
+      case 'v8':
+        return ledger8ReplaceAuthorityFlow(providers, request.compiledContract, contractAddress, newAuthority);
+      case 'v9':
+        return ledger9ReplaceAuthorityFlow(providers, request.compiledContract, contractAddress, newAuthority);
+      default:
+        return assertNever(request, 'submitReplaceAuthorityTx');
     }
-    assertIsContractAddress(contractAddress);
-    const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
-    const currentAuthority = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
-    const unprovenTx = await createUnprovenReplaceAuthorityTx(
-      providers.zkConfigProvider,
-      compiledContract,
-      contractAddress,
-      newAuthority,
-      contractState,
-      currentAuthority,
-      providers.walletProvider.getCoinPublicKey(),
-      providers.config
-    );
-    const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
-    if (submitTxResult.status !== SucceedEntirely) {
-      throw new TxFailedError('replace-authority', submitTxResult, { contractAddress, signingKey: newAuthority });
-    }
-    // TODO: What if machine crashes right before the following set executes? How to recover?
-    //       Likely will need a history of pending transactions.
-    await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
-    return { era: 'v9', public: submitTxResult };
   };
 }
