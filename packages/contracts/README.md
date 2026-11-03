@@ -129,9 +129,37 @@ if (record.status === 'SucceedEntirely') {
 ```
 
 Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
-scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era and each
-state with the era that wrote it (`{ era, state }`), because the fork translates a ledger 8
-contract's state into a ledger 9 one.
+scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era as well as
+the states, because the fork translates a ledger 8 contract's state into a ledger 9 one.
+
+Both eras' `FromInitialStates` builders take the states as a read returns them. Pass
+`read.contractState`, `read.zswapChainState` (ledger 9 only) and `read.ledgerParameters` as they
+are; do not decode them first. Each is a serialized state that carries the `era` of the ledger that
+wrote it:
+
+```typescript
+const read = await providers.publicDataProvider.queryZSwapAndContractState(contractAddress);
+if (read !== null) {
+  const built = await createUnprovenCallTxFromInitialStates(
+    providers.zkConfigProvider,
+    {
+      compiledContract,
+      contractAddress,
+      circuitId: 'increment',
+      coinPublicKey,
+      initialContractState: read.contractState,
+      initialZswapChainState: read.zswapChainState,
+      ledgerParameters: read.ledgerParameters,
+      config: providers.config
+    },
+    walletEncryptionPublicKey
+  );
+}
+```
+
+A ledger 9 call refuses a contract state the v8 ledger wrote (`EraMismatchError`, reason
+`'ledger8-contract-state-unsupported'`), and v8 ledger parameters or a v8 zswap chain state, or a
+value that is not a serialized state (`InvalidArgumentError`).
 
 ### Maintenance Operations
 
@@ -178,7 +206,8 @@ const balances = await getUnshieldedBalances(providers.publicDataProvider, contr
 ```
 
 `getStates` and `getPublicStates` return the public states as bytes: each of
-`contractState`, `zswapChainState` and `ledgerParameters` is a `SerializedState`
+`contractState`, `zswapChainState` and `ledgerParameters` is a serialized state
+(`SerializedContractState`, `SerializedZswapChainState`, `SerializedLedgerParameters`)
 with the `era` of the ledger that wrote it. Decode one with your own
 runtime — the one your contract was compiled against — so your contract's
 `ledger()` accepts the result:
@@ -221,9 +250,21 @@ import { verifierKeysEqual, verifyContractState } from '@midnight-ntwrk/midnight
 // Compare verifier keys
 const equal = verifierKeysEqual(keyA, keyB);
 
-// Verify contract state matches expected verifier keys
-verifyContractState(verifierKeys, contractState);
+// Verify contract state matches expected verifier keys. It takes the state a read returns,
+// of either era, and is async: a v8 state loads the ledger 8 runtime to be decoded.
+const read = await providers.publicDataProvider.queryContractState(contractAddress);
+if (read !== null) {
+  await verifyContractState(verifierKeys, read.contractState, contractAddress);
+}
 ```
+
+A mismatch throws `ContractTypeError`. Its message lists the circuits; the deployed state is on
+`error.contractState`, a `SerializedContractState`. Decode it with your own runtime to inspect it.
+
+The deploy and found handles carry the deploy-time state the same way, in both eras:
+`deployTxData.public.initialContractState` is a `SerializedContractState`. Decode it with your own
+runtime, for example `deployTxData.public.initialContractState.deserialize({ v9: ContractState })`,
+and use `serialize()` for the bytes.
 
 ## Providers
 

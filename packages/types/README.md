@@ -145,7 +145,9 @@ const tx = LedgerTransaction.unwrap(record.tx, record.era);
 ```
 
 A contract state, ledger parameters and a zswap chain state come back as a
-`SerializedState`: the bytes, plus the `era` of the ledger that wrote them.
+`SerializedContractState`, a `SerializedLedgerParameters` and a
+`SerializedZswapChainState`: the bytes, plus the `era` of the ledger that wrote
+them. The class names the kind, so the three are not assignable to each other.
 Decode one with the runtime your contract was compiled against, so its
 `ledger()` accepts the result:
 
@@ -162,8 +164,11 @@ if (read !== null) {
 missing one with `SerializedStateDecoderMissingError`, and reports a decoder that
 throws as `SerializedStateDecodeFailedError` (a decoder error that is already a
 `MidnightJsError` is rethrown unchanged). A call with no decoder for any era the
-state can be does not compile. Only `SerializedState.fromBytes(era, kind, bytes)`
-makes a `SerializedState`; `SerializedState.isSerializedState(value)` checks one.
+state can be does not compile. Only the class's own `fromBytes(era, bytes)` makes
+one, for example `SerializedContractState.fromBytes(era, bytes)`;
+`SerializedContractState.isSerializedContractState(value)` checks one, and the
+other two classes have their own guard (`isSerializedLedgerParameters`,
+`isSerializedZswapChainState`).
 
 **Implementing `WalletProvider` or `MidnightProvider`?** Wrap a v9-only
 implementation. Both adapters unwrap each handle for you, and the wallet adapter
@@ -383,7 +388,9 @@ import {
   type LedgerTransactionTypes,
 
   // On-chain state as bytes, decoded by the caller's own runtime
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   type StateKind,
   type StateDecoder,
   type StateDecoders,
