@@ -18,7 +18,7 @@ import { type ContractStateRead, type PositionedRecord, SerializedContractState 
 import { fromHex, ledgerVersionOfContractState, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
-import { describe, expect, test, vi } from 'vitest';
+import { assert, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
@@ -226,12 +226,8 @@ describe('contractStateObservable — latest', () => {
     );
 
     expect(seen).toEqual(['v9']);
-    expect(rejection).toBeInstanceOf(UnknownRecordEraError);
-    expect({
-      method: (rejection as UnknownRecordEraError).method,
-      protocolVersion: (rejection as UnknownRecordEraError).protocolVersion,
-      recordRef: (rejection as UnknownRecordEraError).recordRef
-    }).toEqual({ method: 'contractStateObservable', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION, recordRef: ADDRESS });
+    assert(rejection instanceof UnknownRecordEraError);
+    expect({ method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef }).toEqual({ method: 'contractStateObservable', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION, recordRef: ADDRESS });
   });
 
   test('ends the stream on a record whose version tag is newer than the block that dates it', async () => {

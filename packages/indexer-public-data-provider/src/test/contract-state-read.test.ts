@@ -26,7 +26,7 @@ import {
   toHex,
   UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
-import { beforeAll, describe, expect, test, vi } from 'vitest';
+import { assert, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError, UnknownRecordEraError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
@@ -391,8 +391,8 @@ describe('queryContractState', () => {
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(UnknownRecordEraError);
-      expect((rejection as UnknownRecordEraError).code).toBe('MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA');
+      assert(rejection instanceof UnknownRecordEraError);
+      expect(rejection.code).toBe('MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA');
     });
 
     test('refuses a malformed protocol version rather than copying it onto the record', async () => {

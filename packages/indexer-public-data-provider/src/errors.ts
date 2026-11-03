@@ -425,8 +425,10 @@ export class DecoderEraUnsupportedError extends IndexerError {
 
 /**
  * Raised when a record's `protocolVersion` maps to no ledger era at all —
- * a network outside the node major range this framework knows about, or a
- * value that is not a non-negative integer.
+ * a network outside the node major range this framework knows about, or, on
+ * a transaction read, a value that is not a non-negative integer. A
+ * contract-state read reports a malformed value as `IndexerDataError`
+ * `malformed-protocol-version` instead.
  *
  * Distinct from {@link DecoderEraUnsupportedError}, which reports an era this build
  * has no decoder for — an era that was named, just not one of ours. Here
@@ -458,7 +460,8 @@ export class UnknownRecordEraError extends IndexerError {
     super(
       `${method} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
         `${recordRef === undefined ? '' : ` (${recordRef})`}. ` +
-        `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
+        `This build does not support that protocol version: for a newer network, upgrade midnight-js; ` +
+        `otherwise point this provider at a network this build supports.`,
       options
     );
     this.name = 'UnknownRecordEraError';

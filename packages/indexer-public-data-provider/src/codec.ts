@@ -285,11 +285,11 @@ const zswapBytes = (hexZswapState: string): Uint8Array => {
 const datedContractState = (
   hexState: string,
   protocolVersion: number,
-  context: StateReadContext
+  blockVersion: LedgerEra,
+  upperBound: UpperBoundCheck = 'check'
 ): SerializedContractState => {
-  const blockVersion = blockEra(protocolVersion, context);
   const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
-  if ((context.upperBound ?? 'check') === 'check' && isNewerEra(ledgerVersion, blockVersion)) {
+  if (upperBound === 'check' && isNewerEra(ledgerVersion, blockVersion)) {
     throw IndexerDataError.eraDisagreement(protocolVersion, blockVersion, ledgerVersion);
   }
   return SerializedContractState.fromBytes(ledgerVersion, raw);
@@ -298,10 +298,9 @@ const datedContractState = (
 const blockLedgerParameters = (
   hexParameters: string,
   protocolVersion: number,
-  context: StateReadContext
+  blockVersion: LedgerEra
 ): SerializedLedgerParameters => {
   const { raw, ledgerVersion } = parametersBytesAndLedgerVersion(hexParameters);
-  const blockVersion = blockEra(protocolVersion, context);
   if (blockVersion !== ledgerVersion) {
     throw IndexerDataError.parametersEraDisagreement(protocolVersion, blockVersion, ledgerVersion);
   }
@@ -347,7 +346,7 @@ export const toContractStateRead = (
   context: StateReadContext
 ): ContractStateRead => ({
   protocolVersion,
-  contractState: datedContractState(hexState, protocolVersion, context)
+  contractState: datedContractState(hexState, protocolVersion, blockEra(protocolVersion, context), context.upperBound)
 });
 
 /**
@@ -368,10 +367,14 @@ export const toContractStateAndParametersRead = (
   protocolVersion: number,
   hexLedgerParameters: string,
   context: StateReadContext
-): ContractStateAndParametersRead => ({
-  ...toContractStateRead(hexState, protocolVersion, context),
-  ledgerParameters: blockLedgerParameters(hexLedgerParameters, protocolVersion, context)
-});
+): ContractStateAndParametersRead => {
+  const blockVersion = blockEra(protocolVersion, context);
+  return {
+    protocolVersion,
+    contractState: datedContractState(hexState, protocolVersion, blockVersion, context.upperBound),
+    ledgerParameters: blockLedgerParameters(hexLedgerParameters, protocolVersion, blockVersion)
+  };
+};
 
 /**
  * Builds the record served by `PublicDataProvider.queryZSwapAndContractState`. Nothing is decoded.

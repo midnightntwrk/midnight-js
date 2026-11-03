@@ -366,9 +366,9 @@ export interface WatchOptions {
  * Interface for a public data service. This service retrieves public data from the blockchain.
  *
  * Every read that resolves a ledger era (the contract-state reads and the finalized-transaction
- * reads) refuses a `protocolVersion` this build cannot place on the era timeline. Such an integer
- * means the client is older than the network, so the read fails rather than decoding on a guess,
- * whether the read is a query, a wait or a stream; a stream ends with the error. Implementations
+ * reads) refuses a `protocolVersion` this build cannot place on the era timeline, such as one from
+ * a network newer than the client. The read fails rather than decoding on a guess, whether it is a
+ * query, a wait or a stream; a stream ends with the error. Implementations
  * MUST follow this rule. {@link queryBlock} resolves no era and carries the integer through.
  */
 export interface PublicDataProvider {

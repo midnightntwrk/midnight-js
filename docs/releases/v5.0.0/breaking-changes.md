@@ -1552,11 +1552,12 @@ exports no named type for that number, and midnight-js needs no conversion from 
 
 A contract-state read now fails when the block that dates the state reports a `protocolVersion`
 this build cannot place on the ledger-era timeline. Before, the read went on and tagged the state
-by the version tag of its bytes alone. Such an integer means the client is older than the
-network: upgrade midnight-js.
+by the version tag of its bytes alone. For a network newer than your midnight-js, upgrade
+midnight-js. History written under node 0.x is not mapped either, so a state dated by such a
+block is refused too.
 
 The refusal is the error the transaction reads (`watchForTxData`, `watchForDeployTxData`) already
-raise for the same input, so one cause has one error:
+raise for a well-formed integer they cannot place:
 
 | Read | Before | Now |
 |---|---|---|

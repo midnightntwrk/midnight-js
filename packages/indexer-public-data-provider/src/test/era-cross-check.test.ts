@@ -338,12 +338,15 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
     expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidSerializedStateError);
   });
 
-  test('refuses a triple whose block reports a version this client cannot place', async () => {
+  test.each([
+    { read: 'an unpinned', config: undefined },
+    { read: 'a pinned', config: { type: 'blockHeight', blockHeight: 7 } as const }
+  ])('refuses $read triple whose block reports a version this client cannot place', async ({ config }) => {
     const query = dispatchingQuery(
       new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]])
     );
 
-    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS));
+    const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS, config));
 
     expect(unknownRecordEraOf(rejection)).toEqual({
       method: 'queryZSwapAndContractState',

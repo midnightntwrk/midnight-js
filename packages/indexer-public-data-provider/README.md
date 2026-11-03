@@ -493,10 +493,11 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 `queryContractState`, `queryZSwapAndContractState`, `queryDeployContractState`,
 `watchForContractState` and `contractStateObservable` return each state as
 bytes, tagged with the era of the ledger that wrote them. The `protocolVersion`
-of the block that dates the state is resolved first, under the same rule as the
-transaction reads below: an integer this build cannot place on the era timeline
-is refused with `UnknownRecordEraError`, naming the method and the contract, and
-a malformed one with `IndexerDataError` (`malformed-protocol-version`). On
+of the block that dates the state is resolved first. A well-formed integer this
+build cannot place on the era timeline is refused with `UnknownRecordEraError`,
+naming the method and the contract, as on the transaction reads below. A
+malformed one is refused with `IndexerDataError` (`malformed-protocol-version`),
+where a transaction read raises `UnknownRecordEraError`. On
 `contractStateObservable` the refusal ends the stream. The rule holds on an
 unpinned read too, where the block is not trusted as an upper bound on the
 state's era: only that comparison is dropped, never the era resolution.
