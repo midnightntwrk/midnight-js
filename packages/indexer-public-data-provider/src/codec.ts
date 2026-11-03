@@ -34,7 +34,9 @@ import {
   SegmentFail,
   type SegmentStatus,
   SegmentSuccess,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   SucceedEntirely,
   type TxStatus,
   type UnshieldedBalances,
@@ -308,26 +310,26 @@ const datedContractState = (
   hexState: string,
   protocolVersion: number,
   options?: { readonly upperBound?: UpperBoundCheck }
-): SerializedState<'ContractState'> => {
+): SerializedContractState => {
   assertWellFormedProtocolVersion(protocolVersion);
   const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
   assertStateNotNewerThanBlock(ledgerVersion, protocolVersion, options?.upperBound);
-  return SerializedState.fromBytes(ledgerVersion, 'ContractState', raw);
+  return SerializedContractState.fromBytes(ledgerVersion, raw);
 };
 
-const blockLedgerParameters = (hexParameters: string, protocolVersion: number): SerializedState<'LedgerParameters'> => {
+const blockLedgerParameters = (hexParameters: string, protocolVersion: number): SerializedLedgerParameters => {
   const { raw, ledgerVersion } = parametersBytesAndLedgerVersion(hexParameters);
   const blockVersion = reportedEra(protocolVersion);
   if (blockVersion !== undefined && blockVersion !== ledgerVersion) {
     throw IndexerDataError.parametersEraDisagreement(protocolVersion, blockVersion, ledgerVersion);
   }
-  return SerializedState.fromBytes(ledgerVersion, 'LedgerParameters', raw);
+  return SerializedLedgerParameters.fromBytes(ledgerVersion, raw);
 };
 
-const zswapChainState = (hexZswapState: string, era: LedgerVersion): SerializedState<'ZswapChainState'> => {
+const zswapChainState = (hexZswapState: string, era: LedgerVersion): SerializedZswapChainState => {
   const raw = zswapBytes(hexZswapState);
   try {
-    return SerializedState.fromBytes(era, 'ZswapChainState', raw);
+    return SerializedZswapChainState.fromBytes(era, raw);
   } catch (error: unknown) {
     if (error instanceof InvalidSerializedStateError) {
       throw IndexerDataError.malformedZswapState(era, error);

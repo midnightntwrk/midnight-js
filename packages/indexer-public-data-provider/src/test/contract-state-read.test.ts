@@ -16,6 +16,7 @@
 import { loadLedger8Protocol, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
 import {
   DeserializationError,
   fromHex,
@@ -210,7 +211,7 @@ describe('queryContractState', () => {
         ADDRESS
       );
 
-      expect(record?.ledgerParameters?.kind).toBe('LedgerParameters');
+      expect(SerializedLedgerParameters.isSerializedLedgerParameters(record?.ledgerParameters)).toBe(true);
       expect(record?.ledgerParameters?.era).toBe('v9');
       expect(record?.ledgerParameters?.serialize()).toEqual(new Uint8Array(fromHex(parametersHex)));
     });

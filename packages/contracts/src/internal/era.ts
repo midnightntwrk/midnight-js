@@ -36,7 +36,9 @@ import {
   type PublicDataProvider,
   type PublicStatesRead,
   type ReadMethod,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   type TransactionMethod,
   type TransactionStage,
   type ZKConfigProvider
@@ -120,17 +122,11 @@ type StateReadMethod = 'queryContractState' | 'queryDeployContractState' | 'quer
 
 const isLedgerVersion = (value: unknown): value is LedgerVersion => LEDGER_VERSIONS.some((era) => era === value);
 
-/**
- * The `SerializedState` of this copy of the types package for a state a provider served, or `undefined`
- * when the value names no era this build knows. A `SerializedState` made by a second installed copy
- * of the types package fails `SerializedState.isSerializedState`, so every state is rebuilt from its bytes,
- * which checks the tag again. The tag also tells the kinds apart, so a state of another kind is
- * refused by it.
- *
- * @throws InvalidSerializedStateError if the value does not serialize to bytes (`not-bytes`), or the
- * bytes are not a `kind` written by the era the value names (`tag-mismatch`).
- */
-export const ownSerializedState = <K extends StateKind>(value: unknown, kind: K): SerializedState<K> | undefined => {
+const ownSerialized = <T>(
+  value: unknown,
+  kind: StateKind,
+  fromBytes: (era: LedgerVersion, bytes: Uint8Array) => T
+): T | undefined => {
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
@@ -143,17 +139,38 @@ export const ownSerializedState = <K extends StateKind>(value: unknown, kind: K)
   if (!(bytes instanceof Uint8Array)) {
     throw new InvalidSerializedStateError(kind, era, 'not-bytes');
   }
-  return SerializedState.fromBytes(era, kind, bytes);
+  return fromBytes(era, bytes);
 };
+
+/**
+ * The `SerializedContractState` of this copy of the types package for a state a provider or a caller
+ * handed in, or `undefined` when the value names no era this build knows. A state made by a second
+ * installed copy of the types package fails the class guard, so every state is rebuilt from its
+ * bytes, which checks the tag again. The tag also tells the kinds apart, so a state of another kind
+ * is refused by it.
+ *
+ * @throws InvalidSerializedStateError if the value does not serialize to bytes (`not-bytes`), or the
+ * bytes are not a contract state written by the era the value names (`tag-mismatch`).
+ */
+export const ownContractState = (value: unknown): SerializedContractState | undefined =>
+  ownSerialized(value, 'ContractState', SerializedContractState.fromBytes);
+
+/** {@link ownContractState} for ledger parameters. */
+export const ownLedgerParameters = (value: unknown): SerializedLedgerParameters | undefined =>
+  ownSerialized(value, 'LedgerParameters', SerializedLedgerParameters.fromBytes);
+
+/** {@link ownContractState} for a zswap chain state. */
+export const ownZswapChainState = (value: unknown): SerializedZswapChainState | undefined =>
+  ownSerialized(value, 'ZswapChainState', SerializedZswapChainState.fromBytes);
 
 const requireLedger9Read = (
   read: ContractStateRead,
   contractAddress: string,
   operation: string,
   servedBy: StateReadMethod
-): SerializedState<'ContractState'> => {
+): SerializedContractState => {
   const contractState: unknown = read?.contractState;
-  const state = ownSerializedState(contractState, 'ContractState');
+  const state = ownContractState(contractState);
   if (state === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(contractState), servedBy);
   }
@@ -166,17 +183,17 @@ const requireLedger9Read = (
   return state;
 };
 
-const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState'>(
+const requireLedger9Companion = <T extends { readonly era: LedgerVersion }>(
   read: PublicStatesRead,
-  field: F,
-  kind: PublicStatesRead[F]['kind'],
+  field: 'ledgerParameters' | 'zswapChainState',
+  own: (value: unknown) => T | undefined,
   contractAddress: string
-): SerializedState<PublicStatesRead[F]['kind']> => {
+): T => {
   const served: unknown = read[field];
   if (served === undefined || served === null) {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', undefined);
   }
-  const state = ownSerializedState(served, kind);
+  const state = own(served);
   if (state === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(served), 'queryZSwapAndContractState');
   }
@@ -235,8 +252,8 @@ export const decodeLedger9PublicStates = (
   operation: string
 ): Ledger9PublicStates => {
   requireLedger9Read(read, contractAddress, operation, 'queryZSwapAndContractState');
-  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress);
-  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress);
+  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', ownLedgerParameters, contractAddress);
+  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', ownZswapChainState, contractAddress);
   const contractState = decodeLedger9ContractState(read, contractAddress, operation, 'queryZSwapAndContractState');
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return {
@@ -969,7 +986,7 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * The envelope's era is `state.contractState.era`: `SerializedState.fromBytes` refuses bytes whose
+ * The envelope's era is `state.contractState.era`: `SerializedContractState.fromBytes` refuses bytes whose
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
@@ -991,7 +1008,7 @@ export const assertEraCompatible = (
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws NetworkVersionStateMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
- * @throws UnknownLedgerVersionError if the contract state is not a `SerializedState`: the shape of a
+ * @throws UnknownLedgerVersionError if the contract state is not a `SerializedContractState`: the shape of a
  * pre-5.0.0 provider.
  */
 export const resolveContractStateEra = async (
@@ -1001,7 +1018,7 @@ export const resolveContractStateEra = async (
   logger?: BreadcrumbSink
 ): Promise<LedgerVersion> => {
   const served: unknown = state?.contractState;
-  const contractState = ownSerializedState(served, 'ContractState');
+  const contractState = ownContractState(served);
   if (contractState === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }

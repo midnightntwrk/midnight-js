@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractStateRead, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractStateRead, type PositionedRecord, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
 import { fromHex, ledgerVersionOfContractState, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
@@ -124,13 +124,13 @@ const rejectionOf = async (work: Promise<unknown>): Promise<unknown> =>
     (error: unknown) => error
   );
 
-// Spells the bytes out: `toEqual` compares a `SerializedState` by its public fields only.
+// Spells the bytes out: `toEqual` compares a `SerializedContractState` by its public fields only.
 const plainRecords = (records: readonly PositionedRecord<ContractStateRead>[]) =>
   records.map(({ value, ...position }) => ({
     ...position,
     value: {
       protocolVersion: value.protocolVersion,
-      contractState: { kind: value.contractState.kind, era: value.contractState.era, bytes: value.contractState.serialize() },
+      contractState: { ownClass: SerializedContractState.isSerializedContractState(value.contractState), era: value.contractState.era, bytes: value.contractState.serialize() },
       fields: Object.keys(value).sort()
     }
   }));
@@ -163,7 +163,7 @@ describe('contractStateObservable — latest', () => {
       {
         value: {
           protocolVersion: LEDGER8_ERA_PROTOCOL_VERSION,
-          contractState: { kind: 'ContractState', era: 'v8', bytes: new Uint8Array(fromHex(hexState)) },
+          contractState: { ownClass: true, era: 'v8', bytes: new Uint8Array(fromHex(hexState)) },
           fields: ['contractState', 'protocolVersion']
         },
         blockHeight: 10,
@@ -576,7 +576,7 @@ describe('contract-state streams — an action re-emitted at the fork block', ()
       {
         value: {
           protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
-          contractState: { kind: 'ContractState', era: 'v9', bytes: new Uint8Array(fromHex(translated)) },
+          contractState: { ownClass: true, era: 'v9', bytes: new Uint8Array(fromHex(translated)) },
           fields: ['contractState', 'protocolVersion']
         },
         blockHeight: FORK_HEIGHT,

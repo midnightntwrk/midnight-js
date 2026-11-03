@@ -24,7 +24,7 @@ import {
   type LoggerProvider,
   type PrivateStateId,
   type PublicStatesRead,
-  SerializedState,
+  SerializedContractState,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -232,7 +232,7 @@ export class TransactionContextImpl<
       return undefined;
     }
     const { read, states } = this.cachedStates;
-    return { ...read, contractState: SerializedState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
+    return { ...read, contractState: SerializedContractState.fromBytes('v9', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](

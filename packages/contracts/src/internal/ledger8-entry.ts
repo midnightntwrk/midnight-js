@@ -56,7 +56,8 @@ import {
   type ProofProvider,
   type PublicDataProvider,
   type ReadMethod,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
   SucceedEntirely,
   type TransactionProviders,
   type UnprovenTx,
@@ -825,8 +826,8 @@ export const buildLedger8CallTxFromStates = async (
   }
 
   const state: Ledger8SnapshotBytes = {
-    raw: SerializedState.fromBytes(initialContractState.era, 'ContractState', initialContractState.state.serialize()).serialize(),
-    ledgerParameters: SerializedState.fromBytes(ledgerParameters.era, 'LedgerParameters', ledgerParameters.parameters.serialize())
+    raw: SerializedContractState.fromBytes(initialContractState.era, initialContractState.state.serialize()).serialize(),
+    ledgerParameters: SerializedLedgerParameters.fromBytes(ledgerParameters.era, ledgerParameters.parameters.serialize())
   };
   const { networkId } = options.config;
   const [era, engine, retainedEra] = await Promise.all([loadLedgerEra(head), loadLedger8Engine(), loadLedgerEra('v8')]);

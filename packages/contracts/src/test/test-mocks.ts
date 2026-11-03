@@ -59,7 +59,9 @@ import {
   type PrivateStateId,
   type ProverKey,
   type PublicStatesRead,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   SucceedEntirely,
   type TxStatus,
   type UnprovenTx,
@@ -468,7 +470,7 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
  */
 export const contractStateRead = (raw: Uint8Array, protocolVersion: number): ContractStateRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(ledgerVersionOfContractState(raw), 'ContractState', raw)
+  contractState: SerializedContractState.fromBytes(ledgerVersionOfContractState(raw), raw)
 });
 
 /** {@link contractStateRead} with the ledger parameters `queryContractState` serves beside the state. */
@@ -478,11 +480,7 @@ export const contractStateAndParametersRead = (
   ledgerParameters: Uint8Array
 ): ContractStateAndParametersRead => ({
   ...contractStateRead(raw, protocolVersion),
-  ledgerParameters: SerializedState.fromBytes(
-    ledgerVersionOfLedgerParameters(ledgerParameters),
-    'LedgerParameters',
-    ledgerParameters
-  )
+  ledgerParameters: SerializedLedgerParameters.fromBytes(ledgerVersionOfLedgerParameters(ledgerParameters), ledgerParameters)
 });
 
 const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
@@ -493,7 +491,7 @@ const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`)
  */
 export const contractStateReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): ContractStateRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
+  contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
 });
 
 /** {@link contractStateReadStub} with ledger parameters that are only the version tag of `version`. */
@@ -502,7 +500,7 @@ export const contractStateAndParametersReadStub = (
   protocolVersion = 2_000_000
 ): ContractStateAndParametersRead => ({
   ...contractStateReadStub(version, protocolVersion),
-  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+  ledgerParameters: SerializedLedgerParameters.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });
 
 type Serializable = { serialize(): Uint8Array };
@@ -517,8 +515,8 @@ export const publicStatesRead = (
 ): PublicStatesRead => ({
   protocolVersion,
   contractState: contractStateReadStub('v9').contractState,
-  zswapChainState: SerializedState.fromBytes('v9', 'ZswapChainState', states.zswapChainState.serialize()),
-  ledgerParameters: SerializedState.fromBytes('v9', 'LedgerParameters', states.ledgerParameters.serialize())
+  zswapChainState: SerializedZswapChainState.fromBytes('v9', states.zswapChainState.serialize()),
+  ledgerParameters: SerializedLedgerParameters.fromBytes('v9', states.ledgerParameters.serialize())
 });
 
 
@@ -528,7 +526,7 @@ export const publicStatesRead = (
  */
 export const publicStatesReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): PublicStatesRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
-  zswapChainState: SerializedState.fromBytes(version, 'ZswapChainState', tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
-  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+  contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
+  zswapChainState: SerializedZswapChainState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
+  ledgerParameters: SerializedLedgerParameters.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });
