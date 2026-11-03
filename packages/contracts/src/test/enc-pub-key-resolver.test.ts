@@ -32,13 +32,13 @@ import {
   createMockUnprovenTx
 } from './test-mocks';
 
-vi.mock('../submit-deploy-tx', () => ({ submitDeployTx: vi.fn() }));
+vi.mock('../submit-deploy-tx', () => ({ submitLedger9DeployTx: vi.fn() }));
 vi.mock('../submit-call-tx', () => ({ submitCallTx: vi.fn() }));
 
 describe('EncryptionPublicKeyResolver with additional mappings', () => {
-  it('deployContract forwards additionalCoinEncPublicKeyMappings to submitDeployTx', async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = vi.mocked(submitDeployTx, { partial: true });
+  it('deployContract forwards additionalCoinEncPublicKeyMappings to submitLedger9DeployTx', async () => {
+    const { submitLedger9DeployTx } = await import('../submit-deploy-tx');
+    const mockSubmitDeployTx = vi.mocked(submitLedger9DeployTx, { partial: true });
     const providers = createMockProviders();
     const mappings = new Map([[createMockCoinPublicKey(), createMockEncryptionPublicKey()]]);
     const options = {
@@ -71,7 +71,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
     );
   });
 
-  it('createCircuitCallTxInterface includes additional mappings from TransactionContext in call options', async () => {
+  it('createCircuitCallTxInterface includes additional mappings from Ledger9TransactionContext in call options', async () => {
     const { submitCallTx } = await import('../submit-call-tx');
     vi.mocked(submitCallTx).mockResolvedValue(
       { public: {}, private: {}, calls: [] } as unknown as Awaited<ReturnType<typeof submitCallTx>>

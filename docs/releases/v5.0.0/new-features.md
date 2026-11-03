@@ -114,7 +114,7 @@ Notable schema-driven decisions:
 
 ---
 
-## MIP-0002 log events on `CallResult` (#1083)
+## MIP-0002 log events on `Ledger9CallResult` (#1083)
 
 The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
 
@@ -123,11 +123,11 @@ The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from
 ```ts
 interface Ledger9CallResultPublic {
   // ...existing fields
-  readonly logEvents: readonly LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
+  readonly logEvents: readonly Ledger9LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
 }
 ```
 
-Events are carried **raw** (no eager decode). Decode them with the `ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
+Events are carried **raw** (no eager decode). Decode them with the `Ledger9ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
 
 ```ts
 import { contracts } from '@midnight-ntwrk/midnight-js';
@@ -135,7 +135,7 @@ import { contracts } from '@midnight-ntwrk/midnight-js';
 const result = await callTx(/* ... */);
 
 // lenient: never throws — undecodable entries are skipped
-const logs = contracts.ContractLog.decodeAll(result.public.logEvents);
+const logs = contracts.Ledger9ContractLog.decodeAll(result.public.logEvents);
 ```
 
 The single `logEvents` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
@@ -211,12 +211,12 @@ Foundation for issue #816. A new `deserialization` module in `@midnight-ntwrk/mi
 
 ```ts
 import {
-  deserializeContractState,
+  deserializeLedger9ContractState,
   isDeserializationError,
 } from '@midnight-ntwrk/midnight-js-utils';
 
 try {
-  const state = deserializeContractState(bytes);
+  const state = deserializeLedger9ContractState(bytes);
 } catch (error) {
   if (isDeserializationError(error)) {
     error.classification; // 'version-mismatch' | 'generic-param-mismatch' | 'format-mismatch' | 'unknown'
@@ -228,7 +228,7 @@ try {
 
 - `DeserializationError` with classification, direction inference, per-source mitigation hints, and structural-tag extraction.
 - `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).
-- 6 typed wrappers (`deserializeContractState`, …, `decodeLedgerStateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
+- 6 typed wrappers (`deserializeLedger9ContractState`, …, `decodeLedger9StateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
 
 ---
 

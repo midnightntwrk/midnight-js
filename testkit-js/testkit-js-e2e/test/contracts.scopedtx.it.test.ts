@@ -161,7 +161,7 @@ describe('Scoped Transaction Contract Tests', () => {
       args: [1n] as [bigint]
     };
     // Annotated at the contract's whole circuit union, not at `'reset'` alone. The scope's
-    // `TransactionContext` is typed at that union, so `submitCallTx` resolves `args` at it too --
+    // `Ledger9TransactionContext` is typed at that union, so `submitCallTx` resolves `args` at it too --
     // `[] | [amount_0: bigint]`, a required member. At the narrow `'reset'` the options carry no
     // `args` at all, and so are not assignable to it. `increment2` above needs no such widening:
     // it takes an argument, so its narrow type already has the member.

@@ -19,7 +19,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
 import { LedgerTransaction } from '../ledger-transaction';
-import { createProofProvider } from '../proof-provider';
+import { createLedger9ProofProvider } from '../proof-provider';
 import { handles, inertProvingProvider, ledgerTransactions } from './ledger-transaction-fixtures';
 
 const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
@@ -34,7 +34,7 @@ const timeoutRefusal = expect.objectContaining({
   message: expect.stringContaining('proveTxConfig.timeout')
 });
 
-describe('createProofProvider', () => {
+describe('createLedger9ProofProvider', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -42,7 +42,7 @@ describe('createProofProvider', () => {
   it('proves an unproven v9 handle with its proving provider and cost model, answering an unbound v9 handle', async () => {
     const prove = vi.spyOn(Transaction.prototype, 'prove');
     const costModel = CostModel.initialCostModel();
-    const provider = createProofProvider(inertProvingProvider, costModel);
+    const provider = createLedger9ProofProvider(inertProvingProvider, costModel);
 
     const result = await provider.proveTx(handles.v9.Unproven());
 
@@ -52,11 +52,11 @@ describe('createProofProvider', () => {
   });
 
   it('declares exactly v9', () => {
-    expect(createProofProvider(inertProvingProvider).supportedEras).toEqual(['v9']);
+    expect(createLedger9ProofProvider(inertProvingProvider).supportedEras).toEqual(['v9']);
   });
 
   it('refuses a v8 handle as an unserved era', async () => {
-    const provider = createProofProvider(inertProvingProvider);
+    const provider = createLedger9ProofProvider(inertProvingProvider);
 
     const rejection = await rejectionOf(provider.proveTx(await handles.v8.Unproven()));
 
@@ -70,7 +70,7 @@ describe('createProofProvider', () => {
     ['null', () => null]
   ])('refuses %s as not a handle', async (_label, value) => {
     const prove = vi.spyOn(Transaction.prototype, 'prove');
-    const provider = createProofProvider(inertProvingProvider);
+    const provider = createLedger9ProofProvider(inertProvingProvider);
 
     // @ts-expect-error the value is not a transaction handle
     const rejection = await rejectionOf(provider.proveTx(value()));
@@ -86,18 +86,18 @@ describe('createProofProvider', () => {
       ['a zero timeout', 0]
     ])('refuses a proof with %s before proving starts', async (_label, timeout) => {
       const prove = vi.spyOn(Transaction.prototype, 'prove');
-      const provider = createProofProvider(inertProvingProvider);
+      const provider = createLedger9ProofProvider(inertProvingProvider);
 
       await expect(provider.proveTx(handles.v9.Unproven(), { timeout })).rejects.toThrow(timeoutRefusal);
       expect(prove).not.toHaveBeenCalled();
     });
 
     it('names the refusing factory and the provider that honours a timeout', async () => {
-      const provider = createProofProvider(inertProvingProvider);
+      const provider = createLedger9ProofProvider(inertProvingProvider);
 
       const rejection = await rejectionOf(provider.proveTx(handles.v9.Unproven(), { timeout: 5_000 }));
 
-      expect(String(rejection)).toContain('createProofProvider');
+      expect(String(rejection)).toContain('createLedger9ProofProvider');
       expect(String(rejection)).toContain('httpClientProofProvider');
     });
 
@@ -105,7 +105,7 @@ describe('createProofProvider', () => {
       ['carries no timeout', {}],
       ['has the timeout key present but undefined', { timeout: undefined }]
     ])('proves a transaction when the config %s', async (_label, config) => {
-      const provider = createProofProvider(inertProvingProvider);
+      const provider = createLedger9ProofProvider(inertProvingProvider);
 
       const result = await provider.proveTx(handles.v9.Unproven(), config);
 

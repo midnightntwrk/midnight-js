@@ -106,9 +106,9 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  *
  * @example
  * ```typescript
- * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
+ * const midnightProvider = createLedger9MidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
  * ```
  */
-export const createMidnightProvider = (
+export const createLedger9MidnightProvider = (
   submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>
 ): MidnightProvider => createMidnightProviderFromHandlers({ v8: undefined, v9: submitTx });

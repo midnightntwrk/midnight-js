@@ -71,10 +71,10 @@ import { ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@
 import { Option } from 'effect';
 import type { Mock } from 'vitest';
 
-import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
-import { type ContractConstructorResult } from '../call-constructor';
+import { type Ledger9CallOptions, type Ledger9CallOptionsWithPrivateState } from '../call';
+import { type Ledger9ContractConstructorResult } from '../call-constructor';
 import type { Ledger9ContractProviders } from '../contract-providers';
-import { type Ledger9UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { type Ledger9UnsubmittedCallTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import { handles } from './ledger-transaction-fixtures';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -332,7 +332,7 @@ export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntir
   protocolVersion: 1_000_000
 });
 
-export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
+export const createMockUnprovenDeployTxData = (overrides: Partial<Ledger9UnsubmittedDeployTxData<Contract.Any>> = {}): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
@@ -415,7 +415,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<Ledger9Unsubmitt
     calls: overrides.calls ?? []
 });
 
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockCallOptions = (overrides: Partial<Ledger9CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9CallOptions<Contract.Any, AnyProvableCircuitId> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],
@@ -428,13 +428,13 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   ...overrides
 });
 
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<Ledger9CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides
 });
 
-export const createMockConstructorResult = (): ContractConstructorResult<Contract.Any> => ({
+export const createMockConstructorResult = (): Ledger9ContractConstructorResult<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },

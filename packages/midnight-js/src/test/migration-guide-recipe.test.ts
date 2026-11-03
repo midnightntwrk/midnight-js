@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, test } from 'vitest';
 
-import { contracts, type protocol, PROTOCOL_ERROR_CODES, types, utils } from '../index';
+import { contracts, type ledger9Protocol, PROTOCOL_ERROR_CODES, types, utils } from '../index';
 
 // The positive compile assertions for the migration guide's recipes. Each recipe
 // below is real code reaching the framework only through this barrel, so
@@ -69,7 +69,7 @@ const submitBuiltTransaction = async (): Promise<types.FinalizedTxRead> => {
 // #region guide:private-unproven-tx
 declare const callTx: contracts.UnsubmittedCallTxData<
   contracts.Ledger9Contract,
-  protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+  ledger9Protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
 >;
 declare const proofProvider: types.ProofProvider;
 declare const inspect: (tx: types.LedgerTransactionTypes['v9']['Unproven']) => void;
@@ -132,7 +132,7 @@ const RECIPES = [
   { region: 'guide:narrowing-recipe', marker: 'const summarize', imports: 'types, utils' },
   { region: 'guide:read-record-tx', marker: 'const readIdentifiers', imports: 'types' },
   { region: 'guide:submit-tx', marker: 'const submitBuiltTransaction', imports: 'contracts, types' },
-  { region: 'guide:private-unproven-tx', marker: 'const proveCall', imports: 'contracts, type protocol, types' },
+  { region: 'guide:private-unproven-tx', marker: 'const proveCall', imports: 'contracts, type ledger9Protocol, types' },
   { region: 'guide:per-era-handlers', marker: 'const buildProofProvider', imports: 'types' }
 ] as const;
 

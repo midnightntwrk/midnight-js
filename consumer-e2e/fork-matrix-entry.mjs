@@ -38,7 +38,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 // and `CompiledContract` are published too, but on the BARREL -- `protocol`'s
 // root is not a consumer-facing import, and taking them off it made this file
 // look like it needed one. See `packages/midnight-js/src/index.ts` and
-// `src/protocol.ts` for the published set.
+// `src/protocol/v9.ts` for the published set.
 import {
   deployContract,
   EraMismatchError,
@@ -49,9 +49,9 @@ import {
   submitCallTxAsync,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { latestNetworkLedgerVersion, protocol } from '@midnight-ntwrk/midnight-js';
+import { latestNetworkLedgerVersion, ledger9Protocol } from '@midnight-ntwrk/midnight-js';
 
-const { CompiledContract } = protocol;
+const { CompiledContract } = ledger9Protocol;
 
 const config = JSON.parse(process.env.FORK_CONFIG ?? '{}');
 

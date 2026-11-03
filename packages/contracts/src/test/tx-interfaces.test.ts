@@ -266,7 +266,7 @@ describe('tx-interfaces', () => {
       );
     });
 
-    it('should strip TransactionContext from circuit call arguments', async () => {
+    it('should strip Ledger9TransactionContext from circuit call arguments', async () => {
       const { submitCallTx } = await import('../submit-call-tx');
       const { TransactionContextImpl } = await import('../internal/transaction');
       vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);
@@ -291,7 +291,7 @@ describe('tx-interfaces', () => {
       );
     });
 
-    it('should not include TransactionContext in args when it is the only argument', async () => {
+    it('should not include Ledger9TransactionContext in args when it is the only argument', async () => {
       const { submitCallTx } = await import('../submit-call-tx');
       const { TransactionContextImpl } = await import('../internal/transaction');
       vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);

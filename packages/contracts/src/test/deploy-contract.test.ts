@@ -23,8 +23,8 @@ import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vites
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { deployContract, type Ledger9DeployContractOptionsBase, type Ledger9DeployedContract } from '../deploy-contract';
 import { IncompleteDeployContractPrivateStateConfig } from '../errors';
-import type { submitDeployTx } from '../submit-deploy-tx';
-import { type Ledger9FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import type { submitLedger9DeployTx } from '../submit-deploy-tx';
+import { type Ledger9FinalizedDeployTxData, type Ledger9UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -36,7 +36,7 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({
-  submitDeployTx: vi.fn()
+  submitLedger9DeployTx: vi.fn()
 }));
 
 vi.mock('../tx-interfaces', () => ({
@@ -49,18 +49,18 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  let mockSubmitDeployTx: MockedFunction<typeof submitDeployTx>;
+  let mockSubmitDeployTx: MockedFunction<typeof submitLedger9DeployTx>;
 
   // The tests resolve unsubmitted-level tx data where the real function
   // returns finalized-level data; the code under test forwards the value
   // opaquely, so the missing finalized fields are never read.
-  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
+  const asFinalized = (data: Ledger9UnsubmittedDeployTxData<Contract.Any>): Ledger9FinalizedDeployTxData<Contract.Any> =>
     data as Ledger9FinalizedDeployTxData<Contract.Any>;
-  let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
+  let mockDeployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>;
   let providers: Ledger9ContractProviders;
   let baseOptions: Ledger9DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
+  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
     era: CURRENT_LEDGER_VERSION,
     public: {
       ...createMockFinalizedTxData(),
@@ -78,7 +78,7 @@ describe('deployContract', () => {
 
   const assertDeployResult = (
     result: Ledger9DeployedContract<Contract.Any>,
-    deployTxData: UnsubmittedDeployTxData<Contract.Any>,
+    deployTxData: Ledger9UnsubmittedDeployTxData<Contract.Any>,
     options: Ledger9DeployContractOptionsBase<Contract.Any> = baseOptions
   ) => {
     expect(result).toBeDefined();
@@ -94,8 +94,8 @@ describe('deployContract', () => {
   };
 
   beforeEach(async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    mockSubmitDeployTx = vi.mocked(submitDeployTx);
+    const { submitLedger9DeployTx } = await import('../submit-deploy-tx');
+    mockSubmitDeployTx = vi.mocked(submitLedger9DeployTx);
     vi.clearAllMocks();
 
     providers = createMockProviders();

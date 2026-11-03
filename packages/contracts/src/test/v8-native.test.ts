@@ -50,9 +50,9 @@ import {
 import { type Recipient, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
-  createMidnightProvider,
-  createProofProvider,
-  createWalletProvider,
+  createLedger9MidnightProvider,
+  createLedger9ProofProvider,
+  createLedger9WalletProvider,
   FailEntirely,
   FailFallible,
   type FinalizedTx,
@@ -335,7 +335,7 @@ const zkConfigProvider: ZKConfigProvider<typeof CIRCUIT_ID> = {
   // engine refuses to replay for any other one.
   providers.walletProvider.getCoinPublicKey = (): string => recording.coinPublicKey;
   // The three transaction methods, implemented against the provider interfaces
-  // directly rather than through `createWalletProvider`/`createMidnightProvider`:
+  // directly rather than through `createLedger9WalletProvider`/`createLedger9MidnightProvider`:
   // those adapters lift a CURRENT-ERA-ONLY implementation and refuse a v8
   // handle by design, which is asserted as its own negative below.
   //
@@ -1502,7 +1502,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   });
 
   it('refuses at the FIRST method, proveTx, when a proof provider serves the current era only', async () => {
-    // `createProofProvider` lifts a current-era-only proving implementation,
+    // `createLedger9ProofProvider` lifts a current-era-only proving implementation,
     // which is what a dApp has until its providers are widened. That provider
     // DECLARES the current era only, and the operation reads that declaration
     // before it composes anything -- so the refusal names `proveTx`, the first
@@ -1519,7 +1519,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     };
     const providers: RetainedProviders = {
       ...preForkProviders(v6Envelope),
-      proofProvider: createProofProvider(provingProvider)
+      proofProvider: createLedger9ProofProvider(provingProvider)
     };
 
     let caught: unknown;
@@ -1548,7 +1548,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const base = preForkProviders(v6Envelope);
     const providers: RetainedProviders = {
       ...base,
-      walletProvider: createWalletProvider({
+      walletProvider: createLedger9WalletProvider({
         balanceTx: () => Promise.reject(new Error('never reached')),
         getCoinPublicKey: () => recording.coinPublicKey,
         getEncryptionPublicKey: () => base.walletProvider.getEncryptionPublicKey()
@@ -1571,7 +1571,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
   it('refuses at submitTx when only the submission provider serves the current era', async () => {
     const providers: RetainedProviders = {
       ...preForkProviders(v6Envelope),
-      midnightProvider: createMidnightProvider(() => Promise.reject(new Error('never reached')))
+      midnightProvider: createLedger9MidnightProvider(() => Promise.reject(new Error('never reached')))
     };
 
     let caught: unknown;
@@ -3036,7 +3036,7 @@ describe('deploying a retained-era contract through deployContract', () => {
     // before anything is fetched on its behalf.
     const providers: RetainedProviders = {
       ...base,
-      walletProvider: createWalletProvider({
+      walletProvider: createLedger9WalletProvider({
         balanceTx: () => Promise.reject(new Error('never reached')),
         getCoinPublicKey: () => recording.coinPublicKey,
         getEncryptionPublicKey: () => base.walletProvider.getEncryptionPublicKey()

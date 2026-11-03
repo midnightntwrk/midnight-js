@@ -28,7 +28,7 @@ yarn add @midnight-ntwrk/midnight-js-level-private-state-provider \
 
 ```typescript
 import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
-import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js/types';
+import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js/types';
 import { createMidnightProviders } from '@midnight-ntwrk/midnight-js/utils';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
@@ -53,8 +53,8 @@ const providers = createMidnightProviders({
   }),
   zkConfigProvider,
   proofProvider: httpClientProofProvider({ url: 'https://proof-server.example.com', zkConfigProvider }),
-  walletProvider: createWalletProvider(myWallet),
-  midnightProvider: createMidnightProvider((tx) => myWallet.submitTx(tx)),
+  walletProvider: createLedger9WalletProvider(myWallet),
+  midnightProvider: createLedger9MidnightProvider((tx) => myWallet.submitTx(tx)),
   config: { networkId: 'preview', ttlSeconds: 3600 }
 });
 
@@ -97,11 +97,11 @@ const proofProvider = await dappConnectorProofProvider(connectedAPI, zkConfigPro
 const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(connectedAPI);
 ```
 
-`initialAPI` is the wallet's entry in `window.midnight`. Pass the three providers to `createMidnightProviders` in place of `httpClientProofProvider`, `createWalletProvider` and `createMidnightProvider` above. All three serve ledger 8 and ledger 9 transactions. The connector takes no TTL, so the wallet picks the expiry and `config.ttlSeconds` has no effect on balancing ([midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102)).
+`initialAPI` is the wallet's entry in `window.midnight`. Pass the three providers to `createMidnightProviders` in place of `httpClientProofProvider`, `createLedger9WalletProvider` and `createLedger9MidnightProvider` above. All three serve ledger 8 and ledger 9 transactions. The connector takes no TTL, so the wallet picks the expiry and `config.ttlSeconds` has no effect on balancing ([midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-dapp-connector-api/issues/102)).
 
 ### Ledger eras
 
-`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createWalletProvider` and `createMidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+`httpClientProofProvider` proves transactions for both the current ledger era and the retained one (the era before the last hard fork). `createLedger9WalletProvider` and `createLedger9MidnightProvider` serve the current era only. To handle retained-era transactions too, build the wallet and midnight providers with `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`. See [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## Examples
 

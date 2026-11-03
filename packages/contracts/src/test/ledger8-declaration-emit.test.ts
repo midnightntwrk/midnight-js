@@ -48,7 +48,7 @@ const LEDGER8_TYPES = [
   'Ledger8DeployContractOptionsBase',
   'Ledger8DeployContractOptionsWithPrivateState',
   'Ledger8DeployedContract',
-  'Ledger8DeployTxData',
+  'Ledger8FinalizedDeployTxData',
   'Ledger8FinalizedCallTxData',
   'Ledger8FinalizedCallTxPublicData',
   'Ledger8FinalizedMaintenanceTxData',

@@ -14,9 +14,9 @@
  */
 
 import type {
-  DeployTxOptions,
   Ledger9CallTxOptions,
   Ledger9DeployContractOptions,
+  Ledger9DeployTxOptions,
   Ledger9FinalizedCallTxData,
   Ledger9FinalizedDeployTxData,
   Ledger9FinalizedDeployTxPublicData,
@@ -123,7 +123,7 @@ export const expectSuccessfulTxData = (finalizedTxData: Ledger9FinalizedTxData):
 export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: Ledger9FinalizedDeployTxData<C>,
-  deployTxOptions?: Ledger9DeployContractOptions<C> | DeployTxOptions<C>
+  deployTxOptions?: Ledger9DeployContractOptions<C> | Ledger9DeployTxOptions<C>
 ): Promise<void> => {
   expectSuccessfulTxData(deployTxData.public);
   expect(deployTxData.public.contractAddress).toBeTruthy();

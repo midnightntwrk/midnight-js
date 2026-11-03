@@ -23,7 +23,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
-import { createUnprovenDeployTx } from '../unproven-deploy-tx';
+import { createLedger9UnprovenDeployTx } from '../unproven-deploy-tx';
 import {
   createMockCompiledContract,
   createMockFinalizedTxData,
@@ -68,12 +68,12 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
 
-        expect(createUnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
+        expect(createLedger9UnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
         expect(submitLedger9Payload).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenDeployTxData.private.unprovenTx
         });
@@ -115,7 +115,7 @@ describe('submit-deploy-tx', () => {
         });
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
@@ -147,7 +147,7 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
@@ -166,7 +166,7 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
@@ -185,7 +185,7 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         try {
@@ -208,7 +208,7 @@ describe('submit-deploy-tx', () => {
         const deployedKey: SigningKey = { tag: 'schnorr', value: 'a1'.repeat(32) };
         const base = createMockUnprovenDeployTxData();
         const mockUnprovenDeployTxData = { ...base, private: { ...base.private, signingKey: deployedKey } };
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData(FailFallible));
 
         const caught = await submitDeployTx(mockProviders, options).catch((error: unknown) => error);
@@ -222,7 +222,7 @@ describe('submit-deploy-tx', () => {
     });
 
     describe('error propagation', () => {
-      it('should propagate errors from createUnprovenDeployTx', async () => {
+      it('should propagate errors from createLedger9UnprovenDeployTx', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -230,7 +230,7 @@ describe('submit-deploy-tx', () => {
         };
 
         const createError = new Error('Failed to create unproven deploy tx');
-        vi.mocked(createUnprovenDeployTx).mockRejectedValue(createError);
+        vi.mocked(createLedger9UnprovenDeployTx).mockRejectedValue(createError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to create unproven deploy tx');
         expect(submitLedger9Payload).not.toHaveBeenCalled();
@@ -246,7 +246,7 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
 
         const submitError = new Error('Network error during submission');
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockRejectedValue(submitError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Network error during submission');
@@ -274,7 +274,7 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         const stateError = new Error('Failed to set private state');
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
 
@@ -292,7 +292,7 @@ describe('submit-deploy-tx', () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         const signingKeyError = new Error('Failed to set signing key');
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.setSigningKey = vi.fn().mockRejectedValue(signingKeyError);
 
@@ -319,7 +319,7 @@ describe('submit-deploy-tx', () => {
         });
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitDeployTx(mockProviders, options);
@@ -349,7 +349,7 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
 
         await submitDeployTx(mockProviders, options);
@@ -366,7 +366,7 @@ describe('submit-deploy-tx', () => {
           signingKey: mockSigningKey,
           initialPrivateState: undefined
         };
-        vi.mocked(createUnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
         vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
 
         await submitDeployTx(mockProviders, options);
@@ -389,7 +389,7 @@ describe('submit-deploy-tx', () => {
         await expect(submitting).rejects.toThrow(
           "'initialPrivateState' was defined for contract deploy while 'privateStateId' was undefined"
         );
-        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
@@ -407,7 +407,7 @@ describe('submit-deploy-tx', () => {
         await expect(submitting).rejects.toThrow(
           "'privateStateId' was defined for contract deploy while 'initialPrivateState' was omitted"
         );
-        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
 
@@ -427,7 +427,7 @@ describe('submit-deploy-tx', () => {
           code: COMMON_ERROR_CODES.INVALID_ARGUMENT,
           message: expect.stringContaining("'privateStateId' was given as undefined")
         });
-        expect(createUnprovenDeployTx).not.toHaveBeenCalled();
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
       });
     });

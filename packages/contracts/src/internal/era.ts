@@ -43,9 +43,9 @@ import {
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  deserializeCompactContractState,
-  deserializeLedgerParameters,
-  deserializeZswapChainState,
+  deserializeLedger9CompactContractState,
+  deserializeLedger9Parameters,
+  deserializeLedger9ZswapChainState,
   ZkArtifactContractInfoError
 } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -215,7 +215,7 @@ export const decodeLedger9ContractState = (
 ): ContractState => {
   const state = requireLedger9Read(read, contractAddress, operation, servedBy);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
-  return state.deserialize({ v9: { deserialize: (bytes) => deserializeCompactContractState(bytes, { caller }) } });
+  return state.deserialize({ v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) } });
 };
 
 /**
@@ -242,10 +242,10 @@ export const decodeLedger9PublicStates = (
   return {
     contractState,
     ledgerParameters: ledgerParameters.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedgerParameters(bytes, { caller }) }
+      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
     }),
     zswapChainState: zswapChainState.deserialize({
-      v9: { deserialize: (bytes) => deserializeZswapChainState(bytes, { caller }) }
+      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
     })
   };
 };
@@ -589,6 +589,29 @@ export const resolveArtifactEra = async (
   }
 
   return era;
+};
+
+/**
+ * The refusal of a low-level function given a contract of an era it does not serve.
+ */
+export const unsupportedContractEra = (functionName: string, era: LedgerVersion): EraMismatchError =>
+  new EraMismatchError('contract-era-unsupported', { detail: `Function: ${functionName}. Contract era: '${era}'.` });
+
+/**
+ * Reads the era the contract's artifacts declare and refuses any era but ledger 9.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of another era,
+ *         and the refusals of {@link resolveArtifactEra}.
+ */
+export const requireLedger9Contract = async (
+  compiledContract: unknown,
+  source: ArtifactRuntimeVersionSource,
+  functionName: string
+): Promise<void> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  if (era !== 'v9') {
+    throw unsupportedContractEra(functionName, era);
+  }
 };
 
 /**

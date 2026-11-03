@@ -26,7 +26,7 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 ## Breaking Changes (high level)
 
 1. **Protocol bindings moved to ledger-v9 / onchain-runtime-v4 under the `@midnightntwrk` scope** — `@midnight-ntwrk/midnight-js-protocol/v9` and `/v9/onchain-runtime` re-export the v9 / v4 packages (#970); the unnamed 4.x subpaths are removed (#1536).
-2. **`SigningKey` is now a structured object** — `{ tag: 'schnorr' | 'ecdsa', value: <hex> }` instead of a plain hex string. Affects `ContractExecutableRuntimeOptions.signingKey`, signing-key import/export validation, and the DApp-connector wallet adapter (#970).
+2. **`SigningKey` is now a structured object** — `{ tag: 'schnorr' | 'ecdsa', value: <hex> }` instead of a plain hex string. Affects `Ledger9ContractExecutableRuntimeOptions.signingKey`, signing-key import/export validation, and the DApp-connector wallet adapter (#970).
 3. **`ContractState` structural version bumped `[v6]` → `[v8]`** — state persisted/serialized under the old protocol is rejected by the version canary (#970).
 4. **`@midnightntwrk/wallet-sdk` 2.0.0-beta** (testkit-js) — keystore and signature/verifying-key APIs adopt the structured key/signature types (#970, #967).
 5. **`platform-js` 3.0.0** — models the signing key as `{ tag, value }`; threaded through the Configuration layer (#970).
@@ -38,13 +38,14 @@ v5.0.0 is the major a dApp must be on **before** the ledger v8 to v9 hard fork. 
 11. **Protocol subpaths name their ledger** — `@midnight-ntwrk/midnight-js-protocol/v9`, `/v9/compact-runtime`, `/v9/compact-js`, `/v9/compact-js/effect`, `/v9/compact-js/effect/Contract` and `/v9/onchain-runtime` replace the unnamed `/ledger`, `/compact-runtime`, `/compact-js*` and `/onchain-runtime`, which are removed together with the root `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` namespaces (#1536).
 12. **A name without a ledger prefix is valid for every era** — `AnyContract` is a contract of either era, and `FinalizedMaintenanceTxData` is the union of both eras' maintenance results (#1566).
 13. **One error class per fault** — every failed transaction is one `TxFailedError` with an `operation`, in both eras; a wrong-era fault is one `EraMismatchError` with a `reason`; the `Ledger8` namespace is removed and its errors are five flat `Ledger8*` classes (#1557).
+14. **Every name bound to ledger 9 carries the ledger number** — `Ledger9CallOptions`, `createLedger9WalletProvider`, `deserializeLedger9ContractState` and the rest; the low-level functions keep their names and route on the era; the barrel subpath `./protocol` is `./protocol/v9` (#1574).
 
 See [breaking-changes.md](./breaking-changes.md) for full rationale and before/after snippets.
 
 ## Headline Features
 
 - **Cross-contract call support** — assemble/prove/submit call trees spanning multiple deployed contracts; `ZKConfigRegistry` resolves per-contract artifacts by verifier-key hash (no address registration), plus a new `PublicDataProvider.queryBlock()` "as-of" endpoint (#967).
-- **MIP-0002 contract events, two surfaces** — off-chain on `PublicDataProvider` via `queryContractEvents()` (paged point-in-time read), `contractEventsObservable()` (replay-from-cursor then live tail), and the `getAllContractEvents()` async-iterator helper, backed by an 11-variant `ContractEvent` discriminated union (#988); and on the local-execution path via `Ledger9CallResultPublic.logEvents` with a `contracts.ContractLog.decodeAll()` helper (#1083).
+- **MIP-0002 contract events, two surfaces** — off-chain on `PublicDataProvider` via `queryContractEvents()` (paged point-in-time read), `contractEventsObservable()` (replay-from-cursor then live tail), and the `getAllContractEvents()` async-iterator helper, backed by an 11-variant `ContractEvent` discriminated union (#988); and on the local-execution path via `Ledger9CallResultPublic.logEvents` with a `contracts.Ledger9ContractLog.decodeAll()` helper (#1083).
 - **Uniform `provider(options)` factories** — `httpClientProofProvider({ url, zkConfigProvider, ... })` and `nodeZkConfigProvider(options)` / `fetchZkConfigProvider(options)`; additive and backward-compatible, positional forms retained as `@deprecated` (#1078).
 - **ZK artifact integrity verification** — providers verify artifacts against the `compactc` `contract-manifest.json`; fail-closed by default with an optional `expectedManifestHash` pin (#1015).
 - **Deflate-compressed subscriptions** — `graphql-transport-ws+deflate` negotiation with transparent inflation and a 16 MiB compression-bomb cap (#977).

@@ -26,7 +26,7 @@ instead of corrupting a WASM call.
 `switch (record.era)` when the eras need different code.
 
 Implementations of `ProofProvider`, `WalletProvider` and `MidnightProvider`
-must be updated. `createWalletProvider` and `createMidnightProvider` wrap a
+must be updated. `createLedger9WalletProvider` and `createLedger9MidnightProvider` wrap a
 v9-only implementation, and the `create*FromHandlers` factories build one from
 a handler per era, so the handle never enters your code.
 
@@ -58,7 +58,7 @@ This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.
 
 `SigningKey` changes from a plain hex string to `{ tag: 'schnorr' | 'ecdsa', value: <hex> }`:
 
-- `ContractExecutableRuntimeOptions.signingKey` now takes the structured `SigningKey`; the Configuration layer maps it to the `KEYS_SIGNING` / `KEYS_SIGNING_KIND` config values.
+- `Ledger9ContractExecutableRuntimeOptions.signingKey` now takes the structured `SigningKey`; the Configuration layer maps it to the `KEYS_SIGNING` / `KEYS_SIGNING_KIND` config values.
 - Signing-key **import validation** (`level-private-state-provider` and the testkit in-memory provider) validates the structured shape — a non-null object with a known `schnorr`/`ecdsa` tag and an even-length hex `value` (min 6 chars) — instead of the old string check.
 - The shared predicate `isValidSigningKey` was extracted into `@midnight-ntwrk/midnight-js-utils`; each provider keeps a thin wrapper that throws its own `InvalidExportFormatError`.
 - The DApp-connector wallet adapter (testkit) now round-trips structured `Signature` / `SignatureVerifyingKey`, emitting the `.value` (schnorr) on the wire to preserve the previous plain-hex contract.
@@ -85,7 +85,7 @@ The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wal
 
 ### On-chain state is bytes, decoded by your own runtime (#1550)
 
-Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `SerializedState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
+Every state read returns bytes in both eras. A contract state, ledger parameters and a zswap chain state are each a `SerializedState`: the bytes and the `era` of the ledger that wrote them. Decode one with the runtime your contract was compiled against: `read.contractState.deserialize({ v9: ContractState })`. The object you get back is one your contract's `ledger()` accepts. `Ledger9TransactionContext.getCurrentStates()` returns the same bytes. `queryRawContractState`, `rawContractStateObservable` and `getAnyEraContractState` are removed. See [breaking-changes.md](./breaking-changes.md).
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 
@@ -98,6 +98,10 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 ### A name without a ledger prefix is valid for every era (#1566)
 
 `Ledger8*` and `Ledger9*` names are bound to one ledger. A flat name with a contract picks the era from it; without one it is the union of every era: `FinalizedMaintenanceTxData` and `AnyContract`. A call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`. See [breaking-changes.md](./breaking-changes.md#24-types-for-both-eras-carry-no-prefix-1566).
+
+### Every name bound to ledger 9 carries the ledger number (#1574)
+
+A public name that serves only ledger 9 has `Ledger9` in it: `Ledger9CallOptions`, `Ledger9CallResult`, `createLedger9WalletProvider`, `deserializeLedger9ContractState` and the rest. `createUnprovenCallTx`, `submitDeployTx`, `withContractScopedTransaction` and the other low-level functions keep their names and route on the era; the ledger 9 bodies are `createLedger9UnprovenCallTx` and its siblings. The barrel subpath `./protocol` is `./protocol/v9`. See [breaking-changes.md](./breaking-changes.md#26-every-name-bound-to-ledger-9-carries-the-ledger-number-1574).
 
 ### One error class per fault (#1557)
 
@@ -126,12 +130,12 @@ The mapper fails fast on an unknown `__typename` or a missing required field, an
 
 > The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** remain skipped pending an indexer decode fix (midnight-indexer#1279); **Misc** is skipped separately because proving `emitMisc` — the suite's heaviest circuit (~5× the next-largest zkir) — needs a proof-server-side fix.
 
-### MIP-0002 log events on `CallResult` (#1083)
+### MIP-0002 log events on `Ledger9CallResult` (#1083)
 
 The **local-execution path** now surfaces the MIP-0002 contract log events that `compact-js` already computes — `midnight-js` was previously discarding them:
 
-- `Ledger9CallResultPublic.logEvents` — a new `readonly LogEvent[]` field carrying the single execution-wide event list across the whole call tree, in emission order, each event tagged with its emitting contract's address. Carried **raw** (no eager decode).
-- `ContractLog` is re-exported from `compact-js` through the barrel (`contracts.ContractLog`), so consumers decode with `ContractLog.decodeAll(result.public.logEvents)` (lenient, never throws) **without** taking a direct dependency on `compact-js`.
+- `Ledger9CallResultPublic.logEvents` — a new `readonly Ledger9LogEvent[]` field carrying the single execution-wide event list across the whole call tree, in emission order, each event tagged with its emitting contract's address. Carried **raw** (no eager decode).
+- `Ledger9ContractLog` is re-exported from `compact-js` through the barrel (`contracts.Ledger9ContractLog`), so consumers decode with `Ledger9ContractLog.decodeAll(result.public.logEvents)` (lenient, never throws) **without** taking a direct dependency on `compact-js`.
 
 This complements the indexer-sourced querying/streaming from #988: #988 reads events off-chain from the indexer, while this exposes them synchronously on the result of a local call.
 
@@ -166,7 +170,7 @@ A new `deserialization` module in `@midnight-ntwrk/midnight-js-utils` turns cryp
 
 - `DeserializationError` with classification (`version-mismatch` / `generic-param-mismatch` / `format-mismatch` / `unknown`), direction inference, per-source mitigation hints, and structural-tag extraction.
 - `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).
-- A 13-pattern classifier table and 6 typed wrappers (`deserializeContractState`, …, `decodeLedgerStateValue`) as the primary API, plus a `withDeserializationContext` HOF escape hatch.
+- A 13-pattern classifier table and 6 typed wrappers (`deserializeLedger9ContractState`, …, `decodeLedger9StateValue`) as the primary API, plus a `withDeserializationContext` HOF escape hatch.
 
 ### Contract-event GraphQL schema enhancements (#971, #975)
 

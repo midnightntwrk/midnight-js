@@ -24,9 +24,9 @@ import { decodeLedger9PublicStates } from '../internal/era';
 import { createMockContractAddress, publicStatesReadStub } from './test-mocks';
 
 const decode = vi.hoisted(() => ({
-  deserializeCompactContractState: vi.fn(),
-  deserializeZswapChainState: vi.fn(),
-  deserializeLedgerParameters: vi.fn()
+  deserializeLedger9CompactContractState: vi.fn(),
+  deserializeLedger9ZswapChainState: vi.fn(),
+  deserializeLedger9Parameters: vi.fn()
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
@@ -70,9 +70,9 @@ const fromAnotherTypesCopy = <K extends keyof typeof LEDGER_STATE_TAGS>(state: S
 describe('decodeLedger9PublicStates', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    decode.deserializeCompactContractState.mockReturnValue('contract state');
-    decode.deserializeLedgerParameters.mockReturnValue('ledger parameters');
-    decode.deserializeZswapChainState.mockReturnValue('zswap chain state');
+    decode.deserializeLedger9CompactContractState.mockReturnValue('contract state');
+    decode.deserializeLedger9Parameters.mockReturnValue('ledger parameters');
+    decode.deserializeLedger9ZswapChainState.mockReturnValue('zswap chain state');
   });
 
   it('decodes each state from its own bytes and names the operation as the caller', () => {
@@ -85,9 +85,9 @@ describe('decodeLedger9PublicStates', () => {
       ledgerParameters: 'ledger parameters',
       zswapChainState: 'zswap chain state'
     });
-    expect(decode.deserializeCompactContractState).toHaveBeenCalledWith(read.contractState.serialize(), CALLER);
-    expect(decode.deserializeLedgerParameters).toHaveBeenCalledWith(read.ledgerParameters.serialize(), CALLER);
-    expect(decode.deserializeZswapChainState).toHaveBeenCalledWith(read.zswapChainState.serialize(), CALLER);
+    expect(decode.deserializeLedger9CompactContractState).toHaveBeenCalledWith(read.contractState.serialize(), CALLER);
+    expect(decode.deserializeLedger9Parameters).toHaveBeenCalledWith(read.ledgerParameters.serialize(), CALLER);
+    expect(decode.deserializeLedger9ZswapChainState).toHaveBeenCalledWith(read.zswapChainState.serialize(), CALLER);
   });
 
   it('refuses a contract state written by the v8 ledger', () => {
@@ -133,7 +133,7 @@ describe('decodeLedger9PublicStates', () => {
         expected: 'v9',
         received: 'v8'
       });
-      expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+      expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
     }
   );
 
@@ -158,7 +158,7 @@ describe('decodeLedger9PublicStates', () => {
     expect(error).toBeInstanceOf(PublicStatesEraMismatchError);
     expect(error).toHaveProperty('received', undefined);
     expect(error).toMatchObject({ field: 'zswapChainState' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 
   it('decodes states made by a second installed copy of the types package, rebuilt from their bytes', () => {
@@ -178,7 +178,7 @@ describe('decodeLedger9PublicStates', () => {
       ledgerParameters: 'ledger parameters',
       zswapChainState: 'zswap chain state'
     });
-    expect(decode.deserializeCompactContractState).toHaveBeenCalledWith(own.contractState.serialize(), CALLER);
+    expect(decode.deserializeLedger9CompactContractState).toHaveBeenCalledWith(own.contractState.serialize(), CALLER);
   });
 
   it('refuses a state from another copy of the types package whose bytes do not carry the tag of its era', () => {
@@ -192,7 +192,7 @@ describe('decodeLedger9PublicStates', () => {
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'tag-mismatch' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 
   it('refuses a state of another kind in the contract-state field by its tag', () => {
@@ -204,7 +204,7 @@ describe('decodeLedger9PublicStates', () => {
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'tag-mismatch' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 
   it('refuses a contract state of another kind in the ledger-parameters field by its tag', () => {
@@ -216,7 +216,7 @@ describe('decodeLedger9PublicStates', () => {
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'LedgerParameters', era: 'v9', reason: 'tag-mismatch' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 
   it.each(['ledgerParameters', 'zswapChainState'] as const)(
@@ -228,7 +228,7 @@ describe('decodeLedger9PublicStates', () => {
 
       expect(error).toBeInstanceOf(UnknownLedgerVersionError);
       expect(error).toMatchObject({ context: 'queryZSwapAndContractState', requestedVersion: undefined });
-      expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+      expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
     }
   );
 
@@ -241,7 +241,7 @@ describe('decodeLedger9PublicStates', () => {
 
     expect(error).toBeInstanceOf(UnknownLedgerVersionError);
     expect(error).toMatchObject({ requestedVersion: 'v10', category: 'ENVIRONMENT' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 
   it('refuses a look-alike state whose serialize does not return bytes', () => {
@@ -253,6 +253,6 @@ describe('decodeLedger9PublicStates', () => {
 
     expect(error).toBeInstanceOf(InvalidSerializedStateError);
     expect(error).toMatchObject({ kind: 'ContractState', era: 'v9', reason: 'not-bytes' });
-    expect(decode.deserializeCompactContractState).not.toHaveBeenCalled();
+    expect(decode.deserializeLedger9CompactContractState).not.toHaveBeenCalled();
   });
 });

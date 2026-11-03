@@ -18,7 +18,7 @@ import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/comp
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type CallResult } from './call';
+import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { isLedger8Request, resolveArtifactEra } from './internal/era';
@@ -35,18 +35,18 @@ import {
   type Ledger8FinalizedCallTxData,
   type Ledger8SubmittedCallTx
 } from './ledger8-contract';
-import type { SubmitTxProviders } from './submit-tx';
+import type { Ledger9SubmitTxProviders } from './submit-tx';
 import { submitLedger9PayloadAsync } from './submit-tx';
-import { type TransactionContext } from './transaction';
+import { type Ledger9TransactionContext } from './transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9SubmittedCallTx } from './tx-model';
 import {
-  createUnprovenCallTx,
+  createLedger9UnprovenCallTx,
   type Ledger9CallTxOptions,
   type Ledger9CallTxOptionsBase,
   type Ledger9CallTxOptionsWithPrivateStateId} from './unproven-call-tx';
 
 /**
- * The provider set a call entry point accepts.
+ * The provider set a ledger 9 call accepts.
  *
  * Two variants, because a call does not always need private state. The variant WITHOUT
  * `privateStateProvider` is valid only for options that name no
@@ -56,9 +56,9 @@ import {
  * @see {@link OverloadTyping} for why that run-time refusal is what makes the
  * narrowing inside these functions sound.
  */
-export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+export type Ledger9SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | Ledger9ContractProviders<C>
-  | SubmitTxProviders<C, PCK>;
+  | Ledger9SubmitTxProviders<C, PCK>;
 
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
@@ -88,7 +88,7 @@ export async function submitCallTx<C extends Ledger8Contract, PCK extends Ledger
  * Calls a circuit on a contract that declares no private state.
  */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9CallTxOptionsBase<C, PCK>
 ): Promise<Ledger9FinalizedCallTxData<C, PCK>>;
 
@@ -107,17 +107,17 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9ContractProviders<C>,
   options: Ledger9CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext: TransactionContext<C, PCK>
-): Promise<CallResult<C, PCK>>;
+  transactionContext: Ledger9TransactionContext<C, PCK>
+): Promise<Ledger9CallResult<C, PCK>>;
 
 /**
  * Calls a circuit inside a scoped transaction, on a contract that declares no private state.
  */
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9CallTxOptionsBase<C, PCK>,
-  transactionContext: TransactionContext<C, PCK>
-): Promise<CallResult<C, PCK>>;
+  transactionContext: Ledger9TransactionContext<C, PCK>
+): Promise<Ledger9CallResult<C, PCK>>;
 
  /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
@@ -159,16 +159,16 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *         declared runtime version, and no other provider is consulted.
  *
  * @remarks
- * The returned {@link Ledger9FinalizedCallTxData} (and the {@link CallResult} variant)
+ * The returned {@link Ledger9FinalizedCallTxData} (and the {@link Ledger9CallResult} variant)
  * is privacy-sensitive and carries the unproven transaction and private
  * state. See those types for handling guidance before logging, serializing,
  * or transmitting the result.
  */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitCallTxProviders<C, PCK>,
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
-  transactionContext?: TransactionContext<C, PCK>
-): Promise<Ledger9FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
+  transactionContext?: Ledger9TransactionContext<C, PCK>
+): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
   assertValidMidnightConfig(providers.config);
   const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
   if (isLedger8Request<AnyLedger8CallTxOptions>(options, artifactEra)) {
@@ -203,11 +203,11 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
-  const callTxFn = async (txCtx: TransactionContext<C, PCK>) => {
+  const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
       options.circuitId,
-      await createUnprovenCallTx(providers, options, txCtx),
+      await createLedger9UnprovenCallTx(providers, options, txCtx),
       hasPrivateStateId ? options.privateStateId : undefined
     );
   };
@@ -327,7 +327,7 @@ export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends L
  * ```
  */
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitCallTxProviders<C, PCK>,
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK>
 ): Promise<Ledger9SubmittedCallTx<C, PCK>>;
 
@@ -341,7 +341,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
  * returning immediately after submission without waiting for finalization.
  */
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitCallTxProviders<C, PCK>,
+  providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
 ): Promise<Ledger9SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
   assertValidMidnightConfig(providers.config);
@@ -368,7 +368,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
     providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
-  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
+  const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);
 
   const txId = await submitLedger9PayloadAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,

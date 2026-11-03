@@ -45,9 +45,9 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   assertDefined,
-  decodeLedgerStateValue,
-  deserializeCompactContractState,
-  deserializeContractState,
+  decodeLedger9StateValue,
+  deserializeLedger9CompactContractState,
+  deserializeLedger9ContractState,
   intentTtl
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
@@ -58,13 +58,13 @@ import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStat
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  deserializeContractState(contractState.serialize(), { caller: `${PKG}:toLedgerContractState` });
+  deserializeLedger9ContractState(contractState.serialize(), { caller: `${PKG}:toLedgerContractState` });
 
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
-  deserializeCompactContractState(contractState.serialize(), { caller: `${PKG}:fromLedgerContractState` });
+  deserializeLedger9CompactContractState(contractState.serialize(), { caller: `${PKG}:fromLedgerContractState` });
 
 export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const stateValue = decodeLedgerStateValue(queryContext.state.state.encode(), { caller: `${PKG}:toLedgerQueryContext` });
+  const stateValue = decodeLedger9StateValue(queryContext.state.state.encode(), { caller: `${PKG}:toLedgerQueryContext` });
   const ledgerQueryContext = new LedgerQueryContext(new ChargedState(stateValue), queryContext.address);
   // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
   ledgerQueryContext.block = queryContext.block;

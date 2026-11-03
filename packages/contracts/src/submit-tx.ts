@@ -21,13 +21,15 @@ import {
   type FinalizedTxRead,
   type Ledger9FinalizedTxData,
   LedgerTransaction,
+  type MidnightProviders,
   TransactionEraMismatchError,
   type UnprovenTx} from '@midnight-ntwrk/midnight-js-types';
 import { assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
-import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason } from './errors';
+import { EraInvariantViolationError,EraMismatchError, type EraMismatchReason, type SubmittedTransaction } from './errors';
 import { readHeadEra, requireLedger9Record, requireTaggedRecord } from './internal/era';
+import { diagnosedSubmit } from './internal/stale-head';
 import { proveBalanceSubmit } from './internal/submit-payload';
 
 /**
@@ -51,10 +53,10 @@ export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
 }
 
 /**
- * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
- * manipulate private state, the private state provider can be omitted.
+ * Providers required to submit a ledger 9 transaction. Submission doesn't manipulate private state,
+ * so the private state provider can be omitted.
  */
-export type SubmitTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Omit<
+export type Ledger9SubmitTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Omit<
   Ledger9ContractProviders<C, PCK>,
   'privateStateProvider'
 >;
@@ -73,7 +75,7 @@ export interface Ledger9PayloadSubmitOptions<PCK extends AnyProvableCircuitId> {
  * @throws TransactionEraMismatchError if the handle is not a v9 one.
  */
 export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
   const unprovenTx = LedgerTransaction.require(options.unprovenTx, 'Unproven', 'submitTx');
@@ -89,7 +91,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
 
 /** @internal {@link submitLedger9PayloadAsync}, then waits for the v9 record. */
 export const submitLedger9Payload = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+  providers: Ledger9SubmitTxProviders<C, PCK>,
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<Ledger9FinalizedTxData> => {
   const txId = await submitLedger9PayloadAsync(providers, options);
@@ -108,9 +110,9 @@ const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraMismatchReason>> = 
   v9: 'ledger9-transaction-on-ledger8-network'
 };
 
-const submitOnHead = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
-  options: SubmitTxOptions<PCK>
+const submitOnHead = async (
+  providers: Omit<MidnightProviders, 'privateStateProvider'>,
+  options: SubmitTxOptions<AnyProvableCircuitId>
 ): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
   const { unprovenTx, circuitId } = options;
   const era = transactionEra(unprovenTx);
@@ -120,7 +122,18 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
   if (era !== head) {
     throw new EraMismatchError(ERA_MISMATCH_REASON[era]);
   }
-  const txId = await proveBalanceSubmit(providers, unprovenTx, circuitId);
+  const namedCircuits = circuitId === undefined ? [] : [circuitId].flat();
+  const operation: SubmittedTransaction = {
+    networkVersion: head,
+    kind: 'transaction',
+    circuitId: namedCircuits.length === 0 ? undefined : namedCircuits.join(', ')
+  };
+  const txId = await proveBalanceSubmit(
+    providers,
+    unprovenTx,
+    circuitId,
+    diagnosedSubmit(providers.publicDataProvider, operation, circuitId, providers.loggerProvider)
+  );
   return { txId, head };
 };
 
@@ -139,10 +152,10 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  * | v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
  * | v9 | v8 | refused with `EraMismatchError` before proving |
  *
- * The head is read before proving, not again. If the network crosses the hard fork while the
- * transaction is being proved, the node refuses it and the refusal arrives as
- * `ProviderFailedError` from `submitTx`, not as a fork diagnosis. Read the head again and rebuild
- * the transaction for the new era.
+ * The head is read before proving. If the node rejects the submission, the head is read once more:
+ * when the network crossed the hard fork in between, the rejection arrives as
+ * `ForkCrossedDuringOperationError` (kind `'transaction'`); verify the transaction did not finalize,
+ * then build it again for the new era. A failure while proving or balancing reads nothing again.
  *
  * ## Blocking Behavior
  *
@@ -180,15 +193,20 @@ const submitOnHead = async <C extends Contract.Any, PCK extends Contract.Provabl
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
  * @throws EraMismatchError for a transaction whose era is not the head's.
- * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+ *         rejected submission arrives as this error only when the head has not moved.
+ * @throws ForkCrossedDuringOperationError if the node rejects the submission and the head now
+ *         reports a later era.
+ * @throws SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+ *         read again, or reports an earlier era.
  * @throws EraInvariantViolationError if a provider answers in the other era, or the record's era
  *         differs from the head's. In the record's case the
  *         transaction is already on chain; its id is on `txId`.
  */
-export const submitTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+export async function submitTx<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
   options: SubmitTxOptions<PCK>
-): Promise<FinalizedTxRead> => {
+): Promise<FinalizedTxRead> {
   const { txId, head } = await submitOnHead(providers, options);
   const record = requireTaggedRecord(
     await providers.publicDataProvider.watchForTxData(txId),
@@ -199,7 +217,7 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
     throw new EraInvariantViolationError('watchForTxData', options.circuitId, head, record.era, undefined, txId);
   }
   return record;
-};
+}
 
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
@@ -216,12 +234,17 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
  * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package,
  *         before the head is read.
  * @throws EraMismatchError for a transaction whose era is not the head's.
- * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ * @throws ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+ *         rejected submission arrives as this error only when the head has not moved.
+ * @throws ForkCrossedDuringOperationError if the node rejects the submission and the head now
+ *         reports a later era.
+ * @throws SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+ *         read again, or reports an earlier era.
  */
-export const submitTxAsync = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  providers: SubmitTxProviders<C, PCK>,
+export async function submitTxAsync<PCK extends AnyProvableCircuitId>(
+  providers: Omit<MidnightProviders<PCK>, 'privateStateProvider'>,
   options: SubmitTxOptions<PCK>
-): Promise<string> => {
+): Promise<string> {
   const { txId } = await submitOnHead(providers, options);
   return txId;
-};
+}

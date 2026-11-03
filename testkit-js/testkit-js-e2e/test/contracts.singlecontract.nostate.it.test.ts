@@ -14,17 +14,16 @@
  */
 
 import {
-  type CallResult,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTx,
   deployContract,
   findDeployedContract,
+  type Ledger9CallResult,
+  type Ledger9UnsubmittedDeployTxData,
   submitCallTx,
   submitDeployTx,
-  type UnsubmittedCallTxData,
-  type UnsubmittedDeployTxData
-} from '@midnight-ntwrk/midnight-js-contracts';
+  type UnsubmittedCallTxData} from '@midnight-ntwrk/midnight-js-contracts';
 import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type CoinPublicKey,
@@ -60,7 +59,7 @@ const { ledger } = CompiledSimple;
 const expectSimpleContractCallResult = (
   coinPublicKey: CoinPublicKey,
   round: bigint,
-  callResult: CallResult<SimpleContract, 'noop'>
+  callResult: Ledger9CallResult<SimpleContract, 'noop'>
 ): void => {
   expect(ledger(callResult.public.nextContractState).round).toEqual(round);
   expect(callResult.private.nextZswapLocalState).toEqual(
@@ -86,7 +85,7 @@ const expectSimpleContractDeployTxData = (
   signingKey: SigningKey,
   coinPublicKey: CoinPublicKey,
   round: bigint,
-  deployTxResult: UnsubmittedDeployTxData<SimpleContract>
+  deployTxResult: Ledger9UnsubmittedDeployTxData<SimpleContract>
 ): void => {
   expect(ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
   expect(deployTxResult.private.initialPrivateState).toBeUndefined();

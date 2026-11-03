@@ -23,7 +23,7 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export interface ContractConstructorOptionsBase<C extends Contract.Any> {
+export interface Ledger9ContractConstructorOptionsBase<C extends Contract.Any> {
   /**
    * The compiled contract defining the circuit to call.
    */
@@ -34,10 +34,10 @@ export interface ContractConstructorOptionsBase<C extends Contract.Any> {
  * Conditional type that optionally adds the inferred contract constructor argument types
  * to the constructor options.
  */
-export type ContractConstructorOptionsWithArguments<C extends Contract.Any> =
+export type Ledger9ContractConstructorOptionsWithArguments<C extends Contract.Any> =
   Contract.InitializeParameters<C> extends []
-    ? ContractConstructorOptionsBase<C>
-    : ContractConstructorOptionsBase<C> & {
+    ? Ledger9ContractConstructorOptionsBase<C>
+    : Ledger9ContractConstructorOptionsBase<C> & {
         /**
          * Arguments to pass to the circuit being called.
          */
@@ -57,15 +57,15 @@ export interface ContractConstructorOptionsProviderDataDependencies {
 /**
  * Contract constructor options including arguments and provider data.
  */
-export type ContractConstructorOptionsWithProviderDataDependencies<C extends Contract.Any> =
-  ContractConstructorOptionsWithArguments<C> & ContractConstructorOptionsProviderDataDependencies;
+export type Ledger9ContractConstructorOptionsWithProviderDataDependencies<C extends Contract.Any> =
+  Ledger9ContractConstructorOptionsWithArguments<C> & ContractConstructorOptionsProviderDataDependencies;
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the target of a circuit invocation.
  */
-export type ContractConstructorOptionsWithPrivateState<C extends Contract.Any> =
-  ContractConstructorOptionsWithProviderDataDependencies<C> & {
+export type Ledger9ContractConstructorOptionsWithPrivateState<C extends Contract.Any> =
+  Ledger9ContractConstructorOptionsWithProviderDataDependencies<C> & {
     /**
      * The private state to run the circuit against.
      */
@@ -76,14 +76,14 @@ export type ContractConstructorOptionsWithPrivateState<C extends Contract.Any> =
  * Conditional type that optionally adds the inferred circuit argument types to
  * the target of a circuit invocation.
  */
-export type ContractConstructorOptions<C extends Contract.Any> =
-  | ContractConstructorOptionsWithProviderDataDependencies<C>
-  | ContractConstructorOptionsWithPrivateState<C>;
+export type Ledger9ContractConstructorOptions<C extends Contract.Any> =
+  | Ledger9ContractConstructorOptionsWithProviderDataDependencies<C>
+  | Ledger9ContractConstructorOptionsWithPrivateState<C>;
 
 /**
  * The updated states resulting from executing a contract constructor.
  */
-export interface ContractConstructorResult<C extends Contract.Any> {
+export interface Ledger9ContractConstructorResult<C extends Contract.Any> {
   /**
    * The public state resulting from executing the contract constructor.
    */
