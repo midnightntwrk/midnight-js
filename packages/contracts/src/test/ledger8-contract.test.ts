@@ -178,7 +178,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
     //  - the declaration is there at all (it was deliberately not ported until #1312);
     //  - it names `compact-runtime-ledger8`, this repo's alias for the retained
     //    `@midnight-ntwrk/compact-runtime@0.16.0`. `compactc` emits the bare specifier, which the
-    //    root `resolutions` pin to 0.20.0 — so left alone the retained fixture would be typed
+    //    root `resolutions` pin to 0.21.0-rc.0 — so left alone the retained fixture would be typed
     //    against the CURRENT runtime's `CircuitContext`. That is loud rather than silent (the
     //    conformance assertions in `typecheck/overloads.test-d.ts` go red), but it fails somewhere
     //    that says nothing about a specifier, which is what this pins. The one-line rewrite is
@@ -322,7 +322,7 @@ describe('the retained-era contract family matches the real compact-runtime@0.16
       // which is how every real container is built. A literal `{ tag, pipe }` resembles only the
       // transient `make()` result and would keep passing if the check were widened.
       await expect(
-        resolveArtifactEra(createMockCompiledContract(), { getArtifactRuntimeVersion: async () => '0.20.0' })
+        resolveArtifactEra(createMockCompiledContract(), { getArtifactRuntimeVersion: async () => '0.21.0' })
       ).resolves.toBe('v9');
     });
 

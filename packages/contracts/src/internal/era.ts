@@ -406,7 +406,7 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  */
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': 'v8',
-  '0.20': 'v9'
+  '0.21': 'v9'
 } as const);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.

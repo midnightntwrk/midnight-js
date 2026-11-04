@@ -276,7 +276,7 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
   zkConfigProvider: {
     // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
     // it, and a ledger 9 container served with a retained value is refused.
-    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.20.0'),
+    getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.21.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),
@@ -457,7 +457,7 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
       return Promise.resolve(verifierKeys[0][1]);
     }
     override getArtifactRuntimeVersion(): Promise<string> {
-      return Promise.resolve('0.20.0');
+      return Promise.resolve('0.21.0');
     }
   })();
 }
