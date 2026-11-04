@@ -91,8 +91,8 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "3.0.0-rc.5",
-    "@midnight-ntwrk/compact-runtime": "0.21.0-rc.0",
+    "@midnight-ntwrk/compact-js": "3.0.0-rc.6",
+    "@midnight-ntwrk/compact-runtime": "0.21.0",
     "@midnight-ntwrk/onchain-runtime-v3": "^3.0.0",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v8": "8.1.2",

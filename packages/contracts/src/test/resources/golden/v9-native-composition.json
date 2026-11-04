@@ -3,7 +3,7 @@
   "inputHashes": {
     "note": "sha256 of the two compiled artifacts this fixture was captured from. They are inputs, not outputs: if either moves, every value below moves with it.",
     "files": {
-      "packages/contracts/src/test/resources/compiled/shielded-map/contract/index.js": "0a4ccfc863c193f52a2f594c638be6be53714fb7c9e58cc18cece6a1ba805d0f",
+      "packages/contracts/src/test/resources/compiled/shielded-map/contract/index.js": "71e79effecc0322b9f8e3fc465f1a36b672e75fca507a29a417e5bc119679da1",
       "packages/contracts/src/test/resources/compiled/shielded-map/keys/deposit.verifier": "43728dc21ac9b142576dd37d3cb5efa5d58ae65fc3f829ad90de864e9e13b18f"
     }
   },

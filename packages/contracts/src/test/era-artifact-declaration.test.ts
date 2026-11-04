@@ -48,7 +48,7 @@ const transpiledCurrentEraShape = (): object => ({
 
 describe('resolveArtifactEra: the era comes from what the artifact declares', () => {
   it('places a ledger 9 container from the runtime version its compiler recorded', async () => {
-    const source = declaring('0.21.0-rc.0');
+    const source = declaring('0.21.0');
 
     const era = await resolveArtifactEra(createMockCompiledContract(), source);
 

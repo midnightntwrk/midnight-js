@@ -322,7 +322,7 @@ interface CompactRuntimeLike {
 
 /**
  * The CURRENT runtime, by its own types — which are the right ones for it,
- * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.21.0-rc.0.
+ * since this repo resolves `@midnight-ntwrk/compact-runtime` to 0.21.0.
  * The retained-era path cannot use them (its VALUE is the 0.16 glue while these
  * types are 0.21's), which is why {@link CompactRuntimeLike} above spells out
  * by hand the few members that exist, and agree, on both sides.
