@@ -184,6 +184,24 @@ describe('build hash', () => {
   );
 
   it(
+    'never replays a cached build that was meant to recreate compiled contracts',
+    () => {
+      const skippedPreparation = buildTasks()
+        .filter(({ resolvedTaskDefinition }) => resolvedTaskDefinition.cache)
+        .flatMap(({ taskId, directory, inputs }) => {
+          const { scripts } = JSON.parse(readFileSync(path.join(REPO_ROOT, directory, 'package.json'), 'utf8'));
+          const prepared = [...scripts.build.matchAll(/check-compiled\.js (\S+)/g)].map(([, dir]) => dir);
+          return prepared
+            .filter((dir) => !Object.keys(inputs).some((file) => file.startsWith(`${dir}/`)))
+            .map((dir) => `${taskId}: ${dir}`);
+        });
+
+      expect(skippedPreparation).toEqual([]);
+    },
+    DRY_RUN_TIMEOUT_MS
+  );
+
+  it(
     'does not rebuild when a test or fixture changes',
     () => {
       const testInputs = buildTasks().flatMap(({ taskId, inputs }) =>
