@@ -44,18 +44,18 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${YARN_FILTER:+"--filter=$YARN_FILTER"}
+        run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          YARN_FILTER: ${{ inputs.yarn_filter }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
         run: |
-          read -ra paths <<< "$YARN_LINT_PATHS"
+          read -ra paths <<< "$LINT_PATHS"
           yarn lint -- "${paths[@]}"
         env:
-          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       - name: Check dependency constraints
         run: yarn constraints
@@ -84,18 +84,18 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test ${YARN_FILTER:+"--filter=$YARN_FILTER"} --concurrency 1
+          yarn test ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          YARN_FILTER: ${{ inputs.yarn_filter }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: |
-          yarn it ${YARN_FILTER:+"--filter=$YARN_FILTER"} --concurrency 1
+          yarn it ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          YARN_FILTER: ${{ inputs.yarn_filter }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Aggregate coverage reports
         run: |

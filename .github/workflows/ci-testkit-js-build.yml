@@ -74,17 +74,17 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${YARN_FILTER:+"--filter=$YARN_FILTER"}
+        run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          YARN_FILTER: ${{ inputs.yarn_filter }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
         run: |
-          read -ra paths <<< "$YARN_LINT_PATHS"
+          read -ra paths <<< "$LINT_PATHS"
           yarn lint -- "${paths[@]}"
         env:
-          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       # The `packages/*` half runs in the Midnight.js leg (ci-base.yml); this covers
       # the testkit workspaces, whose test files are outside tsconfig.build.json for

@@ -35,4 +35,21 @@ describe('workflow run steps', () => {
 
     expect(interpolated).toEqual([]);
   });
+
+  it('carry inputs in env names that yarn and turbo do not read as their own settings', () => {
+    const misread = readdirSync(WORKFLOW_DIR)
+      .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+      .flatMap((name) => {
+        const { jobs } = parse(readFileSync(path.join(WORKFLOW_DIR, name), 'utf8'));
+        return Object.values(jobs ?? {}).flatMap((job) =>
+          (job.steps ?? []).flatMap(({ env }) =>
+            Object.entries(env ?? {})
+              .filter(([key, value]) => /^(YARN|TURBO)_/.test(key) && /\binputs\./.test(String(value)))
+              .map(([key]) => `${name}: ${key}`)
+          )
+        );
+      });
+
+    expect(misread).toEqual([]);
+  });
 });
