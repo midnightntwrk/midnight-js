@@ -3,13 +3,20 @@
   "envMode": "loose",
   "agentGuidance": false,
   "globalEnv": ["COMPACTC_VERSION"],
-  "globalDependencies": ["build-tools/**"],
+  "globalDependencies": ["build-tools/**", "tsconfig.base.json", "scripts/check-compiled.js"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact", "rollup.config.mjs"],
-      "outputs": ["dist/**", "build/**", "src/**/managed/**"]
+      "inputs": [
+        "src/**",
+        "!src/**/*.test.ts",
+        "!src/**/test/**",
+        "rollup.config.mjs",
+        "tsconfig.json",
+        "tsconfig.build.json"
+      ],
+      "outputs": ["dist/**"]
     },
     "clean": {
       "cache": false

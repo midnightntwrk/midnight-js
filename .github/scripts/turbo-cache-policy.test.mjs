@@ -67,3 +67,55 @@ describe('turbo cache policy', () => {
     DRY_RUN_TIMEOUT_MS
   );
 });
+
+describe('build hash', () => {
+  const buildTasks = () => dryRun(['build']).tasks.filter(({ task }) => task === 'build');
+
+  it(
+    'hashes the compiler configuration',
+    () => {
+      const { globalCacheInputs } = dryRun(['build']);
+
+      const missing = buildTasks()
+        .filter(({ inputs }) => 'rollup.config.mjs' in inputs)
+        .filter(({ inputs }) => !('tsconfig.json' in inputs && 'tsconfig.build.json' in inputs))
+        .map(({ taskId }) => taskId);
+
+      expect(Object.keys(globalCacheInputs.files)).toEqual(
+        expect.arrayContaining(['tsconfig.base.json', 'scripts/check-compiled.js'])
+      );
+      expect(missing).toEqual([]);
+    },
+    DRY_RUN_TIMEOUT_MS
+  );
+
+  it(
+    'hashes the compiled contracts that testkit-js-e2e copies into dist',
+    () => {
+      const e2eBuild = buildTasks().find(({ taskId }) => taskId === '@midnight-ntwrk/testkit-js-e2e#build');
+
+      const compiledKinds = new Set(
+        Object.keys(e2eBuild.inputs)
+          .filter((file) => file.startsWith('src/contract/compiled/'))
+          .map((file) => path.extname(file))
+      );
+
+      expect([...compiledKinds]).toEqual(expect.arrayContaining(['.js', '.prover', '.verifier', '.zkir']));
+    },
+    DRY_RUN_TIMEOUT_MS
+  );
+
+  it(
+    'does not rebuild when a test or fixture changes',
+    () => {
+      const testInputs = buildTasks().flatMap(({ taskId, inputs }) =>
+        Object.keys(inputs)
+          .filter((file) => /(^|\/)test\//.test(file) || file.endsWith('.test.ts'))
+          .map((file) => `${taskId}: ${file}`)
+      );
+
+      expect(testInputs).toEqual([]);
+    },
+    DRY_RUN_TIMEOUT_MS
+  );
+});
