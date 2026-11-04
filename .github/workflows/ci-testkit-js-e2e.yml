@@ -106,7 +106,7 @@ jobs:
           docker compose -f testkit-js/compose.yml pull
           docker save \
             "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}" \
-            "ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_VERSION}" \
+            "${INDEXER_IMAGE:-ghcr.io/midnight-ntwrk/indexer-standalone}:${INDEXER_VERSION}" \
             "${MIDNIGHT_NODE_IMAGE:-ghcr.io/midnight-ntwrk/midnight-node}:${MIDNIGHT_NODE_VERSION}" \
             | zstd -T0 > image-cache/images.tar.zst
 
