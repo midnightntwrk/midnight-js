@@ -14,7 +14,7 @@
  */
 
 import { ComposeOptionError } from '../../errors';
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 
 /** The two transaction-envelope options every composition leg takes. */
 export interface ComposeEnvelopeOptions {
@@ -32,7 +32,7 @@ export interface ComposeEnvelopeOptions {
  * id, or `'ttl'` for a `ttl` that is not a valid instant.
  * @see {@link ComposeRefusalOrder}
  */
-export const assertComposeEnvelope = (options: ComposeEnvelopeOptions, version: LedgerVersion): void => {
+export const assertComposeEnvelope = (options: ComposeEnvelopeOptions, version: LedgerEra): void => {
   if (options.networkId.length === 0) {
     throw new ComposeOptionError(version, 'networkId');
   }

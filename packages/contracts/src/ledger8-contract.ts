@@ -39,7 +39,7 @@
 
 import type {
   EncodedStateValue,
-  LedgerVersion,
+  LedgerEra,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
 
@@ -321,7 +321,7 @@ export type Ledger8CallTxOptions<C extends Ledger8Contract, PCK extends Ledger8C
 export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>> =
   Ledger8CallTxOptionsBase<C, PCK> & {
     /** The era of the network head the transaction is built for. */
-    readonly head: LedgerVersion;
+    readonly head: LedgerEra;
     /**
      * The contract state to run the circuit against, as read: pass `read.contractState`. Its era is
      * `'v8'` before the fork and `'v9'` after it. An indexer older than 4.4.0-rc.6 may still serve the

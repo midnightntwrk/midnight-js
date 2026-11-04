@@ -22,9 +22,9 @@ import * as contracts from '../contracts';
 import type {
   ComposeOption,
   ComposeStage,
-  CurrentLedgerVersion,
+  CurrentLedgerEra,
   Ledger8Subpath,
-  LedgerVersion,
+  LedgerEra,
   MidnightJsErrorCategory,
   ProtocolVersionSource,
   ProtocolVersionUnknownReason,
@@ -52,11 +52,11 @@ const EXPECTED_BARREL_EXPORTS = [
   'ComposeOptionError',
   'ConfigurationError',
   'ContractExecutionError',
-  'CURRENT_LEDGER_VERSION',
+  'CURRENT_LEDGER_ERA',
   'EnvironmentUnsupportedError',
   'InvalidArgumentError',
   'InvariantViolationError',
-  'LEDGER_VERSIONS',
+  'LEDGER_ERAS',
   'Ledger8RuntimeMissingError',
   'MIDNIGHT_JS_ERROR_CATEGORIES',
   'MidnightJsError',
@@ -65,7 +65,7 @@ const EXPECTED_BARREL_EXPORTS = [
   'PayloadNotATransactionError',
   'StateDecodeFailedError',
   'StateInconsistentError',
-  'UnknownLedgerVersionError',
+  'UnknownLedgerEraError',
   'UnknownProtocolVersionError',
   'contracts',
   'latestNetworkLedgerVersion',
@@ -122,14 +122,14 @@ describe('barrel exports', () => {
   });
 });
 
-describe('ledger version vocabulary', () => {
-  it('should export the closed set of ledger versions', () => {
-    const eras: readonly LedgerVersion[] = midnightJs.LEDGER_VERSIONS;
+describe('ledger era vocabulary', () => {
+  it('should export the closed set of ledger eras', () => {
+    const eras: readonly LedgerEra[] = midnightJs.LEDGER_ERAS;
     expect(eras).toEqual(['v8', 'v9']);
   });
 
   it('should export the current era, the value a current-era result carries in `era`', () => {
-    const current: CurrentLedgerVersion = midnightJs.CURRENT_LEDGER_VERSION;
+    const current: CurrentLedgerEra = midnightJs.CURRENT_LEDGER_ERA;
     expect(current).toBe('v9');
   });
 
@@ -143,7 +143,7 @@ describe('ledger version vocabulary', () => {
   });
 });
 
-describe('ledger version failures', () => {
+describe('ledger era failures', () => {
   it('should let a caller tell the read path from the construct path by code', async () => {
     const fromRead = captureThrown(() => midnightJs.versionOfRecord({ protocolVersion: 9_000_000 }));
     const fromConstruct = await captureRejected(() => midnightJs.latestNetworkLedgerVersion(headSource(9_000_000)));
@@ -237,8 +237,8 @@ describe('retained-era error classes', () => {
     ).toBe(true);
     expect(
       midnightJs.utils.hasErrorCode(
-        new midnightJs.UnknownLedgerVersionError('v7'),
-        midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION
+        new midnightJs.UnknownLedgerEraError('v7'),
+        midnightJs.PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA
       )
     ).toBe(true);
     // Built through a static factory, not `new`: the constructor is private,
@@ -255,9 +255,9 @@ describe('retained-era error classes', () => {
     const subpath: Ledger8Subpath = new midnightJs.Ledger8RuntimeMissingError('/v8', new Error('boom')).subpath;
     const stage: ComposeStage = new midnightJs.ComposeFailedError('v9', 'call-empty', 'increment').stage;
     const option: ComposeOption = new midnightJs.ComposeOptionError('v8', 'ttl').option;
-    const decodedEra: LedgerVersion = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
-    const inconsistentEra: LedgerVersion = new midnightJs.StateInconsistentError('v9', new Error('boom')).version;
-    const requested: string | undefined = new midnightJs.UnknownLedgerVersionError('v7').requestedVersion;
+    const decodedEra: LedgerEra = new midnightJs.StateDecodeFailedError('v8', new Error('boom')).version;
+    const inconsistentEra: LedgerEra = new midnightJs.StateInconsistentError('v9', new Error('boom')).version;
+    const requested: string | undefined = new midnightJs.UnknownLedgerEraError('v7').requestedVersion;
 
     expect([subpath, stage, option, decodedEra, inconsistentEra, requested]).toEqual([
       '/v8',

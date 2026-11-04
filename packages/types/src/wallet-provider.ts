@@ -15,7 +15,7 @@
 
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { CoinPublicKey, EncPublicKey, FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
@@ -33,7 +33,7 @@ export interface WalletProvider {
    * transaction providers, and all three are read together before an operation
    * starts.
    */
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
 
   /**
    * Balances and signs a transaction, readying it for submission.
@@ -74,7 +74,7 @@ export interface WalletProvider {
  * properties of the wallet, not of the era a transaction belongs to.
  */
 export type WalletProviderHandlers = {
-  readonly [E in LedgerVersion]:
+  readonly [E in LedgerEra]:
     | ((tx: LedgerTransactionTypes[E]['Unbound'], ttl?: Date) => Promise<LedgerTransactionTypes[E]['Finalized']>)
     | undefined;
 } & {
@@ -104,7 +104,7 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
   const { getCoinPublicKey, getEncryptionPublicKey } = handlers;
   assertFunction('balanceTx', 'getCoinPublicKey', getCoinPublicKey);
   assertFunction('balanceTx', 'getEncryptionPublicKey', getEncryptionPublicKey);
-  const supportedEras = Object.freeze(LEDGER_VERSIONS.filter((era) => served[era] !== undefined));
+  const supportedEras = Object.freeze(LEDGER_ERAS.filter((era) => served[era] !== undefined));
   const route: Route<'Unbound', [Date?], TransactionsAt<'Finalized'>, FinalizedTx> = {
     method: 'balanceTx',
     stage: 'Unbound',

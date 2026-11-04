@@ -14,8 +14,8 @@
  */
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadMethod } from '@midnight-ntwrk/midnight-js-types';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { ReadMethod, StateReadMethod } from '@midnight-ntwrk/midnight-js-types';
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
@@ -108,20 +108,25 @@ export type IndexerDataErrorContext =
   | {
       kind: 'era-disagreement';
       protocolVersion: number;
-      reportedVersion: LedgerVersion;
-      stateVersion: LedgerVersion;
+      reportedVersion: LedgerEra;
+      stateVersion: LedgerEra;
     }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'malformed-zswap-encoding' }
-  | { kind: 'malformed-zswap-state'; era: LedgerVersion }
+  | { kind: 'malformed-zswap-state'; era: LedgerEra }
   | {
       kind: 'parameters-era-disagreement';
       protocolVersion: number;
-      reportedVersion: LedgerVersion;
-      parametersVersion: LedgerVersion;
+      reportedVersion: LedgerEra;
+      parametersVersion: LedgerEra;
     }
-  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
-  | { kind: 'malformed-protocol-version'; protocolVersion: number };
+  | { kind: 'mixed-era-public-states'; stateVersion: LedgerEra; parametersVersion: LedgerEra }
+  | {
+      kind: 'malformed-protocol-version';
+      protocolVersion: number;
+      method?: StateReadMethod;
+      contractAddress?: string;
+    };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -200,8 +205,8 @@ export class IndexerDataError extends IndexerError {
 
   static eraDisagreement(
     protocolVersion: number,
-    reportedVersion: LedgerVersion,
-    stateVersion: LedgerVersion
+    reportedVersion: LedgerEra,
+    stateVersion: LedgerEra
   ): IndexerDataError {
     return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, stateVersion });
   }
@@ -214,24 +219,28 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'malformed-zswap-encoding' });
   }
 
-  static malformedZswapState(era: LedgerVersion, cause: unknown): IndexerDataError {
+  static malformedZswapState(era: LedgerEra, cause: unknown): IndexerDataError {
     return new IndexerDataError({ kind: 'malformed-zswap-state', era }, { cause });
   }
 
   static parametersEraDisagreement(
     protocolVersion: number,
-    reportedVersion: LedgerVersion,
-    parametersVersion: LedgerVersion
+    reportedVersion: LedgerEra,
+    parametersVersion: LedgerEra
   ): IndexerDataError {
     return new IndexerDataError({ kind: 'parameters-era-disagreement', protocolVersion, reportedVersion, parametersVersion });
   }
 
-  static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
+  static mixedEraPublicStates(stateVersion: LedgerEra, parametersVersion: LedgerEra): IndexerDataError {
     return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
   }
 
-  static malformedProtocolVersion(protocolVersion: number, cause: unknown): IndexerDataError {
-    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion }, { cause });
+  static malformedProtocolVersion(
+    protocolVersion: number,
+    cause: unknown,
+    read?: { readonly method: StateReadMethod; readonly contractAddress: string }
+  ): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion, ...read }, { cause });
   }
 
   private static formatMessage(context: IndexerDataErrorContext): string {
@@ -313,7 +322,9 @@ export class IndexerDataError extends IndexerError {
         );
       case 'malformed-protocol-version':
         return (
-          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state, which is ` +
+          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state` +
+          `${context.method === undefined ? '' : ` read by ${context.method}`}` +
+          `${context.contractAddress === undefined ? '' : ` (contractAddress ${context.contractAddress})`}, which is ` +
           'not a non-negative integer. The contract-state reads copy protocolVersion onto every record, so a ' +
           'malformed value is refused rather than passed on. Check that the indexer and this client agree on the ' +
           'GraphQL schema.'
@@ -383,7 +394,7 @@ export class IndexerInvariantError extends IndexerError {
  * Raised when the era-keyed transaction decoder is asked for an era this build
  * ships no decoder for.
  *
- * Within one build this cannot happen: the era is a `LedgerVersion` and the
+ * Within one build this cannot happen: the era is a `LedgerEra` and the
  * decoder table is total over that union, so a missing entry is a compile
  * error. It is reachable across builds — a consumer whose installed
  * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
@@ -406,7 +417,7 @@ export class DecoderEraUnsupportedError extends IndexerError {
    */
   constructor(
     readonly method: ReadMethod,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly protocolVersion: number,
     readonly recordRef?: string
   ) {
@@ -425,8 +436,10 @@ export class DecoderEraUnsupportedError extends IndexerError {
 
 /**
  * Raised when a record's `protocolVersion` maps to no ledger era at all —
- * a network outside the node major range this framework knows about, or a
- * value that is not a non-negative integer.
+ * a network outside the node major range this framework knows about, or, on
+ * a transaction read, a value that is not a non-negative integer. A
+ * contract-state read reports a malformed value as `IndexerDataError`
+ * `malformed-protocol-version` instead.
  *
  * Distinct from {@link DecoderEraUnsupportedError}, which reports an era this build
  * has no decoder for — an era that was named, just not one of ours. Here
@@ -450,7 +463,7 @@ export class UnknownRecordEraError extends IndexerError {
    * @param recordRef The record this happened on, when known.
    */
   constructor(
-    readonly method: ReadMethod,
+    readonly method: ReadMethod | StateReadMethod,
     readonly protocolVersion: number,
     options: { cause: unknown },
     readonly recordRef?: string
@@ -458,7 +471,8 @@ export class UnknownRecordEraError extends IndexerError {
     super(
       `${method} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
         `${recordRef === undefined ? '' : ` (${recordRef})`}. ` +
-        `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
+        `This build does not support that protocol version: for a newer network, upgrade midnight-js; ` +
+        `otherwise point this provider at a network this build supports.`,
       options
     );
     this.name = 'UnknownRecordEraError';

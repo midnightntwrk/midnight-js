@@ -73,7 +73,7 @@ MidnightProviders
 - `FailEntirely` - Transaction invalid
 
 ### Ledger Eras and the Fork Window
-- **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerVersion` is the union; `LEDGER_VERSIONS` is the tuple.
+- **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerEra` is the union; `LEDGER_ERAS` is the tuple. compact-js names the same era by number: `Ledger.Era['ledger']` is `8` for `'v8'` and `9` for `'v9'`.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
 - **`latestNetworkLedgerVersion(source)`**: the era of the network's latest block, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
 - **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnight-ntwrk/midnight-js-types`. The handle carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.seal(era, stage, tx)`, read it with `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another ledger WASM copy with `ForeignLedgerTransactionError`; `unwrap` refuses another era with `TransactionEraMismatchError`.
@@ -311,7 +311,7 @@ Three things to know before wiring a retained-era flow:
   request, never from the bytes.
 
   `ledger8ProvingProvider` and `provingProvider` can be the same object when it is a server-backed
-  client — the proof server, the DApp Connector — because such a client frames each request with the ledger version that produced the transaction
+  client — the proof server, the DApp Connector — because such a client frames each request with the ledger era that produced the transaction
   and resolves key material per request. An IN-PROCESS prover frames nothing: the era it proves for
   is fixed when it is built, by the key material it was given. From
   `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is per era, and a node
@@ -452,18 +452,18 @@ built now would land in.
 
 ```typescript
 import {
-  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
-  type LedgerVersion, // 'v8' | 'v9'
+  LEDGER_ERAS,    // the closed, frozen set: ['v8', 'v9']
+  type LedgerEra, // 'v8' | 'v9'
   latestNetworkLedgerVersion,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js';
 
 // Any record carrying a raw protocolVersion, e.g. a transaction or block
 // already read from the indexer.
-const era: LedgerVersion = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
+const era: LedgerEra = versionOfRecord({ protocolVersion: 1_000_000 }); // 'v8'
 
-// The network's current ledger version, asked of a provider on every call.
-const networkVersion: LedgerVersion = await latestNetworkLedgerVersion(providers.publicDataProvider);
+// The network's current ledger era, asked of a provider on every call.
+const networkVersion: LedgerEra = await latestNetworkLedgerVersion(providers.publicDataProvider);
 ```
 
 Both resolvers refuse rather than guess: they raise `UnknownProtocolVersionError`
@@ -507,7 +507,7 @@ The retained pre-fork (`v8`) pipeline raises its own errors, whose classes the
 barrel also publishes so a consumer can read their payload without a cast:
 `Ledger8RuntimeMissingError` (`subpath`), `ComposeFailedError` (`version`,
 `stage`, `circuitId`), `ComposeOptionError` (`version`, `option`),
-`StateDecodeFailedError` (`version`) and `UnknownLedgerVersionError`
+`StateDecodeFailedError` (`version`) and `UnknownLedgerEraError`
 (`requestedVersion`). `PayloadNotATransactionError` is published alongside them
 for the `proveTx` rejection path.
 

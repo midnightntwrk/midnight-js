@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
@@ -130,8 +130,8 @@ describe('findDeployedContract', () => {
 
       const rejection = await rejectionOf();
 
-      assert(rejection instanceof UnknownLedgerVersionError);
-      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      assert(rejection instanceof UnknownLedgerEraError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA)).toBe(true);
       expect(rejection.requestedVersion).toBeUndefined();
     });
   });
@@ -163,8 +163,8 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnknownLedgerVersionError);
-      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      assert(rejection instanceof UnknownLedgerEraError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA)).toBe(true);
       expect(rejection.requestedVersion).toBeUndefined();
       expect(rejection.context).toBe('queryDeployContractState');
     });
@@ -177,8 +177,8 @@ describe('findDeployedContract', () => {
         (error: unknown) => error
       );
 
-      assert(rejection instanceof UnknownLedgerVersionError);
-      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      assert(rejection instanceof UnknownLedgerEraError);
+      expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA)).toBe(true);
       expect(rejection.requestedVersion).toBeUndefined();
       expect(rejection.context).toBe('queryDeployContractState');
     });

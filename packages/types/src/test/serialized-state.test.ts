@@ -14,9 +14,9 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_STATE_KINDS, LEDGER_VERSIONS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, LEDGER_STATE_KINDS, type LedgerEra, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -44,17 +44,17 @@ const mint: Readonly<Record<StateKind, (runtime: Runtime) => Uint8Array>> = {
   ZswapChainState: (runtime) => new runtime.ZswapChainState().serialize()
 };
 
-const bytesOf = {} as Record<StateKind, Record<LedgerVersion, Uint8Array>>;
+const bytesOf = {} as Record<StateKind, Record<LedgerEra, Uint8Array>>;
 
 beforeAll(async () => {
-  const runtimes: Record<LedgerVersion, Runtime> = { v8: await loadLedger8Protocol(), v9: ledger9 };
+  const runtimes: Record<LedgerEra, Runtime> = { v8: await loadLedger8Protocol(), v9: ledger9 };
   for (const kind of LEDGER_STATE_KINDS) {
     bytesOf[kind] = { v8: mint[kind](runtimes.v8), v9: mint[kind](runtimes.v9) };
   }
 });
 
 interface AnySerialized {
-  readonly era: LedgerVersion;
+  readonly era: LedgerEra;
   serialize(): Uint8Array;
   deserialize(decoders: StateDecoders): unknown;
 }
@@ -63,7 +63,7 @@ interface StateClass {
   readonly kind: StateKind;
   readonly name: string;
   readonly construct: (args: readonly unknown[]) => unknown;
-  readonly fromBytes: (era: LedgerVersion, bytes: Uint8Array) => AnySerialized;
+  readonly fromBytes: (era: LedgerEra, bytes: Uint8Array) => AnySerialized;
   readonly is: (value: unknown) => boolean;
 }
 
@@ -91,7 +91,7 @@ const classes: readonly StateClass[] = [
   }
 ];
 
-const everyClassAndEra = classes.flatMap((cls) => LEDGER_VERSIONS.map((era) => [cls.name, era, cls] as const));
+const everyClassAndEra = classes.flatMap((cls) => LEDGER_ERAS.map((era) => [cls.name, era, cls] as const));
 const everyClass = classes.map((cls) => [cls.name, cls] as const);
 
 const thrownBy = (act: () => unknown): unknown => {
@@ -117,7 +117,7 @@ describe('fromBytes', () => {
 
   const datedByTag = classes
     .filter((cls) => cls.kind !== 'ZswapChainState')
-    .flatMap((cls) => LEDGER_VERSIONS.map((era) => [cls.name, era, era === 'v9' ? 'v8' : 'v9', cls] as const));
+    .flatMap((cls) => LEDGER_ERAS.map((era) => [cls.name, era, era === 'v9' ? 'v8' : 'v9', cls] as const));
 
   it.each(datedByTag)('%s refuses bytes claimed as %s whose tag belongs to %s', (_, era, otherEra, cls) => {
     const error = thrownBy(() => cls.fromBytes(era, bytesOf[cls.kind][otherEra]));
@@ -131,8 +131,8 @@ describe('fromBytes', () => {
     });
   });
 
-  it.each(LEDGER_VERSIONS)('carries zswap bytes of either era as %s, because both write the same tag', (era) => {
-    for (const writer of LEDGER_VERSIONS) {
+  it.each(LEDGER_ERAS)('carries zswap bytes of either era as %s, because both write the same tag', (era) => {
+    for (const writer of LEDGER_ERAS) {
       expect(SerializedZswapChainState.fromBytes(era, bytesOf.ZswapChainState[writer]).era).toBe(era);
     }
   });
@@ -171,7 +171,7 @@ describe('fromBytes', () => {
     const unknownEra: unknown = 'v10';
     const error = thrownBy(() => Reflect.apply(cls.fromBytes, undefined, [unknownEra, bytesOf[cls.kind].v9]));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
   });
 
   it('keeps its own copy of the bytes', () => {
@@ -371,7 +371,7 @@ describe('deserialize', () => {
   });
 
   it('rethrows a coded error from the decoder unchanged', () => {
-    const coded = new UnknownLedgerVersionError('v10');
+    const coded = new UnknownLedgerEraError('v10');
     const state = SerializedContractState.fromBytes('v9', bytesOf.ContractState.v9);
 
     const error = thrownBy(() =>

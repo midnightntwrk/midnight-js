@@ -110,10 +110,10 @@ describe('Protocol type ACL', () => {
       'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
-      // The current/retained split of `LedgerVersion`, published beside it:
+      // The current/retained split of `LedgerEra`, published beside it:
       // a consumer writing a per-era handler cannot name which half it is
       // writing for without these.
-      'CurrentLedgerVersion',
+      'CurrentLedgerEra',
       'DeployResultPojo',
       'EncodedStateValue',
       'Ledger8CircuitOptions',
@@ -131,8 +131,8 @@ describe('Protocol type ACL', () => {
       'Ledger8SigningKey',
       'Ledger8Subpath',
       'LedgerEra',
+      'LedgerEraFacade',
       'LedgerParametersOption',
-      'LedgerVersion',
       'MaintenanceAuthorityMismatchReason',
       'MidnightJsErrorCategory',
       'MidnightJsErrorCodeFormat',
@@ -141,7 +141,7 @@ describe('Protocol type ACL', () => {
       'ProtocolErrorCode',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
-      'RetainedLedgerVersion',
+      'RetainedLedgerEra',
       'StateConversionStage',
       'StateKind',
       'TranscriptPojo',

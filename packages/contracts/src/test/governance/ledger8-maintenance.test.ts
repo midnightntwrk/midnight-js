@@ -29,7 +29,7 @@ import {
   loadLedger8Protocol,
   MaintenanceAuthorityMismatchError
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
@@ -370,7 +370,7 @@ describe('contract maintenance through a retained-era artifact', () => {
       providers.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       // Act & Assert
-      await expectStranded(providers, UnknownLedgerVersionError);
+      await expectStranded(providers, UnknownLedgerEraError);
     });
 
     it('hands back the new key when the record comes back from the ledger 9 era', async () => {

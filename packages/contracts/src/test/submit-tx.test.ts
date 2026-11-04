@@ -16,7 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
+import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
 import {
   InvalidArgumentError,
   PROTOCOL_ERROR_CODES,
@@ -277,8 +277,8 @@ describe('submit-tx', () => {
 
         const rejection = await rejectionOf(submitTx(mockProviders, { unprovenTx }));
 
-        expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
-        expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+        expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
+        expect(hasErrorCode(rejection, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA)).toBe(true);
       });
     });
 
@@ -744,7 +744,7 @@ describe('submit-tx', () => {
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untagged);
 
       await expect(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() })).rejects.toBeInstanceOf(
-        UnknownLedgerVersionError
+        UnknownLedgerEraError
       );
     });
   });

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
@@ -52,7 +52,7 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
     const era = await resolveArtifactEra(createMockCompiledContract(), source);
 
-    expect(era).toBe<LedgerVersion>('v9');
+    expect(era).toBe<LedgerEra>('v9');
     expect(source.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
   });
 
@@ -92,12 +92,12 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
     const era = await resolveArtifactEra(retainedShape(), source);
 
-    expect(era).toBe<LedgerVersion>('v8');
+    expect(era).toBe<LedgerEra>('v8');
     expect(source.getArtifactRuntimeVersion).toHaveBeenCalledTimes(1);
   });
 
   it('reads the declared version patch-insensitively', async () => {
-    expect(await resolveArtifactEra(retainedShape(), declaring('0.16.7'))).toBe<LedgerVersion>('v8');
+    expect(await resolveArtifactEra(retainedShape(), declaring('0.16.7'))).toBe<LedgerEra>('v8');
   });
 
   it('REFUSES a current-era contract whose async initialState a build step erased', async () => {

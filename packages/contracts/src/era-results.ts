@@ -23,7 +23,7 @@
  * or with a union of its contracts (`FoundContract<C | L8>`), and narrows it here.
  */
 
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { EraMismatchError } from './errors';
 import { readEraTag } from './internal/era';
@@ -32,7 +32,7 @@ import { readEraTag } from './internal/era';
  * What the guard narrows a result to.
  *
  * `Extract` for a union, an intersection for a value whose `era` is the whole
- * `LedgerVersion` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
+ * `LedgerEra` union. DO NOT REMOVE THE TUPLE WRAPPER: it is what stops the
  * conditional distributing.
  *
  * @see {@link OverloadTyping} for why the fallback branch has to be there.
@@ -59,13 +59,13 @@ type NarrowedToLedger8<T> = [Extract<T, { readonly era: 'v8' }>] extends [never]
  * @param result Any result carrying an era tag.
  * @returns `true` when the retained pipeline produced it.
  */
-export const isLedger8Result = <T extends { readonly era: LedgerVersion }>(
+export const isLedger8Result = <T extends { readonly era: LedgerEra }>(
   result: T
 ): result is NarrowedToLedger8<T> => {
   switch (result?.era) {
     case 'v8':
       return true;
-    case CURRENT_LEDGER_VERSION:
+    case CURRENT_LEDGER_ERA:
       return false;
     default: {
       const unhandled: never = result?.era;

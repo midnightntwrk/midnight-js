@@ -16,7 +16,7 @@
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
@@ -61,7 +61,7 @@ describe('deployContract', () => {
   let baseOptions: Ledger9DeployContractOptionsBase<Contract.Any>;
 
   const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
-    era: CURRENT_LEDGER_VERSION,
+    era: CURRENT_LEDGER_ERA,
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',

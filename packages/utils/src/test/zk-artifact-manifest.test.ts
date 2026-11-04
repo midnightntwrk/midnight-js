@@ -111,10 +111,122 @@ describe('parseZkArtifactManifest', () => {
     ).not.toThrow();
   });
 
-  // Note: a *duplicate flattened key* cannot arise from valid JSON (object keys are unique and each key is
-  // prefixed by its top-level directory name, so sections cannot collide). The `files.has(key)` guard in the
-  // parser is therefore defensive-only and is intentionally not exercised by a unit test — there is no valid
-  // input that reaches it, and a contrived prototype-pollution input is out of scope.
+  it('throws when two directories flatten to the same "dir/file" key', () => {
+    const raw = JSON.stringify({
+      'manifest-version': '1',
+      keys: { type: 'directory', 'a/b.prover': { type: 'file', size: 3, hash: BYTES_SHA256 } },
+      'keys/a': { type: 'directory', 'b.prover': { type: 'file', size: 3, hash: OTHER_HASH } }
+    });
+
+    expect(() => parseZkArtifactManifest(raw)).toThrow(/Duplicate entry "keys\/a\/b\.prover"/);
+  });
+
+  describe('duplicate keys in the raw JSON text', () => {
+    const fileEntry = (hash: string): string => `{"type":"file","size":3,"hash":"${hash}"}`;
+
+    it('throws on a duplicated file entry instead of keeping the last hash', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"c.verifier":${fileEntry(BYTES_SHA256)},"c.verifier":${fileEntry(OTHER_HASH)}}}`;
+
+      const error = (() => {
+        try {
+          parseZkArtifactManifest(raw);
+        } catch (thrown) {
+          return thrown;
+        }
+      })();
+
+      expect(error).toBeInstanceOf(ZkArtifactIntegrityError);
+      expect(error).toHaveProperty('message', expect.stringMatching(/duplicate key "c\.verifier"/));
+    });
+
+    it('throws on a hash repeated inside one file entry', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"c.verifier":{"type":"file","size":3,"hash":"${BYTES_SHA256}","hash":"${OTHER_HASH}"}}}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "hash"/);
+    });
+
+    it('throws on a repeated empty key', () => {
+      const raw = `{"manifest-version":"1","keys":{"type":"directory"},"":1,"":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key ""/);
+    });
+
+    it('throws on a repeated key that contains an escaped quote or backslash', () => {
+      const withQuote = JSON.stringify('a"b');
+      const withBackslash = JSON.stringify('a\\');
+
+      expect(() => parseZkArtifactManifest(`{"manifest-version":"1",${withQuote}:1,${withQuote}:2}`)).toThrow(
+        /duplicate key "a\\"b"/
+      );
+      expect(() => parseZkArtifactManifest(`{"manifest-version":"1",${withBackslash}:1,${withBackslash}:2}`)).toThrow(
+        /duplicate key "a\\\\"/
+      );
+    });
+
+    it('accepts a key with an escaped quote next to the same key without it', () => {
+      const raw = `{"manifest-version":"1",${JSON.stringify('a"')}:1,"a":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).not.toThrow();
+    });
+
+    it('escapes control characters of the repeated key in the error message', () => {
+      const raw = `{"manifest-version":"1","a\\nb":1,"a\\nb":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "a\\nb"/);
+    });
+
+    it('throws on a duplicated directory entry', () => {
+      const raw =
+        `{"manifest-version":"1",` +
+        `"keys":{"type":"directory","a.prover":${fileEntry(BYTES_SHA256)}},` +
+        `"keys":{"type":"directory","b.prover":${fileEntry(OTHER_HASH)}}}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "keys"/);
+    });
+
+    it('throws on a duplicated metadata key instead of returning the last value', () => {
+      const raw =
+        `{"manifest-version":"1","runtime-version":"0.15.0",` +
+        `"keys":{"type":"directory"},"runtime-version":"9.9.9"}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "runtime-version"/);
+    });
+
+    it('throws on a duplicate spelled with a JSON string escape', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"clear.verifier":${fileEntry(BYTES_SHA256)},"cle\\u0061r.verifier":${fileEntry(OTHER_HASH)}}}`;
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "clear\.verifier"/);
+    });
+
+    it('reports malformed JSON as invalid even when it also repeats a key', () => {
+      const raw = `{"manifest-version":"1","keys":{},"keys":{}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/is not valid JSON/);
+    });
+
+    it('accepts the same file name in two different directories', () => {
+      const raw =
+        `{"manifest-version":"1",` +
+        `"keys":{"type":"directory","c.verifier":${fileEntry(BYTES_SHA256)}},` +
+        `"zkir":{"type":"directory","c.verifier":${fileEntry(OTHER_HASH)}}}`;
+
+      const manifest = parseZkArtifactManifest(raw);
+
+      expect(manifest.files.get('keys/c.verifier')?.hash).toBe(BYTES_SHA256);
+      expect(manifest.files.get('zkir/c.verifier')?.hash).toBe(OTHER_HASH);
+    });
+
+    it('does not mistake repeated strings in an array or braces in a string value for keys', () => {
+      const raw =
+        `{"manifest-version":"1","note":"{\\"keys\\": {\\"keys\\": 1}}",` +
+        `"tags":["keys","keys"],"keys":{"type":"directory","a.prover":${fileEntry(BYTES_SHA256)}}}`;
+      const manifest = parseZkArtifactManifest(raw);
+      expect(manifest.files.get('keys/a.prover')?.hash).toBe(BYTES_SHA256);
+    });
+  });
 });
 
 describe('computeSha256Hex', () => {
