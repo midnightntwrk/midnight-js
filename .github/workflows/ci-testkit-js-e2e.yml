@@ -132,7 +132,6 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
           turbo-cache: 'false'
 

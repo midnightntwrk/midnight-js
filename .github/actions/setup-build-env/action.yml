@@ -20,11 +20,11 @@ inputs:
     required: false
     default: ''
   cache-key-prefix:
-    description: "Prefix for the turbo build cache key ('turbo' for packages, 'turbo-testkit' for testkit)."
+    description: "Prefix for the turbo build cache key; a job that builds a different set of packages uses its own prefix."
     required: false
     default: 'turbo'
   turbo-cache:
-    description: "Set 'false' for a job that builds nothing, so it neither restores nor saves the turbo build cache."
+    description: "Set 'false' to neither restore nor save the turbo build cache: for jobs that build nothing, and for publish jobs, which build from source."
     required: false
     default: 'true'
   testkit-docker-env:
