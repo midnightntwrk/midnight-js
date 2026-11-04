@@ -52,6 +52,13 @@ jobs:
               - '.github/scripts/**'
               - 'yarn.lock'
               - 'package.json'
+              - '**/turbo.json'
+              - 'tsconfig.base.json'
+              - 'build-tools/**'
+              - 'scripts/**'
+              - '.nvmrc'
+              - '.yarnrc.yml'
+              - 'eslint.config.mjs'
             midnight-js:
               - 'packages/**'
               # Subjects of the doc gates in packages/*/src/test: without these

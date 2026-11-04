@@ -95,6 +95,32 @@ const workflowSteps = () => {
 const cacheSteps = () =>
   (readYaml(SETUP_BUILD_ENV).runs.steps ?? []).filter(({ uses }) => uses?.startsWith('actions/cache'));
 
+describe('CI routing', () => {
+  it(
+    'runs every lane when a file that decides every build hash changes',
+    () => {
+      const { globalCacheInputs } = dryRun(['build']);
+      const ci = readYaml(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'));
+      const filterStep = Object.values(ci.jobs)
+        .flatMap((job) => job.steps ?? [])
+        .find(({ uses }) => uses?.startsWith('dorny/paths-filter'));
+      const shared = parse(filterStep.with.filters).shared;
+      const trackedTurboConfigs = spawnSync('git', ['ls-files', 'turbo.json', '**/turbo.json'], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8'
+      }).stdout.split('\n').filter(Boolean);
+
+      const unrouted = [...Object.keys(globalCacheInputs.files), ...trackedTurboConfigs, '.nvmrc', '.yarnrc.yml', 'eslint.config.mjs'].filter(
+        (file) => !shared.some((pattern) => path.matchesGlob(file, pattern))
+      );
+
+      expect(trackedTurboConfigs).toContain('turbo.json');
+      expect(unrouted).toEqual([]);
+    },
+    DRY_RUN_TIMEOUT_MS
+  );
+});
+
 describe('CI cache wiring', () => {
   it('lets turbo write to the directory CI caches', () => {
     const overridden = workflowSteps()
