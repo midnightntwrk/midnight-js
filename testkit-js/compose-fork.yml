@@ -154,7 +154,7 @@ services:
         condition: service_healthy
 
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_TAG:-9.0.0-rc.7}'
+    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_TAG:-9.0.0-rc.10}'
     container_name: proof-server_$TESTCONTAINERS_UID
     cap_drop:
       - ALL

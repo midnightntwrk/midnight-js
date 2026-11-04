@@ -43,7 +43,7 @@ resolve to this stack.
 
 The shipped story is **one** fork-prepared, dual-capable proof-server endpoint spanning the whole
 migration window. No published image serves both eras yet, so the harness runs
-`proof-server:8.1.0` and `proof-server:9.0.0-rc.7` side by side, and
+`proof-server:8.1.0` and `proof-server:9.0.0-rc.10` side by side, and
 `getEnvironmentConfiguration().proofServer` follows the chain across the boundary.
 
 **This split is a property of the harness, not the topology the product assumes.** Do not read the
