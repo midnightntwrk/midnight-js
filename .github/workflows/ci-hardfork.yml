@@ -112,7 +112,7 @@ jobs:
       # `compactc` 0.31.1 is fetched at run time and is the same download for every
       # shard, so it is cached on the version alone.
       - name: Cache the retained-era compiler
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: packages/compact/managed/0.31.1
           key: fork-compactc-0.31.1
@@ -125,7 +125,7 @@ jobs:
       # Skipped for `events`, which has no retained twin to cache.
       - name: Cache this shard's retained twin
         if: matrix.contract != 'events'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v4.4.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: consumer-e2e/.retained/${{ matrix.contract }}
           key: >-
