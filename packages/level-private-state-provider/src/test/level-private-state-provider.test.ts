@@ -16,6 +16,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ExportDecryptionError,
@@ -37,6 +38,15 @@ import { vi } from 'vitest';
 
 import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped, StoredSigningKeyFormatError } from '../index';
 import { StorageEncryption } from '../storage-encryption';
+
+/** Made by the 5.0.0-rc.5 provider through `setContractAddress('11'.repeat(32))`, before per-contract views. */
+const LEGACY_EXPORT: PrivateStateExport = {
+  format: 'midnight-private-state-export',
+  encryptedPayload:
+    'Alb9HNWhi84uHk61g5T+6+HycyZ0zdTJasE6h3t8LfLMPaXycpvpRYZOZsNxdpKT6XW8WwRTfuEYNMVgl1ckC8U5klG3uE24fo2LIKJi2bddnw6poq4F/cex8oB1Nz/nPJFQ5X1E/gj9iun0kEVAzp28B7qSZ0RCNlsaS2KKD9vPuSx+mRJJLT3rsG+KDBtIUA+GsjMHpvYXU3nD7ij17zVCC9CjYAQZ2uk6GaGEhtQ3JLJY2uGwzXCufoKs5A8Q5NXu80cNJAXUSseo5j/Pp7A90/Lw1kml84uk+2/+PwkSTV38jVJSJMwo8ojHuO2zUx6/kMHFq12KvIE7cMMANwdw8x4=',
+  salt: '56fd1cd5a18bce2e1e4eb58394feebe1f2732674cdd4c96ac13a877b7c2df2cc'
+};
+const LEGACY_EXPORT_PASSWORD = 'Legacy-Export-Pass8!';
 
 const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
   try {
@@ -71,7 +81,7 @@ const expectPasswordValidationCause = (
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'Test-Storage-Pass8!';
-  const TEST_CONTRACT_ADDRESS = 'test-contract-address' as ContractAddress;
+  const TEST_CONTRACT_ADDRESS = '20'.repeat(32) as ContractAddress;
   const TEST_ACCOUNT_ID = 'test-wallet-address-123';
   const testConfig = {
     privateStoragePasswordProvider: () => TEST_PASSWORD,
@@ -126,8 +136,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'get' returns null if key does not exist", async () => {
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
-    const value = await db.get('stringValue');
+    const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value).toBeNull();
   });
 
@@ -139,16 +148,14 @@ describe('Level Private State Provider', (): void => {
 
   async function testSetGet<K extends PID>(key: K): Promise<void> {
     const stateRepo = levelPrivateStateProvider<PID, PS>(testConfig);
-    stateRepo.setContractAddress(TEST_CONTRACT_ADDRESS);
-    await stateRepo.set(key, testStates[key]);
-    const value = await stateRepo.get(key);
+    await stateRepo.forContract(TEST_CONTRACT_ADDRESS).set(key, testStates[key]);
+    const value = await stateRepo.forContract(TEST_CONTRACT_ADDRESS).get(key);
     expect(value).toEqual(testStates[key]);
   }
 
   test("'get' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     const value = await db.getSigningKey('booleanArrayValue');
     expect(value).toBeNull();
   });
@@ -218,18 +225,16 @@ describe('Level Private State Provider', (): void => {
   test("'set' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.setSigningKey('booleanArrayValue', sampleSigningKey());
-    const value = await db.get('booleanValue');
+    const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('booleanValue');
     expect(value).toEqual(testStates.booleanValue);
   });
 
   test("'remove' deletes private states", async () => {
     await testSetGet('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
-    await db.remove('stringValue');
-    const value = await db.get('stringValue');
+    await db.forContract(TEST_CONTRACT_ADDRESS).remove('stringValue');
+    const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value).toBeNull();
   });
 
@@ -245,9 +250,8 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('stringValue');
     await testSetGetSigningKey('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.removeSigningKey('stringValue');
-    const value = await db.get('stringValue');
+    const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value).toEqual(testStates.stringValue);
   });
 
@@ -255,11 +259,10 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('stringValue');
     await testSetGet('objectValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
-    await db.clear();
-    const value0 = await db.get('stringValue');
+    await db.clearAll();
+    const value0 = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value0).toBeNull();
-    const value2 = await db.get('objectValue');
+    const value2 = await db.forContract(TEST_CONTRACT_ADDRESS).get('objectValue');
     expect(value2).toBeNull();
   });
 
@@ -280,26 +283,23 @@ describe('Level Private State Provider', (): void => {
     await testSetGetSigningKey('stringValue');
     await testSetGetSigningKey('objectValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.clearSigningKeys();
-    const value0 = await db.get('stringValue');
+    const value0 = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value0).toEqual(testStates.stringValue);
-    const value2 = await db.get('objectValue');
+    const value2 = await db.forContract(TEST_CONTRACT_ADDRESS).get('objectValue');
     expect(value2).toEqual(testStates.objectValue);
   });
 
   test("'get' returns null for non-existent scoped key", async () => {
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    db.setContractAddress(TEST_CONTRACT_ADDRESS);
-    const value = await db.get('nonExistentKey' as PID);
+    const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('nonExistentKey' as PID);
     expect(value).toBeNull();
   });
 
-  test("'getSigningKey' throws error on non-'LEVEL_NOT_FOUND_ERROR' codes", () => {
-    expect.assertions(1);
-    return levelPrivateStateProvider<PID, PS>(testConfig)
-      .getSigningKey(null as unknown as ContractAddress)
-      .catch((e) => expect(e.code).toMatch('LEVEL_INVALID_KEY'));
+  test("'getSigningKey' rejects a missing address instead of answering null", async () => {
+    await expect(
+      levelPrivateStateProvider<PID, PS>(testConfig).getSigningKey(null as unknown as ContractAddress)
+    ).rejects.toBeInstanceOf(TypeError);
   });
 
   describe('Password provider configuration', () => {
@@ -312,116 +312,225 @@ describe('Level Private State Provider', (): void => {
 
     test('works correctly when privateStoragePasswordProvider is provided', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      const value = await db.get('stringValue');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
       expect(value).toEqual(testStates.stringValue);
     });
   });
 
-  describe('Contract address scoping', () => {
-    const CONTRACT_ADDRESS_A = 'contract-address-a' as ContractAddress;
-    const CONTRACT_ADDRESS_B = 'contract-address-b' as ContractAddress;
+  describe('Per-contract view', () => {
+    const PRIVATE_STATE_SUBLEVEL = `private-states:${crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 32)}`;
 
-    test('throws error when get is called without setContractAddress', async () => {
-      const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      await expect(db.get('stringValue')).rejects.toThrow(
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      );
+    const openRawPrivateStates = async () => {
+      const level = new Level(path.join('.', 'midnight-level-db'), { createIfMissing: true });
+      const subLevel = level.sublevel<string, string>(PRIVATE_STATE_SUBLEVEL, { valueEncoding: 'utf-8' });
+      await level.open();
+      return { level, subLevel };
+    };
+
+    const readStoredValue = async (key: string): Promise<string | undefined> => {
+      const { level, subLevel } = await openRawPrivateStates();
+      try {
+        return await subLevel.get(key);
+      } finally {
+        await level.close();
+      }
+    };
+
+    const rewriteStoredValue = async (key: string, rewrite: (value: string) => string): Promise<string> => {
+      const { level, subLevel } = await openRawPrivateStates();
+      try {
+        const next = rewrite((await subLevel.get(key)) ?? '');
+        await subLevel.put(key, next);
+        return next;
+      } finally {
+        await level.close();
+      }
+    };
+
+    const CONTRACT_ADDRESS_A = 'a1'.repeat(32) as ContractAddress;
+    const CONTRACT_ADDRESS_B = 'b2'.repeat(32) as ContractAddress;
+    const LEGACY_CONTRACT_ADDRESS = '11'.repeat(32) as ContractAddress;
+    const VIEW_EXPORT_PASSWORD = 'View-Export-Pass8!';
+
+    beforeEach(async () => {
+      await levelPrivateStateProvider<PID, PS>(testConfig).clearAll();
     });
 
-    test('throws error when set is called without setContractAddress', async () => {
-      const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      await expect(db.set('stringValue', testStates.stringValue)).rejects.toThrow(
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      );
-    });
-
-    test('throws error when remove is called without setContractAddress', async () => {
-      const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      await expect(db.remove('stringValue')).rejects.toThrow(
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      );
-    });
-
-    test('throws error when clear is called without setContractAddress', async () => {
-      const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      await expect(db.clear()).rejects.toThrow(
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      );
-    });
-
-    test('allows operations after setContractAddress is called', async () => {
-      const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(CONTRACT_ADDRESS_A);
-      await db.set('stringValue', testStates.stringValue);
-      const value = await db.get('stringValue');
-      expect(value).toEqual(testStates.stringValue);
-    });
-
-    test('provides namespace isolation between different contract addresses', async () => {
-      const dbA = levelPrivateStateProvider<PID, PS>(testConfig);
-      dbA.setContractAddress(CONTRACT_ADDRESS_A);
-      await dbA.set('stringValue', 'value-from-contract-a');
-
-      const dbB = levelPrivateStateProvider<PID, PS>(testConfig);
-      dbB.setContractAddress(CONTRACT_ADDRESS_B);
-      await dbB.set('stringValue', 'value-from-contract-b');
-
-      const valueA = await dbA.get('stringValue');
-      const valueB = await dbB.get('stringValue');
-
-      expect(valueA).toEqual('value-from-contract-a');
-      expect(valueB).toEqual('value-from-contract-b');
-    });
-
-    test('same stateId with different contract addresses are independent', async () => {
+    test('refuses an address that is not a contract address', () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
-      db.setContractAddress(CONTRACT_ADDRESS_A);
-      await db.set('numberValue', 100);
-
-      db.setContractAddress(CONTRACT_ADDRESS_B);
-      const valueBeforeSet = await db.get('numberValue');
-      expect(valueBeforeSet).toBeNull();
-
-      await db.set('numberValue', 200);
-
-      db.setContractAddress(CONTRACT_ADDRESS_A);
-      const valueA = await db.get('numberValue');
-      expect(valueA).toEqual(100);
-
-      db.setContractAddress(CONTRACT_ADDRESS_B);
-      const valueB = await db.get('numberValue');
-      expect(valueB).toEqual(200);
+      expect(() => db.forContract('not-a-contract-address' as ContractAddress)).toThrow(InvalidArgumentError);
     });
 
-    test('remove only affects the current contract address scope', async () => {
+    test('keeps the same private state id separate for two contracts', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const contractA = db.forContract(CONTRACT_ADDRESS_A);
+      const contractB = db.forContract(CONTRACT_ADDRESS_B);
+
+      await contractA.set('numberValue', 100);
+      await contractB.set('numberValue', 200);
+
+      expect([await contractA.get('numberValue'), await contractB.get('numberValue')]).toEqual([100, 200]);
+    });
+
+    test('lands interleaved operations of two contracts under their own address', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
-      db.setContractAddress(CONTRACT_ADDRESS_A);
-      await db.set('booleanValue', true);
+      await Promise.all([
+        db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a'),
+        db.forContract(CONTRACT_ADDRESS_B).set('stringValue', 'value-b'),
+        db.forContract(CONTRACT_ADDRESS_A).set('numberValue', 1),
+        db.forContract(CONTRACT_ADDRESS_B).set('numberValue', 2)
+      ]);
+      const [stringA, stringB, numberA, numberB] = await Promise.all([
+        db.forContract(CONTRACT_ADDRESS_A).get('stringValue'),
+        db.forContract(CONTRACT_ADDRESS_B).get('stringValue'),
+        db.forContract(CONTRACT_ADDRESS_A).get('numberValue'),
+        db.forContract(CONTRACT_ADDRESS_B).get('numberValue')
+      ]);
 
-      db.setContractAddress(CONTRACT_ADDRESS_B);
-      await db.set('booleanValue', false);
-
-      db.setContractAddress(CONTRACT_ADDRESS_A);
-      await db.remove('booleanValue');
-
-      const valueA = await db.get('booleanValue');
-      expect(valueA).toBeNull();
-
-      db.setContractAddress(CONTRACT_ADDRESS_B);
-      const valueB = await db.get('booleanValue');
-      expect(valueB).toEqual(false);
+      expect([stringA, stringB, numberA, numberB]).toEqual(['value-a', 'value-b', 1, 2]);
     });
 
-    test('signing key operations do not require setContractAddress', async () => {
+    test('removes a state of one contract only', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.forContract(CONTRACT_ADDRESS_A).set('booleanValue', true);
+      await db.forContract(CONTRACT_ADDRESS_B).set('booleanValue', false);
+
+      await db.forContract(CONTRACT_ADDRESS_A).remove('booleanValue');
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('booleanValue')).toBeNull();
+      expect(await db.forContract(CONTRACT_ADDRESS_B).get('booleanValue')).toEqual(false);
+    });
+
+    test('clears the states of its own contract only', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+      await db.forContract(CONTRACT_ADDRESS_B).set('stringValue', 'value-b');
+
+      await db.forContract(CONTRACT_ADDRESS_A).clear();
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toBeNull();
+      expect(await db.forContract(CONTRACT_ADDRESS_B).get('stringValue')).toEqual('value-b');
+    });
+
+    test('clearAll removes the states of every contract and keeps signing keys', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       const signingKey = sampleSigningKey();
+      await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+      await db.forContract(CONTRACT_ADDRESS_B).set('stringValue', 'value-b');
       await db.setSigningKey(CONTRACT_ADDRESS_A, signingKey);
-      const value = await db.getSigningKey(CONTRACT_ADDRESS_A);
-      expect(value).toEqual(signingKey);
+
+      await db.clearAll();
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toBeNull();
+      expect(await db.forContract(CONTRACT_ADDRESS_B).get('stringValue')).toBeNull();
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_A)).toEqual(signingKey);
+    });
+
+    test('exports the states of its own contract only, also when another contract writes meanwhile', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+      await db.forContract(CONTRACT_ADDRESS_B).set('numberValue', 2);
+
+      const pendingExport = db.forContract(CONTRACT_ADDRESS_A).exportPrivateStates({ password: VIEW_EXPORT_PASSWORD });
+      const pendingWrite = db.forContract(CONTRACT_ADDRESS_B).set('booleanValue', true);
+      const [exportData] = await Promise.all([pendingExport, pendingWrite]);
+      await db.clearAll();
+      await db.forContract(CONTRACT_ADDRESS_A).importPrivateStates(exportData, { password: VIEW_EXPORT_PASSWORD });
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toEqual('value-a');
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('numberValue')).toBeNull();
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('booleanValue')).toBeNull();
+    });
+
+    test.each(['error', 'skip', 'overwrite'] as const)(
+      'imports into its own contract only with the %s strategy, also when another contract writes meanwhile',
+      async (conflictStrategy) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+        await db.forContract(CONTRACT_ADDRESS_A).set('numberValue', 1);
+        const exportData = await db.forContract(CONTRACT_ADDRESS_A).exportPrivateStates({ password: VIEW_EXPORT_PASSWORD });
+
+        const pendingImport = db
+          .forContract(CONTRACT_ADDRESS_B)
+          .importPrivateStates(exportData, { password: VIEW_EXPORT_PASSWORD, conflictStrategy });
+        const pendingWrite = db.forContract(CONTRACT_ADDRESS_A).set('booleanValue', true);
+        const [result] = await Promise.all([pendingImport, pendingWrite]);
+
+        expect(result).toEqual({ imported: 2, skipped: 0, overwritten: 0 });
+        expect(await db.forContract(CONTRACT_ADDRESS_B).get('stringValue')).toEqual('value-a');
+        expect(await db.forContract(CONTRACT_ADDRESS_B).get('numberValue')).toEqual(1);
+        expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toEqual('value-a');
+        expect(await db.forContract(CONTRACT_ADDRESS_A).get('numberValue')).toEqual(1);
+      }
+    );
+
+    test('names its contract in lower case', () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(db.forContract(CONTRACT_ADDRESS_A.toUpperCase() as ContractAddress).contractAddress).toBe(CONTRACT_ADDRESS_A);
+    });
+
+    test('reaches the same states whatever the letter case of the address', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      await db.forContract(CONTRACT_ADDRESS_A.toUpperCase() as ContractAddress).set('stringValue', 'value-a');
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toEqual('value-a');
+    });
+
+    test('reaches the same signing key whatever the letter case of the address', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      const upperCase = CONTRACT_ADDRESS_A.toUpperCase() as ContractAddress;
+
+      await db.setSigningKey(upperCase, signingKey);
+      const stored = await db.getSigningKey(CONTRACT_ADDRESS_A);
+      await db.removeSigningKey(CONTRACT_ADDRESS_A);
+
+      expect(stored).toEqual(signingKey);
+      expect(await db.getSigningKey(upperCase)).toBeNull();
+    });
+
+    test('exports its own contract when another contract holds an entry that cannot be decrypted', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+      await db.forContract(CONTRACT_ADDRESS_B).set('stringValue', 'value-b');
+      const corrupted = await rewriteStoredValue(`${CONTRACT_ADDRESS_B}:stringValue`, (value) =>
+        `${value.slice(0, -8)}${value.slice(-8) === 'AAAAAAAA' ? 'BBBBBBBB' : 'AAAAAAAA'}`
+      );
+
+      const exportData = await db.forContract(CONTRACT_ADDRESS_A).exportPrivateStates({ password: VIEW_EXPORT_PASSWORD });
+      await db.forContract(CONTRACT_ADDRESS_A).clear();
+      await db.forContract(CONTRACT_ADDRESS_A).importPrivateStates(exportData, { password: VIEW_EXPORT_PASSWORD });
+
+      expect(await db.forContract(CONTRACT_ADDRESS_A).get('stringValue')).toEqual('value-a');
+      expect(await readStoredValue(`${CONTRACT_ADDRESS_B}:stringValue`)).toBe(corrupted);
+    });
+
+    test('leaves another contract stored entries untouched when it exports', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.forContract(CONTRACT_ADDRESS_A).set('stringValue', 'value-a');
+      const unencrypted = superjson.stringify('value-b');
+      await rewriteStoredValue(`${CONTRACT_ADDRESS_B}:stringValue`, () => unencrypted);
+
+      await db.forContract(CONTRACT_ADDRESS_A).exportPrivateStates({ password: VIEW_EXPORT_PASSWORD });
+
+      expect(await readStoredValue(`${CONTRACT_ADDRESS_B}:stringValue`)).toBe(unencrypted);
+    });
+
+    test('imports an export made before per-contract views existed', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const result = await db
+        .forContract(LEGACY_CONTRACT_ADDRESS)
+        .importPrivateStates(LEGACY_EXPORT, { password: LEGACY_EXPORT_PASSWORD });
+
+      expect(result).toEqual({ imported: 2, skipped: 0, overwritten: 0 });
+      expect(await db.forContract(LEGACY_CONTRACT_ADDRESS).get('stringValue')).toEqual('legacy-value');
+      expect(await db.forContract(LEGACY_CONTRACT_ADDRESS).get('bigintValue')).toEqual(7n);
     });
   });
 
@@ -430,18 +539,16 @@ describe('Level Private State Provider', (): void => {
 
     beforeEach(async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.clear();
+      await db.clearAll();
       await db.clearSigningKeys();
     });
 
     test('exports and imports private states correctly', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      await db.set('objectValue', testStates.objectValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('objectValue', testStates.objectValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       expect(exportData.format).toBe('midnight-private-state-export');
       expect(typeof exportData.encryptedPayload).toBe('string');
@@ -449,70 +556,65 @@ describe('Level Private State Provider', (): void => {
       expect(exportData.salt).toHaveLength(64); // 32 bytes as hex
 
       // Clear and reimport
-      await db.clear();
-      const result = await db.importPrivateStates(exportData);
+      await db.clearAll();
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData);
 
       expect(result.imported).toBe(2);
       expect(result.skipped).toBe(0);
       expect(result.overwritten).toBe(0);
 
-      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
-      expect(await db.get('objectValue')).toEqual(testStates.objectValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('objectValue')).toEqual(testStates.objectValue);
     });
 
     test('exports with custom password and imports with same password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
-      await db.clear();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clearAll();
 
-      const result = await db.importPrivateStates(exportData, { password: EXPORT_PASSWORD });
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: EXPORT_PASSWORD });
       expect(result.imported).toBe(1);
-      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
     });
 
     test('throws ExportDecryptionError on wrong password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
-      await db.clear();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clearAll();
 
       await expect(
-        db.importPrivateStates(exportData, { password: 'Wrong-Pass8-Test!!' })
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: 'Wrong-Pass8-Test!!' })
       ).rejects.toThrow(ExportDecryptionError);
     });
 
     test('throws PrivateStateExportError when no states to export', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await expect(db.exportPrivateStates()).rejects.toThrow(PrivateStateExportError);
+      await expect(db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates()).rejects.toThrow(PrivateStateExportError);
     });
 
     test('throws PrivateStateExportError for short custom password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
       await expect(
-        db.exportPrivateStates({ password: 'short' })
+        db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: 'short' })
       ).rejects.toThrow(PrivateStateExportError);
     });
 
     test('throws PrivateStateExportError for short import password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
-      await db.clear();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clearAll();
 
       await expect(
-        db.importPrivateStates(exportData, { password: 'short' })
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: 'short' })
       ).rejects.toThrow(PrivateStateExportError);
     });
 
@@ -524,11 +626,10 @@ describe('Level Private State Provider', (): void => {
         ['sequential_pattern', 'Password-123456!']
       ])('exportPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
-        await db.set('stringValue', testStates.stringValue);
+        await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
         const error = await captureError(() =>
-          db.exportPrivateStates({ password: weakPassword })
+          db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: weakPassword })
         );
 
         expect(error).toBeInstanceOf(PrivateStateExportError);
@@ -542,13 +643,12 @@ describe('Level Private State Provider', (): void => {
         ['sequential_pattern', 'Password-123456!']
       ])('importPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
-        await db.set('stringValue', testStates.stringValue);
-        const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
-        await db.clear();
+        await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+        const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ password: EXPORT_PASSWORD });
+        await db.clearAll();
 
         const error = await captureError(() =>
-          db.importPrivateStates(exportData, { password: weakPassword })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: weakPassword })
         );
 
         expect(error).toBeInstanceOf(PrivateStateExportError);
@@ -558,24 +658,22 @@ describe('Level Private State Provider', (): void => {
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
-      await expect(db.importPrivateStates(exportData)).rejects.toThrow(ImportConflictError);
+      await expect(db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData)).rejects.toThrow(ImportConflictError);
     });
 
     test('ImportConflictError contains count but not state IDs', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      await db.set('numberValue', testStates.numberValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('numberValue', testStates.numberValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       try {
-        await db.importPrivateStates(exportData);
+        await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData);
         expect.fail('Should have thrown ImportConflictError');
       } catch (error) {
         expect(error).toBeInstanceOf(ImportConflictError);
@@ -589,43 +687,40 @@ describe('Level Private State Provider', (): void => {
 
     test('skips conflicts when strategy is skip', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       // Modify the state
-      await db.set('stringValue', 'modified');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', 'modified');
 
-      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'skip' });
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { conflictStrategy: 'skip' });
 
       expect(result.skipped).toBe(1);
       expect(result.imported).toBe(0);
       expect(result.overwritten).toBe(0);
-      expect(await db.get('stringValue')).toBe('modified');
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toBe('modified');
     });
 
     test('overwrites conflicts when strategy is overwrite', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       // Modify the state
-      await db.set('stringValue', 'modified');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', 'modified');
 
-      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'overwrite' });
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { conflictStrategy: 'overwrite' });
 
       expect(result.overwritten).toBe(1);
       expect(result.imported).toBe(0);
       expect(result.skipped).toBe(0);
-      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
     });
 
     test('throws InvalidExportFormatError for wrong format identifier', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'wrong-format',
@@ -634,13 +729,12 @@ describe('Level Private State Provider', (): void => {
       };
 
       await expect(
-        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport as unknown as PrivateStateExport)
       ).rejects.toThrow(InvalidExportFormatError);
     });
 
     test('throws InvalidExportFormatError for missing fields', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export'
@@ -648,13 +742,12 @@ describe('Level Private State Provider', (): void => {
       };
 
       await expect(
-        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport as unknown as PrivateStateExport)
       ).rejects.toThrow(InvalidExportFormatError);
     });
 
     test('throws InvalidExportFormatError for invalid salt length', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export',
@@ -663,13 +756,12 @@ describe('Level Private State Provider', (): void => {
       };
 
       await expect(
-        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport as unknown as PrivateStateExport)
       ).rejects.toThrow(InvalidExportFormatError);
     });
 
     test('throws InvalidExportFormatError for invalid salt characters', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export',
@@ -678,59 +770,56 @@ describe('Level Private State Provider', (): void => {
       };
 
       await expect(
-        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport as unknown as PrivateStateExport)
       ).rejects.toThrow(InvalidExportFormatError);
     });
 
     test('does NOT export signing keys', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
       const signingKey = sampleSigningKey();
       await db.setSigningKey('stringValue' as unknown as ContractAddress, signingKey);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       // Create new db instance, import, and verify signing key is NOT present
-      await db.clear();
+      await db.clearAll();
       await db.clearSigningKeys();
 
-      const result = await db.importPrivateStates(exportData);
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData);
       expect(result.imported).toBe(1);
 
-      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
       expect(await db.getSigningKey('stringValue' as unknown as ContractAddress)).toBeNull();
     });
 
     test('preserves complex types (Buffer, Uint8Array) through export/import', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('bufferValue', testStates.bufferValue);
-      await db.set('uint8ArrayValue', testStates.uint8ArrayValue);
-      await db.set('objectValue', testStates.objectValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('bufferValue', testStates.bufferValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('uint8ArrayValue', testStates.uint8ArrayValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('objectValue', testStates.objectValue);
 
-      const exportData = await db.exportPrivateStates();
-      await db.clear();
-      await db.importPrivateStates(exportData);
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
+      await db.clearAll();
+      await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData);
 
-      expect(await db.get('bufferValue')).toEqual(testStates.bufferValue);
-      expect(await db.get('uint8ArrayValue')).toEqual(testStates.uint8ArrayValue);
-      expect(await db.get('objectValue')).toEqual(testStates.objectValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('bufferValue')).toEqual(testStates.bufferValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('uint8ArrayValue')).toEqual(testStates.uint8ArrayValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('objectValue')).toEqual(testStates.objectValue);
     });
 
     test('handles mixed import scenarios correctly', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      await db.set('numberValue', testStates.numberValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('numberValue', testStates.numberValue);
 
-      const exportData = await db.exportPrivateStates();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
       // Remove one, keep one, add one new
-      await db.remove('stringValue');
-      await db.set('booleanValue', testStates.booleanValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).remove('stringValue');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('booleanValue', testStates.booleanValue);
 
-      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'skip' });
+      const result = await db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { conflictStrategy: 'skip' });
 
       // stringValue should be imported (was removed)
       // numberValue should be skipped (still exists)
@@ -738,33 +827,31 @@ describe('Level Private State Provider', (): void => {
       expect(result.skipped).toBe(1);
       expect(result.overwritten).toBe(0);
 
-      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
-      expect(await db.get('numberValue')).toEqual(testStates.numberValue);
-      expect(await db.get('booleanValue')).toEqual(testStates.booleanValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('numberValue')).toEqual(testStates.numberValue);
+      expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('booleanValue')).toEqual(testStates.booleanValue);
     });
 
     test('enforces maxStates limit on export', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      await db.set('numberValue', testStates.numberValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('numberValue', testStates.numberValue);
 
       await expect(
-        db.exportPrivateStates({ maxStates: 1 })
+        db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates({ maxStates: 1 })
       ).rejects.toThrow(PrivateStateExportError);
     });
 
     test('enforces maxStates limit on import', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.set('stringValue', testStates.stringValue);
-      await db.set('numberValue', testStates.numberValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('numberValue', testStates.numberValue);
 
-      const exportData = await db.exportPrivateStates();
-      await db.clear();
+      const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
+      await db.clearAll();
 
       await expect(
-        db.importPrivateStates(exportData, { maxStates: 1 })
+        db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { maxStates: 1 })
       ).rejects.toThrow(InvalidExportFormatError);
     });
 
@@ -773,7 +860,6 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -782,13 +868,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws ExportDecryptionError for payload that decrypts to invalid JSON', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         // Create encryption with a known salt and encrypt non-JSON data
         const salt = Buffer.from('0'.repeat(64), 'hex');
@@ -802,13 +887,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws ExportDecryptionError for payload with invalid structure (missing states)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
@@ -827,13 +911,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws ExportDecryptionError for payload with invalid structure (missing version)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
@@ -851,13 +934,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws ExportDecryptionError for stateCount mismatch', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
@@ -878,13 +960,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws InvalidExportFormatError for unsupported version', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
@@ -902,13 +983,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(InvalidExportFormatError);
       });
 
       test('throws error for state values that fail superjson.parse', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
@@ -929,16 +1009,15 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow();
       });
 
       test('throws ExportDecryptionError for tampered encrypted payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
-        await db.set('stringValue', testStates.stringValue);
+        await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
-        const exportData = await db.exportPrivateStates();
+        const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
         // Tamper with the encrypted payload (flip some bits)
         const tamperedPayload = Buffer.from(exportData.encryptedPayload, 'base64');
@@ -950,12 +1029,11 @@ describe('Level Private State Provider', (): void => {
           salt: exportData.salt
         };
 
-        await expect(db.importPrivateStates(tamperedExport)).rejects.toThrow(ExportDecryptionError);
+        await expect(db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(tamperedExport)).rejects.toThrow(ExportDecryptionError);
       });
 
       test('throws InvalidExportFormatError for empty salt', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -964,13 +1042,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(
-          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(badExport, { password: VALID_PASSWORD })
         ).rejects.toThrow(InvalidExportFormatError);
       });
 
       test('throws InvalidExportFormatError for salt with uppercase hex (validates exact format)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         // Uppercase hex should still be valid (the regex allows both cases)
         const uppercaseSalt = 'A'.repeat(64);
@@ -991,7 +1068,7 @@ describe('Level Private State Provider', (): void => {
 
         // Should NOT throw for uppercase hex - it's valid
         await expect(
-          db.importPrivateStates(exportWithUppercase, { password: VALID_PASSWORD })
+          db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportWithUppercase, { password: VALID_PASSWORD })
         ).resolves.toEqual({ imported: 0, skipped: 0, overwritten: 0 });
       });
     });
@@ -999,13 +1076,12 @@ describe('Level Private State Provider', (): void => {
 
   describe('Signing Key Export/Import', () => {
     const EXPORT_PASSWORD = 'Sk-Export-Test-Pass9!';
-    const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
-    const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
+    const CONTRACT_ADDRESS_1 = '21'.repeat(32) as ContractAddress;
+    const CONTRACT_ADDRESS_2 = '22'.repeat(32) as ContractAddress;
 
     beforeEach(async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db.clear();
+      await db.clearAll();
       await db.clearSigningKeys();
     });
 
@@ -1306,7 +1382,7 @@ describe('Level Private State Provider', (): void => {
 
       await db.removeSigningKey(CONTRACT_ADDRESS_1);
       const key3 = sampleSigningKey();
-      const CONTRACT_ADDRESS_3 = 'contract-address-3' as ContractAddress;
+      const CONTRACT_ADDRESS_3 = '23'.repeat(32) as ContractAddress;
       await db.setSigningKey(CONTRACT_ADDRESS_3, key3);
 
       const result = await db.importSigningKeys(exportData, { conflictStrategy: 'skip' });
@@ -1558,8 +1634,8 @@ describe('Level Private State Provider', (): void => {
   describe('Signing keys written by a 4.x client', () => {
     const LEGACY_TEST_DB = 'midnight-legacy-signing-key-db';
     const LEGACY_IMPORT_DB = 'midnight-legacy-signing-key-import-db';
-    const LEGACY_ADDRESS = 'legacy-contract' as ContractAddress;
-    const OTHER_ADDRESS = 'other-contract' as ContractAddress;
+    const LEGACY_ADDRESS = '24'.repeat(32) as ContractAddress;
+    const OTHER_ADDRESS = '25'.repeat(32) as ContractAddress;
     const LEGACY_KEY = 'ab'.repeat(32);
     const EXPORT_PASSWORD = 'Export-Legacy-Pass9!';
     const METADATA_KEY = '__midnight_encryption_metadata__';
@@ -1833,7 +1909,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Salt Consistency (Race Condition Prevention)', () => {
     const SALT_TEST_DB = 'midnight-salt-test-db';
-    const SALT_CONTRACT_ADDRESS = 'salt-test-contract' as ContractAddress;
+    const SALT_CONTRACT_ADDRESS = '26'.repeat(32) as ContractAddress;
 
     afterEach(async () => {
       await fs.rm(path.join('.', SALT_TEST_DB), { recursive: true, force: true });
@@ -1848,14 +1924,12 @@ describe('Level Private State Provider', (): void => {
 
       for (let i = 0; i < 5; i++) {
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(SALT_CONTRACT_ADDRESS);
-        await db.set(`key-${i}`, `value-${i}`);
+        await db.forContract(SALT_CONTRACT_ADDRESS).set(`key-${i}`, `value-${i}`);
       }
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
-      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
       for (let i = 0; i < 5; i++) {
-        const value = await verifyDb.get(`key-${i}`);
+        const value = await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get(`key-${i}`);
         expect(value).toBe(`value-${i}`);
       }
     });
@@ -1889,21 +1963,18 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(SALT_CONTRACT_ADDRESS);
-      await db.set('initial-key', 'initial-value');
+      await db.forContract(SALT_CONTRACT_ADDRESS).set('initial-key', 'initial-value');
 
-      await db.clear();
+      await db.clearAll();
 
       for (let i = 0; i < 3; i++) {
         const freshDb = levelPrivateStateProvider<string, string>(config);
-        freshDb.setContractAddress(SALT_CONTRACT_ADDRESS);
-        await freshDb.set(`post-clear-${i}`, `value-${i}`);
+        await freshDb.forContract(SALT_CONTRACT_ADDRESS).set(`post-clear-${i}`, `value-${i}`);
       }
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
-      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
       for (let i = 0; i < 3; i++) {
-        const value = await verifyDb.get(`post-clear-${i}`);
+        const value = await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get(`post-clear-${i}`);
         expect(value).toBe(`value-${i}`);
       }
     });
@@ -1918,24 +1989,21 @@ describe('Level Private State Provider', (): void => {
       const signingKey = sampleSigningKey();
 
       const db1 = levelPrivateStateProvider<string, string>(config);
-      db1.setContractAddress(SALT_CONTRACT_ADDRESS);
-      await db1.set('state-1', 'value-1');
+      await db1.forContract(SALT_CONTRACT_ADDRESS).set('state-1', 'value-1');
 
       const db2 = levelPrivateStateProvider<string, string>(config);
       await db2.setSigningKey('key-address-1' as ContractAddress, signingKey);
 
       const db3 = levelPrivateStateProvider<string, string>(config);
-      db3.setContractAddress(SALT_CONTRACT_ADDRESS);
-      await db3.set('state-2', 'value-2');
+      await db3.forContract(SALT_CONTRACT_ADDRESS).set('state-2', 'value-2');
 
       const db4 = levelPrivateStateProvider<string, string>(config);
       await db4.setSigningKey('key-address-2' as ContractAddress, signingKey);
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
-      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
 
-      expect(await verifyDb.get('state-1')).toBe('value-1');
-      expect(await verifyDb.get('state-2')).toBe('value-2');
+      expect(await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get('state-1')).toBe('value-1');
+      expect(await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get('state-2')).toBe('value-2');
       expect(await verifyDb.getSigningKey('key-address-1' as ContractAddress)).toEqual(signingKey);
       expect(await verifyDb.getSigningKey('key-address-2' as ContractAddress)).toEqual(signingKey);
     });
@@ -1969,7 +2037,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Encryption Cache', () => {
     const CACHE_TEST_DB = 'midnight-cache-test-db';
-    const CACHE_CONTRACT_ADDRESS = 'cache-test-contract' as ContractAddress;
+    const CACHE_CONTRACT_ADDRESS = '27'.repeat(32) as ContractAddress;
 
     afterEach(async () => {
       await fs.rm(path.join('.', CACHE_TEST_DB), { recursive: true, force: true });
@@ -1995,17 +2063,16 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
 
-      await db.set('key-0', 'value-0');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('key-0', 'value-0');
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
-      await db.set('key-1', 'value-1');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('key-1', 'value-1');
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
-      await db.set('key-2', 'value-2');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('key-2', 'value-2');
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
@@ -2022,15 +2089,14 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
-      await db.set('test-key', 'test-value');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('test-key', 'test-value');
 
-      const value1 = await db.get('test-key');
+      const value1 = await db.forContract(CACHE_CONTRACT_ADDRESS).get('test-key');
       expect(value1).toBe('test-value');
 
       currentPassword = 'Different-Pass-88!';
 
-      await expect(db.get('test-key')).rejects.toThrow();
+      await expect(db.forContract(CACHE_CONTRACT_ADDRESS).get('test-key')).rejects.toThrow();
     });
 
     test('invalidateEncryptionCache clears cache and forces re-derivation', async () => {
@@ -2041,12 +2107,11 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
-      await db.set('test-key', 'test-value');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('test-key', 'test-value');
 
       await db.invalidateEncryptionCache();
 
-      const value = await db.get('test-key');
+      const value = await db.forContract(CACHE_CONTRACT_ADDRESS).get('test-key');
       expect(value).toBe('test-value');
     });
 
@@ -2058,13 +2123,12 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
 
-      await db.set('state-key', 'state-value');
+      await db.forContract(CACHE_CONTRACT_ADDRESS).set('state-key', 'state-value');
       const signingKey = sampleSigningKey();
       await db.setSigningKey('key-address' as ContractAddress, signingKey);
 
-      expect(await db.get('state-key')).toBe('state-value');
+      expect(await db.forContract(CACHE_CONTRACT_ADDRESS).get('state-key')).toBe('state-value');
       expect(await db.getSigningKey('key-address' as ContractAddress)).toEqual(signingKey);
     });
 
@@ -2076,12 +2140,10 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db1 = levelPrivateStateProvider<string, string>(config);
-      db1.setContractAddress(CACHE_CONTRACT_ADDRESS);
-      await db1.set('shared-key', 'shared-value');
+      await db1.forContract(CACHE_CONTRACT_ADDRESS).set('shared-key', 'shared-value');
 
       const db2 = levelPrivateStateProvider<string, string>(config);
-      db2.setContractAddress(CACHE_CONTRACT_ADDRESS);
-      const value = await db2.get('shared-key');
+      const value = await db2.forContract(CACHE_CONTRACT_ADDRESS).get('shared-key');
 
       expect(value).toBe('shared-value');
     });
@@ -2089,7 +2151,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Encryption Cache Invalidation', () => {
     const INVALIDATE_TEST_DB = 'midnight-invalidate-test-db';
-    const INVALIDATE_CONTRACT_ADDRESS = 'invalidate-test-contract' as ContractAddress;
+    const INVALIDATE_CONTRACT_ADDRESS = '28'.repeat(32) as ContractAddress;
 
     afterEach(async () => {
       await fs.rm(path.join('.', INVALIDATE_TEST_DB), { recursive: true, force: true });
@@ -2108,12 +2170,11 @@ describe('Level Private State Provider', (): void => {
           accountId: TEST_ACCOUNT_ID
         };
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(INVALIDATE_CONTRACT_ADDRESS);
-        await db.set('key', 'value');
+        await db.forContract(INVALIDATE_CONTRACT_ADDRESS).set('key', 'value');
 
         const callsBeforeInvalidate = createSpy.mock.calls.length;
         await db.invalidateEncryptionCache();
-        await db.get('key');
+        await db.forContract(INVALIDATE_CONTRACT_ADDRESS).get('key');
 
         expect(createSpy.mock.calls.length).toBe(callsBeforeInvalidate + 1);
       } finally {
@@ -2124,7 +2185,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Password Rotation', () => {
     const ROTATION_TEST_DB = 'midnight-rotation-test-db';
-    const ROTATION_CONTRACT_ADDRESS = 'rotation-test-contract' as ContractAddress;
+    const ROTATION_CONTRACT_ADDRESS = '29'.repeat(32) as ContractAddress;
     const OLD_PASSWORD = 'Old-Password-Test8!';
     const NEW_PASSWORD = 'New-Password-Test8!';
 
@@ -2143,16 +2204,25 @@ describe('Level Private State Provider', (): void => {
         expect(typeof db.changePassword).toBe('function');
       });
 
-      test('throws error when contract address not set', async () => {
-        const db = levelPrivateStateProvider<string, string>({
+      test('rotates the whole store from a provider that never opened a contract view', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          privateStoragePasswordProvider: () => currentPassword,
           accountId: TEST_ACCOUNT_ID
-        });
+        };
+        await levelPrivateStateProvider<string, string>(config).forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
-        await expect(
-          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
-        ).rejects.toThrow('Contract address not set');
+        const result = await levelPrivateStateProvider<string, string>(config).changePassword(
+          () => OLD_PASSWORD,
+          () => NEW_PASSWORD
+        );
+
+        currentPassword = NEW_PASSWORD;
+        expect(result.entriesMigrated).toBe(1);
+        expect(
+          await levelPrivateStateProvider<string, string>(config).forContract(ROTATION_CONTRACT_ADDRESS).get('key1')
+        ).toBe('value1');
       });
 
       test('successfully rotates password for private states', async () => {
@@ -2164,16 +2234,15 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
         currentPassword = NEW_PASSWORD;
 
-        const value1 = await db.get('key1');
-        const value2 = await db.get('key2');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
+        const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
         expect(value1).toBe('value1');
         expect(value2).toBe('value2');
       });
@@ -2186,14 +2255,13 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         await expect(
           db.changePassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
         ).rejects.toThrow();
 
-        const value = await db.get('key1');
+        const value = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value).toBe('value1');
       });
 
@@ -2205,7 +2273,6 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
 
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
@@ -2224,9 +2291,8 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
         const plaintextKey = `${ROTATION_CONTRACT_ADDRESS}:plaintext-entry`;
@@ -2243,8 +2309,8 @@ describe('Level Private State Provider', (): void => {
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
         ).rejects.toThrow(/Failed to decrypt entry.*Unrecognized or unencrypted data/);
 
-        const value1 = await db.get('key1');
-        const value2 = await db.get('key2');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
+        const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
         expect(value1).toBe('value1');
         expect(value2).toBe('value2');
       });
@@ -2257,13 +2323,12 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
         // Lex-sort before ROTATION_CONTRACT_ADDRESS so iterator hits this first.
-        const plaintextKey = 'aaa-contract:plaintext-first';
+        const plaintextKey = '00-contract:plaintext-first';
 
         const directLevel = new Level(ROTATION_TEST_DB, { createIfMissing: true });
         const directSublevel = directLevel.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
@@ -2279,14 +2344,14 @@ describe('Level Private State Provider', (): void => {
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
         ).rejects.toThrow(/^Unrecognized or unencrypted data encountered during decryption$/);
 
-        const value1 = await db.get('key1');
-        const value2 = await db.get('key2');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
+        const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
         expect(value1).toBe('value1');
         expect(value2).toBe('value2');
       });
 
       test('re-encrypts all contracts data in sublevel to prevent data loss', async () => {
-        const OTHER_CONTRACT = 'other-contract' as ContractAddress;
+        const OTHER_CONTRACT = '2a'.repeat(32) as ContractAddress;
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
@@ -2296,21 +2361,17 @@ describe('Level Private State Provider', (): void => {
 
         const db = levelPrivateStateProvider<string, string>(config);
 
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
-        db.setContractAddress(OTHER_CONTRACT);
-        await db.set('other-key', 'other-value');
+        await db.forContract(OTHER_CONTRACT).set('other-key', 'other-value');
 
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
         await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
         currentPassword = NEW_PASSWORD;
-        const value1 = await db.get('key1');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value1).toBe('value1');
 
-        db.setContractAddress(OTHER_CONTRACT);
-        const otherValue = await db.get('other-key');
+        const otherValue = await db.forContract(OTHER_CONTRACT).get('other-key');
         expect(otherValue).toBe('other-value');
       });
 
@@ -2323,15 +2384,13 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
 
         const freshDb = levelPrivateStateProvider<string, string>(config);
-        freshDb.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        const value = await freshDb.get('key1');
+        const value = await freshDb.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value).toBe('value1');
       });
 
@@ -2343,8 +2402,7 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => 'short')
@@ -2395,15 +2453,14 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
 
-        const valueBefore = await db.get('v1-key');
+        const valueBefore = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('v1-key');
         expect(valueBefore).toBe('v1-test-value');
 
         await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
 
-        const valueAfter = await db.get('v1-key');
+        const valueAfter = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('v1-key');
         expect(valueAfter).toBe('v1-test-value');
 
         const levelAfter = new Level(V1_MIGRATION_DB, { createIfMissing: false });
@@ -2544,10 +2601,9 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
-        await db.set('key3', 'value3');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key3', 'value3');
 
         const result = await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
@@ -2562,7 +2618,6 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
 
         const result = await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
@@ -2598,8 +2653,7 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         const rotation1 = db.changePassword(() => OLD_PASSWORD, () => SECOND_PASSWORD);
         const rotation2 = db.changePassword(() => SECOND_PASSWORD, () => THIRD_PASSWORD);
@@ -2608,7 +2662,7 @@ describe('Level Private State Provider', (): void => {
         await rotation2;
 
         currentPassword = THIRD_PASSWORD;
-        const value = await db.get('key1');
+        const value = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value).toBe('value1');
       });
 
@@ -2621,19 +2675,18 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
-        const removePromise = db.remove('key1');
+        const removePromise = db.forContract(ROTATION_CONTRACT_ADDRESS).remove('key1');
 
         await rotationPromise;
         await removePromise;
 
         currentPassword = NEW_PASSWORD;
-        const value1 = await db.get('key1');
-        const value2 = await db.get('key2');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
+        const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
 
         expect(value1).toBeNull();
         expect(value2).toBe('value2');
@@ -2677,12 +2730,11 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
-        const getPromise = db.get('key1');
+        const getPromise = db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
 
         await rotationPromise;
         const value = await getPromise;
@@ -2699,18 +2751,17 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
-        const setPromise = db.set('key2', 'value2');
+        const setPromise = db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         await rotationPromise;
         await setPromise;
 
-        const value1 = await db.get('key1');
-        const value2 = await db.get('key2');
+        const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
+        const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
 
         expect(value1).toBe('value1');
         expect(value2).toBe('value2');
@@ -2777,19 +2828,18 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
 
-        await db.set('key1', 'value1');
-        await db.set('key2', 'value2');
-        await db.set('key3', 'value3');
-        await db.set('key4', 'value4');
-        await db.set('key5', 'value5');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key3', 'value3');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key4', 'value4');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key5', 'value5');
 
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD, { maxEntries: 3 })
         ).rejects.toThrow(/exceeds maximum allowed/);
 
-        const value = await db.get('key1');
+        const value = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value).toBe('value1');
       });
 
@@ -2826,14 +2876,13 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
-        await db.set('key1', 'value1');
+        await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key1', 'value1');
 
         await expect(
           db.changePassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
         ).rejects.toThrow(/incorrect|mismatch|decrypt/i);
 
-        const value = await db.get('key1');
+        const value = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         expect(value).toBe('value1');
       });
 
@@ -2886,14 +2935,12 @@ describe('Level Private State Provider', (): void => {
       const db1 = levelPrivateStateProvider<string, string>(config1);
       const db2 = levelPrivateStateProvider<string, string>(config2);
 
-      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
-      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await db1.set('shared-key', 'value-from-account-1');
-      await db2.set('shared-key', 'value-from-account-2');
+      await db1.forContract(TEST_CONTRACT_ADDRESS).set('shared-key', 'value-from-account-1');
+      await db2.forContract(TEST_CONTRACT_ADDRESS).set('shared-key', 'value-from-account-2');
 
-      const value1 = await db1.get('shared-key');
-      const value2 = await db2.get('shared-key');
+      const value1 = await db1.forContract(TEST_CONTRACT_ADDRESS).get('shared-key');
+      const value2 = await db2.forContract(TEST_CONTRACT_ADDRESS).get('shared-key');
 
       expect(value1).toBe('value-from-account-1');
       expect(value2).toBe('value-from-account-2');
@@ -2943,12 +2990,10 @@ describe('Level Private State Provider', (): void => {
       const db1 = levelPrivateStateProvider<string, string>(config1);
       const db2 = levelPrivateStateProvider<string, string>(config2);
 
-      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
-      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await db1.set('account1-only-key', 'secret-value');
+      await db1.forContract(TEST_CONTRACT_ADDRESS).set('account1-only-key', 'secret-value');
 
-      const valueFromAccount2 = await db2.get('account1-only-key');
+      const valueFromAccount2 = await db2.forContract(TEST_CONTRACT_ADDRESS).get('account1-only-key');
       expect(valueFromAccount2).toBeNull();
     });
 
@@ -2976,16 +3021,14 @@ describe('Level Private State Provider', (): void => {
       const db1 = levelPrivateStateProvider<string, string>(config1);
       const db2 = levelPrivateStateProvider<string, string>(config2);
 
-      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
-      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await db1.set('key1', 'value1');
-      await db2.set('key2', 'value2');
+      await db1.forContract(TEST_CONTRACT_ADDRESS).set('key1', 'value1');
+      await db2.forContract(TEST_CONTRACT_ADDRESS).set('key2', 'value2');
 
-      await db1.clear();
+      await db1.clearAll();
 
-      const value1 = await db1.get('key1');
-      const value2 = await db2.get('key2');
+      const value1 = await db1.forContract(TEST_CONTRACT_ADDRESS).get('key1');
+      const value2 = await db2.forContract(TEST_CONTRACT_ADDRESS).get('key2');
 
       expect(value1).toBeNull();
       expect(value2).toBe('value2');
@@ -3029,17 +3072,15 @@ describe('Level Private State Provider', (): void => {
         privateStoragePasswordProvider: () => TEST_PASSWORD,
         accountId
       });
-      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
-      await db1.set('consistency-key', 'value1');
+      await db1.forContract(TEST_CONTRACT_ADDRESS).set('consistency-key', 'value1');
 
       const db2 = levelPrivateStateProvider<string, string>({
         midnightDbName: ISOLATION_TEST_DB,
         privateStoragePasswordProvider: () => TEST_PASSWORD,
         accountId
       });
-      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      const value = await db2.get('consistency-key');
+      const value = await db2.forContract(TEST_CONTRACT_ADDRESS).get('consistency-key');
       expect(value).toBe('value1');
     });
   });
@@ -3144,7 +3185,7 @@ describe('Level Private State Provider', (): void => {
       });
 
       const encryption = await StorageEncryption.create(TEST_PASSWORD);
-      const CONTRACT_ADDR = 'test-contract' as ContractAddress;
+      const CONTRACT_ADDR = '2b'.repeat(32) as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
       try {
@@ -3172,9 +3213,8 @@ describe('Level Private State Provider', (): void => {
         privateStoragePasswordProvider: () => TEST_PASSWORD,
         accountId: MIGRATION_ACCOUNT_ID
       });
-      db.setContractAddress(CONTRACT_ADDR);
 
-      const value = await db.get('migrated-key');
+      const value = await db.forContract(CONTRACT_ADDR).get('migrated-key');
       expect(value).toBe('migrated-value');
     });
 
@@ -3185,7 +3225,7 @@ describe('Level Private State Provider', (): void => {
       });
 
       const encryption = await StorageEncryption.create(TEST_PASSWORD);
-      const CONTRACT_ADDR = 'test-contract' as ContractAddress;
+      const CONTRACT_ADDR = '2c'.repeat(32) as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
       try {
@@ -3221,9 +3261,8 @@ describe('Level Private State Provider', (): void => {
         privateStoragePasswordProvider: () => TEST_PASSWORD,
         accountId: MIGRATION_ACCOUNT_ID
       });
-      db.setContractAddress(CONTRACT_ADDR);
 
-      const value = await db.get('idempotent-key');
+      const value = await db.forContract(CONTRACT_ADDR).get('idempotent-key');
       expect(value).toBe('idempotent-value');
     });
 
@@ -3269,7 +3308,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Concurrent operations', () => {
     const CONCURRENCY_DB_NAME = 'test-concurrency-db';
-    const CONCURRENCY_CONTRACT_ADDRESS = 'concurrency-contract' as ContractAddress;
+    const CONCURRENCY_CONTRACT_ADDRESS = '2d'.repeat(32) as ContractAddress;
 
     const concurrencyConfig = {
       ...testConfig,
@@ -3277,9 +3316,7 @@ describe('Level Private State Provider', (): void => {
     };
 
     const createProvider = () => {
-      const provider = levelPrivateStateProvider<string, unknown>(concurrencyConfig);
-      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
-      return provider;
+      return levelPrivateStateProvider<string, unknown>(concurrencyConfig).forContract(CONCURRENCY_CONTRACT_ADDRESS);
     };
 
     const rejectionsOf = (results: PromiseSettledResult<unknown>[]): unknown[] =>
@@ -3321,19 +3358,20 @@ describe('Level Private State Provider', (): void => {
     });
 
     test('concurrent private state and signing key operations take effect', async () => {
-      const provider = createProvider();
+      const provider = levelPrivateStateProvider<string, unknown>(concurrencyConfig);
+      const states = provider.forContract(CONCURRENCY_CONTRACT_ADDRESS);
       const signingKey = sampleSigningKey();
-      await provider.set('to-remove', { n: 1 });
+      await states.set('to-remove', { n: 1 });
 
       const results = await Promise.allSettled([
-        provider.set('mixed', { n: 2 }),
-        provider.remove('to-remove'),
+        states.set('mixed', { n: 2 }),
+        states.remove('to-remove'),
         provider.setSigningKey('mixed-address', signingKey)
       ]);
 
       expect(rejectionsOf(results)).toEqual([]);
-      expect(await provider.get('mixed')).toEqual({ n: 2 });
-      expect(await provider.get('to-remove')).toBeNull();
+      expect(await states.get('mixed')).toEqual({ n: 2 });
+      expect(await states.get('to-remove')).toBeNull();
       expect(await provider.getSigningKey('mixed-address')).toEqual(signingKey);
     });
 
@@ -3366,9 +3404,8 @@ describe('Level Private State Provider', (): void => {
           return level;
         }
       });
-      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
 
-      const error = await captureError(() => provider.set('after-failure', { n: 1 }));
+      const error = await captureError(() => provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).set('after-failure', { n: 1 }));
 
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toContain('Failed to open private state database');
@@ -3376,8 +3413,8 @@ describe('Level Private State Provider', (): void => {
       expect((error as Error).cause).toBeInstanceOf(Error);
 
       failOpen = false;
-      await provider.set('after-failure', { n: 1 });
-      expect(await provider.get('after-failure')).toEqual({ n: 1 });
+      await provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).set('after-failure', { n: 1 });
+      expect(await provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).get('after-failure')).toEqual({ n: 1 });
     });
 
     test('a removal called after a write wins over that write', async () => {
@@ -3419,11 +3456,10 @@ describe('Level Private State Provider', (): void => {
         ...concurrencyConfig,
         levelFactory: factory
       });
-      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
-      await provider.set('warmup', { n: 0 });
+      await provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).set('warmup', { n: 0 });
 
       factory.mockClear();
-      await provider.set('counted', { n: 1 });
+      await provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).set('counted', { n: 1 });
 
       expect(factory).toHaveBeenCalledTimes(1);
     });
@@ -3431,7 +3467,7 @@ describe('Level Private State Provider', (): void => {
 
   describe('Serialized access to password rotation', () => {
     const RACE_DB_NAME = 'test-rotation-race-db';
-    const RACE_CONTRACT_ADDRESS = 'rotation-race-contract' as ContractAddress;
+    const RACE_CONTRACT_ADDRESS = '2e'.repeat(32) as ContractAddress;
     const RACE_OLD_PASSWORD = 'Old-Password-Race8!';
     const RACE_NEW_PASSWORD = 'New-Password-Race8!';
 
@@ -3450,21 +3486,20 @@ describe('Level Private State Provider', (): void => {
         privateStoragePasswordProvider: () => currentPassword,
         accountId: TEST_ACCOUNT_ID
       });
-      provider.setContractAddress(RACE_CONTRACT_ADDRESS);
-      await provider.set('existing', { n: 0 });
+      await provider.forContract(RACE_CONTRACT_ADDRESS).set('existing', { n: 0 });
 
-      const write = provider.set('racing', { n: 1 });
+      const write = provider.forContract(RACE_CONTRACT_ADDRESS).set('racing', { n: 1 });
       const rotation = provider.changePassword(() => RACE_OLD_PASSWORD, () => RACE_NEW_PASSWORD);
       await Promise.all([write, rotation]);
       currentPassword = RACE_NEW_PASSWORD;
 
-      expect(await provider.get('racing')).toEqual({ n: 1 });
+      expect(await provider.forContract(RACE_CONTRACT_ADDRESS).get('racing')).toEqual({ n: 1 });
     });
   });
 
   describe('Failing database handles', () => {
     const CLOSE_FAILURE_DB_NAME = 'test-close-failure-db';
-    const CLOSE_FAILURE_CONTRACT_ADDRESS = 'close-failure-contract' as ContractAddress;
+    const CLOSE_FAILURE_CONTRACT_ADDRESS = '2f'.repeat(32) as ContractAddress;
 
     afterAll(async () => {
       await fs.rm(path.join('.', CLOSE_FAILURE_DB_NAME), { recursive: true, force: true });
@@ -3486,9 +3521,8 @@ describe('Level Private State Provider', (): void => {
           return level;
         }
       });
-      provider.setContractAddress(CLOSE_FAILURE_CONTRACT_ADDRESS);
 
-      const error = await captureError(() => provider.set('unreachable', { n: 1 }));
+      const error = await captureError(() => provider.forContract(CLOSE_FAILURE_CONTRACT_ADDRESS).set('unreachable', { n: 1 }));
 
       expect(error).toBeInstanceOf(PrivateStateStorageError);
       if (!(error instanceof PrivateStateStorageError)) {
@@ -3527,10 +3561,9 @@ describe('Level Private State Provider', (): void => {
         midnightDbName: FACTORY_DB_NAME,
         levelFactory: factory,
       });
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await db.set('stringValue', 'value');
-      await db.get('stringValue');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', 'value');
+      await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
 
       expect(factory).toHaveBeenCalled();
       expect(factory.mock.calls.every(([name]) => name === FACTORY_DB_NAME)).toBe(true);
@@ -3542,10 +3575,9 @@ describe('Level Private State Provider', (): void => {
         midnightDbName: FACTORY_DB_NAME,
         levelFactory: createLevel,
       });
-      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
-      await db.set('numberValue', 42);
-      const value = await db.get('numberValue');
+      await db.forContract(TEST_CONTRACT_ADDRESS).set('numberValue', 42);
+      const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('numberValue');
       expect(value).toBe(42);
     });
 
@@ -3569,7 +3601,7 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Non-serialisable private state', () => {
-    const REJECTION_CONTRACT_ADDRESS = 'non-serialisable-contract-address' as ContractAddress;
+    const REJECTION_CONTRACT_ADDRESS = '30'.repeat(32) as ContractAddress;
 
     type RichStateId = 'functionState' | 'emptyState' | 'priorState' | 'classState' | 'symbolState' | 'recoveryState';
     type RichState = { readonly registry: Record<string, unknown> };
@@ -3577,9 +3609,7 @@ describe('Level Private State Provider', (): void => {
     const withFunction = (): RichState => ({ registry: { depth: 8, findPathForLeaf: () => 42 } });
 
     const richStateProvider = () => {
-      const db = levelPrivateStateProvider<RichStateId, RichState>(testConfig);
-      db.setContractAddress(REJECTION_CONTRACT_ADDRESS);
-      return db;
+      return levelPrivateStateProvider<RichStateId, RichState>(testConfig).forContract(REJECTION_CONTRACT_ADDRESS);
     };
 
     const expectRejectedSet = async (

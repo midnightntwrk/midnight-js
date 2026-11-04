@@ -215,20 +215,20 @@ export interface ImportSigningKeysResult {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Interface for a typed key-valued store containing contract private states.
+ * The private states of one contract, reached through
+ * {@link PrivateStateProvider.forContract}.
+ *
+ * The contract address is fixed when the view is created, so views for different
+ * contracts never interfere, even when their operations run concurrently.
  *
  * @typeParam PSI - Parameter indicating the private state ID, sometimes a union of string literals.
  * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
  */
-export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateId, PS = any> {
+export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateStateId, PS = any> {
   /**
-   * Set the contract address for scoping private state operations.
-   * Must be called before any get/set/remove operations on private states.
-   * This provides namespace isolation between different contracts.
-   *
-   * @param address The contract address to scope operations to.
+   * The address of the contract this view reaches, in lower case.
    */
-  setContractAddress(address: ContractAddress): void;
+  readonly contractAddress: ContractAddress;
 
   /**
    * Store the given private state at the given private state ID.
@@ -247,7 +247,6 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *         that keeps state in memory by reference preserves every member and so
    *         does not raise it — though such a state may still lose those members
    *         when it is exported.
-   * @throws {ConfigurationError} If no contract address has been set.
    */
   set(privateStateId: PSI, state: PS): Promise<void>;
 
@@ -264,7 +263,6 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *   explicitly-undefined stored value; if the distinction matters for your
    *   application, store a sentinel value instead.
    *
-   * @throws If `setContractAddress` has not been called prior to invocation.
    * @throws If the password returned by the configured password provider does
    *   not satisfy the minimum strength policy. Validation runs on every
    *   invocation against the password returned by the provider — it is not
@@ -300,9 +298,81 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
   remove(privateStateId: PSI): Promise<void>;
 
   /**
-   * Remove all contract private states.
+   * Remove all private states of this contract. Other contracts are not touched.
    */
   clear(): Promise<void>;
+
+  /**
+   * Export this contract's private states as an encrypted JSON-serializable structure.
+   *
+   * Signing keys are not exported.
+   *
+   * @param options Export options including optional custom password and state limit.
+   * @returns A JSON-serializable export structure that can be saved or transmitted.
+   * @throws {PrivateStateExportError} If no states exist to export, the state
+   *   limit is exceeded, or a caller-supplied `options.password` does not
+   *   satisfy the minimum-length policy.
+   * @throws If the password returned by the configured password provider
+   *   does not satisfy the minimum strength policy (validation runs on
+   *   every invocation).
+   * @throws If reading existing entries fails for any of the reasons listed
+   *   on {@link ContractPrivateStates.get} (decryption failure, rotation
+   *   lock timeout, store I/O).
+   */
+  exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
+
+  /**
+   * Import private states from a previously exported structure into this contract.
+   *
+   * An export does not record the contract it came from: the states are written
+   * into the contract of this view, whichever contract exported them.
+   *
+   * @param exportData The export data structure to import.
+   * @param options Import options including password, conflict strategy, and state limit.
+   * @returns Result indicating how many states were imported/skipped/overwritten.
+   * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
+   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
+   * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
+   * @throws {PrivateStateExportError} If a caller-supplied `options.password`
+   *   does not satisfy the minimum-length policy.
+   * @throws If reading or writing the underlying store fails for any of the
+   *   reasons listed on {@link ContractPrivateStates.get} or
+   *   {@link ContractPrivateStates.set}.
+   */
+  importPrivateStates(
+    exportData: PrivateStateExport,
+    options?: ImportPrivateStatesOptions
+  ): Promise<ImportPrivateStatesResult>;
+}
+
+/**
+ * Interface for a typed key-valued store containing contract private states and
+ * contract signing keys.
+ *
+ * Private states are reached per contract, through {@link PrivateStateProvider.forContract}.
+ * Every method compares contract addresses in lower case.
+ *
+ * @typeParam PSI - Parameter indicating the private state ID, sometimes a union of string literals.
+ * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
+ */
+export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateId, PS = any> {
+  /**
+   * Return the private states of the contract at the given address.
+   *
+   * The view is cheap to create and holds no I/O resources. The address is
+   * compared in lower case, so `'AB…'` and `'ab…'` reach the same states.
+   *
+   * @param contractAddress The address of the contract whose private states the view reaches.
+   * @returns A view whose operations always use `contractAddress`.
+   * @throws {InvalidArgumentError} If `contractAddress` is not a valid contract address.
+   */
+  forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS>;
+
+  /**
+   * Remove the private states of every contract in this provider's storage.
+   * Signing keys are not touched; see {@link PrivateStateProvider.clearSigningKeys}.
+   */
+  clearAll(): Promise<void>;
 
   /**
    * Store the given signing key at the given address.
@@ -339,10 +409,6 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *   OS-level metadata.
    *
    * @remarks
-   * Unlike {@link PrivateStateProvider.get}, this method does **not** require
-   * {@link PrivateStateProvider.setContractAddress} to have been called first —
-   * the contract address is supplied as an argument.
-   *
    * Implementations may lazily migrate legacy or unencrypted entries on
    * read, which means a successful logical read can trigger a write to the
    * underlying store. In read-only environments, `getSigningKey` may reject
@@ -365,49 +431,6 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Remove all contract signing keys.
    */
   clearSigningKeys(): Promise<void>;
-
-  /**
-   * Export all private states as an encrypted JSON-serializable structure.
-   *
-   * NOTE: This does NOT export signing keys for security reasons.
-   *
-   * @param options Export options including optional custom password and state limit.
-   * @returns A JSON-serializable export structure that can be saved or transmitted.
-   * @throws {PrivateStateExportError} If no states exist to export, the state
-   *   limit is exceeded, or a caller-supplied `options.password` does not
-   *   satisfy the minimum-length policy.
-   * @throws If implementations require a scoped operating context (for
-   *   example, an account or contract address) and that context is not set.
-   * @throws If the password returned by the configured password provider
-   *   does not satisfy the minimum strength policy (validation runs on
-   *   every invocation).
-   * @throws If reading existing entries fails for any of the reasons listed
-   *   on {@link PrivateStateProvider.get} (decryption failure, rotation
-   *   lock timeout, store I/O).
-   */
-  exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
-
-  /**
-   * Import private states from a previously exported structure.
-   *
-   * @param exportData The export data structure to import.
-   * @param options Import options including password, conflict strategy, and state limit.
-   * @returns Result indicating how many states were imported/skipped/overwritten.
-   * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
-   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
-   * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
-   * @throws {PrivateStateExportError} If a caller-supplied `options.password`
-   *   does not satisfy the minimum-length policy.
-   * @throws If implementations require a scoped operating context (for
-   *   example, an account or contract address) and that context is not set.
-   * @throws If reading or writing the underlying store fails for any of the
-   *   reasons listed on {@link PrivateStateProvider.get} or
-   *   {@link PrivateStateProvider.set}.
-   */
-  importPrivateStates(
-    exportData: PrivateStateExport,
-    options?: ImportPrivateStatesOptions
-  ): Promise<ImportPrivateStatesResult>;
 
   /**
    * Export all signing keys as an encrypted JSON-serializable structure.

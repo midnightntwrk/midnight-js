@@ -123,9 +123,10 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
       signingKey: unprovenDeployTxData.private.signingKey
     });
   }
-  providers.privateStateProvider.setContractAddress(unprovenDeployTxData.public.contractAddress);
   if ('privateStateId' in options) {
-    await providers.privateStateProvider.set(options.privateStateId, unprovenDeployTxData.private.initialPrivateState);
+    await providers.privateStateProvider
+      .forContract(unprovenDeployTxData.public.contractAddress)
+      .set(options.privateStateId, unprovenDeployTxData.private.initialPrivateState);
   }
   await providers.privateStateProvider.setSigningKey(
     unprovenDeployTxData.public.contractAddress,

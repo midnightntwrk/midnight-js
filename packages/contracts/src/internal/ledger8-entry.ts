@@ -47,6 +47,7 @@ import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   assertProvidersSupportEra,
+  type ContractPrivateStates,
   type FinalizedTxRead,
   type Ledger8FinalizedTxData,
   type MidnightConfig,
@@ -548,7 +549,7 @@ const requireLedger8Record = (
 };
 
 /** The private-state members a retained-era call reads and writes. */
-export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'get' | 'set' | 'setContractAddress'>;
+export type Ledger8PrivateStateSurface = Pick<PrivateStateProvider, 'forContract'>;
 
 /**
  * The private-state members a retained-era DEPLOY reads and writes: the call
@@ -569,7 +570,7 @@ export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
  * `undefined` down produces a valid proof against a default state and then
  * writes the result back under the caller's id. Nothing errors at any stage.
  *
- * @param privateStateProvider The private-state surface to read through.
+ * @param privateStates The private states of the called contract.
  * @param privateStateId The id the caller named, or `undefined` for a contract
  * that carries no private state.
  * @returns The stored private state, or `undefined` when no id was named.
@@ -577,13 +578,13 @@ export type Ledger8DeployPrivateStateSurface = Ledger8PrivateStateSurface &
  * @see {@link KeepStatePipeline} for the full failure mode.
  */
 const readLedger8PrivateState = async (
-  privateStateProvider: Ledger8PrivateStateSurface,
+  privateStates: ContractPrivateStates,
   privateStateId: string | undefined
 ): Promise<unknown> => {
   if (privateStateId === undefined) {
     return undefined;
   }
-  const privateState = await privateStateProvider.get(privateStateId);
+  const privateState = await privateStates.get(privateStateId);
   // The current era raises the same first sentence from `get-states.ts`, and the
   // REMEDIATION is appended rather than replacing it: a CALL cannot seed the id
   // it was handed - its options carry no `initialPrivateState` - so the state
@@ -596,7 +597,7 @@ const readLedger8PrivateState = async (
         'seed one - only `deployContract`, `submitDeployTx`, `submitLedger8DeployTx` and `findDeployedContract` ' +
         'take an `initialPrivateState`, ' +
         'each alongside the `privateStateId` it is stored under - so seed it at deploy time or at ' +
-        'attach time, or write it directly with `privateStateProvider.set(privateStateId, state)` ' +
+        'attach time, or write it directly with `privateStateProvider.forContract(contractAddress).set(privateStateId, state)` ' +
         'before calling, or omit `privateStateId` for a contract that carries no private state.'
     );
   }
@@ -744,11 +745,13 @@ export const buildLedger8CallTx = async (
   if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
     throw new IncompleteCallTxPrivateStateConfig();
   }
-  providers.privateStateProvider?.setContractAddress(options.contractAddress);
   const privateState =
     providers.privateStateProvider === undefined
       ? undefined
-      : await readLedger8PrivateState(providers.privateStateProvider, options.privateStateId);
+      : await readLedger8PrivateState(
+          providers.privateStateProvider.forContract(options.contractAddress),
+          options.privateStateId
+        );
 
   const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
@@ -967,7 +970,7 @@ export const submitLedger8CallTx = async (
   assertLedger8TxSucceeded(txData, circuitId, options.contractAddress);
 
   if (options.privateStateId !== undefined && providers.privateStateProvider !== undefined) {
-    await providers.privateStateProvider.set(options.privateStateId, nextPrivateState);
+    await providers.privateStateProvider.forContract(options.contractAddress).set(options.privateStateId, nextPrivateState);
   }
 
   // The finalized answer is the SAME execution data the async entry point published,
@@ -1253,31 +1256,10 @@ export const deployLedger8Contract = async (
   }
   assertLedger8DeploySucceeded(deployTxData, deploy.contractAddress, signingKey);
 
-  // FIRST the address, for the PRIVATE-STATE write below and for that one
-  // only. A provider namespaces every private-state entry by the address last
-  // named and refuses a `get` or a `set` before any has been named, so a `set`
-  // made first would either throw or land under whichever contract the process
-  // touched last -- and a later call, which names this address itself, would
-  // read its own key, find nothing, and report nothing.
-  //
-  // `setSigningKey` does NOT depend on it: it takes the address as an argument
-  // and the level-backed provider keys the entry with it directly. The
-  // interface states that for `getSigningKey`, whose `@remarks` in
-  // `packages/types/src/private-state-provider.ts` say it does not require
-  // `setContractAddress` first; `setSigningKey` carries no `@remarks` of its
-  // own, and what actually settles it for both is that the address is an
-  // argument rather than ambient state.
-  //
-  // Named unconditionally rather than only alongside a private state, matching
-  // `submit-deploy-tx.ts`: after a deploy, the provider's current namespace is
-  // the contract just deployed, whether or not this deployment stored a state
-  // under it.
-  providers.privateStateProvider.setContractAddress(deploy.contractAddress);
   // THE SIGNING KEY FIRST, before the private state. It is the sole backing of a
   // one-key authority at threshold 1, so a sampled key that reached only the
-  // returned handle left an address nobody could ever maintain. It has no
-  // ordering dependency of its own -- see above -- so nothing forced it to go
-  // second, and going second is a window in which the private-state write
+  // returned handle left an address nobody could ever maintain. Nothing forces
+  // it to go second, and going second is a window in which the private-state write
   // rejects and the only copy of the key dies with this call frame.
   //
   // BOTH writes are wrapped, so the region's promise holds to its last
@@ -1292,7 +1274,7 @@ export const deployLedger8Contract = async (
   }
   if (privateStateId !== undefined) {
     try {
-      await providers.privateStateProvider.set(privateStateId, deploy.nextPrivateState);
+      await providers.privateStateProvider.forContract(deploy.contractAddress).set(privateStateId, deploy.nextPrivateState);
     } catch (error) {
       throw new Ledger8NotStoredError('deploy', deploy.contractAddress, signingKey, 'private-state', error);
     }
