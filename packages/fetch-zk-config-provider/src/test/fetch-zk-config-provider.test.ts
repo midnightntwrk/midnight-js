@@ -608,6 +608,29 @@ describe('Fetch ZK config Provider', () => {
       ).rejects.toThrow(ZkArtifactIntegrityError);
     });
 
+    it('rejects a pinned manifest whose raw text repeats a key, even though the pin matches its bytes', async () => {
+      const genuine = await proverFixture();
+      const forged = Buffer.from('forged prover key artifact');
+      const entry = (bytes: Buffer): string =>
+        `{"type":"file","size":${bytes.length},"hash":"${computeSha256Hex(new Uint8Array(bytes))}"}`;
+      const rawManifest =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"set_topic.prover":${entry(genuine)},"set_topic.prover":${entry(forged)}}}`;
+      const pin = computeSha256Hex(new TextEncoder().encode(rawManifest));
+      const fixture = startServer((app) => {
+        app.get('/keys/set_topic.prover', (_, res) => res.send(forged));
+        app.get('/compiler/contract-manifest.json', (_, res) => res.type('application/json').send(rawManifest));
+      });
+
+      try {
+        await expect(
+          new FetchZkConfigProvider(fixture.url, { expectedManifestHash: pin }).getProverKey('set_topic')
+        ).rejects.toThrow(/duplicate key "set_topic\.prover"/);
+      } finally {
+        fixture.close();
+      }
+    });
+
     it('rejects in warn mode when expectedManifestHash is set but the manifest is absent', async () => {
       const app = express();
       app.get('/keys/set_topic.prover', async (_, res) => res.send(await proverFixture()));

@@ -30,7 +30,7 @@ import {
   emptyZswapLocalState,
   sampleSigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { SerializedLedgerParameters, SerializedZswapChainState, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type {
   EnvironmentConfiguration,
@@ -138,7 +138,7 @@ describe('Contracts API', () => {
       initialPrivateState: privateStateZero
     });
 
-    expect(ledger(unprovenDeployTxResult.public.initialContractState.data).round).toEqual(0n);
+    expect(ledger(unprovenDeployTxResult.public.initialContractState.deserialize({ v9: ContractState }).data).round).toEqual(0n);
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
@@ -157,8 +157,8 @@ describe('Contracts API', () => {
         coinPublicKey: providers.walletProvider.getCoinPublicKey(),
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState(),
-        ledgerParameters: LedgerParameters.initialParameters(),
+        initialZswapChainState: SerializedZswapChainState.fromBytes('v9', new ZswapChainState().serialize()),
+        ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
         config: providers.config
       },
       providers.walletProvider.getEncryptionPublicKey()

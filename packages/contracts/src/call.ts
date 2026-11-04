@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-import {
-  type EncodedStateValue,
-  type EncPublicKey,
-  type LedgerParameters,
-  type ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type EncodedStateValue, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   type ContractAddress,
-  type ContractState,
   type LogEvent,
   type StateValue
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CallResultPrivateBase, CallResultPublicBase, MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+import type {
+  CallResultPrivateBase,
+  CallResultPublicBase,
+  MidnightConfig,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState
+} from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Describes the target of a circuit invocation.
@@ -78,17 +79,20 @@ export interface Ledger9CallOptionsProviderDataDependencies {
    */
   readonly coinPublicKey: CoinPublicKey;
   /**
-   * The initial public state of the contract to run the circuit against.
+   * The initial public state of the contract to run the circuit against, as read: pass
+   * `read.contractState` of a `PublicDataProvider` read. It must be written by the v9 ledger.
    */
-  readonly initialContractState: ContractState;
+  readonly initialContractState: SerializedContractState;
   /**
-   * The initial public Zswap state of the contract to run the circuit against.
+   * The initial public Zswap state of the contract to run the circuit against, as read: pass
+   * `read.zswapChainState`. It must be written by the v9 ledger.
    */
-  readonly initialZswapChainState: ZswapChainState;
+  readonly initialZswapChainState: SerializedZswapChainState;
   /**
-   * The ledger parameters to use when executing the circuit.
+   * The ledger parameters to use when executing the circuit, as read: pass `read.ledgerParameters`.
+   * They must be written by the v9 ledger.
    */
-  readonly ledgerParameters: LedgerParameters;
+  readonly ledgerParameters: SerializedLedgerParameters;
   /**
    * Network and transaction settings, normally `providers.config`.
    */

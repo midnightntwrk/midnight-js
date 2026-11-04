@@ -20,9 +20,9 @@ import {
   Ledger8RuntimeInvalidError,
   StateConversionFailedError,
   type StateConversionStage,
-  UnknownLedgerVersionError
+  UnknownLedgerEraError
 } from '../../errors';
-import type { LedgerVersion } from '../../version';
+import type { LedgerEra } from '../../version';
 
 export type { EncodedStateValue };
 
@@ -63,7 +63,7 @@ export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateVa
 };
 
 /**
- * One decoder per {@link LedgerVersion}:
+ * One decoder per {@link LedgerEra}:
  *
  * - `v9` — a post-fork `contract-state[v8]`-tagged state, read via
  *   `@midnightntwrk/ledger-v9`.
@@ -73,14 +73,14 @@ export const extractLedger9EncodedStateValue = (raw: Uint8Array): EncodedStateVa
  * A total `Record`, built on a null prototype and frozen -- see the
  * SharedTableDiscipline document.
  */
-const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Object.freeze(
-  Object.assign(Object.create(null) as Record<LedgerVersion, EnvelopeDecoder>, {
+const ENVELOPE_DECODERS: Readonly<Record<LedgerEra, EnvelopeDecoder>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<LedgerEra, EnvelopeDecoder>, {
     v8: (raw: Uint8Array, ledger8ContractState: Ledger8ContractState): EncodedStateValue =>
       ledger8ContractState.deserialize(raw).data.state.encode(),
     // A reference to the standalone decoder, not a second copy of the same
     // read -- see FailClosedDecoding.
     v9: extractLedger9EncodedStateValue
-  } satisfies Record<LedgerVersion, EnvelopeDecoder>)
+  } satisfies Record<LedgerEra, EnvelopeDecoder>)
 );
 
 /**
@@ -95,8 +95,8 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  * happens.
  * @returns The primary state read out of the serialized state — never a silently
  * empty or partial one.
- * @throws UnknownLedgerVersionError if `version` is not a member of
- * `LEDGER_VERSIONS`.
+ * @throws UnknownLedgerEraError if `version` is not a member of
+ * `LEDGER_ERAS`.
  * @throws Ledger8RuntimeInvalidError if `ledger8ContractState` does not carry
  * `deserialize`.
  * @throws StateConversionFailedError at stage `'v8 state read'` or
@@ -107,12 +107,12 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  */
 export const extractEncodedStateValue = (
   raw: Uint8Array,
-  version: LedgerVersion,
+  version: LedgerEra,
   ledger8ContractState: Ledger8ContractState
 ): EncodedStateValue => {
   const decoder = ENVELOPE_DECODERS[version];
   if (typeof decoder !== 'function') {
-    throw new UnknownLedgerVersionError(version);
+    throw new UnknownLedgerEraError(version);
   }
   if (typeof ledger8ContractState?.deserialize !== 'function') {
     throw new Ledger8RuntimeInvalidError('ContractState.deserialize');

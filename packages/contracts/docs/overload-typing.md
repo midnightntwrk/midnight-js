@@ -298,9 +298,9 @@ concrete instantiation, to get the precise types back.
 
 `Extract` is the right answer for a UNION, and the only answer that removes the
 other era's variant. It is the wrong answer for a value whose `era` is the whole
-`LedgerVersion` union rather than one literal: there is no member to pick, so it
+`LedgerEra` union rather than one literal: there is no member to pick, so it
 collapses to `never` and rejects every property access in the true branch.
-`LedgerVersion` is published, so that is a parameter callers write —
+`LedgerEra` is published, so that is a parameter callers write —
 `NarrowedToLedger8` falls back to an intersection in exactly that case.
 
 The tuple wrapper around the `extends` is what stops the conditional

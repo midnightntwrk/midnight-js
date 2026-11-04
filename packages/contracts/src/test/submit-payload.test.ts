@@ -15,7 +15,7 @@
 
 import { COMMON_ERROR_CODES, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createProofProviderFromHandlers,
@@ -43,13 +43,13 @@ const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
 
 interface RecordingProviders {
   readonly providers: PayloadSubmitProviders;
-  readonly seen: { proveTx: LedgerVersion[]; balanceTx: LedgerVersion[]; submitTx: LedgerVersion[] };
+  readonly seen: { proveTx: LedgerEra[]; balanceTx: LedgerEra[]; submitTx: LedgerEra[] };
 }
 
-const unboundOf = async <E extends LedgerVersion>(era: E): Promise<LedgerTransactionTypes[E]['Unbound']> =>
+const unboundOf = async <E extends LedgerEra>(era: E): Promise<LedgerTransactionTypes[E]['Unbound']> =>
   LedgerTransaction.unwrap(await handles[era].Unbound(), era);
 
-const finalizedOf = async <E extends LedgerVersion>(era: E): Promise<LedgerTransactionTypes[E]['Finalized']> =>
+const finalizedOf = async <E extends LedgerEra>(era: E): Promise<LedgerTransactionTypes[E]['Finalized']> =>
   LedgerTransaction.unwrap(await handles[era].Finalized(), era);
 
 const recordingProviders = (): RecordingProviders => {
@@ -92,7 +92,7 @@ const recordingProviders = (): RecordingProviders => {
   return { providers, seen };
 };
 
-const unprovenOf = (era: LedgerVersion): Promise<UnprovenTx> =>
+const unprovenOf = (era: LedgerEra): Promise<UnprovenTx> =>
   era === 'v9' ? Promise.resolve(handles.v9.Unproven()) : handles.v8.Unproven();
 
 describe('proveBalanceSubmit', () => {

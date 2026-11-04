@@ -132,6 +132,9 @@ export const LEDGER9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
 /** A protocol-version integer no release of this client can resolve. */
 export const UNRESOLVABLE_PROTOCOL_VERSION = 0;
 
+/** A protocol-version integer of a node major newer than this client knows. */
+export const NEWER_NETWORK_PROTOCOL_VERSION = 3_000_000;
+
 /** The regular-transaction row shape the read methods consume. */
 export type RegularTransactionRow = RegularTransaction & { hash: string; identifiers: string[] };
 

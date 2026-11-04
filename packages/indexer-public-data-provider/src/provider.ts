@@ -244,6 +244,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // leaves them on either side of a fork. Pinned: both resolved against
         // the offset the caller named, so the bound is real.
         return toContractStateAndParametersRead(state, block.protocolVersion, block.ledgerParameters, {
+          method: 'queryContractState',
+          contractAddress: address,
           upperBound: offset === null ? 'skip' : 'check'
         });
       });
@@ -288,6 +290,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // measured, not assumed — see `test/ledger-parameters.test.ts` and
         // `docs/architecture/era-tagged-payload-decoders.md`.
         return toPublicStatesRead(contractZswapState, contractState, block.ledgerParameters, block.protocolVersion, {
+          method: 'queryZSwapAndContractState',
+          contractAddress: address,
           upperBound: offset === null ? 'skip' : 'check'
         });
       });
@@ -351,7 +355,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!record) {
           throw IndexerDataError.missingContractAction(contractAddress);
         }
-        return toContractStateRead(record.state, record.stateAt.protocolVersion);
+        return toContractStateRead(record.state, record.stateAt.protocolVersion, {
+          method: 'queryDeployContractState',
+          contractAddress,
+          upperBound: 'check'
+        });
       });
   }
 
@@ -365,7 +373,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
         Rx.map(({ state, protocolVersion }) =>
-          toContractStateRead(state, protocolVersion, { upperBound: 'skip' })
+          toContractStateRead(state, protocolVersion, {
+            method: 'watchForContractState',
+            contractAddress,
+            upperBound: 'skip'
+          })
         )
       )
     );
@@ -527,7 +539,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
   ): Rx.Observable<PositionedRecord<ContractStateRead>> {
-    return this.contractStates$(contractAddress, config, toContractStateRead);
+    return this.contractStates$(contractAddress, config, (state, protocolVersion) =>
+      toContractStateRead(state, protocolVersion, {
+        method: 'contractStateObservable',
+        contractAddress,
+        upperBound: 'check'
+      })
+    );
   }
 
   /**

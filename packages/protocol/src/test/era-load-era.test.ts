@@ -17,7 +17,7 @@
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '../errors';
+import { PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '../errors';
 import { extractEncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import { readHexFixture } from './fixtures';
@@ -67,7 +67,7 @@ describe('loadLedgerEra', () => {
   // decoding one era's bytes with the other era's runtime.
   // A memoised era is one object every caller in the process holds, so an
   // unfrozen one lets any consumer reassign a method for all the others. The
-  // same reason LEDGER_VERSIONS and PROTOCOL_ERROR_CODES are frozen.
+  // same reason LEDGER_ERAS and PROTOCOL_ERROR_CODES are frozen.
   it.each(['v8', 'v9'] as const)('hands out a frozen era object on %s', async (version) => {
     const era = await loadLedgerEra(version);
 
@@ -98,7 +98,7 @@ describe('loadLedgerEra', () => {
     expect(pojo.state).toEqual(era.extractState(readHexFixture(GOLDEN_FOR[version])));
   });
 
-  // The dispatch is a closed switch over LEDGER_VERSIONS, so a TypeScript
+  // The dispatch is a closed switch over LEDGER_ERAS, so a TypeScript
   // caller cannot reach this. It exists for the untyped JavaScript consumers
   // this package also serves, where an era string threaded from an indexer
   // response would otherwise fall through to a plausible-looking non-era.
@@ -113,7 +113,7 @@ describe('loadLedgerEra', () => {
       await expect(
         // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
         loadLedgerEra(version)
-      ).rejects.toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION }));
+      ).rejects.toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA }));
     }
   );
 
@@ -128,8 +128,8 @@ describe('loadLedgerEra', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
-    expect((rejection as UnknownLedgerVersionError).requestedVersion).toBe('__proto__');
-    expect((rejection as UnknownLedgerVersionError).message).not.toContain('__proto__');
+    expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
+    expect((rejection as UnknownLedgerEraError).requestedVersion).toBe('__proto__');
+    expect((rejection as UnknownLedgerEraError).message).not.toContain('__proto__');
   });
 });

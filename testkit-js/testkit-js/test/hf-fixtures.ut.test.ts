@@ -159,7 +159,7 @@ describe('[Unit tests] hard-fork fixtures', () => {
     });
   });
 
-  describe('tampered fixtures fail closed on both ledger versions', () => {
+  describe('tampered fixtures fail closed on both ledger eras', () => {
     const tamperedNames = HF_FIXTURE_NAMES.filter((name) => hfFixturesManifest[name].status === 'tampered');
 
     it('covers all four documented tampered fixtures', () => {

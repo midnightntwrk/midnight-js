@@ -95,9 +95,56 @@ const asOptionalString = (value: unknown): string | undefined =>
 export const computeSha256Hex = (bytes: Uint8Array): string => bytesToHex(sha256(bytes));
 
 /**
+ * Returns the first object key that `json` repeats within one object, comparing keys after JSON
+ * string decoding. `json` must already be valid JSON: `JSON.parse` keeps only the last of repeated
+ * keys, so the raw text is the only place a duplicate is still visible.
+ */
+const findDuplicateKey = (json: string): string | undefined => {
+  const stack: (Set<string> | null)[] = [];
+  let awaitingKey = false;
+  let i = 0;
+  while (i < json.length) {
+    const ch = json[i];
+    if (ch === '"') {
+      const start = i++;
+      while (json[i] !== '"') {
+        i += json[i] === '\\' ? 2 : 1;
+      }
+      i++;
+      const top = stack.at(-1);
+      if (awaitingKey && top instanceof Set) {
+        const key = JSON.parse(json.slice(start, i)) as string;
+        if (top.has(key)) return key;
+        top.add(key);
+      }
+      awaitingKey = false;
+      continue;
+    }
+    if (ch === '{') {
+      stack.push(new Set());
+      awaitingKey = true;
+    } else if (ch === '[') {
+      stack.push(null);
+      awaitingKey = false;
+    } else if (ch === '}' || ch === ']') {
+      stack.pop();
+      awaitingKey = false;
+    } else if (ch === ',') {
+      awaitingKey = stack.at(-1) instanceof Set;
+    } else if (ch === ':') {
+      awaitingKey = false;
+    }
+    i++;
+  }
+  return undefined;
+};
+
+/**
  * Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
  * one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates
- * each file entry, and throws {@link ZkArtifactIntegrityError} on any structural violation.
+ * each file entry, and throws {@link ZkArtifactIntegrityError} on any structural violation. A
+ * key repeated within one object also throws, so a manifest pinned by its hash cannot certify an
+ * entry other than the one a reader of its text sees.
  */
 export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
   let root: unknown;
@@ -105,6 +152,12 @@ export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
     root = JSON.parse(rawJson);
   } catch (error) {
     throw new ZkArtifactIntegrityError('ZK artifact manifest is not valid JSON', { cause: error });
+  }
+  const duplicateKey = findDuplicateKey(rawJson);
+  if (duplicateKey !== undefined) {
+    throw new ZkArtifactIntegrityError(
+      `ZK artifact manifest contains a duplicate key ${JSON.stringify(duplicateKey)}; an ambiguous manifest cannot be trusted as an integrity check`
+    );
   }
   if (!isJsonObject(root)) {
     throw new ZkArtifactIntegrityError('ZK artifact manifest must be a JSON object');

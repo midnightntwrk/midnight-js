@@ -14,7 +14,7 @@
  */
 
 import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
@@ -38,10 +38,16 @@ const BUILT_DEPLOY_TX = vi.hoisted(async () => {
   return Transaction.fromParts('undeployed');
 });
 
+const DEPLOYED_STATE = vi.hoisted(async () => {
+  const { ContractState } = await import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
+  return new ContractState();
+});
+
 vi.mock('../internal/utils', async () => {
   const builtDeployTx = await BUILT_DEPLOY_TX;
+  const deployedState = await DEPLOYED_STATE;
   return {
-    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', { test: 'initial-contract-state' }, builtDeployTx]),
+    createUnprovenLedgerDeployTx: vi.fn(() => ['mock-contract-address', deployedState, builtDeployTx]),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
   };
@@ -73,7 +79,9 @@ describe('unproven-deploy-tx', () => {
       expect(result.public).toBeDefined();
       expect(result.private).toBeDefined();
       expect(result.public.contractAddress).toBe('mock-contract-address');
-      expect(result.public.initialContractState).toEqual({ test: 'initial-contract-state' });
+      expect(SerializedContractState.isSerializedContractState(result.public.initialContractState)).toBe(true);
+      expect(result.public.initialContractState.era).toBe('v9');
+      expect(result.public.initialContractState.serialize()).toEqual((await DEPLOYED_STATE).serialize());
       expect(result.private.signingKey).toEqual(options.signingKey);
       expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
       expect(result.private.unprovenTx.era).toBe('v9');

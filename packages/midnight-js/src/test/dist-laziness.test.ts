@@ -129,7 +129,7 @@ describe('dist laziness gate', () => {
 
     expect(typeof barrel.versionOfRecord).toBe('function');
     expect(typeof barrel.latestNetworkLedgerVersion).toBe('function');
-    expect(barrel.LEDGER_VERSIONS).toEqual(['v8', 'v9']);
+    expect(barrel.LEDGER_ERAS).toEqual(['v8', 'v9']);
     expect(typeof barrel.UnknownProtocolVersionError).toBe('function');
   });
 });

@@ -14,7 +14,7 @@
  */
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   ProviderEraUnsupportedError} from '@midnight-ntwrk/midnight-js-types';
@@ -41,11 +41,11 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
 const LEDGER8_HEAD = 1_000_000;
 const LEDGER9_HEAD = 2_000_000;
 
-const BOTH_ERAS: readonly LedgerVersion[] = ['v8', 'v9'];
+const BOTH_ERAS: readonly LedgerEra[] = ['v8', 'v9'];
 
 type MockProviders = ReturnType<typeof createMockProviders>;
 
-const declaring = (eras: readonly LedgerVersion[]) => ({ supportedEras: Object.freeze([...eras]) });
+const declaring = (eras: readonly LedgerEra[]) => ({ supportedEras: Object.freeze([...eras]) });
 
 /**
  * Exactly what acquisition consults, built by hand rather than cast down from
@@ -158,7 +158,7 @@ describe('a current-era submission checks the transaction providers at its entry
 
   const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: createMockUnprovenTx() };
 
-  const withProofEras = (eras: readonly LedgerVersion[]): MockProviders => ({
+  const withProofEras = (eras: readonly LedgerEra[]): MockProviders => ({
     ...providers,
     proofProvider: { ...providers.proofProvider, ...declaring(eras) }
   });

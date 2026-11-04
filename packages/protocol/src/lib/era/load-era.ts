@@ -15,14 +15,14 @@
 
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
-import { UnknownLedgerVersionError } from '../../errors';
+import { UnknownLedgerEraError } from '../../errors';
 import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
-import type { LedgerVersion } from '../shared/ledger-version';
+import type { LedgerEra } from '../shared/ledger-version';
 import { composeEraLedger8CallTx, composeEraLedger8DeployTx } from '../v8/adapt';
 import { loadLedger8Protocol } from '../v8/load';
 import { composeLedger9CallTx, composeLedger9DeployTx } from '../v9/compose';
 import { extractEncodedStateValue, extractLedger9EncodedStateValue } from './envelope';
-import type { LedgerEra } from './era';
+import type { LedgerEraFacade } from './era';
 
 // The option, parameter and return vocabulary of the facade's compose methods
 // travels with them: publishing a method without them leaves a caller unable to
@@ -44,16 +44,16 @@ export type {
 } from '../shared/compose-types';
 export { INITIAL_LEDGER_PARAMETERS } from '../shared/compose-types';
 export type { ContractBalance, ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
-export type { LedgerEra } from './era';
+export type { LedgerEraFacade } from './era';
 
 // One memo slot per era, never one shared slot, and both era objects are frozen --
 // see SharedTableDiscipline and EraBoundary.
-let ledger8EraPromise: Promise<LedgerEra> | undefined;
-let ledger9EraPromise: Promise<LedgerEra> | undefined;
+let ledger8EraPromise: Promise<LedgerEraFacade> | undefined;
+let ledger9EraPromise: Promise<LedgerEraFacade> | undefined;
 
 /** The v9 era. Wholly synchronous -- see the EraBoundary document. */
-const createLedger9Era = (): LedgerEra => {
-  const era: LedgerEra = {
+const createLedger9Era = (): LedgerEraFacade => {
+  const era: LedgerEraFacade = {
     version: 'v9',
     extractState: (raw) => extractStateWith(raw, 'v9', extractLedger9EncodedStateValue),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
@@ -69,10 +69,10 @@ const createLedger9Era = (): LedgerEra => {
  * so the era's own methods stay synchronous -- see the EraBoundary document for why
  * the acquisition is hoisted here.
  */
-const createLedger8Era = async (): Promise<LedgerEra> => {
+const createLedger8Era = async (): Promise<LedgerEraFacade> => {
   const v8 = await loadLedger8Protocol();
 
-  const era: LedgerEra = {
+  const era: LedgerEraFacade = {
     version: 'v8',
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
@@ -84,7 +84,7 @@ const createLedger8Era = async (): Promise<LedgerEra> => {
 };
 
 /**
- * Resolves one ledger era to a {@link LedgerEra} bound to it.
+ * Resolves one ledger era to a {@link LedgerEraFacade} bound to it.
  *
  * This is the only sanctioned way to reach either era's operations. Pass the
  * version resolved from a record or from the network's latest block (see
@@ -97,15 +97,15 @@ const createLedger8Era = async (): Promise<LedgerEra> => {
  * @param version The era to resolve.
  * @returns The era facade bound to `version`. The same object on every call
  * for that era, and frozen.
- * @throws UnknownLedgerVersionError — as a rejection — if `version` is not a
- * member of `LEDGER_VERSIONS`.
+ * @throws UnknownLedgerEraError — as a rejection — if `version` is not a
+ * member of `LEDGER_ERAS`.
  * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
  * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
  * underlying cause.
  * @see {@link EraBoundary}
  * @see {@link SharedTableDiscipline}
  */
-export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
+export const loadLedgerEra = (version: LedgerEra): Promise<LedgerEraFacade> => {
   switch (version) {
     case 'v9':
       return (ledger9EraPromise ??= Promise.resolve(createLedger9Era()));
@@ -118,7 +118,7 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
       // `const unhandled: never` is a compile-time exhaustiveness gate, and the
       // runtime rejection is not redundant with it -- see SharedTableDiscipline.
       const unhandled: never = version;
-      return Promise.reject(new UnknownLedgerVersionError(unhandled));
+      return Promise.reject(new UnknownLedgerEraError(unhandled));
     }
   }
 };

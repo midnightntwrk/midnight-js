@@ -15,7 +15,7 @@
 
 import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -58,8 +58,8 @@ const rejectionOf = (promise: Promise<unknown>): Promise<unknown> =>
   );
 
 interface BuiltProvider {
-  readonly supportedEras: readonly LedgerVersion[];
-  readonly send: (era: LedgerVersion) => Promise<unknown>;
+  readonly supportedEras: readonly LedgerEra[];
+  readonly send: (era: LedgerEra) => Promise<unknown>;
   readonly sendValue: (value: unknown) => Promise<unknown>;
 }
 
@@ -68,7 +68,7 @@ interface FactoryCase {
   readonly inputStage: TransactionStage;
   readonly wrongStage: TransactionStage;
   readonly answerStage: TransactionStage | undefined;
-  readonly answer: (era: LedgerVersion) => Promise<unknown>;
+  readonly answer: (era: LedgerEra) => Promise<unknown>;
   readonly otherHandlers: object;
   readonly create: (handlers: unknown) => BuiltProvider;
 }
@@ -130,11 +130,11 @@ const factories: readonly FactoryCase[] = [
   }
 ];
 
-const handleAt = (era: LedgerVersion, stage: TransactionStage): Promise<LedgerTransaction<TransactionStage>> =>
+const handleAt = (era: LedgerEra, stage: TransactionStage): Promise<LedgerTransaction<TransactionStage>> =>
   Promise.resolve(handles[era][stage]());
 
 describe.each(factories)('$method built from per-era handlers', ({ method, inputStage, wrongStage, answerStage, answer, otherHandlers, create }) => {
-  const handlerFor = (era: LedgerVersion) => vi.fn((_tx: unknown) => answer(era));
+  const handlerFor = (era: LedgerEra) => vi.fn((_tx: unknown) => answer(era));
   const build = (entries: object): BuiltProvider => create({ ...otherHandlers, ...entries });
 
   describe('supportedEras', () => {
@@ -164,7 +164,7 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
   });
 
   describe('routing', () => {
-    it.each<[LedgerVersion, LedgerVersion]>([
+    it.each<[LedgerEra, LedgerEra]>([
       ['v9', 'v8'],
       ['v8', 'v9']
     ])('hands a %s handle unwrapped to its own handler only, never to the %s one', async (era, otherEra) => {
@@ -179,7 +179,7 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
       expect(handlers[otherEra]).not.toHaveBeenCalled();
     });
 
-    it.each<LedgerVersion>(['v9', 'v8'])('answers a %s request in the same era at the next stage', async (era) => {
+    it.each<LedgerEra>(['v9', 'v8'])('answers a %s request in the same era at the next stage', async (era) => {
       const result = await answer(era);
       const provider = build({ v8: () => Promise.resolve(result), v9: () => Promise.resolve(result) });
 

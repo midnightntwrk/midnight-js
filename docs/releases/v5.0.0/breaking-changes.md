@@ -368,7 +368,7 @@ returns a `TransactionId`.
 ledger eras that instance serves:
 
 ```typescript
-readonly supportedEras: readonly LedgerVersion[];
+readonly supportedEras: readonly LedgerEra[];
 ```
 
 It is REQUIRED, so an implementation that does not have it stops compiling. The
@@ -468,8 +468,8 @@ subpath: `deserializeTransactionAtStage`, `isFrameworkLedgerTransaction`,
 with `InvalidArgumentError`, an argument that is not an unproven v8 transaction
 of the framework's ledger copy.
 
-**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_VERSION`,
-`CurrentLedgerVersion`, `RETAINED_LEDGER_VERSIONS`, `RetainedLedgerVersion`, on
+**`@midnight-ntwrk/midnight-js-protocol`** — added: `CURRENT_LEDGER_ERA`,
+`CurrentLedgerEra`, `RETAINED_LEDGER_ERAS`, `RetainedLedgerEra`, on
 the barrel and on the `./version` subpath.
 
 **`@midnight-ntwrk/midnight-js-types`** — added: `PROVIDER_ERROR_CODES` and
@@ -574,8 +574,7 @@ interface MidnightProviders {
 
 - **Network id:** every transaction the framework builds (deploy, call, governance,
   both ledger eras) uses `config.networkId`. The framework no longer reads
-  `getNetworkId()`, and there is no fallback to it. A leftover `setNetworkId()`
-  call has no effect.
+  `getNetworkId()`, and there is no fallback to it.
 - **TTL:** every intent the framework builds expires `config.ttlSeconds` after it
   is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The framework
   also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
@@ -595,9 +594,10 @@ interface MidnightProviders {
   `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.
   `UnprovenCallTxProvidersBase` and `Ledger9UnprovenDeployTxProviders` now include `config`.
 - **`NetworkId`** moved to `@midnight-ntwrk/midnight-js-types`.
-- **`@midnight-ntwrk/midnight-js-network-id` is deprecated.** `setNetworkId`,
-  `getNetworkId` and `NetworkId` still compile and run, but the framework ignores
-  them. The package is removed in 6.0.
+- **`@midnight-ntwrk/midnight-js-network-id` is removed (#1546).** So are the
+  `networkId` namespace and the `./network-id` subpath of
+  `@midnight-ntwrk/midnight-js`. A leftover `setNetworkId()` import no longer
+  compiles.
 - **testkit-js:** `NodeClient` takes the network id as a third constructor
   argument and rejects an empty one. `initializeMidnightProviders` sets
   `config.networkId` from the environment configuration and `config.ttlSeconds`
@@ -628,7 +628,7 @@ names.
 | `contracts` | the `seam` field on `EraInvariantViolationError` and `ProviderFailedError` | `method` |
 | `indexer-public-data-provider` | the `seam` field on `DecoderEraUnsupportedError` and `UnknownRecordEraError`, and the `seam` key in a decode failure's `context.details` | `method` |
 | `contracts` | `result.era` values `'ledger8'` / `'ledger9'` (also the `path` field of the pipeline-selection breadcrumb) | `'v8'` / `'v9'` |
-| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerVersion`, `CurrentLedgerVersion`, `CURRENT_LEDGER_VERSION` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
+| `contracts` | `PipelineEra`, `CurrentPipelineEra`, `CURRENT_PIPELINE_ERA` | `LedgerEra`, `CurrentLedgerEra`, `CURRENT_LEDGER_ERA` from `@midnight-ntwrk/midnight-js-protocol` (all three are also on the `@midnight-ntwrk/midnight-js` barrel) |
 | `contracts` | `RetainedPipelineEra`, `RETAINED_PIPELINE_ERA` | the literal `'v8'` (see ADR 0011) |
 | `types` | `V8PayloadUnsupportedError` | removed in [18](#18-transactions-are-handles-1533) |
 | `types` | `PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED` (`MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`) | removed in [18](#18-transactions-are-handles-1533) |
@@ -812,7 +812,7 @@ names.
 "Current" and "retained" change meaning at every hard fork: today "current" is
 ledger 9 and "retained" is ledger 8. A name whose code is bound to one ledger
 now says which ledger (ADR 0018). Names that follow the era on purpose keep
-"current" / "retained": `CurrentLedgerVersion` and `RetainedLedgerVersion`. The
+"current" / "retained": `CurrentLedgerEra` and `RetainedLedgerEra`. The
 handler types that used to follow the era are gone: the factories now take one
 handler per ledger era ([18](#18-transactions-are-handles-1533)).
 The README glossary defines both terms.
@@ -1324,14 +1324,14 @@ the message. An exhaustive `switch` on `reason` must handle the seven new member
 `PublicStatesEraMismatchError`, `IndexerInconsistencyError` and `TransactionEraMismatchError` are
 unchanged.
 
-### 25c. No era: `UnknownLedgerVersionError`
+### 25c. No era: `UnknownLedgerEraError`
 
 | Before | After |
 |---|---|
-| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerVersionError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`, ENVIRONMENT). `requestedVersion` is `undefined` when the value carried no era |
+| `UnrecognisedEraTagError` (`MIDNIGHT_JS_U_UNRECOGNISED_ERA_TAG`, USAGE; `received`, `context`) | `UnknownLedgerEraError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`, ENVIRONMENT). `requestedVersion` is `undefined` when the value carried no era |
 | `Ledger8ValueUnsupportedError` (`MIDNIGHT_JS_U_LEDGER8_VALUE_UNSUPPORTED`), `requireLedger9` | removed. Narrow with `switch (value.era)`, closed by `assertNever` |
 
-`UnknownLedgerVersionError.requestedVersion` is now `string | undefined`, and the constructor takes the
+`UnknownLedgerEraError.requestedVersion` is now `string | undefined`, and the constructor takes the
 raw value. A value that is an object or a function is reported by its kind, `'object'` or `'function'`.
 
 The category changes from USAGE to ENVIRONMENT. A value with no era means a provider written for a
@@ -1501,6 +1501,83 @@ class MyZkConfigProvider extends ZKConfigProvider<string> {
   }
 }
 ```
+
+## 29. The ledger era is named "era", and `LedgerEra` changed meaning (#1506)
+
+This section affects you only if you built against a `5.0.0` pre-release. The
+names below were never in a 4.x release. The sections above already use the new
+names.
+
+Two names were in use for one thing: the type said "version" while the fields
+and functions around it said "era". The public API now says "era" everywhere.
+The values stay `'v8' | 'v9'`. There are no deprecated aliases.
+
+| Package | Before | After |
+|---|---|---|
+| `protocol` | `LedgerEra` (the object `loadLedgerEra` returns) | `LedgerEraFacade` |
+| `protocol` | `LedgerVersion` | `LedgerEra` |
+| `protocol` | `CurrentLedgerVersion` | `CurrentLedgerEra` |
+| `protocol` | `RetainedLedgerVersion` | `RetainedLedgerEra` |
+| `protocol` | `LEDGER_VERSIONS` | `LEDGER_ERAS` |
+| `protocol` | `CURRENT_LEDGER_VERSION` | `CURRENT_LEDGER_ERA` |
+| `protocol` | `RETAINED_LEDGER_VERSIONS` | `RETAINED_LEDGER_ERAS` |
+| `protocol` | `UnknownLedgerVersionError` | `UnknownLedgerEraError` |
+| `protocol` | `PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION`) | `UNKNOWN_LEDGER_ERA` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`) |
+
+`LedgerEra`, `CurrentLedgerEra`, `LEDGER_ERAS`, `CURRENT_LEDGER_ERA`,
+`UnknownLedgerEraError` and `PROTOCOL_ERROR_CODES` are also on the
+`@midnight-ntwrk/midnight-js` barrel.
+
+**The error code string changed.** Code that compares `error.code` with the
+string `'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'` compiles but never matches.
+Compare with `PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA` instead.
+
+**`LedgerEra` changed meaning.** It was the object with `extractState`,
+`decodeContractState`, `composeCallTx` and `composeDeployTx`; it is now the
+string type `'v8' | 'v9'`. Old code does not fail with "cannot find name". It
+fails with an error such as
+`Property 'extractState' does not exist on type '"v8" | "v9"'`. Rename that
+type to `LedgerEraFacade`.
+
+Unchanged: the `version` fields (on `LedgerEraFacade` and on the protocol error
+classes), `requestedVersion` on `UnknownLedgerEraError`, the `Versioned*` types, and the
+functions `latestNetworkLedgerVersion`, `ledgerVersionOfContractState`,
+`ledgerVersionOfLedgerParameters`, `versionOfRecord` and `protocolVersionToLedger`.
+
+compact-js names the same era by number. `Ledger.Era['ledger']` (for example
+`executable.era.ledger`) is `8` for `'v8'` and `9` for `'v9'`. compact-js
+exports no named type for that number, and midnight-js needs no conversion from it.
+
+## 30. Contract-state reads refuse an unknown `protocolVersion` (#1396)
+
+A contract-state read now fails when the block that dates the state reports a `protocolVersion`
+this build cannot place on the ledger-era timeline. Before, the read went on and tagged the state
+by the version tag of its bytes alone. For a network newer than your midnight-js, upgrade
+midnight-js. History written under node 0.x is not mapped either, so a state dated by such a
+block is refused too.
+
+The refusal is the error the transaction reads (`watchForTxData`, `watchForDeployTxData`) already
+raise for a well-formed integer they cannot place:
+
+| Read | Before | Now |
+|---|---|---|
+| `queryContractState`, `queryZSwapAndContractState`, `queryDeployContractState`, `watchForContractState` | resolved with the state | rejects with `UnknownRecordEraError` (`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`) |
+| `contractStateObservable` | emitted the state and kept going | ends the stream with `UnknownRecordEraError` |
+
+It holds on an unpinned read too, where the dating block is not trusted as an upper bound on
+the state's era: only that comparison is skipped, never the era resolution. A malformed
+`protocolVersion` keeps its error, `IndexerDataError` `malformed-protocol-version`. `queryBlock`
+resolves no era and still carries the integer through.
+
+Type changes:
+
+| Name | Before | Now |
+|---|---|---|
+| `StateReadMethod` (types) | `'queryDeployContractState'` | adds `'queryContractState'`, `'queryZSwapAndContractState'`, `'watchForContractState'`, `'contractStateObservable'` |
+| `UnknownRecordEraError.method` | `ReadMethod` | `ReadMethod \| StateReadMethod` |
+
+An exhaustive `switch` on `UnknownRecordEraError.method`, `StateReadMethod` or `ProviderMethod`
+must handle the new members.
 
 ## Non-breaking additions worth noting
 

@@ -418,7 +418,7 @@ compiles; the moment the union carries a variant your switch does not handle,
 **that line stops compiling and points at the switch that has to change**.
 
 Be clear about which direction that buys you, because it is not the one you
-might assume. When a later major *shrinks* `LedgerVersion` to drop the retained
+might assume. When a later major *shrinks* `LedgerEra` to drop the retained
 era, the now-stale `case 'v8':` label is already a compile error on its own —
 `assertNever` adds a second diagnostic beside it, it is not what makes the
 removal visible. What it uniquely catches is the other direction: a union that
@@ -671,7 +671,7 @@ Six differences are worth knowing before you write a handler that has to accept
 either era.
 
 - **Every result names its era.** `result.era` is `'v8'` or `'v9'` (a
-  `LedgerVersion`, the same values as `public.era`), read off the compiled
+  `LedgerEra`, the same values as `public.era`), read off the compiled
   artifact. Narrow with `isLedger8Result(result)`, and
   declare a parameter that accepts both with `AnyFinalizedCallTxData` or
   `AnySubmittedCallTx`.
@@ -872,7 +872,7 @@ network indefinitely; upstream has not announced a sunset. The retained-era
 support in *this framework* is a separate question and is scheduled for removal
 in the next major after the window closes — announced from day one so it is
 something you can plan around rather than a surprise. When that removal lands,
-`LedgerVersion` shrinks and every switch over it stops compiling at its stale
+`LedgerEra` shrinks and every switch over it stops compiling at its stale
 `case 'v8':` label, which is exactly the line that needs attention.
 
 ### A security note on retrying
@@ -893,7 +893,7 @@ Every coded error, with what happened and what to do, is listed in
 [TROUBLESHOOTING.md](../../../TROUBLESHOOTING.md#midnightjs-error-codes).
 Discriminate on one with `hasErrorCode(error, code)`; for the errors whose
 *payload* you need to read — `ComposeFailedError.stage`,
-`Ledger8RuntimeMissingError.subpath`, `UnknownLedgerVersionError.requestedVersion`
+`Ledger8RuntimeMissingError.subpath`, `UnknownLedgerEraError.requestedVersion`
 — catch by class instead, since `hasErrorCode` narrows only to
 `Error & { code }`.
 
@@ -973,9 +973,10 @@ const providers = {
 - The same TTL is passed to `walletProvider.balanceTx` as its `ttl` argument. If you
   implement `WalletProvider` yourself, use that argument for the intent your wallet
   adds while balancing, instead of a TTL of your own.
-- `setNetworkId` has **no effect** on the framework any more. Remove the call once
-  `config` is in place; `@midnight-ntwrk/midnight-js-network-id` is deprecated and
-  is removed in 6.0.
+- Remove the `setNetworkId` call and its import:
+  `@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546), and so are
+  the `networkId` namespace and the `./network-id` subpath of
+  `@midnight-ntwrk/midnight-js`, so the import no longer compiles.
 - Import the `NetworkId` type from `@midnight-ntwrk/midnight-js-types`.
 - Low-level calls that do not take `providers`:
   - `createUnprovenCallTxFromInitialStates`: add `config` to the options.
@@ -1165,7 +1166,7 @@ give it the era of the ledger parameters of the same block.
 `contracts` accepts a `SerializedState` made by a second installed copy of
 `@midnight-ntwrk/midnight-js-types` too: it rebuilds each state from its bytes
 with `SerializedState.fromBytes`, which checks the tag again. A state in a shape
-that names no known era is refused with `UnknownLedgerVersionError`; a state of
+that names no known era is refused with `UnknownLedgerEraError`; a state of
 another kind fails the tag check (`InvalidSerializedStateError`); ledger parameters
 or a zswap chain state that are missing, or of another era than the call, are
 refused with `PublicStatesEraMismatchError`.
@@ -1329,7 +1330,7 @@ has the full table.
 | `AnyEraTxFailedError`, `CallTxFailedError`, `DeployTxFailedError`, a verifier-key or authority `*TxFailedError`, or any `Ledger8.*TxFailedError` | `TxFailedError`; branch on `error.operation` |
 | `error.finalizedTxData` or `error.txData` | `error.record` |
 | `EraArtifactMismatchError`, `Ledger8.DeployOnLedger9Error`, `Ledger8.MaintenanceOnLedger9Error`, `Ledger8.ArtifactOnLedger9StateError`, `Ledger8.ContractStateUnsupportedError`, `ScopedTransactionEraUnsupportedError`, `MixedEraScopeError`, `UnknownResultEraError` | `EraMismatchError`; branch on `error.reason` |
-| `UnrecognisedEraTagError` | `UnknownLedgerVersionError`; a `requestedVersion` of `undefined` means the value had no era |
+| `UnrecognisedEraTagError` | `UnknownLedgerEraError`; a `requestedVersion` of `undefined` means the value had no era |
 | `Ledger8ValueUnsupportedError`, `requireLedger9` | nothing: narrow with `switch (value.era)`, closed by `assertNever` |
 | `Ledger8.SigningKeyUnusableError`, `Ledger8.SigningKeyUnavailableError` | `Ledger8SigningKeyError`; `reason` is `'unusable'` or `'unavailable'` |
 | `Ledger8.DeployUnconfirmedError`, `Ledger8.ReplaceAuthorityUnconfirmedError` | `Ledger8UnconfirmedError`; `operation` is `'deploy'` or `'replace-authority'` |
@@ -1428,7 +1429,7 @@ The details are in
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
 - [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8UnconfirmedError` or `Ledger8NotStoredError` keeps the `signingKey` it carries.
-- [ ] Every `catch` names `TxFailedError`, `EraMismatchError`, `UnknownLedgerVersionError` or a flat `Ledger8*Error`, and a failed deploy or replacement saves `error.signingKey`, which object spread and `JSON.stringify` leave out.
+- [ ] Every `catch` names `TxFailedError`, `EraMismatchError`, `UnknownLedgerEraError` or a flat `Ledger8*Error`, and a failed deploy or replacement saves `error.signingKey`, which object spread and `JSON.stringify` leave out.
 - [ ] Contracts deployed at runtime have ledger 9 toolchain artifacts shipped.
 - [ ] Bundle checked: retained-era chunk separate, not preloaded, retained runtime not duplicated.
 - [ ] Checked back for the pending operator, wallet and connector-proving sections.

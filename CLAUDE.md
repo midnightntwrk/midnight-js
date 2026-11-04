@@ -40,7 +40,7 @@ Package layers (each layer depends on the one above):
 ```
 protocol                                       ← ledger/runtime bindings, era resolver
 types                                          ← provider interfaces (depends on protocol only)
-contracts, network-id, utils                   ← core logic
+contracts, utils                               ← core logic
 provider implementations (6 packages)          ← concrete providers
 midnight-js                                    ← barrel re-export
 testkit-js, testkit-js-e2e                     ← testing infrastructure
@@ -78,10 +78,15 @@ On-chain state is bytes, never a decoded object. `watchForContractState`,
 `ContractStateRead`; `queryContractState` returns
 `ContractStateAndParametersRead` (adds `ledgerParameters`);
 `queryZSwapAndContractState` and `Ledger9TransactionContext.getCurrentStates()` return
-`PublicStatesRead`. Each state is a `SerializedState` from `types` (bytes + `era`,
-the ledger that wrote them), made only by `SerializedState.fromBytes(era, kind, bytes)`.
-The caller decodes it with its own runtime:
-`read.contractState.deserialize({ v9: ContractState })`. `contracts` decodes
+`PublicStatesRead`. Each state is one class per kind from `types`:
+`SerializedContractState`, `SerializedLedgerParameters` or
+`SerializedZswapChainState` (bytes + `era`, the ledger that wrote them), made
+only by its own `fromBytes(era, bytes)`. The caller decodes it with its own runtime:
+`read.contractState.deserialize({ v9: ContractState })`. Every full ledger state
+on the `contracts` API is one of these classes too, in both eras, except
+`Ledger9ContractConstructorResult.nextContractState`: call inputs
+(pass `read.contractState` as it is), deploy and found `initialContractState`,
+`verifyContractState` and `ContractTypeError.contractState`. `contracts` decodes
 with the framework's copy only where it builds a transaction. See
 [ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
 

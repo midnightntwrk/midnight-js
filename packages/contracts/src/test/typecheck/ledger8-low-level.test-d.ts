@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { SerializedContractState, SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';
@@ -46,13 +47,14 @@ declare const encryptionPublicKey: Parameters<typeof createLedger8UnprovenCallTx
 declare const coinReceiver: CoinReceiver016Contract;
 declare const counter: Counter016Contract;
 declare const coin: CoinReceiver016Coin;
-declare const serializable: { serialize(): Uint8Array };
+declare const contractState: SerializedContractState;
+declare const ledgerParameters: SerializedLedgerParameters;
 
 const states = {
   contractAddress: '00'.repeat(32),
   head: 'v9',
-  initialContractState: { era: 'v8', state: serializable },
-  ledgerParameters: { era: 'v9', parameters: serializable },
+  initialContractState: contractState,
+  ledgerParameters,
   coinPublicKey: '00'.repeat(32),
   config: { networkId: 'undeployed', ttlSeconds: 60 }
 } as const;
@@ -101,15 +103,29 @@ describe('createLedger8UnprovenCallTxFromInitialStates', () => {
     >();
   });
 
-  it('refuses an era that is not a ledger era', () => {
+  it('refuses a decoded state labelled with its era, the shape it took before', () => {
     createLedger8UnprovenCallTxFromInitialStates(
       zkConfigProvider,
       {
         ...states,
         compiledContract: counter,
         circuitId: 'increment',
-        // @ts-expect-error - 'v10' is not a ledger era
-        initialContractState: { era: 'v10', state: serializable }
+        // @ts-expect-error - a state is a SerializedContractState, as a read returns it
+        initialContractState: { era: 'v8', state: contractState }
+      },
+      encryptionPublicKey
+    );
+  });
+
+  it('refuses ledger parameters in place of the contract state', () => {
+    createLedger8UnprovenCallTxFromInitialStates(
+      zkConfigProvider,
+      {
+        ...states,
+        compiledContract: counter,
+        circuitId: 'increment',
+        // @ts-expect-error - the kinds are not assignable to each other
+        initialContractState: ledgerParameters
       },
       encryptionPublicKey
     );

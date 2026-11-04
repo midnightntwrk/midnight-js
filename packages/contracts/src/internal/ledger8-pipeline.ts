@@ -33,10 +33,10 @@ import type {
   EncodedStateValue,
   Ledger8SigningKey,
   LedgerEra,
-  LedgerVersion,
+  LedgerEraFacade,
   TranscriptPojo
 } from '@midnight-ntwrk/midnight-js-protocol';
-import { ComposeFailedError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
+import { ComposeFailedError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -45,7 +45,7 @@ import {
   type ContractStateAndParametersRead,
   LedgerTransaction,
   type PublicDataProvider,
-  type SerializedState,
+  type SerializedLedgerParameters,
   type UnprovenTx
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
@@ -64,7 +64,7 @@ import {
 import type { Ledger8Contract } from '../ledger8-contract';
 import type { Ledger8ContractCall } from '../ledger8-contract';
 import type { BreadcrumbSink } from './breadcrumbs';
-import { eraTagOf, ownSerializedState, resolveContractStateEra } from './era';
+import { eraTagOf, ownLedgerParameters, resolveContractStateEra } from './era';
 import { requireDeployedContract } from './required-reads';
 import {
   type EncryptionPublicKeyResolver,
@@ -273,7 +273,7 @@ export interface Ledger8SnapshotBytes {
    * The ledger parameters of the block that dates the read, when the provider serves them. Kept with
    * their era, which the composer checks against its own.
    */
-  readonly ledgerParameters?: SerializedState<'LedgerParameters'>;
+  readonly ledgerParameters?: SerializedLedgerParameters;
 }
 
 /**
@@ -300,26 +300,26 @@ export interface Ledger8Snapshot {
    * artifacts. Both carry a current-era envelope; only the second carries keys these artifacts
    * cannot match.
    */
-  readonly stateEra: LedgerVersion;
+  readonly stateEra: LedgerEra;
 }
 
 /**
  * The ledger parameters served beside the state, or `undefined` when the provider served none.
  *
- * @throws UnknownLedgerVersionError if the parameters are served in a shape that is not a
- * `SerializedState`.
+ * @throws UnknownLedgerEraError if the parameters are served in a shape that is not a
+ * `SerializedLedgerParameters`.
  * @throws InvalidSerializedStateError if they are not ledger parameters written by the era they name.
  */
 const servedLedgerParameters = (
   read: ContractStateAndParametersRead
-): SerializedState<'LedgerParameters'> | undefined => {
+): SerializedLedgerParameters | undefined => {
   const served: unknown = read.ledgerParameters;
   if (served === undefined || served === null) {
     return undefined;
   }
-  const parameters = ownSerializedState(served, 'LedgerParameters');
+  const parameters = ownLedgerParameters(served);
   if (parameters === undefined) {
-    throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
+    throw new UnknownLedgerEraError(eraTagOf(served), 'queryContractState');
   }
   return parameters;
 };
@@ -337,9 +337,9 @@ const servedLedgerParameters = (
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
  */
 export const decodeLedger8Snapshot = (
-  retainedEra: LedgerEra,
-  headEra: LedgerEra,
-  stateEra: LedgerVersion,
+  retainedEra: LedgerEraFacade,
+  headEra: LedgerEraFacade,
+  stateEra: LedgerEra,
   state: Ledger8SnapshotBytes
 ): Ledger8Snapshot => {
   // Read with the era the ENVELOPE names, never with the head's and never with
@@ -379,14 +379,14 @@ export const decodeLedger8Snapshot = (
  * the state's envelope belong to different eras.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
- * @throws UnknownLedgerVersionError if the ledger parameters are served in a shape that is not a
- * `SerializedState`.
+ * @throws UnknownLedgerEraError if the ledger parameters are served in a shape that is not a
+ * `SerializedLedgerParameters`.
  * @see {@link KeepStatePipeline} for why the two reads stay separate.
  */
 export const readLedger8Snapshot = async (
-  retainedEra: LedgerEra,
-  headEra: LedgerEra,
-  head: LedgerVersion,
+  retainedEra: LedgerEraFacade,
+  headEra: LedgerEraFacade,
+  head: LedgerEra,
   pdp: Ledger8PipelineReadSurface,
   contractAddress: string,
   logger?: BreadcrumbSink
@@ -538,12 +538,12 @@ export interface Ledger8CallPipelineRequest<TState> {
    * RETAINED ledger wrote and still owns. Collapsing the two back into one facade is what refused
    * every post-fork call against a pre-fork contract.
    */
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
   /** The retained era facade, which reads the contract's on-chain state. Always the pre-fork one. */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
   readonly engine: Ledger8ExecutionEngine<TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
-  readonly head: LedgerVersion;
+  readonly head: LedgerEra;
   /** The optional logger the dating step's breadcrumbs are written to. */
   readonly logger?: BreadcrumbSink;
   readonly contract: Ledger8Contract;
@@ -574,7 +574,7 @@ export interface Ledger8CallPipelineRequest<TState> {
  * @throws PayloadNotATransactionError if the bytes are not an unproven
  *         transaction of that era.
  */
-const sealComposed = async <E extends LedgerVersion>(era: E, txBytes: Uint8Array): Promise<UnprovenTx> =>
+const sealComposed = async <E extends LedgerEra>(era: E, txBytes: Uint8Array): Promise<UnprovenTx> =>
   LedgerTransaction.seal(era, 'Unproven', await deserializeTransactionAtStage(era, 'Unproven', txBytes));
 
 /**
@@ -915,7 +915,7 @@ export const runLedger8CallPipeline = async <TState>(
 
 /** Everything one retained-era deploy needs. */
 export interface Ledger8DeployPipelineRequest {
-  readonly era: LedgerEra;
+  readonly era: LedgerEraFacade;
   readonly engine: Ledger8ExecutionEngine<unknown>;
   readonly contract: Ledger8Contract;
   readonly args: readonly unknown[];
@@ -956,13 +956,6 @@ export interface Ledger8DeployPipelineResult {
   readonly contractAddress: string;
   /** The state that address was derived from — what a caller later calls against. */
   readonly initialContractStateBytes: Uint8Array;
-  /**
-   * The same state as a LIVE handle, as the constructor built it. Published
-   * under ADR-0010 next to the bytes rather than instead of them: the handle is
-   * valid only while the retained runtime that produced it is loaded, and only
-   * the bytes survive a clone, a worker transfer or storage.
-   */
-  readonly initialContractState: Ledger8ConstructedState['contractState'];
   readonly nextPrivateState: unknown;
   /** The Zswap local state the constructor ended on. */
   readonly initialZswapState: ZswapLocalState;
@@ -1054,7 +1047,6 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
     unprovenTx: await sealComposed(request.era.version, deployed.txBytes),
     contractAddress: deployed.contractAddress,
     initialContractStateBytes: deployed.initialContractStateBytes,
-    initialContractState: constructed.contractState,
     nextPrivateState: constructed.privateState,
     initialZswapState: constructed.zswapLocalState,
     guaranteedZswapOfferBytes,
@@ -1068,10 +1060,10 @@ export const runLedger8DeployPipeline = async (request: Ledger8DeployPipelineReq
 /** What one retained-era maintenance update is composed from. */
 export interface Ledger8MaintenancePipelineRequest {
   /** The RETAINED era facade, which reads a retained-era envelope. See {@link readLedger8Snapshot}. */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
   /** The facade bound to the network head. */
-  readonly era: LedgerEra;
-  readonly head: LedgerVersion;
+  readonly era: LedgerEraFacade;
+  readonly head: LedgerEra;
   readonly engine: Pick<Ledger8ExecutionEngine<unknown>, 'composeMaintenanceTx'>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly logger?: BreadcrumbSink;

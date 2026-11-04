@@ -20,7 +20,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_STATE_KINDS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra, StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -44,12 +44,17 @@ export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
  * The {@link PublicDataProvider} methods that report a contract state with
  * its era.
  */
-export type StateReadMethod = 'queryDeployContractState';
+export type StateReadMethod =
+  | 'queryContractState'
+  | 'queryZSwapAndContractState'
+  | 'queryDeployContractState'
+  | 'watchForContractState'
+  | 'contractStateObservable';
 
 /**
  * Every provider method at which a payload's ledger era is resolved or
  * narrowed — the three transaction methods, the two record reads and the
- * state read.
+ * state reads.
  *
  * This is the vocabulary to type a caught error's `method` against when the
  * error can come from either surface.
@@ -72,7 +77,8 @@ export type WatchOperation =
  * Most of the group belongs to the provider methods. Two sets do not, and are here
  * because this is the one provider-scoped group there is: `PRIVATE_STATE_NOT_SERIALIZABLE`
  * belongs to the private-state provider, and `INVALID_LEDGER_STATE`,
- * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `SerializedState`.
+ * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to the serialized states
+ * (`SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`).
  *
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
@@ -285,7 +291,7 @@ export class UnusableEraEntryError extends MidnightJsError {
    */
   constructor(
     readonly method: TransactionMethod,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly expected: EraEntryShape,
     readonly received: string
   ) {
@@ -305,7 +311,7 @@ export class UnusableEraEntryError extends MidnightJsError {
  */
 export type ForeignLedgerTransactionReason = Exclude<FrameworkInstanceCheck, 'own' | 'not-a-transaction'>;
 
-const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerVersion) => string>> = {
+const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerEra) => string>> = {
   'foreign-instance': (era) =>
     `The ${era} transaction is not an object of the ledger copy this framework loaded: it was built by a ` +
     `duplicate install of the ledger package (another WASM instance), or it is not a ledger transaction at all. ` +
@@ -336,7 +342,7 @@ export class ForeignLedgerTransactionError extends MidnightJsError {
    *               `LedgerTransaction.seal` when it was sealed directly.
    */
   constructor(
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly reason: ForeignLedgerTransactionReason,
     readonly method: TransactionHandleMethod = 'LedgerTransaction.seal'
   ) {
@@ -429,8 +435,8 @@ export class TransactionEraMismatchError extends MidnightJsError {
    * @param actual The era the handle carries.
    */
   constructor(
-    readonly expected: LedgerVersion,
-    readonly actual: LedgerVersion
+    readonly expected: LedgerEra,
+    readonly actual: LedgerEra
   ) {
     super(
       `Expected a ${expected} transaction, but the handle carries a ${actual} one. ` +
@@ -443,30 +449,35 @@ export class TransactionEraMismatchError extends MidnightJsError {
 /**
  * Why {@link InvalidSerializedStateError} refused a value.
  *
- * - `'unknown-kind'`: the kind is not a {@link StateKind}.
  * - `'not-bytes'`: the value is not a `Uint8Array`.
  * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that era writes for that
  *   kind.
- * - `'not-from-bytes'`: the value was constructed without `SerializedState.fromBytes`.
+ * - `'not-from-bytes'`: the value was constructed without its class's `fromBytes`.
  */
-export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export type InvalidSerializedStateReason = 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+
+const SERIALIZED_CLASS_NAMES: Readonly<Record<StateKind, string>> = {
+  ContractState: 'SerializedContractState',
+  LedgerParameters: 'SerializedLedgerParameters',
+  ZswapChainState: 'SerializedZswapChainState'
+};
 
 const INVALID_LEDGER_STATE_MESSAGES: Readonly<
-  Record<InvalidSerializedStateReason, (kind: string, era: string) => string>
+  Record<InvalidSerializedStateReason, (kind: StateKind, era: string) => string>
 > = {
-  'unknown-kind': (kind) =>
-    `Cannot build a SerializedState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
-  'not-bytes': (kind) => `Cannot build a ${kind} SerializedState: the value is not a Uint8Array.`,
+  'not-bytes': (kind) => `Cannot build a ${SERIALIZED_CLASS_NAMES[kind]}: the value is not a Uint8Array.`,
   'tag-mismatch': (kind, era) =>
     `The bytes are not a ${kind} written by the ${era} ledger. ` +
     `Pass the era of the ledger that wrote them, and check they hold a ${kind}.`,
-  'not-from-bytes': () => 'A SerializedState can only be made by SerializedState.fromBytes.'
+  'not-from-bytes': (kind) =>
+    `A ${SERIALIZED_CLASS_NAMES[kind]} can only be made by ${SERIALIZED_CLASS_NAMES[kind]}.fromBytes.`
 };
 
 /**
- * Thrown by `SerializedState.fromBytes` when the bytes are not a value of the given kind written by the
- * ledger of the given era, and by the `SerializedState` constructor when it is called without
- * `SerializedState.fromBytes`. The bytes are never quoted in the message.
+ * Thrown by the `fromBytes` of `SerializedContractState`, `SerializedLedgerParameters` and
+ * `SerializedZswapChainState` when the bytes are not a value of that kind written by the ledger of the
+ * given era, and by their constructors when called without `fromBytes`. The bytes are never quoted in
+ * the message.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
@@ -475,22 +486,22 @@ export class InvalidSerializedStateError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_LEDGER_STATE];
 
   /**
-   * @param kind The kind the caller named, or `undefined` when the constructor was called directly.
+   * @param kind The kind of value the class carries.
    * @param era The ledger era the caller named, or `undefined` when the constructor was called
    *   directly.
    * @param reason Why the value was refused.
    */
   constructor(
-    readonly kind: string | undefined,
-    readonly era: LedgerVersion | undefined,
+    readonly kind: StateKind,
+    readonly era: LedgerEra | undefined,
     readonly reason: InvalidSerializedStateReason
   ) {
-    super(INVALID_LEDGER_STATE_MESSAGES[reason](String(kind), String(era)));
+    super(INVALID_LEDGER_STATE_MESSAGES[reason](kind, String(era)));
     this.name = 'InvalidSerializedStateError';
   }
 }
 
-const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerVersion, string>>>> = {
+const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerEra, string>>>> = {
   ContractState: {
     v8: '`ContractState` from a ledger 8 `@midnight-ntwrk/compact-runtime` (0.16), such as the copy a ledger 8 contract was compiled against',
     v9: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your contract was compiled against'
@@ -506,7 +517,7 @@ const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerVersion, 
 };
 
 /**
- * Thrown by `SerializedState.deserialize` when the decoders passed in have none for the era of the
+ * Thrown by `deserialize` of a serialized state when the decoders passed in have none for the era of the
  * value. The message names the class to import.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
@@ -521,7 +532,7 @@ export class SerializedStateDecoderMissingError extends MidnightJsError {
    */
   constructor(
     readonly kind: StateKind,
-    readonly era: LedgerVersion
+    readonly era: LedgerEra
   ) {
     super(
       `No decoder for a ${kind} written by the ${era} ledger. ` +
@@ -532,7 +543,7 @@ export class SerializedStateDecoderMissingError extends MidnightJsError {
 }
 
 /**
- * Thrown by `SerializedState.deserialize` when the decoder for the era of the value throws an error
+ * Thrown by `deserialize` of a serialized state when the decoder for the era of the value throws an error
  * that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
  * are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
  * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
@@ -551,7 +562,7 @@ export class SerializedStateDecodeFailedError extends MidnightJsError {
    */
   constructor(
     readonly kind: StateKind,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     options: { readonly cause: unknown }
   ) {
     super(

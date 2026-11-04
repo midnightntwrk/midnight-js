@@ -13,17 +13,18 @@
  * limitations under the License.
  */
 
-import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerEra, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   FailFallible,
   type FinalizedTxRead,
   type PrivateStateId,
   type ProviderMethod,
-  SegmentFail
+  SegmentFail,
+  type SerializedContractState
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -80,7 +81,7 @@ const formatCircuitClause = (circuitId: string | readonly string[] | undefined):
  * back. An answer that is not a transaction handle at all is a different
  * fault and raises `InvalidTransactionHandleError` instead; a read-surface
  * record whose `era` is missing or unrecognised raises
- * `UnknownLedgerVersionError`.
+ * `UnknownLedgerEraError`.
  */
 export class EraInvariantViolationError extends MidnightJsError {
   readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
@@ -107,8 +108,8 @@ export class EraInvariantViolationError extends MidnightJsError {
   constructor(
     readonly method: ProviderMethod,
     readonly circuitId?: string | readonly string[],
-    readonly expected: LedgerVersion = 'v9',
-    readonly received?: LedgerVersion,
+    readonly expected: LedgerEra = 'v9',
+    readonly received?: LedgerEra,
     readonly contractAddress?: string,
     readonly txId?: string
   ) {
@@ -264,7 +265,7 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'which serves contracts of both eras.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
-    `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
+    `Results are tagged '${CURRENT_LEDGER_ERA}' or 'v8' by the pipeline that built ` +
     `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
     `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
     `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`
@@ -349,8 +350,8 @@ export class NetworkVersionStateMismatchError extends MidnightJsError {
    * @param stateEra The ledger era that wrote the fetched state.
    */
   constructor(
-    readonly networkVersion: LedgerVersion,
-    readonly stateEra: LedgerVersion
+    readonly networkVersion: LedgerEra,
+    readonly stateEra: LedgerEra
   ) {
     super(
       `This operation started while the network reported ledger '${networkVersion}', but the contract state it ` +
@@ -383,8 +384,8 @@ export class IndexerInconsistencyError extends MidnightJsError {
    * @param stateEra The ledger era that wrote the fetched state.
    */
   constructor(
-    readonly networkVersion: LedgerVersion,
-    readonly stateEra: LedgerVersion
+    readonly networkVersion: LedgerEra,
+    readonly stateEra: LedgerEra
   ) {
     super(
       `The read surface reported that the network is on ledger '${networkVersion}' — confirmed by a second, fresh ` +
@@ -414,8 +415,8 @@ export class PublicStatesEraMismatchError extends MidnightJsError {
   constructor(
     readonly contractAddress: string,
     readonly field: 'ledgerParameters' | 'zswapChainState',
-    readonly expected: LedgerVersion,
-    readonly received: LedgerVersion | undefined
+    readonly expected: LedgerEra,
+    readonly received: LedgerEra | undefined
   ) {
     super(
       `A call to the contract at '${contractAddress}' is built on the ${expected} ledger, but the read surface ` +
@@ -532,7 +533,7 @@ export interface SubmittedContractOperation {
    * transaction carried across the provider methods, and it is the `startEra` a
    * fork diagnosis compares a fresh reading against.
    */
-  readonly networkVersion: LedgerVersion;
+  readonly networkVersion: LedgerEra;
   /** Whether this operation deploys a contract, calls one already deployed, or maintains one. */
   readonly kind: SubmittedOperationKind;
   /**
@@ -556,7 +557,7 @@ export interface SubmittedContractOperation {
  */
 export interface SubmittedTransaction {
   /** The ledger version the network was on when `submitTx` read it. */
-  readonly networkVersion: LedgerVersion;
+  readonly networkVersion: LedgerEra;
   readonly kind: 'transaction';
   /** The circuits the caller named on the submit options, joined by `', '`, or `undefined`. */
   readonly circuitId: string | undefined;
@@ -586,7 +587,7 @@ export type SubmittedOperation = SubmittedContractOperation | SubmittedTransacti
 // is set at exactly one place, inside `deployLedger8Contract`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
 const FORK_CROSSED_MESSAGES: Readonly<
-  Record<SubmittedOperationKind, (operation: SubmittedContractOperation, freshEra: LedgerVersion) => string>
+  Record<SubmittedOperationKind, (operation: SubmittedContractOperation, freshEra: LedgerEra) => string>
 > = Object.freeze({
   call: (operation, freshEra) =>
     `This call was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
@@ -621,7 +622,7 @@ const FORK_CROSSED_MESSAGES: Readonly<
     `cannot maintain a contract on a network that has crossed the fork.`
 });
 
-const forkCrossedMessage = (operation: SubmittedOperation, freshEra: LedgerVersion): string =>
+const forkCrossedMessage = (operation: SubmittedOperation, freshEra: LedgerEra): string =>
   operation.kind === 'transaction'
     ? `This transaction was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
       `it${operation.circuitId === undefined ? '' : ` (circuit '${operation.circuitId}')`}; the network now reports ` +
@@ -654,7 +655,7 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
   readonly category = CONTRACTS_ERROR_CATEGORIES[CONTRACTS_ERROR_CODES.FORK_CROSSED_DURING_OPERATION];
 
   /** The era the operation resolved when it started. */
-  readonly startEra: LedgerVersion;
+  readonly startEra: LedgerEra;
   /**
    * Whether the refused operation was a call, a deploy, a maintenance update or a transaction
    * submitted with `submitTx` / `submitTxAsync` — the discriminant a caller branches on, and which
@@ -682,7 +683,7 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
    */
   constructor(
     operation: SubmittedOperation,
-    readonly freshEra: LedgerVersion,
+    readonly freshEra: LedgerEra,
     cause: unknown
   ) {
     super(forkCrossedMessage(operation, freshEra), { cause });
@@ -711,7 +712,7 @@ export type SubmitRejectionUndiagnosedCause =
    * A ledger era only ever moves forward, so the two readings cannot both
    * describe one chain.
    */
-  | { readonly reason: 'network-version-went-backwards'; readonly freshEra: LedgerVersion };
+  | { readonly reason: 'network-version-went-backwards'; readonly freshEra: LedgerEra };
 
 // Neither text claims a fork is under way, and that restraint is the point:
 // nothing observed in either case establishes one, and telling a caller to wait
@@ -797,7 +798,7 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   /** Which of the two undiagnosable conditions this is. */
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
   /** The era the operation resolved when it started. */
-  readonly startEra: LedgerVersion;
+  readonly startEra: LedgerEra;
   readonly kind: SubmittedOperation['kind'];
   /** See {@link ForkCrossedDuringOperationError.circuitId}. */
   readonly circuitId: string | undefined;
@@ -1048,22 +1049,6 @@ export interface ContractTypeMismatch {
   readonly mismatched: AnyProvableCircuitId[];
 }
 
-const MAX_STATE_DESCRIPTION_CHARS = 2_000;
-
-const describeContractState = (contractState: ContractState): string => {
-  try {
-    const description = contractState.toString(true);
-    return description.length > MAX_STATE_DESCRIPTION_CHARS
-      ? `${description.slice(0, MAX_STATE_DESCRIPTION_CHARS)}… (truncated from ${description.length} characters; the full state is on 'error.contractState')`
-      : description;
-  } catch (error) {
-    // Deliberately narrow: this runs inside the error constructor, so letting a failure escape
-    // would destroy the ContractTypeError and take 'circuitIds' with it. The state itself stays
-    // reachable on 'error.contractState' for a caller that wants to inspect it.
-    return `<the deployed state could not be rendered: ${error instanceof Error ? error.message : String(error)}>`;
-  }
-};
-
 const describeMismatch = (mismatch: ContractTypeMismatch, contractAddress?: ContractAddress): string => {
   const subject = contractAddress === undefined ? 'The deployed contract' : `The contract at '${contractAddress}'`;
   const lines = [`${subject} is not the expected contract type.`];
@@ -1122,16 +1107,18 @@ export class ContractTypeError extends MidnightJsError {
   /**
    * Initializes a new {@link ContractTypeError}.
    *
-   * @param contractState The initial deployed contract state.
+   * @param contractState The deployed contract state that was checked, as bytes, of either era.
+   *   Decode it with your own runtime of `error.contractState.era` to inspect it, for example
+   *   `error.contractState.deserialize({ v9: ContractState })`.
    * @param mismatch The circuits that failed to match, grouped by the condition that applied.
    * @param contractAddress The address the state was read from, when known.
    */
   constructor(
-    readonly contractState: ContractState,
+    readonly contractState: SerializedContractState,
     mismatch: ContractTypeMismatch,
     readonly contractAddress?: ContractAddress
   ) {
-    super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    super(describeMismatch(mismatch, contractAddress));
     this.name = 'ContractTypeError';
     this.missingCircuitIds = mismatch.missing;
     this.keylessCircuitIds = mismatch.keyless;

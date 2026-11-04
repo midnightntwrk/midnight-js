@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { type LedgerEra, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type FinalizedTxRead,
   LedgerTransaction,
@@ -578,7 +578,7 @@ describe('an era that resolves to no decoder at all', () => {
   // Without the guard the era-keyed lookup on a null prototype would answer
   // `undefined` and the read would fail somewhere further down instead of here.
   const decodeWithEra = (era: string, method: ReadMethod = 'watchForTxData', recordRef = `txId ${TX_ID}`): Promise<unknown> =>
-    decodeRecordTransaction(ledger9TransactionHex, era as LedgerVersion, {
+    decodeRecordTransaction(ledger9TransactionHex, era as LedgerEra, {
       method,
       protocolVersion: LEDGER9_ERA_PROTOCOL_VERSION,
       recordRef

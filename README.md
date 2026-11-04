@@ -142,7 +142,6 @@ These repositories may track the latest stable release of Midnight.js rather tha
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
 | [@midnight-ntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
 | [@midnight-ntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
-| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Deprecated global network id (use `MidnightProviders.config`) |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
 | [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |
@@ -306,8 +305,8 @@ New functionality must include unit and integration tests (TDD — tests first).
 | Private State | State updated by witnesses, stored on user's device |
 | Circuit | Smart contract function that can be executed and proven |
 | ZKIR | Zero-Knowledge Intermediate Representation |
-| Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerVersion`) stay correct across forks |
-| Retained era | A ledger before the last hard fork that this build still serves. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerVersion`) stay correct across forks |
+| Current era | The ledger this build runs live. Today it is ledger 9 (`v9`); at the next hard fork it moves to the new ledger. Names that follow it (`CurrentLedgerEra`) stay correct across forks |
+| Retained era | A ledger before the last hard fork that this build still serves. Today it is ledger 8 (`v8`); at the next hard fork ledger 9 joins it. Names that follow it (`RetainedLedgerEra`) stay correct across forks |
 | `Ledger8*` / `Ledger9*` | Names bound to one ledger. They never change meaning at a fork |
 
 ## Detailed

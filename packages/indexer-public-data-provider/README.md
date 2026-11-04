@@ -81,9 +81,11 @@ queryLatestProtocolVersion(): Promise<number>
 ### Reading State Across the Ledger Fork
 
 Every state read returns bytes, never a decoded object. A contract state,
-ledger parameters and a zswap chain state are each a `SerializedState` from
-`@midnight-ntwrk/midnight-js-types`: the bytes exactly as the network sent them,
-plus `kind` and `era`, the ledger that wrote them. Decode one with the
+ledger parameters and a zswap chain state are each a serialized state from
+`@midnight-ntwrk/midnight-js-types` — `SerializedContractState`,
+`SerializedLedgerParameters` and `SerializedZswapChainState`: the bytes exactly
+as the network sent them, plus `era`, the ledger that wrote them. The class
+names the kind. Decode one with the
 runtime your own contract was compiled against, so the object is one its
 `ledger()` accepts:
 
@@ -485,6 +487,20 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
   index(event);
 }
 ```
+
+## Contract State
+
+`queryContractState`, `queryZSwapAndContractState`, `queryDeployContractState`,
+`watchForContractState` and `contractStateObservable` return each state as
+bytes, tagged with the era of the ledger that wrote them. The `protocolVersion`
+of the block that dates the state is resolved first. A well-formed integer this
+build cannot place on the era timeline is refused with `UnknownRecordEraError`,
+naming the method and the contract address. A malformed one is refused with
+`IndexerDataError` (`malformed-protocol-version`), naming the same, where a
+transaction read raises `UnknownRecordEraError`. On
+`contractStateObservable` the refusal ends the stream. The rule holds on an
+unpinned read too, where the block is not trusted as an upper bound on the
+state's era: only that comparison is dropped, never the era resolution.
 
 ## Transaction Data
 

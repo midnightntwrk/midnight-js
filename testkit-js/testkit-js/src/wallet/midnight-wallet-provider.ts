@@ -20,7 +20,7 @@ import {
   type EncPublicKey,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -44,7 +44,7 @@ import { getInitialShieldedState, waitForFunds } from './wallet-utils';
  */
 export class MidnightWalletProvider implements MidnightProvider, WalletProvider {
   /** Both eras, on both providers this class implements. */
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
 
   private readonly balancer: WalletProvider;
   private readonly submitter: MidnightProvider;
@@ -100,7 +100,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.submitter.submitTx(tx);
   }
 
-  private async balance<E extends LedgerVersion>(
+  private async balance<E extends LedgerEra>(
     era: E,
     tx: LedgerTransactionTypes[E]['Unbound'],
     ttl: Date = ttlOneHour()
@@ -115,7 +115,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
   }
 
-  private async submit<E extends LedgerVersion>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
+  private async submit<E extends LedgerEra>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
     return this.wallet.submitTransaction(await adoptInWallet(this.wallet, era, 'Finalized', tx));
   }
 

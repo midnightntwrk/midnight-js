@@ -17,7 +17,7 @@ import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors'
 import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -93,7 +93,7 @@ describe('submit-call-tx', () => {
   };
 
   const createFailedTxData = (): Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
-    era: CURRENT_LEDGER_VERSION,
+    era: CURRENT_LEDGER_ERA,
     public: {
       nextContractState: StateValue.newNull(),
       nextContractStateEncoded: StateValue.newNull().encode(),
@@ -130,7 +130,7 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
-      era: CURRENT_LEDGER_VERSION,
+      era: CURRENT_LEDGER_ERA,
       circuitId: 'testCircuit',
       calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
@@ -283,7 +283,7 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createLedger9UnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
-          era: CURRENT_LEDGER_VERSION,
+          era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
@@ -526,7 +526,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
-          era: CURRENT_LEDGER_VERSION,
+          era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',
           calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
@@ -586,7 +586,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
-          era: CURRENT_LEDGER_VERSION,
+          era: CURRENT_LEDGER_ERA,
           circuitId: 'testCircuit',
           txId: mockTxId,
           callTxData: mockUnprovenCallTxData

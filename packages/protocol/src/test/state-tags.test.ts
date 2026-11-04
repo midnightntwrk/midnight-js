@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { loadLedger8Protocol } from '../lib/v8/load';
 import * as ledger9 from '../v9';
 import * as compactRuntime from '../v9-compact-runtime';
-import { LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, LEDGER_VERSIONS, type LedgerVersion, type StateKind } from '../version';
+import { LEDGER_ERAS, LEDGER_STATE_KINDS, LEDGER_STATE_TAGS, type LedgerEra, type StateKind } from '../version';
 
 type Serializable = { serialize(): Uint8Array };
 type Runtime = {
@@ -33,7 +33,7 @@ const mint: Readonly<Record<StateKind, (runtime: Runtime) => Serializable>> = {
   ZswapChainState: (runtime) => new runtime.ZswapChainState()
 };
 
-const runtimeOf = async (era: LedgerVersion): Promise<Runtime> => (era === 'v9' ? ledger9 : loadLedger8Protocol());
+const runtimeOf = async (era: LedgerEra): Promise<Runtime> => (era === 'v9' ? ledger9 : loadLedger8Protocol());
 
 const leadingTag = (bytes: Uint8Array, tag: string): string =>
   new TextDecoder().decode(bytes.subarray(0, tag.length + 1));
@@ -43,7 +43,7 @@ describe('LEDGER_STATE_TAGS', () => {
     expect(Object.keys(LEDGER_STATE_TAGS).sort()).toEqual([...LEDGER_STATE_KINDS].sort());
   });
 
-  it.each(LEDGER_STATE_KINDS.flatMap((kind) => LEDGER_VERSIONS.map((era) => [kind, era] as const)))(
+  it.each(LEDGER_STATE_KINDS.flatMap((kind) => LEDGER_ERAS.map((era) => [kind, era] as const)))(
     'holds the tag the %s runtime of %s writes',
     async (kind, era) => {
       const bytes = mint[kind](await runtimeOf(era)).serialize();

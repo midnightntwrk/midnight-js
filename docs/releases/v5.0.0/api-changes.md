@@ -138,12 +138,12 @@ export type ProviderMethod = TransactionMethod | ReadMethod;
 // the type too when it is known (`E` defaults to any era).
 export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
 export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
-export class LedgerTransaction<S extends TransactionStage, E extends LedgerVersion = LedgerVersion> {
+export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra = LedgerEra> {
   readonly era: E;
   readonly stage: S;
   serialize(): Uint8Array;
-  static seal<E extends LedgerVersion, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
-  static unwrap<E extends LedgerVersion, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
+  static seal<E extends LedgerEra, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
+  static unwrap<E extends LedgerEra, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
   static require<S extends TransactionStage>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
   static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage>;
 }
@@ -151,9 +151,9 @@ export type UnprovenTx = LedgerTransaction<'Unproven'>;
 export type UnboundTx = LedgerTransaction<'Unbound'>;
 export type FinalizedTx = LedgerTransaction<'Finalized'>;
 
-interface ProofProvider    { readonly supportedEras: readonly LedgerVersion[]; proveTx(tx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>; }
-interface WalletProvider   { readonly supportedEras: readonly LedgerVersion[]; balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>; /* key readers */ }
-interface MidnightProvider { readonly supportedEras: readonly LedgerVersion[]; submitTx(tx: FinalizedTx): Promise<TransactionId>; }
+interface ProofProvider    { readonly supportedEras: readonly LedgerEra[]; proveTx(tx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>; }
+interface WalletProvider   { readonly supportedEras: readonly LedgerEra[]; balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>; /* key readers */ }
+interface MidnightProvider { readonly supportedEras: readonly LedgerEra[]; submitTx(tx: FinalizedTx): Promise<TransactionId>; }
 
 // Read surface: era-tagged records whose `tx` is a handle of the same era.
 export interface FinalizedTxRecord { /* the 13 era-independent metadata fields */ }
@@ -161,9 +161,9 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly era
 export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
 // Refusals.
-export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerVersion; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
+export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerEra; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
 export class InvalidTransactionHandleError extends MidnightJsError { readonly method: TransactionHandleMethod; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage' | 'not-a-transaction' | 'stage-mismatch'; readonly detail: string; }
-export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerVersion; readonly actual: LedgerVersion; }
+export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerEra; readonly actual: LedgerEra; }
 
 // Adapters: lift a v9-only implementation into the handle interfaces.
 export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, on v9 ledger objects */ }
@@ -200,11 +200,11 @@ the v8 runtime first.
 ```ts
 export type StateKind = 'ContractState' | 'LedgerParameters' | 'ZswapChainState'; // also from protocol/version
 export interface StateDecoder<T = unknown> { deserialize(bytes: Uint8Array): T; }
-export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
-export class SerializedState<K extends StateKind = StateKind, E extends LedgerVersion = LedgerVersion> {
+export type StateDecoders = Readonly<Partial<Record<LedgerEra, StateDecoder>>>;
+export class SerializedState<K extends StateKind = StateKind, E extends LedgerEra = LedgerEra> {
   readonly era: E;
   readonly kind: K;
-  static fromBytes<E extends LedgerVersion, K extends StateKind>(era: E, kind: K, bytes: Uint8Array): SerializedState<K, E>;
+  static fromBytes<E extends LedgerEra, K extends StateKind>(era: E, kind: K, bytes: Uint8Array): SerializedState<K, E>;
   static isSerializedState(value: unknown): value is SerializedState;
   serialize(): Uint8Array;
   deserialize<D extends StateDecoders>(decoders: DecodersFor<D, E>): DecodedState<D, E>; // does not compile when D has no decoder for any era E can be
@@ -230,9 +230,9 @@ interface PublicDataProvider {
 }
 
 export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
-export class InvalidSerializedStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerVersion | undefined; readonly reason: InvalidSerializedStateReason; }
-export class SerializedStateDecoderMissingError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
-export class SerializedStateDecodeFailedError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerVersion; }
+export class InvalidSerializedStateError extends MidnightJsError { readonly kind: string | undefined; readonly era: LedgerEra | undefined; readonly reason: InvalidSerializedStateReason; }
+export class SerializedStateDecoderMissingError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerEra; }
+export class SerializedStateDecodeFailedError extends MidnightJsError { readonly kind: StateKind; readonly era: LedgerEra; }
 ```
 
 In `contracts`:
@@ -244,8 +244,8 @@ interface Ledger9TransactionContext<C, PCK> {
 export class PublicStatesEraMismatchError extends MidnightJsError {
   readonly contractAddress: string;
   readonly field: 'ledgerParameters' | 'zswapChainState';
-  readonly expected: LedgerVersion;
-  readonly received: LedgerVersion | undefined;
+  readonly expected: LedgerEra;
+  readonly received: LedgerEra | undefined;
 }
 ```
 
@@ -332,8 +332,8 @@ export class EraInvariantViolationError extends Error {
   readonly code: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION';
   readonly method: ProviderMethod; // from midnight-js-types
   readonly circuitId?: string | readonly string[];
-  readonly expected: LedgerVersion;
-  readonly received?: LedgerVersion;
+  readonly expected: LedgerEra;
+  readonly received?: LedgerEra;
   readonly contractAddress?: string;
 }
 ```
@@ -348,7 +348,7 @@ export interface Ledger8FoundDeployTxPublicData extends Ledger8FinalizedTxData {
 }
 export type FoundDeployTxPublicData = Ledger8FoundDeployTxPublicData | Ledger9FinalizedDeployTxPublicData;
 export interface FoundDeployTxData<C extends Contract.Any> {
-  readonly era: CurrentLedgerVersion;
+  readonly era: CurrentLedgerEra;
   readonly public: FoundDeployTxPublicData;
   readonly private: Ledger9UnsubmittedDeployTxPrivateData<C>;
 }
@@ -572,7 +572,7 @@ class Ledger8AmbiguousEntryPointError {
 //   Ledger8SigningKeyReason, Ledger8KeyedOperation, Ledger8NotStoredStage, Ledger8CallUnsupportedReason.
 ```
 
-`UnknownLedgerVersionError` (protocol) now also covers a value with no era, with a `requestedVersion` of
+`UnknownLedgerEraError` (protocol) now also covers a value with no era, with a `requestedVersion` of
 `undefined`. It is ENVIRONMENT. Its constructor takes the raw value (`unknown`), and `requestedVersion` is
 `string | undefined`. Removed from `utils`: `UnrecognisedEraTagError`,
 `Ledger8ValueUnsupportedError`, `requireLedger9`, and the codes `LEDGER8_VALUE_UNSUPPORTED` and
@@ -632,7 +632,7 @@ export class UnknownRecordEraError extends IndexerError {
 export class DecoderEraUnsupportedError extends IndexerError {
   readonly code: 'MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED';
   readonly method: ReadMethod;
-  readonly era: LedgerVersion;      // an era the decoder table has no entry for
+  readonly era: LedgerEra;      // an era the decoder table has no entry for
   readonly protocolVersion: number; // the raw integer the indexer reported
   readonly recordRef?: string;      // the txId or contractAddress being read
   // A guard on the era-keyed decoder table, which is total over the eras this
@@ -805,12 +805,12 @@ export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<s
 export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
 ```
 
-## `@midnight-ntwrk/midnight-js-network-id` (deprecated, #982)
+## `@midnight-ntwrk/midnight-js-network-id` (removed, #982, #1546)
 
-`setNetworkId`, `getNetworkId` and `NetworkId` are `@deprecated`. They still work,
-but the framework no longer reads the value. Use `MidnightProviders.config.networkId`
-and import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. The package is
-removed in 6.0.
+The package is removed, together with the `networkId` namespace and the
+`./network-id` subpath of `@midnight-ntwrk/midnight-js`. Use
+`MidnightProviders.config.networkId` and import `NetworkId` from
+`@midnight-ntwrk/midnight-js-types`.
 
 ## `@midnight-ntwrk/testkit-js`
 

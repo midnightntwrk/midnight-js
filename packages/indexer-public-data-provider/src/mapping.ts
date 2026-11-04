@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { FinalizedTxRead,FinalizedTxRecord, ReadMethod } from '@midnight-ntwrk/midnight-js-types';
 
 import {
@@ -113,7 +113,7 @@ const toFinalizedTxRecord = (
 const toFinalizedTxRead = async (
   transaction: RegularTransaction & { hash: string; identifiers: string[] },
   txId: TransactionId,
-  era: LedgerVersion,
+  era: LedgerEra,
   method: ReadMethod,
   recordRef: string
 ): Promise<FinalizedTxRead> => {
