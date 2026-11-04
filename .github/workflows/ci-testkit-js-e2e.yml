@@ -128,9 +128,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
-      - name: Pull the e2e prover keys from Git LFS
-        uses: ./.github/actions/pull-lfs
-
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
@@ -158,6 +155,14 @@ jobs:
         with:
           name: e2e-tests-contracts
           path: testkit-js/testkit-js-e2e/src/contract/compiled
+
+      # After the downloads: the build job never pulls LFS, so its artifacts carry the key
+      # pointers, and the tests read the keys from the `dist/` copy of `src/`.
+      - name: Pull the e2e prover keys from Git LFS
+        uses: ./.github/actions/pull-lfs
+
+      - name: Copy the prover keys into the e2e dist
+        run: yarn workspace @midnight-ntwrk/testkit-js-e2e compact-copy
 
       - name: Post-Install dependencies
         run: yarn postinstall
