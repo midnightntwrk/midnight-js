@@ -86,3 +86,8 @@ runs:
         key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}
         restore-keys: |
           ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
+
+    - name: Drop turbo build entries older than a week
+      if: inputs.turbo-cache == 'true'
+      shell: bash
+      run: if [ -d .turbo/cache ]; then find .turbo/cache -type f -mtime +7 -delete; fi

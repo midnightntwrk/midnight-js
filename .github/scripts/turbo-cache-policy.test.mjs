@@ -55,7 +55,7 @@ describe('turbo cache policy', () => {
   );
 
   it(
-    'caches build',
+    'caches every build except the one that only copies prover keys',
     () => {
       const { tasks } = dryRun(['build']);
 
@@ -64,7 +64,7 @@ describe('turbo cache policy', () => {
         .map(({ taskId }) => taskId);
 
       expect(tasks.length).toBeGreaterThan(0);
-      expect(uncached).toEqual([]);
+      expect(uncached).toEqual(['@midnight-ntwrk/testkit-js-e2e#build']);
     },
     DRY_RUN_TIMEOUT_MS
   );
@@ -104,6 +104,15 @@ describe('CI cache wiring', () => {
 
     expect(overridden).toEqual([]);
     expect(turboCache).toHaveLength(1);
+  });
+
+  it('drops turbo build entries older than a week before the build adds new ones', () => {
+    const steps = readYaml(SETUP_BUILD_ENV).runs.steps;
+    const restore = steps.findIndex(({ name }) => name === 'Cache turbo build output');
+    const prune = steps.findIndex(({ run }) => run?.includes('find .turbo/cache') && run.includes('-mtime +7'));
+
+    expect(prune).toBeGreaterThan(restore);
+    expect(steps[prune].if).toBe(steps[restore].if);
   });
 
   it('builds every published package from source', () => {
