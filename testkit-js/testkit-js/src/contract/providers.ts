@@ -56,15 +56,12 @@ export const initializeMidnightProviders = <PCK extends string, PS>(
     contractConfiguration.zkConfigIntegrity
   );
 
-  const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
-  const accountId = Buffer.from(coinPublicKey).toString('hex');
-
   return createMidnightProviders({
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
       signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
       privateStoragePasswordProvider: () => { return 'Answer to the Ultimate Question of Life, the Universe, and Everything!'; },
-      accountId
+      accountId: midnightWalletProvider.getCoinPublicKey()
     }),
     publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
     zkConfigProvider,

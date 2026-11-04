@@ -27,7 +27,7 @@ if (read !== null) {
 
 ### contractState
 
-> `readonly` **contractState**: [`SerializedState`](../classes/SerializedState.md)\<`"ContractState"`\>
+> `readonly` **contractState**: [`SerializedContractState`](../classes/SerializedContractState.md)
 
 The contract state.
 

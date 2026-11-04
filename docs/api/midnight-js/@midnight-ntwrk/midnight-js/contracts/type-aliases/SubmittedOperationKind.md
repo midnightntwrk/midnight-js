@@ -8,8 +8,9 @@
 
 > **SubmittedOperationKind** = `"call"` \| `"deploy"` \| `"maintenance"`
 
-Whether the operation a [ForkCrossedDuringOperationError](../classes/ForkCrossedDuringOperationError.md) refuses was deploying a
-contract, calling one already deployed, or maintaining one.
+Whether a contract operation was deploying a contract, calling one already deployed, or
+maintaining one. A [ForkCrossedDuringOperationError](../classes/ForkCrossedDuringOperationError.md) can also carry `'transaction'`, for a
+transaction submitted with `submitTx` / `submitTxAsync`; see [SubmittedOperation](SubmittedOperation.md).
 
 The same discriminant the era pairing table takes, kept as its own type here
 because it decides which of the genuinely different remediations the error

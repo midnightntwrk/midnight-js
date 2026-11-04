@@ -68,7 +68,7 @@ crossing, and a message saying the network crossed the fork would be simply
 false. Inequality alone cannot tell those two apart, so the positions on the
 timeline are compared rather than the values.
 
-The timeline order is read off `LEDGER_VERSIONS`, which is declared oldest-first,
+The timeline order is read off `LEDGER_ERAS`, which is declared oldest-first,
 rather than restated — a second ordering could disagree with it. The order is
 pinned by `packages/contracts/src/test/scoped-era.test.ts`, so an era inserted
 out of order fails a test instead of silently inverting the direction test.
@@ -111,8 +111,11 @@ The second step differs by operation kind:
   key for the circuit, or its maintenance authority, already reflects the
   update. Then recompile with the current Compact toolchain and run the same
   maintenance function with that artifact. An authority replacement arrives
-  wrapped in `Ledger8ReplaceAuthorityUnconfirmedError`, which carries the new
+  wrapped in `Ledger8UnconfirmedError` (`operation` `'replace-authority'`), which carries the new
   key, because the replacement may have landed.
+- **A transaction** submitted with `submitTx` or `submitTxAsync` is built again for the era
+  the network now reports. The caller built it, so the error names no contract
+  (`contractAddress` is `undefined`); the first step checks the transaction's own effects.
 
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
 
@@ -189,7 +192,7 @@ had been batched with the rest.
 The three outcomes are kept apart on purpose:
 
 - **No third argument** is the normal case.
-- **A real scope** is the mixed-era refusal, `MixedEraScopeError`.
+- **A real scope** is the mixed-era refusal, `EraMismatchError` with reason `'ledger8-call-in-scope'`.
 - **Anything else** — `null`, or a stray value a JavaScript caller passed by
   mistake — is a malformed argument and gets an `InvalidArgumentError`
   (`MIDNIGHT_JS_G_INVALID_ARGUMENT`, category `USAGE`). Reporting it as

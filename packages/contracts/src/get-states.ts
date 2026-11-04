@@ -80,7 +80,7 @@ export const getStates = async <PS>(
   blockHash?: string
 ): Promise<ContractStates<PS>> => {
   const publicStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
-  const privateState = await privateStateProvider.get(privateStateId);
+  const privateState = await privateStateProvider.forContract(contractAddress).get(privateStateId);
   if (privateState === undefined || privateState === null) {
     throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
   }

@@ -6,7 +6,7 @@
 
 # Type Alias: ProofProviderHandlers
 
-> **ProofProviderHandlers** = \{ readonly \[E in LedgerVersion\]: ((tx: LedgerTransactionTypes\[E\]\["Unproven"\], config?: ProveTxConfig) =\> Promise\<LedgerTransactionTypes\[E\]\["Unbound"\]\>) \| undefined \}
+> **ProofProviderHandlers** = \{ readonly \[E in LedgerEra\]: ((tx: LedgerTransactionTypes\[E\]\["Unproven"\], config?: ProveTxConfig) =\> Promise\<LedgerTransactionTypes\[E\]\["Unbound"\]\>) \| undefined \}
 
 The per-era handlers [createProofProviderFromHandlers](../variables/createProofProviderFromHandlers.md) assembles a
 [ProofProvider](../interfaces/ProofProvider.md) from: one key per ledger era, a handler for an era the

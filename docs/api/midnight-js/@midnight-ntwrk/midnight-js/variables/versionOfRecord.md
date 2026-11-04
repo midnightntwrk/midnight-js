@@ -6,9 +6,9 @@
 
 # Variable: versionOfRecord
 
-> `const` **versionOfRecord**: (`record`) => [`LedgerVersion`](../type-aliases/LedgerVersion.md)
+> `const` **versionOfRecord**: (`record`) => [`LedgerEra`](../type-aliases/LedgerEra.md)
 
-Resolves the ledger version for a record's `protocolVersion` field (e.g. a
+Resolves the ledger era for a record's `protocolVersion` field (e.g. a
 transaction or block already read from the indexer).
 
 ## Parameters
@@ -21,9 +21,9 @@ Any object carrying a raw `protocolVersion` integer field.
 
 ## Returns
 
-[`LedgerVersion`](../type-aliases/LedgerVersion.md)
+[`LedgerEra`](../type-aliases/LedgerEra.md)
 
-The [LedgerVersion](../type-aliases/LedgerVersion.md) that record was written under.
+The [LedgerEra](../type-aliases/LedgerEra.md) that record was written under.
 
 ## Throws
 

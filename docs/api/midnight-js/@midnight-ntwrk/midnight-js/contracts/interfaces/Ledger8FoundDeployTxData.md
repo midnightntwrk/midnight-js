@@ -18,7 +18,7 @@ private state. Read only `public` when logging or transmitting.
 
 ## Extended by
 
-- [`Ledger8DeployTxData`](Ledger8DeployTxData.md)
+- [`Ledger8FinalizedDeployTxData`](Ledger8FinalizedDeployTxData.md)
 
 ## Type Parameters
 
@@ -62,7 +62,7 @@ The key this framework holds for the contract's maintenance authority, or
 `undefined` when it holds none it can use.
 
 ALWAYS PRESENT and possibly `undefined`, rather than optional. REQUIRED on
-[Ledger8DeployTxData](Ledger8DeployTxData.md): a deploy always has a key, because it built
+[Ledger8FinalizedDeployTxData](Ledger8FinalizedDeployTxData.md): a deploy always has a key, because it built
 the authority; an attach has one only if a deploy on this machine stored
 it, or the caller supplied one through
 [Ledger8FindDeployedContractOptions.signingKey](Ledger8FindDeployedContractOptions.md#signingkey).
@@ -118,3 +118,10 @@ whichever era was current at the time — narrow it with
 ##### contractAddress
 
 > `readonly` **contractAddress**: `string`
+
+##### initialContractState
+
+> `readonly` **initialContractState**: [`SerializedContractState`](../../types/classes/SerializedContractState.md)
+
+The deploy-time state of the contract, as `queryDeployContractState` serves it. Its `era`
+names the ledger that wrote these bytes. Decode it with your own runtime of that era.

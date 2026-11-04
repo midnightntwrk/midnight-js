@@ -94,12 +94,11 @@ const openProvider = () => {
     privateStoragePasswordProvider: () => PASSWORD,
     accountId: ACCOUNT_ID
   });
-  provider.setContractAddress(CONTRACT_ADDRESS);
   return provider;
 };
 
 const provider = openProvider();
-await provider.set(STATE_ID, PRIVATE_STATE);
+await provider.forContract(CONTRACT_ADDRESS).set(STATE_ID, PRIVATE_STATE);
 
 // Read the state back before these bytes are treated as a fixture. `level.open()`
 // creates CURRENT, MANIFEST-* and the log before anything is written, so a `set`
@@ -108,7 +107,7 @@ await provider.set(STATE_ID, PRIVATE_STATE);
 // envelope had broken. Verified here so an empty mint never reaches a commit.
 const verifier = openProvider();
 await verifier.invalidateEncryptionCache();
-const readBack = await verifier.get(STATE_ID);
+const readBack = await verifier.forContract(CONTRACT_ADDRESS).get(STATE_ID);
 if (readBack === null) {
   throw new Error(`minted ${STORE} but read back no state under "${STATE_ID}" -- refusing to leave an empty fixture`);
 }

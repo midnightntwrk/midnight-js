@@ -6,10 +6,10 @@
 
 # Variable: latestNetworkLedgerVersion
 
-> `const` **latestNetworkLedgerVersion**: (`source`) => `Promise`\<[`LedgerVersion`](../type-aliases/LedgerVersion.md)\>
+> `const` **latestNetworkLedgerVersion**: (`source`) => `Promise`\<[`LedgerEra`](../type-aliases/LedgerEra.md)\>
 
 Queries `source` for the network's latest protocol version and
-resolves it to a [LedgerVersion](../type-aliases/LedgerVersion.md).
+resolves it to a [LedgerEra](../type-aliases/LedgerEra.md).
 
 The source is expected to read the network on every call. This is the
 construct path: the era being resolved is the one a transaction built now
@@ -28,9 +28,9 @@ The indexer or node client to ask for the latest version.
 
 ## Returns
 
-`Promise`\<[`LedgerVersion`](../type-aliases/LedgerVersion.md)\>
+`Promise`\<[`LedgerEra`](../type-aliases/LedgerEra.md)\>
 
-A promise for the [LedgerVersion](../type-aliases/LedgerVersion.md) of the network's latest block.
+A promise for the [LedgerEra](../type-aliases/LedgerEra.md) of the network's latest block.
 
 ## Throws
 

@@ -34,9 +34,11 @@ Initializes a new ContractTypeError.
 
 ##### contractState
 
-[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
+[`SerializedContractState`](../../types/classes/SerializedContractState.md)
 
-The initial deployed contract state.
+The deployed contract state that was checked, as bytes, of either era.
+  Decode it with your own runtime of `error.contractState.era` to inspect it, for example
+  `error.contractState.deserialize({ v9: ContractState })`.
 
 ##### mismatch
 
@@ -97,7 +99,7 @@ then keyless, then mismatched.
 
 ### contractState
 
-> `readonly` **contractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` **contractState**: [`SerializedContractState`](../../types/classes/SerializedContractState.md)
 
 ***
 

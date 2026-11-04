@@ -16,6 +16,7 @@
 import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
+  type ContractPrivateStates,
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
@@ -37,7 +38,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { isValidSigningKey, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, isValidSigningKey, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
@@ -99,7 +100,7 @@ export interface LevelPrivateStateProviderConfig {
    * - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
    *
    * The same policy is applied to custom passwords passed to
-   * {@link PrivateStateProvider.exportPrivateStates} / `exportSigningKeys` and
+   * {@link ContractPrivateStates.exportPrivateStates} / `exportSigningKeys` and
    * their `importPrivateStates` / `importSigningKeys` counterparts. Violations
    * surface as `PasswordValidationError` on storage paths, or wrapped as
    * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
@@ -114,7 +115,7 @@ export interface LevelPrivateStateProviderConfig {
    * read back unchanged, and shared references and cycles are preserved. Anything
    * else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
    * subclass of the types above — is refused by
-   * {@link PrivateStateProvider.set} with a `PrivateStateSerializationError`,
+   * {@link ContractPrivateStates.set} with a `PrivateStateSerializationError`,
    * because storage would drop it, empty it or read it back as a different value.
    *
    * @example
@@ -129,13 +130,18 @@ export interface LevelPrivateStateProviderConfig {
    * Account identifier used to scope storage. This ensures data isolation
    * between different accounts/wallets using the same database.
    *
+   * For a new store, use the wallet's coin public key, `walletProvider.getCoinPublicKey()`,
+   * as it is. For an existing store, keep the value it was created with: another value
+   * opens another, empty store, and the private states and signing keys stored under the
+   * old value are no longer read.
+   *
    * The accountId is hashed (SHA-256, first 32 chars) before being used
-   * in storage paths, so any unique identifier can be used (e.g., wallet address).
+   * in storage paths.
    *
    * @example
    * ```typescript
    * {
-   *   accountId: walletAddress
+   *   accountId: walletProvider.getCoinPublicKey()
    * }
    * ```
    */
@@ -189,6 +195,8 @@ const hashAccountId = (accountId: string): string => {
   const data = new TextEncoder().encode(accountId);
   return bytesToHex(sha256(data)).substring(0, ACCOUNT_ID_HASH_LENGTH);
 };
+
+const storedAddress = (address: ContractAddress): ContractAddress => address.toLowerCase();
 
 const getScopedLevelName = (baseLevelName: string, accountId: string): string => {
   const hashedAccountId = hashAccountId(accountId);
@@ -384,7 +392,6 @@ interface RotateStorePasswordParams {
   readonly oldPasswordProvider: PrivateStoragePasswordProvider;
   readonly newPasswordProvider: PrivateStoragePasswordProvider;
   readonly maxEntries: number;
-  readonly shouldProceed?: (key: string) => boolean;
 }
 
 const isWrongKeyError = (error: unknown): boolean =>
@@ -393,7 +400,7 @@ const isWrongKeyError = (error: unknown): boolean =>
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
 ): Promise<PasswordRotationResult> => {
-  const { ctx, storeName, oldPasswordProvider, newPasswordProvider, maxEntries, shouldProceed } = params;
+  const { ctx, storeName, oldPasswordProvider, newPasswordProvider, maxEntries } = params;
 
   return withSubLevel<PasswordRotationResult>(
     ctx,
@@ -408,7 +415,6 @@ const rotateStorePassword = async (
       const newSalt = newEncryption.getSalt();
 
       const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
-      let hasMatchingData = false;
       let firstEntryValidated = false;
 
       for await (const [key, encryptedValue] of subLevel.iterator()) {
@@ -419,10 +425,6 @@ const rotateStorePassword = async (
             `Entry count exceeds maximum allowed (${maxEntries}). ` +
             `Use the maxEntries option to increase the limit if needed.`
           );
-        }
-
-        if (shouldProceed && shouldProceed(key)) {
-          hasMatchingData = true;
         }
 
         if (!firstEntryValidated) {
@@ -452,10 +454,6 @@ const rotateStorePassword = async (
       }
 
       if (entriesToMigrate.length === 0) {
-        return { entriesMigrated: 0 };
-      }
-
-      if (shouldProceed && !hasMatchingData) {
         return { entriesMigrated: 0 };
       }
 
@@ -558,6 +556,7 @@ const getAllEntries = <K extends string, V>(
   ctx: StorageContext,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider,
+  keyPrefix = '',
 ): Promise<Map<K, V>> =>
   withSubLevel<Map<K, V>>(ctx, levelName, async (subLevel) => {
     const encryption = await resolveEncryption(
@@ -570,7 +569,7 @@ const getAllEntries = <K extends string, V>(
     let password: string | null = null;
 
     for await (const [key, encryptedValue] of subLevel.iterator()) {
-      if (key === METADATA_KEY) {
+      if (key === METADATA_KEY || !key.startsWith(keyPrefix)) {
         continue;
       }
 
@@ -732,6 +731,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider' | 'accountId'>
 ): PrivateStateProvider<PSI, PS> & {
   invalidateEncryptionCache(): Promise<void>;
+  /** Re-encrypts the private states of every contract of this account with a new password. */
   changePassword(
     oldPasswordProvider: PrivateStoragePasswordProvider,
     newPasswordProvider: PrivateStoragePasswordProvider,
@@ -755,7 +755,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   if (!config.accountId || config.accountId.trim().length === 0) {
     throw new ConfigurationError(
       'accountId is required.\n' +
-      'Provide an account identifier (e.g., wallet address) to scope storage and prevent cross-account data access.'
+      'Provide an account identifier (the wallet coin public key) to scope storage and prevent cross-account data access.'
     );
   }
 
@@ -773,75 +773,246 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   showBrowserWarning();
 
-  let contractAddress: ContractAddress | null = null;
+  const contractPrivateStates = (contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> => {
+    const prefix = `${contractAddress}:`;
+    const view: ContractPrivateStates<PSI, PS> = {
+      contractAddress,
+      /** {@inheritDoc ContractPrivateStates.get} */
+      async get(privateStateId: PSI): Promise<PS | null> {
+        const { privateState } = scopedNames;
+        const scopedKey = `${prefix}${privateStateId}`;
+        return subLevelMaybeGet<string, PS>(ctx, privateState, scopedKey, passwordProvider);
+      },
+      /** {@inheritDoc ContractPrivateStates.remove} */
+      async remove(privateStateId: PSI): Promise<void> {
+        const { privateState } = scopedNames;
+        const scopedKey = `${prefix}${privateStateId}`;
+        return withSubLevel<void>(ctx, privateState, (subLevel) =>
+          subLevel.del(scopedKey),
+        );
+      },
+      /** {@inheritDoc ContractPrivateStates.set} */
+      async set(privateStateId: PSI, state: PS): Promise<void> {
+        assertSerializablePrivateState(state, String(privateStateId));
+        const { privateState } = scopedNames;
+        const scopedKey = `${prefix}${privateStateId}`;
+        const serialized = superjson.stringify(state);
 
-  const getScopedKey = (privateStateId: PSI): string => {
-    if (contractAddress === null) {
-      throw new ConfigurationError('Contract address not set. Call setContractAddress() before accessing private state.');
-    }
-    return `${contractAddress}:${privateStateId}`;
+        return withSubLevel<void>(ctx, privateState, async (subLevel) => {
+          const encryption = await resolveEncryption(
+            subLevel,
+            `${ctx.dbName}:${privateState}`,
+            passwordProvider,
+            ctx.cryptoBackend
+          );
+          await subLevel.put(scopedKey, await encryption.encrypt(serialized));
+        });
+      },
+      /** {@inheritDoc ContractPrivateStates.clear} */
+      async clear(): Promise<void> {
+        const { privateState } = scopedNames;
+        return withSubLevel(ctx, privateState, async (subLevel) => {
+          const keys = (await subLevel.keys().all()).filter((key) => key.startsWith(prefix));
+          await subLevel.batch(keys.map((key) => ({ type: 'del' as const, key })));
+        });
+      },
+      /** {@inheritDoc ContractPrivateStates.exportPrivateStates} */
+      async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
+        const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+        // Validate custom password if provided
+        if (options?.password !== undefined) {
+          validateExportPassword(options.password);
+        }
+
+        // Determine export password - use provided password or storage password
+        const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+        // Get all private states (not signing keys)
+        const { privateState } = scopedNames;
+        const ownStates = await getAllEntries<string, PS>(ctx, privateState, passwordProvider, prefix);
+        const states = new Map<PSI, PS>(
+          Array.from(ownStates, ([scopedKey, value]) => [scopedKey.slice(prefix.length) as PSI, value])
+        );
+
+        if (states.size === 0) {
+          throw new PrivateStateExportError('No private states to export');
+        }
+
+        if (states.size > maxStates) {
+          throw new PrivateStateExportError(
+            `Too many states to export (${states.size}). Maximum allowed: ${maxStates}`
+          );
+        }
+
+        // Serialize states using superjson (to preserve types like BigInt, Buffer, etc.)
+        // Include metadata in the encrypted payload to ensure it's authenticated
+        const payload: PrivateStatePayload<PSI> = {
+          version: CURRENT_EXPORT_VERSION,
+          exportedAt: new Date().toISOString(),
+          stateCount: states.size,
+          states: Object.fromEntries(
+            Array.from(states.entries()).map(([key, value]) => [key, superjson.stringify(value)])
+          ) as Record<PSI, string>
+        };
+
+        // Create new encryption instance for export (different salt from storage)
+        const exportEncryption = await StorageEncryption.create(exportPassword, { cryptoBackend: ctx.cryptoBackend });
+        const encryptedPayload = await exportEncryption.encrypt(JSON.stringify(payload));
+
+        return {
+          format: 'midnight-private-state-export',
+          encryptedPayload,
+          salt: exportEncryption.getSalt().toString('hex')
+        };
+      },
+
+      /** {@inheritDoc ContractPrivateStates.importPrivateStates} */
+      async importPrivateStates(
+        exportData: PrivateStateExport,
+        options?: ImportPrivateStatesOptions
+      ): Promise<ImportPrivateStatesResult> {
+        const conflictStrategy = options?.conflictStrategy ?? 'error';
+        const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+        // Validate format identifier
+        if (exportData.format !== 'midnight-private-state-export') {
+          throw new InvalidExportFormatError('Unrecognized export format');
+        }
+
+        // Validate structure
+        if (!exportData.encryptedPayload || !exportData.salt) {
+          throw new InvalidExportFormatError('Missing required fields');
+        }
+
+        // Validate salt format
+        validateSalt(exportData.salt);
+
+        // Validate custom password if provided
+        if (options?.password !== undefined) {
+          validateExportPassword(options.password);
+        }
+
+        // Determine import password - use provided password or storage password
+        const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+        // Decrypt the payload - use single generic error to prevent oracle attacks
+        let payload: PrivateStatePayload<PSI>;
+        try {
+          const salt = Buffer.from(exportData.salt, 'hex');
+          const importEncryption = await StorageEncryption.create(importPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
+          const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
+          payload = JSON.parse(decryptedJson);
+        } catch {
+          // Single generic error - don't reveal whether password was wrong or data was corrupted
+          throw new ExportDecryptionError();
+        }
+
+        // Validate payload structure (metadata is now inside encrypted payload)
+        if (
+          !payload.states ||
+          typeof payload.states !== 'object' ||
+          typeof payload.version !== 'number' ||
+          typeof payload.stateCount !== 'number'
+        ) {
+          throw new ExportDecryptionError();
+        }
+
+        // Validate version from authenticated payload
+        if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+          throw new InvalidExportFormatError(
+            `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+          );
+        }
+
+        // stateIds are raw state IDs (not scoped with contract address)
+        const stateIds = Object.keys(payload.states) as PSI[];
+
+        // Validate state count matches and is within limits
+        if (stateIds.length !== payload.stateCount) {
+          throw new ExportDecryptionError();
+        }
+
+        if (stateIds.length > maxStates) {
+          throw new InvalidExportFormatError(
+            `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
+          );
+        }
+
+        // Check for conflicts if strategy is 'error'
+        if (conflictStrategy === 'error') {
+          let conflictCount = 0;
+          for (const stateId of stateIds) {
+            const existing = await view.get(stateId);
+            if (existing !== null) {
+              conflictCount++;
+            }
+          }
+          if (conflictCount > 0) {
+            throw new ImportConflictError(conflictCount);
+          }
+        }
+
+        // Import states
+        let imported = 0;
+        let skipped = 0;
+        let overwritten = 0;
+
+        for (const stateId of stateIds) {
+          const serializedState = payload.states[stateId];
+          const existingState = await view.get(stateId);
+
+          if (existingState !== null) {
+            if (conflictStrategy === 'skip') {
+              skipped++;
+              continue;
+            } else if (conflictStrategy === 'overwrite') {
+              overwritten++;
+            }
+          }
+
+          // Deserialize and store the state
+          const state = superjson.parse<PS>(serializedState);
+          await view.set(stateId, state);
+
+          if (existingState === null) {
+            imported++;
+          }
+        }
+
+        return { imported, skipped, overwritten };
+      }
+    };
+    return view;
   };
 
   const hasStoredSigningKey = (address: ContractAddress): Promise<boolean> =>
     withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
-      (await subLevel.get(address)) !== undefined
+      (await subLevel.get(storedAddress(address))) !== undefined
     );
 
   return {
-    /** {@inheritDoc PrivateStateProvider.setContractAddress} */
-    setContractAddress(address: ContractAddress): void {
-      contractAddress = address;
+    /** {@inheritDoc PrivateStateProvider.forContract} */
+    forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> {
+      assertIsContractAddress(contractAddress);
+      return contractPrivateStates(storedAddress(contractAddress));
     },
-    /** {@inheritDoc PrivateStateProvider.get} */
-    async get(privateStateId: PSI): Promise<PS | null> {
-      const { privateState } = scopedNames;
-      const scopedKey = getScopedKey(privateStateId);
-      return subLevelMaybeGet<string, PS>(ctx, privateState, scopedKey, passwordProvider);
-    },
-    /** {@inheritDoc PrivateStateProvider.remove} */
-    async remove(privateStateId: PSI): Promise<void> {
-      const { privateState } = scopedNames;
-      const scopedKey = getScopedKey(privateStateId);
-      return withSubLevel<void>(ctx, privateState, (subLevel) =>
-        subLevel.del(scopedKey),
-      );
-    },
-    /** {@inheritDoc PrivateStateProvider.set} */
-    async set(privateStateId: PSI, state: PS): Promise<void> {
-      assertSerializablePrivateState(state, String(privateStateId));
-      const { privateState } = scopedNames;
-      const scopedKey = getScopedKey(privateStateId);
-      const serialized = superjson.stringify(state);
-
-      return withSubLevel<void>(ctx, privateState, async (subLevel) => {
-        const encryption = await resolveEncryption(
-          subLevel,
-          `${ctx.dbName}:${privateState}`,
-          passwordProvider,
-          ctx.cryptoBackend
-        );
-        await subLevel.put(scopedKey, await encryption.encrypt(serialized));
-      });
-    },
-    /** {@inheritDoc PrivateStateProvider.clear} */
-    async clear(): Promise<void> {
-      if (contractAddress === null) {
-        throw new ConfigurationError('Contract address not set. Call setContractAddress() before accessing private state.');
-      }
+    /** {@inheritDoc PrivateStateProvider.clearAll} */
+    async clearAll(): Promise<void> {
       const { privateState } = scopedNames;
       return withSubLevel(ctx, privateState, (subLevel) => subLevel.clear());
     },
     /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
-      const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, address, passwordProvider);
+      const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, storedAddress(address), passwordProvider);
       return stored === null ? null : readStoredSigningKey(stored, address);
     },
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       const { signingKey } = scopedNames;
       return withSubLevel<void>(ctx, signingKey, (subLevel) =>
-        subLevel.del(address),
+        subLevel.del(storedAddress(address)),
       );
     },
     /** {@inheritDoc PrivateStateProvider.setSigningKey} */
@@ -856,196 +1027,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           passwordProvider,
           ctx.cryptoBackend
         );
-        await subLevel.put(address, await encryption.encrypt(serialized));
+        await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
       });
     },
     /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
       const { signingKey } = scopedNames;
       return withSubLevel(ctx, signingKey, (subLevel) => subLevel.clear());
-    },
-
-    /** {@inheritDoc PrivateStateProvider.exportPrivateStates} */
-    async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
-      if (contractAddress === null) {
-        throw new ConfigurationError('Contract address not set. Call setContractAddress() before exporting private states.');
-      }
-
-      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
-
-      // Validate custom password if provided
-      if (options?.password !== undefined) {
-        validateExportPassword(options.password);
-      }
-
-      // Determine export password - use provided password or storage password
-      const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
-
-      // Get all private states (not signing keys)
-      const { privateState } = scopedNames;
-      const allStates = await getAllEntries<string, PS>(ctx, privateState, passwordProvider);
-
-      // Filter and extract only states for the current contract address
-      const prefix = `${contractAddress}:`;
-      const states = new Map<PSI, PS>();
-      for (const [scopedKey, value] of allStates.entries()) {
-        if (scopedKey.startsWith(prefix)) {
-          const rawStateId = scopedKey.slice(prefix.length) as PSI;
-          states.set(rawStateId, value);
-        }
-      }
-
-      if (states.size === 0) {
-        throw new PrivateStateExportError('No private states to export');
-      }
-
-      if (states.size > maxStates) {
-        throw new PrivateStateExportError(
-          `Too many states to export (${states.size}). Maximum allowed: ${maxStates}`
-        );
-      }
-
-      // Serialize states using superjson (to preserve types like BigInt, Buffer, etc.)
-      // Include metadata in the encrypted payload to ensure it's authenticated
-      const payload: PrivateStatePayload<PSI> = {
-        version: CURRENT_EXPORT_VERSION,
-        exportedAt: new Date().toISOString(),
-        stateCount: states.size,
-        states: Object.fromEntries(
-          Array.from(states.entries()).map(([key, value]) => [key, superjson.stringify(value)])
-        ) as Record<PSI, string>
-      };
-
-      // Create new encryption instance for export (different salt from storage)
-      const exportEncryption = await StorageEncryption.create(exportPassword, { cryptoBackend: ctx.cryptoBackend });
-      const encryptedPayload = await exportEncryption.encrypt(JSON.stringify(payload));
-
-      return {
-        format: 'midnight-private-state-export',
-        encryptedPayload,
-        salt: exportEncryption.getSalt().toString('hex')
-      };
-    },
-
-    /** {@inheritDoc PrivateStateProvider.importPrivateStates} */
-    async importPrivateStates(
-      exportData: PrivateStateExport,
-      options?: ImportPrivateStatesOptions
-    ): Promise<ImportPrivateStatesResult> {
-      if (contractAddress === null) {
-        throw new ConfigurationError('Contract address not set. Call setContractAddress() before importing private states.');
-      }
-
-      const conflictStrategy = options?.conflictStrategy ?? 'error';
-      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
-
-      // Validate format identifier
-      if (exportData.format !== 'midnight-private-state-export') {
-        throw new InvalidExportFormatError('Unrecognized export format');
-      }
-
-      // Validate structure
-      if (!exportData.encryptedPayload || !exportData.salt) {
-        throw new InvalidExportFormatError('Missing required fields');
-      }
-
-      // Validate salt format
-      validateSalt(exportData.salt);
-
-      // Validate custom password if provided
-      if (options?.password !== undefined) {
-        validateExportPassword(options.password);
-      }
-
-      // Determine import password - use provided password or storage password
-      const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
-
-      // Decrypt the payload - use single generic error to prevent oracle attacks
-      let payload: PrivateStatePayload<PSI>;
-      try {
-        const salt = Buffer.from(exportData.salt, 'hex');
-        const importEncryption = await StorageEncryption.create(importPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
-        const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
-        payload = JSON.parse(decryptedJson);
-      } catch {
-        // Single generic error - don't reveal whether password was wrong or data was corrupted
-        throw new ExportDecryptionError();
-      }
-
-      // Validate payload structure (metadata is now inside encrypted payload)
-      if (
-        !payload.states ||
-        typeof payload.states !== 'object' ||
-        typeof payload.version !== 'number' ||
-        typeof payload.stateCount !== 'number'
-      ) {
-        throw new ExportDecryptionError();
-      }
-
-      // Validate version from authenticated payload
-      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
-        throw new InvalidExportFormatError(
-          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
-        );
-      }
-
-      // stateIds are raw state IDs (not scoped with contract address)
-      const stateIds = Object.keys(payload.states) as PSI[];
-
-      // Validate state count matches and is within limits
-      if (stateIds.length !== payload.stateCount) {
-        throw new ExportDecryptionError();
-      }
-
-      if (stateIds.length > maxStates) {
-        throw new InvalidExportFormatError(
-          `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
-        );
-      }
-
-      // Check for conflicts if strategy is 'error'
-      // Use this.get() which properly scopes the state IDs
-      if (conflictStrategy === 'error') {
-        let conflictCount = 0;
-        for (const stateId of stateIds) {
-          const existing = await this.get(stateId);
-          if (existing !== null) {
-            conflictCount++;
-          }
-        }
-        if (conflictCount > 0) {
-          throw new ImportConflictError(conflictCount);
-        }
-      }
-
-      // Import states
-      let imported = 0;
-      let skipped = 0;
-      let overwritten = 0;
-
-      for (const stateId of stateIds) {
-        const serializedState = payload.states[stateId];
-        const existingState = await this.get(stateId);
-
-        if (existingState !== null) {
-          if (conflictStrategy === 'skip') {
-            skipped++;
-            continue;
-          } else if (conflictStrategy === 'overwrite') {
-            overwritten++;
-          }
-        }
-
-        // Deserialize and store the state
-        const state = superjson.parse<PS>(serializedState);
-        await this.set(stateId, state);
-
-        if (existingState === null) {
-          imported++;
-        }
-      }
-
-      return { imported, skipped, overwritten };
     },
 
     /** {@inheritDoc PrivateStateProvider.exportSigningKeys} */
@@ -1199,12 +1187,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       newPasswordProvider: PrivateStoragePasswordProvider,
       options?: PasswordRotationOptions
     ): Promise<PasswordRotationResult> {
-      if (contractAddress === null) {
-        throw new ConfigurationError('Contract address not set. Call setContractAddress() before changing password.');
-      }
-
       const { privateState, signingKey } = scopedNames;
-      const prefix = `${contractAddress}:`;
 
       const result = await rotateStorePassword({
         ctx,
@@ -1212,7 +1195,6 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         oldPasswordProvider,
         newPasswordProvider,
         maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
-        shouldProceed: (key) => key.startsWith(prefix),
       });
 
       invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
@@ -1266,7 +1248,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
      * of the backup, and clearing the cache before copying the database
      * files changes nothing about the resulting backup. To produce a
      * portable, separately-passworded backup, use
-     * {@link PrivateStateProvider.exportPrivateStates} instead.
+     * {@link ContractPrivateStates.exportPrivateStates} (one contract per export) instead.
      *
      * Subsequent operations will request the password from the configured
      * provider and re-derive the key on first access.

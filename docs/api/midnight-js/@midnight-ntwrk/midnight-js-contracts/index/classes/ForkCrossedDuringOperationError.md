@@ -37,7 +37,7 @@ anything that could carry transaction or witness material — see
 
 ##### operation
 
-[`SubmittedOperation`](../interfaces/SubmittedOperation.md)
+[`SubmittedOperation`](../type-aliases/SubmittedOperation.md)
 
 Which operation was rejected. Flattened onto the error
                  rather than nested, so a caller reads `error.circuitId`
@@ -78,9 +78,10 @@ The submit rejection, already sanitized.
 
 ### circuitId
 
-> `readonly` **circuitId**: `string`
+> `readonly` **circuitId**: `string` \| `undefined`
 
-The entry point that was run, so a caller with several in flight knows which.
+The entry point that was run, so a caller with several in flight knows which. `undefined` only for
+a `'transaction'` whose caller named no circuit.
 
 ***
 
@@ -96,9 +97,10 @@ The entry point that was run, so a caller with several in flight knows which.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `string`
+> `readonly` **contractAddress**: `string` \| `undefined`
 
-The contract to reconcile, which is the first remediation step's subject.
+The contract to reconcile, which is the first remediation step's subject. `undefined` only for a
+`'transaction'`, whose contract `submitTx` does not know.
 
 ***
 
@@ -113,10 +115,11 @@ The era a fresh read of the network reports now. Retained on the
 
 ### kind
 
-> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md)
+> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md) \| `"transaction"`
 
-Whether the refused operation was a call, a deploy or a maintenance update —
-the discriminant a caller branches on, and which remediation the message carries.
+Whether the refused operation was a call, a deploy, a maintenance update or a transaction
+submitted with `submitTx` / `submitTxAsync` — the discriminant a caller branches on, and which
+remediation the message carries.
 
 ***
 

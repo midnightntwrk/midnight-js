@@ -55,7 +55,7 @@ const MAX_RETRY_ATTEMPTS = 3;
 
 All capabilities are abstracted into pluggable providers. Use factory functions to create them; see [llms.txt](./llms.txt) for full API examples and `packages/types/src/` for interface definitions.
 
-Key `PrivateStateProvider` methods: `set()`, `get()`, `remove()`, `clear()`, `setSigningKey()`, `exportPrivateStates()`, `importPrivateStates()`.
+Key `PrivateStateProvider` methods: `forContract(address)` (returns `ContractPrivateStates` with `get()`, `set()`, `remove()`, `clear()`, `exportPrivateStates()`, `importPrivateStates()`), `clearAll()`, `setSigningKey()`, `getSigningKey()`.
 
 ### Error Handling
 

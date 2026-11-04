@@ -6,7 +6,7 @@
 
 # Type Alias: StateReadMethod
 
-> **StateReadMethod** = `"queryDeployContractState"`
+> **StateReadMethod** = `"queryContractState"` \| `"queryZSwapAndContractState"` \| `"queryDeployContractState"` \| `"watchForContractState"` \| `"contractStateObservable"`
 
 The [PublicDataProvider](../interfaces/PublicDataProvider.md) methods that report a contract state with
 its era.

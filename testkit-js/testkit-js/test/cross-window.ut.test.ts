@@ -396,7 +396,6 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       privateStoragePasswordProvider: () => PASSWORD,
       accountId: ACCOUNT_ID
     });
-    provider.setContractAddress(CONTRACT_ADDRESS);
     return provider;
   };
 
@@ -409,7 +408,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
   const openPostForkProvider = async () => {
     const provider = openProvider();
     await provider.invalidateEncryptionCache();
-    return provider;
+    return provider.forContract(CONTRACT_ADDRESS);
   };
 
   /**
@@ -521,7 +520,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     expect(preFork.seen[0].privateState).toBe(preForkState);
     expect(preFork.privateState).not.toBe(preForkState);
     expect(preFork.privateState.callCount).toBe(1n);
-    const preForkProvider = openProvider();
+    const preForkProvider = openProvider().forContract(CONTRACT_ADDRESS);
     await preForkProvider.set('private-counter', preFork.privateState);
 
     const postForkProvider = await openPostForkProvider();
@@ -553,7 +552,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       secretKey: new Uint8Array(32).fill(0x5c),
       nullifiers: new Map([['0xcafe', 1n]])
     });
-    const preForkProvider = openProvider();
+    const preForkProvider = openProvider().forContract(CONTRACT_ADDRESS);
     await preForkProvider.set('private-counter-continued', preFork.privateState);
 
     const postForkProvider = await openPostForkProvider();
@@ -597,7 +596,6 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       privateStoragePasswordProvider: () => PASSWORD,
       accountId: ACCOUNT_ID
     });
-    provider.setContractAddress(CONTRACT_ADDRESS);
     await provider.invalidateEncryptionCache();
 
     // An envelope break shows up as a decrypt failure, thrown before any
@@ -607,7 +605,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
     // same catch, and answering those with "no earlier release's private state
     // is readable" would be a confident wrong diagnosis pointing at a remedy
     // ENVELOPE.md forbids. Original error kept as the cause either way.
-    return provider.get(FROZEN_STATE_ID).catch((error: unknown) => {
+    return provider.forContract(CONTRACT_ADDRESS).get(FROZEN_STATE_ID).catch((error: unknown) => {
       throw new Error(isEnvelopeBreak(error) ? ENVELOPE_BREAK : FROZEN_READ_FAILED, { cause: error });
     });
   };
@@ -667,7 +665,7 @@ describe('private state across the ledger v8 to v9 fork window', () => {
       secretKey: new Uint8Array(32).fill(0x33),
       nullifiers: new Map([['0xdead', 4n]])
     });
-    const preForkProvider = openProvider();
+    const preForkProvider = openProvider().forContract(CONTRACT_ADDRESS);
     await preForkProvider.set('private-counter-post-fork-write', preFork.privateState);
 
     const postForkProvider = await openPostForkProvider();

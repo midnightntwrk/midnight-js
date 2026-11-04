@@ -19,4 +19,4 @@ can be, so such a call does not compile.
 
 ### E
 
-`E` *extends* [`LedgerVersion`](../../type-aliases/LedgerVersion.md)
+`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)

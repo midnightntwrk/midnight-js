@@ -91,7 +91,6 @@ describe('Contract maintenance authority signing keys', () => {
       await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
 
       const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
-      providers.privateStateProvider.setContractAddress(contractAddress);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(schnorrKey);
 
       const ecdsaKey = sampleSigningKey('ecdsa');
@@ -139,7 +138,6 @@ describe('Contract maintenance authority signing keys', () => {
       await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
 
       const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
-      providers.privateStateProvider.setContractAddress(contractAddress);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
 
       const nextEcdsaKey = sampleSigningKey('ecdsa');
@@ -179,7 +177,6 @@ describe('Contract maintenance authority signing keys', () => {
       await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
 
       const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
-      providers.privateStateProvider.setContractAddress(contractAddress);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
 
       // Capture the verifier key from the local artifacts before removing it on-chain so it can be

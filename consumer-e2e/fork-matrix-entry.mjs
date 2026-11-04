@@ -1282,15 +1282,7 @@ const checkPrivateState = async (label, entry, phase, providers, contractAddress
   if (expected === undefined) {
     return undefined;
   }
-  // NAMED HERE, not relied on from the call that ran before this one. The
-  // provider scopes a private-state `get` by the address last set and THROWS
-  // before any has been -- so a leg whose call failed would reach this and
-  // report `Contract address not set` instead of what the store holds, which is
-  // the opposite of what this function is for. Setting it explicitly also makes
-  // the scope visible rather than inherited. (Signing keys are the exception and
-  // need none of this: they are keyed by an address ARGUMENT.)
-  providers.privateStateProvider.setContractAddress(contractAddress);
-  const actual = await providers.privateStateProvider.get(entry.privateState.id);
+  const actual = await providers.privateStateProvider.forContract(contractAddress).get(entry.privateState.id);
   if (actual === null || actual === undefined) {
     failures.push(`${label}: nothing is stored at private state id '${entry.privateState.id}'`);
     return { privateState: 'absent' };
@@ -1717,9 +1709,8 @@ for (const entry of RETAINED_MATRIX.filter(
       return 'skipped: its pre-fork deploy did not complete';
     }
     const providers = retainedProvidersFor('v8', session.wallet, entry.key);
-    providers.privateStateProvider.setContractAddress(deployed.contractAddress);
     const unwritten = `${entry.privateState.id}-never-written`;
-    const answer = await providers.privateStateProvider.get(unwritten);
+    const answer = await providers.privateStateProvider.forContract(deployed.contractAddress).get(unwritten);
     if (answer !== null && answer !== undefined) {
       // Member NAMES, not the state: a private state is the one thing in this run
       // that must not reach the report, and naming its shape is enough to say

@@ -463,11 +463,8 @@ address, and repeating one that in fact finalized leaves two copies of the
 contract on chain. `TxFailedError` with `operation` `'deploy'` carries that remediation,
 which differs from the one for a failed call.
 
-The address is named on the private-state provider BEFORE the write. A provider
-namespaces every entry by the address last named and refuses a write before any
-has been named, so a write made first would either throw or land under whichever
-contract the process touched last — and a later call, which names this address
-itself, would read its own key, find nothing, and report nothing.
+The private state is written through `privateStateProvider.forContract(contractAddress)`,
+so it lands under the deployed contract whatever other flows run at the same time.
 
 The constructor's own Zswap local state travels with the deploy. The retired
 `executeConstructor` read two of the three members the artifact returns and

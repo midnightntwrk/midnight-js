@@ -6,7 +6,7 @@
 
 # Type Alias: SubmitRejectionUndiagnosedCause
 
-> **SubmitRejectionUndiagnosedCause** = \{ `networkVersionReadFailure`: `unknown`; `reason`: `"network-version-read-failed"`; \} \| \{ `freshEra`: `LedgerVersion`; `reason`: `"network-version-went-backwards"`; \}
+> **SubmitRejectionUndiagnosedCause** = \{ `networkVersionReadFailure`: `unknown`; `reason`: `"network-version-read-failed"`; \} \| \{ `freshEra`: `LedgerEra`; `reason`: `"network-version-went-backwards"`; \}
 
 Why a submit rejection could NOT be diagnosed as a fork crossing or ruled out
 as one.
@@ -28,7 +28,7 @@ Reading the network's ledger version again itself failed, so no reading is avail
 
 ### Type Literal
 
-\{ `freshEra`: `LedgerVersion`; `reason`: `"network-version-went-backwards"`; \}
+\{ `freshEra`: `LedgerEra`; `reason`: `"network-version-went-backwards"`; \}
 
 The fresh read reported an EARLIER era than the operation started against.
 A ledger era only ever moves forward, so the two readings cannot both

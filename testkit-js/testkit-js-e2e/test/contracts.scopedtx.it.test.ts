@@ -77,7 +77,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
 
-    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
     const callTxOptions: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
@@ -100,7 +100,7 @@ describe('Scoped Transaction Contract Tests', () => {
     const ticker2 = counterValue1?.at(1);
     expect(counterValue2!.at(1)!).toEqual(ticker2!);
 
-    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const counterPS = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
@@ -110,7 +110,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
 
-    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
     const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
@@ -140,7 +140,7 @@ describe('Scoped Transaction Contract Tests', () => {
     const ticker2 = counterValue1?.at(1);
     expect(counterValue2!.at(1)).toEqual(ticker2! + 5n);
 
-    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const counterPS = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
@@ -150,7 +150,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
 
-    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
     const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
@@ -187,7 +187,7 @@ describe('Scoped Transaction Contract Tests', () => {
     // We don't know the order of execution, so the second ticker can be either reset to 0 or incremented by 1
     expect([0n, 1n]).toContain(counterValue2!.at(1));
 
-    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const counterPS = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
@@ -197,7 +197,7 @@ describe('Scoped Transaction Contract Tests', () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1?.at(0)).toBeDefined();
 
-    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
     const callTxOptions: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
@@ -230,7 +230,7 @@ describe('Scoped Transaction Contract Tests', () => {
     const ticker1 = counterValue1?.at(0);
     expect(counterValue2!.at(0)).toEqual(ticker1);
 
-    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const counterPS = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter);
   });

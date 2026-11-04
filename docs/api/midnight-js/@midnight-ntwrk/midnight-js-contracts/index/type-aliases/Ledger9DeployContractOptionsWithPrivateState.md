@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger9DeployContractOptionsWithPrivateState\<C\>
 
-> **Ledger9DeployContractOptionsWithPrivateState**\<`C`\> = [`DeployContractOptionsShared`](DeployContractOptionsShared.md)\<`C`\> & `object`
+> **Ledger9DeployContractOptionsWithPrivateState**\<`C`\> = [`Ledger9DeployContractOptionsShared`](Ledger9DeployContractOptionsShared.md)\<`C`\> & `object`
 
 [deployContract](../functions/deployContract.md) options with information needed to store private states;
 only used if the contract being deployed has a private state.

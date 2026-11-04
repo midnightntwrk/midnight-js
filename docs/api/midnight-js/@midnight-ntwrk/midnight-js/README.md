@@ -32,7 +32,6 @@ const deployed = await contracts.deployContract(providers, {
 | Module       | Package                                  | Description                                    |
 | ------------ | ---------------------------------------- | ---------------------------------------------- |
 | `contracts`  | `@midnight-ntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
-| `networkId`  | `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id (ignored by the framework since 5.0.0) |
 | `types`      | `@midnight-ntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
 | `utils`      | `@midnight-ntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
 
@@ -44,11 +43,11 @@ directly, alongside the namespaces above:
 
 ```typescript
 import {
-  LEDGER_VERSIONS,    // the closed, frozen set: ['v8', 'v9']
-  CURRENT_LEDGER_VERSION, // the current era, 'v9': the `era` of every current-era result
-  type LedgerVersion, // 'v8' | 'v9'
-  versionOfRecord,    // a record carrying protocolVersion -> LedgerVersion
-  latestNetworkLedgerVersion  // asks a source for the network's current ledger version -> LedgerVersion
+  LEDGER_ERAS,    // the closed, frozen set: ['v8', 'v9']
+  CURRENT_LEDGER_ERA, // the current era, 'v9': the `era` of every current-era result
+  type LedgerEra, // 'v8' | 'v9'
+  versionOfRecord,    // a record carrying protocolVersion -> LedgerEra
+  latestNetworkLedgerVersion  // asks a source for the network's current ledger era -> LedgerEra
 } from '@midnight-ntwrk/midnight-js';
 ```
 
@@ -126,7 +125,7 @@ too, so you can catch them and read their payload without a cast:
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
 | `StateInconsistentError` | `version` | contract-state bytes were read as that era, but the state is internally inconsistent |
-| `UnknownLedgerVersionError` | `requestedVersion` | an era outside `LEDGER_VERSIONS` was requested |
+| `UnknownLedgerEraError` | `requestedVersion` | the value names an era outside `LEDGER_ERAS`, or carries no era (`requestedVersion` is `undefined`: a pre-5.0.0 provider) |
 | `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 
 ### What importing the barrel loads
@@ -152,15 +151,14 @@ import { toHex, fromHex } from '@midnight-ntwrk/midnight-js/utils';
 ## Exports
 
 ```typescript
-// Namespace imports (all modules); `networkId` is deprecated and ignored by the framework since 5.0.0
-import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+// Namespace imports (all modules)
+import { contracts, types, utils } from '@midnight-ntwrk/midnight-js';
 
 // Ledger era vocabulary (named, not namespaced)
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js';
 
 // Sub-path imports (individual modules)
 import { ... } from '@midnight-ntwrk/midnight-js/contracts';
-import { ... } from '@midnight-ntwrk/midnight-js/network-id'; // deprecated
 import { ... } from '@midnight-ntwrk/midnight-js/types';
 import { ... } from '@midnight-ntwrk/midnight-js/utils';
 ```
@@ -184,7 +182,6 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 - [ErrorTaxonomy](documents/ErrorTaxonomy.md)
 - [KeepStatePipeline](documents/KeepStatePipeline.md)
 - [OverloadTyping](documents/OverloadTyping.md)
-- [RetainedEraNamespace](documents/RetainedEraNamespace.md)
 - [ForkCrossedRemediation](documents/ForkCrossedRemediation.md)
 - [VerificationPath](documents/VerificationPath.md)
 
@@ -192,7 +189,6 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 - [](README.md)
 - [contracts](contracts/README.md)
-- [network-id](network-id/README.md)
-- [protocol](protocol/README.md)
+- [protocol/v9](protocol/v9/README.md)
 - [types](types/README.md)
 - [utils](utils/README.md)

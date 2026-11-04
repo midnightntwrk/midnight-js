@@ -6,9 +6,10 @@
 
 # Class: InvalidSerializedStateError
 
-Thrown by `SerializedState.fromBytes` when the bytes are not a value of the given kind written by the
-ledger of the given era, and by the `SerializedState` constructor when it is called without
-`SerializedState.fromBytes`. The bytes are never quoted in the message.
+Thrown by the `fromBytes` of `SerializedContractState`, `SerializedLedgerParameters` and
+`SerializedZswapChainState` when the bytes are not a value of that kind written by the ledger of the
+given era, and by their constructors when called without `fromBytes`. The bytes are never quoted in
+the message.
 
 Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
 
@@ -26,9 +27,9 @@ Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midni
 
 ##### kind
 
-`string` \| `undefined`
+`"ContractState"` \| `"LedgerParameters"` \| `"ZswapChainState"`
 
-The kind the caller named, or `undefined` when the constructor was called directly.
+The kind of value the class carries.
 
 ##### era
 
@@ -81,7 +82,7 @@ Why the value was refused.
 
 ### kind
 
-> `readonly` **kind**: `string` \| `undefined`
+> `readonly` **kind**: `"ContractState"` \| `"LedgerParameters"` \| `"ZswapChainState"`
 
 ***
 
