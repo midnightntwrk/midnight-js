@@ -32,6 +32,17 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Check workflow inputs
+        run: |
+          case "$WORKSPACE_FILTER" in
+            -*|*\"*|*\'*)
+              echo "::error::yarn_filter must be a bare turbo pattern such as ./packages/*, got: $WORKSPACE_FILTER"
+              exit 1
+              ;;
+          esac
+        env:
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:

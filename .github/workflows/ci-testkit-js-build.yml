@@ -60,6 +60,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      - name: Check workflow inputs
+        run: |
+          case "$WORKSPACE_FILTER" in
+            -*|*\"*|*\'*)
+              echo "::error::yarn_filter must be a bare turbo pattern such as ./packages/*, got: $WORKSPACE_FILTER"
+              exit 1
+              ;;
+          esac
+          if [ -z "$LINT_PATHS" ]; then
+            echo "::error::yarn_lint_paths is empty, which would lint the whole repository"
+            exit 1
+          fi
+        env:
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
