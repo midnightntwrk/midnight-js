@@ -1548,6 +1548,37 @@ compact-js names the same era by number. `Ledger.Era['ledger']` (for example
 `executable.era.ledger`) is `8` for `'v8'` and `9` for `'v9'`. compact-js
 exports no named type for that number, and midnight-js needs no conversion from it.
 
+## 30. Contract-state reads refuse an unknown `protocolVersion` (#1396)
+
+A contract-state read now fails when the block that dates the state reports a `protocolVersion`
+this build cannot place on the ledger-era timeline. Before, the read went on and tagged the state
+by the version tag of its bytes alone. For a network newer than your midnight-js, upgrade
+midnight-js. History written under node 0.x is not mapped either, so a state dated by such a
+block is refused too.
+
+The refusal is the error the transaction reads (`watchForTxData`, `watchForDeployTxData`) already
+raise for a well-formed integer they cannot place:
+
+| Read | Before | Now |
+|---|---|---|
+| `queryContractState`, `queryZSwapAndContractState`, `queryDeployContractState`, `watchForContractState` | resolved with the state | rejects with `UnknownRecordEraError` (`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`) |
+| `contractStateObservable` | emitted the state and kept going | ends the stream with `UnknownRecordEraError` |
+
+It holds on an unpinned read too, where the dating block is not trusted as an upper bound on
+the state's era: only that comparison is skipped, never the era resolution. A malformed
+`protocolVersion` keeps its error, `IndexerDataError` `malformed-protocol-version`. `queryBlock`
+resolves no era and still carries the integer through.
+
+Type changes:
+
+| Name | Before | Now |
+|---|---|---|
+| `StateReadMethod` (types) | `'queryDeployContractState'` | adds `'queryContractState'`, `'queryZSwapAndContractState'`, `'watchForContractState'`, `'contractStateObservable'` |
+| `UnknownRecordEraError.method` | `ReadMethod` | `ReadMethod \| StateReadMethod` |
+
+An exhaustive `switch` on `UnknownRecordEraError.method`, `StateReadMethod` or `ProviderMethod`
+must handle the new members.
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).
