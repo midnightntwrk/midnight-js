@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 import type { FinalizedTxRecord, Ledger9FinalizedTxData } from './midnight-types';
@@ -56,7 +56,7 @@ export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
 // `protocolVersion` to an era. These two assertions keep the discriminant sets
-// here and `LedgerVersion` there as one fact: if either side gains an era the
+// here and `LedgerEra` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its
 // `true` constraint. No runtime declarations, so `versioned.ts` stays
 // types-only.
@@ -69,8 +69,8 @@ export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 // compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
 type _EveryEraHasAReadVariant = Assert<
-  [Exclude<LedgerVersion, FinalizedTxRead['era']>] extends [never] ? true : false
+  [Exclude<LedgerEra, FinalizedTxRead['era']>] extends [never] ? true : false
 >;
 type _NoReadVariantOutsideTheEraSet = Assert<
-  [Exclude<FinalizedTxRead['era'], LedgerVersion>] extends [never] ? true : false
+  [Exclude<FinalizedTxRead['era'], LedgerEra>] extends [never] ? true : false
 >;

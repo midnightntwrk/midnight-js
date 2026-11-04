@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { ProviderEraUnsupportedError,type TransactionMethod } from './errors';
 
 /** What every provider of a transaction method states about the eras it serves. */
 export interface EraDeclaringProvider {
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
 }
 
 /**
@@ -75,7 +75,7 @@ const declarationOf = (provider: EraDeclaringProvider): readonly string[] => {
  *         that does not declare `era`.
  * @see {@link ProviderEraDeclarations} for why the declaration is not trusted.
  */
-export const assertProvidersSupportEra = (era: LedgerVersion, providers: TransactionProviders): void => {
+export const assertProvidersSupportEra = (era: LedgerEra, providers: TransactionProviders): void => {
   for (const [key, methodName] of PROVIDERS_IN_PIPELINE_ORDER) {
     const declared = declarationOf(providers[key]);
     if (!declared.includes(era)) {

@@ -46,8 +46,8 @@ import {
   type SigningKey,
   StateValue,
   type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { CURRENT_LEDGER_VERSION, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -231,7 +231,7 @@ const NETWORK_ID_PATTERN = /network_id: "([^"]*)"/;
 export const networkIdOf = (tx: { toString(compact?: boolean): string }): string | undefined =>
   NETWORK_ID_PATTERN.exec(tx.toString(false))?.[1];
 
-const MOCK_SUPPORTED_ERAS: readonly LedgerVersion[] = Object.freeze<LedgerVersion[]>(['v8', 'v9']);
+const MOCK_SUPPORTED_ERAS: readonly LedgerEra[] = Object.freeze<LedgerEra[]>(['v8', 'v9']);
 
 export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   config: MOCK_CONFIG,
@@ -343,7 +343,7 @@ export const createMockSerializedContractState = (): SerializedContractState<'v9
   SerializedContractState.fromBytes('v9', tagOnly(LEDGER_STATE_TAGS.ContractState.v9));
 
 export const createMockUnprovenDeployTxData = (overrides: Partial<Ledger9UnsubmittedDeployTxData<Contract.Any>> = {}): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
-  era: CURRENT_LEDGER_VERSION,
+  era: CURRENT_LEDGER_ERA,
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockSerializedContractState()
@@ -400,7 +400,7 @@ export const createMockContractCall = (
 });
 
 export const createMockUnprovenCallTxData = (overrides: Partial<Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): Ledger9UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
-    era: CURRENT_LEDGER_VERSION,
+    era: CURRENT_LEDGER_ERA,
     public: {
       nextContractState: StateValue.newNull(),
       nextContractStateEncoded: StateValue.newNull().encode(),
@@ -445,7 +445,7 @@ export const createMockCallOptionsWithPrivateState = (overrides: Partial<Ledger9
 });
 
 export const createMockConstructorResult = (): Ledger9ContractConstructorResult<Contract.Any> => ({
-  era: CURRENT_LEDGER_VERSION,
+  era: CURRENT_LEDGER_ERA,
   nextContractState: createMockContractState(),
   nextPrivateState: { test: 'next-private-state' },
   nextZswapLocalState: createMockZswapLocalState(),
@@ -497,14 +497,14 @@ export const contractStateAndParametersRead = (
  * A contract-state record whose bytes are only the version tag of `version`. For a test that mocks
  * the decoder, or that must be refused before anything decodes.
  */
-export const contractStateReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): ContractStateRead => ({
+export const contractStateReadStub = (version: LedgerEra, protocolVersion = 2_000_000): ContractStateRead => ({
   protocolVersion,
   contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
 });
 
 /** {@link contractStateReadStub} with ledger parameters that are only the version tag of `version`. */
 export const contractStateAndParametersReadStub = (
-  version: LedgerVersion,
+  version: LedgerEra,
   protocolVersion = 2_000_000
 ): ContractStateAndParametersRead => ({
   ...contractStateReadStub(version, protocolVersion),
@@ -537,7 +537,7 @@ export const publicStatesRead = (
  * A record of public states whose bytes are only the version tags of `version`. For a test that
  * mocks the decoders, or that must be refused before anything decodes.
  */
-export const publicStatesReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): PublicStatesRead => ({
+export const publicStatesReadStub = (version: LedgerEra, protocolVersion = 2_000_000): PublicStatesRead => ({
   protocolVersion,
   contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
   zswapChainState: SerializedZswapChainState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),

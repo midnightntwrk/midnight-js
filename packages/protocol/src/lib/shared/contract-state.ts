@@ -17,7 +17,7 @@ import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { EncodedStateValue, TokenType } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError, StateInconsistentError } from '../../errors';
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 import { entryPointName } from './verifier-keys';
 
 /** The one property {@link decodeContractStateWith} reads off a registered operation. */
@@ -214,7 +214,7 @@ export interface ContractStatePojo {
  */
 export const extractStateWith = (
   raw: Uint8Array,
-  version: LedgerVersion,
+  version: LedgerEra,
   extract: (raw: Uint8Array) => EncodedStateValue
 ): EncodedStateValue => {
   try {
@@ -245,7 +245,7 @@ export const extractStateWith = (
  */
 export const decodeContractStateWith = (
   raw: Uint8Array,
-  version: LedgerVersion,
+  version: LedgerEra,
   ledger: ContractStateDecoder
 ): ContractStatePojo => {
   let decoded: DecodableContractState;

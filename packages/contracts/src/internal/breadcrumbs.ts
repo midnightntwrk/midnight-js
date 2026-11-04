@@ -34,7 +34,7 @@
  *      and what is deliberately not recorded.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 
 import type { HeadEraReading } from './era';
 
@@ -63,7 +63,7 @@ export type HeadReadingProvenance =
 export interface HeadResolutionBreadcrumb {
   readonly decision: 'network-version-read';
   /** The era the head integer resolved to. */
-  readonly version: LedgerVersion;
+  readonly version: LedgerEra;
   /**
    * The raw head integer, carried BESIDE the era name rather than instead of
    * it: the era collapses node minor versions and only the integer says which.
@@ -88,7 +88,7 @@ export interface HeadResolutionBreadcrumb {
 export interface PipelineSelectionBreadcrumb {
   readonly decision: 'pipeline-selection';
   /** The era the network head is on. */
-  readonly version: LedgerVersion;
+  readonly version: LedgerEra;
   readonly protocolVersion: number;
   /** Which input the pipeline was selected from. One value today, carried anyway:
    * a second selection input is exactly the change that would need to show up in
@@ -97,7 +97,7 @@ export interface PipelineSelectionBreadcrumb {
   readonly source: 'artifact-runtime-version-declaration';
   readonly readingProvenance: HeadReadingProvenance;
   /** The pipeline the artifact belongs to. */
-  readonly path: LedgerVersion;
+  readonly path: LedgerEra;
   /**
    * The contract being operated on, present exactly when the operation names
    * one. ABSENT rather than empty for a deploy — an empty string would read as
@@ -117,7 +117,7 @@ export interface PipelineSelectionBreadcrumb {
 export interface EncodingBreadcrumb {
   readonly decision: 'encoding';
   /** The era the envelope tag declares. */
-  readonly version: LedgerVersion;
+  readonly version: LedgerEra;
   readonly source: 'contract-state-version-tag';
 }
 
@@ -234,7 +234,7 @@ export const emitHeadResolution = (
 export const emitPipelineSelection = (
   sink: BreadcrumbSink | undefined,
   reading: HeadEraReading,
-  path: LedgerVersion,
+  path: LedgerEra,
   contractAddress?: string
 ): void =>
   emit(sink, {
@@ -255,7 +255,7 @@ export const emitPipelineSelection = (
  * @param sink The configured logger, or `undefined`.
  * @param envelopeEra The era read from the tag in front of the state bytes.
  */
-export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: LedgerVersion): void =>
+export const emitEncoding = (sink: BreadcrumbSink | undefined, envelopeEra: LedgerEra): void =>
   emit(sink, { decision: 'encoding', version: envelopeEra, source: 'contract-state-version-tag' });
 
 /**

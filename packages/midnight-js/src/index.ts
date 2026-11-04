@@ -25,11 +25,11 @@ export * as utils from '@midnight-ntwrk/midnight-js-utils';
 // cost, and why these come off leaf subpaths rather than protocol's root
 // barrel are all recorded in BarrelPublishedSurface.
 export {
-  CURRENT_LEDGER_VERSION,
-  type CurrentLedgerVersion,
+  CURRENT_LEDGER_ERA,
+  type CurrentLedgerEra,
   latestNetworkLedgerVersion,
-  LEDGER_VERSIONS,
-  type LedgerVersion,
+  LEDGER_ERAS,
+  type LedgerEra,
   type ProtocolVersionSource,
   type VersionedRecord,
   versionOfRecord
@@ -69,7 +69,7 @@ export {
   type ProtocolVersionUnknownReason,
   StateDecodeFailedError,
   StateInconsistentError,
-  UnknownLedgerVersionError,
+  UnknownLedgerEraError,
   UnknownProtocolVersionError,
   type VersionResolutionPath
 } from '@midnight-ntwrk/midnight-js-protocol/errors';

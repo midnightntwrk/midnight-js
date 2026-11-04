@@ -14,7 +14,7 @@
  */
 
 import { ComposeFailedError } from '../../errors';
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 
 /**
  * Resolves a ledger entry-point key to its name.
@@ -61,7 +61,7 @@ export interface VerifierKeyRegistration {
 export const resolveVerifierKeyRegistrations = (
   entryPoints: readonly (string | Uint8Array)[],
   verifierKeys: ReadonlyMap<string, Uint8Array>,
-  version: LedgerVersion
+  version: LedgerEra
 ): readonly VerifierKeyRegistration[] => {
   const declared = new Map<string, string | Uint8Array>();
   for (const entryPoint of entryPoints) {

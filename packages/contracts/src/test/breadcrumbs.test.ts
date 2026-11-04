@@ -46,7 +46,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
@@ -129,7 +129,7 @@ const ALL_PROVENANCES: Record<HeadReadingProvenance, HeadReadingProvenance> = {
   'post-rejection-re-read': 'post-rejection-re-read'
 };
 
-const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
+const ALL_PIPELINES: Record<LedgerEra, LedgerEra> = {
   v8: 'v8',
   v9: 'v9'
 };
@@ -168,7 +168,7 @@ const headSource = (...protocolVersions: readonly number[]): { readonly queryLat
 // a breadcrumb assertion here fails on. The gap case is covered on its own, in
 // `provider-era-support.test.ts`.
 const retainedRuntime = (...protocolVersions: readonly number[]): Ledger8RuntimeProviders => {
-  const bothEras = { supportedEras: Object.freeze<LedgerVersion[]>(['v8', 'v9']) };
+  const bothEras = { supportedEras: Object.freeze<LedgerEra[]>(['v8', 'v9']) };
   return {
     publicDataProvider: headSource(...protocolVersions),
     proofProvider: bothEras,
@@ -421,14 +421,14 @@ describe('head resolution leaves a breadcrumb naming the integer AND the era', (
     // assumed -- and the count is asserted too, so the selection cannot quietly drop one.
     const headReadings = emitted(sink).filter((breadcrumb) => breadcrumb.decision === 'network-version-read');
     expect(headReadings).toHaveLength(emitted(sink).length);
-    expect(headReadings.map((breadcrumb) => breadcrumb.version)).toEqual<LedgerVersion[]>(['v8', 'v9']);
+    expect(headReadings.map((breadcrumb) => breadcrumb.version)).toEqual<LedgerEra[]>(['v8', 'v9']);
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
   });
 
   it('emits nothing when no logger is configured, and still resolves', async () => {
     const resolved = await resolveOperationEra(headSource(LEDGER9_HEAD));
 
-    expect(resolved.head).toBe<LedgerVersion>('v9');
+    expect(resolved.head).toBe<LedgerEra>('v9');
   });
 });
 
@@ -752,7 +752,7 @@ describe('the post-rejection head read leaves a breadcrumb too', () => {
   const wrappedRejection = (): ProviderFailedError =>
     new ProviderFailedError('submitTx', 'receive_coin', new Error('node refused the transaction'));
 
-  const callOperation = (head: LedgerVersion): SubmittedOperation => ({
+  const callOperation = (head: LedgerEra): SubmittedOperation => ({
     networkVersion: head,
     kind: 'call',
     circuitId: 'receive_coin',

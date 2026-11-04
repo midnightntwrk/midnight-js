@@ -14,7 +14,7 @@
  */
 
 import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import type { ReadMethod } from '@midnight-ntwrk/midnight-js-types';
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
@@ -108,19 +108,19 @@ export type IndexerDataErrorContext =
   | {
       kind: 'era-disagreement';
       protocolVersion: number;
-      reportedVersion: LedgerVersion;
-      stateVersion: LedgerVersion;
+      reportedVersion: LedgerEra;
+      stateVersion: LedgerEra;
     }
   | { kind: 'malformed-parameters-encoding' }
   | { kind: 'malformed-zswap-encoding' }
-  | { kind: 'malformed-zswap-state'; era: LedgerVersion }
+  | { kind: 'malformed-zswap-state'; era: LedgerEra }
   | {
       kind: 'parameters-era-disagreement';
       protocolVersion: number;
-      reportedVersion: LedgerVersion;
-      parametersVersion: LedgerVersion;
+      reportedVersion: LedgerEra;
+      parametersVersion: LedgerEra;
     }
-  | { kind: 'mixed-era-public-states'; stateVersion: LedgerVersion; parametersVersion: LedgerVersion }
+  | { kind: 'mixed-era-public-states'; stateVersion: LedgerEra; parametersVersion: LedgerEra }
   | { kind: 'malformed-protocol-version'; protocolVersion: number };
 
 /**
@@ -200,8 +200,8 @@ export class IndexerDataError extends IndexerError {
 
   static eraDisagreement(
     protocolVersion: number,
-    reportedVersion: LedgerVersion,
-    stateVersion: LedgerVersion
+    reportedVersion: LedgerEra,
+    stateVersion: LedgerEra
   ): IndexerDataError {
     return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, stateVersion });
   }
@@ -214,19 +214,19 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'malformed-zswap-encoding' });
   }
 
-  static malformedZswapState(era: LedgerVersion, cause: unknown): IndexerDataError {
+  static malformedZswapState(era: LedgerEra, cause: unknown): IndexerDataError {
     return new IndexerDataError({ kind: 'malformed-zswap-state', era }, { cause });
   }
 
   static parametersEraDisagreement(
     protocolVersion: number,
-    reportedVersion: LedgerVersion,
-    parametersVersion: LedgerVersion
+    reportedVersion: LedgerEra,
+    parametersVersion: LedgerEra
   ): IndexerDataError {
     return new IndexerDataError({ kind: 'parameters-era-disagreement', protocolVersion, reportedVersion, parametersVersion });
   }
 
-  static mixedEraPublicStates(stateVersion: LedgerVersion, parametersVersion: LedgerVersion): IndexerDataError {
+  static mixedEraPublicStates(stateVersion: LedgerEra, parametersVersion: LedgerEra): IndexerDataError {
     return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
   }
 
@@ -383,7 +383,7 @@ export class IndexerInvariantError extends IndexerError {
  * Raised when the era-keyed transaction decoder is asked for an era this build
  * ships no decoder for.
  *
- * Within one build this cannot happen: the era is a `LedgerVersion` and the
+ * Within one build this cannot happen: the era is a `LedgerEra` and the
  * decoder table is total over that union, so a missing entry is a compile
  * error. It is reachable across builds — a consumer whose installed
  * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
@@ -406,7 +406,7 @@ export class DecoderEraUnsupportedError extends IndexerError {
    */
   constructor(
     readonly method: ReadMethod,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly protocolVersion: number,
     readonly recordRef?: string
   ) {

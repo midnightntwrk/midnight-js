@@ -14,7 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   assertProvidersSupportEra,
@@ -102,10 +102,10 @@ export const submitLedger9Payload = async <C extends Contract.Any, PCK extends C
   );
 };
 
-const transactionEra = (unprovenTx: UnprovenTx): LedgerVersion =>
+const transactionEra = (unprovenTx: UnprovenTx): LedgerEra =>
   LedgerTransaction.require(unprovenTx, 'Unproven', 'submitTx').era;
 
-const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraMismatchReason>> = {
+const ERA_MISMATCH_REASON: Readonly<Record<LedgerEra, EraMismatchReason>> = {
   v8: 'ledger8-transaction-on-ledger9-network',
   v9: 'ledger9-transaction-on-ledger8-network'
 };
@@ -113,7 +113,7 @@ const ERA_MISMATCH_REASON: Readonly<Record<LedgerVersion, EraMismatchReason>> = 
 const submitOnHead = async (
   providers: Omit<MidnightProviders, 'privateStateProvider'>,
   options: SubmitTxOptions<AnyProvableCircuitId>
-): Promise<{ readonly txId: string; readonly head: LedgerVersion }> => {
+): Promise<{ readonly txId: string; readonly head: LedgerEra }> => {
   const { unprovenTx, circuitId } = options;
   const era = transactionEra(unprovenTx);
   assertValidMidnightConfig(providers.config);

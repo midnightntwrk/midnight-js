@@ -20,7 +20,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerVersion, StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra, StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -286,7 +286,7 @@ export class UnusableEraEntryError extends MidnightJsError {
    */
   constructor(
     readonly method: TransactionMethod,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly expected: EraEntryShape,
     readonly received: string
   ) {
@@ -306,7 +306,7 @@ export class UnusableEraEntryError extends MidnightJsError {
  */
 export type ForeignLedgerTransactionReason = Exclude<FrameworkInstanceCheck, 'own' | 'not-a-transaction'>;
 
-const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerVersion) => string>> = {
+const FOREIGN_LEDGER_TRANSACTION_REMEDIES: Readonly<Record<ForeignLedgerTransactionReason, (era: LedgerEra) => string>> = {
   'foreign-instance': (era) =>
     `The ${era} transaction is not an object of the ledger copy this framework loaded: it was built by a ` +
     `duplicate install of the ledger package (another WASM instance), or it is not a ledger transaction at all. ` +
@@ -337,7 +337,7 @@ export class ForeignLedgerTransactionError extends MidnightJsError {
    *               `LedgerTransaction.seal` when it was sealed directly.
    */
   constructor(
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     readonly reason: ForeignLedgerTransactionReason,
     readonly method: TransactionHandleMethod = 'LedgerTransaction.seal'
   ) {
@@ -430,8 +430,8 @@ export class TransactionEraMismatchError extends MidnightJsError {
    * @param actual The era the handle carries.
    */
   constructor(
-    readonly expected: LedgerVersion,
-    readonly actual: LedgerVersion
+    readonly expected: LedgerEra,
+    readonly actual: LedgerEra
   ) {
     super(
       `Expected a ${expected} transaction, but the handle carries a ${actual} one. ` +
@@ -488,7 +488,7 @@ export class InvalidSerializedStateError extends MidnightJsError {
    */
   constructor(
     readonly kind: StateKind,
-    readonly era: LedgerVersion | undefined,
+    readonly era: LedgerEra | undefined,
     readonly reason: InvalidSerializedStateReason
   ) {
     super(INVALID_LEDGER_STATE_MESSAGES[reason](kind, String(era)));
@@ -496,7 +496,7 @@ export class InvalidSerializedStateError extends MidnightJsError {
   }
 }
 
-const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerVersion, string>>>> = {
+const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerEra, string>>>> = {
   ContractState: {
     v8: '`ContractState` from a ledger 8 `@midnight-ntwrk/compact-runtime` (0.16), such as the copy a ledger 8 contract was compiled against',
     v9: '`ContractState` from the `@midnight-ntwrk/compact-runtime` copy your contract was compiled against'
@@ -527,7 +527,7 @@ export class SerializedStateDecoderMissingError extends MidnightJsError {
    */
   constructor(
     readonly kind: StateKind,
-    readonly era: LedgerVersion
+    readonly era: LedgerEra
   ) {
     super(
       `No decoder for a ${kind} written by the ${era} ledger. ` +
@@ -557,7 +557,7 @@ export class SerializedStateDecodeFailedError extends MidnightJsError {
    */
   constructor(
     readonly kind: StateKind,
-    readonly era: LedgerVersion,
+    readonly era: LedgerEra,
     options: { readonly cause: unknown }
   ) {
     super(

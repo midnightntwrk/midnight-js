@@ -14,7 +14,7 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, ContractExecutionError, InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { LedgerParameters, Transaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
@@ -425,13 +425,13 @@ describe('unproven-call-tx', () => {
       expect(seen).toHaveLength(0);
     });
 
-    it('refuses a state whose era this build does not know as an unknown ledger version', async () => {
+    it('refuses a state whose era this build does not know as an unknown ledger era', async () => {
       const seen: CircuitContext[] = [];
       const fromNewerTypesCopy = { era: 'v10', serialize: () => new ContractState().serialize() };
 
       const error = await refusalOf({ initialContractState: fromNewerTypesCopy }, seen);
 
-      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(error).toBeInstanceOf(UnknownLedgerEraError);
       expect(error).toMatchObject({ requestedVersion: 'v10' });
       expect(seen).toHaveLength(0);
     });

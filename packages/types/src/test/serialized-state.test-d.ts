@@ -54,8 +54,8 @@ describe('fromBytes', () => {
     expectTypeOf(new SerializedContractState(Symbol('fromBytes'), 'v9', bytes)).not.toBeAny();
   });
 
-  it('refuses an era outside LedgerVersion', () => {
-    // @ts-expect-error the era is outside LedgerVersion
+  it('refuses an era outside LedgerEra', () => {
+    // @ts-expect-error the era is outside LedgerEra
     SerializedContractState.fromBytes('v10', bytes);
   });
 });

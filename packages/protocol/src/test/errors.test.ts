@@ -29,7 +29,7 @@ import {
   StateConversionFailedError,
   StateDecodeFailedError,
   StateInconsistentError,
-  UnknownLedgerVersionError,
+  UnknownLedgerEraError,
   UnknownProtocolVersionError
 } from '../errors';
 
@@ -49,7 +49,7 @@ describe('PROTOCOL_ERROR_CODES', () => {
       COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
       STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
       STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
-      UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+      UNKNOWN_LEDGER_ERA: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
       PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
       CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
@@ -208,13 +208,13 @@ describe('StateConversionFailedError', () => {
   });
 });
 
-describe('UnknownLedgerVersionError', () => {
-  it('carries the UNKNOWN_LEDGER_VERSION code and names the supported eras', () => {
-    const error = new UnknownLedgerVersionError('v10');
+describe('UnknownLedgerEraError', () => {
+  it('carries the UNKNOWN_LEDGER_ERA code and names the supported eras', () => {
+    const error = new UnknownLedgerEraError('v10');
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('UnknownLedgerVersionError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+    expect(error.name).toBe('UnknownLedgerEraError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA);
     expect(error.message).toContain('v8');
     expect(error.message).toContain('v9');
   });
@@ -223,36 +223,36 @@ describe('UnknownLedgerVersionError', () => {
   // the one input the engine cannot vouch for. It is exposed as a field for
   // programmatic use and deliberately kept out of the message.
   it('exposes the requested version without rendering it in the message', () => {
-    const error = new UnknownLedgerVersionError('__proto__');
+    const error = new UnknownLedgerEraError('__proto__');
 
     expect(error.requestedVersion).toBe('__proto__');
     expect(error.message).not.toContain('__proto__');
   });
 
   it('names the call that read the version when one is given', () => {
-    const error = new UnknownLedgerVersionError(undefined, 'watchForTxData');
+    const error = new UnknownLedgerEraError(undefined, 'watchForTxData');
 
     expect(error.context).toBe('watchForTxData');
     expect(error.message).toContain('watchForTxData');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA);
   });
 
   it.each([undefined, null])('reports a value with no era as an undefined requestedVersion (%s)', (missing) => {
-    const error = new UnknownLedgerVersionError(missing, 'watchForTxData');
+    const error = new UnknownLedgerEraError(missing, 'watchForTxData');
 
     expect(error.requestedVersion).toBeUndefined();
     expect(error.message).toContain('carried no era');
   });
 
   it('names the kind of a non-scalar value rather than its contents', () => {
-    const error = new UnknownLedgerVersionError({ era: 'v9' });
+    const error = new UnknownLedgerEraError({ era: 'v9' });
 
     expect(error.requestedVersion).toBe('object');
   });
 
   it('gives the protocolVersionToLedger advice only when the caller passed the version', () => {
-    const passed = new UnknownLedgerVersionError('v10');
-    const served = new UnknownLedgerVersionError('v10', 'queryContractState');
+    const passed = new UnknownLedgerEraError('v10');
+    const served = new UnknownLedgerEraError('v10', 'queryContractState');
 
     expect(passed.message).toContain('protocolVersionToLedger');
     expect(served.message).not.toContain('protocolVersionToLedger');

@@ -37,7 +37,7 @@ import {
   StateDecodeFailedError,
   StateInconsistentError,
   TRANSACTION_TAG_PREFIX,
-  UnknownLedgerVersionError,
+  UnknownLedgerEraError,
   UnknownProtocolVersionError
 } from '../errors';
 import * as errors from '../errors';
@@ -109,7 +109,7 @@ describe('protocol error classes', () => {
     ['StateDecodeFailedError', new StateDecodeFailedError('v8', underlying)],
     ['StateInconsistentError', new StateInconsistentError('v8', underlying)],
     ['Ledger8RuntimeInvalidError', new Ledger8RuntimeInvalidError('ledger')],
-    ['UnknownLedgerVersionError', new UnknownLedgerVersionError('v7')],
+    ['UnknownLedgerEraError', new UnknownLedgerEraError('v7')],
     ['PayloadNotATransactionError', PayloadNotATransactionError.notBytes(1)],
     ['ContractExecutionError', new ContractExecutionError('x')],
     ['MaintenanceAuthorityMismatchError', new MaintenanceAuthorityMismatchError('v8', '00'.repeat(32), 'not-first-member')]

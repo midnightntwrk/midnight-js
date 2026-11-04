@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type LedgerVersion, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerEra, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
@@ -102,7 +102,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     const container = createMockCompiledContract();
 
     // Act + Assert
-    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerEra);
   });
 
   it('refuses a current-era container served with a retained bundle', async () => {
@@ -121,7 +121,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
       initialState: (): Record<string, never> => ({})
     };
 
-    await expect(resolveArtifactEra(retained, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(retained, LEDGER8_BUNDLE)).resolves.toBe('v8' satisfies LedgerEra);
   });
 
   describe('the near-miss a JavaScript caller actually hits', () => {
@@ -214,7 +214,7 @@ describe('resolveArtifactEra: which execution pipeline an artifact belongs to', 
     expect('pipe' in container).toBe(false);
     // And the container is still placed correctly, because the `tag` it assigns to ITSELF survives
     // the spread that drops the brand.
-    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerVersion);
+    await expect(resolveArtifactEra(container, LEDGER9_BUNDLE)).resolves.toBe('v9' satisfies LedgerEra);
   });
 });
 
@@ -224,8 +224,8 @@ type OperationKind = Parameters<typeof assertEraCompatible>[2];
 
 interface DispatchCell {
   readonly artifact: string;
-  readonly pipeline: LedgerVersion;
-  readonly head: LedgerVersion;
+  readonly pipeline: LedgerEra;
+  readonly head: LedgerEra;
   readonly kind: OperationKind;
 }
 
@@ -286,12 +286,12 @@ const REFUSED_CELLS: readonly (DispatchCell & {
 // Exhaustive maps over the three axes, in the `Record<K, K>` form this repo uses where a test has
 // to enumerate a closed set: a member added to any of the three types stops the literal below
 // compiling, which is what makes the completeness gate further down a real one.
-const ALL_PIPELINES: Record<LedgerVersion, LedgerVersion> = {
+const ALL_PIPELINES: Record<LedgerEra, LedgerEra> = {
   v8: 'v8',
   v9: 'v9'
 };
 
-const ALL_HEADS: Record<LedgerVersion, LedgerVersion> = {
+const ALL_HEADS: Record<LedgerEra, LedgerEra> = {
   v8: 'v8',
   v9: 'v9'
 };
@@ -308,8 +308,8 @@ const ALL_KINDS: Record<OperationKind, OperationKind> = {
 // `unknown`, not `string`. Typed as `string` these helpers could not express the case that matters
 // most -- a non-string key, which a member access coerces and a `switch` did not -- so every
 // negative test would have been confined to the inputs that were already safe.
-const asArtifactEra = (value: unknown): LedgerVersion => value as LedgerVersion;
-const asHeadEra = (value: unknown): LedgerVersion => value as LedgerVersion;
+const asArtifactEra = (value: unknown): LedgerEra => value as LedgerEra;
+const asHeadEra = (value: unknown): LedgerEra => value as LedgerEra;
 const asOperationKind = (value: unknown): OperationKind => value as OperationKind;
 
 describe('the era dispatch table: artifact era x network head era x operation kind', () => {
@@ -401,13 +401,13 @@ describe('the era dispatch table: artifact era x network head era x operation ki
   // `Object.prototype`, which is exactly what these tests exist to rule out.
   //
   // These tests pin the VALUE blamed, and deliberately not the message.
-  const refusedEra = (pipeline: LedgerVersion, head: LedgerVersion): string | undefined => {
+  const refusedEra = (pipeline: LedgerEra, head: LedgerEra): string | undefined => {
     try {
       assertEraCompatible(pipeline, head, 'call');
       return expect.unreachable(`assertEraCompatible ruled on ${String(pipeline)}/${String(head)}`);
     } catch (error) {
-      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
-      return (error as UnknownLedgerVersionError).requestedVersion;
+      expect(error).toBeInstanceOf(UnknownLedgerEraError);
+      return (error as UnknownLedgerEraError).requestedVersion;
     }
   };
 
@@ -493,8 +493,8 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
     // boundary, a second and possibly DIFFERENT answer inside one operation.
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(resolved.headProtocolVersion).toBe(LEDGER9_HEAD);
-    expect(resolved.head).toBe<LedgerVersion>('v9');
-    expect(resolved.era.version).toBe<LedgerVersion>('v9');
+    expect(resolved.head).toBe<LedgerEra>('v9');
+    expect(resolved.era.version).toBe<LedgerEra>('v9');
   });
 
   it('reports the era the head integer resolves to, not a latched one', async () => {
@@ -505,8 +505,8 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
     const first = await resolveOperationEra(pdp);
     const second = await resolveOperationEra(pdp);
 
-    expect(first.head).toBe<LedgerVersion>('v8');
-    expect(second.head).toBe<LedgerVersion>('v9');
+    expect(first.head).toBe<LedgerEra>('v8');
+    expect(second.head).toBe<LedgerEra>('v9');
     expect(pdp.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
   });
 
@@ -515,7 +515,7 @@ describe('resolveOperationEra: the head is read ONCE per operation and threaded 
 
     const resolved = await resolveOperationEra(pdp);
 
-    expect(resolved.head).toBe<LedgerVersion>('v9');
+    expect(resolved.head).toBe<LedgerEra>('v9');
     expect(resolved.headProtocolVersion).toBe(2_001_000);
   });
 });
@@ -556,8 +556,8 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
   // What this function does NOT decide is whether the caller's artifacts fit the contract. It names
   // a decoder; `assertSnapshotVerifierKey` judges the artifacts.
   it.each([
-    ['a pre-fork head, which is a native retained call', 'v8' as LedgerVersion, LEDGER8_HEAD],
-    ['a post-fork head, which is keep-state', 'v9' as LedgerVersion, LEDGER9_HEAD]
+    ['a pre-fork head, which is a native retained call', 'v8' as LedgerEra, LEDGER8_HEAD],
+    ['a post-fork head, which is keep-state', 'v9' as LedgerEra, LEDGER9_HEAD]
   ])('answers the retained era for a retained envelope under %s, without re-reading the head', async (_name, head, headInt) => {
     const pdp = headSource();
 
@@ -613,8 +613,8 @@ describe("resolveContractStateEra: which era's decoder owns the bytes an operati
       expect.unreachable('a stale pre-fork head was accepted against a current-era state');
     } catch (error) {
       expect(error).toBeInstanceOf(NetworkVersionStateMismatchError);
-      expect((error as NetworkVersionStateMismatchError).networkVersion).toBe<LedgerVersion>('v8');
-      expect((error as NetworkVersionStateMismatchError).stateEra).toBe<LedgerVersion>('v9');
+      expect((error as NetworkVersionStateMismatchError).networkVersion).toBe<LedgerEra>('v8');
+      expect((error as NetworkVersionStateMismatchError).stateEra).toBe<LedgerEra>('v9');
       expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.NETWORK_VERSION_STATE_MISMATCH)).toBe(true);
       expect((error as NetworkVersionStateMismatchError).message).toMatch(/re-read|re-run/i);
       // Direction-neutral on purpose: the check establishes that the two readings disagree, not
@@ -674,7 +674,7 @@ describe('resolveContractStateEra reads only a SerializedContractState', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(rejection).toBeInstanceOf(UnknownLedgerEraError);
     expect(rejection).toMatchObject({ requestedVersion: undefined, context: 'queryContractState' });
     expect(queryLatestProtocolVersion).not.toHaveBeenCalled();
   });

@@ -119,7 +119,7 @@ describe('FinalizedTxRead', () => {
   });
 });
 
-describe('the compile-time bridge to LedgerVersion', () => {
+describe('the compile-time bridge to LedgerEra', () => {
   // Mirrors the four assertions at the foot of `versioned.ts`. The property
   // under test is the *mechanism*, not the current era set: those assertions
   // can only fail the build on a mismatch if this shape rejects one. The

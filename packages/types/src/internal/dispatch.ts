@@ -14,20 +14,20 @@
  */
 
 import type { LedgerTransactionTypes, TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { ProviderEraUnsupportedError, type TransactionMethod } from '../errors';
 import { LedgerTransaction } from '../ledger-transaction';
 
 /** What each era's handler answers with, keyed by era. */
-export type EraAnswers = Readonly<Record<LedgerVersion, unknown>>;
+export type EraAnswers = Readonly<Record<LedgerEra, unknown>>;
 
 /** Each era's ledger transaction class at one stage, keyed by era. */
-export type TransactionsAt<S extends TransactionStage> = { readonly [E in LedgerVersion]: LedgerTransactionTypes[E][S] };
+export type TransactionsAt<S extends TransactionStage> = { readonly [E in LedgerEra]: LedgerTransactionTypes[E][S] };
 
 /** One handler per ledger era, `undefined` for an era that is not served. */
 export type EraHandlers<S extends TransactionStage, A extends readonly unknown[], R extends EraAnswers> = {
-  readonly [E in LedgerVersion]: ((tx: LedgerTransactionTypes[E][S], ...args: A) => Promise<R[E]>) | undefined;
+  readonly [E in LedgerEra]: ((tx: LedgerTransactionTypes[E][S], ...args: A) => Promise<R[E]>) | undefined;
 };
 
 /** How a provider method routes a handle to its era's handler. */
@@ -36,11 +36,11 @@ export interface Route<S extends TransactionStage, A extends readonly unknown[],
   readonly stage: S;
   readonly handlers: EraHandlers<S, A, R>;
   readonly receiver: object;
-  readonly supportedEras: readonly LedgerVersion[];
-  readonly answer: <E extends LedgerVersion>(era: E, result: R[E]) => T;
+  readonly supportedEras: readonly LedgerEra[];
+  readonly answer: <E extends LedgerEra>(era: E, result: R[E]) => T;
 }
 
-const serve = async <E extends LedgerVersion, S extends TransactionStage, A extends readonly unknown[], R extends EraAnswers, T>(
+const serve = async <E extends LedgerEra, S extends TransactionStage, A extends readonly unknown[], R extends EraAnswers, T>(
   route: Route<S, A, R, T>,
   era: E,
   handle: LedgerTransaction<S>,

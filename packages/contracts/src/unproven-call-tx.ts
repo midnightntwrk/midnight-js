@@ -266,7 +266,7 @@ export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.
  *         zswap chain state were not written by the v9 ledger.
  * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` If the v8 ledger wrote
  *         the contract state.
- * @throws UnknownLedgerVersionError If a state names an era this build does not know.
+ * @throws UnknownLedgerEraError If a state names an era this build does not know.
  * @throws InvalidSerializedStateError If a state's bytes are not of its kind and era.
  * @throws SerializedStateDecodeFailedError, or the framework decoder's coded error, If the bytes after
  *         a tag do not decode.
@@ -601,7 +601,7 @@ export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Co
  *         circuit, `options.config` is invalid, or the contract state was written by a later ledger
  *         than `options.head`.
  * @throws ConfigurationError If `options.config` is missing.
- * @throws UnknownLedgerVersionError If `options.head`, or the era a state names, is not a ledger era.
+ * @throws UnknownLedgerEraError If `options.head`, or the era a state names, is not a ledger era.
  * @throws InvalidArgumentError If a state is not a serialized state.
  * @throws InvalidSerializedStateError If a state's bytes do not carry the kind and era it names.
  * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than

@@ -198,7 +198,7 @@ after a proof has been paid for.
 
 ```typescript
 interface ProofProvider {
-  readonly supportedEras: readonly LedgerVersion[];
+  readonly supportedEras: readonly LedgerEra[];
   proveTx(unprovenTx: UnprovenTx, config?: ProveTxConfig): Promise<UnboundTx>;
 }
 ```

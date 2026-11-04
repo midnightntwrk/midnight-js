@@ -14,7 +14,7 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { type EraEntryShape, type TransactionMethod, UnusableEraEntryError } from '../errors';
 
@@ -130,7 +130,7 @@ const describeEntry = (entry: unknown, shape: EraEntryShape): string => {
 /** Whether `value` is a non-null object; a function does not count. */
 export const isObject = (value: unknown): boolean => typeof value === 'object' && value !== null;
 
-const assertUsable = (method: TransactionMethod, era: LedgerVersion, entry: unknown, shape: EraEntryShape): void => {
+const assertUsable = (method: TransactionMethod, era: LedgerEra, entry: unknown, shape: EraEntryShape): void => {
   if (!IS_USABLE[shape](entry)) {
     throw new UnusableEraEntryError(method, era, shape, describeEntry(entry, shape));
   }
@@ -146,12 +146,12 @@ export const assertFunction = (method: TransactionMethod, name: string, value: u
 };
 
 /** One entry per ledger era, `undefined` for an era that is not served. */
-export type EraEntries<T extends Readonly<Record<LedgerVersion, unknown>>> = { readonly [E in LedgerVersion]: T[E] };
+export type EraEntries<T extends Readonly<Record<LedgerEra, unknown>>> = { readonly [E in LedgerEra]: T[E] };
 
 // An era counts as given when it is found on the object or on a prototype of
 // its own, such as a class. An era reached only through `Object.prototype` is
 // not given: it was not written by the caller.
-const isGiven = (entries: object, era: LedgerVersion): boolean => {
+const isGiven = (entries: object, era: LedgerEra): boolean => {
   for (let owner: object | null = entries; owner !== null; owner = Reflect.getPrototypeOf(owner)) {
     if (Object.hasOwn(owner, era)) {
       return owner === entries || Reflect.getPrototypeOf(owner) !== null;
@@ -160,9 +160,9 @@ const isGiven = (entries: object, era: LedgerVersion): boolean => {
   return false;
 };
 
-const missingEras = (method: TransactionMethod, entries: object): readonly LedgerVersion[] => {
+const missingEras = (method: TransactionMethod, entries: object): readonly LedgerEra[] => {
   try {
-    return LEDGER_VERSIONS.filter((era) => !isGiven(entries, era));
+    return LEDGER_ERAS.filter((era) => !isGiven(entries, era));
   } catch (error: unknown) {
     throw new InvalidArgumentError(`${method}: the era entries could not be read.`, { cause: error });
   }
@@ -182,33 +182,33 @@ const missingEras = (method: TransactionMethod, entries: object): readonly Ledge
  *         has no key for a ledger era, or serves no era.
  * @throws UnusableEraEntryError if an entry is neither `undefined` nor `shape`.
  */
-export const readEraEntries = <T extends Readonly<Record<LedgerVersion, unknown>>>(
+export const readEraEntries = <T extends Readonly<Record<LedgerEra, unknown>>>(
   method: TransactionMethod,
   entries: T,
   shape: EraEntryShape
 ): EraEntries<T> => {
   if (!isObject(entries)) {
     throw new InvalidArgumentError(
-      `${method}: expected an object with an entry for every ledger era (${LEDGER_VERSIONS.join(', ')}), got ${describeArgument(entries)}.`
+      `${method}: expected an object with an entry for every ledger era (${LEDGER_ERAS.join(', ')}), got ${describeArgument(entries)}.`
     );
   }
   const missing = missingEras(method, entries);
   if (missing.length > 0) {
     throw new InvalidArgumentError(
       `${method}: the era entries are missing ${missing.join(', ')}. ` +
-        `Give every ledger era (${LEDGER_VERSIONS.join(', ')}) an entry, and set an era this provider does not serve to undefined.`
+        `Give every ledger era (${LEDGER_ERAS.join(', ')}) an entry, and set an era this provider does not serve to undefined.`
     );
   }
   const copy: EraEntries<T> = Object.freeze({ v8: entries.v8, v9: entries.v9 });
-  for (const era of LEDGER_VERSIONS) {
+  for (const era of LEDGER_ERAS) {
     const entry = copy[era];
     if (entry !== undefined) {
       assertUsable(method, era, entry, shape);
     }
   }
-  if (LEDGER_VERSIONS.every((era) => copy[era] === undefined)) {
+  if (LEDGER_ERAS.every((era) => copy[era] === undefined)) {
     throw new InvalidArgumentError(
-      `${method}: at least one era handler is required, but every era entry (${LEDGER_VERSIONS.join(', ')}) is undefined.`
+      `${method}: at least one era handler is required, but every era entry (${LEDGER_ERAS.join(', ')}) is undefined.`
     );
   }
   return copy;

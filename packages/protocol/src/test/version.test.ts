@@ -16,7 +16,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
-import { latestNetworkLedgerVersion, LEDGER_VERSIONS, protocolVersionToLedger, versionOfRecord } from '../version';
+import { latestNetworkLedgerVersion, LEDGER_ERAS, protocolVersionToLedger, versionOfRecord } from '../version';
 
 describe('protocolVersionToLedger', () => {
   it.each([
@@ -111,7 +111,7 @@ describe('sourcing helpers', () => {
   });
 
   describe('latestNetworkLedgerVersion', () => {
-    it('resolves to the mapped ledger version and queries the source exactly once', async () => {
+    it('resolves to the mapped ledger era and queries the source exactly once', async () => {
       const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
 
       await expect(latestNetworkLedgerVersion(source)).resolves.toBe('v9');
@@ -136,8 +136,8 @@ describe('sourcing helpers', () => {
   });
 });
 
-describe('LEDGER_VERSIONS', () => {
+describe('LEDGER_ERAS', () => {
   it('is exactly the closed two-version set', () => {
-    expect([...LEDGER_VERSIONS].sort()).toEqual(['v8', 'v9']);
+    expect([...LEDGER_ERAS].sort()).toEqual(['v8', 'v9']);
   });
 });

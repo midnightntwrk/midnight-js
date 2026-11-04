@@ -58,7 +58,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { assembleCallPrototype } from '../lib/shared/assemble-call';
 import type { PartitionContext } from '../lib/shared/compose-types';
-import type { LedgerVersion } from '../lib/shared/ledger-version';
+import type { LedgerEra } from '../lib/shared/ledger-version';
 import { runLedger8Circuit, type TranscriptPojo } from '../lib/v8/executable';
 import { fixturePath, readHexFixture } from './fixtures';
 import type { Assert } from './type-assertions';
@@ -297,7 +297,7 @@ const ERAS = ['v8', 'v9'] as const;
 // the two `ContractState` types are distinct nominal WASM classes -- the same
 // reason `era-partition-received-coin.test.ts` writes a thunk per era.
 const ASSEMBLE_PER_ERA: Readonly<
-  Record<LedgerVersion, (transcript: TranscriptPojo, partitionContext: PartitionContext, preState: ledgerV9.EncodedStateValue) => unknown>
+  Record<LedgerEra, (transcript: TranscriptPojo, partitionContext: PartitionContext, preState: ledgerV9.EncodedStateValue) => unknown>
 > = {
   v8: (transcript, partitionContext, preState) => {
     const contractState = LedgerV8.ContractState.deserialize(readHexFixture(STATE_V6_NAME));

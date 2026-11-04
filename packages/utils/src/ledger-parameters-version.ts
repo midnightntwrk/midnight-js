@@ -15,7 +15,7 @@
 
 // The `./version` leaf subpath, not the package root: the root barrel re-exports the
 // ledger/compact-js/onchain-runtime namespaces, which every `utils` consumer would then pull in.
-import { LEDGER_STATE_TAGS, LEDGER_VERSIONS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, LEDGER_STATE_TAGS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { parseSerializedTag, TagParseError } from './serialized-tag';
 
@@ -46,9 +46,9 @@ import { parseSerializedTag, TagParseError } from './serialized-tag';
  * @throws TagParseError when there is no well-formed `namespace:version:` tag prefix in the first
  * 64 bytes, or when the tag is not one of the supported ledger-parameters version tags.
  */
-export const ledgerVersionOfLedgerParameters = (raw: Uint8Array): LedgerVersion => {
+export const ledgerVersionOfLedgerParameters = (raw: Uint8Array): LedgerEra => {
   const { tag } = parseSerializedTag(raw);
-  const ledgerVersion = LEDGER_VERSIONS.find((era) => LEDGER_STATE_TAGS.LedgerParameters[era] === tag);
+  const ledgerVersion = LEDGER_ERAS.find((era) => LEDGER_STATE_TAGS.LedgerParameters[era] === tag);
   if (ledgerVersion === undefined) {
     // Never echo the observed tag: it is network-supplied and validated only against a character
     // set, so embedding it verbatim puts arbitrary text into this message.

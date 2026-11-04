@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
   type FinalizedTxRead,
   InvalidTransactionHandleError,
@@ -86,8 +86,8 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
       // @ts-expect-error the pre-5.0.0 record carries no version
       const error = thrownBy(() => read(untagged, method));
 
-      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
-      expect(hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION)).toBe(true);
+      expect(error).toBeInstanceOf(UnknownLedgerEraError);
+      expect(hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA)).toBe(true);
       expect(error).toMatchObject({ requestedVersion: undefined, context: method });
       expect(String(error)).toContain(method);
     }
@@ -97,7 +97,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     // @ts-expect-error a JavaScript provider can resolve with anything
     const error = thrownBy(() => read('v9', 'watchForTxData'));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
     expect(error).toMatchObject({ requestedVersion: undefined, context: 'watchForTxData' });
   });
 
@@ -107,7 +107,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
     // @ts-expect-error an RPC bridge can hand back a null-prototype object as the tag
     const error = thrownBy(() => read(record, 'watchForTxData'));
 
-    expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
     expect(error).toMatchObject({ requestedVersion: 'object', context: 'watchForTxData' });
   });
 });

@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { MidnightJsError, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
+  LEDGER_ERAS,
   LEDGER_STATE_TAGS,
-  LEDGER_VERSIONS,
-  type LedgerVersion,
+  type LedgerEra,
   type StateKind
 } from '@midnight-ntwrk/midnight-js-protocol/version';
 
@@ -35,9 +35,9 @@ export interface StateDecoder<T = unknown> {
 /**
  * One decoder per ledger era. Only the decoder of the value's own era is called.
  */
-export type StateDecoders = Readonly<Partial<Record<LedgerVersion, StateDecoder>>>;
+export type StateDecoders = Readonly<Partial<Record<LedgerEra, StateDecoder>>>;
 
-type DecodedByEra<D extends StateDecoders, E extends LedgerVersion> = E extends keyof D
+type DecodedByEra<D extends StateDecoders, E extends LedgerEra> = E extends keyof D
   ? D[E] extends StateDecoder<infer T> | undefined
     ? T
     : never
@@ -46,13 +46,13 @@ type DecodedByEra<D extends StateDecoders, E extends LedgerVersion> = E extends 
 /**
  * What `deserialize` returns for decoders `D` and a value of era `E`.
  */
-export type DecodedState<D extends StateDecoders, E extends LedgerVersion> = DecodedByEra<D, E>;
+export type DecodedState<D extends StateDecoders, E extends LedgerEra> = DecodedByEra<D, E>;
 
 /**
  * Decoders `D` that can read a value of era `E`, or `never` when `D` has no decoder for any era `E`
  * can be, so such a call does not compile.
  */
-export type DecodersFor<D extends StateDecoders, E extends LedgerVersion> = [Extract<keyof D, E>] extends [never] ? never : D;
+export type DecodersFor<D extends StateDecoders, E extends LedgerEra> = [Extract<keyof D, E>] extends [never] ? never : D;
 
 const startsWithTag = (bytes: Uint8Array, tag: string): boolean => {
   const prefix = new TextEncoder().encode(`${tag}:`);
@@ -64,9 +64,9 @@ const isDecoderMap = (decoders: unknown): decoders is StateDecoders =>
 
 const FROM_BYTES: unique symbol = Symbol('Serialized.fromBytes');
 
-const checkedCopy = (kind: StateKind, era: LedgerVersion, bytes: Uint8Array): Uint8Array => {
-  if (!LEDGER_VERSIONS.includes(era)) {
-    throw new UnknownLedgerVersionError(era);
+const checkedCopy = (kind: StateKind, era: LedgerEra, bytes: Uint8Array): Uint8Array => {
+  if (!LEDGER_ERAS.includes(era)) {
+    throw new UnknownLedgerEraError(era);
   }
   if (!(bytes instanceof Uint8Array)) {
     throw new InvalidSerializedStateError(kind, era, 'not-bytes');
@@ -83,7 +83,7 @@ const requireFromBytes = (fromBytes: typeof FROM_BYTES, kind: StateKind): void =
   }
 };
 
-const decode = (kind: StateKind, era: LedgerVersion, bytes: Uint8Array, decoders: unknown): unknown => {
+const decode = (kind: StateKind, era: LedgerEra, bytes: Uint8Array, decoders: unknown): unknown => {
   const decoder: StateDecoder | undefined =
     isDecoderMap(decoders) && Object.hasOwn(decoders, era) ? decoders[era] : undefined;
   if (typeof decoder?.deserialize !== 'function') {
@@ -120,7 +120,7 @@ const decode = (kind: StateKind, era: LedgerVersion, bytes: Uint8Array, decoders
  *
  * @typeParam E The era of the ledger that wrote it.
  */
-export class SerializedContractState<out E extends LedgerVersion = LedgerVersion> {
+export class SerializedContractState<out E extends LedgerEra = LedgerEra> {
   readonly #bytes: Uint8Array;
 
   private constructor(
@@ -136,11 +136,11 @@ export class SerializedContractState<out E extends LedgerVersion = LedgerVersion
   /**
    * Wraps the bytes of a contract state the ledger of `era` wrote.
    *
-   * @throws UnknownLedgerVersionError when `era` is not a supported ledger era.
+   * @throws UnknownLedgerEraError when `era` is not a supported ledger era.
    * @throws InvalidSerializedStateError when `bytes` is not a `Uint8Array`, or does not start with
    * the tag that ledger writes for a contract state.
    */
-  static fromBytes<E extends LedgerVersion>(era: E, bytes: Uint8Array): SerializedContractState<E> {
+  static fromBytes<E extends LedgerEra>(era: E, bytes: Uint8Array): SerializedContractState<E> {
     return new SerializedContractState(FROM_BYTES, era, checkedCopy('ContractState', era, bytes));
   }
 
@@ -186,7 +186,7 @@ export class SerializedContractState<out E extends LedgerVersion = LedgerVersion
  *
  * @typeParam E The era of the ledger that wrote them.
  */
-export class SerializedLedgerParameters<out E extends LedgerVersion = LedgerVersion> {
+export class SerializedLedgerParameters<out E extends LedgerEra = LedgerEra> {
   readonly #bytes: Uint8Array;
 
   private constructor(
@@ -202,11 +202,11 @@ export class SerializedLedgerParameters<out E extends LedgerVersion = LedgerVers
   /**
    * Wraps the bytes of ledger parameters the ledger of `era` wrote.
    *
-   * @throws UnknownLedgerVersionError when `era` is not a supported ledger era.
+   * @throws UnknownLedgerEraError when `era` is not a supported ledger era.
    * @throws InvalidSerializedStateError when `bytes` is not a `Uint8Array`, or does not start with
    * the tag that ledger writes for ledger parameters.
    */
-  static fromBytes<E extends LedgerVersion>(era: E, bytes: Uint8Array): SerializedLedgerParameters<E> {
+  static fromBytes<E extends LedgerEra>(era: E, bytes: Uint8Array): SerializedLedgerParameters<E> {
     return new SerializedLedgerParameters(FROM_BYTES, era, checkedCopy('LedgerParameters', era, bytes));
   }
 
@@ -253,7 +253,7 @@ export class SerializedLedgerParameters<out E extends LedgerVersion = LedgerVers
  *
  * @typeParam E The era of the ledger that wrote it.
  */
-export class SerializedZswapChainState<out E extends LedgerVersion = LedgerVersion> {
+export class SerializedZswapChainState<out E extends LedgerEra = LedgerEra> {
   readonly #bytes: Uint8Array;
 
   private constructor(
@@ -269,11 +269,11 @@ export class SerializedZswapChainState<out E extends LedgerVersion = LedgerVersi
   /**
    * Wraps the bytes of a zswap chain state the ledger of `era` wrote.
    *
-   * @throws UnknownLedgerVersionError when `era` is not a supported ledger era.
+   * @throws UnknownLedgerEraError when `era` is not a supported ledger era.
    * @throws InvalidSerializedStateError when `bytes` is not a `Uint8Array`, or does not start with
    * the tag that ledger writes for a zswap chain state.
    */
-  static fromBytes<E extends LedgerVersion>(era: E, bytes: Uint8Array): SerializedZswapChainState<E> {
+  static fromBytes<E extends LedgerEra>(era: E, bytes: Uint8Array): SerializedZswapChainState<E> {
     return new SerializedZswapChainState(FROM_BYTES, era, checkedCopy('ZswapChainState', era, bytes));
   }
 

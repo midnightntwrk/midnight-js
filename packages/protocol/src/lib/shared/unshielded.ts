@@ -16,7 +16,7 @@
 import type { AlignedValue, Transcript, UtxoOutput } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError } from '../../errors';
-import type { LedgerVersion } from './ledger-version';
+import type { LedgerEra } from './ledger-version';
 
 /**
  * The guaranteed/fallible transcript pair one call contributes to a
@@ -71,7 +71,7 @@ export interface AggregatedUnshieldedOffers<TOffer> {
  */
 export const extractUserAddressedOutputs = (
   transcript: Transcript<AlignedValue> | undefined,
-  version: LedgerVersion,
+  version: LedgerEra,
   circuitId: string
 ): UtxoOutput[] => {
   if (transcript === undefined) {
@@ -112,7 +112,7 @@ export const extractUserAddressedOutputs = (
 export const aggregateUnshieldedOffers = <TOffer>(
   calls: readonly CallTranscriptPair[],
   ledger: UnshieldedOfferLedger<TOffer>,
-  version: LedgerVersion
+  version: LedgerEra
 ): AggregatedUnshieldedOffers<TOffer> => {
   const guaranteedOutputs = calls.flatMap((call) =>
     extractUserAddressedOutputs(call.guaranteed, version, call.circuitId)

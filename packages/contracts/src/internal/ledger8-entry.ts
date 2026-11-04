@@ -33,11 +33,11 @@
 
 import type {
   Ledger8SigningKey,
-  LedgerEra
+  LedgerEraFacade
 } from '@midnight-ntwrk/midnight-js-protocol';
 import {
-  LEDGER_VERSIONS,
-  type LedgerVersion,
+  LEDGER_ERAS,
+  type LedgerEra,
   loadLedger8Engine,
   loadLedgerEra,
   NO_CIRCUIT
@@ -187,7 +187,7 @@ export interface Ledger8Runtime {
    * Acquiring it costs nothing extra here: the engine beside it has already pulled the retained
    * runtime, and the era load is memoised.
    */
-  readonly retainedEra: LedgerEra;
+  readonly retainedEra: LedgerEraFacade;
 }
 
 /**
@@ -360,11 +360,11 @@ export interface Ledger8FoundState {
  * @returns The deploy record as the read surface reported it, and the deploy-time state
  * `queryDeployContractState` serves.
  * @throws ContractNotFoundError if the read surface serves no deploy-time state.
- * @throws UnknownLedgerVersionError, InvalidSerializedStateError if the deploy-time state is not a
+ * @throws UnknownLedgerEraError, InvalidSerializedStateError if the deploy-time state is not a
  * contract state of a known era.
  * @throws InvalidArgumentError if the artifact declares no callable circuits,
  * or if the address is malformed.
- * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws EraMismatchError, UnknownLedgerEraError from era resolution.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched
  * envelope's era disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
@@ -511,7 +511,7 @@ const assertLedger8DeploySucceeded = (
  */
 const assertLedger8RecordEra = (
   record: FinalizedTxRead,
-  head: LedgerVersion,
+  head: LedgerEra,
   circuitId: string,
   method: ReadMethod
 ): void => {
@@ -531,12 +531,12 @@ const assertLedger8RecordEra = (
  * Reads back a record that only the ledger 8 era can have made, narrowing it to that era: the
  * record of an operation the era gate admits only on a pre-fork head.
  *
- * @throws UnknownLedgerVersionError if the record carries no era tag.
+ * @throws UnknownLedgerEraError if the record carries no era tag.
  * @throws EraInvariantViolationError if the record is not a ledger 8 one.
  */
 const requireLedger8Record = (
   record: FinalizedTxRead,
-  head: LedgerVersion,
+  head: LedgerEra,
   circuitId: string,
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
@@ -686,7 +686,7 @@ const toLedger8CallTxData = (
  */
 export interface Ledger8BuiltCall {
   readonly data: AnyLedger8UnsubmittedCallTxData;
-  readonly head: LedgerVersion;
+  readonly head: LedgerEra;
 }
 
 /**
@@ -710,7 +710,7 @@ export interface Ledger8BuiltCall {
  * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named with no private-state
  * provider.
  * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing stored under it.
- * @throws EraMismatchError, UnknownLedgerVersionError from era resolution.
+ * @throws EraMismatchError, UnknownLedgerEraError from era resolution.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched envelope's era
  * disagrees with the head.
  * @throws StateDecodeFailedError if the envelope will not decode on this era.
@@ -812,7 +812,7 @@ export const buildLedger8CallTx = async (
  * @returns The execution data of the call.
  * @throws InvalidArgumentError if the contract address is malformed, the artifact declares no such
  * circuit, or `options.config` is invalid.
- * @throws UnknownLedgerVersionError if `options.head`, or the era a state names, is not a ledger era.
+ * @throws UnknownLedgerEraError if `options.head`, or the era a state names, is not a ledger era.
  * @throws InvalidArgumentError if a state is not a serialized state.
  * @throws InvalidArgumentError if the state was written by a later ledger than `options.head`.
  * @throws InvalidSerializedStateError if a state's bytes do not carry the era it is labelled with.
@@ -842,7 +842,7 @@ export const buildLedger8CallTxFromStates = async (
     'ledgerParameters',
     'SerializedLedgerParameters'
   );
-  if (LEDGER_VERSIONS.indexOf(initialContractState.era) > LEDGER_VERSIONS.indexOf(head)) {
+  if (LEDGER_ERAS.indexOf(initialContractState.era) > LEDGER_ERAS.indexOf(head)) {
     throw new InvalidArgumentError(
       `options.initialContractState was written by the '${initialContractState.era}' ledger, but options.head ` +
         `is '${head}'. A contract state is never newer than the network it was read from: read the head and ` +
@@ -899,7 +899,7 @@ const submitBuiltLedger8Call = async (
   readonly txId: string;
   readonly circuitId: string;
   readonly callTxData: AnyLedger8UnsubmittedCallTxData;
-  readonly head: LedgerVersion;
+  readonly head: LedgerEra;
 }> => {
   const { data, head } = await buildLedger8CallTx(providers, options);
   const txId = await submitLedger8Tx(providers, data.private.unprovenTx, {
@@ -1029,7 +1029,7 @@ export const toLedger8DeployEntryOptions = (
  * rather than off any state, and only here -- behind the era and provider gates of the caller.
  */
 const composeLedger8Deploy = async (
-  era: LedgerEra,
+  era: LedgerEraFacade,
   engine: Ledger8ExecutionEngine<Ledger8StateValue>,
   zkConfigProvider: Pick<ZKConfigProvider<string>, 'getVerifierKeys'>,
   coinPublicKey: string,
@@ -1064,7 +1064,7 @@ export interface Ledger8BuiltDeploy {
    * {@link Ledger8BuiltCall.head} carries it: the finalizing step needs it to attribute the record
    * it fetches, and re-reading the head there could answer differently.
    */
-  readonly head: LedgerVersion;
+  readonly head: LedgerEra;
 }
 
 /**
