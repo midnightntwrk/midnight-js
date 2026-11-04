@@ -76,6 +76,7 @@ describe('the era and verification-path errors a caller has to catch are reachab
       'artifact-era-undeclared': 'serve-contract-info',
       'provider-cannot-declare-era': 'implement-the-member',
       'unknown-artifact-runtime-version': 'upgrade-midnight-js',
+      'ledger8-artifacts-in-ledger9-container': 'serve-ledger9-artifacts',
       'ledger8-deploy-on-ledger9-network': 'recompile-and-deploy',
       'ledger8-maintenance-on-ledger9-network': 'recompile-and-maintain',
       'ledger8-artifact-on-ledger9-contract': 'pass-ledger9-artifacts',

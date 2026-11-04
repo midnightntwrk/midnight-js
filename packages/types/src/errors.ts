@@ -19,7 +19,8 @@ import {
   type MidnightJsErrorCategory
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { FrameworkInstanceCheck } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { LEDGER_STATE_KINDS, type LedgerVersion, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { LedgerVersion, StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 /**
  * The provider methods that carry a transaction handle.
@@ -56,12 +57,23 @@ export type StateReadMethod = 'queryDeployContractState';
 export type ProviderMethod = TransactionMethod | ReadMethod | StateReadMethod;
 
 /**
+ * The {@link PublicDataProvider} methods that wait for data to appear and accept
+ * a bound on that wait.
+ */
+export type WatchOperation =
+  | 'watchForContractState'
+  | 'watchForUnshieldedBalances'
+  | 'watchForDeployTxData'
+  | 'watchForTxData';
+
+/**
  * Stable error-code strings for the providers.
  *
  * Most of the group belongs to the provider methods. Two sets do not, and are here
  * because this is the one provider-scoped group there is: `PRIVATE_STATE_NOT_SERIALIZABLE`
  * belongs to the private-state provider, and `INVALID_LEDGER_STATE`,
- * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to `SerializedState`.
+ * `LEDGER_STATE_DECODER_MISSING` and `LEDGER_STATE_DECODE_FAILED` belong to the serialized states
+ * (`SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`).
  *
  * Declared in this package because this is where the provider interfaces and the
  * transaction handle are defined, and where most of the classes live; two others
@@ -109,12 +121,13 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   TRANSACTION_ERA_MISMATCH: 'MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH',
   INVALID_LEDGER_STATE: 'MIDNIGHT_JS_PR_INVALID_LEDGER_STATE',
   LEDGER_STATE_DECODER_MISSING: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODER_MISSING',
-  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED'
+  LEDGER_STATE_DECODE_FAILED: 'MIDNIGHT_JS_PR_LEDGER_STATE_DECODE_FAILED',
+  WATCH_TIMED_OUT: 'MIDNIGHT_JS_PR_WATCH_TIMED_OUT'
 } as const);
 /** The union of every value in {@link PROVIDER_ERROR_CODES}. */
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-const { USAGE, ENVIRONMENT, TRANSIENT, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
+const { USAGE, ENVIRONMENT, TRANSIENT, UNCERTAIN, INTEGRITY, INTERNAL } = MIDNIGHT_JS_ERROR_CATEGORIES;
 
 export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, MidnightJsErrorCategory>> = Object.freeze({
   [PROVIDER_ERROR_CODES.DECODER_ERA_UNSUPPORTED]: ENVIRONMENT,
@@ -151,7 +164,8 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH]: USAGE,
   [PROVIDER_ERROR_CODES.INVALID_LEDGER_STATE]: USAGE,
   [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODER_MISSING]: USAGE,
-  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY
+  [PROVIDER_ERROR_CODES.LEDGER_STATE_DECODE_FAILED]: INTEGRITY,
+  [PROVIDER_ERROR_CODES.WATCH_TIMED_OUT]: UNCERTAIN
 });
 
 const {
@@ -178,7 +192,8 @@ const {
   TRANSACTION_ERA_MISMATCH,
   INVALID_LEDGER_STATE,
   LEDGER_STATE_DECODER_MISSING,
-  LEDGER_STATE_DECODE_FAILED
+  LEDGER_STATE_DECODE_FAILED,
+  WATCH_TIMED_OUT
 } = PROVIDER_ERROR_CODES;
 
 /**
@@ -429,30 +444,35 @@ export class TransactionEraMismatchError extends MidnightJsError {
 /**
  * Why {@link InvalidSerializedStateError} refused a value.
  *
- * - `'unknown-kind'`: the kind is not a {@link StateKind}.
  * - `'not-bytes'`: the value is not a `Uint8Array`.
  * - `'tag-mismatch'`: the bytes do not start with the tag the ledger of that era writes for that
  *   kind.
- * - `'not-from-bytes'`: the value was constructed without `SerializedState.fromBytes`.
+ * - `'not-from-bytes'`: the value was constructed without its class's `fromBytes`.
  */
-export type InvalidSerializedStateReason = 'unknown-kind' | 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+export type InvalidSerializedStateReason = 'not-bytes' | 'tag-mismatch' | 'not-from-bytes';
+
+const SERIALIZED_CLASS_NAMES: Readonly<Record<StateKind, string>> = {
+  ContractState: 'SerializedContractState',
+  LedgerParameters: 'SerializedLedgerParameters',
+  ZswapChainState: 'SerializedZswapChainState'
+};
 
 const INVALID_LEDGER_STATE_MESSAGES: Readonly<
-  Record<InvalidSerializedStateReason, (kind: string, era: string) => string>
+  Record<InvalidSerializedStateReason, (kind: StateKind, era: string) => string>
 > = {
-  'unknown-kind': (kind) =>
-    `Cannot build a SerializedState of kind '${kind}'. Use one of ${LEDGER_STATE_KINDS.map((known) => `'${known}'`).join(', ')}.`,
-  'not-bytes': (kind) => `Cannot build a ${kind} SerializedState: the value is not a Uint8Array.`,
+  'not-bytes': (kind) => `Cannot build a ${SERIALIZED_CLASS_NAMES[kind]}: the value is not a Uint8Array.`,
   'tag-mismatch': (kind, era) =>
     `The bytes are not a ${kind} written by the ${era} ledger. ` +
     `Pass the era of the ledger that wrote them, and check they hold a ${kind}.`,
-  'not-from-bytes': () => 'A SerializedState can only be made by SerializedState.fromBytes.'
+  'not-from-bytes': (kind) =>
+    `A ${SERIALIZED_CLASS_NAMES[kind]} can only be made by ${SERIALIZED_CLASS_NAMES[kind]}.fromBytes.`
 };
 
 /**
- * Thrown by `SerializedState.fromBytes` when the bytes are not a value of the given kind written by the
- * ledger of the given era, and by the `SerializedState` constructor when it is called without
- * `SerializedState.fromBytes`. The bytes are never quoted in the message.
+ * Thrown by the `fromBytes` of `SerializedContractState`, `SerializedLedgerParameters` and
+ * `SerializedZswapChainState` when the bytes are not a value of that kind written by the ledger of the
+ * given era, and by their constructors when called without `fromBytes`. The bytes are never quoted in
+ * the message.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
@@ -461,17 +481,17 @@ export class InvalidSerializedStateError extends MidnightJsError {
   readonly category = PROVIDER_ERROR_CATEGORIES[INVALID_LEDGER_STATE];
 
   /**
-   * @param kind The kind the caller named, or `undefined` when the constructor was called directly.
+   * @param kind The kind of value the class carries.
    * @param era The ledger era the caller named, or `undefined` when the constructor was called
    *   directly.
    * @param reason Why the value was refused.
    */
   constructor(
-    readonly kind: string | undefined,
+    readonly kind: StateKind,
     readonly era: LedgerVersion | undefined,
     readonly reason: InvalidSerializedStateReason
   ) {
-    super(INVALID_LEDGER_STATE_MESSAGES[reason](String(kind), String(era)));
+    super(INVALID_LEDGER_STATE_MESSAGES[reason](kind, String(era)));
     this.name = 'InvalidSerializedStateError';
   }
 }
@@ -492,7 +512,7 @@ const DECODER_SOURCE: Readonly<Record<StateKind, Readonly<Record<LedgerVersion, 
 };
 
 /**
- * Thrown by `SerializedState.deserialize` when the decoders passed in have none for the era of the
+ * Thrown by `deserialize` of a serialized state when the decoders passed in have none for the era of the
  * value. The message names the class to import.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
@@ -518,7 +538,7 @@ export class SerializedStateDecoderMissingError extends MidnightJsError {
 }
 
 /**
- * Thrown by `SerializedState.deserialize` when the decoder for the era of the value throws an error
+ * Thrown by `deserialize` of a serialized state when the decoder for the era of the value throws an error
  * that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
  * are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
  * cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The
@@ -574,9 +594,9 @@ export class InvalidProtocolSchemeError extends MidnightJsError {
  * An error indicating that a {@link ZKConfigProvider} cannot report which `compact-runtime` its
  * artifact set was compiled against.
  *
- * The retained-era pipeline establishes an artifact's era from that declared version, so a provider
- * that cannot serve it cannot be used with retained-era artifacts. Every provider this framework
- * ships can serve it; a provider written outside it may not, which is the case named here.
+ * Every contract operation establishes an artifact's era from that declared version, so a provider
+ * that cannot serve it cannot be used for contract operations. Every provider this framework ships
+ * can serve it; a provider written outside it may not, which is the case named here.
  *
  * Raised rather than answered with a default, because every default would be a guess about which
  * ledger era a caller's artifacts belong to.
@@ -876,5 +896,33 @@ export class PrivateStateLimitExceededError extends MidnightJsError {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = 'PrivateStateLimitExceededError';
+  }
+}
+
+/**
+ * Raised when a `watchFor*` call given `maxWaitMs` finds nothing within that
+ * bound. The wait is abandoned and polling stops. The data may still appear:
+ * if it depends on a transaction you submitted, check the chain before
+ * submitting again.
+ */
+export class WatchTimeoutError extends MidnightJsError {
+  readonly code = WATCH_TIMED_OUT;
+  readonly category = PROVIDER_ERROR_CATEGORIES[WATCH_TIMED_OUT];
+
+  /**
+   * @param operation The method that gave up waiting.
+   * @param target The transaction id or contract address it waited for.
+   * @param maxWaitMs The bound that elapsed.
+   */
+  constructor(
+    readonly operation: WatchOperation,
+    readonly target: ContractAddress | TransactionId,
+    readonly maxWaitMs: number
+  ) {
+    super(
+      `${operation} found nothing for ${target} within ${maxWaitMs} ms. It may still appear: ` +
+        `if it depends on a transaction you submitted, check the chain before submitting again.`
+    );
+    this.name = 'WatchTimeoutError';
   }
 }

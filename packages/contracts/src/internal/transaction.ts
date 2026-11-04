@@ -24,7 +24,7 @@ import {
   type LoggerProvider,
   type PrivateStateId,
   type PublicStatesRead,
-  SerializedState,
+  SerializedContractState,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -86,6 +86,43 @@ export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-j
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
+
+/**
+ * @internal The states a scope caches between its calls, decoded by the framework's own runtime.
+ */
+export interface ScopeStateCache<C extends Contract.Any> {
+  readonly [CacheStates]: (
+    states: Ledger9ContractStates<Contract.PrivateState<C>> | Ledger9PublicStates,
+    read: PublicStatesRead,
+    identity: CachedStateIdentity,
+    blockHash: string
+  ) => void;
+  readonly [GetCurrentStatesForIdentity]: (identity: CachedStateIdentity) => PinnedContractStates<Contract.PrivateState<C>> | undefined;
+}
+
+const hasScopeStateCache = <C extends Contract.Any>(context: object): context is ScopeStateCache<C> =>
+  typeof Reflect.get(context, CacheStates) === 'function' &&
+  typeof Reflect.get(context, GetCurrentStatesForIdentity) === 'function';
+
+/**
+ * @internal The state cache of a transaction context, or `undefined` when there is no context.
+ *
+ * @throws InvalidArgumentError if the context was not made by a scoped transaction.
+ */
+export const scopeStateCacheOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  context: Transaction.Ledger9TransactionContext<C, PCK> | undefined
+): ScopeStateCache<C> | undefined => {
+  if (context === undefined) {
+    return undefined;
+  }
+  if (!hasScopeStateCache<C>(context)) {
+    throw new InvalidArgumentError(
+      'The transaction context was not made by withContractScopedTransaction, so it holds no scope states. ' +
+        'Pass the context the scope handed to your function.'
+    );
+  }
+  return context;
+};
 
 const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
   current: Ledger9PayloadSubmitOptions<PCK> | undefined,
@@ -174,7 +211,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
 export class TransactionContextImpl<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C>
-> implements Transaction.Ledger9TransactionContext<C, PCK> {
+> implements Transaction.Ledger9TransactionContext<C, PCK>, ScopeStateCache<C> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
@@ -232,7 +269,7 @@ export class TransactionContextImpl<
       return undefined;
     }
     const { read, states } = this.cachedStates;
-    return { ...read, contractState: SerializedState.fromBytes('v9', 'ContractState', states.contractState.serialize()) };
+    return { ...read, contractState: SerializedContractState.fromBytes('v9', states.contractState.serialize()) };
   }
 
   [GetCurrentStatesForIdentity](
@@ -359,8 +396,8 @@ export const isTransactionContext = <
 /**
  * Refuses a retained-era call that was handed a scope to join.
  *
- * Reachable only from JavaScript today — the retained-era `submitCallTx`
- * overload declares no scope parameter — and still checked.
+ * Reachable only from JavaScript today — the retained-era `submitCallTx` and
+ * `createUnprovenCallTx` overloads declare no scope parameter — and still checked.
  *
  * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
  * scope is the mixed-era refusal; anything else is a malformed argument.
@@ -371,12 +408,17 @@ export const isTransactionContext = <
  * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
  * implementation signature widens both overloads, and a JavaScript caller can pass
  * anything at all here.
+ * @param entryPoint The public function the caller called, named in the refusal.
  * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if a real transaction context was passed.
  * @throws InvalidArgumentError if a third argument was passed that is not one.
  * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
  *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
  */
-export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionContext: unknown): void => {
+export const assertScopeAdmitsLedger8Call = (
+  circuitId: string,
+  transactionContext: unknown,
+  entryPoint: 'submitCallTx' | 'createUnprovenCallTx'
+): void => {
   if (transactionContext === undefined) {
     return;
   }
@@ -384,10 +426,10 @@ export const assertScopeAdmitsLedger8Call = (circuitId: string, transactionConte
     throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
   }
   throw new InvalidArgumentError(
-    `submitCallTx was passed a third argument that is not a transaction context (received ` +
+    `${entryPoint} was passed a third argument that is not a transaction context (received ` +
       `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
       `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
-      `submit this call as its own transaction.`
+      `run this call as its own transaction.`
   );
 };
 

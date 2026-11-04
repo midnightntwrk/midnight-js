@@ -107,6 +107,10 @@ A public name that serves only ledger 9 has `Ledger9` in it: `Ledger9CallOptions
 
 Every failed transaction is one `TxFailedError` in both eras; `operation` says which operation failed and `record` is the era-tagged record. A wrong-era fault is one `EraMismatchError` with a `reason`. The `Ledger8` namespace is removed; its errors are five flat `Ledger8*` classes. See [breaking-changes.md](./breaking-changes.md#25-one-error-class-per-fault-1557).
 
+### Every contract's artifacts declare their runtime version (#1526)
+
+Every contract operation, for ledger 9 contracts too, reads the `compact-runtime` version the artifacts declare (manifest `runtime-version` or `compiler/contract-info.json`). A custom `ZKConfigProvider` must override `getArtifactRuntimeVersion()`. A ledger 9 container served with ledger 8 artifacts is refused with `EraMismatchError` reason `'ledger8-artifacts-in-ledger9-container'`. See [breaking-changes.md](./breaking-changes.md#28-every-contracts-artifacts-must-declare-their-runtime-version-1526).
+
 ## New Features
 
 ### Cross-contract call support (#967)

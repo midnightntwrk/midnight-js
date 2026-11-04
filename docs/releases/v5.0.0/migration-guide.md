@@ -1389,15 +1389,35 @@ import { createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js/types';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js/protocol/v9';
 ```
 
-`createUnprovenCallTx`, `createUnprovenDeployTx`, `submitDeployTx`,
-`withContractScopedTransaction` and their siblings keep their names: they route on the era
-and refuse a ledger 8 contract with `EraMismatchError`. To call the ledger 9 body directly,
-use `createLedger9UnprovenCallTx` and the other `Ledger9` functions. Replace
+`createUnprovenCallTx`, `createUnprovenDeployTx`, `submitDeployTx` and their siblings keep
+their names: they route on the era, to the `Ledger9` function for a ledger 9 contract and to
+the `Ledger8` function for a ledger 8 one. `withContractScopedTransaction` refuses a ledger 8
+head with `EraMismatchError`. To call one era's body directly, use `createLedger9UnprovenCallTx`,
+`createLedger8UnprovenCallTx` and the other per-era functions. Replace
 `isTransactionContext` with `isLedger9TransactionContext`, and `submitTx<C, PCK>(…)` with
 `submitTx<PCK>(…)`. The barrel namespace `protocol` is `ledger9Protocol`.
 
 The full table is in
 [breaking-changes.md](./breaking-changes.md#26-every-name-bound-to-ledger-9-carries-the-ledger-number-1574).
+
+## Step 26 — Serve the runtime version with every contract's artifacts
+
+Every contract operation reads the `compact-runtime` version your artifacts declare, for ledger 9
+contracts too (#1526).
+
+- Serve the `compiler/` directory `compactc` emits from the same location as `keys/` and `zkir/`.
+  The shipped providers read `runtime-version` from `compiler/contract-manifest.json`, or from
+  `compiler/contract-info.json` when there is no manifest.
+- If you wrote your own `ZKConfigProvider`, override `getArtifactRuntimeVersion()` to return that
+  `runtime-version`. Without it every contract operation fails with `EraMismatchError` reason
+  `'provider-cannot-declare-era'`.
+
+If an operation fails with reason `'ledger8-artifacts-in-ledger9-container'`, the provider serves
+the artifacts of a contract built with the ledger 8 toolchain. Point it at the compiler output of
+the contract you pass.
+
+The details are in
+[breaking-changes.md](./breaking-changes.md#28-every-contracts-artifacts-must-declare-their-runtime-version-1526).
 
 ## Verification checklist
 
@@ -1415,7 +1435,7 @@ The full table is in
 - [ ] Every `switch` on `record.era` is closed with `assertNever`, so a future era variant cannot fall through unhandled.
 - [ ] Released to users before the fork, not merely merged before it.
 - [ ] Completion is measured by finalization, not by submit success.
-- [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact.
+- [ ] `ForkCrossedDuringOperationError` handled: confirm non-finalization by reading contract state at `error.contractAddress` for evidence of `error.circuitId`, then follow the second step for `error.kind` — re-run a `'call'`; for a `'deploy'` or a `'maintenance'` update, recompile with the ledger 9 toolchain and use that artifact; for a `'transaction'` from `submitTx`, build the transaction again. `error.contractAddress` is `undefined` for a `'transaction'`.
 - [ ] Every `submitInsertVerifierKeyTx` / `submitRemoveVerifierKeyTx` / `submitReplaceAuthorityTx` and maintenance-interface result is read under `.public` (`result.public.status`), narrowing on `era` where both eras reach the code.
 - [ ] Every retained-era handle reads the deployer's data under `deployTxData.private.*` and `deployTxData.public.*`, not at the top level.
 - [ ] Every retained-era signing key is passed as `{ tag: 'schnorr', value }`, and a `Ledger8UnconfirmedError` or `Ledger8NotStoredError` keeps the `signingKey` it carries.
@@ -1432,3 +1452,4 @@ The full table is in
 - [ ] No import of an `AnyEra*` name, of `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError` or `ReplaceMaintenanceAuthorityTxFailedError`, and no comparison against their old `error.name` strings.
 - [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.
 - [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from the bare `@midnight-ntwrk/midnight-js/protocol` subpath (without `/v9`).
+- [ ] Every artifact location serves `compiler/` beside `keys/` and `zkir/`, and every custom `ZKConfigProvider` overrides `getArtifactRuntimeVersion()` (Step 26).

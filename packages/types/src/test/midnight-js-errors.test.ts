@@ -40,6 +40,7 @@ import {
   SigningKeyExportError,
   TransactionEraMismatchError,
   UnusableEraEntryError,
+  WatchTimeoutError,
   ZkArtifactFetchError
 } from '../errors';
 import * as errors from '../errors';
@@ -68,6 +69,7 @@ describe('types error classes', () => {
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
     ['PrivateStateStorageError', new PrivateStateStorageError('msg')],
     ['PrivateStateLimitExceededError', new PrivateStateLimitExceededError('msg')],
+    ['WatchTimeoutError', new WatchTimeoutError('watchForTxData', 'abc', 5000)],
     ['ZKArtifactNotFoundError', new ZKArtifactNotFoundError(keyLocation)],
     ['ForeignLedgerTransactionError', new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded')],
     ['InvalidTransactionHandleError', new InvalidTransactionHandleError('LedgerTransaction.unwrap', 'not-a-handle', 'null')],
@@ -262,6 +264,19 @@ describe('types error classes', () => {
     // Assert
     expect(error.cause).toBe(operationFailure);
     expect(error.closeError).toBe(closeFailure);
+  });
+
+  it('WatchTimeoutError is uncertain and names what it waited for', () => {
+    const error = new WatchTimeoutError('watchForTxData', 'abc', 5000);
+
+    expect([error.code, error.category, error.operation, error.target, error.maxWaitMs]).toEqual([
+      'MIDNIGHT_JS_PR_WATCH_TIMED_OUT',
+      'UNCERTAIN',
+      'watchForTxData',
+      'abc',
+      5000
+    ]);
+    expect(error.message).toContain('watchForTxData found nothing for abc within 5000 ms');
   });
 
   it('ZKArtifactNotFoundError is an environment error', () => {

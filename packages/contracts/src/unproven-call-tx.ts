@@ -15,7 +15,7 @@
 
 import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type EncPublicKey, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -24,6 +24,7 @@ import { assertDefined, assertIsContractAddress, assertNever, assertValidMidnigh
 
 import type {
   Ledger9CallOptions,
+  Ledger9CallOptionsProviderDataDependencies,
   Ledger9CallOptionsWithArguments,
   Ledger9CallOptionsWithPrivateState,
   Ledger9CallOptionsWithProviderDataDependencies
@@ -32,18 +33,36 @@ import { type Ledger9ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import {
+  decodeLedger9InitialStates,
   decodeLedger9PublicStates,
   type Ledger9ContractStates,
   type Ledger9PublicStates,
+  requireLedger8Contract,
   requireLedger9Contract,
-  resolveArtifactEra,
-  unsupportedContractEra
+  resolveEraRequest
 } from './internal/era';
+import {
+  assertLedger8TransactionProviders,
+  buildLedger8CallTx,
+  buildLedger8CallTxFromStates,
+  toLedger8CallEntryOptions
+} from './internal/ledger8-entry';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
   zswapCallsToNewCoins
 } from './internal/utils';
+import type {
+  AnyLedger8CallOptionsWithInitialStates,
+  AnyLedger8CallTxOptions,
+  AnyLedger8UnsubmittedCallTxData,
+  Ledger8CallOptionsWithInitialStates,
+  Ledger8CallTxOptions,
+  Ledger8CircuitId,
+  Ledger8Contract,
+  Ledger8ContractProviders,
+  Ledger8UnsubmittedCallTxData
+} from './ledger8-contract';
 import { type Ledger9TransactionContext } from './transaction';
 import type { Ledger9UnsubmittedCallTxData } from './tx-model';
 
@@ -67,50 +86,23 @@ export interface Ledger9CrossContractConfig {
   readonly moduleProvider?: ContractModuleProvider;
 }
 
-export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
-  zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptionsWithProviderDataDependencies<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey,
-  crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
-
-export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
-  zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptionsWithPrivateState<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey,
-  crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
-
 /**
- * Calls a circuit using the provided initial `states` and creates an unbalanced,
- * unproven, unsubmitted, call transaction.
- *
- * @param zkConfigProvider
- * @param options Configuration.
- * @param walletEncryptionPublicKey
- * @param crossContract Enables cross-contract calls; required for circuits that make them.
- * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
- * @throws ConfigurationError If `options.config` is missing.
- * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
- *         whitespace.
- * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
- *
- * @remarks
- * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
- * the unproven transaction, ZK inputs/outputs, and next private state. See
- * that type for handling guidance before logging, serializing, or
- * transmitting the result.
+ * What a ledger 9 call needs besides its states: the circuit, its arguments, the caller's keys and
+ * the network settings.
  */
-export async function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+type Ledger9CallRequest<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = Ledger9CallOptionsWithArguments<C, PCK> &
+  Pick<Ledger9CallOptionsProviderDataDependencies, 'coinPublicKey' | 'config'>;
+
+const runLedger9Call = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptions<C, PCK>,
+  options: Ledger9CallRequest<C, PCK>,
+  states: Ledger9PublicStates,
+  initialPrivateState: Contract.PrivateState<C> | undefined,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  await requireLedger9Contract(options.compiledContract, zkConfigProvider, 'createLedger9UnprovenCallTxFromInitialStates');
-  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters, config } = options;
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> => {
+  const { compiledContract, contractAddress, coinPublicKey, config } = options;
+  const { contractState: initialContractState, zswapChainState: initialZswapChainState, ledgerParameters } = states;
   assertValidMidnightConfig(config, 'options.config');
   const { networkId } = config;
   assertIsContractAddress(contractAddress);
@@ -125,7 +117,6 @@ export async function createLedger9UnprovenCallTxFromInitialStates<C extends Con
   const contractRuntime = makeLedger9ContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: options.coinPublicKey
   });
-  const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
 
   // When cross-contract calls are enabled, callee states are resolved lazily, on demand, from the
@@ -243,7 +234,65 @@ export async function createLedger9UnprovenCallTxFromInitialStates<C extends Con
     if (!error.cause.isCompactError) throw error;
     throw new ContractExecutionError(error.cause.message, { cause: error });
   }
+};
+
+export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptionsWithProviderDataDependencies<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+
+export function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptionsWithPrivateState<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit using the provided initial `states` and creates an unbalanced,
+ * unproven, unsubmitted, call transaction.
+ *
+ * @param zkConfigProvider
+ * @param options Configuration.
+ * @param walletEncryptionPublicKey
+ * @param crossContract Enables cross-contract calls; required for circuits that make them.
+ * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
+ * @throws InvalidArgumentError If a state is not a serialized state, or the ledger parameters or the
+ *         zswap chain state were not written by the v9 ledger.
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` If the v8 ledger wrote
+ *         the contract state.
+ * @throws UnknownLedgerVersionError If a state names an era this build does not know.
+ * @throws InvalidSerializedStateError If a state's bytes are not of its kind and era.
+ * @throws SerializedStateDecodeFailedError, or the framework decoder's coded error, If the bytes after
+ *         a tag do not decode.
+ * @throws ConfigurationError If `options.config` is missing.
+ * @throws InvalidArgumentError If its `networkId` is not a non-empty string without surrounding
+ *         whitespace.
+ * @throws InvalidArgumentError If `options.config.ttlSeconds` is not a positive whole number, or overflows a `Date`.
+ *
+ * @remarks
+ * The returned {@link Ledger9UnsubmittedCallTxData} is privacy-sensitive and carries
+ * the unproven transaction, ZK inputs/outputs, and next private state. See
+ * that type for handling guidance before logging, serializing, or
+ * transmitting the result.
+ */
+export async function createLedger9UnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger9CallOptions<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: Ledger9CrossContractConfig
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
+  await requireLedger9Contract(options.compiledContract, zkConfigProvider, 'createLedger9UnprovenCallTxFromInitialStates');
+  const states = decodeLedger9InitialStates(options, options.contractAddress, 'createLedger9UnprovenCallTxFromInitialStates');
+  const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
+  return runLedger9Call(zkConfigProvider, options, states, initialPrivateState, walletEncryptionPublicKey, crossContract);
 }
+
 
 /**
  * Base type for configuration for a call transaction; identical to {@link Ledger9CallOptionsWithArguments}.
@@ -273,40 +322,21 @@ export type Ledger9CallTxOptions<C extends Contract.Any, PCK extends Contract.Pr
   | Ledger9CallTxOptionsBase<C, PCK>
   | Ledger9CallTxOptionsWithPrivateStateId<C, PCK>;
 
-const createCallOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+const createCallRequest = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   callTxOptions: Ledger9CallTxOptions<C, PCK>,
   coinPublicKey: CoinPublicKey,
-  ledgerParameters: LedgerParameters,
-  initialContractState: ContractState,
-  initialZswapChainState: ZswapChainState,
-  config: MidnightConfig,
-  initialPrivateState?: Contract.PrivateState<C>
-): Ledger9CallOptions<C, PCK> => {
-  const callOptionsBase = {
+  config: MidnightConfig
+): Ledger9CallRequest<C, PCK> => {
+  const request = {
     additionalCoinEncPublicKeyMappings: callTxOptions.additionalCoinEncPublicKeyMappings,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
-    circuitId: callTxOptions.circuitId
-  };
-  const callOptionsWithArguments =
-    'args' in callTxOptions
-      ? {
-          ...callOptionsBase,
-          args: callTxOptions.args
-        }
-      : callOptionsBase;
-  const callOptionsBaseWithProviderDataDependencies = {
-    ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, config.networkId),
-    initialContractState,
-    initialZswapChainState,
-    ledgerParameters,
+    circuitId: callTxOptions.circuitId,
+    ...('args' in callTxOptions ? { args: callTxOptions.args } : {}),
+    coinPublicKey,
     config
   };
-  const callOptions = initialPrivateState
-    ? { ...callOptionsBaseWithProviderDataDependencies, initialPrivateState }
-    : callOptionsBaseWithProviderDataDependencies;
-  return callOptions as Ledger9CallOptions<C, PCK>;
+  return request as Ledger9CallRequest<C, PCK>;
 };
 
 /**
@@ -333,7 +363,8 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
-  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  const cache = Transaction.scopeStateCacheOf(transactionContext);
+  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (cached) {
     return { states: cached.states as Ledger9ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
@@ -349,9 +380,7 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     ...decodeLedger9PublicStates(publicStates, options.contractAddress, 'createUnprovenCallTx'),
     privateState
   };
-  if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states, publicStates, identity, blockHash);
-  }
+  cache?.[Transaction.CacheStates](states, publicStates, identity, blockHash);
   return { states, blockHash };
 };
 
@@ -361,16 +390,15 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<{ readonly states: Ledger9PublicStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
-  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  const cache = Transaction.scopeStateCacheOf(transactionContext);
+  const cached = cache?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (cached) {
     return { states: cached.states, blockHash: cached.blockHash };
   }
   const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const read = await getPublicStates(providers.publicDataProvider, options.contractAddress, blockHash);
   const states = decodeLedger9PublicStates(read, options.contractAddress, 'createUnprovenCallTx');
-  if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
-  }
+  cache?.[Transaction.CacheStates]({ ...states, privateState: undefined }, read, identity, blockHash);
   return { states, blockHash };
 };
 
@@ -424,8 +452,10 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @returns A promise that contains all data produced by the circuit call and an unproven
  *          transaction assembled from the call result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
- *         do not declare ledger 9, before anything else.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
+ *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
+ *         ledger 8, before anything else.
+ * @throws InvalidArgumentError If `transactionContext` was not made by `withContractScopedTransaction`.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
@@ -466,44 +496,137 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
   // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const {
-      states: { zswapChainState, contractState, privateState, ledgerParameters },
-      blockHash
-    } = await getContractStates(providers, options, transactionContext);
-    return createLedger9UnprovenCallTxFromInitialStates(
+    const { states, blockHash } = await getContractStates(providers, options, transactionContext);
+    return runLedger9Call(
       providers.zkConfigProvider,
-      createCallOptions(
+      createCallRequest(
         options,
         parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-        ledgerParameters,
-        contractState,
-        zswapChainState,
-        providers.config,
-        privateState
+        providers.config
       ),
+      states,
+      states.privateState,
       providers.walletProvider.getEncryptionPublicKey(),
       { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
     );
   }
 
-  const {
-    states: { zswapChainState, contractState, ledgerParameters },
-    blockHash
-  } = await getContractPublicStates(providers, options, transactionContext);
-  return createLedger9UnprovenCallTxFromInitialStates(
+  const { states, blockHash } = await getContractPublicStates(providers, options, transactionContext);
+  return runLedger9Call(
     providers.zkConfigProvider,
-    createCallOptions(
+    createCallRequest(
       options,
       parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), providers.config.networkId),
-      ledgerParameters,
-      contractState,
-      zswapChainState,
       providers.config
     ),
+    states,
+    undefined,
     providers.walletProvider.getEncryptionPublicKey(),
     { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
   );
 }
+
+export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit of a ledger 8 contract against the state read from the network and the private
+ * state read from the private state provider, then creates an unproven, unsubmitted call
+ * transaction. Proves, submits and stores nothing.
+ *
+ * The transaction is composed for the network's ledger: before the fork it is a ledger 8
+ * transaction, after it a ledger 9 one that keeps the contract's ledger 8 verifier keys. Read which from
+ * `result.private.unprovenTx.era`, and pass the transaction to `submitTx` or `submitTxAsync`.
+ * Storing `result.private.nextPrivateState` is the caller's job, once the transaction is final.
+ *
+ * @param providers The providers to use to create the call transaction. `privateStateProvider`, when
+ *        given, is pointed at `options.contractAddress`; its state is read only when
+ *        `options.privateStateId` is given.
+ * @param options Configuration.
+ *
+ * @returns All data produced by the circuit call and the unproven transaction.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, before anything else.
+ * @throws InvalidArgumentError If the contract address is malformed, the artifact declares no such
+ *         circuit, or `providers.config` is invalid.
+ * @throws ConfigurationError If `providers.config` is missing.
+ * @throws ProviderEraUnsupportedError If a transaction provider does not serve the network's ledger era.
+ * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a
+ *         `privateStateProvider` was not.
+ * @throws PrivateStateNotFoundError If the private state provider holds nothing under the given
+ *         `privateStateId`.
+ * @throws Ledger8CallUnsupportedError If the circuit spends a coin the contract already holds, or pays
+ *         a recipient whose encryption key is unknown.
+ *
+ * @remarks
+ * The returned {@link Ledger8UnsubmittedCallTxData} is privacy-sensitive and carries the unproven
+ * transaction, ZK inputs/outputs, and next private state. See that type for handling guidance
+ * before logging, serializing, or transmitting the result.
+ */
+export async function createLedger8UnprovenCallTx(
+  providers: Ledger8ContractProviders<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>,
+  options: AnyLedger8CallTxOptions
+): Promise<AnyLedger8UnsubmittedCallTxData> {
+  await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger8UnprovenCallTx');
+  return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(options))).data;
+}
+
+export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger8CallOptionsWithInitialStates<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+
+/**
+ * Calls a circuit of a ledger 8 contract against states the caller read itself, then creates an
+ * unproven, unsubmitted call transaction. Reads neither the network head nor the contract state, and
+ * stores nothing; the ZK config provider is still read for the contract's artifacts.
+ *
+ * `options.head` decides the transaction's ledger: `'v8'` builds a ledger 8 transaction, `'v9'` a
+ * ledger 9 one that keeps the contract's ledger 8 verifier keys. The fork translates the contract's
+ * state, so after it the state is a ledger 9 one; pass the states as a read returns them.
+ *
+ * @param zkConfigProvider The source of the circuit's verifier key and of the artifact era.
+ * @param options Configuration, including the states to run against.
+ * @param walletEncryptionPublicKey The calling wallet's encryption key.
+ *
+ * @returns All data produced by the circuit call and the unproven transaction.
+ *
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
+ *         do not declare ledger 8, before anything else.
+ * @throws InvalidArgumentError If the contract address is malformed, the artifact declares no such
+ *         circuit, `options.config` is invalid, or the contract state was written by a later ledger
+ *         than `options.head`.
+ * @throws ConfigurationError If `options.config` is missing.
+ * @throws UnknownLedgerVersionError If `options.head`, or the era a state names, is not a ledger era.
+ * @throws InvalidArgumentError If a state is not a serialized state.
+ * @throws InvalidSerializedStateError If a state's bytes do not carry the kind and era it names.
+ * @throws PublicStatesEraMismatchError If the ledger parameters were written by another ledger than
+ *         `options.head`.
+ * @throws Ledger8CallUnsupportedError If the circuit spends a coin the contract already holds, or pays
+ *         a recipient whose encryption key is unknown.
+ *
+ * @remarks
+ * The returned {@link Ledger8UnsubmittedCallTxData} is privacy-sensitive. See that type for
+ * handling guidance before logging, serializing, or transmitting the result.
+ */
+export async function createLedger8UnprovenCallTxFromInitialStates(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: AnyLedger8CallOptionsWithInitialStates,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<AnyLedger8UnsubmittedCallTxData> {
+  await requireLedger8Contract(options.compiledContract, zkConfigProvider, 'createLedger8UnprovenCallTxFromInitialStates');
+  return buildLedger8CallTxFromStates(zkConfigProvider, options, walletEncryptionPublicKey);
+}
+
+export function createUnprovenCallTxFromInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  options: Ledger8CallOptionsWithInitialStates<C, PCK>,
+  walletEncryptionPublicKey: EncPublicKey
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -521,31 +644,46 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
 
 /**
  * Creates an unproven call transaction from the provided initial states, for a contract of the era
- * its artifacts declare. A ledger 9 contract runs {@link createLedger9UnprovenCallTxFromInitialStates}, whose documentation covers
+ * its artifacts declare. A ledger 9 contract runs {@link createLedger9UnprovenCallTxFromInitialStates}, a
+ * ledger 8 contract {@link createLedger8UnprovenCallTxFromInitialStates}; their documentation covers
  * the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
- *         function does not serve, after the artifact era is read and before anything else, and with
- *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
+ * @throws InvalidArgumentError If `crossContract` is given for a ledger 8 contract.
  */
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
-  options: Ledger9CallOptions<C, PCK>,
+  options: Ledger9CallOptions<C, PCK> | AnyLedger8CallOptionsWithInitialStates,
   walletEncryptionPublicKey: EncPublicKey,
   crossContract?: Ledger9CrossContractConfig
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  const era = await resolveArtifactEra(options.compiledContract, zkConfigProvider);
-  switch (era) {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
+  const request = await resolveEraRequest<AnyLedger8CallOptionsWithInitialStates, Ledger9CallOptions<C, PCK>>(
+    options,
+    zkConfigProvider
+  );
+  switch (request.era) {
     case 'v9':
-      return createLedger9UnprovenCallTxFromInitialStates(zkConfigProvider, options, walletEncryptionPublicKey, crossContract);
+      return createLedger9UnprovenCallTxFromInitialStates(zkConfigProvider, request.options, walletEncryptionPublicKey, crossContract);
     case 'v8':
-      throw unsupportedContractEra('createUnprovenCallTxFromInitialStates', era);
+      if (crossContract !== undefined) {
+        throw new InvalidArgumentError(
+          'createUnprovenCallTxFromInitialStates was passed a crossContract config for a ledger 8 contract. A ' +
+            'ledger 8 contract makes no cross-contract calls; omit the argument.'
+        );
+      }
+      return buildLedger8CallTxFromStates(zkConfigProvider, request.options, walletEncryptionPublicKey);
     default:
-      return assertNever(era, 'createUnprovenCallTxFromInitialStates');
+      return assertNever(request, 'createUnprovenCallTxFromInitialStates');
   }
 }
+
+export async function createUnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, PCK>,
+  options: Ledger8CallTxOptions<C, PCK>
+): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 export async function createUnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
@@ -561,27 +699,36 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
 
 /**
  * Creates an unproven call transaction for a contract of the era its artifacts declare. A ledger 9
- * contract runs {@link createLedger9UnprovenCallTx}, whose documentation covers
- * the parameters and the privacy-sensitive result.
+ * contract runs {@link createLedger9UnprovenCallTx}, a ledger 8 contract {@link createLedger8UnprovenCallTx};
+ * their documentation covers the parameters and the privacy-sensitive result.
  *
- * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of an era this
- *         function does not serve, after the artifact era is read and before anything else, and with
- *         the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 8 contract called with a
+ *         transaction context: a ledger 8 call cannot join a scoped transaction.
+ * @throws InvalidArgumentError for a ledger 8 contract given without `publicDataProvider`,
+ *         `proofProvider` or `midnightProvider`, before the network is read.
+ *
+ * @throws EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-contract'`,
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
- *         `'unknown-artifact-runtime-version'`. A failure of the ZK config provider propagates unchanged.
+ *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
+ *         ZK config provider propagates unchanged.
  */
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
-  options: Ledger9CallTxOptions<C, PCK>,
+  options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: Ledger9TransactionContext<C, PCK>
-): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  const era = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  switch (era) {
+): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
+  const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
     case 'v9':
-      return createLedger9UnprovenCallTx(providers, options, transactionContext);
+      return createLedger9UnprovenCallTx(providers, request.options, transactionContext);
     case 'v8':
-      throw unsupportedContractEra('createUnprovenCallTx', era);
+      Transaction.assertScopeAdmitsLedger8Call(request.options.circuitId, transactionContext, 'createUnprovenCallTx');
+      assertLedger8TransactionProviders(providers, 'createUnprovenCallTx');
+      return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(request.options))).data;
     default:
-      return assertNever(era, 'createUnprovenCallTx');
+      return assertNever(request, 'createUnprovenCallTx');
   }
 }

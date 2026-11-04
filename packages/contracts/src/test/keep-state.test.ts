@@ -45,12 +45,17 @@ import {
   type LedgerEra,
   loadLedger8Protocol,
   loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type ContractStateAndParametersRead,
   type ContractStateRead,
   type FinalizedTx,
+  InvalidSerializedStateError,
   LedgerTransaction,
+  SerializedContractState,
+  SerializedLedgerParameters,
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
@@ -72,8 +77,10 @@ import {
   runLedger8CallPipeline
 } from '../internal/ledger8-pipeline';
 import { createEncryptionPublicKeyResolver } from '../internal/utils';
-import type { Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
+import type { Ledger8CallOptionsWithInitialStates, Ledger8CallTxOptions, Ledger8ContractProviders } from '../ledger8-contract';
 import { submitCallTx } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
+import { createLedger8UnprovenCallTx, createLedger8UnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { finalizedLike, handles, unboundLike } from './ledger-transaction-fixtures';
 import type { CoinReceiver016Contract, CoinReceiver016Module } from './ledger8-fixture-types';
 
@@ -428,6 +435,208 @@ describe('the keep-state pipeline (previous-toolchain contract, post-fork head)'
     expect(providers.publicDataProvider.watchForTxData).toHaveBeenCalledWith('keep-state-tx-id');
     expect(providers.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
     expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledTimes(1);
+  });
+
+  it('createLedger8UnprovenCallTx builds a v9 keep-state handle that submitTx submits on this head', async () => {
+    const providers = postForkProviders(v6Envelope);
+
+    const built = await createLedger8UnprovenCallTx(providers, callOptions());
+    const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx, circuitId: CIRCUIT_ID });
+
+    expect(built.era).toBe('v8');
+    expect(built.private.unprovenTx.era).toBe('v9');
+    expect(providers.seen.proveTx).toBe(built.private.unprovenTx);
+    expect(record.era).toBe('v9');
+  });
+
+  describe('createLedger8UnprovenCallTxFromInitialStates', () => {
+    const fromStates = async (
+      providers: RetainedProviders,
+      states: Pick<
+        Ledger8CallOptionsWithInitialStates<CoinReceiver016Contract, typeof CIRCUIT_ID>,
+        'head' | 'initialContractState' | 'ledgerParameters'
+      >
+    ) =>
+      createLedger8UnprovenCallTxFromInitialStates(
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          ...states,
+          coinPublicKey: recording.coinPublicKey,
+          config: { networkId: NETWORK_ID, ttlSeconds: 3600 }
+        },
+        providers.walletProvider.getEncryptionPublicKey()
+      );
+
+    const ledger9Parameters = () => SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize());
+
+    it('builds a v9 keep-state handle from a retained state the caller read, reading nothing from the network', async () => {
+      const providers = postForkProviders(v6Envelope);
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.era).toBe('v8');
+      expect(built.private.unprovenTx.era).toBe('v9');
+      expect(built.private.result).toStrictEqual(recording.transcript.result);
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+      expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+    });
+
+    it('builds a v9 handle from a ledger 9 state the caller read', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const built = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: SerializedContractState.fromBytes('v9', ledger9Envelope),
+        ledgerParameters: ledger9Parameters()
+      });
+
+      expect(built.private.unprovenTx.era).toBe('v9');
+    });
+
+    it('refuses a ledger 9 state on a ledger 8 head as a caller mistake, not a fork crossing', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+
+      const rejection = await fromStates(providers, {
+        head: 'v8',
+        initialContractState: SerializedContractState.fromBytes('v9', ledger9Envelope),
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect((rejection as InvalidArgumentError).message).toContain('options.initialContractState');
+      expect((rejection as InvalidArgumentError).message).toContain('options.head');
+      expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses a head that names no ledger era before comparing it with the state', async () => {
+      const providers = postForkProviders(v6Envelope);
+
+      const rejection = await fromStates(providers, {
+        // @ts-expect-error - a JavaScript caller that left the head out
+        head: undefined,
+        initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+        ledgerParameters: ledger9Parameters()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses ledger parameters of another era than the head, before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const { LedgerParameters: Ledger8Parameters } = await loadLedger8Protocol();
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+
+      const rejection = await fromStates(providers, {
+        head: 'v9',
+        initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+        ledgerParameters: SerializedLedgerParameters.fromBytes('v8', Ledger8Parameters.initialParameters().serialize())
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(PublicStatesEraMismatchError);
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    const callFromStatesWith = (providers: RetainedProviders, states: Record<string, unknown>): Promise<unknown> =>
+      Reflect.apply(createLedger8UnprovenCallTxFromInitialStates, undefined, [
+        providers.zkConfigProvider,
+        {
+          ...callOptions(),
+          head: 'v9',
+          ledgerParameters: ledger9Parameters(),
+          ...states,
+          coinPublicKey: recording.coinPublicKey,
+          config: { networkId: NETWORK_ID, ttlSeconds: 3600 }
+        },
+        providers.walletProvider.getEncryptionPublicKey()
+      ]);
+
+    it('refuses a state from another types copy labelled with an era its bytes do not carry', async () => {
+      const providers = postForkProviders(ledger9Envelope);
+      const mislabelled = { era: 'v8', serialize: () => ledger9Envelope };
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: mislabelled }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidSerializedStateError);
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('accepts states made by a second installed copy of the types package', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const fromAnotherTypesCopy = (state: { readonly era: string; serialize(): Uint8Array }) => ({
+        era: state.era,
+        serialize: () => state.serialize()
+      });
+
+      const built = await callFromStatesWith(providers, {
+        initialContractState: fromAnotherTypesCopy(SerializedContractState.fromBytes('v8', v6Envelope)),
+        ledgerParameters: fromAnotherTypesCopy(ledger9Parameters())
+      });
+
+      expect(built).toMatchObject({ era: 'v8', private: { unprovenTx: { era: 'v9' } } });
+    });
+
+    it.each([
+      ['initialContractState', () => ContractState.deserialize(ledger9Envelope)],
+      ['ledgerParameters', () => LedgerParameters.initialParameters()]
+    ] as const)('refuses a decoded object in place of %s before the circuit runs', async (field, decoded) => {
+      const providers = postForkProviders(v6Envelope);
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+
+      const rejection = await callFromStatesWith(providers, {
+        initialContractState: SerializedContractState.fromBytes('v8', v6Envelope),
+        [field]: decoded()
+      }).catch((error: unknown) => error);
+
+      expect(rejection).toBeInstanceOf(InvalidArgumentError);
+      expect(rejection).toMatchObject({ message: expect.stringMatching(new RegExp(`^options\\.${field} is not a Serialized`)) });
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    it('refuses a state whose era this build does not know as an unknown ledger version', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const fromNewerTypesCopy = { era: 'v10', serialize: () => v6Envelope };
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: fromNewerTypesCopy }).catch(
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(UnknownLedgerVersionError);
+      expect(rejection).toMatchObject({ requestedVersion: 'v10' });
+      expect(providers.zkConfigProvider.getVerifierKey).not.toHaveBeenCalled();
+    });
+
+    it('refuses forged bytes behind a valid tag with a coded error before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+      const log: OrchestrationLog = [];
+      engineSlot.engine = createReplayEngine(recording, log);
+      const forged = SerializedContractState.fromBytes('v8', new TextEncoder().encode(`${LEDGER_STATE_TAGS.ContractState.v8}:forged`));
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: forged }).catch((error: unknown) => error);
+
+      expect(rejection).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, category: 'INTEGRITY' });
+      expect(log).not.toContain('engine.executeCircuit');
+    });
+
+    it('refuses a state of another kind before the circuit runs', async () => {
+      const providers = postForkProviders(v6Envelope);
+
+      const rejection = await callFromStatesWith(providers, { initialContractState: ledger9Parameters() }).catch(
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(InvalidSerializedStateError);
+      expect(rejection).toMatchObject({ kind: 'ContractState', reason: 'tag-mismatch' });
+    });
   });
 
   it('passes the providers.config TTL to the wallet on the current-era path', async () => {

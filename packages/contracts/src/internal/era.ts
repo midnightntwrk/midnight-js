@@ -20,10 +20,10 @@ import {
   protocolVersionToLedger,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
-  CURRENT_LEDGER_VERSION,
   LEDGER_VERSIONS,
   type StateKind
 } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -37,12 +37,15 @@ import {
   type PublicDataProvider,
   type PublicStatesRead,
   type ReadMethod,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   type TransactionMethod,
   type TransactionStage,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import {
+  assertNever,
   deserializeLedger9CompactContractState,
   deserializeLedger9Parameters,
   deserializeLedger9ZswapChainState,
@@ -120,17 +123,11 @@ type StateReadMethod = 'queryContractState' | 'queryDeployContractState' | 'quer
 
 const isLedgerVersion = (value: unknown): value is LedgerVersion => LEDGER_VERSIONS.some((era) => era === value);
 
-/**
- * The `SerializedState` of this copy of the types package for a state a provider served, or `undefined`
- * when the value names no era this build knows. A `SerializedState` made by a second installed copy
- * of the types package fails `SerializedState.isSerializedState`, so every state is rebuilt from its bytes,
- * which checks the tag again. The tag also tells the kinds apart, so a state of another kind is
- * refused by it.
- *
- * @throws InvalidSerializedStateError if the value does not serialize to bytes (`not-bytes`), or the
- * bytes are not a `kind` written by the era the value names (`tag-mismatch`).
- */
-export const ownSerializedState = <K extends StateKind>(value: unknown, kind: K): SerializedState<K> | undefined => {
+const ownSerialized = <T>(
+  value: unknown,
+  kind: StateKind,
+  fromBytes: (era: LedgerVersion, bytes: Uint8Array) => T
+): T | undefined => {
   if (typeof value !== 'object' || value === null) {
     return undefined;
   }
@@ -143,40 +140,80 @@ export const ownSerializedState = <K extends StateKind>(value: unknown, kind: K)
   if (!(bytes instanceof Uint8Array)) {
     throw new InvalidSerializedStateError(kind, era, 'not-bytes');
   }
-  return SerializedState.fromBytes(era, kind, bytes);
+  return fromBytes(era, bytes);
 };
 
-const requireLedger9Read = (
+/**
+ * The `SerializedContractState` of this copy of the types package for a state a provider or a caller
+ * handed in, or `undefined` when the value names no era this build knows. A state made by a second
+ * installed copy of the types package fails the class guard, so every state is rebuilt from its
+ * bytes, which checks the tag again. The tag also tells the kinds apart, so a state of another kind
+ * is refused by it.
+ *
+ * @throws InvalidSerializedStateError if the value does not serialize to bytes (`not-bytes`), or the
+ * bytes are not a contract state written by the era the value names (`tag-mismatch`).
+ */
+export const ownContractState = (value: unknown): SerializedContractState | undefined =>
+  ownSerialized(value, 'ContractState', SerializedContractState.fromBytes);
+
+/** {@link ownContractState} for ledger parameters. */
+export const ownLedgerParameters = (value: unknown): SerializedLedgerParameters | undefined =>
+  ownSerialized(value, 'LedgerParameters', SerializedLedgerParameters.fromBytes);
+
+/** {@link ownContractState} for a zswap chain state. */
+export const ownZswapChainState = (value: unknown): SerializedZswapChainState | undefined =>
+  ownSerialized(value, 'ZswapChainState', SerializedZswapChainState.fromBytes);
+
+/**
+ * The contract state of a read, rebuilt by this copy of the types package.
+ *
+ * @throws UnknownLedgerVersionError if the record carries no state of a known era, such as a state
+ *   in the shape of a pre-5.0.0 provider.
+ * @throws InvalidSerializedStateError if the state's bytes are not a contract state of its era.
+ */
+export const requireContractStateRead = (read: ContractStateRead, servedBy: StateReadMethod): SerializedContractState => {
+  const contractState: unknown = read?.contractState;
+  const state = ownContractState(contractState);
+  if (state === undefined) {
+    throw new UnknownLedgerVersionError(eraTagOf(contractState), servedBy);
+  }
+  return state;
+};
+
+/**
+ * The contract state of a read, which a ledger 9 operation can run on only when the v9 ledger wrote
+ * it.
+ *
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote the state.
+ * @throws Everything {@link requireContractStateRead} raises.
+ */
+export const requireLedger9ContractStateRead = (
   read: ContractStateRead,
   contractAddress: string,
   operation: string,
   servedBy: StateReadMethod
-): SerializedState<'ContractState'> => {
-  const contractState: unknown = read?.contractState;
-  const state = ownSerializedState(contractState, 'ContractState');
-  if (state === undefined) {
-    throw new UnknownLedgerVersionError(eraTagOf(contractState), servedBy);
-  }
+): SerializedContractState<'v9'> => {
+  const state = requireContractStateRead(read, servedBy);
   if (state.era === 'v8') {
     throw new EraMismatchError('ledger8-contract-state-unsupported', {
       detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
       contractAddress
     });
   }
-  return state;
+  return SerializedContractState.fromBytes('v9', state.serialize());
 };
 
-const requireLedger9Companion = <F extends 'ledgerParameters' | 'zswapChainState'>(
+const requireLedger9Companion = <T extends { readonly era: LedgerVersion }>(
   read: PublicStatesRead,
-  field: F,
-  kind: PublicStatesRead[F]['kind'],
+  field: 'ledgerParameters' | 'zswapChainState',
+  own: (value: unknown) => T | undefined,
   contractAddress: string
-): SerializedState<PublicStatesRead[F]['kind']> => {
+): T => {
   const served: unknown = read[field];
   if (served === undefined || served === null) {
     throw new PublicStatesEraMismatchError(contractAddress, field, 'v9', undefined);
   }
-  const state = ownSerializedState(served, kind);
+  const state = own(served);
   if (state === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(served), 'queryZSwapAndContractState');
   }
@@ -213,9 +250,29 @@ export const decodeLedger9ContractState = (
   operation: string,
   servedBy: StateReadMethod
 ): ContractState => {
-  const state = requireLedger9Read(read, contractAddress, operation, servedBy);
+  const state = requireLedger9ContractStateRead(read, contractAddress, operation, servedBy);
   const caller = `${CONTRACTS_PACKAGE}:${operation}`;
   return state.deserialize({ v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) } });
+};
+
+const decodeLedger9States = (
+  contractState: SerializedContractState,
+  ledgerParameters: SerializedLedgerParameters,
+  zswapChainState: SerializedZswapChainState,
+  operation: string
+): Ledger9PublicStates => {
+  const caller = `${CONTRACTS_PACKAGE}:${operation}`;
+  return {
+    contractState: contractState.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9CompactContractState(bytes, { caller }) }
+    }),
+    ledgerParameters: ledgerParameters.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
+    }),
+    zswapChainState: zswapChainState.deserialize({
+      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
+    })
+  };
 };
 
 /**
@@ -234,20 +291,106 @@ export const decodeLedger9PublicStates = (
   contractAddress: string,
   operation: string
 ): Ledger9PublicStates => {
-  requireLedger9Read(read, contractAddress, operation, 'queryZSwapAndContractState');
-  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', 'LedgerParameters', contractAddress);
-  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', 'ZswapChainState', contractAddress);
-  const contractState = decodeLedger9ContractState(read, contractAddress, operation, 'queryZSwapAndContractState');
-  const caller = `${CONTRACTS_PACKAGE}:${operation}`;
-  return {
-    contractState,
-    ledgerParameters: ledgerParameters.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedger9Parameters(bytes, { caller }) }
-    }),
-    zswapChainState: zswapChainState.deserialize({
-      v9: { deserialize: (bytes) => deserializeLedger9ZswapChainState(bytes, { caller }) }
-    })
-  };
+  const contractState = requireLedger9ContractStateRead(read, contractAddress, operation, 'queryZSwapAndContractState');
+  const ledgerParameters = requireLedger9Companion(read, 'ledgerParameters', ownLedgerParameters, contractAddress);
+  const zswapChainState = requireLedger9Companion(read, 'zswapChainState', ownZswapChainState, contractAddress);
+  return decodeLedger9States(contractState, ledgerParameters, zswapChainState, operation);
+};
+
+/** The states a caller hands to a ledger 9 call, as the options name them. */
+export interface Ledger9InitialStates {
+  readonly initialContractState: SerializedContractState;
+  readonly initialZswapChainState: SerializedZswapChainState;
+  readonly ledgerParameters: SerializedLedgerParameters;
+}
+
+/**
+ * Refuses a value that names an era this build does not know, such as a serialized state made by a
+ * newer installed copy of the types package.
+ *
+ * @throws UnknownLedgerVersionError if the value carries an `era` that is not a ledger era.
+ */
+export const refuseUnknownEra = (value: unknown): void => {
+  const era = eraTagOf(value);
+  if (era !== undefined) {
+    throw new UnknownLedgerVersionError(era);
+  }
+};
+
+/**
+ * A state a caller passed in an option, rebuilt by this copy of the types package.
+ *
+ * @throws UnknownLedgerVersionError if the value names an era this build does not know.
+ * @throws InvalidArgumentError if the value is not a serialized state.
+ * @throws InvalidSerializedStateError if its bytes are not of the expected kind and era.
+ */
+export const requireStateOption = <T extends { readonly era: LedgerVersion }>(
+  value: unknown,
+  own: (value: unknown) => T | undefined,
+  option: string,
+  className: string
+): T => {
+  const state = own(value);
+  if (state === undefined) {
+    refuseUnknownEra(value);
+    throw new InvalidArgumentError(
+      `options.${option} is not a ${className}. Pass the field of a PublicDataProvider read as it is, ` +
+        `or build one with ${className}.fromBytes(era, bytes).`
+    );
+  }
+  return state;
+};
+
+const requireLedger9OptionEra = <T extends { readonly era: LedgerVersion }>(state: T, option: keyof Ledger9InitialStates): T => {
+  if (state.era !== 'v9') {
+    throw new InvalidArgumentError(
+      `options.${option} was written by the ${state.era} ledger, but a ledger 9 call runs on v9 states. ` +
+        `Read the states of one block after the fork and pass them together.`
+    );
+  }
+  return state;
+};
+
+/**
+ * Decodes the states a caller passed to a ledger 9 call, with the framework's own runtime. Every
+ * state is rebuilt from its bytes first, so one made by a second installed copy of the types package
+ * is accepted. The zswap chain state has the same tag in both eras, so its era is the one it names.
+ *
+ * @throws UnknownLedgerVersionError if a state names an era this build does not know.
+ * @throws InvalidArgumentError if a state is not a serialized state, or the ledger parameters or the
+ *   zswap chain state were not written by the v9 ledger.
+ * @throws EraMismatchError with reason `'ledger8-contract-state-unsupported'` if the v8 ledger wrote
+ *   the contract state.
+ * @throws InvalidSerializedStateError if a state's bytes are not of its kind and era.
+ * @throws SerializedStateDecodeFailedError, or the decoder's own coded error, if the bytes after the
+ *   tag do not decode.
+ */
+export const decodeLedger9InitialStates = (
+  states: Ledger9InitialStates,
+  contractAddress: string,
+  operation: string
+): Ledger9PublicStates => {
+  const contractState = requireStateOption(
+    states.initialContractState,
+    ownContractState,
+    'initialContractState',
+    'SerializedContractState'
+  );
+  if (contractState.era === 'v8') {
+    throw new EraMismatchError('ledger8-contract-state-unsupported', {
+      detail: `Contract address: ${contractAddress}. Operation: ${operation}.`,
+      contractAddress
+    });
+  }
+  const zswapChainState = requireLedger9OptionEra(
+    requireStateOption(states.initialZswapChainState, ownZswapChainState, 'initialZswapChainState', 'SerializedZswapChainState'),
+    'initialZswapChainState'
+  );
+  const ledgerParameters = requireLedger9OptionEra(
+    requireStateOption(states.ledgerParameters, ownLedgerParameters, 'ledgerParameters', 'SerializedLedgerParameters'),
+    'ledgerParameters'
+  );
+  return decodeLedger9States(contractState, ledgerParameters, zswapChainState, operation);
 };
 
 const requireRecordHandle = <R extends FinalizedTxRead>(
@@ -435,6 +578,13 @@ const hasOwnProperty = <K extends string>(value: object, key: K): value is objec
 /** What the artifact's own shape can establish, which is never an era on its own. */
 type ArtifactShape = 'ledger9-container' | 'ledger8-candidate';
 
+// The one era each shape admits. The era itself always comes from the artifacts' declaration;
+// the shape only refuses a declaration that contradicts it.
+const ERA_OF_SHAPE = Object.freeze({
+  'ledger9-container': 'v9',
+  'ledger8-candidate': 'v8'
+} as const satisfies Record<ArtifactShape, LedgerVersion>);
+
 /**
  * The one read {@link resolveArtifactEra} makes on the ZK config provider.
  *
@@ -458,8 +608,7 @@ const eraOfRuntimeVersion = (runtimeVersion: string): LedgerVersion | undefined 
 };
 
 /**
- * Reads what the caller's contract object can prove about itself, WITHOUT deciding an era for a
- * retained candidate.
+ * Reads what the caller's contract object can prove about itself. It never decides an era.
  *
  * A STRUCTURAL check, and it must not be "improved" to test the vendor's registered
  * `CompiledContract` brand: that brand sits on a prototype the container's own combinators drop,
@@ -483,11 +632,11 @@ const artifactShapeOf = (compiledContract: unknown): ArtifactShape => {
   if (!hasOwnProperty(compiledContract, 'impureCircuits')) {
     // The container carries a `tag` and none of the circuit collections. The `tag`'s VALUE is
     // chosen by the caller (`CompiledContract.make(tag, ctor)`) and says nothing about an era; what
-    // places this object is that only the current toolchain's container has this shape, and that
+    // identifies this object is that only the ledger 9 toolchain's container has this shape, and that
     // the property is an OWN one, so it survives both the spread its own combinators perform and
-    // any build step -- which is why this branch needs no artifact read. Requiring the `tag` as well
+    // any build step. The era still comes from the artifacts' declaration. Requiring the `tag` as well
     // as the absence of `impureCircuits` is what stops an arbitrary object -- `{}` included -- from
-    // being routed into the current-era pipeline by default.
+    // being routed into the ledger 9 pipeline by default.
     if (hasOwnProperty(compiledContract, 'tag') && typeof compiledContract.tag === 'string') {
       return 'ledger9-container';
     }
@@ -531,32 +680,31 @@ export const hasLedger8ContractShape = <L extends Ledger8Contract>(compiledContr
 /**
  * Decides which pipeline a caller's contract belongs to, from what the artifact DECLARES.
  *
- * Two answers, one per era, and neither rests on a property of generated JavaScript that a
- * consumer's build can rewrite. The current era arrives wrapped in a container whose own `tag`
- * survives every build step, so recognising that container is enough. The retained era has no such
- * container, so it is placed by the `runtime-version` its artifact set declares. The shape of the
- * generated code is consulted only to refuse.
+ * Every contract is placed by the `runtime-version` its artifact set declares, never by a property
+ * of generated JavaScript that a consumer's build can rewrite. The shape of the caller's object is
+ * consulted only to refuse: a ledger 9 container must declare a ledger 9 toolchain, and a ledger 8
+ * candidate a ledger 8 one.
  *
- * The artifact set is read ONLY for a retained candidate, so a current-era caller pays no round trip
- * for this and needs no file it does not already ship.
+ * The declaration is read for both shapes, so the answer does not depend on which era is current.
  *
  * @param compiledContract The value a caller passed as its contract.
  * @param source The ZK config provider serving that contract's artifacts.
  * @returns The pipeline that contract belongs to.
  * @throws EraMismatchError with reason `'unrecognised-contract-shape'` or
  * `'unwrapped-ledger9-contract'` before the provider is consulted at all;
- * `'artifact-era-undeclared'` when the provider cannot report a runtime version, carrying its
- * failure on `cause`; and `'unknown-artifact-runtime-version'` for a toolchain this framework
- * cannot place.
+ * `'artifact-era-undeclared'` when the artifacts do not declare a runtime version, and
+ * `'provider-cannot-declare-era'` when the provider cannot report one, each carrying its failure on
+ * `cause`; `'unknown-artifact-runtime-version'` for a toolchain this framework cannot place;
+ * `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare the
+ * ledger 8 toolchain; and `'unwrapped-ledger9-contract'` for a ledger 8 candidate whose artifacts
+ * declare the ledger 9 toolchain.
  * @see {@link EraDispatch} for the table this implements and why the era may not be inferred.
  */
 export const resolveArtifactEra = async (
   compiledContract: unknown,
   source: ArtifactRuntimeVersionSource
 ): Promise<LedgerVersion> => {
-  if (artifactShapeOf(compiledContract) === 'ledger9-container') {
-    return CURRENT_LEDGER_VERSION;
-  }
+  const shape = artifactShapeOf(compiledContract);
 
   let runtimeVersion: string;
   try {
@@ -581,11 +729,15 @@ export const resolveArtifactEra = async (
       detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
     });
   }
-  // A retained SHAPE whose artifacts declare the current toolchain is the mistake this dispatch
-  // exists to catch: a current-era contract passed raw, with its `async` erased by the caller's
-  // build. It reads as retained and is not.
-  if (era === CURRENT_LEDGER_VERSION) {
-    throw new EraMismatchError('unwrapped-ledger9-contract');
+  if (era !== ERA_OF_SHAPE[shape]) {
+    // A container whose artifacts declare ledger 8 is served another contract's artifacts. A
+    // retained SHAPE whose artifacts declare ledger 9 is a ledger 9 contract passed raw, with its
+    // `async` erased by the caller's build: it reads as retained and is not.
+    throw shape === 'ledger9-container'
+      ? new EraMismatchError('ledger8-artifacts-in-ledger9-container', {
+          detail: `The artifacts declare compact-runtime ${runtimeVersion}.`
+        })
+      : new EraMismatchError('unwrapped-ledger9-contract');
   }
 
   return era;
@@ -615,39 +767,118 @@ export const requireLedger9Contract = async (
 };
 
 /**
- * {@link resolveArtifactEra}'s answer, in the narrowing form each era-dispatching entry point needs.
+ * Reads the era the contract's artifacts declare and refuses any era but ledger 8.
  *
- * Not a second decision: the era is established in exactly one place, and this only gives that
- * established value a type predicate so an entry point's body can drop the retained-era variant from its
- * parameter union without a cast.
+ * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract of another era,
+ *         and the refusals of {@link resolveArtifactEra}.
+ */
+export const requireLedger8Contract = async (
+  compiledContract: unknown,
+  source: ArtifactRuntimeVersionSource,
+  functionName: string
+): Promise<void> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  if (era !== 'v8') {
+    throw unsupportedContractEra(functionName, era);
+  }
+};
+
+/**
+ * The type predicate {@link resolveEraRequest} uses to tag a router's options with the era
+ * {@link resolveArtifactEra} resolved.
  *
- * Name the type parameter explicitly at each call site rather than letting it infer, so the
- * narrowing removes exactly the retained-era variant of that entry point's parameter union.
+ * Not a second decision: it reads only `era`, and narrows the options without a cast.
  *
  * @see {@link EraDispatch} for how `era` was established.
  *
- * @param _options The options object an entry point received. Read by the type system only -- the
- *                 decision was made from the artifact's declaration, not from this object.
+ * @param _options The options a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that object's contract.
  * @returns Whether this is a retained-era request.
  */
-export const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
+const isLedger8Request = <L extends { readonly compiledContract: Ledger8Contract }>(
   _options: { readonly compiledContract: unknown } | L,
   era: LedgerVersion
 ): _options is L => era === 'v8';
 
 /**
- * {@link isLedger8Request} for an entry point that takes the contract as its own argument rather than
- * on an options object: the governance functions.
+ * {@link isLedger8Request} for {@link resolveContractEraRequest}, which takes the contract as its
+ * own argument rather than on an options object.
  *
- * @param _compiledContract The contract an entry point received. Read by the type system only.
+ * @param _compiledContract The contract a router received. Read by the type system only.
  * @param era The era {@link resolveArtifactEra} resolved for that contract.
  * @returns Whether this is a retained-era contract.
  */
-export const isLedger8Contract = <C extends object>(
+const isLedger8Contract = <C extends object>(
   _compiledContract: C | Ledger8Contract,
   era: LedgerVersion
 ): _compiledContract is Ledger8Contract => era === 'v8';
+
+/** A router's options, tagged with the era their contract's artifacts declare. */
+export type EraRequest<L8, L9> =
+  | { readonly era: 'v8'; readonly options: L8 }
+  | { readonly era: 'v9'; readonly options: L9 };
+
+// Compile-time gate: a new ledger era must get a variant here, and through it a case in every router.
+type _EveryEraHasARequest = Assert<[LedgerVersion] extends [EraRequest<unknown, unknown>['era']] ? true : false>;
+
+/**
+ * Reads the era the contract's artifacts declare -- the one artifact read of a routed operation --
+ * and tags the options with it.
+ *
+ * @param options The options a router received.
+ * @param source The artifact runtime version source, normally `zkConfigProvider`.
+ * @returns The options, tagged with their era.
+ * @throws The refusals of {@link resolveArtifactEra}.
+ */
+export const resolveEraRequest = async <
+  L8 extends { readonly compiledContract: Ledger8Contract },
+  L9 extends { readonly compiledContract: unknown }
+>(
+  options: L8 | L9,
+  source: ArtifactRuntimeVersionSource
+): Promise<EraRequest<L8, L9>> => {
+  const era = await resolveArtifactEra(options.compiledContract, source);
+  switch (era) {
+    case 'v8':
+    case 'v9':
+      return isLedger8Request<L8>(options, era) ? { era: 'v8', options } : { era: 'v9', options };
+    default:
+      return assertNever(era, 'resolveEraRequest');
+  }
+};
+
+/** A governance router's contract, tagged with the era its artifacts declare. */
+export type ContractEraRequest<C> =
+  | { readonly era: 'v8'; readonly compiledContract: Ledger8Contract }
+  | { readonly era: 'v9'; readonly compiledContract: C };
+
+// Compile-time gate: a new ledger era must get a variant here, and through it a case in every governance router.
+type _EveryEraHasAContractRequest = Assert<
+  [LedgerVersion] extends [ContractEraRequest<unknown>['era']] ? true : false
+>;
+
+/**
+ * {@link resolveEraRequest} for a router that takes the contract as its own argument rather than on
+ * an options object: the governance functions.
+ *
+ * @param compiledContract The contract a router received.
+ * @param source The artifact runtime version source, normally `zkConfigProvider`.
+ * @returns The contract, tagged with its era.
+ * @throws The refusals of {@link resolveArtifactEra}.
+ */
+export const resolveContractEraRequest = async <C extends object>(
+  compiledContract: C | Ledger8Contract,
+  source: ArtifactRuntimeVersionSource
+): Promise<ContractEraRequest<C>> => {
+  const era = await resolveArtifactEra(compiledContract, source);
+  switch (era) {
+    case 'v8':
+    case 'v9':
+      return isLedger8Contract(compiledContract, era) ? { era: 'v8', compiledContract } : { era: 'v9', compiledContract };
+    default:
+      return assertNever(era, 'resolveContractEraRequest');
+  }
+};
 
 /**
  * Makes the ONE head read and resolves it to an era, acquiring nothing.
@@ -811,10 +1042,8 @@ export const assertEraCompatible = (
   head: LedgerVersion,
   kind: SubmittedOperationKind
 ): void => {
-  // Defence in depth, not a live boundary: both call sites pass literals today
-  // (`internal/ledger8-entry.ts`) and this module is not reachable from outside the package. The
-  // guards are here so that a future call site threading a value through cannot quietly widen what
-  // the table admits.
+  // A live boundary: `buildLedger8CallTxFromStates` passes the caller's `options.head` straight
+  // through, so the head here can be any value a JavaScript caller wrote.
   //
   // The `typeof` checks are load-bearing and are NOT redundant with the parameter types. A member
   // access coerces its key -- `ToPropertyKey` runs `toString` -- so an object, a `String` wrapper
@@ -883,7 +1112,7 @@ export const assertEraCompatible = (
  * costs the whole keep-state path: every post-fork call that meets a retained envelope is refused,
  * and the error blames the read surface for serving exactly what it is supposed to serve.
  *
- * The envelope's era is `state.contractState.era`: `SerializedState.fromBytes` refuses bytes whose
+ * The envelope's era is `state.contractState.era`: `SerializedContractState.fromBytes` refuses bytes whose
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
@@ -905,7 +1134,7 @@ export const assertEraCompatible = (
  * disagreement that was under investigation is not lost behind a bare transport error.
  * @throws NetworkVersionStateMismatchError if a fresh head read agrees with the state's era.
  * @throws IndexerInconsistencyError if a fresh head read still disagrees with it.
- * @throws UnknownLedgerVersionError if the contract state is not a `SerializedState`: the shape of a
+ * @throws UnknownLedgerVersionError if the contract state is not a `SerializedContractState`: the shape of a
  * pre-5.0.0 provider.
  */
 export const resolveContractStateEra = async (
@@ -915,7 +1144,7 @@ export const resolveContractStateEra = async (
   logger?: BreadcrumbSink
 ): Promise<LedgerVersion> => {
   const served: unknown = state?.contractState;
-  const contractState = ownSerializedState(served, 'ContractState');
+  const contractState = ownContractState(served);
   if (contractState === undefined) {
     throw new UnknownLedgerVersionError(eraTagOf(served), 'queryContractState');
   }

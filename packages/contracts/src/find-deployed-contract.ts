@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type ContractAddress,
-  type ContractState,
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -25,8 +25,14 @@ import {
   type AnyProvableCircuitId,
   type FinalizedTxRead,  type PrivateStateId,
   type PrivateStateProvider,
+  type SerializedContractState,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertIsContractAddress,
+  assertNever,
+  deserializeLedger9CompactContractState,
+  toHex
+} from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import {
@@ -41,7 +47,14 @@ import {
   type Ledger9CircuitMaintenanceTxInterfaces,
   type Ledger9ContractMaintenanceTxInterface} from './governance/tx-interfaces';
 import { type BreadcrumbSink, emitLedger8SigningKeyEntry } from './internal/breadcrumbs';
-import { decodeLedger9ContractState, isLedger8Request, requireTaggedRecord, resolveArtifactEra } from './internal/era';
+import {
+  ownContractState,
+  refuseUnknownEra,
+  requireContractStateRead,
+  requireLedger9ContractStateRead,
+  requireTaggedRecord,
+  resolveEraRequest
+} from './internal/era';
 import { findLedger8Contract } from './internal/ledger8-entry';
 import {
   fromStoredLedger8SigningKey,
@@ -87,14 +100,18 @@ const queryFoundDeployTxPublicData = async (
   deployRecord: FinalizedTxRead,
   contractAddress: ContractAddress
 ): Promise<FoundDeployTxPublicData> => {
+  const deployState = requireDeployedContract(
+    await publicDataProvider.queryDeployContractState(contractAddress),
+    contractAddress
+  );
   switch (deployRecord.era) {
     case 'v8':
-      return { ...deployRecord, contractAddress };
+      return {
+        ...deployRecord,
+        contractAddress,
+        initialContractState: requireContractStateRead(deployState, 'queryDeployContractState')
+      };
     case 'v9': {
-      const deployState = requireDeployedContract(
-        await publicDataProvider.queryDeployContractState(contractAddress),
-        contractAddress
-      );
       const stateEra: unknown = deployState?.contractState?.era;
       if (stateEra === 'v8') {
         throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
@@ -102,7 +119,12 @@ const queryFoundDeployTxPublicData = async (
       return {
         ...deployRecord,
         contractAddress,
-        initialContractState: decodeLedger9ContractState(deployState, contractAddress, 'findDeployedContract', 'queryDeployContractState')
+        initialContractState: requireLedger9ContractStateRead(
+          deployState,
+          contractAddress,
+          'findDeployedContract',
+          'queryDeployContractState'
+        )
       };
     }
     default:
@@ -270,6 +292,23 @@ const setOrGetInitialPrivateState = async <PS>(
 export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
   a.length === b.length && toHex(a) === toHex(b);
 
+interface VerifiableContractState {
+  operation(circuitId: string): { readonly verifierKey?: Uint8Array } | undefined;
+}
+
+const decodeForVerification = async (contractState: SerializedContractState): Promise<VerifiableContractState> => {
+  if (contractState.era === 'v8') {
+    const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+    return contractState.deserialize({ v8: { deserialize: (bytes): VerifiableContractState => Ledger8ContractState.deserialize(bytes) } });
+  }
+  return contractState.deserialize({
+    v9: {
+      deserialize: (bytes): VerifiableContractState =>
+        deserializeLedger9CompactContractState(bytes, { caller: '@midnight-ntwrk/midnight-js-contracts:verifyContractState' })
+    }
+  });
+};
+
 /**
  * Checks that the given `contractState` contains the given `verifierKeys`.
  *
@@ -279,23 +318,42 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
  * artifacts are at fault.
  *
  * @param verifierKeys The verifier keys the client has for the deployed contract we're checking.
- * @param contractState The (typically already deployed) contract state containing verifier keys.
+ * @param contractState The (typically already deployed) contract state containing verifier keys, of
+ *                      either ledger era, as a read returns it: pass `read.contractState`. A state
+ *                      written by the v8 ledger loads the ledger 8 runtime to be decoded.
  * @param contractAddress The address `contractState` was read from, used to identify the contract
  *                        in the thrown error.
  *
+ * @throws UnknownLedgerVersionError When `contractState` names an era this build does not know.
+ * @throws InvalidArgumentError When `contractState` is not a `SerializedContractState`.
+ * @throws InvalidSerializedStateError When its bytes are not a contract state of its era, for example
+ *                                     ledger parameters, or a state from another copy of the types
+ *                                     package whose bytes carry another tag.
+ * @throws SerializedStateDecodeFailedError, or the framework decoder's coded error, When the bytes
+ *                                     after the tag do not decode.
+ * @throws Ledger8RuntimeMissingError When a v8 state is passed and the ledger 8 runtime cannot load.
  * @throws ContractTypeError When any circuit is missing from `contractState`, has no deployed
  *                           verifier key, or has a key differing from the local one.
  */
-export const verifyContractState = (
+export const verifyContractState = async (
   verifierKeys: [AnyProvableCircuitId, VerifierKey][],
-  contractState: ContractState,
+  contractState: SerializedContractState,
   contractAddress?: ContractAddress
-): void => {
+): Promise<void> => {
+  const state = ownContractState(contractState);
+  if (state === undefined) {
+    refuseUnknownEra(contractState);
+    throw new InvalidArgumentError(
+      'verifyContractState was passed a contractState that is not a SerializedContractState. Pass ' +
+        '`read.contractState` of a PublicDataProvider read as it is.'
+    );
+  }
+  const decoded = await decodeForVerification(state);
   const missing: AnyProvableCircuitId[] = [];
   const keyless: AnyProvableCircuitId[] = [];
   const mismatched: AnyProvableCircuitId[] = [];
   for (const [circuitId, localVk] of verifierKeys) {
-    const operation = contractState.operation(circuitId);
+    const operation = decoded.operation(circuitId);
     if (operation === undefined) {
       missing.push(circuitId);
       continue;
@@ -311,7 +369,7 @@ export const verifyContractState = (
     }
   }
   if (missing.length > 0 || keyless.length > 0 || mismatched.length > 0) {
-    throw new ContractTypeError(contractState, { missing, keyless, mismatched }, contractAddress);
+    throw new ContractTypeError(state, { missing, keyless, mismatched }, contractAddress);
   }
 };
 
@@ -422,6 +480,136 @@ export interface Ledger9FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: Ledger9ContractMaintenanceTxInterface;
 }
 
+const ledger8FindFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: AnyLedger8FindDeployedContractOptions
+): Promise<AnyLedger8FoundContract> => {
+  const found = await findLedger8Contract(providers, {
+    contract: options.compiledContract,
+    contractAddress: options.contractAddress,
+    // EVERY circuit the artifact declares, off the ARTIFACT rather than off
+    // the state -- see the attach section of `docs/keep-state-pipeline.md` for
+    // what this costs and why both eras pay it.
+    circuitIds: Object.keys(options.compiledContract.provableCircuits)
+  });
+  // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
+  // providers and is a pure READ path -- widening it to write would put the one storage decision
+  // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
+  // so both eras reach the same rule from this file.
+  //
+  // AFTER the attach, for the order `ledger9FindFlow` uses: a state seeded for a contract
+  // whose verifier keys turn out not to match would outlive a find that failed.
+  //
+  // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
+  // namespaces every private-state entry by the address last named and refuses a `get` or a
+  // `set` before any has been named, so the write below would otherwise either throw or land
+  // under whichever contract the process touched last -- and a later call, which names this
+  // address itself, would read its own key, find nothing, and report nothing.
+  //
+  // The signing-key calls further down need NONE of that: both take the address as an argument.
+  // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
+  // many words that it does not require `setContractAddress` first, and the level-backed provider
+  // keys those entries by the argument.
+  providers.privateStateProvider.setContractAddress(options.contractAddress);
+  // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
+  // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
+  // refusal arrives at ATTACH time rather than at the first call.
+  //
+  // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: this
+  // flow takes the widened `AnyLedger8FindDeployedContractOptions`, so no narrower private state is
+  // in scope here. The `findDeployedContract` overloads are what type the caller.
+  const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
+    providers.privateStateProvider,
+    options
+  );
+  const signingKey = await setOrGetLedger8SigningKey(
+    providers.privateStateProvider,
+    options.contractAddress,
+    options.signingKey,
+    providers.loggerProvider
+  );
+  return {
+    era: 'v8',
+    compiledContract: options.compiledContract,
+    contractAddress: options.contractAddress,
+    deployTxData: {
+      era: 'v8',
+      public: {
+        ...found.deployTxData,
+        contractAddress: options.contractAddress,
+        initialContractState: found.initialContractState
+      },
+      private: { signingKey, initialPrivateState }
+    },
+    // Built AFTER the attach has checked every declared circuit's key, so a
+    // handle a caller receives is one whose circuits the chain can serve.
+    callTx: createLedger8CircuitCallTxInterface(
+      providers,
+      options.compiledContract,
+      options.contractAddress,
+      options.privateStateId
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, options.contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, options.contractAddress)
+  };
+};
+
+const ledger9FindFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders<C>,
+  options: Ledger9FindDeployedContractOptions<C>
+): Promise<Ledger9FoundContract<C>> => {
+  const { compiledContract, contractAddress } = options;
+  assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
+
+  const deployRecord = requireTaggedRecord(
+    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
+    'watchForDeployTxData'
+  );
+  const deployPublicData = await queryFoundDeployTxPublicData(
+    providers.publicDataProvider,
+    deployRecord,
+    contractAddress
+  );
+
+  const currentContractState = requireLedger9ContractStateRead(
+    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
+    contractAddress,
+    'findDeployedContract',
+    'queryContractState'
+  );
+
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
+    ContractExecutable.make(compiledContract).getProvableCircuitIds()
+  );
+  await verifyContractState(verifierKeys, currentContractState, contractAddress);
+
+  const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
+  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
+
+  return {
+    era: 'v9',
+    compiledContract,
+    contractAddress,
+    deployTxData: {
+      era: 'v9',
+      private: {
+        signingKey,
+        initialPrivateState
+      },
+      public: deployPublicData
+    },
+    callTx: createCircuitCallTxInterface(
+      providers,
+      compiledContract,
+      contractAddress,
+      'privateStateId' in options ? options.privateStateId : undefined
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
+  };
+};
+
 /*
  * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
@@ -501,7 +689,7 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws EraInvariantViolationError A v9 deploy record whose deploy state the provider tags v8. The
  *                                    error names `contractAddress`.
  * @throws UnknownLedgerVersionError The deploy record carries no readable era tag.
- * @throws UnknownLedgerVersionError The deploy state is not a `SerializedState`: the shape of a pre-5.0.0
+ * @throws UnknownLedgerVersionError The deploy state is not a `SerializedContractState`: the shape of a pre-5.0.0
  *                                 provider.
  * @throws InvalidArgumentError Thrown if `contractAddress` is not correctly formatted as a contract address.
  * @throws ContractTypeError One or more circuits defined on `contract` are undefined on the contract
@@ -512,7 +700,8 @@ export async function findDeployedContract<C extends Contract.Any>(
  * @throws EraMismatchError If `options.compiledContract` belongs to neither Compact era, or
  *                                  is a raw current-era contract instance passed instead of its
  *                                  `CompiledContract` container, or its artifacts declare no
- *                                  toolchain this framework can place. Raised before anything is
+ *                                  toolchain this framework can place or the other era's
+ *                                  toolchain. Raised before anything is
  *                                  read from the chain; the ZK config provider is asked for the
  *                                  artifacts' declared runtime version, and no other provider is
  *                                  consulted.
@@ -521,122 +710,16 @@ export async function findDeployedContract<C extends Contract.Any>(
   providers: Ledger9ContractProviders<C>,
   options: Ledger9FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
 ): Promise<Ledger9FoundContract<C> | AnyLedger8FoundContract> {
-  const artifactEra = await resolveArtifactEra(options.compiledContract, providers.zkConfigProvider);
-  if (isLedger8Request<AnyLedger8FindDeployedContractOptions>(options, artifactEra)) {
-    const found = await findLedger8Contract(providers, {
-      contract: options.compiledContract,
-      contractAddress: options.contractAddress,
-      // EVERY circuit the artifact declares, off the ARTIFACT rather than off
-      // the state -- see the attach section of `docs/keep-state-pipeline.md` for
-      // what this costs and why both eras pay it.
-      circuitIds: Object.keys(options.compiledContract.provableCircuits)
-    });
-    // Seeded HERE rather than inside `findLedger8Contract`, which takes a three-member `Pick` of the
-    // providers and is a pure READ path -- widening it to write would put the one storage decision
-    // this path makes behind the era-specific chain reads. Client-side storage is era-independent,
-    // so both eras reach the same rule from this file.
-    //
-    // AFTER the attach, for the order the current-era path below uses: a state seeded for a contract
-    // whose verifier keys turn out not to match would outlive a find that failed.
-    //
-    // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
-    // namespaces every private-state entry by the address last named and refuses a `get` or a
-    // `set` before any has been named, so the write below would otherwise either throw or land
-    // under whichever contract the process touched last -- and a later call, which names this
-    // address itself, would read its own key, find nothing, and report nothing.
-    //
-    // The signing-key calls further down need NONE of that: both take the address as an argument.
-    // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
-    // many words that it does not require `setContractAddress` first, and the level-backed provider
-    // keys those entries by the argument.
-    providers.privateStateProvider.setContractAddress(options.contractAddress);
-    // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
-    // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
-    // refusal arrives at ATTACH time rather than at the first call.
-    //
-    // At the era top type, which is what `Ledger8PrivateState<Ledger8Contract>` resolves to: the
-    // implementation signature has already widened the retained options to
-    // `AnyLedger8FindDeployedContractOptions`, so no narrower private state is in scope here. The
-    // overloads above are what type the caller.
-    const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
-      providers.privateStateProvider,
-      options
-    );
-    const signingKey = await setOrGetLedger8SigningKey(
-      providers.privateStateProvider,
-      options.contractAddress,
-      options.signingKey,
-      providers.loggerProvider
-    );
-    return {
-      era: 'v8',
-      compiledContract: options.compiledContract,
-      contractAddress: options.contractAddress,
-      deployTxData: {
-        era: 'v8',
-        public: { ...found.deployTxData, contractAddress: options.contractAddress },
-        private: { signingKey, initialPrivateState }
-      },
-      // Built AFTER the attach has checked every declared circuit's key, so a
-      // handle a caller receives is one whose circuits the chain can serve.
-      callTx: createLedger8CircuitCallTxInterface(
-        providers,
-        options.compiledContract,
-        options.contractAddress,
-        options.privateStateId
-      ),
-      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, options.compiledContract, options.contractAddress),
-      contractMaintenanceTx: createContractMaintenanceTxInterface(providers, options.compiledContract, options.contractAddress)
-    };
+  const request = await resolveEraRequest<AnyLedger8FindDeployedContractOptions, Ledger9FindDeployedContractOptions<C>>(
+    options,
+    providers.zkConfigProvider
+  );
+  switch (request.era) {
+    case 'v8':
+      return ledger8FindFlow(providers, request.options);
+    case 'v9':
+      return ledger9FindFlow(providers, request.options);
+    default:
+      return assertNever(request, 'findDeployedContract');
   }
-  const { compiledContract, contractAddress } = options;
-  assertIsContractAddress(contractAddress);
-  providers.privateStateProvider.setContractAddress(contractAddress);
-
-  const deployRecord = requireTaggedRecord(
-    await providers.publicDataProvider.watchForDeployTxData(contractAddress),
-    'watchForDeployTxData'
-  );
-  const deployPublicData = await queryFoundDeployTxPublicData(
-    providers.publicDataProvider,
-    deployRecord,
-    contractAddress
-  );
-
-  const currentContractState = decodeLedger9ContractState(
-    requireDeployedContract(await providers.publicDataProvider.queryContractState(contractAddress), contractAddress),
-    contractAddress,
-    'findDeployedContract',
-    'queryContractState'
-  );
-
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
-    ContractExecutable.make(compiledContract).getProvableCircuitIds()
-  );
-  verifyContractState(verifierKeys, currentContractState, contractAddress);
-
-  const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
-  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
-
-  return {
-    era: 'v9',
-    compiledContract,
-    contractAddress,
-    deployTxData: {
-      era: 'v9',
-      private: {
-        signingKey,
-        initialPrivateState
-      },
-      public: deployPublicData
-    },
-    callTx: createCircuitCallTxInterface(
-      providers,
-      compiledContract,
-      contractAddress,
-      'privateStateId' in options ? options.privateStateId : undefined
-    ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
-  };
 }

@@ -114,7 +114,7 @@ set *here* is a provider that did not serve them, not a caller with no read
 surface.
 
 Only parameters that are absent (`undefined` or `null`) are taken as unserved.
-Parameters served in a shape that is not a `SerializedState` are refused with
+Parameters served in a shape that is not a `SerializedLedgerParameters` are refused with
 `UnknownLedgerVersionError` instead, because the provider did serve something, in
 the shape of a pre-5.0.0 provider. Taking that as absent would blame the wrong
 fault.
@@ -141,8 +141,10 @@ fail inside the runtime with a message that tells the dApp to pass a decoder it
 never passes. So the era of each state is checked before anything is decoded,
 and the refusal names the state and the provider as the fault.
 
-Before that check each state is rebuilt with `SerializedState.fromBytes` from its
-`era`, `kind` and `serialize()`. `SerializedState.isSerializedState` answers `false` for
+Before that check each state is rebuilt from its `era` and `serialize()` with the
+`fromBytes` of the class of its kind (`SerializedContractState`,
+`SerializedLedgerParameters`, `SerializedZswapChainState`). The class guards, such as
+`SerializedContractState.isSerializedContractState`, answer `false` for
 a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
@@ -153,9 +155,17 @@ present but names no known era is not "missing": it is refused with
 value carried no era at all, and the message points to an outdated provider. A
 state with a known era but no `serialize()` still gives `InvalidSerializedStateError`.
 
+States a caller passes in itself, to `createLedger9UnprovenCallTxFromInitialStates`,
+are not a provider fault, so they are not refused with this class. The builder runs
+the same rebuild. A value that is not a serialized state, or ledger parameters or a
+zswap chain state that the v9 ledger did not write, is refused with
+`InvalidArgumentError`, which names the option. A v8 contract state passed to a
+ledger 9 call is refused with `EraMismatchError`, reason
+`'ledger8-contract-state-unsupported'`. All of this happens before any proof.
+
 A framework decoder that fails on the bytes after a valid tag throws its own
 `DeserializationError` (`MIDNIGHT_JS_U_DESERIALIZATION_FAILED`, INTEGRITY).
-`SerializedState.deserialize` rethrows it unchanged, so the error does not tell the
+`deserialize` of the serialized state rethrows it unchanged, so the error does not tell the
 dApp to pass a decoder it never passed.
 
 ### `Ledger8CallUnsupportedError`, reason `'shielded-spend'`

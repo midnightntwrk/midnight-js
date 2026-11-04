@@ -37,6 +37,8 @@ import { createProverKey,
   createZKIR,
   LedgerTransaction,
   type ProverKey,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR } from '@midnight-ntwrk/midnight-js-types';
@@ -137,8 +139,8 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     contractAddress: sampleContractAddress(),
     coinPublicKey,
     initialContractState: deploy.public.initialContractState,
-    initialZswapChainState: new ZswapChainState(),
-    ledgerParameters: LedgerParameters.initialParameters(),
+    initialZswapChainState: SerializedZswapChainState.fromBytes('v9', new ZswapChainState().serialize()),
+    ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
     config: TEST_CONFIG,
     arguments: []
   };

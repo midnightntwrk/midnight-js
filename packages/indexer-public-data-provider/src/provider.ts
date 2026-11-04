@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type {
   ContractAddress,
   TransactionId
@@ -33,7 +34,10 @@ import type {
   PositionedRecord,
   PublicDataProvider,
   PublicStatesRead,
-  UnshieldedBalances} from '@midnight-ntwrk/midnight-js-types';
+  UnshieldedBalances,
+  WatchOptions
+} from '@midnight-ntwrk/midnight-js-types';
+import { type WatchOperation, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
@@ -93,6 +97,28 @@ const toStartOffset = (config: BlockHeightConfig | BlockHashConfig): BlockOffset
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? toStartOffset(config) : null;
+
+/** The largest delay a JavaScript timer holds; a longer one fires at once. */
+const MAX_TIMER_DELAY_MS = 2 ** 31 - 1;
+
+const validMaxWaitMs = (options: WatchOptions | undefined): number | undefined => {
+  const maxWaitMs = options?.maxWaitMs;
+  if (maxWaitMs !== undefined && !(Number.isInteger(maxWaitMs) && maxWaitMs > 0 && maxWaitMs <= MAX_TIMER_DELAY_MS)) {
+    throw new InvalidArgumentError(
+      `maxWaitMs must be a positive integer no larger than ${MAX_TIMER_DELAY_MS}, got ${typeof maxWaitMs === 'number' ? maxWaitMs : typeof maxWaitMs}`
+    );
+  }
+  return maxWaitMs;
+};
+
+const boundWait = <T>(
+  operation: WatchOperation,
+  target: ContractAddress | TransactionId,
+  maxWaitMs: number | undefined
+): Rx.MonoTypeOperatorFunction<T> =>
+  maxWaitMs === undefined
+    ? Rx.identity
+    : Rx.timeout({ first: maxWaitMs, with: () => Rx.throwError(() => new WatchTimeoutError(operation, target, maxWaitMs)) });
 
 /** Rebuilds the public record so the feed's ordinal and identifiers never reach a consumer. */
 const toPositionedRecord = <T>({ value, blockHeight, blockHash }: PositionedRecord<T>): PositionedRecord<T> => ({
@@ -329,10 +355,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       });
   }
 
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractStateRead> {
+  watchForContractState(contractAddress: ContractAddress, options?: WatchOptions): Promise<ContractStateRead> {
     assertIsContractAddress(contractAddress);
+    const maxWaitMs = validMaxWaitMs(options);
     return Rx.firstValueFrom(
       waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
+        boundWait('watchForContractState', contractAddress, maxWaitMs),
         // `waitForContractToAppear` polls an unpinned `CONTRACT_STATE_QUERY`, so
         // the block dating the state is an independently-resolved sibling of it
         // and the two can straddle a fork. No caller can pin this one.
@@ -343,10 +371,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
-  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+  watchForUnshieldedBalances(contractAddress: ContractAddress, options?: WatchOptions): Promise<UnshieldedBalances> {
     assertIsContractAddress(contractAddress);
+    const maxWaitMs = validMaxWaitMs(options);
     return Rx.firstValueFrom(
-      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(Rx.map(toUnshieldedBalances))
+      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
+        boundWait('watchForUnshieldedBalances', contractAddress, maxWaitMs),
+        Rx.map(toUnshieldedBalances)
+      )
     );
   }
 
@@ -355,8 +387,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * record itself is built after the poll resolves, because the era's runtime
    * may still have to be acquired.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxRead> {
+  watchForDeployTxData(contractAddress: ContractAddress, options?: WatchOptions): Promise<FinalizedTxRead> {
     assertIsContractAddress(contractAddress);
+    const maxWaitMs = validMaxWaitMs(options);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -373,11 +406,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return transaction;
         },
         this.pollInterval
-      )
+      ).pipe(boundWait('watchForDeployTxData', contractAddress, maxWaitMs))
     ).then((transaction) => toFinalizedDeployTxData(contractAddress, transaction));
   }
 
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxRead> {
+  watchForTxData(txId: TransactionId, options?: WatchOptions): Promise<FinalizedTxRead> {
+    const maxWaitMs = validMaxWaitMs(options);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -397,7 +431,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return first;
         },
         this.pollInterval
-      )
+      ).pipe(boundWait('watchForTxData', txId, maxWaitMs))
     ).then((transaction) => toFinalizedTxData(txId, transaction));
   }
 

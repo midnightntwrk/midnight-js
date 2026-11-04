@@ -29,7 +29,7 @@ import {
   sampleEncryptionPublicKey,
   type ShieldedCoinInfo,
   type TokenType,
-  type ZswapChainState,
+  ZswapChainState,
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { CompiledContract, type ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
@@ -38,7 +38,7 @@ import {
   assert as compactAssert,
   ChargedState,
   CompactError,
-  type ContractState,
+  ContractState,
   emptyZswapLocalState,
   finalizeCallProofData,  type Op,
   QueryContext,
@@ -59,7 +59,9 @@ import {
   type PrivateStateId,
   type ProverKey,
   type PublicStatesRead,
-  SerializedState,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState,
   SucceedEntirely,
   type TxStatus,
   type UnprovenTx,
@@ -274,9 +276,8 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
     importSigningKeys: vi.fn()
   },
   zkConfigProvider: {
-    // The CURRENT-era value, because this is the current-era provider set. A retained value here
-    // would be read by nothing today and would silently route a regression into the retained
-    // pipeline instead of failing at the era decision.
+    // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
+    // it, and a ledger 9 container served with a retained value is refused.
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.20.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),
@@ -332,11 +333,20 @@ export const createMockLedger8FinalizedTxData = (status: TxStatus = SucceedEntir
   protocolVersion: 1_000_000
 });
 
+const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
+
+/**
+ * A v9 contract state whose bytes are only its version tag. For a test that never decodes it, or
+ * that mocks the runtime.
+ */
+export const createMockSerializedContractState = (): SerializedContractState<'v9'> =>
+  SerializedContractState.fromBytes('v9', tagOnly(LEDGER_STATE_TAGS.ContractState.v9));
+
 export const createMockUnprovenDeployTxData = (overrides: Partial<Ledger9UnsubmittedDeployTxData<Contract.Any>> = {}): Ledger9UnsubmittedDeployTxData<Contract.Any> => ({
   era: CURRENT_LEDGER_VERSION,
   public: {
     contractAddress: createMockContractAddress(),
-    initialContractState: createMockContractState()
+    initialContractState: createMockSerializedContractState()
   },
   private: {
     unprovenTx: createMockUnprovenTx(),
@@ -421,9 +431,9 @@ export const createMockCallOptions = (overrides: Partial<Ledger9CallOptions<Cont
   args: [] as never[],
   contractAddress: createMockContractAddress(),
   coinPublicKey: createMockCoinPublicKey(),
-  initialContractState: createMockContractState(),
-  initialZswapChainState: {} as ZswapChainState,
-  ledgerParameters: LedgerParameters.initialParameters(),
+  initialContractState: SerializedContractState.fromBytes('v9', new ContractState().serialize()),
+  initialZswapChainState: SerializedZswapChainState.fromBytes('v9', new ZswapChainState().serialize()),
+  ledgerParameters: SerializedLedgerParameters.fromBytes('v9', LedgerParameters.initialParameters().serialize()),
   config: MOCK_CONFIG,
   ...overrides
 });
@@ -457,6 +467,9 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
     getVerifierKey(_: string): Promise<VerifierKey> {
       return Promise.resolve(verifierKeys[0][1]);
     }
+    override getArtifactRuntimeVersion(): Promise<string> {
+      return Promise.resolve('0.20.0');
+    }
   })();
 }
 
@@ -466,7 +479,7 @@ export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
  */
 export const contractStateRead = (raw: Uint8Array, protocolVersion: number): ContractStateRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(ledgerVersionOfContractState(raw), 'ContractState', raw)
+  contractState: SerializedContractState.fromBytes(ledgerVersionOfContractState(raw), raw)
 });
 
 /** {@link contractStateRead} with the ledger parameters `queryContractState` serves beside the state. */
@@ -476,14 +489,9 @@ export const contractStateAndParametersRead = (
   ledgerParameters: Uint8Array
 ): ContractStateAndParametersRead => ({
   ...contractStateRead(raw, protocolVersion),
-  ledgerParameters: SerializedState.fromBytes(
-    ledgerVersionOfLedgerParameters(ledgerParameters),
-    'LedgerParameters',
-    ledgerParameters
-  )
+  ledgerParameters: SerializedLedgerParameters.fromBytes(ledgerVersionOfLedgerParameters(ledgerParameters), ledgerParameters)
 });
 
-const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`);
 
 /**
  * A contract-state record whose bytes are only the version tag of `version`. For a test that mocks
@@ -491,7 +499,7 @@ const tagOnly = (tag: string): Uint8Array => new TextEncoder().encode(`${tag}:`)
  */
 export const contractStateReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): ContractStateRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
+  contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version]))
 });
 
 /** {@link contractStateReadStub} with ledger parameters that are only the version tag of `version`. */
@@ -500,23 +508,28 @@ export const contractStateAndParametersReadStub = (
   protocolVersion = 2_000_000
 ): ContractStateAndParametersRead => ({
   ...contractStateReadStub(version, protocolVersion),
-  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+  ledgerParameters: SerializedLedgerParameters.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });
 
 type Serializable = { serialize(): Uint8Array };
 
 /**
- * The record a `PublicDataProvider` serves for v9 public states built in a test. The contract state
- * is only its version tag: a test that reads it back mocks the framework's contract-state decoder.
+ * The record a `PublicDataProvider` serves for v9 public states built in a test. Without a contract
+ * state the record carries one that is only its version tag: a test that reads it back mocks the
+ * framework's contract-state decoder.
  */
 export const publicStatesRead = (
-  states: { readonly zswapChainState: Serializable; readonly ledgerParameters: Serializable },
+  states: {
+    readonly zswapChainState: Serializable;
+    readonly ledgerParameters: Serializable;
+    readonly contractState?: SerializedContractState;
+  },
   protocolVersion = 2_000_000
 ): PublicStatesRead => ({
   protocolVersion,
-  contractState: contractStateReadStub('v9').contractState,
-  zswapChainState: SerializedState.fromBytes('v9', 'ZswapChainState', states.zswapChainState.serialize()),
-  ledgerParameters: SerializedState.fromBytes('v9', 'LedgerParameters', states.ledgerParameters.serialize())
+  contractState: states.contractState ?? contractStateReadStub('v9').contractState,
+  zswapChainState: SerializedZswapChainState.fromBytes('v9', states.zswapChainState.serialize()),
+  ledgerParameters: SerializedLedgerParameters.fromBytes('v9', states.ledgerParameters.serialize())
 });
 
 
@@ -526,7 +539,7 @@ export const publicStatesRead = (
  */
 export const publicStatesReadStub = (version: LedgerVersion, protocolVersion = 2_000_000): PublicStatesRead => ({
   protocolVersion,
-  contractState: SerializedState.fromBytes(version, 'ContractState', tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
-  zswapChainState: SerializedState.fromBytes(version, 'ZswapChainState', tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
-  ledgerParameters: SerializedState.fromBytes(version, 'LedgerParameters', tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
+  contractState: SerializedContractState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ContractState[version])),
+  zswapChainState: SerializedZswapChainState.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.ZswapChainState[version])),
+  ledgerParameters: SerializedLedgerParameters.fromBytes(version, tagOnly(LEDGER_STATE_TAGS.LedgerParameters[version]))
 });

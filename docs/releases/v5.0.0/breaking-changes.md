@@ -1403,21 +1403,21 @@ and the names of their own time for the renames of sections 22 and 24.
 | (none) | `Ledger9CircuitId<C>`, the counterpart of `Ledger8CircuitId<C>` |
 
 **`contracts` functions.** The ledger 9 implementation of each low-level function moved to
-a `Ledger9` name. The old name stays and routes on the era of the contract: a ledger 9
-contract runs the `Ledger9` function, and a contract produced by the ledger 8 toolchain is
-refused with `EraMismatchError` (`reason: 'contract-era-unsupported'`) after the era read
-and before any other provider call. The `Ledger9` functions check the same way that the
-artifacts declare ledger 9, and refuse any other era with the same reason. A ledger 9
-`CompiledContract` costs no extra read.
+a `Ledger9` name, and each gained a `Ledger8` counterpart (#1524). The old name stays and
+routes on the era of the contract: a ledger 9 contract runs the `Ledger9` function, a
+contract produced by the ledger 8 toolchain the `Ledger8` function. The per-era functions
+check that the artifacts declare their era and refuse any other with `EraMismatchError`
+(`reason: 'contract-era-unsupported'`). A routed operation reads the artifact era once; a
+ledger 9 `CompiledContract` costs no read.
 
-| Router (unchanged name) | Ledger 9 function |
-|---|---|
-| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` |
-| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` |
-| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` |
-| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` |
-| `submitDeployTx` | `submitLedger9DeployTx` |
-| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` |
+| Router (unchanged name) | Ledger 9 function | Ledger 8 function |
+|---|---|---|
+| `createUnprovenCallTx` | `createLedger9UnprovenCallTx` | `createLedger8UnprovenCallTx` |
+| `createUnprovenCallTxFromInitialStates` | `createLedger9UnprovenCallTxFromInitialStates` | `createLedger8UnprovenCallTxFromInitialStates` |
+| `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` | `createLedger8UnprovenDeployTx` |
+| `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` | `createLedger8UnprovenDeployTxFromVerifierKeys` |
+| `submitDeployTx` | `submitLedger9DeployTx` | `submitLedger8DeployTx` |
+| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` | (none: a ledger 8 call cannot join a scope) |
 
 The scoped-transaction router reads the network head once, as before, and refuses a ledger 8
 head with `EraMismatchError` (`reason: 'scope-on-ledger8-network'`). `isTransactionContext`
@@ -1445,6 +1445,70 @@ have one type parameter: write `submitTx<PCK>(…)` where you wrote `submitTx<C,
 `ledger9Protocol`.
 
 ---
+
+## 27. `submitTx` diagnoses a rejection across the fork (#1524)
+
+`submitTx` and `submitTxAsync` now diagnose a submission the node rejects the way the other
+entry points do: when the network crossed the ledger fork between their head read and the
+submit, they throw `ForkCrossedDuringOperationError`; when the head cannot be read again, or
+reads an earlier era, `SubmitRejectionUndiagnosedError`. A rejection on an unmoved head is
+thrown unchanged, as before. `submitTxAsync` still returns without waiting for a record.
+
+Both errors gain the kind `'transaction'`, for a transaction submitted this way. `submitTx` does
+not know the contract, and knows the circuit only when you pass `circuitId`, so:
+
+| Field | Before | Now |
+|---|---|---|
+| `kind` | `'call' \| 'deploy' \| 'maintenance'` | adds `'transaction'` |
+| `contractAddress` | `string` | `string \| undefined` (`undefined` only for `'transaction'`) |
+| `circuitId` | `string` | `string \| undefined` (`undefined` only for a `'transaction'` with no `circuitId`) |
+
+`SubmittedOperation` is the union of `SubmittedContractOperation` (the three contract kinds, both
+fields required) and the new `SubmittedTransaction`. `SubmittedOperationKind` is unchanged.
+
+```ts
+// Before
+reconcile(error.contractAddress);
+// After
+if (error.contractAddress !== undefined) reconcile(error.contractAddress);
+```
+
+## 28. Every contract's artifacts must declare their runtime version (#1526)
+
+Every contract operation now reads the `compact-runtime` version the artifact set declares, for
+ledger 9 contracts too. Before, only a ledger 8 contract was read; a ledger 9 `CompiledContract`
+container was placed on ledger 9 from its shape alone. The shape now only checks the declaration:
+a container must declare a ledger 9 toolchain (`compact-runtime` 0.20).
+
+What you must do:
+
+- **Serve the declaration beside the keys.** `FetchZkConfigProvider` and `NodeZkConfigProvider`
+  read `runtime-version` from `compiler/contract-manifest.json`, or from
+  `compiler/contract-info.json` when the bundle has no manifest. A bundle that ships only `keys/`
+  and `zkir/` is refused with `EraMismatchError` reason `'artifact-era-undeclared'`.
+- **Implement `getArtifactRuntimeVersion()` on a custom `ZKConfigProvider`.** The base method
+  throws `ArtifactRuntimeVersionUnavailableError`. A provider that does not override it is now
+  refused on every contract operation with reason `'provider-cannot-declare-era'`. This includes
+  the low-level functions that take a `zkConfigProvider` argument, such as
+  `createLedger9UnprovenDeployTxFromVerifierKeys`. A provider mocked as an object literal in tests
+  needs the member too: without it the call fails with a `TypeError`, not with an era reason.
+
+New refusal: reason `'ledger8-artifacts-in-ledger9-container'`, for a ledger 9 container whose
+provider serves artifacts that declare the ledger 8 toolchain. Usually the provider points at
+another contract's compiler output.
+
+The shipped providers cache the version per provider instance, so it costs one read per
+provider, not one per call.
+
+```ts
+// A custom provider
+class MyZkConfigProvider extends ZKConfigProvider<string> {
+  // ...getZKIR, getProverKey, getVerifierKey
+  override async getArtifactRuntimeVersion(): Promise<string> {
+    return '0.20.0'; // the runtime-version compactc recorded for these artifacts
+  }
+}
+```
 
 ## Non-breaking additions worth noting
 

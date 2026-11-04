@@ -111,6 +111,7 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `INVALID_LEDGER_STATE` | USAGE | `InvalidLedgerStateError`* |
 | PR | `LEDGER_STATE_DECODER_MISSING` | USAGE | `LedgerStateDecoderMissingError`* |
 | PR | `LEDGER_STATE_DECODE_FAILED` | INTEGRITY | `LedgerStateDecodeFailedError`* |
+| PR | `WATCH_TIMED_OUT` | UNCERTAIN | `WatchTimeoutError`* |
 | PR | `STORED_SIGNING_KEY_INVALID` | INTEGRITY | `StoredSigningKeyFormatError` |
 | C | `CONTRACT_TYPE_MISMATCH` | USAGE | `ContractTypeError` |
 | C | `INCOMPLETE_CALL_TX_PRIVATE_STATE_CONFIG` | USAGE | `IncompleteCallTxPrivateStateConfig` |

@@ -14,6 +14,11 @@ The code lives in `packages/contracts/src/internal/era.ts`. The verifier-key
 half of the same admission path is a separate thread — see
 [VerificationPath](./verification-path.md).
 
+How the public functions are laid out around this decision — one `LedgerN*`
+function per era and one unprefixed router per role that switches on the era —
+is recorded in
+[ADR 0021](../../../docs/adr/0021-mirror-per-era-functions-and-route-each-role-once.md).
+
 ## The pipeline is named by the ledger era, not the toolchain
 
 A pipeline is named by a `LedgerVersion`, `'v8'` or `'v9'` — the same values a
@@ -38,26 +43,31 @@ The era is a consensus-level fact, so it is never inferred from the shape of the
 code the compiler generated: a consumer's build is free to rewrite that shape,
 and this framework never sees the setting that did.
 
-The two eras are answered differently, and it is worth being exact about why:
+Both eras are answered the same way: by the `runtime-version` the artifact set
+declares, read through `ZKConfigProvider.getArtifactRuntimeVersion()`. It is
+data on disk, not code, so no build step changes it. The shape of the caller's
+object only says which era the declaration must name, and refuses a
+declaration that names another:
 
-| era | what answers it | why a build cannot change it |
-| --- | --------------- | ---------------------------- |
-| current | the `CompiledContract` container it arrives in, recognised by its own `tag` | the property is an OWN one, and only that container has this shape |
-| retained | the `runtime-version` its artifact set declares | it is data on disk, not code |
+| shape | the declaration must name | otherwise |
+| ----- | ------------------------- | --------- |
+| `CompiledContract` container (own string `tag`) | `'v9'` | `ledger8-artifacts-in-ledger9-container` |
+| retained-era candidate (own `impureCircuits`, plain `initialState`) | `'v8'` | `unwrapped-ledger9-contract` |
 
-The current era's answer is a CONTAINER CHECK, not a statement by the compiler.
-The `tag`'s value is chosen by the caller — `CompiledContract.make(tag, ctor)` —
-and carries no era information. What places the object is that nothing else has
-this shape, and that the property survives both a bundler and the object spread
-the container's own combinators perform. The retained era has no such container,
-which is why it is the one that has to ask the artifact set.
+The container is still recognised by its own `tag`. The `tag`'s value is chosen
+by the caller — `CompiledContract.make(tag, ctor)` — and carries no era
+information. What identifies the object is that nothing else has this shape,
+and that the property survives both a bundler and the object spread the
+container's own combinators perform.
 
-So only the retained-era path reads the bundle, through
-`ZKConfigProvider.getArtifactRuntimeVersion()`; a current-era caller buys no
-round trip and needs no file it does not already ship. `resolveArtifactEra` in
-`packages/contracts/src/internal/era.ts` holds both halves.
+The container reads the declaration too, so the answer never depends on which
+era `CURRENT_LEDGER_VERSION` names. If the next ledger keeps the container
+shape, a ledger 9 container stays on the ledger 9 pipeline the day that
+constant moves. The cost is one read per provider instance: both shipped
+providers cache the answer. `resolveArtifactEra` in
+`packages/contracts/src/internal/era.ts` holds the decision.
 
-### Which file the retained answer comes from
+### Which file the answer comes from
 
 The provider prefers the INTEGRITY MANIFEST (`compiler/contract-manifest.json`),
 which already records `runtime-version`. That file is the only one in a bundle
@@ -97,14 +107,13 @@ properties and loses everything it only inherited.
 
 ### What the shape is still read for
 
-The shape decides an era for exactly one input — the current-era container,
-which carries its marker on the object itself. For everything else it decides
-only which declaration to consult, or refuses outright.
+The shape decides no era. It decides which era the declaration must name, or
+refuses outright.
 
 | shape | own `tag` | own `impureCircuits` | `initialState` | verdict |
 | ----- | --------- | -------------------- | -------------- | ------- |
-| current-era container | string | absent | absent | `'v9'`, from the container itself |
-| retained-era candidate | absent | present | `Function` | ask the bundle |
+| current-era container | string | absent | absent | ask the bundle; must declare `'v9'` |
+| retained-era candidate | absent | present | `Function` | ask the bundle; must declare `'v8'` |
 | raw current-era instance | absent | present | `AsyncFunction` | refused, by name |
 | anything else | — | — | — | refused as neither era |
 
@@ -157,10 +166,12 @@ place. A patch release never moves a toolchain across the fork, so the patch
 component is not read. A compile-time gate refuses to build if a pipeline era
 exists that no declared version reaches.
 
-Two refusals have no default between them, deliberately:
+Three refusals have no default between them, deliberately:
 
-- `artifact-era-undeclared` — the provider could not report a version. Its own
-  failure is kept on `cause`.
+- `artifact-era-undeclared` — the artifacts do not declare a version. The
+  provider's failure is kept on `cause`.
+- `provider-cannot-declare-era` — the provider does not implement
+  `getArtifactRuntimeVersion()`. Its failure is kept on `cause`.
 - `unknown-artifact-runtime-version` — a toolchain this framework cannot place,
   named in the message.
 
@@ -169,16 +180,51 @@ A retained SHAPE whose bundle declares the CURRENT toolchain is reported as
 its `async` erased by the caller's build. That is the case the old check let
 through.
 
-### One decision, in two forms
+A container whose bundle declares the RETAINED toolchain is reported as
+`ledger8-artifacts-in-ledger9-container`: the provider serves another
+contract's artifacts, and the message names the declared version.
 
-`resolveArtifactEra` makes the decision; `isLedger8Request` is that same,
-already-resolved answer in the narrowing form each era-dispatching entry point
-needs, so an entry point's body can drop the retained-era variant from its parameter
-union without a cast. It is not a second decision — it takes the era as an
-argument and only gives it a type predicate, because a type predicate cannot be
-asynchronous and the decision now is.
+### One decision, routed by an exhaustive switch
 
-It replaces the provisional structural check that tested for `impureCircuits`
+`resolveArtifactEra` makes the decision. A router never reads that answer
+directly: it calls `resolveEraRequest` (or `resolveContractEraRequest` for the
+governance functions, which take the contract as their own argument). Both
+return the router's input tagged with its era — `{ era: 'v8'; … } | { era: 'v9'; … }`
+— so switching on `request.era` narrows the input to that era's type without a
+cast. The two resolvers build that tag with the type predicates
+`isLedger8Request` and `isLedger8Contract`; these are not a second decision.
+
+Every router switches on the tagged request. In schematic form:
+
+```ts
+const request = await resolveEraRequest<Ledger8Options, Ledger9Options>(options, providers.zkConfigProvider);
+switch (request.era) {
+  case 'v8':
+    return ledger8XFlow(providers, request.options);
+  case 'v9':
+    return ledger9XFlow(providers, request.options);
+  default:
+    return assertNever(request, 'functionName');
+}
+```
+
+The seven public routers hand each era to a module-private `ledger8*Flow` /
+`ledger9*Flow` function next to the router; the low-level ones handle each era
+inline in the `switch`. The checks a router ran before the era was read (config,
+private-state pairing) stay in the router, ahead of the read. The router reads
+no head: a flow that needs one reads it itself.
+
+A new ledger era fails the build in two steps. Adding it to `LedgerVersion`
+fails the `Assert<>` gates beside `EraRequest` and `ContractEraRequest`, and
+`assertNever(era)` in both resolvers; adding
+the missing variant then fails `assertNever` in every router — the seven public
+functions (`deployContract`, `findDeployedContract`, `submitCallTx`,
+`submitCallTxAsync` and the three governance `submit*` functions) and the
+low-level ones (`submitDeployTx`, `createUnprovenCallTx`,
+`createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
+`createUnprovenDeployTxFromVerifierKeys`).
+
+`resolveArtifactEra` replaces the provisional structural check that tested for `impureCircuits`
 alone and so answered `true` for a raw CURRENT-era contract instance, which
 carries that member too. That was the blind spot the provisional check
 documented and could not close; see [OverloadTyping](./overload-typing.md) for
@@ -355,12 +401,13 @@ frozen nor null-prototyped.
 fetched contract state belong to different ledger eras.
 
 The envelope is `contractState.era` on the read record. Only
-`SerializedState.fromBytes` makes a `SerializedState`, and it refuses bytes whose tag
-does not match `era`, so the decoder is still chosen for these exact bytes.
-`SerializedState.isSerializedState` is not the gate: it answers `false` for a state made
-by a second installed copy of the types package. Instead every state is rebuilt
-from its `era`, `kind` and `serialize()` with `fromBytes`, which checks the tag
-again (`InvalidSerializedStateError`, `tag-mismatch`, for forged bytes). A record
+`SerializedContractState.fromBytes` makes a `SerializedContractState`, and it refuses
+bytes whose tag does not match `era`, so the decoder is still chosen for these exact
+bytes. `SerializedContractState.isSerializedContractState` is not the gate: it answers
+`false` for a state made by a second installed copy of the types package. Instead
+every state is rebuilt from its `era` and `serialize()` with the `fromBytes` of the
+class of its kind, which checks the tag again (`InvalidSerializedStateError`,
+`tag-mismatch`, for forged bytes or a state of another kind). A record
 whose contract state has none of those, such as one a provider outside this
 framework built by hand in the pre-5.0.0 shape, is refused as
 `UnknownLedgerVersionError`.
@@ -450,9 +497,14 @@ current-era-only providers is ADMITTED, and the same head with a provider servin
 neither is refused naming `'v9'`.
 
 One call site per funnel, not one per entry point. `acquireLedger8Runtime` is
-the single funnel every retained-era operation passes through — `runLedger8Call`
-and `runLedger8Deploy` both — so the check sits there rather than being spread
-across its callers, where a third caller would eventually forget it. That is also
+the funnel every retained-era operation that reads the network passes through —
+`buildLedger8CallTx`, `buildLedger8DeployTx` and `submitLedger8MaintenanceTx` —
+so the check sits there rather than being spread across its callers, where a
+fourth caller would eventually forget it. The two builders that read nothing from
+the network, `buildLedger8CallTxFromStates` and `buildLedger8DeployTxFromVerifierKeys`,
+skip it: they have no head to check against and no providers to check, so their
+transaction is checked when `submitTx` reads the head and the providers' eras
+before proving. That is also
 why acquisition takes the provider set (`Ledger8RuntimeProviders`) rather than
 just the read surface. That type is deliberately narrow: the head source plus the
 three declarations, and nothing else, so a reader can see that acquisition reads

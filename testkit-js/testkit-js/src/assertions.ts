@@ -58,7 +58,7 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
 ): void => {
   const found = ledger9DeployPublicData(foundDeployTxData);
   expect(
-    stateValueEqual(deployTxData.public.initialContractState.data.state, found.initialContractState.data.state)
+    stateValueEqual(deployTxData.public.initialContractState.deserialize({ v9: ContractState }).data.state, found.initialContractState.deserialize({ v9: ContractState }).data.state)
   ).toBeTruthy();
   expect(deployTxData.public.contractAddress).toEqual(found.contractAddress);
   expect(deployTxData.public.blockHash).toEqual(found.blockHash);
@@ -101,7 +101,7 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   );
   assertDefined(deployedLedgerState);
   const state = deployedLedgerState.contractState.deserialize({ v9: ContractState });
-  expect(stateValueEqual(state.data.state, found.initialContractState.data.state)).toBeTruthy();
+  expect(stateValueEqual(state.data.state, found.initialContractState.deserialize({ v9: ContractState }).data.state)).toBeTruthy();
   if (privateStateId) {
     const privateState = await providers.privateStateProvider.get(privateStateId);
     expect(privateState).toEqual(foundDeployTxData.private.initialPrivateState);
@@ -132,7 +132,7 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   );
   assertDefined(deployedLedgerState);
   const state = deployedLedgerState.contractState.deserialize({ v9: ContractState });
-  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, state.data.state)).toBeTruthy();
+  expect(stateValueEqual(deployTxData.public.initialContractState.deserialize({ v9: ContractState }).data.state, state.data.state)).toBeTruthy();
   expect(deployTxData.public.initialContractState).toBeTruthy();
 
   // Checks that the signing key and private state passed in the deploy configuration

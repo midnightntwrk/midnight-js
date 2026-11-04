@@ -111,6 +111,9 @@ The second step differs by operation kind:
   maintenance function with that artifact. An authority replacement arrives
   wrapped in `Ledger8UnconfirmedError` (`operation` `'replace-authority'`), which carries the new
   key, because the replacement may have landed.
+- **A transaction** submitted with `submitTx` or `submitTxAsync` is built again for the era
+  the network now reports. The caller built it, so the error names no contract
+  (`contractAddress` is `undefined`); the first step checks the transaction's own effects.
 
 ## Why `SubmitRejectionUndiagnosedError` carries a code of its own
 

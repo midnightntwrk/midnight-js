@@ -15,7 +15,13 @@
 
 import { UnknownLedgerVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_STATE_TAGS, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { InvalidSerializedStateError, type PublicStatesRead, SerializedState } from '@midnight-ntwrk/midnight-js-types';
+import {
+  InvalidSerializedStateError,
+  type PublicStatesRead,
+  SerializedContractState,
+  SerializedLedgerParameters,
+  SerializedZswapChainState
+} from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,9 +48,9 @@ const tagged = (era: LedgerVersion, kind: keyof typeof LEDGER_STATE_TAGS, body: 
 
 const ledger9Read = (): PublicStatesRead => ({
   protocolVersion: 2_000_000,
-  contractState: SerializedState.fromBytes('v9', 'ContractState', tagged('v9', 'ContractState', 'state')),
-  ledgerParameters: SerializedState.fromBytes('v9', 'LedgerParameters', tagged('v9', 'LedgerParameters', 'parameters')),
-  zswapChainState: SerializedState.fromBytes('v9', 'ZswapChainState', tagged('v9', 'ZswapChainState', 'zswap'))
+  contractState: SerializedContractState.fromBytes('v9', tagged('v9', 'ContractState', 'state')),
+  ledgerParameters: SerializedLedgerParameters.fromBytes('v9', tagged('v9', 'LedgerParameters', 'parameters')),
+  zswapChainState: SerializedZswapChainState.fromBytes('v9', tagged('v9', 'ZswapChainState', 'zswap'))
 });
 
 const rejectionOf = (act: () => unknown): unknown => {
@@ -56,11 +62,10 @@ const rejectionOf = (act: () => unknown): unknown => {
   throw new Error('expected the call to throw');
 };
 
-// What a SerializedState made by a second installed copy of the types package looks like to this copy:
+// What a serialized state made by a second installed copy of the types package looks like to this copy:
 // the same fields and methods, without this copy's private field.
-const fromAnotherTypesCopy = <K extends keyof typeof LEDGER_STATE_TAGS>(state: SerializedState<K>) => ({
+const fromAnotherTypesCopy = (state: { readonly era: LedgerVersion; serialize(): Uint8Array }) => ({
   era: state.era,
-  kind: state.kind,
   serialize: () => state.serialize(),
   deserialize: () => {
     throw new Error('not called: the state is rebuilt from its bytes first');
@@ -98,7 +103,7 @@ describe('decodeLedger9PublicStates', () => {
     expect((error as EraMismatchError).message).toContain(contractAddress);
   });
 
-  it('refuses a record whose contract state is not a SerializedState, the shape of a pre-5.0.0 provider', () => {
+  it('refuses a record whose contract state is not a serialized state, the shape of a pre-5.0.0 provider', () => {
     const preFiveRecord = { ...ledger9Read(), contractState: { version: 'v9', state: new Uint8Array() } };
 
     // @ts-expect-error the contract state is the shape a pre-5.0.0 provider served
@@ -118,8 +123,8 @@ describe('decodeLedger9PublicStates', () => {
     'refuses %s written by another era than the contract state, before decoding anything',
     (field) => {
       const ledger8Field = {
-        ledgerParameters: SerializedState.fromBytes('v8', 'LedgerParameters', tagged('v8', 'LedgerParameters', 'parameters')),
-        zswapChainState: SerializedState.fromBytes('v8', 'ZswapChainState', tagged('v8', 'ZswapChainState', 'zswap'))
+        ledgerParameters: SerializedLedgerParameters.fromBytes('v8', tagged('v8', 'LedgerParameters', 'parameters')),
+        zswapChainState: SerializedZswapChainState.fromBytes('v8', tagged('v8', 'ZswapChainState', 'zswap'))
       }[field];
       const read = { ...ledger9Read(), [field]: ledger8Field };
 
@@ -220,7 +225,7 @@ describe('decodeLedger9PublicStates', () => {
   });
 
   it.each(['ledgerParameters', 'zswapChainState'] as const)(
-    'refuses %s served in a shape that is not a SerializedState as unrecognised, not as missing',
+    'refuses %s served in a shape that is not a serialized state as unrecognised, not as missing',
     (field) => {
       const read = { ...ledger9Read(), [field]: { version: 'v9', state: new Uint8Array() } };
 

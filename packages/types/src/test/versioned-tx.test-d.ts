@@ -16,7 +16,7 @@
 import type { CoinPublicKey, ContractAddress, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { PublicDataProvider } from '../public-data-provider';
+import type { PublicDataProvider, WatchOptions } from '../public-data-provider';
 import type { FinalizedTxRead } from '../versioned';
 import type { WalletProvider } from '../wallet-provider';
 
@@ -35,13 +35,13 @@ describe('WalletProvider key readers', () => {
 describe('read-surface provider members', () => {
   it('watchForTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForTxData']>().toEqualTypeOf<
-      (txId: TransactionId) => Promise<FinalizedTxRead>
+      (txId: TransactionId, options?: WatchOptions) => Promise<FinalizedTxRead>
     >();
   });
 
   it('watchForDeployTxData resolves a version-tagged finalized record', () => {
     expectTypeOf<PublicDataProvider['watchForDeployTxData']>().toEqualTypeOf<
-      (contractAddress: ContractAddress) => Promise<FinalizedTxRead>
+      (contractAddress: ContractAddress, options?: WatchOptions) => Promise<FinalizedTxRead>
     >();
   });
 });

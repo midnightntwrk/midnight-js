@@ -15,7 +15,7 @@
 
 import { type LedgerVersion, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, ContractState, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_VERSION } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
@@ -23,7 +23,8 @@ import {
   type FinalizedTxRead,
   type PrivateStateId,
   type ProviderMethod,
-  SegmentFail
+  SegmentFail,
+  type SerializedContractState
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -150,6 +151,8 @@ export type EraMismatchReason =
   | 'provider-cannot-declare-era'
   /** An artifact set declaring a `compact-runtime` this framework places on no ledger era. */
   | 'unknown-artifact-runtime-version'
+  /** A ledger 9 `CompiledContract` container whose artifacts declare the ledger 8 toolchain. `detail` carries the declared version. */
+  | 'ledger8-artifacts-in-ledger9-container'
   /** A ledger 8 (pre-fork) contract submitted for deployment to a network that has crossed the fork. */
   | 'ledger8-deploy-on-ledger9-network'
   /** A ledger 8 (pre-fork) contract given to a maintenance update on a network that has crossed the fork. */
@@ -212,6 +215,12 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'These artifacts declare a compact-runtime this version of midnight-js places on no ledger era, so ' +
     'no pipeline can be chosen for them. Upgrade midnight-js to one that knows this toolchain, or ' +
     'rebuild the contract with a toolchain this version supports.',
+  'ledger8-artifacts-in-ledger9-container':
+    'The contract is a ledger 9 CompiledContract container, but the ZK config provider serves ' +
+    'artifacts that declare the ledger 8 (pre-fork) Compact toolchain, so these artifacts do not ' +
+    'belong to this contract. Point the provider at the compiler output of this contract, built by ' +
+    'the ledger 9 Compact toolchain. If these artifacts are the right ones, pass the contract ' +
+    'instance the ledger 8 toolchain generated instead of a CompiledContract container.',
   'ledger8-deploy-on-ledger9-network':
     'A contract produced by the ledger 8 (pre-fork) Compact toolchain cannot be deployed to a network that ' +
     'has crossed the fork. Ledger 8 stays supported for calls against contracts that were deployed before the ' +
@@ -249,10 +258,11 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'produced by the ledger 9 Compact toolchain.',
   'contract-era-unsupported':
     'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
-    'The low-level functions that build a call or deploy transaction from a compiled contract serve only ' +
-    'contracts produced by the ledger 9 Compact toolchain. For a contract of another era, call submitCallTx ' +
-    'or deployContract, which run contracts of both eras and submit the transaction, or join a deployed ' +
-    'contract with findDeployedContract.',
+    'Each Ledger8 or Ledger9 low-level function serves the contracts of its own era only. Call the function ' +
+    'of the other era (createLedger8UnprovenCallTx for createLedger9UnprovenCallTx, and so on), or the ' +
+    'function without the era in its name (createUnprovenCallTx, createUnprovenCallTxFromInitialStates, ' +
+    'createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys, submitDeployTx), ' +
+    'which serves contracts of both eras.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
     `Results are tagged '${CURRENT_LEDGER_VERSION}' or 'v8' by the pipeline that built ` +
@@ -495,8 +505,9 @@ export class ProviderFailedError extends MidnightJsError {
 }
 
 /**
- * Whether the operation a {@link ForkCrossedDuringOperationError} refuses was deploying a
- * contract, calling one already deployed, or maintaining one.
+ * Whether a contract operation was deploying a contract, calling one already deployed, or
+ * maintaining one. A {@link ForkCrossedDuringOperationError} can also carry `'transaction'`, for a
+ * transaction submitted with `submitTx` / `submitTxAsync`; see {@link SubmittedOperation}.
  *
  * The same discriminant the era pairing table takes, kept as its own type here
  * because it decides which of the genuinely different remediations the error
@@ -514,7 +525,7 @@ export type SubmittedOperationKind = 'call' | 'deploy' | 'maintenance';
  * identifiers, which messages may carry; decoded state and key bytes are what
  * they may not.
  */
-export interface SubmittedOperation {
+export interface SubmittedContractOperation {
   /**
    * The ledger version the network was on when this operation started.
    *
@@ -540,6 +551,22 @@ export interface SubmittedOperation {
   readonly contractAddress: string;
 }
 
+/**
+ * A transaction submitted with `submitTx` or `submitTxAsync`: the caller built it, so neither the
+ * contract nor, unless the caller named it, the circuit is known.
+ */
+export interface SubmittedTransaction {
+  /** The ledger version the network was on when `submitTx` read it. */
+  readonly networkVersion: LedgerVersion;
+  readonly kind: 'transaction';
+  /** The circuits the caller named on the submit options, joined by `', '`, or `undefined`. */
+  readonly circuitId: string | undefined;
+  readonly contractAddress?: undefined;
+}
+
+/** {@link SubmittedContractOperation} or {@link SubmittedTransaction}. */
+export type SubmittedOperation = SubmittedContractOperation | SubmittedTransaction;
+
 // The remediation, written once per operation kind. The kinds do NOT share one
 // text, and the reason is not tone: after the network has crossed, a retained-era
 // CALL can simply be run again -- it lands on the keep-state pipeline with no
@@ -554,12 +581,13 @@ export interface SubmittedOperation {
 // caller with several operations in flight can act on otherwise.
 //
 // Every kind is reachable in production: `call` through `submitCallTx`,
-// `deploy` through `deployContract`'s retained-era overload, and `maintenance`
+// `deploy` through `deployContract`'s, `submitDeployTx`'s and `submitLedger8DeployTx`'s
+// retained-era paths, and `maintenance`
 // through the retained-era overloads of the governance functions. `kind: 'deploy'`
-// is set at exactly one place, inside `runLedger8Deploy`, and `kind: 'maintenance'`
+// is set at exactly one place, inside `deployLedger8Contract`, and `kind: 'maintenance'`
 // inside `submitLedger8MaintenanceTx`.
 const FORK_CROSSED_MESSAGES: Readonly<
-  Record<SubmittedOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
+  Record<SubmittedOperationKind, (operation: SubmittedContractOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
   call: (operation, freshEra) =>
     `This call was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
@@ -594,6 +622,18 @@ const FORK_CROSSED_MESSAGES: Readonly<
     `cannot maintain a contract on a network that has crossed the fork.`
 });
 
+const forkCrossedMessage = (operation: SubmittedOperation, freshEra: LedgerVersion): string =>
+  operation.kind === 'transaction'
+    ? `This transaction was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
+      `it${operation.circuitId === undefined ? '' : ` (circuit '${operation.circuitId}')`}; the network now reports ` +
+      `ledger '${freshEra}', so the network crossed the ledger fork between reading the network's ledger ` +
+      `version and submitting the transaction. Take two steps, in this order. First, verify the transaction did ` +
+      `not finalize: a submission rejected while the fork was happening can still have been recorded, so check ` +
+      `whether its effects are already on chain before doing anything that would repeat it. Then build the ` +
+      `transaction again for ledger '${freshEra}': a transaction built for ledger '${operation.networkVersion}' ` +
+      `cannot be submitted to it.`
+    : FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra);
+
 /**
  * An error indicating that the network crossed the ledger fork between an
  * operation reading the network's ledger version and its transaction being submitted, and
@@ -617,14 +657,21 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
   /**
-   * Whether the refused operation was a call, a deploy or a maintenance update —
-   * the discriminant a caller branches on, and which remediation the message carries.
+   * Whether the refused operation was a call, a deploy, a maintenance update or a transaction
+   * submitted with `submitTx` / `submitTxAsync` — the discriminant a caller branches on, and which
+   * remediation the message carries.
    */
-  readonly kind: SubmittedOperationKind;
-  /** The entry point that was run, so a caller with several in flight knows which. */
-  readonly circuitId: string;
-  /** The contract to reconcile, which is the first remediation step's subject. */
-  readonly contractAddress: string;
+  readonly kind: SubmittedOperation['kind'];
+  /**
+   * The entry point that was run, so a caller with several in flight knows which. `undefined` only for
+   * a `'transaction'` whose caller named no circuit.
+   */
+  readonly circuitId: string | undefined;
+  /**
+   * The contract to reconcile, which is the first remediation step's subject. `undefined` only for a
+   * `'transaction'`, whose contract `submitTx` does not know.
+   */
+  readonly contractAddress: string | undefined;
 
   /**
    * @param operation Which operation was rejected. Flattened onto the error
@@ -639,7 +686,7 @@ export class ForkCrossedDuringOperationError extends MidnightJsError {
     readonly freshEra: LedgerVersion,
     cause: unknown
   ) {
-    super(FORK_CROSSED_MESSAGES[operation.kind](operation, freshEra), { cause });
+    super(forkCrossedMessage(operation, freshEra), { cause });
     this.name = 'ForkCrossedDuringOperationError';
     this.startEra = operation.networkVersion;
     this.kind = operation.kind;
@@ -671,7 +718,7 @@ export type SubmitRejectionUndiagnosedCause =
 // nothing observed in either case establishes one, and telling a caller to wait
 // out a fork that is not happening is worse than telling it to retry. Same
 // discipline as `IndexerInconsistencyError`.
-const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
+const undiagnosedSubject = (kind: SubmittedOperation['kind']): string => {
   switch (kind) {
     case 'call':
       return 'call';
@@ -679,6 +726,8 @@ const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
       return 'deployment';
     case 'maintenance':
       return 'maintenance update';
+    case 'transaction':
+      return 'transaction';
     default: {
       const unhandled: never = kind;
       throw new InvariantViolationError(`unknown operation kind '${String(unhandled)}'`);
@@ -689,12 +738,16 @@ const undiagnosedSubject = (kind: SubmittedOperationKind): string => {
 const undiagnosedMessage = (operation: SubmittedOperation, undiagnosed: SubmitRejectionUndiagnosedCause): string => {
   const subject = undiagnosedSubject(operation.kind);
   const target =
-    operation.circuitId === NO_CIRCUIT
-      ? `contract '${operation.contractAddress}'`
-      : `circuit '${operation.circuitId}', contract '${operation.contractAddress}'`;
+    operation.kind === 'transaction'
+      ? operation.circuitId === undefined
+        ? ''
+        : ` (circuit '${operation.circuitId}')`
+      : operation.circuitId === NO_CIRCUIT
+        ? ` (contract '${operation.contractAddress}')`
+        : ` (circuit '${operation.circuitId}', contract '${operation.contractAddress}')`;
   const opening =
-    `This ${subject} was built while the network was on ledger '${operation.networkVersion}' and the node rejected its ` +
-    `transaction (${target}).`;
+    `This ${subject} was built while the network was on ledger '${operation.networkVersion}' and the node rejected ` +
+    `${operation.kind === 'transaction' ? 'it' : 'its transaction'}${target}.`;
 
   switch (undiagnosed.reason) {
     case 'network-version-read-failed':
@@ -746,9 +799,11 @@ export class SubmitRejectionUndiagnosedError extends MidnightJsError {
   readonly reason: SubmitRejectionUndiagnosedCause['reason'];
   /** The era the operation resolved when it started. */
   readonly startEra: LedgerVersion;
-  readonly kind: SubmittedOperationKind;
-  readonly circuitId: string;
-  readonly contractAddress: string;
+  readonly kind: SubmittedOperation['kind'];
+  /** See {@link ForkCrossedDuringOperationError.circuitId}. */
+  readonly circuitId: string | undefined;
+  /** See {@link ForkCrossedDuringOperationError.contractAddress}. */
+  readonly contractAddress: string | undefined;
 
   /**
    * @param operation Which operation was rejected.
@@ -994,22 +1049,6 @@ export interface ContractTypeMismatch {
   readonly mismatched: AnyProvableCircuitId[];
 }
 
-const MAX_STATE_DESCRIPTION_CHARS = 2_000;
-
-const describeContractState = (contractState: ContractState): string => {
-  try {
-    const description = contractState.toString(true);
-    return description.length > MAX_STATE_DESCRIPTION_CHARS
-      ? `${description.slice(0, MAX_STATE_DESCRIPTION_CHARS)}… (truncated from ${description.length} characters; the full state is on 'error.contractState')`
-      : description;
-  } catch (error) {
-    // Deliberately narrow: this runs inside the error constructor, so letting a failure escape
-    // would destroy the ContractTypeError and take 'circuitIds' with it. The state itself stays
-    // reachable on 'error.contractState' for a caller that wants to inspect it.
-    return `<the deployed state could not be rendered: ${error instanceof Error ? error.message : String(error)}>`;
-  }
-};
-
 const describeMismatch = (mismatch: ContractTypeMismatch, contractAddress?: ContractAddress): string => {
   const subject = contractAddress === undefined ? 'The deployed contract' : `The contract at '${contractAddress}'`;
   const lines = [`${subject} is not the expected contract type.`];
@@ -1068,16 +1107,18 @@ export class ContractTypeError extends MidnightJsError {
   /**
    * Initializes a new {@link ContractTypeError}.
    *
-   * @param contractState The initial deployed contract state.
+   * @param contractState The deployed contract state that was checked, as bytes, of either era.
+   *   Decode it with your own runtime of `error.contractState.era` to inspect it, for example
+   *   `error.contractState.deserialize({ v9: ContractState })`.
    * @param mismatch The circuits that failed to match, grouped by the condition that applied.
    * @param contractAddress The address the state was read from, when known.
    */
   constructor(
-    readonly contractState: ContractState,
+    readonly contractState: SerializedContractState,
     mismatch: ContractTypeMismatch,
     readonly contractAddress?: ContractAddress
   ) {
-    super(`${describeMismatch(mismatch, contractAddress)}\nDeployed state: ${describeContractState(contractState)}`);
+    super(describeMismatch(mismatch, contractAddress));
     this.name = 'ContractTypeError';
     this.missingCircuitIds = mismatch.missing;
     this.keylessCircuitIds = mismatch.keyless;

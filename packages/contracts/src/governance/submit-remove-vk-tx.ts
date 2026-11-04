@@ -18,12 +18,12 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { BlankVerifierKeySlotError } from '../errors';
 import { TxFailedError } from '../errors';
-import { isLedger8Contract, resolveArtifactEra } from '../internal/era';
+import { resolveContractEraRequest } from '../internal/era';
 import { submitLedger8MaintenanceTx } from '../internal/ledger8-entry';
 import { getExistingSigningKey, queryExistingContractState } from '../internal/required-reads';
 import type {
@@ -35,6 +35,54 @@ import type {
 import { submitLedger9Payload } from '../submit-tx';
 import type { Ledger9FinalizedMaintenanceTxData } from '../tx-model';
 import { createUnprovenRemoveVerifierKeyTx } from './unproven-tx';
+
+const ledger8RemoveVerifierKeyFlow = async (
+  providers: Ledger9ContractProviders,
+  compiledContract: Ledger8Contract,
+  contractAddress: ContractAddress,
+  circuitId: string
+): Promise<Ledger8FinalizedMaintenanceTxData> => ({
+  era: 'v8',
+  public: await submitLedger8MaintenanceTx(providers, {
+    contract: compiledContract,
+    contractAddress,
+    update: { kind: 'remove-verifier-key', circuitId }
+  })
+});
+
+const ledger9RemoveVerifierKeyFlow = async <C extends Contract.Any>(
+  providers: Ledger9ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  contractAddress: ContractAddress,
+  circuitId: Contract.ProvableCircuitId<C> | string
+): Promise<Ledger9FinalizedMaintenanceTxData> => {
+  assertIsContractAddress(contractAddress);
+  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
+  const operation = contractState.operation(circuitId);
+  if (operation === undefined || operation === null) {
+    throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
+  }
+  const verifierKey: Uint8Array | undefined = operation.verifierKey;
+  if (verifierKey === undefined || verifierKey === null) {
+    throw new BlankVerifierKeySlotError(circuitId);
+  }
+  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
+  const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
+    providers.zkConfigProvider,
+    compiledContract,
+    contractAddress,
+    circuitId,
+    contractState,
+    signingKey,
+    providers.walletProvider.getCoinPublicKey(),
+    providers.config
+  );
+  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
+  if (submitTxResult.status !== SucceedEntirely) {
+    throw new TxFailedError('remove-verifier-key', submitTxResult, { contractAddress, circuitId });
+  }
+  return { era: 'v9', public: submitTxResult };
+};
 
 /**
  * Constructs and submits a transaction that removes the current verifier key stored
@@ -105,40 +153,13 @@ export async function submitRemoveVerifierKeyTx<C extends Contract.Any>(
   circuitId: Contract.ProvableCircuitId<C> | string
 ): Promise<Ledger9FinalizedMaintenanceTxData | Ledger8FinalizedMaintenanceTxData> {
   assertValidMidnightConfig(providers.config);
-  if (isLedger8Contract(compiledContract, await resolveArtifactEra(compiledContract, providers.zkConfigProvider))) {
-    return {
-      era: 'v8',
-      public: await submitLedger8MaintenanceTx(providers, {
-        contract: compiledContract,
-        contractAddress,
-        update: { kind: 'remove-verifier-key', circuitId }
-      })
-    };
+  const request = await resolveContractEraRequest(compiledContract, providers.zkConfigProvider);
+  switch (request.era) {
+    case 'v8':
+      return ledger8RemoveVerifierKeyFlow(providers, request.compiledContract, contractAddress, circuitId);
+    case 'v9':
+      return ledger9RemoveVerifierKeyFlow(providers, request.compiledContract, contractAddress, circuitId);
+    default:
+      return assertNever(request, 'submitRemoveVerifierKeyTx');
   }
-  assertIsContractAddress(contractAddress);
-  const contractState = await queryExistingContractState(providers.publicDataProvider, contractAddress);
-  const operation = contractState.operation(circuitId);
-  if (operation === undefined || operation === null) {
-    throw new InvalidArgumentError(`Circuit '${circuitId}' not found for contract at address '${contractAddress}'`);
-  }
-  const verifierKey: Uint8Array | undefined = operation.verifierKey;
-  if (verifierKey === undefined || verifierKey === null) {
-    throw new BlankVerifierKeySlotError(circuitId);
-  }
-  const signingKey = await getExistingSigningKey(providers.privateStateProvider, contractAddress);
-  const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
-    providers.zkConfigProvider,
-    compiledContract,
-    contractAddress,
-    circuitId,
-    contractState,
-    signingKey,
-    providers.walletProvider.getCoinPublicKey(),
-    providers.config
-  );
-  const submitTxResult = await submitLedger9Payload(providers, { unprovenTx });
-  if (submitTxResult.status !== SucceedEntirely) {
-    throw new TxFailedError('remove-verifier-key', submitTxResult, { contractAddress, circuitId });
-  }
-  return { era: 'v9', public: submitTxResult };
 }
