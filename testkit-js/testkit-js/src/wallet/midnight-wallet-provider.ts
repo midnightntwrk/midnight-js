@@ -50,6 +50,20 @@ const dumpTx = (label: string, tx: { serialize(): Uint8Array; toString(compact?:
   writeFileSync(path.join(dir, `${name}.txt`), tx.toString());
 };
 
+const dumpLedgerParameters = async (indexerUrl: string): Promise<void> => {
+  const file = path.join(path.resolve('reports', 'tx-dump'), `${Date.now()}-ledger-parameters.json`);
+  try {
+    const response = await fetch(indexerUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query: '{ block { height ledgerParameters } }' })
+    });
+    writeFileSync(file, await response.text());
+  } catch (error) {
+    writeFileSync(file, JSON.stringify({ dumpError: String(error) }));
+  }
+};
+
 /**
  * Provider class that implements wallet functionality for the Midnight network.
  * Handles transaction balancing, submission, and wallet state management.
@@ -127,6 +141,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     dumpTx(`${era}-unbound`, tx);
     const finalized = await finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
     dumpTx(`${era}-finalized`, finalized);
+    await dumpLedgerParameters(this.env.indexer);
     return finalized;
   }
 
