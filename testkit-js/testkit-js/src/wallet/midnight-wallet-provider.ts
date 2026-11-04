@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type CoinPublicKey,
@@ -37,6 +40,15 @@ import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
 import { adoptInWallet, finalizedFromWallet } from './wallet-transaction';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
+
+// TEMPORARY (PR #1599): dumps every transaction around balancing so CI keeps them as artifacts.
+const dumpTx = (label: string, tx: { serialize(): Uint8Array; toString(compact?: boolean): string }): void => {
+  const dir = path.resolve('reports', 'tx-dump');
+  mkdirSync(dir, { recursive: true });
+  const name = `${Date.now()}-${label}`;
+  writeFileSync(path.join(dir, `${name}.hex`), Buffer.from(tx.serialize()).toString('hex'));
+  writeFileSync(path.join(dir, `${name}.txt`), tx.toString());
+};
 
 /**
  * Provider class that implements wallet functionality for the Midnight network.
@@ -112,7 +124,10 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) =>
       this.unshieldedKeystore.signDataAsync(payload)
     );
-    return finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
+    dumpTx(`${era}-unbound`, tx);
+    const finalized = await finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
+    dumpTx(`${era}-finalized`, finalized);
+    return finalized;
   }
 
   private async submit<E extends LedgerEra>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
