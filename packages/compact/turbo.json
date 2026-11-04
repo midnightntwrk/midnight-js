@@ -3,9 +3,7 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": ["dist/**", "managed/**"],
-      "inputs": ["src/**", "!src/**/test/**", "tsconfig.json", "tsconfig.build.json"],
-      "cache": true
+      "outputs": ["dist/**", "managed/**"]
     }
   }
 }

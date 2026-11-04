@@ -47,6 +47,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-docs-api'
 
       - name: Install dependencies
         run: yarn install --immutable

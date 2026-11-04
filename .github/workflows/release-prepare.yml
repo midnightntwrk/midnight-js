@@ -45,6 +45,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable

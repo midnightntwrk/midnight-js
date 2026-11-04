@@ -3,7 +3,7 @@
   "envMode": "loose",
   "agentGuidance": false,
   "globalEnv": ["COMPACTC_VERSION"],
-  "globalDependencies": ["build-tools/**", "tsconfig.base.json", "scripts/check-compiled.js"],
+  "globalDependencies": ["build-tools/**", "tsconfig.base.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
