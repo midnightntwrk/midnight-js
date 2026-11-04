@@ -22,99 +22,134 @@ import { parse } from 'yaml';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const TURBO = path.join(REPO_ROOT, 'node_modules', '.bin', 'turbo');
 const DRY_RUN_TIMEOUT_MS = 60_000;
+const SETUP_BUILD_ENV = path.join(REPO_ROOT, '.github', 'actions', 'setup-build-env', 'action.yml');
+const WORKFLOW_DIR = path.join(REPO_ROOT, '.github', 'workflows');
+const ACTION_DIR = path.join(REPO_ROOT, '.github', 'actions');
+const TEST_TASKS = ['test', 'it', 'e2e', 'e2e-single', 'check', 'deploy'];
+const UNCACHED_BUILDS = ['@midnight-ntwrk/testkit-js-e2e#build'];
+const BUILDS_WITHOUT_ROLLUP = ['@midnight-ntwrk/midnight-js-compact#build'];
+const PUBLISH_COMMAND = /\byarn (run )?deploy\b|\bnpm publish\b|publish-public-npm/;
 
-const dryRun = (tasks) => {
-  const result = spawnSync(TURBO, ['run', ...tasks, '--dry=json'], {
+const run = (command, args) => {
+  const result = spawnSync(command, args, {
     cwd: REPO_ROOT,
     encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: DRY_RUN_TIMEOUT_MS - 5_000
   });
-  if (result.status !== 0) {
-    throw new Error(`turbo run ${tasks.join(' ')} --dry=json exited ${result.status}: ${result.stderr}`, {
-      cause: result.error
-    });
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `${command} ${args.join(' ')} failed (status ${result.status}, signal ${result.signal}): ` +
+        `${result.error?.message ?? result.stderr}`,
+      { cause: result.error }
+    );
   }
-  return JSON.parse(result.stdout);
+  return result.stdout;
 };
+
+const dryRun = (tasks) => {
+  const args = ['run', ...tasks, '--dry=json'];
+  const stdout = run(TURBO, args);
+  try {
+    return JSON.parse(stdout);
+  } catch (error) {
+    throw new Error(`turbo ${args.join(' ')} printed non-JSON output: ${stdout.slice(0, 500)}`, { cause: error });
+  }
+};
+
+const readYaml = (file) => parse(readFileSync(file, 'utf8'));
+
+const workflows = () =>
+  readdirSync(WORKFLOW_DIR)
+    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+    .map((name) => ({ name, document: readYaml(path.join(WORKFLOW_DIR, name)) }));
+
+const actions = () =>
+  readdirSync(ACTION_DIR).map((name) => ({
+    name: `${name}/action.yml`,
+    document: readYaml(path.join(ACTION_DIR, name, 'action.yml'))
+  }));
+
+const allSteps = () => [
+  ...workflows().flatMap(({ name, document }) =>
+    Object.values(document.jobs ?? {}).flatMap((job) => (job.steps ?? []).map((step) => ({ file: name, step })))
+  ),
+  ...actions().flatMap(({ name, document }) => (document.runs?.steps ?? []).map((step) => ({ file: name, step })))
+];
+
+const envBlocks = () => [
+  ...workflows().flatMap(({ document }) => [
+    document.env,
+    ...Object.values(document.jobs ?? {}).flatMap((job) => [job.env, ...(job.steps ?? []).map(({ env }) => env)])
+  ]),
+  ...actions().flatMap(({ document }) => (document.runs?.steps ?? []).map(({ env }) => env))
+];
+
+const setupSteps = () => readYaml(SETUP_BUILD_ENV).runs.steps;
+
+const pathsOf = (step) => step.with.path.split('\n').filter(Boolean);
+
+const cacheSteps = () => setupSteps().filter(({ uses }) => uses?.startsWith('actions/cache'));
+
+const buildTasks = () => {
+  const tasks = dryRun(['build']).tasks.filter(({ task }) => task === 'build');
+  expect(tasks.length).toBeGreaterThan(0);
+  return tasks;
+};
+
+const trackedFiles = (...pathspecs) => run('git', ['ls-files', ...pathspecs]).split('\n').filter(Boolean);
 
 describe('turbo cache policy', () => {
   it(
-    'never caches a test task',
+    'never caches a test or publish task',
     () => {
-      const { tasks } = dryRun(['test', 'it', 'e2e', 'e2e-single', 'check']);
+      const { tasks } = dryRun(TEST_TASKS);
+      const nonBuild = tasks.filter(({ task }) => task !== 'build');
 
-      const cached = tasks
-        .filter(({ task }) => task !== 'build')
+      const cached = nonBuild
         .filter(({ resolvedTaskDefinition }) => resolvedTaskDefinition.cache !== false)
         .map(({ taskId }) => taskId);
 
-      expect(tasks.length).toBeGreaterThan(0);
+      expect([...new Set(nonBuild.map(({ task }) => task))].sort()).toEqual([...TEST_TASKS].sort());
       expect(cached).toEqual([]);
     },
     DRY_RUN_TIMEOUT_MS
   );
 
   it(
-    'caches every build except the one that only copies prover keys',
+    'caches every build except testkit-js-e2e, whose output is mostly copied prover keys',
     () => {
-      const { tasks } = dryRun(['build']);
-
-      const uncached = tasks
+      const uncached = buildTasks()
         .filter(({ resolvedTaskDefinition }) => resolvedTaskDefinition.cache !== true)
         .map(({ taskId }) => taskId);
 
-      expect(tasks.length).toBeGreaterThan(0);
-      expect(uncached).toEqual(['@midnight-ntwrk/testkit-js-e2e#build']);
+      expect(uncached).toEqual(UNCACHED_BUILDS);
     },
     DRY_RUN_TIMEOUT_MS
   );
 });
-
-const SETUP_BUILD_ENV = path.join(REPO_ROOT, '.github', 'actions', 'setup-build-env', 'action.yml');
-
-const readYaml = (file) => parse(readFileSync(file, 'utf8'));
-
-const workflowSteps = () => {
-  const workflowDir = path.join(REPO_ROOT, '.github', 'workflows');
-  const actionDir = path.join(REPO_ROOT, '.github', 'actions');
-  const workflows = readdirSync(workflowDir)
-    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
-    .map((name) => ({ name, document: readYaml(path.join(workflowDir, name)) }));
-  const actions = readdirSync(actionDir).map((name) => ({
-    name: `${name}/action.yml`,
-    document: readYaml(path.join(actionDir, name, 'action.yml'))
-  }));
-  return [
-    ...workflows.flatMap(({ name, document }) =>
-      Object.values(document.jobs ?? {}).flatMap((job) => (job.steps ?? []).map((step) => ({ file: name, step })))
-    ),
-    ...actions.flatMap(({ name, document }) => (document.runs?.steps ?? []).map((step) => ({ file: name, step })))
-  ];
-};
-
-const cacheSteps = () =>
-  (readYaml(SETUP_BUILD_ENV).runs.steps ?? []).filter(({ uses }) => uses?.startsWith('actions/cache'));
 
 describe('CI routing', () => {
   it(
     'runs every lane when a file that decides every build hash changes',
     () => {
       const { globalCacheInputs } = dryRun(['build']);
-      const ci = readYaml(path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml'));
+      const ci = readYaml(path.join(WORKFLOW_DIR, 'ci.yml'));
       const filterStep = Object.values(ci.jobs)
         .flatMap((job) => job.steps ?? [])
         .find(({ uses }) => uses?.startsWith('dorny/paths-filter'));
-      const shared = parse(filterStep.with.filters).shared;
-      const trackedTurboConfigs = spawnSync('git', ['ls-files', 'turbo.json', '**/turbo.json'], {
-        cwd: REPO_ROOT,
-        encoding: 'utf8'
-      }).stdout.split('\n').filter(Boolean);
+      const { shared } = parse(filterStep.with.filters);
+      const turboConfigs = trackedFiles('turbo.json', '**/turbo.json');
 
-      const unrouted = [...Object.keys(globalCacheInputs.files), ...trackedTurboConfigs, '.nvmrc', '.yarnrc.yml', 'eslint.config.mjs'].filter(
-        (file) => !shared.some((pattern) => path.matchesGlob(file, pattern))
-      );
+      const unrouted = [
+        ...Object.keys(globalCacheInputs.files),
+        ...turboConfigs,
+        '.nvmrc',
+        '.yarnrc.yml',
+        'eslint.config.mjs'
+      ].filter((file) => !shared.some((pattern) => path.matchesGlob(file, pattern)));
 
-      expect(trackedTurboConfigs).toContain('turbo.json');
+      expect(turboConfigs).toContain('turbo.json');
       expect(unrouted).toEqual([]);
     },
     DRY_RUN_TIMEOUT_MS
@@ -123,67 +158,87 @@ describe('CI routing', () => {
 
 describe('CI cache wiring', () => {
   it('lets turbo write to the directory CI caches', () => {
-    const overridden = workflowSteps()
-      .filter(({ step }) => step.run?.includes('--cache-dir'))
-      .map(({ file, step }) => `${file}: ${step.name ?? step.run}`);
-    const turboCache = cacheSteps().filter(({ with: options }) => options.path.split('\n').includes('.turbo/cache'));
+    const turboConfig = readFileSync(path.join(REPO_ROOT, 'turbo.json'), 'utf8');
+    const { scripts } = JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+    const envrc = readFileSync(path.join(REPO_ROOT, '.envrc'), 'utf8');
 
-    expect(overridden).toEqual([]);
-    expect(turboCache).toHaveLength(1);
+    const overrides = [
+      ...allSteps()
+        .filter(({ step }) => step.run?.includes('--cache-dir'))
+        .map(({ file, step }) => `${file}: ${step.name ?? step.run}`),
+      ...Object.entries(scripts)
+        .filter(([, script]) => script.includes('--cache-dir'))
+        .map(([name]) => `package.json: ${name}`),
+      ...envBlocks()
+        .filter((env) => env && 'TURBO_CACHE_DIR' in env)
+        .map(() => 'env: TURBO_CACHE_DIR'),
+      ...(envrc.includes('TURBO_CACHE_DIR') ? ['.envrc: TURBO_CACHE_DIR'] : []),
+      ...(turboConfig.includes('"cacheDir"') ? ['turbo.json: cacheDir'] : [])
+    ];
+    const turboCaches = allSteps()
+      .filter(({ step }) => step.uses?.startsWith('actions/cache'))
+      .filter(({ step }) => pathsOf(step).some((entry) => entry.startsWith('.turbo')))
+      .map(({ file, step }) => `${file}: ${pathsOf(step).join(',')}`);
+
+    expect(overrides).toEqual([]);
+    expect(turboCaches).toEqual(['setup-build-env/action.yml: .turbo/cache']);
   });
 
-  it('drops turbo build entries older than a week before the build adds new ones', () => {
-    const steps = readYaml(SETUP_BUILD_ENV).runs.steps;
+  it('drops turbo build entries older than a week right after restoring them', () => {
+    const steps = setupSteps();
     const restore = steps.findIndex(({ name }) => name === 'Cache turbo build output');
-    const prune = steps.findIndex(({ run }) => run?.includes('find .turbo/cache') && run.includes('-mtime +7'));
+    const prune = steps.findIndex(({ run: command }) => command?.includes('.turbo/cache') && command.includes('find'));
 
-    expect(prune).toBeGreaterThan(restore);
+    expect(prune).toBe(restore + 1);
     expect(steps[prune].if).toBe(steps[restore].if);
+    expect(steps[prune].run.trim()).toBe(
+      'if [ -d .turbo/cache ]; then find .turbo/cache -type f -mtime +7 -delete; fi'
+    );
   });
 
   it('builds every published package from source', () => {
-    const workflowDir = path.join(REPO_ROOT, '.github', 'workflows');
-    const publishJobsReadingTurboCache = readdirSync(workflowDir)
-      .filter((name) => name.endsWith('.yml'))
-      .flatMap((name) =>
-        Object.entries(readYaml(path.join(workflowDir, name)).jobs ?? {})
-          .filter(([, job]) => (job.steps ?? []).some(({ run }) => run?.includes('yarn deploy')))
-          .filter(([, job]) =>
-            (job.steps ?? []).some(
-              ({ uses, with: options }) =>
-                uses === './.github/actions/setup-build-env' && options?.['turbo-cache'] !== 'false'
-            )
-          )
-          .map(([jobName]) => `${name}: ${jobName}`)
-      );
+    const publishJobs = workflows().flatMap(({ name, document }) =>
+      Object.entries(document.jobs ?? {})
+        .filter(([, job]) => (job.steps ?? []).some(({ run: command }) => PUBLISH_COMMAND.test(command ?? '')))
+        .map(([jobName, job]) => ({ id: `${name}: ${jobName}`, job }))
+    );
 
-    expect(publishJobsReadingTurboCache).toEqual([]);
+    const readingTurboCache = publishJobs
+      .filter(({ job }) =>
+        job.steps.some(
+          ({ uses, with: options }) =>
+            uses === './.github/actions/setup-build-env' && options?.['turbo-cache'] !== 'false'
+        )
+      )
+      .map(({ id }) => id);
+
+    expect(publishJobs.length).toBeGreaterThan(0);
+    expect(readingTurboCache).toEqual([]);
   });
 
   it('caches node_modules under one key shared by every job', () => {
-    const [dependencies] = cacheSteps().filter(({ with: options }) =>
-      options.path.split('\n').includes('**/node_modules')
-    );
+    const dependencies = cacheSteps().filter((step) => pathsOf(step).includes('**/node_modules'));
 
-    expect(dependencies.with.key).not.toContain('inputs.cache-key-prefix');
-    expect(dependencies.with.key).toContain("hashFiles('.nvmrc')");
-    expect(dependencies.with.key).toContain("hashFiles('yarn.lock')");
-    expect(dependencies.with.path.split('\n')).not.toContain('~/.yarn');
+    expect(dependencies.map((step) => pathsOf(step))).toEqual([['**/node_modules']]);
+    expect(dependencies.map(({ with: options }) => options.key)).toEqual([
+      "deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-${{ hashFiles('yarn.lock') }}"
+    ]);
   });
 });
 
 describe('build hash', () => {
-  const buildTasks = () => dryRun(['build']).tasks.filter(({ task }) => task === 'build');
-
   it(
-    'hashes the compiler configuration',
+    'hashes the compiler configuration and the compiled-contract check',
     () => {
       const { globalCacheInputs } = dryRun(['build']);
 
-      const missing = buildTasks()
-        .filter(({ inputs }) => 'rollup.config.mjs' in inputs)
-        .filter(({ inputs }) => !('tsconfig.json' in inputs && 'tsconfig.build.json' in inputs))
-        .map(({ taskId }) => taskId);
+      const missing = buildTasks().flatMap(({ taskId, directory, inputs }) => {
+        const tsconfigs = readdirSync(path.join(REPO_ROOT, directory)).filter(
+          (file) => /^tsconfig.*\.json$/.test(file) && file !== 'tsconfig.docs.json'
+        );
+        const expected = BUILDS_WITHOUT_ROLLUP.includes(taskId) ? tsconfigs : [...tsconfigs, 'rollup.config.mjs'];
+        return expected.filter((file) => !(file in inputs)).map((file) => `${taskId}: ${file}`);
+      });
 
       expect(Object.keys(globalCacheInputs.files)).toEqual(
         expect.arrayContaining(['tsconfig.base.json', 'scripts/check-compiled.js'])
@@ -194,17 +249,17 @@ describe('build hash', () => {
   );
 
   it(
-    'hashes the compiled contracts that testkit-js-e2e copies into dist',
+    'hashes every fixture that testkit-js copies into dist',
     () => {
-      const e2eBuild = buildTasks().find(({ taskId }) => taskId === '@midnight-ntwrk/testkit-js-e2e#build');
+      const testkit = buildTasks().find(({ directory }) => directory === 'testkit-js/testkit-js');
+      const shipped = trackedFiles('testkit-js/testkit-js/src/fixtures/hf')
+        .map((file) => path.relative(testkit.directory, file))
+        .filter((file) => !file.startsWith('src/fixtures/hf/generators/'));
 
-      const compiledKinds = new Set(
-        Object.keys(e2eBuild.inputs)
-          .filter((file) => file.startsWith('src/contract/compiled/'))
-          .map((file) => path.extname(file))
-      );
+      const unhashed = shipped.filter((file) => !(file in testkit.inputs));
 
-      expect([...compiledKinds]).toEqual(expect.arrayContaining(['.js', '.prover', '.verifier', '.zkir']));
+      expect(shipped.length).toBeGreaterThan(0);
+      expect(unhashed).toEqual([]);
     },
     DRY_RUN_TIMEOUT_MS
   );
@@ -228,7 +283,7 @@ describe('build hash', () => {
   );
 
   it(
-    'does not rebuild when a test or fixture changes',
+    'does not rebuild when a test file changes',
     () => {
       const testInputs = buildTasks().flatMap(({ taskId, inputs }) =>
         Object.keys(inputs)
