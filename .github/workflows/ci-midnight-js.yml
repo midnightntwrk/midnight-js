@@ -33,7 +33,7 @@ jobs:
     if: inputs.should_run == 'true'
     uses: ./.github/workflows/ci-base.yml
     with:
-      yarn_filter: --filter="./packages/*"
+      yarn_filter: ./packages/*
       # `.github/scripts` and `consumer-e2e` ride along here because this is the
       # only leg that lints, and neither had a lint of its own: the
       # workflow-permissions gate lives in the first, and the second is the code

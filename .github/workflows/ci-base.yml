@@ -14,7 +14,7 @@ on:
     inputs:
       yarn_filter:
         type: string
-        description: Optional filter to include when running Yarn (i.e., --filter=...)
+        description: Optional turbo --filter pattern for build, test and it (e.g., ./packages/*). Empty runs every workspace.
         required: false
         default: ''
       yarn_lint_paths:
@@ -44,13 +44,18 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }}
+        run: yarn build ${YARN_FILTER:+"--filter=$YARN_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          YARN_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+        run: |
+          read -ra paths <<< "$YARN_LINT_PATHS"
+          yarn lint -- "${paths[@]}"
+        env:
+          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       - name: Check dependency constraints
         run: yarn constraints
@@ -79,16 +84,18 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --concurrency 1
+          yarn test ${YARN_FILTER:+"--filter=$YARN_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          YARN_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: |
-          yarn it ${{ inputs.yarn_filter }} --concurrency 1
+          yarn it ${YARN_FILTER:+"--filter=$YARN_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          YARN_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Aggregate coverage reports
         run: |

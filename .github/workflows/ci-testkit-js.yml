@@ -21,9 +21,9 @@ on:
         type: string
       yarn_filter:
         type: string
-        description: Optional filter to include when running Yarn (i.e., --filter=...)
+        description: Optional turbo --filter pattern for the build (e.g., ./testkit-js/*)
         required: false
-        default: '--filter="./testkit-js/*"'
+        default: './testkit-js/*'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)

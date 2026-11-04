@@ -25,9 +25,9 @@ on:
         type: string
       yarn_filter:
         type: string
-        description: Yarn workspace filter applied to `yarn build` (e.g., `--filter="./testkit-js/*"`). Unit tests use a hardcoded filter.
+        description: Turbo --filter pattern applied to `yarn build` (e.g., `./testkit-js/*`). Unit tests use a hardcoded filter.
         required: false
-        default: '--filter="./testkit-js/*"'
+        default: './testkit-js/*'
       yarn_lint_paths:
         type: string
         description: Optional paths passed to `yarn lint` (e.g., ./packages).
@@ -74,12 +74,17 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }}
+        run: yarn build ${YARN_FILTER:+"--filter=$YARN_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          YARN_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+        run: |
+          read -ra paths <<< "$YARN_LINT_PATHS"
+          yarn lint -- "${paths[@]}"
+        env:
+          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       # The `packages/*` half runs in the Midnight.js leg (ci-base.yml); this covers
       # the testkit workspaces, whose test files are outside tsconfig.build.json for
