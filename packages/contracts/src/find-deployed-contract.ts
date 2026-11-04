@@ -23,6 +23,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyProvableCircuitId,
+  type ContractPrivateStates,
   type FinalizedTxRead,  type PrivateStateId,
   type PrivateStateProvider,
   type SerializedContractState,
@@ -227,7 +228,7 @@ const hasInitialPrivateState = <PS>(
   'initialPrivateState' in options;
 
 const setOrGetInitialPrivateState = async <PS>(
-  privateStateProvider: PrivateStateProvider<PrivateStateId, PS>,
+  privateStates: ContractPrivateStates<PrivateStateId, PS>,
   options: FindContractPrivateStateConfig<PS> & object
 ): Promise<PS> => {
   /**
@@ -266,10 +267,10 @@ const setOrGetInitialPrivateState = async <PS>(
       );
     }
     if (hasInitialPrivateState(options)) {
-      await privateStateProvider.set(privateStateId, options.initialPrivateState);
+      await privateStates.set(privateStateId, options.initialPrivateState);
       return options.initialPrivateState;
     }
-    const currentPrivateState = await privateStateProvider.get(privateStateId);
+    const currentPrivateState = await privateStates.get(privateStateId);
     if (currentPrivateState === undefined || currentPrivateState === null) {
       throw new PrivateStateNotFoundError(`No private state found at private state ID '${privateStateId}'`);
     }
@@ -499,18 +500,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   //
   // AFTER the attach, for the order `ledger9FindFlow` uses: a state seeded for a contract
   // whose verifier keys turn out not to match would outlive a find that failed.
-  //
-  // FIRST the address, for the PRIVATE-STATE write below and for that one only. A provider
-  // namespaces every private-state entry by the address last named and refuses a `get` or a
-  // `set` before any has been named, so the write below would otherwise either throw or land
-  // under whichever contract the process touched last -- and a later call, which names this
-  // address itself, would read its own key, find nothing, and report nothing.
-  //
-  // The signing-key calls further down need NONE of that: both take the address as an argument.
-  // `getSigningKey`'s own `@remarks` in `packages/types/src/private-state-provider.ts` says in so
-  // many words that it does not require `setContractAddress` first, and the level-backed provider
-  // keys those entries by the argument.
-  providers.privateStateProvider.setContractAddress(options.contractAddress);
+
   // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
   // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
   // refusal arrives at ATTACH time rather than at the first call.
@@ -519,7 +509,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   // flow takes the widened `AnyLedger8FindDeployedContractOptions`, so no narrower private state is
   // in scope here. The `findDeployedContract` overloads are what type the caller.
   const initialPrivateState = await setOrGetInitialPrivateState<Ledger8PrivateState<Ledger8Contract>>(
-    providers.privateStateProvider,
+    providers.privateStateProvider.forContract(options.contractAddress),
     options
   );
   const signingKey = await setOrGetLedger8SigningKey(
@@ -560,7 +550,6 @@ const ledger9FindFlow = async <C extends Contract.Any>(
 ): Promise<Ledger9FoundContract<C>> => {
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
-  providers.privateStateProvider.setContractAddress(contractAddress);
 
   const deployRecord = requireTaggedRecord(
     await providers.publicDataProvider.watchForDeployTxData(contractAddress),
@@ -585,7 +574,10 @@ const ledger9FindFlow = async <C extends Contract.Any>(
   await verifyContractState(verifierKeys, currentContractState, contractAddress);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
-  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
+  const initialPrivateState = await setOrGetInitialPrivateState(
+    providers.privateStateProvider.forContract(contractAddress),
+    options
+  );
 
   return {
     era: 'v9',

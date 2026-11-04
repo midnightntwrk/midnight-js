@@ -51,12 +51,14 @@ import { CURRENT_LEDGER_ERA, LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
+  type ContractPrivateStates,
   type ContractStateAndParametersRead,
   type ContractStateRead,
   type Ledger8FinalizedTxData,
   type Ledger9FinalizedTxData,
   type MidnightConfig,
   type PrivateStateId,
+  type PrivateStateProvider,
   type ProverKey,
   type PublicStatesRead,
   SerializedContractState,
@@ -69,7 +71,7 @@ import {
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
-import { ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, ledgerVersionOfContractState, ledgerVersionOfLedgerParameters } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import type { Mock } from 'vitest';
 
@@ -233,6 +235,64 @@ export const networkIdOf = (tx: { toString(compact?: boolean): string }): string
 
 const MOCK_SUPPORTED_ERAS: readonly LedgerEra[] = Object.freeze<LedgerEra[]>(['v8', 'v9']);
 
+type MockContractPrivateStates = {
+  [K in keyof ContractPrivateStates]: Mock<ContractPrivateStates[K]>;
+};
+
+const contractStatesByProvider = new WeakMap<object, MockContractPrivateStates>();
+
+/**
+ * A mocked private state provider whose `forContract` hands out one shared view, whatever the
+ * address. Reach that view through {@link contractStatesOf}; assert the address on `forContract`.
+ */
+export const createMockPrivateStateProvider = (): PrivateStateProvider => {
+  const contractStates: MockContractPrivateStates = {
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+    clear: vi.fn(),
+    exportPrivateStates: vi.fn(),
+    importPrivateStates: vi.fn()
+  };
+  const provider: PrivateStateProvider = {
+    forContract: vi.fn(() => contractStates),
+    clearAll: vi.fn(),
+    getSigningKey: vi.fn(),
+    setSigningKey: vi.fn(),
+    clearSigningKeys: vi.fn(),
+    removeSigningKey: vi.fn(),
+    exportSigningKeys: vi.fn(),
+    importSigningKeys: vi.fn()
+  };
+  contractStatesByProvider.set(provider, contractStates);
+  return provider;
+};
+
+/** The view the mocked provider's `forContract` returns. */
+export const contractStatesOf = (provider: object): MockContractPrivateStates => {
+  const contractStates = contractStatesByProvider.get(provider);
+  assertDefined(contractStates, 'expected a provider made by createMockPrivateStateProvider');
+  return contractStates;
+};
+
+/**
+ * Makes a mocked provider keep each contract's private states apart, as a real one does.
+ *
+ * @returns The stored states, keyed `<contract address>:<private state id>`.
+ */
+export const separateContractStates = (provider: PrivateStateProvider): Map<string, unknown> => {
+  const stored = new Map<string, unknown>();
+  vi.mocked(provider.forContract).mockImplementation((address) => ({
+    ...contractStatesOf(provider),
+    get: vi.fn((id: PrivateStateId) => Promise.resolve(stored.get(`${address}:${id}`) ?? null)),
+    set: vi.fn((id: PrivateStateId, state: unknown) => {
+      stored.set(`${address}:${id}`, state);
+      return Promise.resolve();
+    })
+  }));
+  return stored;
+};
+
 export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   config: MOCK_CONFIG,
   midnightProvider: {
@@ -260,21 +320,7 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
     // of these mocks assume.
     queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION)
   },
-  privateStateProvider: {
-    setContractAddress: vi.fn(),
-    get: vi.fn(),
-    set: vi.fn(),
-    getSigningKey: vi.fn(),
-    setSigningKey: vi.fn(),
-    remove: vi.fn(),
-    clear: vi.fn(),
-    clearSigningKeys: vi.fn(),
-    removeSigningKey: vi.fn(),
-    exportPrivateStates: vi.fn(),
-    importPrivateStates: vi.fn(),
-    exportSigningKeys: vi.fn(),
-    importSigningKeys: vi.fn()
-  },
+  privateStateProvider: createMockPrivateStateProvider(),
   zkConfigProvider: {
     // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
     // it, and a ledger 9 container served with a retained value is refused.

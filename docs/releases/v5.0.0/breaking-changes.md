@@ -1579,6 +1579,39 @@ Type changes:
 An exhaustive `switch` on `UnknownRecordEraError.method`, `StateReadMethod` or `ProviderMethod`
 must handle the new members.
 
+## 31. Private states are reached through a per-contract view (#812)
+
+`PrivateStateProvider` no longer keeps a mutable contract address. `setContractAddress` set one
+address for the whole provider, so two flows on different contracts could overwrite each other's
+address while one of them waited for a proof or a submit, and private state was then read from or
+written to the wrong contract. A per-contract view fixes the address when it is created.
+
+| Before | Now |
+|---|---|
+| `provider.setContractAddress(address)` | removed; call `provider.forContract(address)` |
+| `provider.get(id)`, `set(id, state)`, `remove(id)` | `provider.forContract(address).get(id)`, `.set(id, state)`, `.remove(id)` |
+| `provider.exportPrivateStates(options)` | `provider.forContract(address).exportPrivateStates(options)` |
+| `provider.importPrivateStates(data, options)` | `provider.forContract(address).importPrivateStates(data, options)` |
+| `provider.clear()` (needed an address, cleared every contract) | `provider.clearAll()` clears every contract; `provider.forContract(address).clear()` clears one |
+| `levelPrivateStateProvider(...).changePassword(...)` needed an address | needs none; it re-encrypts every contract of the account, as it always did |
+| `ConfigurationError` "Contract address not set" | gone; `forContract` refuses an invalid address with `InvalidArgumentError` |
+
+The signing-key methods are unchanged. The new interface is `ContractPrivateStates` (types).
+
+The framework no longer leaves the provider "pointed at" the last contract it deployed, found or
+called. Code that relied on that reads through `forContract` with the address it already holds.
+
+The export format is unchanged. An export made by an earlier 5.0.0 pre-release imports into a view.
+
+Implementing `PrivateStateProvider` yourself: add `forContract`, which returns an object whose
+operations use the address it was created with, and `clearAll`; remove `setContractAddress`,
+`get`, `set`, `remove`, `clear`, `exportPrivateStates` and `importPrivateStates` from the provider.
+
+`accountId` of `levelPrivateStateProvider` is now documented as the wallet's coin public key,
+`walletProvider.getCoinPublicKey()`. It must stay the same for a user: another value opens
+another, empty store. testkit-js now passes the coin public key as it is, so a testkit database
+written by an earlier pre-release is not read by this one.
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

@@ -24,9 +24,9 @@ import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
-import {
-  contractStateAndParametersReadStub,
+import {   contractStateAndParametersReadStub,
   contractStateReadStub,
+contractStatesOf,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -35,7 +35,8 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockVerifierKeys} from './test-mocks';
+  createMockVerifierKeys,
+  separateContractStates} from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
@@ -260,7 +261,7 @@ describe('findDeployedContract', () => {
     it('stores and returns the initial private state exactly as for a current-era deploy', async () => {
       const privateStateId = createMockPrivateStateId();
       const initialPrivateState = { test: 'initial-private-state' };
-      vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
+      vi.mocked(contractStatesOf(providers.privateStateProvider).set).mockResolvedValue(undefined);
 
       const result = await findDeployedContract(providers, {
         compiledContract,
@@ -270,7 +271,7 @@ describe('findDeployedContract', () => {
       });
 
       expect(result.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
-      expect(providers.privateStateProvider.set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
+      expect(contractStatesOf(providers.privateStateProvider).set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
     });
 
     it('still refuses artifacts whose verifier key the current state does not carry', async () => {
@@ -284,7 +285,7 @@ describe('findDeployedContract', () => {
       assert(rejection instanceof ContractTypeError);
       expect(rejection.keylessCircuitIds).toEqual(['testCircuit']);
       expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
-      expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+      expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
     });
 
     it('refuses a current contract state written by the v8 ledger before reading verifier keys', async () => {
@@ -359,7 +360,7 @@ describe('findDeployedContract', () => {
 
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
-    vi.mocked(providers.privateStateProvider.get).mockResolvedValue(existingPrivateState);
+    vi.mocked(contractStatesOf(providers.privateStateProvider).get).mockResolvedValue(existingPrivateState);
 
     const options = {
       compiledContract,
@@ -371,13 +372,13 @@ describe('findDeployedContract', () => {
 
     expectBasicResult(result);
     expect(result.deployTxData.private.initialPrivateState).toBe(existingPrivateState);
-    expect(providers.privateStateProvider.get).toHaveBeenCalledWith(privateStateId);
+    expect(contractStatesOf(providers.privateStateProvider).get).toHaveBeenCalledWith(privateStateId);
   });
 
   it('refuses a private state id under which nothing is stored as PrivateStateNotFoundError', async () => {
     const privateStateId = createMockPrivateStateId();
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
-    vi.mocked(providers.privateStateProvider.get).mockResolvedValue(null);
+    vi.mocked(contractStatesOf(providers.privateStateProvider).get).mockResolvedValue(null);
 
     const rejection = await findDeployedContract(providers, { compiledContract, contractAddress, privateStateId }).then(
       () => undefined,
@@ -406,7 +407,7 @@ describe('findDeployedContract', () => {
         "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
         'for a contract that carries no private state.'
     });
-    expect(providers.privateStateProvider.get).not.toHaveBeenCalled();
+    expect(contractStatesOf(providers.privateStateProvider).get).not.toHaveBeenCalled();
   });
 
   it('should find deployed contract and store new private state', async () => {
@@ -415,7 +416,7 @@ describe('findDeployedContract', () => {
 
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
-    vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
+    vi.mocked(contractStatesOf(providers.privateStateProvider).set).mockResolvedValue(undefined);
 
     const options = {
       compiledContract,
@@ -428,7 +429,30 @@ describe('findDeployedContract', () => {
 
     expectBasicResult(result);
     expect(result.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
-    expect(providers.privateStateProvider.set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
+    expect(contractStatesOf(providers.privateStateProvider).set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
+  });
+
+  it('stores the initial private state under the found contract when another contract writes during the attach', async () => {
+    const stored = separateContractStates(providers.privateStateProvider);
+    const otherContract = createMockContractAddress();
+    const privateStateId = createMockPrivateStateId();
+    const initialPrivateState = { test: 'initial-private-state' };
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    const readVerifierKeys = providers.zkConfigProvider.getVerifierKeys.bind(providers.zkConfigProvider);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockImplementationOnce(async (circuitIds) => {
+      await providers.privateStateProvider.forContract(otherContract).set(privateStateId, 'other-state');
+      return readVerifierKeys(circuitIds);
+    });
+
+    const options = { compiledContract, contractAddress, privateStateId, initialPrivateState };
+    await findDeployedContract(providers, options);
+
+    expect(stored).toEqual(
+      new Map<string, unknown>([
+        [`${otherContract}:${privateStateId}`, 'other-state'],
+        [`${contractAddress}:${privateStateId}`, initialPrivateState]
+      ])
+    );
   });
 
   it('should find deployed contract with existing signing key', async () => {
@@ -482,7 +506,7 @@ describe('findDeployedContract', () => {
     );
 
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
-    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
   });
 
   // A default-constructed operation is exactly the keyless shape: registered on the state, but
@@ -501,6 +525,6 @@ describe('findDeployedContract', () => {
     expect(thrown.keylessCircuitIds).toEqual(['testCircuit']);
     expect(thrown.contractAddress).toBe(contractAddress);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
-    expect(providers.privateStateProvider.set).not.toHaveBeenCalled();
+    expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
   });
 });

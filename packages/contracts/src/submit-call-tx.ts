@@ -98,16 +98,12 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
-  if (hasPrivateStateProvider) {
-    providers.privateStateProvider.setContractAddress(options.contractAddress);
-  }
-
   const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
       options.circuitId,
       await createLedger9UnprovenCallTx(providers, options, txCtx),
-      hasPrivateStateId ? options.privateStateId : undefined
+      hasPrivateStateId ? { contractAddress: options.contractAddress, privateStateId: options.privateStateId } : undefined
     );
   };
 
@@ -270,10 +266,6 @@ const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
-  if (hasPrivateStateProvider) {
-    providers.privateStateProvider.setContractAddress(options.contractAddress);
-  }
-
   const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);
 
   const txId = await submitLedger9PayloadAsync(providers, {
@@ -387,10 +379,9 @@ export async function submitCallTxAsync<C extends Ledger8Contract, PCK extends L
  *
  * // 5. Update private state manually if needed
  * if (options.privateStateId) {
- *   await providers.privateStateProvider.set(
- *     privateStateId,
- *     callTxData.private.nextPrivateState
- *   );
+ *   await providers.privateStateProvider
+ *     .forContract(options.contractAddress)
+ *     .set(options.privateStateId, callTxData.private.nextPrivateState);
  * }
  * ```
  */

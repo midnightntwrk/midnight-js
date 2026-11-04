@@ -17,6 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
+  type ContractPrivateStates,
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
@@ -35,7 +36,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -157,59 +158,210 @@ export const inMemoryPrivateStateProvider = <
 >(): PrivateStateProvider<PSI, PS> => {
   const record = new Map<string, PS>();
   const signingKeys = {} as Record<ContractAddress, SigningKey>;
-  let contractAddress: ContractAddress | null = null;
 
-  const getScopedKey = (key: PSI): string => {
-    if (contractAddress === null) {
-      throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
-    }
-    return `${contractAddress}:${key}`;
+  const contractPrivateStates = (contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> => {
+    const prefix = `${contractAddress}:`;
+    const scopedKey = (key: PSI): string => `${prefix}${key}`;
+    const ownKeys = (): string[] => Array.from(record.keys()).filter((key) => key.startsWith(prefix));
+
+    return {
+      /**
+       * Sets the private state for a given key.
+       * @param {PSI} key - The key for the private state.
+       * @param {PS} state - The private state to set.
+       * @returns {Promise<void>} A promise that resolves when the state is set.
+       */
+      set(key: PSI, state: PS): Promise<void> {
+        record.set(scopedKey(key), state);
+        return Promise.resolve();
+      },
+      /**
+       * Gets the private state for a given key.
+       * @param {PSI} key - The key for the private state.
+       * @returns {Promise<PS | null>} A promise that resolves to the private state or null if not found.
+       */
+      get(key: PSI): Promise<PS | null> {
+        const value = record.get(scopedKey(key)) ?? null;
+        return Promise.resolve(value);
+      },
+      /**
+       * Removes the private state for a given key.
+       * @param {PSI} key - The key for the private state.
+       * @returns {Promise<void>} A promise that resolves when the state is removed.
+       */
+      remove(key: PSI): Promise<void> {
+        record.delete(scopedKey(key));
+        return Promise.resolve();
+      },
+      /**
+       * Clears the private states of this contract.
+       * @returns {Promise<void>} A promise that resolves when the states are cleared.
+       */
+      clear(): Promise<void> {
+        ownKeys().forEach((key) => record.delete(key));
+        return Promise.resolve();
+      },
+      /**
+       * Exports the private states of this contract as an encrypted JSON-serializable structure.
+       * @param {ExportPrivateStatesOptions} options - Export options including password.
+       * @returns {Promise<PrivateStateExport>} A promise that resolves to the export structure.
+       */
+      async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
+        const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+        if (!options?.password) {
+          throw new PrivateStateExportError('Password is required for in-memory provider export');
+        }
+
+        validateExportPassword(options.password);
+
+        const keys = ownKeys();
+
+        if (keys.length === 0) {
+          throw new PrivateStateExportError('No private states to export');
+        }
+
+        if (keys.length > maxStates) {
+          throw new PrivateStateExportError(
+            `Too many states to export (${keys.length}). Maximum allowed: ${maxStates}`
+          );
+        }
+
+        const payload: PrivateStatePayload<PSI> = {
+          version: CURRENT_EXPORT_VERSION,
+          exportedAt: new Date().toISOString(),
+          stateCount: keys.length,
+          states: Object.fromEntries(
+            keys.map((key) => [key.slice(prefix.length), JSON.stringify(record.get(key))])
+          ) as Record<PSI, string>
+        };
+
+        const salt = randomBytes(SALT_LENGTH);
+        const encryptedPayload = encrypt(JSON.stringify(payload), options.password, salt);
+
+        return {
+          format: 'midnight-private-state-export',
+          encryptedPayload,
+          salt: salt.toString('hex')
+        };
+      },
+      /**
+       * Imports private states from a previously exported structure into this contract.
+       * @param {PrivateStateExport} exportData - The export data structure to import.
+       * @param {ImportPrivateStatesOptions} options - Import options including password and conflict strategy.
+       * @returns {Promise<ImportPrivateStatesResult>} A promise that resolves to the import result.
+       */
+      async importPrivateStates(
+        exportData: PrivateStateExport,
+        options?: ImportPrivateStatesOptions
+      ): Promise<ImportPrivateStatesResult> {
+        const conflictStrategy = options?.conflictStrategy ?? 'error';
+        const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+        if (exportData.format !== 'midnight-private-state-export') {
+          throw new InvalidExportFormatError('Unrecognized export format');
+        }
+
+        if (!exportData.encryptedPayload || !exportData.salt) {
+          throw new InvalidExportFormatError('Missing required fields');
+        }
+
+        validateSalt(exportData.salt);
+
+        if (!options?.password) {
+          throw new InvalidExportFormatError('Password is required for in-memory provider import');
+        }
+
+        validateExportPassword(options.password);
+
+        let payload: PrivateStatePayload<PSI>;
+        try {
+          const salt = Buffer.from(exportData.salt, 'hex');
+          const decryptedJson = decrypt(exportData.encryptedPayload, options.password, salt);
+          payload = JSON.parse(decryptedJson);
+        } catch {
+          throw new ExportDecryptionError();
+        }
+
+        if (
+          !payload.states ||
+          typeof payload.states !== 'object' ||
+          typeof payload.version !== 'number' ||
+          typeof payload.stateCount !== 'number'
+        ) {
+          throw new ExportDecryptionError();
+        }
+
+        if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+          throw new InvalidExportFormatError(
+            `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+          );
+        }
+
+        const stateIds = Object.keys(payload.states) as PSI[];
+
+        if (stateIds.length !== payload.stateCount) {
+          throw new ExportDecryptionError();
+        }
+
+        if (stateIds.length > maxStates) {
+          throw new InvalidExportFormatError(
+            `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
+          );
+        }
+
+        if (conflictStrategy === 'error') {
+          const conflictCount = stateIds.filter((id) => record.has(scopedKey(id))).length;
+          if (conflictCount > 0) {
+            throw new ImportConflictError(conflictCount);
+          }
+        }
+
+        let imported = 0;
+        let skipped = 0;
+        let overwritten = 0;
+
+        for (const stateId of stateIds) {
+          const serializedState = payload.states[stateId];
+          const existingState = record.get(scopedKey(stateId));
+
+          if (existingState !== undefined) {
+            if (conflictStrategy === 'skip') {
+              skipped++;
+              continue;
+            } else if (conflictStrategy === 'overwrite') {
+              overwritten++;
+            }
+          }
+
+          const state = JSON.parse(serializedState) as PS;
+          record.set(scopedKey(stateId), state);
+
+          if (existingState === undefined) {
+            imported++;
+          }
+        }
+
+        return { imported, skipped, overwritten };
+      }
+    };
   };
 
   return {
     /**
-     * Sets the contract address for scoping private state operations.
-     * @param {ContractAddress} address - The contract address to scope operations to.
+     * Returns the private states of the contract at the given address.
+     * @param {ContractAddress} contractAddress - The contract address the view is fixed to.
+     * @returns {ContractPrivateStates<PSI, PS>} The per-contract view.
      */
-    setContractAddress(address: ContractAddress): void {
-      contractAddress = address;
+    forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> {
+      assertIsContractAddress(contractAddress);
+      return contractPrivateStates(contractAddress);
     },
     /**
-     * Sets the private state for a given key.
-     * @param {PSI} key - The key for the private state.
-     * @param {PS} state - The private state to set.
-     * @returns {Promise<void>} A promise that resolves when the state is set.
-     */
-    set(key: PSI, state: PS): Promise<void> {
-      record.set(getScopedKey(key), state);
-      return Promise.resolve();
-    },
-    /**
-     * Gets the private state for a given key.
-     * @param {PSI} key - The key for the private state.
-     * @returns {Promise<PS | null>} A promise that resolves to the private state or null if not found.
-     */
-    get(key: PSI): Promise<PS | null> {
-      const value = record.get(getScopedKey(key)) ?? null;
-      return Promise.resolve(value);
-    },
-    /**
-     * Removes the private state for a given key.
-     * @param {PSI} key - The key for the private state.
-     * @returns {Promise<void>} A promise that resolves when the state is removed.
-     */
-    remove(key: PSI): Promise<void> {
-      record.delete(getScopedKey(key));
-      return Promise.resolve();
-    },
-    /**
-     * Clears all private states.
+     * Clears the private states of every contract.
      * @returns {Promise<void>} A promise that resolves when all states are cleared.
      */
-    clear(): Promise<void> {
-      if (contractAddress === null) {
-        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
-      }
+    clearAll(): Promise<void> {
       record.clear();
       return Promise.resolve();
     },
@@ -250,147 +402,6 @@ export const inMemoryPrivateStateProvider = <
         delete signingKeys[addr];
       });
       return Promise.resolve();
-    },
-    /**
-     * Exports all private states as an encrypted JSON-serializable structure.
-     * @param {ExportPrivateStatesOptions} options - Export options including password.
-     * @returns {Promise<PrivateStateExport>} A promise that resolves to the export structure.
-     */
-    async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
-      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
-
-      if (!options?.password) {
-        throw new PrivateStateExportError('Password is required for in-memory provider export');
-      }
-
-      validateExportPassword(options.password);
-
-      if (record.size === 0) {
-        throw new PrivateStateExportError('No private states to export');
-      }
-
-      if (record.size > maxStates) {
-        throw new PrivateStateExportError(
-          `Too many states to export (${record.size}). Maximum allowed: ${maxStates}`
-        );
-      }
-
-      const payload: PrivateStatePayload<PSI> = {
-        version: CURRENT_EXPORT_VERSION,
-        exportedAt: new Date().toISOString(),
-        stateCount: record.size,
-        states: Object.fromEntries(
-          Array.from(record.entries()).map(([key, value]) => [key, JSON.stringify(value)])
-        ) as Record<PSI, string>
-      };
-
-      const salt = randomBytes(SALT_LENGTH);
-      const encryptedPayload = encrypt(JSON.stringify(payload), options.password, salt);
-
-      return {
-        format: 'midnight-private-state-export',
-        encryptedPayload,
-        salt: salt.toString('hex')
-      };
-    },
-    /**
-     * Imports private states from a previously exported structure.
-     * @param {PrivateStateExport} exportData - The export data structure to import.
-     * @param {ImportPrivateStatesOptions} options - Import options including password and conflict strategy.
-     * @returns {Promise<ImportPrivateStatesResult>} A promise that resolves to the import result.
-     */
-    async importPrivateStates(
-      exportData: PrivateStateExport,
-      options?: ImportPrivateStatesOptions
-    ): Promise<ImportPrivateStatesResult> {
-      const conflictStrategy = options?.conflictStrategy ?? 'error';
-      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
-
-      if (exportData.format !== 'midnight-private-state-export') {
-        throw new InvalidExportFormatError('Unrecognized export format');
-      }
-
-      if (!exportData.encryptedPayload || !exportData.salt) {
-        throw new InvalidExportFormatError('Missing required fields');
-      }
-
-      validateSalt(exportData.salt);
-
-      if (!options?.password) {
-        throw new InvalidExportFormatError('Password is required for in-memory provider import');
-      }
-
-      validateExportPassword(options.password);
-
-      let payload: PrivateStatePayload<PSI>;
-      try {
-        const salt = Buffer.from(exportData.salt, 'hex');
-        const decryptedJson = decrypt(exportData.encryptedPayload, options.password, salt);
-        payload = JSON.parse(decryptedJson);
-      } catch {
-        throw new ExportDecryptionError();
-      }
-
-      if (
-        !payload.states ||
-        typeof payload.states !== 'object' ||
-        typeof payload.version !== 'number' ||
-        typeof payload.stateCount !== 'number'
-      ) {
-        throw new ExportDecryptionError();
-      }
-
-      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
-        throw new InvalidExportFormatError(
-          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
-        );
-      }
-
-      const stateIds = Object.keys(payload.states) as PSI[];
-
-      if (stateIds.length !== payload.stateCount) {
-        throw new ExportDecryptionError();
-      }
-
-      if (stateIds.length > maxStates) {
-        throw new InvalidExportFormatError(
-          `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
-        );
-      }
-
-      if (conflictStrategy === 'error') {
-        const conflictCount = stateIds.filter((id) => record.has(id as string)).length;
-        if (conflictCount > 0) {
-          throw new ImportConflictError(conflictCount);
-        }
-      }
-
-      let imported = 0;
-      let skipped = 0;
-      let overwritten = 0;
-
-      for (const stateId of stateIds) {
-        const serializedState = payload.states[stateId];
-        const existingState = record.get(stateId as string);
-
-        if (existingState !== undefined) {
-          if (conflictStrategy === 'skip') {
-            skipped++;
-            continue;
-          } else if (conflictStrategy === 'overwrite') {
-            overwritten++;
-          }
-        }
-
-        const state = JSON.parse(serializedState) as PS;
-        record.set(stateId as string, state);
-
-        if (existingState === undefined) {
-          imported++;
-        }
-      }
-
-      return { imported, skipped, overwritten };
     },
     /**
      * Exports all signing keys as an encrypted JSON-serializable structure.

@@ -203,7 +203,6 @@ export function createCircuitCallTxInterface<C extends Contract.Any>(
   if (hasLedger8ContractShape(compiledContract)) {
     return createLedger8CircuitCallTxInterface(providers, compiledContract, contractAddress, privateStateId);
   }
-  providers.privateStateProvider.setContractAddress(contractAddress);
   return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,

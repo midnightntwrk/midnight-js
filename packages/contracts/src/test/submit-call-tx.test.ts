@@ -38,8 +38,7 @@ import { submitLedger9Payload, submitLedger9PayloadAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
-import {
-  createMockCoinInfo,
+import { contractStatesOf,   createMockCoinInfo,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractCall,
@@ -48,8 +47,8 @@ import {
   createMockProviders,
   createMockUnprovenCallTxData,
   createMockUnprovenTx,
-  createMockZswapLocalState
-} from './test-mocks';
+  createMockZswapLocalState,
+separateContractStates} from './test-mocks';
 
 vi.mock('../unproven-call-tx');
 vi.mock('../submit-tx');
@@ -150,7 +149,7 @@ describe('submit-call-tx', () => {
         const result = await submitCallTx(mockProviders, options);
 
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should successfully submit scoped call transaction', async () => {
@@ -162,7 +161,7 @@ describe('submit-call-tx', () => {
         });
 
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('forwards logEvents through the nested scoped Ledger9CallResult rebuild', async () => {
@@ -235,7 +234,7 @@ describe('submit-call-tx', () => {
 
         const result = await submitCallTx(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState);
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState);
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
 
@@ -280,7 +279,7 @@ describe('submit-call-tx', () => {
           expect(result_2.private.result).toBe('2');
         });
 
-        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createLedger9UnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
           era: CURRENT_LEDGER_ERA,
@@ -292,6 +291,25 @@ describe('submit-call-tx', () => {
             ...mockFinalizedTxData
           }
         });
+      });
+
+      it('stores the next private state under its own contract when another contract writes during the submit', async () => {
+        const stored = separateContractStates(mockProviders.privateStateProvider);
+        const otherContract = createMockContractAddress();
+        const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
+        vi.mocked(submitLedger9Payload).mockImplementation(async () => {
+          await mockProviders.privateStateProvider.forContract(otherContract).set(mockPrivateStateId, 'other-state');
+          return mockFinalizedTxData;
+        });
+
+        await submitCallTx(mockProviders, createBasicCallOptions({ privateStateId: mockPrivateStateId }));
+
+        expect(stored).toEqual(
+          new Map<string, unknown>([
+            [`${otherContract}:${mockPrivateStateId}`, 'other-state'],
+            [`${mockContractAddress}:${mockPrivateStateId}`, mockUnprovenCallTxData.private.nextPrivateState]
+          ])
+        );
       });
     });
 
@@ -314,7 +332,7 @@ describe('submit-call-tx', () => {
 
         await submitCallTx(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
     });
 
@@ -328,7 +346,7 @@ describe('submit-call-tx', () => {
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should throw TxFailedError when scoped transaction fails with FailEntirely', async () => {
@@ -343,7 +361,7 @@ describe('submit-call-tx', () => {
           await submitCallTx(mockProviders, options, txCtx);
         })).rejects.toThrow(TxFailedError);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should include failure data and circuit ID in TxFailedError', async () => {
@@ -377,7 +395,7 @@ describe('submit-call-tx', () => {
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(TxFailedError);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should throw TxFailedError when scoped transaction fails with FailFallible', async () => {
@@ -392,7 +410,7 @@ describe('submit-call-tx', () => {
           await submitCallTx(mockProviders, options, txCtx);
         })).rejects.toThrow(TxFailedError);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should expose FailFallible status in TxFailedError record', async () => {
@@ -484,7 +502,7 @@ describe('submit-call-tx', () => {
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
 
-      it('should propagate errors from privateStateProvider.set', async () => {
+      it('should propagate errors from contractStatesOf(privateStateProvider).set', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const stateError = new Error('Failed to set private state');
 
@@ -493,7 +511,7 @@ describe('submit-call-tx', () => {
 
         vi.mocked(createLedger9UnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
-        mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
+        contractStatesOf(mockProviders.privateStateProvider).set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
       });
@@ -553,7 +571,7 @@ describe('submit-call-tx', () => {
 
         await submitCallTx(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, undefined);
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, undefined);
       });
 
       it('should handle call without arguments', async () => {
@@ -607,7 +625,7 @@ describe('submit-call-tx', () => {
 
         await submitCallTxAsync(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
     });
 
@@ -634,7 +652,7 @@ describe('submit-call-tx', () => {
 
         await submitCallTxAsync(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
     });
 
@@ -736,7 +754,7 @@ describe('submit-call-tx', () => {
 
         expect(finalizedData.status).toBe(FailFallible);
         expect(callTxData.private.nextPrivateState).toEqual(nextPrivateState);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should return callTxData with all private state information', async () => {

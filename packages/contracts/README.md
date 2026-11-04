@@ -124,7 +124,9 @@ const built = await createUnprovenCallTx(providers, callOptions);
 // After the fork a ledger 8 call builds a ledger 9 transaction; the handle says which.
 const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
 if (record.status === 'SucceedEntirely') {
-  await providers.privateStateProvider.set(privateStateId, built.private.nextPrivateState);
+  await providers.privateStateProvider
+    .forContract(callOptions.contractAddress)
+    .set(privateStateId, built.private.nextPrivateState);
 }
 ```
 

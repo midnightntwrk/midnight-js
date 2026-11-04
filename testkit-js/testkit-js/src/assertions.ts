@@ -103,7 +103,9 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
   const state = deployedLedgerState.contractState.deserialize({ v9: ContractState });
   expect(stateValueEqual(state.data.state, found.initialContractState.deserialize({ v9: ContractState }).data.state)).toBeTruthy();
   if (privateStateId) {
-    const privateState = await providers.privateStateProvider.get(privateStateId);
+    const privateState = await providers.privateStateProvider
+      .forContract(deployTxData.public.contractAddress)
+      .get(privateStateId);
     expect(privateState).toEqual(foundDeployTxData.private.initialPrivateState);
     if (initialPrivateState !== undefined) {
       expect(privateState).toEqual(initialPrivateState);
@@ -152,7 +154,9 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
       const { privateStateId, initialPrivateState } = deployTxOptions;
       assertDefined(privateStateId, "'privateStateId' was given as undefined");
       expect(deployTxData.private.initialPrivateState).toEqual(initialPrivateState);
-      const storedPrivateState = await providers.privateStateProvider.get(privateStateId);
+      const storedPrivateState = await providers.privateStateProvider
+        .forContract(deployTxData.public.contractAddress)
+        .get(privateStateId);
       expect(storedPrivateState).toBeDefined();
       expect(storedPrivateState).toEqual(initialPrivateState);
     }
@@ -170,7 +174,9 @@ export const expectSuccessfulCallTx = async <C extends Contract.Any, PCK extends
   expect(callTxData.private.nextZswapLocalState).toBeTruthy();
   if (callTxOptions) {
     if ('privateStateId' in callTxOptions) {
-      const storedPrivateState = await providers.privateStateProvider.get(callTxOptions.privateStateId);
+      const storedPrivateState = await providers.privateStateProvider
+        .forContract(callTxOptions.contractAddress)
+        .get(callTxOptions.privateStateId);
       expect(storedPrivateState).toBeDefined();
       expect(storedPrivateState).toEqual(callTxData.private.nextPrivateState);
       if (nextPrivateState) {

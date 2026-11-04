@@ -1409,6 +1409,29 @@ the contract you pass.
 The details are in
 [breaking-changes.md](./breaking-changes.md#28-every-contracts-artifacts-must-declare-their-runtime-version-1526).
 
+## Step 27 — Reach private states through `forContract`
+
+Replace every `setContractAddress` call and the private-state calls that followed it:
+
+```typescript
+// Before
+providers.privateStateProvider.setContractAddress(contractAddress);
+const state = await providers.privateStateProvider.get(privateStateId);
+await providers.privateStateProvider.set(privateStateId, nextState);
+
+// After
+const states = providers.privateStateProvider.forContract(contractAddress);
+const state = await states.get(privateStateId);
+await states.set(privateStateId, nextState);
+```
+
+- `exportPrivateStates` and `importPrivateStates` move to the view, so an export holds one
+  contract's states and an import writes into the contract you name.
+- `provider.clear()` becomes `provider.clearAll()`. To clear one contract, call
+  `provider.forContract(address).clear()`.
+- `changePassword` on the level provider no longer needs an address.
+- Pass the wallet's coin public key as `accountId`, and keep it the same for a user.
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -1443,3 +1466,4 @@ The details are in
 - [ ] No bare `ContractProviders` without a contract, and no retry on `TxFailedError`.
 - [ ] No import of a ledger 9 name without `Ledger9` (Step 25), of `isTransactionContext`, or from the bare `@midnight-ntwrk/midnight-js/protocol` subpath (without `/v9`).
 - [ ] Every artifact location serves `compiler/` beside `keys/` and `zkir/`, and every custom `ZKConfigProvider` overrides `getArtifactRuntimeVersion()` (Step 26).
+- [ ] No call to `setContractAddress`; every private-state read and write goes through `forContract(address)`, and `clear()` became `clearAll()` (Step 27).

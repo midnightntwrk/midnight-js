@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import {
+  ImportConflictError,
   InvalidExportFormatError,
   type SigningKeyExport
 } from '@midnight-ntwrk/midnight-js-types';
@@ -112,5 +114,71 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
 
     expect(result.imported).toBe(1);
     expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(VALID_SIGNING_KEY);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider per-contract view', () => {
+  const CONTRACT_A = 'a1'.repeat(32) as ContractAddress;
+  const CONTRACT_B = 'b2'.repeat(32) as ContractAddress;
+  type CounterId = 'counter' | 'other';
+
+  it('refuses an address that is not a contract address', () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+
+    expect(() => provider.forContract('not-a-contract-address' as ContractAddress)).toThrow(InvalidArgumentError);
+  });
+
+  it('keeps the same private state id separate for two contracts', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+
+    await provider.forContract(CONTRACT_A).set('counter', { count: 1 });
+    await provider.forContract(CONTRACT_B).set('counter', { count: 2 });
+
+    expect(await provider.forContract(CONTRACT_A).get('counter')).toEqual({ count: 1 });
+    expect(await provider.forContract(CONTRACT_B).get('counter')).toEqual({ count: 2 });
+  });
+
+  it('clears one contract through the view and every contract through clearAll', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    await provider.forContract(CONTRACT_A).set('counter', { count: 1 });
+    await provider.forContract(CONTRACT_B).set('counter', { count: 2 });
+
+    await provider.forContract(CONTRACT_A).clear();
+    const afterClear = [
+      await provider.forContract(CONTRACT_A).get('counter'),
+      await provider.forContract(CONTRACT_B).get('counter')
+    ];
+    await provider.clearAll();
+    const afterClearAll = await provider.forContract(CONTRACT_B).get('counter');
+
+    expect(afterClear).toEqual([null, { count: 2 }]);
+    expect(afterClearAll).toBeNull();
+  });
+
+  it('exports its own contract and imports into the target contract only', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    await provider.forContract(CONTRACT_A).set('counter', { count: 1 });
+    await provider.forContract(CONTRACT_B).set('other', { count: 9 });
+
+    const exported = await provider.forContract(CONTRACT_A).exportPrivateStates({ password: VALID_PASSWORD });
+    await provider.clearAll();
+    const result = await provider.forContract(CONTRACT_B).importPrivateStates(exported, { password: VALID_PASSWORD });
+
+    expect(result).toEqual({ imported: 1, skipped: 0, overwritten: 0 });
+    expect(await provider.forContract(CONTRACT_B).get('counter')).toEqual({ count: 1 });
+    expect(await provider.forContract(CONTRACT_B).get('other')).toBeNull();
+    expect(await provider.forContract(CONTRACT_A).get('counter')).toBeNull();
+  });
+
+  it('reports an import conflict only for states of its own contract', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    await provider.forContract(CONTRACT_A).set('counter', { count: 1 });
+    const exported = await provider.forContract(CONTRACT_A).exportPrivateStates({ password: VALID_PASSWORD });
+
+    const intoOther = await provider.forContract(CONTRACT_B).importPrivateStates(exported, { password: VALID_PASSWORD });
+    const intoSame = provider.forContract(CONTRACT_A).importPrivateStates(exported, { password: VALID_PASSWORD });
+
+    expect(intoOther).toEqual({ imported: 1, skipped: 0, overwritten: 0 });
+    await expect(intoSame).rejects.toThrow(ImportConflictError);
   });
 });

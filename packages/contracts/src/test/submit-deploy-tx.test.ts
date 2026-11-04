@@ -24,16 +24,15 @@ import { IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../er
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { createLedger9UnprovenDeployTx } from '../unproven-deploy-tx';
-import {
-  createMockCompiledContract,
-  createMockFinalizedTxData,
+import { contractStatesOf,   createMockCompiledContract,
+createMockContractAddress,   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenDeployTxData,
   createMockUnprovenTx,
-  createMockZswapLocalState
-} from './test-mocks';
+  createMockZswapLocalState,
+separateContractStates} from './test-mocks';
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
@@ -81,7 +80,7 @@ describe('submit-deploy-tx', () => {
           mockUnprovenDeployTxData.public.contractAddress,
           mockUnprovenDeployTxData.private.signingKey
         );
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
         expect(result).toEqual({
           era: CURRENT_LEDGER_ERA,
           private: mockUnprovenDeployTxData.private,
@@ -120,7 +119,7 @@ describe('submit-deploy-tx', () => {
 
         const result = await submitDeployTx(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, initialPrivateState);
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, initialPrivateState);
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
           mockUnprovenDeployTxData.public.contractAddress,
           mockUnprovenDeployTxData.private.signingKey
@@ -133,6 +132,42 @@ describe('submit-deploy-tx', () => {
             ...mockUnprovenDeployTxData.public
           }
         });
+      });
+
+      it('stores the initial private state under the deployed contract when another contract writes during the submit', async () => {
+        const stored = separateContractStates(mockProviders.privateStateProvider);
+        const otherContract = createMockContractAddress();
+        const initialPrivateState = { someState: 'test' };
+        const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
+          private: {
+            initialPrivateState,
+            signingKey: mockSigningKey,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [],
+            initialZswapState: createMockZswapLocalState()
+          }
+        });
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
+        vi.mocked(submitLedger9Payload).mockImplementation(async () => {
+          await mockProviders.privateStateProvider.forContract(otherContract).set(mockPrivateStateId, 'other-state');
+          return createMockFinalizedTxData();
+        });
+
+        const options = {
+          compiledContract: mockCompiledContract,
+          args: [],
+          signingKey: mockSigningKey,
+          privateStateId: mockPrivateStateId,
+          initialPrivateState
+        };
+        await submitDeployTx(mockProviders, options);
+
+        expect(stored).toEqual(
+          new Map<string, unknown>([
+            [`${otherContract}:${mockPrivateStateId}`, 'other-state'],
+            [`${mockUnprovenDeployTxData.public.contractAddress}:${mockPrivateStateId}`, initialPrivateState]
+          ])
+        );
       });
     });
 
@@ -152,7 +187,7 @@ describe('submit-deploy-tx', () => {
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
@@ -171,7 +206,7 @@ describe('submit-deploy-tx', () => {
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(TxFailedError);
 
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
 
@@ -252,7 +287,7 @@ describe('submit-deploy-tx', () => {
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
 
-      it('should propagate errors from privateStateProvider.set', async () => {
+      it('should propagate errors from contractStatesOf(privateStateProvider).set', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],
@@ -276,7 +311,7 @@ describe('submit-deploy-tx', () => {
         const stateError = new Error('Failed to set private state');
         vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitLedger9Payload).mockResolvedValue(mockFinalizedTxData);
-        mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
+        contractStatesOf(mockProviders.privateStateProvider).set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
       });
@@ -354,7 +389,7 @@ describe('submit-deploy-tx', () => {
 
         await submitDeployTx(mockProviders, options);
 
-        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, undefined);
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).toHaveBeenCalledWith(mockPrivateStateId, undefined);
       });
     });
 
@@ -372,7 +407,7 @@ describe('submit-deploy-tx', () => {
         await submitDeployTx(mockProviders, options);
 
         expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
-        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('refuses an initial private state with no id to store it under, before anything is built', async () => {

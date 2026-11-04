@@ -14,7 +14,7 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -48,6 +48,16 @@ import {
   readHeadEra,
   type ResolvedOperationEra
 } from './era';
+
+/**
+ * Where a call's next private state is stored once the call succeeds.
+ *
+ * @internal
+ */
+export interface PrivateStateTarget {
+  readonly contractAddress: ContractAddress;
+  readonly privateStateId: PrivateStateId;
+}
 
 /** @internal */
 export interface CachedStateIdentity {
@@ -241,7 +251,7 @@ export class TransactionContextImpl<
    * circuit merged into the scope and becomes an array.
    */
   currentUnsubmittedCall:
-    | { readonly callTxData: Ledger9UnsubmittedCallTxData<C, PCK>; readonly privateStateId?: PrivateStateId; readonly circuitId: PCK }
+    | { readonly callTxData: Ledger9UnsubmittedCallTxData<C, PCK>; readonly privateStateTarget?: PrivateStateTarget; readonly circuitId: PCK }
     | undefined;
   submitTxOptions: Ledger9PayloadSubmitOptions<PCK> | undefined = undefined;
 
@@ -291,7 +301,7 @@ export class TransactionContextImpl<
   getLastUnsubmittedCallTxDataToTransact(): [Ledger9UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
     return this.currentUnsubmittedCall === undefined
       ? undefined
-      : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateId];
+      : [this.currentUnsubmittedCall.callTxData, this.currentUnsubmittedCall.privateStateTarget?.privateStateId];
   }
 
   async [Submit](): Promise<Ledger9FinalizedCallTxData<C, PCK>> {
@@ -299,13 +309,15 @@ export class TransactionContextImpl<
     if (current === undefined) {
       throw new InvalidArgumentError('No calls were submitted.');
     }
-    const { callTxData: unprovenCallTxData, privateStateId, circuitId } = current;
+    const { callTxData: unprovenCallTxData, privateStateTarget, circuitId } = current;
     const finalizedTxData = await submitLedger9Payload(this.providers, this.submitTxOptions!);
     if (finalizedTxData.status !== SucceedEntirely) {
       throw new TxFailedError('call', finalizedTxData, { circuitId: this.submitTxOptions!.circuitId ?? circuitId });
     }
-    if (privateStateId) {
-      await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
+    if (privateStateTarget) {
+      await this.providers.privateStateProvider!
+        .forContract(privateStateTarget.contractAddress)
+        .set(privateStateTarget.privateStateId, unprovenCallTxData.private.nextPrivateState);
     }
     return {
       era: 'v9',
@@ -328,8 +340,8 @@ export class TransactionContextImpl<
     this.cachedStates = { states, read, identity, blockHash };
   }
 
-  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: Ledger9UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
-    this.currentUnsubmittedCall = { callTxData: callData, privateStateId, circuitId };
+  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: Ledger9UnsubmittedCallTxData<C, PCK>, privateStateTarget?: PrivateStateTarget): void {
+    this.currentUnsubmittedCall = { callTxData: callData, privateStateTarget, circuitId };
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
       {
@@ -370,9 +382,9 @@ export const mergeUnsubmittedCallTxData = <
   txCtx: Transaction.Ledger9TransactionContext<C, PCK>,
   circuitId: PCK,
   callData: Ledger9UnsubmittedCallTxData<C, PCK>,
-  privateStateId?: PrivateStateId
+  privateStateTarget?: PrivateStateTarget
 ): void => {
-  txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
+  txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateTarget);
 };
 
 /**

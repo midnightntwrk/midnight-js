@@ -232,19 +232,25 @@ subscription already unifies replay and live.
 ```typescript
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
+// accountId: the wallet's coin public key. Keep it the same for a user:
+// another value opens another, empty store.
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'secure-password',
-  accountId: 'wallet-address'
+  accountId: walletProvider.getCoinPublicKey()
 });
 
-// CRUD operations (PrivateStateProvider interface)
-await provider.set(privateStateId, state);
-const state = await provider.get(privateStateId);
-await provider.remove(privateStateId);
+// Private states are reached per contract (ContractPrivateStates interface).
+// A view is fixed to one address, so concurrent operations on different contracts never mix.
+const states = provider.forContract(contractAddress);
+await states.set(privateStateId, state);
+const state = await states.get(privateStateId);
+await states.remove(privateStateId);
+await states.clear();       // this contract only
+await provider.clearAll();  // every contract of this account
 
-// Export/Import (PrivateStateProvider interface)
-const exported = await provider.exportPrivateStates();
-await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
+// Export/Import of one contract's states
+const exported = await states.exportPrivateStates();
+await states.importPrivateStates(exported, { conflictStrategy: 'skip' });
 ```
 
 ### Proof Generation
@@ -600,7 +606,7 @@ const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
-    accountId: walletAddress
+    accountId: walletProvider.getCoinPublicKey()
   }),
   publicDataProvider: indexerPublicDataProvider(net.indexer),
   zkConfigProvider,

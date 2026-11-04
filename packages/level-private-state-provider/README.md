@@ -23,12 +23,12 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'your-secure-password',
-  accountId: walletAddress
+  accountId: walletProvider.getCoinPublicKey()
 });
 
-provider.setContractAddress(contractAddress);
-await provider.set('stateId', privateStateData);
-const state = await provider.get('stateId');
+const counter = provider.forContract(contractAddress);
+await counter.set('stateId', privateStateData);
+const state = await counter.get('stateId');
 ```
 
 ## Configuration
@@ -36,7 +36,7 @@ const state = await provider.get('stateId');
 | Option                           | Required | Default             | Description                            |
 | -------------------------------- | -------- | ------------------- | -------------------------------------- |
 | `privateStoragePasswordProvider` | ✓        | -                   | Function returning encryption password |
-| `accountId`                      | ✓        | -                   | Unique identifier (e.g., wallet address) |
+| `accountId`                      | ✓        | -                   | The wallet's coin public key, `walletProvider.getCoinPublicKey()`. Must stay the same for a user |
 | `midnightDbName`                 |          | `midnight-level-db` | Database name                          |
 | `privateStateStoreName`          |          | `private-states`    | Store name for states                  |
 | `signingKeyStoreName`            |          | `signing-keys`      | Store name for keys                    |
@@ -60,6 +60,10 @@ All data is encrypted using **AES-256-GCM** with **PBKDF2-SHA256** key derivatio
 
 Each `accountId` creates isolated storage namespaces. The ID is SHA-256 hashed before use in storage paths.
 
+Use the wallet's coin public key, `walletProvider.getCoinPublicKey()`, as it is. Keep it the same for a
+user: another value opens another, empty store. The data stored under the old value stays in the
+database, but this provider no longer reads it.
+
 ### Concurrency
 
 Within one JavaScript process, operations on the same `midnightDbName` run one at a time, in call order.
@@ -80,12 +84,17 @@ Use one database from **one process or one browser tab only**:
 
 ### Private States
 
+Private states are reached per contract. A view is fixed to one contract address, so operations
+for different contracts never mix, even when they run at the same time.
+
 ```typescript
-provider.setContractAddress(address);      // Set contract context (required)
-await provider.get(privateStateId);        // Read state
-await provider.set(privateStateId, state); // Write state
-await provider.remove(privateStateId);     // Delete state
-await provider.clear();                    // Clear all states for contract
+const states = provider.forContract(contractAddress);
+await states.get(privateStateId);        // Read state
+await states.set(privateStateId, state); // Write state
+await states.remove(privateStateId);     // Delete state
+await states.clear();                    // Clear all states of this contract
+
+await provider.clearAll();               // Clear the states of every contract of this account
 ```
 
 ### Signing Keys
@@ -100,8 +109,7 @@ await provider.clearSigningKeys();
 ### Password Rotation
 
 ```typescript
-// Rotate private state password
-provider.setContractAddress(contractAddress);
+// Rotate the private state password of every contract of this account
 await provider.changePassword(
   () => 'old-password',
   () => 'new-password'
@@ -119,12 +127,12 @@ Password rotation is atomic—all data is re-encrypted or none is.
 ### Export/Import
 
 ```typescript
-// Export
-const statesExport = await provider.exportPrivateStates({ password: 'export-pw' });
+// Export the states of one contract
+const statesExport = await provider.forContract(contractAddress).exportPrivateStates({ password: 'export-pw' });
 const keysExport = await provider.exportSigningKeys({ password: 'export-pw' });
 
 // Import
-await provider.importPrivateStates(statesExport, {
+await provider.forContract(contractAddress).importPrivateStates(statesExport, {
   password: 'export-pw',
   conflictStrategy: 'skip' // 'skip' | 'overwrite' | 'error'
 });
