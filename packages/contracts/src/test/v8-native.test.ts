@@ -1888,7 +1888,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(contractStatesOf(providers.privateStateProvider).set).toHaveBeenCalledWith('ledger8-private-state', {});
   });
 
-  it('reads and stores the private state of its own contract when another contract writes while it waits', async () => {
+  it('reads and writes the private state through the view of its own contract', async () => {
     const providers = preForkProviders(v6Envelope);
     const stored = separateContractStates(providers.privateStateProvider);
     const otherContract = createMockContractAddress();
@@ -2714,7 +2714,6 @@ describe('deploying a retained-era contract through deployContract', () => {
     expect(caught).toBeInstanceOf(Ledger8UnconfirmedError);
     expect((caught as Ledger8UnconfirmedError).cause).toBeInstanceOf(EraInvariantViolationError);
     expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
-    expect(providers.privateStateProvider.forContract).not.toHaveBeenCalled();
   });
 
   it('reports the era fault AHEAD of the status, when a record is both mislabelled and failing', async () => {
@@ -2756,7 +2755,6 @@ describe('deploying a retained-era contract through deployContract', () => {
     // The whole point of checking the record before storing: a deploy the chain
     // refused must leave no local private state ahead of it.
     expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
-    expect(providers.privateStateProvider.forContract).not.toHaveBeenCalled();
   });
 
   it('writes the private state into the minted contract', async () => {
@@ -3094,7 +3092,7 @@ describe('deploying a retained-era contract through deployContract', () => {
       const providers = { ...deployProviders(), config: { networkId: 'undeployed', ttlSeconds: 0 } };
 
       await expect(createUnprovenCallTx(providers, callOptions())).rejects.toBeInstanceOf(InvalidArgumentError);
-      expect(providers.privateStateProvider.forContract).not.toHaveBeenCalled();
+      expect(contractStatesOf(providers.privateStateProvider).get).not.toHaveBeenCalled();
     });
 
     it('createUnprovenCallTx names itself when its third argument is not a transaction context', async () => {
@@ -3541,7 +3539,6 @@ describe('deploying a retained-era contract through deployContract', () => {
 
     await deployContract(providers, { compiledContract: contract });
 
-    expect(providers.privateStateProvider.forContract).not.toHaveBeenCalled();
     expect(contractStatesOf(providers.privateStateProvider).set).not.toHaveBeenCalled();
   });
 

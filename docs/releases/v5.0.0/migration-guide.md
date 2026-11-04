@@ -1429,8 +1429,15 @@ await states.set(privateStateId, nextState);
   contract's states and an import writes into the contract you name.
 - `provider.clear()` becomes `provider.clearAll()`. To clear one contract, call
   `provider.forContract(address).clear()`.
-- `changePassword` on the level provider no longer needs an address.
-- Pass the wallet's coin public key as `accountId`, and keep it the same for a user.
+- `changePassword` on the level provider no longer needs an address. If you rotated the password
+  before while the selected contract had no states, nothing was rotated: run it again.
+- Contract addresses are compared in lower case. Export states or signing keys you stored
+  yourself under an upper-case address before you upgrade, and import them after.
+- For a new store, pass the wallet's coin public key as `accountId`. For an existing store,
+  keep the `accountId` it was created with: another value opens another, empty store, and
+  the private states and signing keys stored under the old value are no longer read.
+
+The details are in [breaking-changes.md](./breaking-changes.md#31-private-states-are-reached-through-a-per-contract-view-812).
 
 ## Verification checklist
 

@@ -16,6 +16,7 @@
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from './call';
@@ -60,6 +61,15 @@ export type Ledger9SubmitCallTxProviders<C extends Contract.Any, PCK extends Con
   | Ledger9ContractProviders<C>
   | Ledger9SubmitTxProviders<C, PCK>;
 
+const assertPrivateStateIdNamed = (privateStateId: PrivateStateId | undefined | null): void => {
+  if (privateStateId === undefined || privateStateId === null) {
+    throw new InvalidArgumentError(
+      "'privateStateId' was given as undefined. Name a private state id, or omit the property entirely " +
+        'for a call that stores no private state.'
+    );
+  }
+};
+
 const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: Ledger9SubmitCallTxProviders<C, PCK>,
   options: AnyLedger8CallTxOptions,
@@ -96,6 +106,9 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
 
   if (hasPrivateStateId && !hasPrivateStateProvider) {
     throw new IncompleteCallTxPrivateStateConfig();
+  }
+  if (hasPrivateStateId) {
+    assertPrivateStateIdNamed(options.privateStateId);
   }
 
   const callTxFn = async (txCtx: Ledger9TransactionContext<C, PCK>) => {
@@ -264,6 +277,9 @@ const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract
 
   if (hasPrivateStateId && !hasPrivateStateProvider) {
     throw new IncompleteCallTxPrivateStateConfig();
+  }
+  if (hasPrivateStateId) {
+    assertPrivateStateIdNamed(options.privateStateId);
   }
 
   const unprovenCallTxData = await createLedger9UnprovenCallTx(providers, options);

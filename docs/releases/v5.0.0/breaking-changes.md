@@ -1593,24 +1593,37 @@ written to the wrong contract. A per-contract view fixes the address when it is 
 | `provider.exportPrivateStates(options)` | `provider.forContract(address).exportPrivateStates(options)` |
 | `provider.importPrivateStates(data, options)` | `provider.forContract(address).importPrivateStates(data, options)` |
 | `provider.clear()` (needed an address, cleared every contract) | `provider.clearAll()` clears every contract; `provider.forContract(address).clear()` clears one |
-| `levelPrivateStateProvider(...).changePassword(...)` needed an address | needs none; it re-encrypts every contract of the account, as it always did |
+| `levelPrivateStateProvider(...).changePassword(...)` needed an address, and rotated nothing when that contract had no states | needs none; it always re-encrypts the private states of every contract of the account |
 | `ConfigurationError` "Contract address not set" | gone; `forContract` refuses an invalid address with `InvalidArgumentError` |
 
-The signing-key methods are unchanged. The new interface is `ContractPrivateStates` (types).
+The new interface is `ContractPrivateStates` (types). A view names its contract in
+`contractAddress`.
+
+Contract addresses are now compared in lower case, by `forContract` and by the signing-key
+methods: `'AB…'` and `'ab…'` reach the same states and the same signing key. The framework always
+stored addresses in lower case. States or signing keys you stored yourself under an address with
+upper-case letters are not found any more: export them before you upgrade and import them after.
+
+`changePassword` in 4.x and earlier 5.0.0 pre-releases rotated nothing when the contract set by
+`setContractAddress` had no states, and still reported success. If you rotated the password that
+way, entries of other contracts may still be encrypted with the old password. Run
+`changePassword` again with the old and the new password.
 
 The framework no longer leaves the provider "pointed at" the last contract it deployed, found or
 called. Code that relied on that reads through `forContract` with the address it already holds.
 
-The export format is unchanged. An export made by an earlier 5.0.0 pre-release imports into a view.
+The export format is unchanged. An export made by an earlier version imports into a view. An export
+does not record the contract it came from: it is written into the contract of the view that imports it.
 
 Implementing `PrivateStateProvider` yourself: add `forContract`, which returns an object whose
 operations use the address it was created with, and `clearAll`; remove `setContractAddress`,
 `get`, `set`, `remove`, `clear`, `exportPrivateStates` and `importPrivateStates` from the provider.
 
 `accountId` of `levelPrivateStateProvider` is now documented as the wallet's coin public key,
-`walletProvider.getCoinPublicKey()`. It must stay the same for a user: another value opens
-another, empty store. testkit-js now passes the coin public key as it is, so a testkit database
-written by an earlier pre-release is not read by this one.
+`walletProvider.getCoinPublicKey()`, for a new store. For an existing store, keep the `accountId`
+it was created with: another value opens another, empty store, and the private states and signing
+keys stored under the old value are no longer read. testkit-js now passes the coin public key as
+it is, so a testkit database written by an earlier pre-release is not read by this one.
 
 ## Non-breaking additions worth noting
 

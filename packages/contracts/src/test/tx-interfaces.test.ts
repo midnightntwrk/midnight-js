@@ -338,7 +338,6 @@ describe('tx-interfaces', () => {
       await (callInterface.increment as (...args: unknown[]) => Promise<unknown>)('arg1');
 
       expect(Object.keys(callInterface)).toEqual(['increment']);
-      expect(mockProviders.privateStateProvider.forContract).not.toHaveBeenCalled();
       expect(submitCallTx).toHaveBeenCalledWith(ledger8Providers, {
         compiledContract: ledger8Contract,
         contractAddress: mockContractAddress,

@@ -65,7 +65,7 @@ const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 const providers: MidnightProviders = {
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
-    accountId: walletAddress,
+    accountId: walletProvider.getCoinPublicKey(),
   }),
   publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
   zkConfigProvider,
@@ -140,6 +140,6 @@ const publicStates = await getPublicStates(providers, contractAddress);
 
 - **Encryption**: AES-256-GCM at rest
 - **Key derivation**: PBKDF2-SHA256 (600,000 iterations)
-- **Isolation**: Account-scoped storage keyed by SHA-256 hash of wallet address
+- **Isolation**: Account-scoped storage keyed by SHA-256 hash of `accountId` (the wallet's coin public key)
 - **No built-in recovery**: Production deployments require a backup strategy
 

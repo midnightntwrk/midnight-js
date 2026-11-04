@@ -500,7 +500,7 @@ const ledger8FindFlow = async <C extends Contract.Any>(
   //
   // AFTER the attach, for the order `ledger9FindFlow` uses: a state seeded for a contract
   // whose verifier keys turn out not to match would outlive a find that failed.
-
+  //
   // The six-case rule -- seed the named id, or refuse a configuration that cannot be honoured --
   // reported at `deployTxData.private.initialPrivateState`, as the current era reports it. The
   // refusal arrives at ATTACH time rather than at the first call.

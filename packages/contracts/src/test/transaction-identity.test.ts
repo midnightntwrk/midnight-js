@@ -241,6 +241,39 @@ describe('TransactionContextImpl identity validation', () => {
     });
   });
 
+  describe('getLastUnsubmittedCallTxDataToTransact', () => {
+    it('reports the private state id of the last merged call', () => {
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const callData = createMockUnprovenCallTxData();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', callData, {
+        contractAddress: createMockContractAddress(),
+        privateStateId
+      });
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([callData, privateStateId]);
+    });
+
+    it('reports no private state id for a call that stores none', () => {
+      const callData = createMockUnprovenCallTxData();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', callData);
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([callData, undefined]);
+    });
+
+    it('reports the latest call when a later call replaces an earlier one', () => {
+      const first = createMockUnprovenCallTxData();
+      const second = createMockUnprovenCallTxData();
+      const contractAddress = createMockContractAddress();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', first, { contractAddress, privateStateId: 'first' });
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', second, { contractAddress, privateStateId: 'second' });
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([second, 'second']);
+    });
+  });
+
   describe('MergeUnsubmittedCallTxData identity preservation', () => {
     it('should preserve original identity after merging call data', () => {
       const contractAddress = createMockContractAddress();

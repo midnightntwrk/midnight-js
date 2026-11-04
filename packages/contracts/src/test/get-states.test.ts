@@ -20,12 +20,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from '../errors';
 import { getPublicStates, getStates } from '../get-states';
-import { contractStatesOf,
+import {
+  contractStatesOf,
   createMockContractAddress,
   createMockPrivateStateId,
   createMockProviders,
   publicStatesRead,
-  publicStatesReadStub} from './test-mocks';
+  publicStatesReadStub,
+  separateContractStates
+} from './test-mocks';
 
 describe('get-states', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -132,6 +135,22 @@ describe('get-states', () => {
 
       expect(contractStatesOf(mockProviders.privateStateProvider).get).toHaveBeenCalledWith(mockPrivateStateId);
       expectSameRecord(result, served);
+      expect(result.privateState).toBe(mockPrivateState);
+    });
+
+    it('reads the private state of the contract it was given, not of another contract with the same id', async () => {
+      mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn().mockResolvedValue(ledger9States());
+      const stored = separateContractStates(mockProviders.privateStateProvider);
+      stored.set(`${createMockContractAddress()}:${mockPrivateStateId}`, 'other-state');
+      stored.set(`${mockContractAddress}:${mockPrivateStateId}`, mockPrivateState);
+
+      const result = await getStates(
+        mockProviders.publicDataProvider,
+        mockProviders.privateStateProvider,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+
       expect(result.privateState).toBe(mockPrivateState);
     });
   });

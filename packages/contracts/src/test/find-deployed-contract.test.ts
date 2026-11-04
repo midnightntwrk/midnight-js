@@ -24,9 +24,10 @@ import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
 import { findDeployedContract, type Ledger9FoundContract } from '../find-deployed-contract';
 import { toStoredLedger8SigningKey } from '../internal/ledger8-signing-key';
-import {   contractStateAndParametersReadStub,
+import {
+  contractStateAndParametersReadStub,
   contractStateReadStub,
-contractStatesOf,
+  contractStatesOf,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -36,7 +37,8 @@ contractStatesOf,
   createMockProviders,
   createMockSigningKey,
   createMockVerifierKeys,
-  separateContractStates} from './test-mocks';
+  separateContractStates
+} from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
@@ -375,6 +377,20 @@ describe('findDeployedContract', () => {
     expect(contractStatesOf(providers.privateStateProvider).get).toHaveBeenCalledWith(privateStateId);
   });
 
+  it('reports the stored private state of the found contract, not of another contract with the same id', async () => {
+    const privateStateId = createMockPrivateStateId();
+    const existingPrivateState = { test: 'existing-private-state' };
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    const stored = separateContractStates(providers.privateStateProvider);
+    stored.set(`${createMockContractAddress()}:${privateStateId}`, 'other-state');
+    stored.set(`${contractAddress}:${privateStateId}`, existingPrivateState);
+
+    const options = { compiledContract, contractAddress, privateStateId };
+    const result = await findDeployedContract(providers, options);
+
+    expect(result.deployTxData.private.initialPrivateState).toBe(existingPrivateState);
+  });
+
   it('refuses a private state id under which nothing is stored as PrivateStateNotFoundError', async () => {
     const privateStateId = createMockPrivateStateId();
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
@@ -432,7 +448,7 @@ describe('findDeployedContract', () => {
     expect(contractStatesOf(providers.privateStateProvider).set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
   });
 
-  it('stores the initial private state under the found contract when another contract writes during the attach', async () => {
+  it('writes the initial private state through the view of the found contract', async () => {
     const stored = separateContractStates(providers.privateStateProvider);
     const otherContract = createMockContractAddress();
     const privateStateId = createMockPrivateStateId();

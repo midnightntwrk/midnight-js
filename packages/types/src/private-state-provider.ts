@@ -226,6 +226,11 @@ export interface ImportSigningKeysResult {
  */
 export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateStateId, PS = any> {
   /**
+   * The address of the contract this view reaches, in lower case.
+   */
+  readonly contractAddress: ContractAddress;
+
+  /**
    * Store the given private state at the given private state ID.
    *
    * Private state must be plain data — objects, arrays and the common built-in
@@ -319,6 +324,9 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
   /**
    * Import private states from a previously exported structure into this contract.
    *
+   * An export does not record the contract it came from: the states are written
+   * into the contract of this view, whichever contract exported them.
+   *
    * @param exportData The export data structure to import.
    * @param options Import options including password, conflict strategy, and state limit.
    * @returns Result indicating how many states were imported/skipped/overwritten.
@@ -342,6 +350,7 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
  * contract signing keys.
  *
  * Private states are reached per contract, through {@link PrivateStateProvider.forContract}.
+ * Every method compares contract addresses in lower case.
  *
  * @typeParam PSI - Parameter indicating the private state ID, sometimes a union of string literals.
  * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
@@ -350,11 +359,12 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
   /**
    * Return the private states of the contract at the given address.
    *
-   * The view is cheap to create and holds no I/O resources.
+   * The view is cheap to create and holds no I/O resources. The address is
+   * compared in lower case, so `'AB…'` and `'ab…'` reach the same states.
    *
    * @param contractAddress The address of the contract whose private states the view reaches.
    * @returns A view whose operations always use `contractAddress`.
-   * @throws If `contractAddress` is not a valid contract address.
+   * @throws {InvalidArgumentError} If `contractAddress` is not a valid contract address.
    */
   forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS>;
 

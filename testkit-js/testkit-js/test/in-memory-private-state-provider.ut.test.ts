@@ -16,6 +16,7 @@
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ImportConflictError,
   InvalidExportFormatError,
@@ -136,6 +137,49 @@ describe('[Unit tests] inMemoryPrivateStateProvider per-contract view', () => {
 
     expect(await provider.forContract(CONTRACT_A).get('counter')).toEqual({ count: 1 });
     expect(await provider.forContract(CONTRACT_B).get('counter')).toEqual({ count: 2 });
+  });
+
+  it('keeps each view on its own contract after another view is created', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    const contractA = provider.forContract(CONTRACT_A);
+    const contractB = provider.forContract(CONTRACT_B);
+
+    await contractA.set('counter', { count: 1 });
+    await contractB.set('counter', { count: 2 });
+
+    expect([await contractA.get('counter'), await contractB.get('counter')]).toEqual([{ count: 1 }, { count: 2 }]);
+  });
+
+  it('names its contract in lower case and reaches the same states whatever the letter case', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    const upperCase = provider.forContract(CONTRACT_A.toUpperCase() as ContractAddress);
+
+    await upperCase.set('counter', { count: 1 });
+
+    expect(upperCase.contractAddress).toBe(CONTRACT_A);
+    expect(await provider.forContract(CONTRACT_A).get('counter')).toEqual({ count: 1 });
+  });
+
+  it('reaches the same signing key whatever the letter case of the address', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    const signingKey = sampleSigningKey();
+
+    await provider.setSigningKey(CONTRACT_A.toUpperCase() as ContractAddress, signingKey);
+    const stored = await provider.getSigningKey(CONTRACT_A);
+    await provider.removeSigningKey(CONTRACT_A);
+
+    expect(stored).toEqual(signingKey);
+    expect(await provider.getSigningKey(CONTRACT_A.toUpperCase() as ContractAddress)).toBeNull();
+  });
+
+  it('keeps signing keys when clearAll removes every private state', async () => {
+    const provider = inMemoryPrivateStateProvider<CounterId, PS>();
+    const signingKey = sampleSigningKey();
+    await provider.setSigningKey(CONTRACT_A, signingKey);
+
+    await provider.clearAll();
+
+    expect(await provider.getSigningKey(CONTRACT_A)).toEqual(signingKey);
   });
 
   it('clears one contract through the view and every contract through clearAll', async () => {

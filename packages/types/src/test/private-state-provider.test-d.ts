@@ -41,6 +41,12 @@ describe('PrivateStateProvider', () => {
     expectTypeOf(provider).not.toHaveProperty('importPrivateStates');
   });
 
+  it('tells which contract a view belongs to, and does not let it change', () => {
+    expectTypeOf(provider.forContract(address).contractAddress).toEqualTypeOf<ContractAddress>();
+    // @ts-expect-error -- the address of a view is read-only
+    provider.forContract(address).contractAddress = address;
+  });
+
   it('clears one contract through the view and the whole account through the provider', () => {
     expectTypeOf(provider.forContract(address).clear).toEqualTypeOf<() => Promise<void>>();
     expectTypeOf(provider.clearAll).toEqualTypeOf<() => Promise<void>>();

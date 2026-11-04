@@ -142,6 +142,8 @@ const validateSigningKeyValue = (value: unknown): void => {
   }
 };
 
+const storedAddress = (address: ContractAddress): ContractAddress => address.toLowerCase();
+
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.
  *
@@ -165,6 +167,7 @@ export const inMemoryPrivateStateProvider = <
     const ownKeys = (): string[] => Array.from(record.keys()).filter((key) => key.startsWith(prefix));
 
     return {
+      contractAddress,
       /**
        * Sets the private state for a given key.
        * @param {PSI} key - The key for the private state.
@@ -355,7 +358,7 @@ export const inMemoryPrivateStateProvider = <
      */
     forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> {
       assertIsContractAddress(contractAddress);
-      return contractPrivateStates(contractAddress);
+      return contractPrivateStates(storedAddress(contractAddress));
     },
     /**
      * Clears the private states of every contract.
@@ -372,7 +375,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
      */
     setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      signingKeys[address] = signingKey;
+      signingKeys[storedAddress(address)] = signingKey;
       return Promise.resolve();
     },
     /**
@@ -381,7 +384,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
      */
     getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      const value = signingKeys[address] ?? null;
+      const value = signingKeys[storedAddress(address)] ?? null;
       return Promise.resolve(value);
     },
     /**
@@ -390,7 +393,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
      */
     removeSigningKey(address: ContractAddress): Promise<void> {
-      delete signingKeys[address];
+      delete signingKeys[storedAddress(address)];
       return Promise.resolve();
     },
     /**
@@ -515,7 +518,7 @@ export const inMemoryPrivateStateProvider = <
       }
 
       if (conflictStrategy === 'error') {
-        const conflictCount = addresses.filter((addr) => signingKeys[addr] !== undefined).length;
+        const conflictCount = addresses.filter((addr) => signingKeys[storedAddress(addr)] !== undefined).length;
         if (conflictCount > 0) {
           throw new ImportConflictError(conflictCount, 'signing key');
         }
@@ -527,7 +530,7 @@ export const inMemoryPrivateStateProvider = <
 
       for (const address of addresses) {
         const signingKey = payload.keys[address];
-        const existingKey = signingKeys[address];
+        const existingKey = signingKeys[storedAddress(address)];
 
         if (existingKey !== undefined) {
           if (conflictStrategy === 'skip') {
@@ -538,7 +541,7 @@ export const inMemoryPrivateStateProvider = <
           }
         }
 
-        signingKeys[address] = signingKey;
+        signingKeys[storedAddress(address)] = signingKey;
 
         if (existingKey === undefined) {
           imported++;

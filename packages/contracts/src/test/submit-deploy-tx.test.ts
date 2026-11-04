@@ -24,15 +24,19 @@ import { IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../er
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { createLedger9UnprovenDeployTx } from '../unproven-deploy-tx';
-import { contractStatesOf,   createMockCompiledContract,
-createMockContractAddress,   createMockFinalizedTxData,
+import {
+  contractStatesOf,
+  createMockCompiledContract,
+  createMockContractAddress,
+  createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenDeployTxData,
   createMockUnprovenTx,
   createMockZswapLocalState,
-separateContractStates} from './test-mocks';
+  separateContractStates
+} from './test-mocks';
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
@@ -134,7 +138,7 @@ describe('submit-deploy-tx', () => {
         });
       });
 
-      it('stores the initial private state under the deployed contract when another contract writes during the submit', async () => {
+      it('writes the initial private state through the view of the deployed contract', async () => {
         const stored = separateContractStates(mockProviders.privateStateProvider);
         const otherContract = createMockContractAddress();
         const initialPrivateState = { someState: 'test' };
@@ -287,7 +291,7 @@ describe('submit-deploy-tx', () => {
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
 
-      it('should propagate errors from contractStatesOf(privateStateProvider).set', async () => {
+      it('should propagate a rejected private state write', async () => {
         const options = {
           compiledContract: mockCompiledContract,
           args: [],

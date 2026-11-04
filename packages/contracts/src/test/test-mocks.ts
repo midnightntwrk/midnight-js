@@ -18,6 +18,7 @@ import {
   type AlignedValue,
   type CoinPublicKey,
   type CoinSecretKey,
+  type ContractAddress,
   type DustSecretKey,
   type EncPublicKey,
   type EncryptionSecretKey,
@@ -235,15 +236,17 @@ export const networkIdOf = (tx: { toString(compact?: boolean): string }): string
 
 const MOCK_SUPPORTED_ERAS: readonly LedgerEra[] = Object.freeze<LedgerEra[]>(['v8', 'v9']);
 
+type ContractPrivateStateMethods = Omit<ContractPrivateStates, 'contractAddress'>;
+
 type MockContractPrivateStates = {
-  [K in keyof ContractPrivateStates]: Mock<ContractPrivateStates[K]>;
+  [K in keyof ContractPrivateStateMethods]: Mock<ContractPrivateStateMethods[K]>;
 };
 
 const contractStatesByProvider = new WeakMap<object, MockContractPrivateStates>();
 
 /**
- * A mocked private state provider whose `forContract` hands out one shared view, whatever the
- * address. Reach that view through {@link contractStatesOf}; assert the address on `forContract`.
+ * A mocked private state provider whose views, whatever their address, call one shared set of
+ * mocks. Reach those mocks through {@link contractStatesOf}; assert the address on `forContract`.
  */
 export const createMockPrivateStateProvider = (): PrivateStateProvider => {
   const contractStates: MockContractPrivateStates = {
@@ -255,7 +258,15 @@ export const createMockPrivateStateProvider = (): PrivateStateProvider => {
     importPrivateStates: vi.fn()
   };
   const provider: PrivateStateProvider = {
-    forContract: vi.fn(() => contractStates),
+    forContract: vi.fn((contractAddress: ContractAddress): ContractPrivateStates => ({
+      contractAddress,
+      get: (id) => contractStates.get(id),
+      set: (id, state) => contractStates.set(id, state),
+      remove: (id) => contractStates.remove(id),
+      clear: () => contractStates.clear(),
+      exportPrivateStates: (options) => contractStates.exportPrivateStates(options),
+      importPrivateStates: (exportData, options) => contractStates.importPrivateStates(exportData, options)
+    })),
     clearAll: vi.fn(),
     getSigningKey: vi.fn(),
     setSigningKey: vi.fn(),
@@ -268,7 +279,7 @@ export const createMockPrivateStateProvider = (): PrivateStateProvider => {
   return provider;
 };
 
-/** The view the mocked provider's `forContract` returns. */
+/** The mocks every view of a mocked provider calls. */
 export const contractStatesOf = (provider: object): MockContractPrivateStates => {
   const contractStates = contractStatesByProvider.get(provider);
   assertDefined(contractStates, 'expected a provider made by createMockPrivateStateProvider');
@@ -284,6 +295,7 @@ export const separateContractStates = (provider: PrivateStateProvider): Map<stri
   const stored = new Map<string, unknown>();
   vi.mocked(provider.forContract).mockImplementation((address) => ({
     ...contractStatesOf(provider),
+    contractAddress: address,
     get: vi.fn((id: PrivateStateId) => Promise.resolve(stored.get(`${address}:${id}`) ?? null)),
     set: vi.fn((id: PrivateStateId, state: unknown) => {
       stored.set(`${address}:${id}`, state);

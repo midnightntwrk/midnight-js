@@ -26,9 +26,9 @@ const provider = levelPrivateStateProvider({
   accountId: walletProvider.getCoinPublicKey()
 });
 
-const counter = provider.forContract(contractAddress);
-await counter.set('stateId', privateStateData);
-const state = await counter.get('stateId');
+const states = provider.forContract(contractAddress);
+await states.set('stateId', privateStateData);
+const state = await states.get('stateId');
 ```
 
 ## Configuration
@@ -36,7 +36,7 @@ const state = await counter.get('stateId');
 | Option                           | Required | Default             | Description                            |
 | -------------------------------- | -------- | ------------------- | -------------------------------------- |
 | `privateStoragePasswordProvider` | ✓        | -                   | Function returning encryption password |
-| `accountId`                      | ✓        | -                   | The wallet's coin public key, `walletProvider.getCoinPublicKey()`. Must stay the same for a user |
+| `accountId`                      | ✓        | -                   | The wallet's coin public key, `walletProvider.getCoinPublicKey()`, for a new store. Keep an existing store's value |
 | `midnightDbName`                 |          | `midnight-level-db` | Database name                          |
 | `privateStateStoreName`          |          | `private-states`    | Store name for states                  |
 | `signingKeyStoreName`            |          | `signing-keys`      | Store name for keys                    |
@@ -60,9 +60,12 @@ All data is encrypted using **AES-256-GCM** with **PBKDF2-SHA256** key derivatio
 
 Each `accountId` creates isolated storage namespaces. The ID is SHA-256 hashed before use in storage paths.
 
-Use the wallet's coin public key, `walletProvider.getCoinPublicKey()`, as it is. Keep it the same for a
-user: another value opens another, empty store. The data stored under the old value stays in the
-database, but this provider no longer reads it.
+For a new store, use the wallet's coin public key, `walletProvider.getCoinPublicKey()`, as it is.
+For an existing store, keep the `accountId` it was created with: another value opens another,
+empty store. The private states and signing keys stored under the old value stay in the database,
+but this provider no longer reads them.
+
+Contract addresses are compared in lower case, for private states and for signing keys.
 
 ### Concurrency
 
@@ -159,7 +162,7 @@ Cache is automatically invalidated after password rotation.
 ```typescript
 import { migrateToAccountScoped } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
-const result = await migrateToAccountScoped({ accountId: walletAddress });
+const result = await migrateToAccountScoped({ accountId: walletProvider.getCoinPublicKey() });
 // Original data is preserved for rollback
 ```
 

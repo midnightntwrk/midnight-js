@@ -100,7 +100,7 @@ export interface LevelPrivateStateProviderConfig {
    * - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
    *
    * The same policy is applied to custom passwords passed to
-   * {@link PrivateStateProvider.exportPrivateStates} / `exportSigningKeys` and
+   * {@link ContractPrivateStates.exportPrivateStates} / `exportSigningKeys` and
    * their `importPrivateStates` / `importSigningKeys` counterparts. Violations
    * surface as `PasswordValidationError` on storage paths, or wrapped as
    * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
@@ -115,7 +115,7 @@ export interface LevelPrivateStateProviderConfig {
    * read back unchanged, and shared references and cycles are preserved. Anything
    * else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
    * subclass of the types above — is refused by
-   * {@link PrivateStateProvider.set} with a `PrivateStateSerializationError`,
+   * {@link ContractPrivateStates.set} with a `PrivateStateSerializationError`,
    * because storage would drop it, empty it or read it back as a different value.
    *
    * @example
@@ -130,9 +130,10 @@ export interface LevelPrivateStateProviderConfig {
    * Account identifier used to scope storage. This ensures data isolation
    * between different accounts/wallets using the same database.
    *
-   * Use the wallet's coin public key, `walletProvider.getCoinPublicKey()`, as it is.
-   * It must stay the same for a user: another value opens another, empty store,
-   * and the data stored under the old value is no longer read.
+   * For a new store, use the wallet's coin public key, `walletProvider.getCoinPublicKey()`,
+   * as it is. For an existing store, keep the value it was created with: another value
+   * opens another, empty store, and the private states and signing keys stored under the
+   * old value are no longer read.
    *
    * The accountId is hashed (SHA-256, first 32 chars) before being used
    * in storage paths.
@@ -194,6 +195,8 @@ const hashAccountId = (accountId: string): string => {
   const data = new TextEncoder().encode(accountId);
   return bytesToHex(sha256(data)).substring(0, ACCOUNT_ID_HASH_LENGTH);
 };
+
+const storedAddress = (address: ContractAddress): ContractAddress => address.toLowerCase();
 
 const getScopedLevelName = (baseLevelName: string, accountId: string): string => {
   const hashedAccountId = hashAccountId(accountId);
@@ -553,6 +556,7 @@ const getAllEntries = <K extends string, V>(
   ctx: StorageContext,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider,
+  keyPrefix = '',
 ): Promise<Map<K, V>> =>
   withSubLevel<Map<K, V>>(ctx, levelName, async (subLevel) => {
     const encryption = await resolveEncryption(
@@ -565,7 +569,7 @@ const getAllEntries = <K extends string, V>(
     let password: string | null = null;
 
     for await (const [key, encryptedValue] of subLevel.iterator()) {
-      if (key === METADATA_KEY) {
+      if (key === METADATA_KEY || !key.startsWith(keyPrefix)) {
         continue;
       }
 
@@ -772,6 +776,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   const contractPrivateStates = (contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> => {
     const prefix = `${contractAddress}:`;
     const view: ContractPrivateStates<PSI, PS> = {
+      contractAddress,
       /** {@inheritDoc ContractPrivateStates.get} */
       async get(privateStateId: PSI): Promise<PS | null> {
         const { privateState } = scopedNames;
@@ -825,16 +830,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         // Get all private states (not signing keys)
         const { privateState } = scopedNames;
-        const allStates = await getAllEntries<string, PS>(ctx, privateState, passwordProvider);
-
-        // Filter and extract only states for this contract
-        const states = new Map<PSI, PS>();
-        for (const [scopedKey, value] of allStates.entries()) {
-          if (scopedKey.startsWith(prefix)) {
-            const rawStateId = scopedKey.slice(prefix.length) as PSI;
-            states.set(rawStateId, value);
-          }
-        }
+        const ownStates = await getAllEntries<string, PS>(ctx, privateState, passwordProvider, prefix);
+        const states = new Map<PSI, PS>(
+          Array.from(ownStates, ([scopedKey, value]) => [scopedKey.slice(prefix.length) as PSI, value])
+        );
 
         if (states.size === 0) {
           throw new PrivateStateExportError('No private states to export');
@@ -989,14 +988,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   const hasStoredSigningKey = (address: ContractAddress): Promise<boolean> =>
     withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
-      (await subLevel.get(address)) !== undefined
+      (await subLevel.get(storedAddress(address))) !== undefined
     );
 
   return {
     /** {@inheritDoc PrivateStateProvider.forContract} */
     forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> {
       assertIsContractAddress(contractAddress);
-      return contractPrivateStates(contractAddress);
+      return contractPrivateStates(storedAddress(contractAddress));
     },
     /** {@inheritDoc PrivateStateProvider.clearAll} */
     async clearAll(): Promise<void> {
@@ -1006,14 +1005,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
-      const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, address, passwordProvider);
+      const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, storedAddress(address), passwordProvider);
       return stored === null ? null : readStoredSigningKey(stored, address);
     },
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       const { signingKey } = scopedNames;
       return withSubLevel<void>(ctx, signingKey, (subLevel) =>
-        subLevel.del(address),
+        subLevel.del(storedAddress(address)),
       );
     },
     /** {@inheritDoc PrivateStateProvider.setSigningKey} */
@@ -1028,7 +1027,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           passwordProvider,
           ctx.cryptoBackend
         );
-        await subLevel.put(address, await encryption.encrypt(serialized));
+        await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
       });
     },
     /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
@@ -1249,7 +1248,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
      * of the backup, and clearing the cache before copying the database
      * files changes nothing about the resulting backup. To produce a
      * portable, separately-passworded backup, use
-     * {@link PrivateStateProvider.exportPrivateStates} instead.
+     * {@link ContractPrivateStates.exportPrivateStates} (one contract per export) instead.
      *
      * Subsequent operations will request the password from the configured
      * provider and re-derive the key on first access.

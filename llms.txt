@@ -89,7 +89,7 @@ MidnightProviders
 ### Private State Security
 - Encryption: AES-256-GCM
 - Key derivation: PBKDF2-SHA256 (V2: 600,000 iterations; V1: 100,000 for legacy data)
-- Account-scoped isolation per wallet address
+- Account-scoped isolation per `accountId` (the wallet's coin public key)
 
 ## Transaction Flow
 
@@ -232,7 +232,7 @@ subscription already unifies replay and live.
 ```typescript
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
-// accountId: the wallet's coin public key. Keep it the same for a user:
+// accountId: the wallet's coin public key for a new store. Keep an existing store's value:
 // another value opens another, empty store.
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'secure-password',
@@ -705,7 +705,7 @@ midnight-js/
 1. **Private State**: Encrypted at rest (AES-256-GCM), account-scoped isolation
 2. **Password Requirements**: Minimum 16 characters with complexity
 3. **Data Persistence Warning**: No built-in recovery mechanism; backup strategy required for production
-4. **Account Isolation**: Wallet address SHA-256 hashed for storage paths
+4. **Account Isolation**: `accountId` (the wallet's coin public key) SHA-256 hashed for storage paths
 
 ## Glossary
 

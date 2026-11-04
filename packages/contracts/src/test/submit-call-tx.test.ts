@@ -38,7 +38,9 @@ import { submitLedger9Payload, submitLedger9PayloadAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
 import type { Ledger9FinalizedCallTxData, Ledger9UnsubmittedCallTxData } from '../tx-model';
 import { createLedger9UnprovenCallTx,type Ledger9CallTxOptions } from '../unproven-call-tx';
-import { contractStatesOf,   createMockCoinInfo,
+import {
+  contractStatesOf,
+  createMockCoinInfo,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractCall,
@@ -48,7 +50,8 @@ import { contractStatesOf,   createMockCoinInfo,
   createMockUnprovenCallTxData,
   createMockUnprovenTx,
   createMockZswapLocalState,
-separateContractStates} from './test-mocks';
+  separateContractStates
+} from './test-mocks';
 
 vi.mock('../unproven-call-tx');
 vi.mock('../submit-tx');
@@ -293,7 +296,7 @@ describe('submit-call-tx', () => {
         });
       });
 
-      it('stores the next private state under its own contract when another contract writes during the submit', async () => {
+      it('writes the next private state through the view of its own contract', async () => {
         const stored = separateContractStates(mockProviders.privateStateProvider);
         const otherContract = createMockContractAddress();
         const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
@@ -324,6 +327,19 @@ describe('submit-call-tx', () => {
 
         expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
+      });
+
+      it('refuses a privateStateId given as undefined before it builds anything', async () => {
+        const options = createBasicCallOptions({ privateStateId: undefined });
+
+        await expect(submitCallTx(mockProviders, options)).rejects.toMatchObject({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT
+        });
+
+        expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should accept privateStateProvider without privateStateId', async () => {
@@ -502,7 +518,7 @@ describe('submit-call-tx', () => {
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Network error during submission');
       });
 
-      it('should propagate errors from contractStatesOf(privateStateProvider).set', async () => {
+      it('should propagate a rejected private state write', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const stateError = new Error('Failed to set private state');
 
@@ -640,6 +656,19 @@ describe('submit-call-tx', () => {
 
         expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
         expect(submitLedger9PayloadAsync).not.toHaveBeenCalled();
+      });
+
+      it('refuses a privateStateId given as undefined before it builds anything', async () => {
+        const options = createBasicCallOptions({ privateStateId: undefined });
+
+        await expect(submitCallTxAsync(mockProviders, options)).rejects.toMatchObject({
+          name: 'InvalidArgumentError',
+          code: COMMON_ERROR_CODES.INVALID_ARGUMENT
+        });
+
+        expect(createLedger9UnprovenCallTx).not.toHaveBeenCalled();
+        expect(submitLedger9PayloadAsync).not.toHaveBeenCalled();
+        expect(contractStatesOf(mockProviders.privateStateProvider).set).not.toHaveBeenCalled();
       });
 
       it('should accept privateStateProvider without privateStateId', async () => {

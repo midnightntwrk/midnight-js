@@ -24,7 +24,11 @@ methods already took the address as an argument.
 `clear()` required an address but removed the states of every contract.
 `changePassword()` of the level provider required an address but re-encrypted
 the whole store, because the password and the salt belong to the store, not to
-a contract.
+a contract. When that contract had no states, it re-encrypted nothing and still
+reported success.
+
+The address was used as a key exactly as given, so `'AB…'` and `'ab…'` named
+two different stores for one contract.
 
 ## Decision
 
@@ -36,16 +40,21 @@ when it is created: `provider.forContract(address)` returns a
 - The provider keeps only what spans contracts: `forContract`, `clearAll` and
   the signing-key methods. `setContractAddress` and the unscoped private-state
   methods are removed.
-- `forContract` refuses an invalid address with `InvalidArgumentError`.
+- `forContract` refuses an invalid address with `InvalidArgumentError`, and
+  the view names its contract in `contractAddress`.
+- Contract addresses are compared in lower case, for private states and for
+  signing keys.
 - The view's `clear` removes one contract's states. `clearAll` on the provider
   removes every contract's states of the account. The two names differ so a
   caller cannot mistake one scope for the other.
-- `changePassword` of the level provider takes no address and re-encrypts the
-  whole store, as it did before.
+- `changePassword` of the level provider takes no address and always
+  re-encrypts the whole store. It no longer skips the rotation when one
+  contract has no states.
 - The export format does not change. An export holds one contract's states,
-  and an import writes into the contract of the view.
+  decrypts only that contract's entries, and an import writes into the contract
+  of the view.
 - `accountId` of the level provider is documented as the wallet's coin public
-  key, kept the same for a user.
+  key for a new store. An existing store keeps the value it was created with.
 
 ## Consequences
 
