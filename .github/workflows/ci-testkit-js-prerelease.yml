@@ -39,6 +39,7 @@ jobs:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable

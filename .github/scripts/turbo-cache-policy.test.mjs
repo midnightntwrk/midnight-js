@@ -106,6 +106,25 @@ describe('CI cache wiring', () => {
     expect(turboCache).toHaveLength(1);
   });
 
+  it('builds every published package from source', () => {
+    const workflowDir = path.join(REPO_ROOT, '.github', 'workflows');
+    const publishJobsReadingTurboCache = readdirSync(workflowDir)
+      .filter((name) => name.endsWith('.yml'))
+      .flatMap((name) =>
+        Object.entries(readYaml(path.join(workflowDir, name)).jobs ?? {})
+          .filter(([, job]) => (job.steps ?? []).some(({ run }) => run?.includes('yarn deploy')))
+          .filter(([, job]) =>
+            (job.steps ?? []).some(
+              ({ uses, with: options }) =>
+                uses === './.github/actions/setup-build-env' && options?.['turbo-cache'] !== 'false'
+            )
+          )
+          .map(([jobName]) => `${name}: ${jobName}`)
+      );
+
+    expect(publishJobsReadingTurboCache).toEqual([]);
+  });
+
   it('caches node_modules under one key shared by every job', () => {
     const [dependencies] = cacheSteps().filter(({ with: options }) =>
       options.path.split('\n').includes('**/node_modules')
