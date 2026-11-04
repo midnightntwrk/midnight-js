@@ -8,11 +8,13 @@
 
 ## Type Aliases
 
+- [DAppConnectorNetworkAPI](type-aliases/DAppConnectorNetworkAPI.md)
 - [DAppConnectorProvingAPI](type-aliases/DAppConnectorProvingAPI.md)
 - [DAppConnectorWalletAPI](type-aliases/DAppConnectorWalletAPI.md)
 
 ## Functions
 
+- [dappConnectorNetwork](functions/dappConnectorNetwork.md)
 - [dappConnectorProofProvider](functions/dappConnectorProofProvider.md)
 - [dappConnectorProvingProvider](functions/dappConnectorProvingProvider.md)
 - [dappConnectorWalletProviders](functions/dappConnectorWalletProviders.md)

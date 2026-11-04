@@ -9,10 +9,6 @@
 The public data of a deployment found on chain whose deploy transaction was
 recorded by the ledger-8 runtime, i.e. a contract deployed before the ledger fork.
 
-Carries no `initialContractState`: the deploy-time state of a ledger-8 contract
-cannot be decoded by the current runtime. Read the current state with
-`PublicDataProvider.queryContractState`.
-
 ## Remarks
 
 Unlike the other `Ledger8*` types, it outlives the retained pipeline:
@@ -20,7 +16,7 @@ it is part of `Ledger9FoundDeployTxData`.
 
 ## See
 
-[RetainedEraNamespace](../../documents/RetainedEraNamespace.md) for which names belong to the retained era.
+[ErrorTaxonomy](../../documents/ErrorTaxonomy.md) for how the `Ledger8` names are used.
 
 ## Extends
 
@@ -127,6 +123,16 @@ The indexer internal db ID.
 #### Inherited from
 
 [`Ledger8FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md).[`indexerId`](../../../midnight-js/types/interfaces/Ledger8FinalizedTxData.md#indexerid)
+
+***
+
+### initialContractState
+
+> `readonly` **initialContractState**: [`SerializedContractState`](../../../midnight-js/types/classes/SerializedContractState.md)
+
+The deploy-time state of the contract, as `queryDeployContractState` serves it. Its `era` names
+the ledger that wrote these bytes, which can differ from the era of the deploy record. Decode it
+with your own runtime of that era.
 
 ***
 

@@ -6,7 +6,7 @@
 
 # Type Alias: WalletProviderHandlers
 
-> **WalletProviderHandlers** = \{ readonly \[E in LedgerVersion\]: ((tx: LedgerTransactionTypes\[E\]\["Unbound"\], ttl?: Date) =\> Promise\<LedgerTransactionTypes\[E\]\["Finalized"\]\>) \| undefined \} & `object`
+> **WalletProviderHandlers** = \{ readonly \[E in LedgerEra\]: ((tx: LedgerTransactionTypes\[E\]\["Unbound"\], ttl?: Date) =\> Promise\<LedgerTransactionTypes\[E\]\["Finalized"\]\>) \| undefined \} & `object`
 
 The per-era handlers and key readers [createWalletProviderFromHandlers](../functions/createWalletProviderFromHandlers.md)
 assembles a [WalletProvider](../interfaces/WalletProvider.md) from: one key per ledger era, a handler for

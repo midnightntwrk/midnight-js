@@ -6,7 +6,7 @@
 
 # Type Alias: MidnightProviderHandlers
 
-> **MidnightProviderHandlers** = \{ readonly \[E in LedgerVersion\]: ((tx: LedgerTransactionTypes\[E\]\["Finalized"\]) =\> Promise\<TransactionId\>) \| undefined \}
+> **MidnightProviderHandlers** = \{ readonly \[E in LedgerEra\]: ((tx: LedgerTransactionTypes\[E\]\["Finalized"\]) =\> Promise\<TransactionId\>) \| undefined \}
 
 The per-era handlers [createMidnightProviderFromHandlers](../functions/createMidnightProviderFromHandlers.md) assembles a
 [MidnightProvider](../interfaces/MidnightProvider.md) from: one key per ledger era, a handler for an era

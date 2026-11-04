@@ -78,9 +78,10 @@ artifact that survives a consumer's build: a bundler's `target` rewrites generat
 minifier rewrites its names, but neither touches this file. It is what lets a caller's contract
 be placed on the ledger-era timeline without inspecting the shape of the generated JavaScript.
 
-Not abstract, and deliberately so: only the retained-era pipeline consults it, so a provider
-written for current-era artifacts alone stays valid without implementing it and fails loudly
-only if it is handed retained-era artifacts. Both providers this framework ships override it.
+Every contract operation consults it, for artifacts of every era, so every provider used for
+contract operations must implement it. Both providers this framework ships override it. The
+base implementation throws rather than being abstract, so a provider that serves keys only to a
+proof provider keeps compiling.
 
 #### Returns
 

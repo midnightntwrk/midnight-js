@@ -7,12 +7,12 @@
 # Interface: Ledger9FinalizedDeployTxPublicData
 
 The public data of a finalized deployment transaction: the deploy-specific
-public data ([UnsubmittedDeployTxPublicData](UnsubmittedDeployTxPublicData.md)) combined with the
+public data ([Ledger9UnsubmittedDeployTxPublicData](Ledger9UnsubmittedDeployTxPublicData.md)) combined with the
 finalized transaction data ([Ledger9FinalizedTxData](../../types/interfaces/Ledger9FinalizedTxData.md)).
 
 ## Extends
 
-- [`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
+- [`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
 
 ## Properties
 
@@ -72,7 +72,7 @@ The ledger address of the contract that was deployed.
 
 #### Inherited from
 
-[`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`contractAddress`](UnsubmittedDeployTxPublicData.md#contractaddress)
+[`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`contractAddress`](Ledger9UnsubmittedDeployTxPublicData.md#contractaddress)
 
 ***
 
@@ -126,13 +126,14 @@ The indexer internal db ID.
 
 ### initialContractState
 
-> `readonly` **initialContractState**: [`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
+> `readonly` **initialContractState**: [`SerializedContractState`](../../types/classes/SerializedContractState.md)\<`"v9"`\>
 
-The initial public state of the contract deployed to the blockchain.
+The initial public state of the contract deployed to the blockchain, as bytes. Decode it with
+your own runtime: `initialContractState.deserialize({ v9: ContractState })`.
 
 #### Inherited from
 
-[`UnsubmittedDeployTxPublicData`](UnsubmittedDeployTxPublicData.md).[`initialContractState`](UnsubmittedDeployTxPublicData.md#initialcontractstate)
+[`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`initialContractState`](Ledger9UnsubmittedDeployTxPublicData.md#initialcontractstate)
 
 ***
 

@@ -6,7 +6,7 @@
 
 # Function: submitTx()
 
-> **submitTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)\>
+> **submitTx**\<`PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedTxRead`](../../../midnight-js/types/type-aliases/FinalizedTxRead.md)\>
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.
@@ -19,13 +19,13 @@ It reads the network's ledger version once and runs on that era. The handle's `e
 |---|---|---|
 | v9 | v9 | proved, balanced and submitted as v9 handles |
 | v8 | v8 | proved, balanced and submitted as v8 handles |
-| v8 | v9 | refused with `EraArtifactMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
-| v9 | v8 | refused with `EraArtifactMismatchError` before proving |
+| v8 | v9 | refused with `EraMismatchError` before proving: the v9 ledger cannot read a v8 transaction |
+| v9 | v8 | refused with `EraMismatchError` before proving |
 
-The head is read before proving, not again. If the network crosses the hard fork while the
-transaction is being proved, the node refuses it and the refusal arrives as
-`ProviderFailedError` from `submitTx`, not as a fork diagnosis. Read the head again and rebuild
-the transaction for the new era.
+The head is read before proving. If the node rejects the submission, the head is read once more:
+when the network crossed the hard fork in between, the rejection arrives as
+`ForkCrossedDuringOperationError` (kind `'transaction'`); verify the transaction did not finalize,
+then build it again for the new era. A failure while proving or balancing reads nothing again.
 
 ## Blocking Behavior
 
@@ -57,10 +57,6 @@ finalization handling and timeout control.
 
 ## Type Parameters
 
-### C
-
-`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
-
 ### PCK
 
 `PCK` *extends* `string`
@@ -69,7 +65,7 @@ finalization handling and timeout control.
 
 ### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
+`Omit`\<[`MidnightProviders`](../../../midnight-js/types/interfaces/MidnightProviders.md)\<`PCK`\>, `"privateStateProvider"`\>
 
 The providers used to manage the transaction lifecycle.
 
@@ -93,11 +89,22 @@ InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this 
 
 ## Throws
 
-EraArtifactMismatchError for a transaction whose era is not the head's.
+EraMismatchError for a transaction whose era is not the head's.
 
 ## Throws
 
-ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+        rejected submission arrives as this error only when the head has not moved.
+
+## Throws
+
+ForkCrossedDuringOperationError if the node rejects the submission and the head now
+        reports a later era.
+
+## Throws
+
+SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+        read again, or reports an earlier era.
 
 ## Throws
 

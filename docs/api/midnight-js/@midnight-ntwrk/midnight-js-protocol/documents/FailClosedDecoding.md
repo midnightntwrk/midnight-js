@@ -214,14 +214,14 @@ either; what was inconsistent is on `cause`.
 The property has to hold on the two errors that carry an offending value, or it
 is not worth having:
 
-- `UnknownLedgerVersionError` carries the offending era string on
+- `UnknownLedgerEraError` carries the offending era string on
   `requestedVersion` for programmatic use, deliberately kept out of the
   message: this is the one input to the read that comes straight from an
   untrusted caller, and the state conversion errors' "never renders caller-supplied
   text" property is only worth having if it holds here too. For the same reason
   that class names no `version` field — there is no valid era to name.
 - `Ledger8RuntimeInvalidError` exposes `missingMember`. Like
-  `UnknownLedgerVersionError`, a TypeScript caller cannot produce this error —
+  `UnknownLedgerEraError`, a TypeScript caller cannot produce this error —
   it exists for the untyped JavaScript consumers this package also serves — and
   `missingMember` names the absent binding from `errors.ts`'s own literals
   rather than caller-supplied text, so exposing it leaks nothing.

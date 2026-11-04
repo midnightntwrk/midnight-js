@@ -13,7 +13,7 @@ so a consumer can `switch` on `stage` exhaustively.
 
 `'state conversion'` is the structural round trip `lib/v8/executable.ts`
 runs before a circuit executes; the other two decode a serialized contract state
-written by that ledger version, in `lib/era/envelope.ts`.
+written by that ledger era, in `lib/era/envelope.ts`.
 
 ## See
 

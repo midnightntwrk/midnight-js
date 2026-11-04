@@ -14,4 +14,4 @@ The deploy transaction of a found contract. Generic code names an era: `Ledger9F
 
 ### C
 
-`C` *extends* [`AnyEraContract`](AnyEraContract.md)
+`C` *extends* [`AnyContract`](AnyContract.md)

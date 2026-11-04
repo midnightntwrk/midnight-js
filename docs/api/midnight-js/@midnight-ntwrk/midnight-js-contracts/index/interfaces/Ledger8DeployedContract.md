@@ -93,9 +93,9 @@ The contract-wide maintenance interface, bound to this address.
 
 ### deployTxData
 
-> `readonly` **deployTxData**: [`Ledger8DeployTxData`](Ledger8DeployTxData.md)\<`C`\>
+> `readonly` **deployTxData**: [`Ledger8FinalizedDeployTxData`](Ledger8FinalizedDeployTxData.md)\<`C`\>
 
-See [Ledger8DeployTxData](Ledger8DeployTxData.md).
+See [Ledger8FinalizedDeployTxData](Ledger8FinalizedDeployTxData.md).
 
 #### Overrides
 

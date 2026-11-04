@@ -21,7 +21,7 @@ A [ContractStateRead](ContractStateRead.md) together with the ledger parameters 
 
 ### contractState
 
-> `readonly` **contractState**: [`SerializedState`](../classes/SerializedState.md)\<`"ContractState"`\>
+> `readonly` **contractState**: [`SerializedContractState`](../classes/SerializedContractState.md)
 
 The contract state.
 
@@ -33,7 +33,7 @@ The contract state.
 
 ### ledgerParameters
 
-> `readonly` **ledgerParameters**: [`SerializedState`](../classes/SerializedState.md)\<`"LedgerParameters"`\>
+> `readonly` **ledgerParameters**: [`SerializedLedgerParameters`](../classes/SerializedLedgerParameters.md)
 
 The ledger parameters of the block that dates the read. On a read with no block given, that
 block is looked up separately from the state, so near the hard fork it can be a block other than

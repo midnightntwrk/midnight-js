@@ -23,7 +23,7 @@ The stage the transaction is at.
 
 ### E
 
-`E` *extends* [`LedgerVersion`](../../type-aliases/LedgerVersion.md) = [`LedgerVersion`](../../type-aliases/LedgerVersion.md)
+`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md) = [`LedgerEra`](../../type-aliases/LedgerEra.md)
 
 The era the transaction belongs to; any era when not known.
 
@@ -179,7 +179,7 @@ ForeignLedgerTransactionError If `tx` is an object of another
 
 #### Throws
 
-UnknownLedgerVersionError If `era` is not a ledger version.
+UnknownLedgerEraError If `era` is not a ledger era.
 
 ***
 
@@ -226,7 +226,7 @@ InvalidTransactionHandleError If `handle` is not a handle of this
 
 #### Throws
 
-UnknownLedgerVersionError If `era` is not a ledger version.
+UnknownLedgerEraError If `era` is not a ledger era.
 
 #### Throws
 

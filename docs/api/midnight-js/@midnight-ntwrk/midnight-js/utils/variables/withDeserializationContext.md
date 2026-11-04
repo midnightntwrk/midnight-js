@@ -56,6 +56,6 @@ than re-thrown, and what the thenable check prevents.
 
 ```ts
 // Inside a typed wrapper:
-deserializeContractState(buf, ctx) =>
+deserializeLedger9ContractState(buf, ctx) =>
   withDeserializationContext(callSite, () => LedgerContractState.deserialize(buf));
 ```

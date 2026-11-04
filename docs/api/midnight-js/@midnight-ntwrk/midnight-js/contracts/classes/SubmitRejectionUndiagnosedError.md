@@ -34,7 +34,7 @@ DO NOT COPY THE CARRIED REJECTION'S CODE ONTO THIS ERROR. It has its own.
 
 ##### operation
 
-[`SubmittedOperation`](../interfaces/SubmittedOperation.md)
+[`SubmittedOperation`](../type-aliases/SubmittedOperation.md)
 
 Which operation was rejected.
 
@@ -73,7 +73,9 @@ Why no diagnosis could be made.
 
 ### circuitId
 
-> `readonly` **circuitId**: `string`
+> `readonly` **circuitId**: `string` \| `undefined`
+
+See [ForkCrossedDuringOperationError.circuitId](ForkCrossedDuringOperationError.md#circuitid).
 
 ***
 
@@ -89,7 +91,9 @@ Why no diagnosis could be made.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `string`
+> `readonly` **contractAddress**: `string` \| `undefined`
+
+See [ForkCrossedDuringOperationError.contractAddress](ForkCrossedDuringOperationError.md#contractaddress).
 
 ***
 
@@ -103,7 +107,7 @@ The submission rejection first, then the failure to read the network's ledger ve
 
 ### kind
 
-> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md)
+> `readonly` **kind**: [`SubmittedOperationKind`](../type-aliases/SubmittedOperationKind.md) \| `"transaction"`
 
 ***
 

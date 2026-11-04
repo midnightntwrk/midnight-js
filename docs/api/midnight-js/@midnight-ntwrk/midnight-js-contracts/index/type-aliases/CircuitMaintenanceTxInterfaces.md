@@ -14,4 +14,4 @@ One maintenance interface per circuit. Generic code names an era: `Ledger9Circui
 
 ### C
 
-`C` *extends* [`AnyEraContract`](AnyEraContract.md)
+`C` *extends* [`AnyContract`](AnyContract.md)

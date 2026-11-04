@@ -6,9 +6,9 @@
 
 # Function: loadLedgerEra()
 
-> **loadLedgerEra**(`version`): `Promise`\<[`LedgerEra`](../interfaces/LedgerEra.md)\>
+> **loadLedgerEra**(`version`): `Promise`\<[`LedgerEraFacade`](../interfaces/LedgerEraFacade.md)\>
 
-Resolves one ledger era to a [LedgerEra](../interfaces/LedgerEra.md) bound to it.
+Resolves one ledger era to a [LedgerEraFacade](../interfaces/LedgerEraFacade.md) bound to it.
 
 This is the only sanctioned way to reach either era's operations. Pass the
 version resolved from a record or from the network's latest block (see
@@ -28,15 +28,15 @@ The era to resolve.
 
 ## Returns
 
-`Promise`\<[`LedgerEra`](../interfaces/LedgerEra.md)\>
+`Promise`\<[`LedgerEraFacade`](../interfaces/LedgerEraFacade.md)\>
 
 The era facade bound to `version`. The same object on every call
 for that era, and frozen.
 
 ## Throws
 
-UnknownLedgerVersionError — as a rejection — if `version` is not a
-member of `LEDGER_VERSIONS`.
+UnknownLedgerEraError — as a rejection — if `version` is not a
+member of `LEDGER_ERAS`.
 
 ## Throws
 

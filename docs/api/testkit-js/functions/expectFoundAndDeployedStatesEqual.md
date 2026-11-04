@@ -18,11 +18,11 @@
 
 ### deployTxData
 
-`FinalizedDeployTxData`\<`C`\>
+`Ledger9FinalizedDeployTxData`\<`C`\>
 
 ### foundDeployTxData
 
-`FoundDeployTxData`\<`C`\>
+`Ledger9FoundDeployTxData`\<`C`\>
 
 ### privateStateId?
 
