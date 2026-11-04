@@ -3,31 +3,7 @@
   "envMode": "loose",
   "agentGuidance": false,
   "globalEnv": ["COMPACTC_VERSION"],
-  // Repo-root files that decide what a task produces, but live outside any
-  // package's own `inputs`. Without them a change here leaves every task hash
-  // untouched, so turbo replays a cached PASS for a gate that never ran --
-  // `build-tools/` decides how bundles are emitted, `eslint.config.mjs` is
-  // the subject of the lint canaries in packages/protocol/src/test/, and the
-  // three documents below are the subject of the doc gates in
-  // packages/utils/src/test/troubleshooting-coverage.test.ts,
-  // packages/midnight-js/src/test/migration-guide-recipe.test.ts and
-  // packages/midnight-js/src/test/protocol-recipe.test.ts.
-  //
-  // The root manifest and the lockfile are the subject of
-  // packages/protocol/src/test/single-instance.test.ts, which reads the root `resolutions` pins
-  // and checks them against what yarn actually resolved (`yarn info`, answered from the lockfile).
-  // An edit to `resolutions` that was never reinstalled is precisely what that gate exists to
-  // catch, and it touches no file any package's own `inputs` cover -- so without these two turbo
-  // would replay a cached PASS for it.
-  "globalDependencies": [
-    "build-tools/**",
-    "eslint.config.mjs",
-    "TROUBLESHOOTING.md",
-    "docs/releases/v5.0.0/migration-guide.md",
-    "llms.txt",
-    "package.json",
-    "yarn.lock"
-  ],
+  "globalDependencies": ["build-tools/**"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -46,31 +22,23 @@
       ]
     },
     "test": {
-      "outputLogs": "new-only",
-      "dependsOn": ["build", "^build"],
-      "inputs": ["src/**/*.ts", "vitest.config.ts", "vitest.*.config.ts", "compose.yml"],
-      "outputs": ["reports/**", "coverage/**", "logs/**"]
+      "cache": false,
+      "dependsOn": ["build", "^build"]
     },
     "it": {
-      "outputLogs": "new-only",
-      "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "compose.yml"],
-      "outputs": ["reports/**", "coverage/**", "logs/**"]
+      "cache": false,
+      "dependsOn": ["^build"]
     },
     "e2e": {
-      "outputLogs": "new-only",
-      "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "compose.yml"],
-      "outputs": ["reports/**", "coverage/**", "logs/**"]
+      "cache": false,
+      "dependsOn": ["^build"]
     },
     "e2e-single": {
-      "outputLogs": "new-only",
-      "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "compose.yml"],
-      "outputs": ["reports/**", "coverage/**", "logs/**"]
+      "cache": false,
+      "dependsOn": ["^build"]
     },
     "check": {
-      "outputLogs": "new-only",
+      "cache": false,
       "dependsOn": ["build", "test"]
     },
     "compact": {
