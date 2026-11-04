@@ -52,7 +52,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Build the project
-        run: yarn build --cache-dir ./turbo
+        run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
 

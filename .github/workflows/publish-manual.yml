@@ -103,7 +103,7 @@ jobs:
 
       - name: Publish packages
         run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./packages/*" --concurrency=1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -119,7 +119,7 @@ jobs:
 
       - name: Publish testkit-js packages
         run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./testkit-js/*" --concurrency=1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

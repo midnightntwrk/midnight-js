@@ -106,7 +106,7 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        run: yarn build ${{ inputs.yarn_filter }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
+          yarn test --filter="./testkit-js/*"
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 

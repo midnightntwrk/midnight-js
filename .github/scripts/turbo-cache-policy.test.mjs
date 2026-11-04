@@ -12,10 +12,12 @@
 // limitations under the License.
 
 import { spawnSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const TURBO = path.join(REPO_ROOT, 'node_modules', '.bin', 'turbo');
@@ -66,6 +68,43 @@ describe('turbo cache policy', () => {
     },
     DRY_RUN_TIMEOUT_MS
   );
+});
+
+const SETUP_BUILD_ENV = path.join(REPO_ROOT, '.github', 'actions', 'setup-build-env', 'action.yml');
+
+const readYaml = (file) => parse(readFileSync(file, 'utf8'));
+
+const workflowSteps = () => {
+  const workflowDir = path.join(REPO_ROOT, '.github', 'workflows');
+  const actionDir = path.join(REPO_ROOT, '.github', 'actions');
+  const workflows = readdirSync(workflowDir)
+    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+    .map((name) => ({ name, document: readYaml(path.join(workflowDir, name)) }));
+  const actions = readdirSync(actionDir).map((name) => ({
+    name: `${name}/action.yml`,
+    document: readYaml(path.join(actionDir, name, 'action.yml'))
+  }));
+  return [
+    ...workflows.flatMap(({ name, document }) =>
+      Object.values(document.jobs ?? {}).flatMap((job) => (job.steps ?? []).map((step) => ({ file: name, step })))
+    ),
+    ...actions.flatMap(({ name, document }) => (document.runs?.steps ?? []).map((step) => ({ file: name, step })))
+  ];
+};
+
+const cacheSteps = () =>
+  (readYaml(SETUP_BUILD_ENV).runs.steps ?? []).filter(({ uses }) => uses?.startsWith('actions/cache'));
+
+describe('CI cache wiring', () => {
+  it('lets turbo write to the directory CI caches', () => {
+    const overridden = workflowSteps()
+      .filter(({ step }) => step.run?.includes('--cache-dir'))
+      .map(({ file, step }) => `${file}: ${step.name ?? step.run}`);
+    const turboCache = cacheSteps().filter(({ with: options }) => options.path.split('\n').includes('.turbo/cache'));
+
+    expect(overridden).toEqual([]);
+    expect(turboCache).toHaveLength(1);
+  });
 });
 
 describe('build hash', () => {

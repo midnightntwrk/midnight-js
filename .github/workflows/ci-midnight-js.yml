@@ -76,6 +76,6 @@ jobs:
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy --filter="./packages/*" --cache-dir ./turbo -- --tag pre
+        run: yarn deploy --filter="./packages/*" -- --tag pre
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

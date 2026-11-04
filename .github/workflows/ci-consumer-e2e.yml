@@ -51,7 +51,7 @@ jobs:
       # The personas consume `dist`, so the smoke is only meaningful against a
       # real build rather than against sources.
       - name: Build
-        run: yarn build --cache-dir ./turbo
+        run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 

@@ -22,6 +22,10 @@ inputs:
     description: "Prefix for the Turbo/Yarn cache key ('turbo' for packages, 'turbo-testkit' for testkit)."
     required: false
     default: 'turbo'
+  turbo-cache:
+    description: "Set 'false' for a job that builds nothing, so it neither restores nor saves the turbo build cache."
+    required: false
+    default: 'true'
   testkit-docker-env:
     description: Value exported as TESTKIT_DOCKER_ENV before loading .envrc (empty falls back to the .envrc default).
     required: false
@@ -71,7 +75,15 @@ runs:
         path: |
           **/node_modules
           ~/.yarn
-          .turbo
         key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
         restore-keys: |
           ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+
+    - name: Cache turbo build output
+      if: inputs.turbo-cache == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      with:
+        path: .turbo/cache
+        key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
