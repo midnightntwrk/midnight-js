@@ -2328,7 +2328,7 @@ __metadata:
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.7"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0-canary.20261104142910-33e5e4c"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-canary.20261104142910-33e5e4c"
-    "@midnightntwrk/zkir-v3": "npm:3.2.0-rc.2"
+    "@midnightntwrk/zkir-v3": "npm:3.2.0"
     "@scure/bip39": "npm:^2.3.0"
     "@types/ws": "npm:^8.18.2"
     "@vitest/runner": "npm:^4.1.11"
@@ -2603,10 +2603,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/zkir-v3@npm:3.2.0-rc.2":
-  version: 3.2.0-rc.2
-  resolution: "@midnightntwrk/zkir-v3@npm:3.2.0-rc.2"
-  checksum: 10/c84e3595c392b6280154620c487a56fbd771b499d0a053b620ad8a4292890e68f3dacdf3ebc9c4405f6168991553e4640d8e934f6503746684ad6bbf866a7e63
+"@midnightntwrk/zkir-v3@npm:3.2.0":
+  version: 3.2.0
+  resolution: "@midnightntwrk/zkir-v3@npm:3.2.0"
+  checksum: 10/7fabd7e375e55f2ed6835d9a2e3128b60e16f15755b6b079526c1e5b711f607866f40f5fad889f43a9720619859db2994144b1da2c6b700e473ae1153a70e30b
   languageName: node
   linkType: hard
 
