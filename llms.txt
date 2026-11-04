@@ -312,7 +312,7 @@ Three things to know before wiring a retained-era flow:
   request, never from the bytes.
 
   `ledger8ProvingProvider` and `provingProvider` can be the same object when it is a server-backed
-  client — the proof server, the DApp Connector — because such a client frames each request with the ledger version that produced the transaction
+  client — the proof server, the DApp Connector — because such a client frames each request with the ledger era that produced the transaction
   and resolves key material per request. An IN-PROCESS prover frames nothing: the era it proves for
   is fixed when it is built, by the key material it was given. From
   `@midnightntwrk/wallet-sdk-prover-client` 2.0.0-rc.0 that key material is per era, and a node

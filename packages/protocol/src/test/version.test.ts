@@ -111,7 +111,7 @@ describe('sourcing helpers', () => {
   });
 
   describe('latestNetworkLedgerVersion', () => {
-    it('resolves to the mapped ledger version and queries the source exactly once', async () => {
+    it('resolves to the mapped ledger era and queries the source exactly once', async () => {
       const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
 
       await expect(latestNetworkLedgerVersion(source)).resolves.toBe('v9');

@@ -120,7 +120,7 @@ too, so you can catch them and read their payload without a cast:
 | `ComposeOptionError` | `version`, `option` | one composition option cannot be used |
 | `StateDecodeFailedError` | `version` | contract-state bytes could not be read as that era |
 | `StateInconsistentError` | `version` | contract-state bytes were read as that era, but the state is internally inconsistent |
-| `UnknownLedgerEraError` | `requestedVersion` | an era outside `LEDGER_ERAS` was requested |
+| `UnknownLedgerEraError` | `requestedVersion` | the value names an era outside `LEDGER_ERAS`, or carries no era (`requestedVersion` is `undefined`: a pre-5.0.0 provider) |
 | `PayloadNotATransactionError` | none | a `v8` payload sent for proving was not a transaction |
 
 ### What importing the barrel loads

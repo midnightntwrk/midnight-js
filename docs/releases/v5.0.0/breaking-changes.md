@@ -1540,8 +1540,7 @@ fails with an error such as
 type to `LedgerEraFacade`.
 
 Unchanged: the `version` fields (on `LedgerEraFacade` and on the protocol error
-classes), `requestedVersion` on `UnknownLedgerEraError`, the `version`
-discriminant of the payloads, the `Versioned*` types, `envelopeVersion`, and the
+classes), `requestedVersion` on `UnknownLedgerEraError`, the `Versioned*` types, and the
 functions `latestNetworkLedgerVersion`, `ledgerVersionOfContractState`,
 `ledgerVersionOfLedgerParameters`, `versionOfRecord` and `protocolVersionToLedger`.
 

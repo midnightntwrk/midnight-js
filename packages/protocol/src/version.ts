@@ -88,7 +88,7 @@ const lookupLedger = (table: Partial<Record<number, LedgerEra>>, key: number): L
  * Most call sites should not call this directly. Prefer
  * {@link versionOfRecord} for a `protocolVersion` read off an existing
  * indexer/node record, or {@link latestNetworkLedgerVersion} for the network's
- * latest ledger version — both tag the resulting error with the correct
+ * latest ledger era — both tag the resulting error with the correct
  * `path` automatically. Pass `path` explicitly here only when neither helper
  * fits the call site.
  *
@@ -117,7 +117,7 @@ export const protocolVersionToLedger = (
 };
 
 /**
- * Resolves the ledger version for a record's `protocolVersion` field (e.g. a
+ * Resolves the ledger era for a record's `protocolVersion` field (e.g. a
  * transaction or block already read from the indexer).
  *
  * @param record Any object carrying a raw `protocolVersion` integer field.

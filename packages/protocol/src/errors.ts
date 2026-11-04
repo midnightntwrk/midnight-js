@@ -151,7 +151,7 @@ export class InvariantViolationError extends MidnightJsError {
 }
 
 /**
- * Which call path asked for a ledger version:
+ * Which call path asked for a ledger era:
  * - `'read'` — the version was taken off an existing record.
  * - `'construct'` — the version was chosen to build something new against the
  *   network's latest block.
@@ -159,7 +159,7 @@ export class InvariantViolationError extends MidnightJsError {
 export type VersionResolutionPath = 'read' | 'construct';
 
 /**
- * Why `protocolVersionToLedger` could not resolve a ledger version:
+ * Why `protocolVersionToLedger` could not resolve a ledger era:
  * - `'malformed'` — the input was not even a well-formed protocolVersion
  *   value (not a non-negative integer).
  * - `'unknown'` — the input was a well-formed integer, but outside every
@@ -266,7 +266,7 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
  *
  * `'state conversion'` is the structural round trip `lib/v8/executable.ts`
  * runs before a circuit executes; the other two decode a serialized contract state
- * written by that ledger version, in `lib/era/envelope.ts`.
+ * written by that ledger era, in `lib/era/envelope.ts`.
  *
  * @see {@link FailClosedDecoding}
  */
@@ -298,7 +298,7 @@ export class StateConversionFailedError extends MidnightJsError {
     super(
       `Failed to convert a contract state into one a circuit can execute against, during ${stage}. Read the ` +
         'wrapped cause for what the runtime actually reported; it distinguishes a version tag for a different ' +
-        'ledger version than the one requested from truncated, trailing, or empty input bytes.',
+        'ledger era than the one requested from truncated, trailing, or empty input bytes.',
       { cause }
     );
     this.name = 'StateConversionFailedError';
@@ -878,7 +878,7 @@ const describeRequestedVersion = (value: unknown): string | undefined => {
  *   value carried no era, as the kind (`'object'`, `'function'`) for a value
  *   that is not a scalar, and as its string form otherwise. Carried for
  *   programmatic use only; it is deliberately kept out of the message.
- * @param context The call that read the version off a value it was handed,
+ * @param context The call that read the era off a value it was handed,
  *   for example the provider method that returned a record. Named in the
  *   message, so a caller can tell which provider produced the value.
  * @see {@link SharedTableDiscipline}

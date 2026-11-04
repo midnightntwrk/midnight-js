@@ -43,8 +43,7 @@ We will use the word "era" for the ledger era in the public API. The values stay
   `'v9'`. We add no helper for that mapping: no midnight-js API needs the number.
 
 These stay unchanged, as a separate decision: fields named `version`
-(including `requestedVersion`), the payload discriminant `version`, the
-`Versioned*` types, `envelopeVersion`, and the functions
+(including `requestedVersion`), the `Versioned*` types, and the functions
 `latestNetworkLedgerVersion`, `ledgerVersionOf*`, `versionOfRecord` and
 `protocolVersionToLedger`.
 
