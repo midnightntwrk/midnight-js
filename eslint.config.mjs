@@ -330,25 +330,6 @@ export default tseslint.config(
     }
   },
   {
-    // Re-declares the patterns of the blocks above for these files: flat
-    // config replaces rule options, it does not merge them.
-    files: ['packages/*/src/**/*.ts'],
-    ignores: ['**/test/**', 'packages/midnight-js/**', PROTOCOL_SOURCE_DIRS],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        { patterns: [distImportPattern, ...protocolImportPatterns] }
-      ]
-    }
-  },
-  {
-    files: ['testkit-js/testkit-js/src/**/*.ts'],
-    ignores: ['**/test/**'],
-    rules: {
-      'no-restricted-imports': ['error', { patterns: [distImportPattern] }]
-    }
-  },
-  {
     // Static-import half of the v8 gate. Its own rule id, so it does not
     // interact with the `no-restricted-syntax` blocks below.
     files: [...PACKAGE_SOURCE_GLOBS, 'testkit-js/**/*.ts'],

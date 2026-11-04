@@ -317,14 +317,6 @@ describe('sub-path exports', () => {
     expect(Object.keys(ledger9Protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
   });
 
-  it('publishes the ledger 9 protocol names only under protocol/v9', () => {
-    const subpaths = Object.keys(
-      (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports
-    );
-
-    expect(subpaths.filter((subpath) => subpath.startsWith('./protocol'))).toEqual(['./protocol/v9']);
-  });
-
   it('publishes exactly the documented sub-paths', () => {
     const subpaths = Object.keys(
       (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports

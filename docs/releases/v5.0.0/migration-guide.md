@@ -974,8 +974,9 @@ const providers = {
   implement `WalletProvider` yourself, use that argument for the intent your wallet
   adds while balancing, instead of a TTL of your own.
 - Remove the `setNetworkId` call and its import:
-  `@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546), so the
-  import no longer compiles.
+  `@midnight-ntwrk/midnight-js-network-id` is removed in 5.0.0 (#1546), and so are
+  the `networkId` namespace and the `./network-id` subpath of
+  `@midnight-ntwrk/midnight-js`, so the import no longer compiles.
 - Import the `NetworkId` type from `@midnight-ntwrk/midnight-js-types`.
 - Low-level calls that do not take `providers`:
   - `createUnprovenCallTxFromInitialStates`: add `config` to the options.
