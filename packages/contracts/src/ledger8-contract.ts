@@ -65,6 +65,7 @@ import type {
   ContractCallPrivateBase,
   FinalizedTxRead,
   Ledger8FinalizedTxData,
+  LedgerTransaction,
   MidnightConfig,
   MidnightProviders,
   PrivateStateId,
@@ -906,7 +907,7 @@ export interface Ledger8UnsubmittedDeployTxData<C extends Ledger8Contract> {
      */
     readonly initialZswapState: ZswapLocalState;
     /** The unproven deploy transaction, a ledger 8 one. */
-    readonly unprovenTx: UnprovenTx;
+    readonly unprovenTx: LedgerTransaction<'Unproven', 'v8'>;
   };
 }
 

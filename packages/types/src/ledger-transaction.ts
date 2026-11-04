@@ -142,8 +142,8 @@ export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra =
    * @throws UnknownLedgerEraError If `era` is not a ledger era.
    * @throws TransactionEraMismatchError If the handle carries another era.
    */
-  static unwrap<E extends LedgerEra, S extends TransactionStage>(
-    handle: LedgerTransaction<S>,
+  static unwrap<S extends TransactionStage, H extends LedgerEra, E extends H>(
+    handle: LedgerTransaction<S, H>,
     era: E
   ): LedgerTransactionTypes[E][S] {
     if (!LedgerTransaction.isLedgerTransaction(handle)) {

@@ -50,6 +50,7 @@ import {
   type ContractPrivateStates,
   type FinalizedTxRead,
   type Ledger8FinalizedTxData,
+  LedgerTransaction,
   type MidnightConfig,
   type MidnightProvider,
   type PrivateStateId,
@@ -1171,7 +1172,7 @@ export const toLedger8UnsubmittedDeployTxData = (deploy: Ledger8DeployPipelineRe
     signingKey: toStoredLedger8SigningKey(deploy.signingKey),
     initialPrivateState: deploy.nextPrivateState,
     initialZswapState: deploy.initialZswapState,
-    unprovenTx: deploy.unprovenTx
+    unprovenTx: LedgerTransaction.seal('v8', 'Unproven', LedgerTransaction.unwrap(deploy.unprovenTx, 'v8'))
   }
 });
 

@@ -32,6 +32,8 @@ declare const unboundTx: UnboundTx;
 declare const finalizedTx: FinalizedTx;
 declare const ledger8Unbound: LedgerTransactionTypes['v8']['Unbound'];
 declare const ledger9Unproven: Ledger9UnprovenTransaction;
+declare const ledger9UnprovenHandle: LedgerTransaction<'Unproven', 'v9'>;
+declare const finalizedTxRead: FinalizedTxRead;
 
 describe('LedgerTransaction stages', () => {
   it('keeps the three stages apart', () => {
@@ -76,6 +78,20 @@ describe('LedgerTransaction.unwrap', () => {
   it('returns the ledger class of the requested era at the handle stage', () => {
     expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v8')).toEqualTypeOf<Ledger8UnprovenTransaction>();
     expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v9')).toEqualTypeOf<Ledger9UnprovenTransaction>();
+  });
+
+  it('returns the ledger class of the era a handle of known era carries', () => {
+    expectTypeOf(LedgerTransaction.unwrap(ledger9UnprovenHandle, 'v9')).toEqualTypeOf<Ledger9UnprovenTransaction>();
+  });
+
+  it('refuses another era for a handle of known era', () => {
+    // @ts-expect-error a v9 handle cannot be unwrapped as v8
+    LedgerTransaction.unwrap(ledger9UnprovenHandle, 'v8');
+  });
+
+  it('accepts either era for a handle whose era is one of several', () => {
+    expectTypeOf(LedgerTransaction.unwrap(finalizedTxRead.tx, 'v8')).toEqualTypeOf<LedgerTransactionTypes['v8']['Finalized']>();
+    expectTypeOf(LedgerTransaction.unwrap(finalizedTxRead.tx, 'v9')).toEqualTypeOf<LedgerTransactionTypes['v9']['Finalized']>();
   });
 });
 
