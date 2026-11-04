@@ -156,7 +156,7 @@ export function parseZkArtifactManifest(rawJson: string): ZkArtifactManifest {
   const duplicateKey = findDuplicateKey(rawJson);
   if (duplicateKey !== undefined) {
     throw new ZkArtifactIntegrityError(
-      `ZK artifact manifest contains a duplicate key "${duplicateKey}"; an ambiguous manifest cannot be trusted as an integrity check`
+      `ZK artifact manifest contains a duplicate key ${JSON.stringify(duplicateKey)}; an ambiguous manifest cannot be trusted as an integrity check`
     );
   }
   if (!isJsonObject(root)) {

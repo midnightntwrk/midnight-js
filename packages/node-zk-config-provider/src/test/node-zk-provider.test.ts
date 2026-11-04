@@ -295,14 +295,17 @@ describe('Node ZK config Provider', () => {
 
     it('rejects a pinned manifest whose raw text repeats a key, even though the pin matches its bytes', async () => {
       const dir = await buildBaseDir();
-      const entry = (hash: string): string =>
-        `{"type":"file","size":${SET_TOPIC_VERIFIER.length},"hash":"${hash}"}`;
+      const forged = Buffer.from('forged verifier key artifact');
+      await fs.writeFile(path.join(dir, 'keys', 'set_topic.verifier'), forged);
+      const entry = (bytes: Uint8Array): string =>
+        `{"type":"file","size":${bytes.length},"hash":"${computeSha256Hex(bytes)}"}`;
       const rawManifest =
         `{"manifest-version":"1","keys":{"type":"directory",` +
-        `"set_topic.verifier":${entry(computeSha256Hex(SET_TOPIC_VERIFIER))},` +
-        `"set_topic.verifier":${entry('a'.repeat(64))}}}`;
+        `"set_topic.verifier":${entry(SET_TOPIC_VERIFIER)},` +
+        `"set_topic.verifier":${entry(forged)}}}`;
       await fs.writeFile(path.join(dir, 'compiler', 'contract-manifest.json'), rawManifest);
       const pin = computeSha256Hex(new TextEncoder().encode(rawManifest));
+
       await expect(
         new NodeZkConfigProvider(dir, { expectedManifestHash: pin }).getVerifierKey('set_topic')
       ).rejects.toThrow(/duplicate key "set_topic\.verifier"/);

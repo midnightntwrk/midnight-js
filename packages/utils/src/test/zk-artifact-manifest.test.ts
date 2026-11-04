@@ -128,8 +128,55 @@ describe('parseZkArtifactManifest', () => {
       const raw =
         `{"manifest-version":"1","keys":{"type":"directory",` +
         `"c.verifier":${fileEntry(BYTES_SHA256)},"c.verifier":${fileEntry(OTHER_HASH)}}}`;
-      expect(() => parseZkArtifactManifest(raw)).toThrow(ZkArtifactIntegrityError);
-      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "c\.verifier"/);
+
+      const error = (() => {
+        try {
+          parseZkArtifactManifest(raw);
+        } catch (thrown) {
+          return thrown;
+        }
+      })();
+
+      expect(error).toBeInstanceOf(ZkArtifactIntegrityError);
+      expect(error).toHaveProperty('message', expect.stringMatching(/duplicate key "c\.verifier"/));
+    });
+
+    it('throws on a hash repeated inside one file entry', () => {
+      const raw =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"c.verifier":{"type":"file","size":3,"hash":"${BYTES_SHA256}","hash":"${OTHER_HASH}"}}}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "hash"/);
+    });
+
+    it('throws on a repeated empty key', () => {
+      const raw = `{"manifest-version":"1","keys":{"type":"directory"},"":1,"":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key ""/);
+    });
+
+    it('throws on a repeated key that contains an escaped quote or backslash', () => {
+      const withQuote = JSON.stringify('a"b');
+      const withBackslash = JSON.stringify('a\\');
+
+      expect(() => parseZkArtifactManifest(`{"manifest-version":"1",${withQuote}:1,${withQuote}:2}`)).toThrow(
+        /duplicate key "a\\"b"/
+      );
+      expect(() => parseZkArtifactManifest(`{"manifest-version":"1",${withBackslash}:1,${withBackslash}:2}`)).toThrow(
+        /duplicate key "a\\\\"/
+      );
+    });
+
+    it('accepts a key with an escaped quote next to the same key without it', () => {
+      const raw = `{"manifest-version":"1",${JSON.stringify('a"')}:1,"a":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).not.toThrow();
+    });
+
+    it('escapes control characters of the repeated key in the error message', () => {
+      const raw = `{"manifest-version":"1","a\\nb":1,"a\\nb":2}`;
+
+      expect(() => parseZkArtifactManifest(raw)).toThrow(/duplicate key "a\\nb"/);
     });
 
     it('throws on a duplicated directory entry', () => {
