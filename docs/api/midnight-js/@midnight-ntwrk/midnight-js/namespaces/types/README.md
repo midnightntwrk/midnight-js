@@ -152,9 +152,9 @@ Re-exports [ContractEventType](../../types/type-aliases/ContractEventType.md)
 
 ***
 
-### ContractExecutableRuntimeOptions
+### ContractPrivateStates
 
-Re-exports [ContractExecutableRuntimeOptions](../../types/type-aliases/ContractExecutableRuntimeOptions.md)
+Re-exports [ContractPrivateStates](../../types/interfaces/ContractPrivateStates.md)
 
 ***
 
@@ -176,21 +176,27 @@ Re-exports [ContractStateRead](../../types/interfaces/ContractStateRead.md)
 
 ***
 
-### createMidnightProvider
+### createLedger9MidnightProvider
 
-Re-exports [createMidnightProvider](../../types/variables/createMidnightProvider.md)
+Re-exports [createLedger9MidnightProvider](../../types/variables/createLedger9MidnightProvider.md)
+
+***
+
+### createLedger9ProofProvider
+
+Re-exports [createLedger9ProofProvider](../../types/variables/createLedger9ProofProvider.md)
+
+***
+
+### createLedger9WalletProvider
+
+Re-exports [createLedger9WalletProvider](../../types/variables/createLedger9WalletProvider.md)
 
 ***
 
 ### createMidnightProviderFromHandlers
 
 Re-exports [createMidnightProviderFromHandlers](../../types/variables/createMidnightProviderFromHandlers.md)
-
-***
-
-### createProofProvider
-
-Re-exports [createProofProvider](../../types/variables/createProofProvider.md)
 
 ***
 
@@ -215,12 +221,6 @@ Re-exports [createProverKey](../../types/variables/createProverKey.md)
 ### createVerifierKey
 
 Re-exports [createVerifierKey](../../types/variables/createVerifierKey.md)
-
-***
-
-### createWalletProvider
-
-Re-exports [createWalletProvider](../../types/variables/createWalletProvider.md)
 
 ***
 
@@ -416,6 +416,12 @@ Re-exports [Ledger8FinalizedTxData](../../types/interfaces/Ledger8FinalizedTxDat
 
 ***
 
+### Ledger9ContractExecutableRuntimeOptions
+
+Re-exports [Ledger9ContractExecutableRuntimeOptions](../../types/type-aliases/Ledger9ContractExecutableRuntimeOptions.md)
+
+***
+
 ### Ledger9FinalizedTxData
 
 Re-exports [Ledger9FinalizedTxData](../../types/interfaces/Ledger9FinalizedTxData.md)
@@ -458,9 +464,9 @@ Re-exports [LogLevel](../../types/enumerations/LogLevel.md)
 
 ***
 
-### makeContractExecutableRuntime
+### makeLedger9ContractExecutableRuntime
 
-Re-exports [makeContractExecutableRuntime](../../types/variables/makeContractExecutableRuntime.md)
+Re-exports [makeLedger9ContractExecutableRuntime](../../types/variables/makeLedger9ContractExecutableRuntime.md)
 
 ***
 
@@ -692,9 +698,15 @@ Re-exports [SegmentSuccess](../../types/variables/SegmentSuccess.md)
 
 ***
 
-### SerializedState
+### SerializedContractState
 
-Re-exports [SerializedState](../../types/classes/SerializedState.md)
+Re-exports [SerializedContractState](../../types/classes/SerializedContractState.md)
+
+***
+
+### SerializedLedgerParameters
+
+Re-exports [SerializedLedgerParameters](../../types/classes/SerializedLedgerParameters.md)
 
 ***
 
@@ -707,6 +719,12 @@ Re-exports [SerializedStateDecodeFailedError](../../types/classes/SerializedStat
 ### SerializedStateDecoderMissingError
 
 Re-exports [SerializedStateDecoderMissingError](../../types/classes/SerializedStateDecoderMissingError.md)
+
+***
+
+### SerializedZswapChainState
+
+Re-exports [SerializedZswapChainState](../../types/classes/SerializedZswapChainState.md)
 
 ***
 
@@ -863,6 +881,24 @@ Re-exports [WalletProvider](../../types/interfaces/WalletProvider.md)
 ### WalletProviderHandlers
 
 Re-exports [WalletProviderHandlers](../../types/type-aliases/WalletProviderHandlers.md)
+
+***
+
+### WatchOperation
+
+Re-exports [WatchOperation](../../types/type-aliases/WatchOperation.md)
+
+***
+
+### WatchOptions
+
+Re-exports [WatchOptions](../../types/interfaces/WatchOptions.md)
+
+***
+
+### WatchTimeoutError
+
+Re-exports [WatchTimeoutError](../../types/classes/WatchTimeoutError.md)
 
 ***
 

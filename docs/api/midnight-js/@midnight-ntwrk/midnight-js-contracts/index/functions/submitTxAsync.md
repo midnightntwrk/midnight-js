@@ -6,7 +6,7 @@
 
 # Function: submitTxAsync()
 
-> **submitTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<`string`\>
+> **submitTxAsync**\<`PCK`\>(`providers`, `options`): `Promise`\<`string`\>
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options. Unlike [submitTx](submitTx.md),
@@ -14,10 +14,6 @@ this function returns immediately after submission without waiting for finalizat
 It reads the head and routes on it exactly as [submitTx](submitTx.md) does.
 
 ## Type Parameters
-
-### C
-
-`C` *extends* [`Any`](https://github.com/midnightntwrk/midnight-sdk)
 
 ### PCK
 
@@ -27,7 +23,7 @@ It reads the head and routes on it exactly as [submitTx](submitTx.md) does.
 
 ### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
+`Omit`\<[`MidnightProviders`](../../../midnight-js/types/interfaces/MidnightProviders.md)\<`PCK`\>, `"privateStateProvider"`\>
 
 The providers used to manage the transaction lifecycle.
 
@@ -52,8 +48,19 @@ InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this 
 
 ## Throws
 
-EraArtifactMismatchError for a transaction whose era is not the head's.
+EraMismatchError for a transaction whose era is not the head's.
 
 ## Throws
 
-ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`.
+ProviderFailedError if a provider rejects, with its failure sanitized onto `cause`. A
+        rejected submission arrives as this error only when the head has not moved.
+
+## Throws
+
+ForkCrossedDuringOperationError if the node rejects the submission and the head now
+        reports a later era.
+
+## Throws
+
+SubmitRejectionUndiagnosedError if the node rejects the submission and the head cannot be
+        read again, or reports an earlier era.

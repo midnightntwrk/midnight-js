@@ -89,8 +89,9 @@ The branch routing — which offset each config subscribes from, where
 is the part that is easy to get subtly wrong. It is written once, as the private
 `contractStates$<T>` with the routing in `contractStatesFeed$` and `fromBlock$`.
 The mapper that turns one served contract action into a stream element is
-passed in: `contractStateObservable` binds `toContractStateRead`, which builds
-the record from bytes and decodes nothing. Tests bind a mapper of their own.
+passed in: `contractStateObservable` binds `toContractStateRead` to its method
+name and contract address, so a refusal names both. It builds the record from
+bytes and decodes nothing. Tests bind a mapper of their own.
 
 The balance stream reuses `fromBlock$` for `latest`, `blockHeight` and
 `blockHash`, and repeats the rest: its own `all` branch, the

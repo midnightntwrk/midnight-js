@@ -6,7 +6,7 @@
 
 # Variable: verifyContractState
 
-> `const` **verifyContractState**: (`verifierKeys`, `contractState`, `contractAddress?`) => `void`
+> `const` **verifyContractState**: (`verifierKeys`, `contractState`, `contractAddress?`) => `Promise`\<`void`\>
 
 Checks that the given `contractState` contains the given `verifierKeys`.
 
@@ -25,9 +25,11 @@ The verifier keys the client has for the deployed contract we're checking.
 
 ### contractState
 
-[`ContractState`](https://github.com/midnightntwrk/midnight-ledger)
+[`SerializedContractState`](../../types/classes/SerializedContractState.md)
 
-The (typically already deployed) contract state containing verifier keys.
+The (typically already deployed) contract state containing verifier keys, of
+                     either ledger era, as a read returns it: pass `read.contractState`. A state
+                     written by the v8 ledger loads the ledger 8 runtime to be decoded.
 
 ### contractAddress?
 
@@ -38,7 +40,30 @@ The address `contractState` was read from, used to identify the contract
 
 ## Returns
 
-`void`
+`Promise`\<`void`\>
+
+## Throws
+
+UnknownLedgerEraError When `contractState` names an era this build does not know.
+
+## Throws
+
+InvalidArgumentError When `contractState` is not a `SerializedContractState`.
+
+## Throws
+
+InvalidSerializedStateError When its bytes are not a contract state of its era, for example
+                                    ledger parameters, or a state from another copy of the types
+                                    package whose bytes carry another tag.
+
+## Throws
+
+SerializedStateDecodeFailedError, or the framework decoder's coded error, When the bytes
+                                    after the tag do not decode.
+
+## Throws
+
+Ledger8RuntimeMissingError When a v8 state is passed and the ledger 8 runtime cannot load.
 
 ## Throws
 

@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger8SubmittedCallTx
 
-# Interface: Ledger8SubmittedCallTx\<C, K\>
+# Interface: Ledger8SubmittedCallTx\<C, PCK\>
 
 What a retained-era call transaction resolves with when submitted without
 waiting for finalization.
@@ -16,7 +16,7 @@ path both eras publish it on.
 
 ## Extends
 
-- [`SubmittedCallTxBase`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md)\<[`Ledger8UnsubmittedCallTxData`](Ledger8UnsubmittedCallTxData.md)\<`C`, `K`\>\>
+- [`SubmittedCallTxBase`](../../../midnight-js/types/interfaces/SubmittedCallTxBase.md)\<[`Ledger8UnsubmittedCallTxData`](Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Type Parameters
 
@@ -24,9 +24,9 @@ path both eras publish it on.
 
 `C` *extends* [`Ledger8Contract`](Ledger8Contract.md)
 
-### K
+### PCK
 
-`K` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
+`PCK` *extends* [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -48,7 +48,7 @@ The execution data of the call that was submitted.
 
 ### circuitId
 
-> `readonly` **circuitId**: `K`
+> `readonly` **circuitId**: `PCK`
 
 ***
 

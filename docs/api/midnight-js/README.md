@@ -33,7 +33,6 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js` | Barrel package re-exporting the framework's public API |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
-| `@midnight-ntwrk/midnight-js-network-id` | Deprecated global network id; the framework reads `MidnightProviders.config` since 5.0.0 |
 | `@midnight-ntwrk/midnight-js-protocol` | Era-named re-exports of Midnight protocol packages (`/v8`, `/v9`, `/v9/*`) |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
 
@@ -70,7 +69,7 @@ const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 const providers: MidnightProviders = {
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
-    accountId: walletAddress,
+    accountId: walletProvider.getCoinPublicKey(),
   }),
   publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
   zkConfigProvider,
@@ -145,5 +144,5 @@ const publicStates = await getPublicStates(providers, contractAddress);
 
 - **Encryption**: AES-256-GCM at rest
 - **Key derivation**: PBKDF2-SHA256 (600,000 iterations)
-- **Isolation**: Account-scoped storage keyed by SHA-256 hash of wallet address
+- **Isolation**: Account-scoped storage keyed by SHA-256 hash of `accountId` (the wallet's coin public key)
 - **No built-in recovery**: Production deployments require a backup strategy

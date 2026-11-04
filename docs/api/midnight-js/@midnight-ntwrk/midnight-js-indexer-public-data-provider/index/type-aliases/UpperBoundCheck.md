@@ -25,4 +25,5 @@ the chain tip — so a block indexed between the two puts them on either side
 of a fork, giving a newer version tag under an older block with nothing wrong
 anywhere. Only the comparison is dropped; the version tag still decides
 decodability, which is what actually keeps a wrong-era payload away from the
-decoder.
+decoder. The `protocolVersion` must still resolve to an era: one this build
+cannot place is refused under `'skip'` as under `'check'`.

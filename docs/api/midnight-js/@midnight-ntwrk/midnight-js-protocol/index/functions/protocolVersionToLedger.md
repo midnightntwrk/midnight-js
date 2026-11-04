@@ -19,7 +19,7 @@ onto the ledger runtime it corresponds to.
 Most call sites should not call this directly. Prefer
 [versionOfRecord](versionOfRecord.md) for a `protocolVersion` read off an existing
 indexer/node record, or [latestNetworkLedgerVersion](latestNetworkLedgerVersion.md) for the network's
-latest ledger version — both tag the resulting error with the correct
+latest ledger era — both tag the resulting error with the correct
 `path` automatically. Pass `path` explicitly here only when neither helper
 fits the call site.
 
@@ -42,7 +42,7 @@ Which resolution path a failure is attributed to. Defaults to
 
 `"v8"` \| `"v9"`
 
-The [LedgerVersion](../type-aliases/LedgerVersion.md) that `protocolVersion`'s node major maps
+The [LedgerEra](../type-aliases/LedgerEra.md) that `protocolVersion`'s node major maps
 onto.
 
 ## Throws

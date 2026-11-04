@@ -41,17 +41,15 @@ re-exports it and is what rollup emits as `dist/engine.js`, the chunk
 what holds the retained `compact-runtime@0.16` glue and the
 `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
 
-## Where `LEDGER_VERSIONS` lives, and the cycle it avoids
+## Where `LEDGER_ERAS` lives, and the cycle it avoids
 
-`LEDGER_VERSIONS` is declared in `lib/shared/ledger-version.ts`, a leaf module
-that imports nothing, and is re-exported unchanged by `version.ts`, so the
-public surface is the one it always was. Consumers keep importing both
-`LEDGER_VERSIONS` and `LedgerVersion` from `version.ts` — and from the root
-barrel — exactly as before.
+`LEDGER_ERAS` is declared in `lib/shared/ledger-version.ts`, a leaf module
+that imports nothing, and is re-exported unchanged by `version.ts`. Consumers import both
+`LEDGER_ERAS` and `LedgerEra` from `version.ts` and from the root barrel.
 
 Two modules need that set, and the dependency between them runs one way:
 `version.ts` imports `errors.ts` for the error it throws, while `errors.ts`
-imports nothing but this file. `errors.ts` needs `LedgerVersion` to type the
+imports nothing but this file. `errors.ts` needs `LedgerEra` to type the
 era its composition failures name. Declaring the constant in `version.ts`
 would therefore close a cycle.
 

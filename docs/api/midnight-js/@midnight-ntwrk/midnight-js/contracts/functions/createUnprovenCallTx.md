@@ -8,6 +8,34 @@
 
 ## Call Signature
 
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
+
+#### options
+
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+
+### Returns
+
+`Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+## Call Signature
+
 > **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`Ledger9UnsubmittedCallTxData`](../interfaces/Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
@@ -28,11 +56,11 @@
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithArguments`](../type-aliases/Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
@@ -56,7 +84,7 @@
 
 #### providers
 
-[`UnprovenCallTxProvidersWithPrivateState`](../type-aliases/UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
+[`Ledger9UnprovenCallTxProvidersWithPrivateState`](../type-aliases/Ledger9UnprovenCallTxProvidersWithPrivateState.md)\<`C`\>
 
 #### options
 
@@ -64,7 +92,7 @@
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
+[`Ledger9TransactionContext`](../interfaces/Ledger9TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 

@@ -6,7 +6,7 @@
 
 # Class: SerializedStateDecoderMissingError
 
-Thrown by `SerializedState.deserialize` when the decoders passed in have none for the era of the
+Thrown by `deserialize` of a serialized state when the decoders passed in have none for the era of the
 value. The message names the class to import.
 
 Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.

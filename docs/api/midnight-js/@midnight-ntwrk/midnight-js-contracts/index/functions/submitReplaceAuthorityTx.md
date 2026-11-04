@@ -25,13 +25,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Signing key in private state provider is NOT updated (remains as current authority)
 - Contract authority on-chain remains unchanged
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Signing key in private state provider is NOT updated (remains as current authority)
 - Contract authority on-chain may be partially updated but inconsistent
 - Transaction appears in blockchain history as partial success
@@ -74,21 +74,21 @@ A function that takes the signing key of the new contract maintenance authority 
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. The retained-era overload
-        raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
+        The error contains the finalized transaction data for debugging. Raised by both eras;
+        `record.era` tells which. The error carries the new key as `signingKey`.
 
 ### Throws
 
-When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
 
 ### Throws
 
-When the retained-era overload is given a new key that era
+with reason `'unusable'` When the retained-era overload is given a new key that era
         cannot sign with. Raised before anything is composed.
 
 ### Throws
 
-When the retained-era overload finds no usable current key.
+with reason `'unavailable'` When the retained-era overload finds no usable current key.
 
 ### Throws
 
@@ -97,12 +97,12 @@ When the retained-era overload holds a key that is not
 
 ### Throws
 
-When a retained-era replacement was confirmed and the
+with operation `'replace-authority'` When a retained-era replacement was confirmed and the
         store then refused the new key. It carries the key.
 
 ### Throws
 
-When a retained-era replacement was submitted but
+with operation `'replace-authority'` When a retained-era replacement was submitted but
         whether it landed could not be confirmed. It carries the new key, which was not stored.
 
 TODO: There are at least three options we should support in the future:
@@ -129,13 +129,13 @@ Midnight transactions execute in two phases:
 
 **Guaranteed Phase Failure:**
 - Transaction is rejected and not included in the blockchain
-- `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Signing key in private state provider is NOT updated (remains as current authority)
 - Contract authority on-chain remains unchanged
 
 **Fallible Phase Failure:**
 - Transaction is recorded on-chain with non-`SucceedEntirely` status
-- `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+- `TxFailedError` is thrown with transaction data
 - Signing key in private state provider is NOT updated (remains as current authority)
 - Contract authority on-chain may be partially updated but inconsistent
 - Transaction appears in blockchain history as partial success
@@ -178,21 +178,21 @@ A function that takes the signing key of the new contract maintenance authority 
 ### Throws
 
 When transaction fails in either guaranteed or fallible phase.
-        The error contains the finalized transaction data for debugging. The retained-era overload
-        raises `Ledger8ReplaceMaintenanceAuthorityTxFailedError` instead, carrying the new key.
+        The error contains the finalized transaction data for debugging. Raised by both eras;
+        `record.era` tells which. The error carries the new key as `signingKey`.
 
 ### Throws
 
-When a retained-era artifact is used after the fork.
+with reason `'ledger8-maintenance-on-ledger9-network'` When a retained-era artifact is used after the fork.
 
 ### Throws
 
-When the retained-era overload is given a new key that era
+with reason `'unusable'` When the retained-era overload is given a new key that era
         cannot sign with. Raised before anything is composed.
 
 ### Throws
 
-When the retained-era overload finds no usable current key.
+with reason `'unavailable'` When the retained-era overload finds no usable current key.
 
 ### Throws
 
@@ -201,12 +201,12 @@ When the retained-era overload holds a key that is not
 
 ### Throws
 
-When a retained-era replacement was confirmed and the
+with operation `'replace-authority'` When a retained-era replacement was confirmed and the
         store then refused the new key. It carries the key.
 
 ### Throws
 
-When a retained-era replacement was submitted but
+with operation `'replace-authority'` When a retained-era replacement was submitted but
         whether it landed could not be confirmed. It carries the new key, which was not stored.
 
 TODO: There are at least three options we should support in the future:

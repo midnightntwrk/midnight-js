@@ -9,7 +9,7 @@
 > **latestNetworkLedgerVersion**(`source`): `Promise`\<`"v8"` \| `"v9"`\>
 
 Queries `source` for the network's latest protocol version and
-resolves it to a [LedgerVersion](../type-aliases/LedgerVersion.md).
+resolves it to a [LedgerEra](../type-aliases/LedgerEra.md).
 
 The source is expected to read the network on every call. This is the
 construct path: the era being resolved is the one a transaction built now
@@ -30,7 +30,7 @@ The indexer or node client to ask for the latest version.
 
 `Promise`\<`"v8"` \| `"v9"`\>
 
-A promise for the [LedgerVersion](../type-aliases/LedgerVersion.md) of the network's latest block.
+A promise for the [LedgerEra](../type-aliases/LedgerEra.md) of the network's latest block.
 
 ## Throws
 

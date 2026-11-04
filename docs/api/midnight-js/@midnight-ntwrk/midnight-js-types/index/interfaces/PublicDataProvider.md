@@ -7,7 +7,12 @@
 # Interface: PublicDataProvider
 
 Interface for a public data service. This service retrieves public data from the blockchain.
-TODO: Add timeouts or retry limits to 'watchFor' queries.
+
+Every read that resolves a ledger era (the contract-state reads and the finalized-transaction
+reads) refuses a `protocolVersion` this build cannot place on the era timeline, such as one from
+a network newer than the client. The read fails rather than decoding on a guess, whether it is a
+query, a wait or a stream; a stream ends with the error. Implementations
+MUST follow this rule. [queryBlock](#queryblock) resolves no era and carries the integer through.
 
 ## Methods
 
@@ -67,6 +72,8 @@ address. A replay that starts before the hard fork emits the pre-fork states wit
 needs them reads [queryContractState](#querycontractstate) with `{ type: 'blockHash', blockHash }` from the same
 record.
 Waits indefinitely for matching data to appear.
+The stream ends with an error on a record whose `protocolVersion` this build cannot place on the
+era timeline. See PublicDataProvider.
 
 #### Parameters
 
@@ -193,6 +200,11 @@ When the state or the ledger parameters are not well-formed bytes of a known era
 the state is newer than the block a pinned read names, or when the ledger parameters are of
 another era than their block.
 
+#### Throws
+
+When the block that dates the state reports a `protocolVersion` this build cannot place
+on the era timeline. See PublicDataProvider.
+
 ***
 
 ### queryDeployContractState()
@@ -215,6 +227,11 @@ The address of the contract of interest.
 #### Returns
 
 `Promise`\<[`ContractStateRead`](ContractStateRead.md) \| `null`\>
+
+#### Throws
+
+When the block that dates the state reports a `protocolVersion` this build cannot place
+on the era timeline. See PublicDataProvider.
 
 ***
 
@@ -316,6 +333,11 @@ The configuration of the query.
 
 When the contract state and the ledger parameters were written by different eras.
 
+#### Throws
+
+When the block that dates the state reports a `protocolVersion` this build cannot place
+on the era timeline. See PublicDataProvider.
+
 ***
 
 ### unshieldedBalancesObservable()
@@ -351,10 +373,10 @@ One [PositionedRecord](../type-aliases/PositionedRecord.md) per balance change, 
 
 ### watchForContractState()
 
-> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractStateRead`](ContractStateRead.md)\>
+> **watchForContractState**(`contractAddress`, `options?`): `Promise`\<[`ContractStateRead`](ContractStateRead.md)\>
 
 Retrieves the contract state of the contract with the given address, as bytes with the era
-of the ledger that wrote them. Waits indefinitely for matching data to appear.
+of the ledger that wrote them. Waits for matching data to appear, indefinitely unless `options.maxWaitMs` is given.
 
 #### Parameters
 
@@ -363,24 +385,32 @@ of the ledger that wrote them. Waits indefinitely for matching data to appear.
 `string`
 
 The address of the contract of interest.
+
+##### options?
+
+[`WatchOptions`](WatchOptions.md)
+
+Bounds the wait; see [WatchOptions](WatchOptions.md).
 
 #### Returns
 
 `Promise`\<[`ContractStateRead`](ContractStateRead.md)\>
 
+#### Throws
+
+When the block that dates the state reports a `protocolVersion` this build cannot place
+on the era timeline. See PublicDataProvider.
+
 ***
 
 ### watchForDeployTxData()
 
-> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
+> **watchForDeployTxData**(`contractAddress`, `options?`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 Retrieves data of the deployment transaction for the contract at the given contract address.
 
-**IMPORTANT: This method waits indefinitely** until the deployment transaction appears on the
-blockchain. It will never timeout or reject unless an error occurs.
-
-Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-across all PublicDataProvider implementations. Do not implement timeouts in this method.
+Waits until the deployment transaction appears on the blockchain, indefinitely unless
+`options.maxWaitMs` is given.
 
 #### Parameters
 
@@ -389,32 +419,30 @@ across all PublicDataProvider implementations. Do not implement timeouts in this
 `string`
 
 The address of the contract of interest.
+
+##### options?
+
+[`WatchOptions`](WatchOptions.md)
+
+Bounds the wait; see [WatchOptions](WatchOptions.md).
 
 #### Returns
 
 `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 A promise that resolves with finalized transaction data when the deployment appears on-chain.
-         The promise never rejects due to timeout.
 
 ***
 
 ### watchForTxData()
 
-> **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
+> **watchForTxData**(`txId`, `options?`): `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
 
-**IMPORTANT: This method waits indefinitely** until the transaction appears on the blockchain.
-It will never timeout or reject unless an error occurs.
-
-Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-across all PublicDataProvider implementations. Do not implement timeouts in this method.
-
-Applications using this method should be aware that:
-- The promise will not resolve until the transaction appears on-chain
-- If a transaction is invalid and never appears, this will never return
-- Consider using application-level timeouts or cancellation mechanisms if needed
+Waits until the transaction appears on the blockchain, indefinitely unless
+`options.maxWaitMs` is given. Without a bound, a transaction that never
+appears (for example, an invalid one) means the promise never settles.
 
 #### Parameters
 
@@ -424,20 +452,26 @@ Applications using this method should be aware that:
 
 The identifier of the call or deployment of interest.
 
+##### options?
+
+[`WatchOptions`](WatchOptions.md)
+
+Bounds the wait; see [WatchOptions](WatchOptions.md).
+
 #### Returns
 
 `Promise`\<[`FinalizedTxRead`](../type-aliases/FinalizedTxRead.md)\>
 
 A promise that resolves with finalized transaction data when the transaction appears on-chain.
-         The promise never rejects due to timeout.
 
 ***
 
 ### watchForUnshieldedBalances()
 
-> **watchForUnshieldedBalances**(`contractAddress`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+> **watchForUnshieldedBalances**(`contractAddress`, `options?`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
 
-Monitors for any unshielded balances associated with a specific contract address.
+Waits for unshielded balances to appear for the given contract address,
+indefinitely unless `options.maxWaitMs` is given.
 
 #### Parameters
 
@@ -446,6 +480,12 @@ Monitors for any unshielded balances associated with a specific contract address
 `string`
 
 The address of the contract to monitor for unshielded balances.
+
+##### options?
+
+[`WatchOptions`](WatchOptions.md)
+
+Bounds the wait; see [WatchOptions](WatchOptions.md).
 
 #### Returns
 

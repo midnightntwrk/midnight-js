@@ -10,7 +10,7 @@
 
 Every provider method at which a payload's ledger era is resolved or
 narrowed — the three transaction methods, the two record reads and the
-state read.
+state reads.
 
 This is the vocabulary to type a caught error's `method` against when the
 error can come from either surface.

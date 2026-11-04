@@ -6,7 +6,7 @@
 
 # Variable: ledgerVersionOfContractState
 
-> `const` **ledgerVersionOfContractState**: (`raw`) => [`LedgerVersion`](../../type-aliases/LedgerVersion.md)
+> `const` **ledgerVersionOfContractState**: (`raw`) => [`LedgerEra`](../../type-aliases/LedgerEra.md)
 
 Reads which ledger runtime wrote a serialized contract state, from the version tag in front of
 the state body — without deserializing the body.
@@ -29,7 +29,7 @@ The serialized contract state, as the network returned it.
 
 ## Returns
 
-[`LedgerVersion`](../../type-aliases/LedgerVersion.md)
+[`LedgerEra`](../../type-aliases/LedgerEra.md)
 
 The ledger era whose runtime wrote `raw`.
 

@@ -17,7 +17,7 @@ and the ledger parameters, all as bytes and all written by the ledger of one era
 
 ### contractState
 
-> `readonly` **contractState**: [`SerializedState`](../classes/SerializedState.md)\<`"ContractState"`\>
+> `readonly` **contractState**: [`SerializedContractState`](../classes/SerializedContractState.md)
 
 The contract state.
 
@@ -29,7 +29,7 @@ The contract state.
 
 ### ledgerParameters
 
-> `readonly` **ledgerParameters**: [`SerializedState`](../classes/SerializedState.md)\<`"LedgerParameters"`\>
+> `readonly` **ledgerParameters**: [`SerializedLedgerParameters`](../classes/SerializedLedgerParameters.md)
 
 The ledger parameters of the block that dates the read. On a read with no block given, that
 block is looked up separately from the state, so near the hard fork it can be a block other than
@@ -58,6 +58,6 @@ era of this block can also be older than `contractState.era`.
 
 ### zswapChainState
 
-> `readonly` **zswapChainState**: [`SerializedState`](../classes/SerializedState.md)\<`"ZswapChainState"`\>
+> `readonly` **zswapChainState**: [`SerializedZswapChainState`](../classes/SerializedZswapChainState.md)
 
 The zswap chain state of the contract, resolved at the block.

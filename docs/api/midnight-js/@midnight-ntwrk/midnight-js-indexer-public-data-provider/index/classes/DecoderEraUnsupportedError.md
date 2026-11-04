@@ -9,7 +9,7 @@
 Raised when the era-keyed transaction decoder is asked for an era this build
 ships no decoder for.
 
-Within one build this cannot happen: the era is a `LedgerVersion` and the
+Within one build this cannot happen: the era is a `LedgerEra` and the
 decoder table is total over that union, so a missing entry is a compile
 error. It is reachable across builds — a consumer whose installed
 `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era

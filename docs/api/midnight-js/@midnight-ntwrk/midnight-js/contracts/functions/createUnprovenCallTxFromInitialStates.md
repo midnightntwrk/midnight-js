@@ -8,6 +8,38 @@
 
 ## Call Signature
 
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### zkConfigProvider
+
+[`ZKConfigProvider`](../../types/classes/ZKConfigProvider.md)\<`string`\>
+
+#### options
+
+[`Ledger8CallOptionsWithInitialStates`](../type-aliases/Ledger8CallOptionsWithInitialStates.md)\<`C`, `PCK`\>
+
+#### walletEncryptionPublicKey
+
+`string`
+
+### Returns
+
+`Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+## Call Signature
+
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`Ledger9UnsubmittedCallTxData`](../interfaces/Ledger9UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
@@ -28,7 +60,7 @@
 
 #### options
 
-[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithProviderDataDependencies`](../type-aliases/Ledger9CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -36,7 +68,7 @@
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 
@@ -64,7 +96,7 @@
 
 #### options
 
-[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
+[`Ledger9CallOptionsWithPrivateState`](../type-aliases/Ledger9CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -72,7 +104,7 @@
 
 #### crossContract?
 
-[`CrossContractConfig`](../interfaces/CrossContractConfig.md)
+[`Ledger9CrossContractConfig`](../interfaces/Ledger9CrossContractConfig.md)
 
 ### Returns
 
