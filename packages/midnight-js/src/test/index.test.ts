@@ -32,7 +32,6 @@ import type {
   VersionResolutionPath
 } from '../index';
 import * as midnightJs from '../index';
-import * as networkId from '../network-id';
 import * as ledger9Protocol from '../protocol/v9';
 import * as types from '../types';
 import * as utils from '../utils';
@@ -71,7 +70,6 @@ const EXPECTED_BARREL_EXPORTS = [
   'contracts',
   'latestNetworkLedgerVersion',
   'ledger9Protocol',
-  'networkId',
   'types',
   'utils',
   'versionOfRecord'
@@ -107,12 +105,6 @@ describe('barrel exports', () => {
   it('should export contracts namespace', () => {
     expect(midnightJs.contracts).toBeDefined();
     expect(typeof midnightJs.contracts).toBe('object');
-  });
-
-  it('should export networkId namespace', () => {
-    expect(midnightJs.networkId).toBeDefined();
-    expect(typeof midnightJs.networkId.setNetworkId).toBe('function');
-    expect(typeof midnightJs.networkId.getNetworkId).toBe('function');
   });
 
   it('should export types namespace', () => {
@@ -294,13 +286,6 @@ describe('sub-path exports', () => {
     expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  it('should export network-id sub-path with same members as namespace', () => {
-    expect(networkId).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.networkId).sort();
-    const subpathKeys = Object.keys(networkId).sort();
-    expect(subpathKeys).toEqual(namespaceKeys);
-  });
-
   it('should export types sub-path with same members as namespace', () => {
     expect(types).toBeDefined();
     const namespaceKeys = Object.keys(midnightJs.types).sort();
@@ -332,11 +317,11 @@ describe('sub-path exports', () => {
     expect(Object.keys(ledger9Protocol).sort()).toEqual(['CompiledContract', 'ContractExecutable']);
   });
 
-  it('publishes the ledger 9 protocol names only under protocol/v9', () => {
+  it('publishes exactly the documented sub-paths', () => {
     const subpaths = Object.keys(
       (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports
     );
 
-    expect(subpaths.filter((subpath) => subpath.startsWith('./protocol'))).toEqual(['./protocol/v9']);
+    expect(subpaths.sort()).toEqual(['.', './contracts', './package.json', './protocol/v9', './types', './utils']);
   });
 });

@@ -182,3 +182,8 @@ Issue #1557. The decision is unchanged. It changes how classes are cut.
 Issue #1506. `UNKNOWN_LEDGER_VERSION` is `UNKNOWN_LEDGER_ERA` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`), and
 `UnknownLedgerVersionError` is `UnknownLedgerEraError`. The category is unchanged. Both names existed
 only in 5.0.0 pre-releases. The code table above shows the new code.
+
+## Amendment — network-id removed in 5.0.0 (2026-11-04)
+
+`network-id` is removed (#1546), so the plain-error gate exempts only tests and
+the `compact` CLI.

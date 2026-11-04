@@ -574,8 +574,7 @@ interface MidnightProviders {
 
 - **Network id:** every transaction the framework builds (deploy, call, governance,
   both ledger eras) uses `config.networkId`. The framework no longer reads
-  `getNetworkId()`, and there is no fallback to it. A leftover `setNetworkId()`
-  call has no effect.
+  `getNetworkId()`, and there is no fallback to it.
 - **TTL:** every intent the framework builds expires `config.ttlSeconds` after it
   is built. 4.x used a fixed one hour; `ttlSeconds: 3600` keeps that. The framework
   also passes the TTL to `walletProvider.balanceTx` (its existing `ttl?: Date`
@@ -595,9 +594,10 @@ interface MidnightProviders {
   `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument.
   `UnprovenCallTxProvidersBase` and `Ledger9UnprovenDeployTxProviders` now include `config`.
 - **`NetworkId`** moved to `@midnight-ntwrk/midnight-js-types`.
-- **`@midnight-ntwrk/midnight-js-network-id` is deprecated.** `setNetworkId`,
-  `getNetworkId` and `NetworkId` still compile and run, but the framework ignores
-  them. The package is removed in 6.0.
+- **`@midnight-ntwrk/midnight-js-network-id` is removed (#1546).** So are the
+  `networkId` namespace and the `./network-id` subpath of
+  `@midnight-ntwrk/midnight-js`. A leftover `setNetworkId()` import no longer
+  compiles.
 - **testkit-js:** `NodeClient` takes the network id as a third constructor
   argument and rejects an empty one. `initializeMidnightProviders` sets
   `config.networkId` from the environment configuration and `config.ttlSeconds`

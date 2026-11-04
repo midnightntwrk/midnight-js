@@ -100,3 +100,12 @@ built, so there is no user need to configure it.
   date that has already expired.
 - **Per-call TTL on `CallOptions` / `DeployOptions`.** Not needed yet; the
   provider-level value covers the known use.
+
+## Amendment — network-id removed in 5.0.0 (2026-11-04)
+
+The follow-up landed early. `@midnight-ntwrk/midnight-js-network-id` is removed
+in 5.0.0 instead of 6.0 (#1546), together with the `networkId` namespace and the
+`./network-id` subpath of `@midnight-ntwrk/midnight-js`. A deprecated package the
+framework ignores fails silently, and every dApp moving to 5.0.0 already has to
+change where it builds its providers. Code that still calls `setNetworkId()` now
+fails to compile. The `no-restricted-imports` rule for the package is gone.

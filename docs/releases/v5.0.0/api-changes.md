@@ -805,12 +805,12 @@ export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<s
 export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
 ```
 
-## `@midnight-ntwrk/midnight-js-network-id` (deprecated, #982)
+## `@midnight-ntwrk/midnight-js-network-id` (removed, #982, #1546)
 
-`setNetworkId`, `getNetworkId` and `NetworkId` are `@deprecated`. They still work,
-but the framework no longer reads the value. Use `MidnightProviders.config.networkId`
-and import `NetworkId` from `@midnight-ntwrk/midnight-js-types`. The package is
-removed in 6.0.
+The package is removed, together with the `networkId` namespace and the
+`./network-id` subpath of `@midnight-ntwrk/midnight-js`. Use
+`MidnightProviders.config.networkId` and import `NetworkId` from
+`@midnight-ntwrk/midnight-js-types`.
 
 ## `@midnight-ntwrk/testkit-js`
 

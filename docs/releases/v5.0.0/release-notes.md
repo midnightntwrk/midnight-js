@@ -89,7 +89,7 @@ Every state read returns bytes in both eras. A contract state, ledger parameters
 
 ### `MidnightConfig` on `MidnightProviders` replaces the global network id and the fixed TTL (#982)
 
-`MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is deprecated and is removed in 6.0. `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
+`MidnightProviders.config: { networkId, ttlSeconds }` is required. The framework builds every transaction for `config.networkId` with a TTL of `config.ttlSeconds`, and no longer reads `setNetworkId()`. `@midnight-ntwrk/midnight-js-network-id` is removed (#1546). `NetworkId` moved to `@midnight-ntwrk/midnight-js-types`.
 
 ### Protocol subpaths name their ledger (#1536)
 
