@@ -105,6 +105,17 @@ describe('CI cache wiring', () => {
     expect(overridden).toEqual([]);
     expect(turboCache).toHaveLength(1);
   });
+
+  it('caches node_modules under one key shared by every job', () => {
+    const [dependencies] = cacheSteps().filter(({ with: options }) =>
+      options.path.split('\n').includes('**/node_modules')
+    );
+
+    expect(dependencies.with.key).not.toContain('inputs.cache-key-prefix');
+    expect(dependencies.with.key).toContain("hashFiles('.nvmrc')");
+    expect(dependencies.with.key).toContain("hashFiles('yarn.lock')");
+    expect(dependencies.with.path.split('\n')).not.toContain('~/.yarn');
+  });
 });
 
 describe('build hash', () => {

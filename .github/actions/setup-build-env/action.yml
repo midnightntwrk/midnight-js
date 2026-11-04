@@ -1,8 +1,9 @@
 name: 'Setup build environment'
 description: >-
   Shared bootstrap for CI jobs: direnv-loaded .envrc, optional GHCR login,
-  Node.js with the GitHub Packages registry, yarn auth, and the Turbo/Yarn
-  cache. Extracted to remove the setup block that was duplicated across ~8 jobs.
+  Node.js with the GitHub Packages registry, yarn auth, the node_modules
+  cache and the turbo build cache. Extracted to remove the setup block that
+  was duplicated across ~8 jobs.
   The caller must run actions/checkout BEFORE this action — a local composite
   action cannot check out the repo it is loaded from.
 
@@ -19,7 +20,7 @@ inputs:
     required: false
     default: ''
   cache-key-prefix:
-    description: "Prefix for the Turbo/Yarn cache key ('turbo' for packages, 'turbo-testkit' for testkit)."
+    description: "Prefix for the turbo build cache key ('turbo' for packages, 'turbo-testkit' for testkit)."
     required: false
     default: 'turbo'
   turbo-cache:
@@ -69,15 +70,13 @@ runs:
         NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
       run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$NODE_AUTH_TOKEN"
 
-    - name: Cache Turbo and Yarn dependencies
+    - name: Cache node_modules
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
       with:
-        path: |
-          **/node_modules
-          ~/.yarn
-        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+        path: '**/node_modules'
+        key: deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-${{ hashFiles('yarn.lock') }}
         restore-keys: |
-          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+          deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-
 
     - name: Cache turbo build output
       if: inputs.turbo-cache == 'true'
