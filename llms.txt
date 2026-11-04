@@ -89,7 +89,7 @@ MidnightProviders
 ### Private State Security
 - Encryption: AES-256-GCM
 - Key derivation: PBKDF2-SHA256 (V2: 600,000 iterations; V1: 100,000 for legacy data)
-- Account-scoped isolation per wallet address
+- Account-scoped isolation per `accountId` (the wallet's coin public key)
 
 ## Transaction Flow
 
@@ -232,19 +232,25 @@ subscription already unifies replay and live.
 ```typescript
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
+// accountId: the wallet's coin public key for a new store. Keep an existing store's value:
+// another value opens another, empty store.
 const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: () => 'secure-password',
-  accountId: 'wallet-address'
+  accountId: walletProvider.getCoinPublicKey()
 });
 
-// CRUD operations (PrivateStateProvider interface)
-await provider.set(privateStateId, state);
-const state = await provider.get(privateStateId);
-await provider.remove(privateStateId);
+// Private states are reached per contract (ContractPrivateStates interface).
+// A view is fixed to one address, so concurrent operations on different contracts never mix.
+const states = provider.forContract(contractAddress);
+await states.set(privateStateId, state);
+const state = await states.get(privateStateId);
+await states.remove(privateStateId);
+await states.clear();       // this contract only
+await provider.clearAll();  // every contract of this account
 
-// Export/Import (PrivateStateProvider interface)
-const exported = await provider.exportPrivateStates();
-await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
+// Export/Import of one contract's states
+const exported = await states.exportPrivateStates();
+await states.importPrivateStates(exported, { conflictStrategy: 'skip' });
 ```
 
 ### Proof Generation
@@ -600,7 +606,7 @@ const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
-    accountId: walletAddress
+    accountId: walletProvider.getCoinPublicKey()
   }),
   publicDataProvider: indexerPublicDataProvider(net.indexer),
   zkConfigProvider,
@@ -699,7 +705,7 @@ midnight-js/
 1. **Private State**: Encrypted at rest (AES-256-GCM), account-scoped isolation
 2. **Password Requirements**: Minimum 16 characters with complexity
 3. **Data Persistence Warning**: No built-in recovery mechanism; backup strategy required for production
-4. **Account Isolation**: Wallet address SHA-256 hashed for storage paths
+4. **Account Isolation**: `accountId` (the wallet's coin public key) SHA-256 hashed for storage paths
 
 ## Glossary
 

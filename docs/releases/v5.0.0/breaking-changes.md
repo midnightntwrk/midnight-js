@@ -1579,6 +1579,52 @@ Type changes:
 An exhaustive `switch` on `UnknownRecordEraError.method`, `StateReadMethod` or `ProviderMethod`
 must handle the new members.
 
+## 31. Private states are reached through a per-contract view (#812)
+
+`PrivateStateProvider` no longer keeps a mutable contract address. `setContractAddress` set one
+address for the whole provider, so two flows on different contracts could overwrite each other's
+address while one of them waited for a proof or a submit, and private state was then read from or
+written to the wrong contract. A per-contract view fixes the address when it is created.
+
+| Before | Now |
+|---|---|
+| `provider.setContractAddress(address)` | removed; call `provider.forContract(address)` |
+| `provider.get(id)`, `set(id, state)`, `remove(id)` | `provider.forContract(address).get(id)`, `.set(id, state)`, `.remove(id)` |
+| `provider.exportPrivateStates(options)` | `provider.forContract(address).exportPrivateStates(options)` |
+| `provider.importPrivateStates(data, options)` | `provider.forContract(address).importPrivateStates(data, options)` |
+| `provider.clear()` (needed an address, cleared every contract) | `provider.clearAll()` clears every contract; `provider.forContract(address).clear()` clears one |
+| `levelPrivateStateProvider(...).changePassword(...)` needed an address, and rotated nothing when that contract had no states | needs none; it always re-encrypts the private states of every contract of the account |
+| `ConfigurationError` "Contract address not set" | gone; `forContract` refuses an invalid address with `InvalidArgumentError` |
+
+The new interface is `ContractPrivateStates` (types). A view names its contract in
+`contractAddress`.
+
+Contract addresses are now compared in lower case, by `forContract` and by the signing-key
+methods: `'AB…'` and `'ab…'` reach the same states and the same signing key. The framework always
+stored addresses in lower case. States or signing keys you stored yourself under an address with
+upper-case letters are not found any more: export them before you upgrade and import them after.
+
+`changePassword` in 4.x and earlier 5.0.0 pre-releases rotated nothing when the contract set by
+`setContractAddress` had no states, and still reported success. If you rotated the password that
+way, entries of other contracts may still be encrypted with the old password. Run
+`changePassword` again with the old and the new password.
+
+The framework no longer leaves the provider "pointed at" the last contract it deployed, found or
+called. Code that relied on that reads through `forContract` with the address it already holds.
+
+The export format is unchanged. An export made by an earlier version imports into a view. An export
+does not record the contract it came from: it is written into the contract of the view that imports it.
+
+Implementing `PrivateStateProvider` yourself: add `forContract`, which returns an object whose
+operations use the address it was created with, and `clearAll`; remove `setContractAddress`,
+`get`, `set`, `remove`, `clear`, `exportPrivateStates` and `importPrivateStates` from the provider.
+
+`accountId` of `levelPrivateStateProvider` is now documented as the wallet's coin public key,
+`walletProvider.getCoinPublicKey()`, for a new store. For an existing store, keep the `accountId`
+it was created with: another value opens another, empty store, and the private states and signing
+keys stored under the old value are no longer read. testkit-js now passes the coin public key as
+it is, so a testkit database written by an earlier pre-release is not read by this one.
+
 ## Non-breaking additions worth noting
 
 - **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)). Its `BlockInfo` return type later gained a required `protocolVersion` field — see [section 9](#9-blockinfo-gained-a-required-protocolversion-field-1395).

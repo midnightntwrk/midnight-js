@@ -7,7 +7,7 @@
 # Class: PrivateStateSerializationError
 
 An error thrown when a private state holds something that cannot survive being
-stored, raised by an implementation of [PrivateStateProvider.set](../interfaces/PrivateStateProvider.md#set) before
+stored, raised by an implementation of [ContractPrivateStates.set](../interfaces/ContractPrivateStates.md#set) before
 anything is written.
 
 Private state must be plain data. The exact set of values a given implementation

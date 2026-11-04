@@ -19,4 +19,4 @@ can be, so such a call does not compile.
 
 ### E
 
-`E` *extends* `LedgerVersion`
+`E` *extends* `LedgerEra`

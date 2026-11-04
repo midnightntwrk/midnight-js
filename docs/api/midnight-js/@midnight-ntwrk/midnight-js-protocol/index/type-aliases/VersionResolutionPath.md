@@ -8,7 +8,7 @@
 
 > **VersionResolutionPath** = `"read"` \| `"construct"`
 
-Which call path asked for a ledger version:
+Which call path asked for a ledger era:
 - `'read'` — the version was taken off an existing record.
 - `'construct'` — the version was chosen to build something new against the
   network's latest block.

@@ -56,7 +56,7 @@ const PASSWORD = 'Test-Storage-Pass8!';
 const OLD_PASSWORD = 'Old-Password-Test8!';
 const NEW_PASSWORD = 'New-Password-Test8!';
 const ACCOUNT_ID = 'errors-test-account';
-const CONTRACT_ADDRESS = 'errors-test-contract' as ContractAddress;
+const CONTRACT_ADDRESS = '31'.repeat(32) as ContractAddress;
 const DB_NAME = 'midnight-errors-test-db';
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -169,44 +169,8 @@ describe('level-private-state-provider error classes', () => {
         error,
         ConfigurationError,
         'accountId is required.\n' +
-          'Provide an account identifier (e.g., wallet address) to scope storage and prevent cross-account data access.'
+          'Provide an account identifier (the wallet coin public key) to scope storage and prevent cross-account data access.'
       );
-    });
-
-    test.each([
-      [
-        'get',
-        (db: ReturnType<typeof levelPrivateStateProvider<string, string>>) => db.get('id'),
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      ],
-      [
-        'clear',
-        (db: ReturnType<typeof levelPrivateStateProvider<string, string>>) => db.clear(),
-        'Contract address not set. Call setContractAddress() before accessing private state.'
-      ],
-      [
-        'exportPrivateStates',
-        (db: ReturnType<typeof levelPrivateStateProvider<string, string>>) => db.exportPrivateStates(),
-        'Contract address not set. Call setContractAddress() before exporting private states.'
-      ],
-      [
-        'importPrivateStates',
-        (db: ReturnType<typeof levelPrivateStateProvider<string, string>>) =>
-          db.importPrivateStates({ format: 'midnight-private-state-export', encryptedPayload: '', salt: '' }),
-        'Contract address not set. Call setContractAddress() before importing private states.'
-      ],
-      [
-        'changePassword',
-        (db: ReturnType<typeof levelPrivateStateProvider<string, string>>) =>
-          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD),
-        'Contract address not set. Call setContractAddress() before changing password.'
-      ]
-    ])('%s refuses to run before setContractAddress', async (_method, call, message) => {
-      const db = levelPrivateStateProvider<string, string>(config);
-
-      const error = await captureError(() => call(db));
-
-      expectThrownAs(error, ConfigurationError, message);
     });
 
     test('migrateToAccountScoped refuses a blank accountId', async () => {
@@ -227,9 +191,8 @@ describe('level-private-state-provider error classes', () => {
           return level;
         }
       });
-      provider.setContractAddress(CONTRACT_ADDRESS);
 
-      const error = await captureError(() => provider.set('id', 'value'));
+      const error = await captureError(() => provider.forContract(CONTRACT_ADDRESS).set('id', 'value'));
 
       const thrown = expectThrownAs(
         error,
@@ -243,8 +206,7 @@ describe('level-private-state-provider error classes', () => {
 
     test('reports a re-encryption failure during password rotation', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
       vi.spyOn(StorageEncryption.prototype, 'encrypt').mockRejectedValue(new Error('encrypt boom'));
 
       const error = await captureError(() => db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD));
@@ -265,8 +227,7 @@ describe('level-private-state-provider error classes', () => {
           vi.spyOn(sublevel, 'batch').mockRejectedValue(new Error('batch boom'));
         })
       });
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
 
       const error = await captureError(() => db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD));
 
@@ -436,9 +397,8 @@ describe('level-private-state-provider error classes', () => {
   describe('PrivateStateLimitExceededError', () => {
     test('refuses a rotation over maxEntries', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
       for (const key of ['a', 'b', 'c', 'd']) {
-        await db.set(key, key);
+        await db.forContract(CONTRACT_ADDRESS).set(key, key);
       }
 
       const error = await captureError(() =>
@@ -456,8 +416,7 @@ describe('level-private-state-provider error classes', () => {
   describe('a wrong old password', () => {
     test('is reported as InvalidArgumentError (USAGE) and keeps the decryption failure as cause', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
 
       const error = await captureError(() => db.changePassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD));
 
@@ -475,12 +434,11 @@ describe('level-private-state-provider error classes', () => {
     test('reports a stored value that fails its authentication check', async () => {
       // Arrange
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
       await tamperDirectly(scopedName('private-states'), `${CONTRACT_ADDRESS}:key1`);
 
       // Act
-      const error = await captureError(() => db.get('key1'));
+      const error = await captureError(() => db.forContract(CONTRACT_ADDRESS).get('key1'));
 
       // Assert
       const thrown = expectThrownAs(
@@ -494,8 +452,7 @@ describe('level-private-state-provider error classes', () => {
     test('reports a corrupt first entry during rotation as corrupt data, not as a wrong old password', async () => {
       // Arrange
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
       await putDirectly(scopedName('private-states'), {
         [`${CONTRACT_ADDRESS}:key1`]: Buffer.concat([Buffer.from([2]), Buffer.alloc(40)]).toString('base64')
       });
@@ -510,8 +467,7 @@ describe('level-private-state-provider error classes', () => {
 
     test('reports an entry that cannot be decrypted after the first one', async () => {
       const db = levelPrivateStateProvider<string, string>(config);
-      db.setContractAddress(CONTRACT_ADDRESS);
-      await db.set('key1', 'value1');
+      await db.forContract(CONTRACT_ADDRESS).set('key1', 'value1');
       await putDirectly(scopedName('private-states'), { [`${CONTRACT_ADDRESS}:plaintext`]: 'not-encrypted' });
 
       const error = await captureError(() => db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD));

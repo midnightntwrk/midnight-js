@@ -7,8 +7,10 @@
 # Class: UnknownRecordEraError
 
 Raised when a record's `protocolVersion` maps to no ledger era at all —
-a network outside the node major range this framework knows about, or a
-value that is not a non-negative integer.
+a network outside the node major range this framework knows about, or, on
+a transaction read, a value that is not a non-negative integer. A
+contract-state read reports a malformed value as `IndexerDataError`
+`malformed-protocol-version` instead.
 
 Distinct from [DecoderEraUnsupportedError](DecoderEraUnsupportedError.md), which reports an era this build
 has no decoder for — an era that was named, just not one of ours. Here
@@ -35,7 +37,7 @@ The underlying `UnknownProtocolVersionError` from
 
 ##### method
 
-[`ReadMethod`](../../../midnight-js/types/type-aliases/ReadMethod.md)
+[`StateReadMethod`](../../../midnight-js/types/type-aliases/StateReadMethod.md) \| [`ReadMethod`](../../../midnight-js/types/type-aliases/ReadMethod.md)
 
 The read method that attempted to resolve the era.
 
@@ -91,7 +93,7 @@ The record this happened on, when known.
 
 ### method
 
-> `readonly` **method**: [`ReadMethod`](../../../midnight-js/types/type-aliases/ReadMethod.md)
+> `readonly` **method**: [`StateReadMethod`](../../../midnight-js/types/type-aliases/StateReadMethod.md) \| [`ReadMethod`](../../../midnight-js/types/type-aliases/ReadMethod.md)
 
 The read method that attempted to resolve the era.
 

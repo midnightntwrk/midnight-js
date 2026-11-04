@@ -7,7 +7,7 @@
 # The era boundary
 
 `@midnightntwrk/midnight-js-protocol` puts one boundary between a caller and
-the two ledger eras it supports. On one side a caller holds a `LedgerEra`
+the two ledger eras it supports. On one side a caller holds a `LedgerEraFacade`
 object, or — for the operations only the retained pre-fork era can perform — a
 `Ledger8Engine`. On the other side sit two WASM toolchains that must never be
 mixed. This document records why that boundary is shaped the way it is: how the
@@ -32,12 +32,12 @@ restate the rule; it records how the surface is split and acquired given it.
 ## One surface, the same on both eras
 
 Both eras expose the SAME methods with the same signatures. Which era a
-`LedgerEra` object is bound to is readable from `LedgerEra.version` and nowhere
+`LedgerEraFacade` object is bound to is readable from `LedgerEraFacade.version` and nowhere
 else — a caller that has resolved the era for a record (see
 `protocolVersionToLedger` in `packages/protocol/src/version.ts`) hands that
 value to `loadLedgerEra` once and then writes era-agnostic code.
 
-The four operations on `LedgerEra` are the era-symmetric ones:
+The four operations on `LedgerEraFacade` are the era-symmetric ones:
 
 | Operation | Why it is era-symmetric |
 |---|---|

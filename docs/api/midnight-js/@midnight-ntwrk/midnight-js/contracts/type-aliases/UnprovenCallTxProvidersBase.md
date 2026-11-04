@@ -6,7 +6,7 @@
 
 # Type Alias: UnprovenCallTxProvidersBase
 
-> **UnprovenCallTxProvidersBase** = `Pick`\<[`Ledger9ContractProviders`](Ledger9ContractProviders.md), `"zkConfigProvider"` \| `"publicDataProvider"` \| `"walletProvider"` \| `"contractModuleProvider"` \| `"config"`\>
+> **UnprovenCallTxProvidersBase** = `Pick`\<[`MidnightProviders`](../../types/interfaces/MidnightProviders.md), `"zkConfigProvider"` \| `"publicDataProvider"` \| `"walletProvider"` \| `"contractModuleProvider"` \| `"config"`\>
 
 The minimum set of providers needed to create a call transaction, the ZK
 artifact provider and a wallet. By defining this type, users can choose to

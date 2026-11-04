@@ -21,7 +21,7 @@ an object of the v8 ledger copy this framework loaded.
 
 ### E
 
-`E` *extends* [`LedgerVersion`](../../type-aliases/LedgerVersion.md)
+`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)
 
 ## Parameters
 
@@ -56,7 +56,7 @@ On any underlying ledger deserialization
 
 ## Throws
 
-If `era` is not a ledger version.
+If `era` is not a ledger era.
 
 ## Throws
 

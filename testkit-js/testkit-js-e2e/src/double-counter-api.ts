@@ -68,10 +68,11 @@ export class CounterConfiguration implements ContractConfiguration {
 
 export const getCounterPrivateState = async (
   providers: CounterProviders,
+  contractAddress: ContractAddress,
   privateStateId: typeof CounterPrivateStateId
 ): Promise<CounterPrivateState | null> => {
   logger.info('Checking contract private state...');
-  const privateState = await providers.privateStateProvider.get(privateStateId);
+  const privateState = await providers.privateStateProvider.forContract(contractAddress).get(privateStateId);
   logger.info(`Private state: ${privateState?.privateCounter}`);
   return privateState;
 };

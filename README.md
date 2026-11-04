@@ -45,7 +45,7 @@ const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.co
 const providers = createMidnightProviders({
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => password,
-    accountId: 'user-wallet-address'
+    accountId: myWallet.getCoinPublicKey()
   }),
   publicDataProvider: indexerPublicDataProvider({
     queryURL: 'https://indexer.example.com/graphql',

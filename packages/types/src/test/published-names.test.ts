@@ -47,6 +47,7 @@ const EXPECTED_PUBLISHED_NAMES = [
   'ContractEventSubscriptionFilter',
   'ContractEventType',
   'ContractKeyLocation',
+  'ContractPrivateStates',
   'ContractStateAndParametersRead',
   'ContractStateObservableConfig',
   'ContractStateRead',

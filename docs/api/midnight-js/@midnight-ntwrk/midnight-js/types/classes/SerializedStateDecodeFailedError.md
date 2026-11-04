@@ -6,7 +6,7 @@
 
 # Class: SerializedStateDecodeFailedError
 
-Thrown by `SerializedState.deserialize` when the decoder for the era of the value throws an error
+Thrown by `deserialize` of a serialized state when the decoder for the era of the value throws an error
 that is not a `MidnightJsError`. The bytes carry the right tag, so either the bytes after the tag
 are corrupt or the decoder is the wrong one (it decodes another kind, or comes from a runtime that
 cannot read this era). Categorised `INTEGRITY`: the data and its decoder do not match. The

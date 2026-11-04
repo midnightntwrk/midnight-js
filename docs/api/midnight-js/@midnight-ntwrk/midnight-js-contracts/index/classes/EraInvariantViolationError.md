@@ -29,7 +29,7 @@ the record has to agree with.
 back. An answer that is not a transaction handle at all is a different
 fault and raises `InvalidTransactionHandleError` instead; a read-surface
 record whose `era` is missing or unrecognised raises
-`UnknownLedgerVersionError`.
+`UnknownLedgerEraError`.
 
 ## Extends
 

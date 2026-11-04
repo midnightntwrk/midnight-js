@@ -10,7 +10,9 @@
 
 Parses a `compactc` `contract-manifest.json`. Asserts `manifest-version === '1'`, flattens exactly
 one directory level into `"<dir>/<fileName>"` keys (nested sub-directories are ignored), validates
-each file entry, and throws [ZkArtifactIntegrityError](../classes/ZkArtifactIntegrityError.md) on any structural violation.
+each file entry, and throws [ZkArtifactIntegrityError](../classes/ZkArtifactIntegrityError.md) on any structural violation. A
+key repeated within one object also throws, so a manifest pinned by its hash cannot certify an
+entry other than the one a reader of its text sees.
 
 ## Parameters
 

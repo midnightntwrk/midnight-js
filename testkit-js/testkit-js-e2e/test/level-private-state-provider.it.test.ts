@@ -82,8 +82,6 @@ describe('Level Private State Provider - Export/Import Integration', () => {
       const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
       logger.info(`Contract deployed at address: ${contractAddress}`);
 
-      providers.privateStateProvider.setContractAddress(contractAddress);
-
       const circuitsInterface = createCircuitCallTxInterface(
         providers,
         CompiledCounterContract,
@@ -92,13 +90,13 @@ describe('Level Private State Provider - Export/Import Integration', () => {
       );
 
       await circuitsInterface.increment();
-      const privateStateAfterFirstIncrement = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateStateAfterFirstIncrement = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
       logger.info(`Private state after first increment: ${privateStateAfterFirstIncrement?.privateCounter}`);
       expect(privateStateAfterFirstIncrement?.privateCounter).toBe(1);
 
       // ACT - Phase 2: Export private state and signing keys
       logger.info('Phase 2: Exporting private state and signing keys');
-      const exportedPrivateStates: PrivateStateExport = await providers.privateStateProvider.exportPrivateStates({
+      const exportedPrivateStates: PrivateStateExport = await providers.privateStateProvider.forContract(contractAddress).exportPrivateStates({
         password: EXPORT_PASSWORD
       });
       const exportedSigningKeys: SigningKeyExport = await providers.privateStateProvider.exportSigningKeys({
@@ -120,9 +118,9 @@ describe('Level Private State Provider - Export/Import Integration', () => {
         contractConfiguration
       );
 
-      newProviders.privateStateProvider.setContractAddress(contractAddress);
-
-      const importPrivateStatesResult = await newProviders.privateStateProvider.importPrivateStates(
+      const importPrivateStatesResult = await newProviders.privateStateProvider
+        .forContract(contractAddress)
+        .importPrivateStates(
         exportedPrivateStates,
         {
           password: EXPORT_PASSWORD,
@@ -138,7 +136,9 @@ describe('Level Private State Provider - Export/Import Integration', () => {
       logger.info(`Imported ${importSigningKeysResult.imported} signing keys`);
 
       // Verify import was successful
-      const privateStateAfterImport = await newProviders.privateStateProvider.get(CounterPrivateStateId);
+      const privateStateAfterImport = await newProviders.privateStateProvider
+        .forContract(contractAddress)
+        .get(CounterPrivateStateId);
       logger.info(`Private state after import: ${privateStateAfterImport?.privateCounter}`);
       expect(privateStateAfterImport?.privateCounter).toBe(1);
 
@@ -154,7 +154,7 @@ describe('Level Private State Provider - Export/Import Integration', () => {
       await newCircuitsInterface.increment();
 
       // ASSERT - Final private state verification
-      const finalPrivateState = await api.getCounterPrivateState(newProviders, CounterPrivateStateId);
+      const finalPrivateState = await api.getCounterPrivateState(newProviders, contractAddress, CounterPrivateStateId);
       logger.info(`Final private state: ${finalPrivateState?.privateCounter}`);
       expect(finalPrivateState?.privateCounter).toBe(2);
     },

@@ -36,5 +36,3 @@ DO NOT use for production applications requiring data persistence.
 Database configuration options.
 
 ## Returns
-
-[`PrivateStateProvider`](../../midnight-js/types/interfaces/PrivateStateProvider.md)\<`PSI`, `PS`\> & `object`

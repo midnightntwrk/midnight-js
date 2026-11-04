@@ -37,7 +37,7 @@ export interface Ledger9TransactionContext<
   readonly [Internal.MergeUnsubmittedCallTxData]: (
     circuitId: PCK,
     callData: Ledger9UnsubmittedCallTxData<C, PCK>,
-    privateStateId?: PrivateStateId
+    privateStateTarget?: Internal.PrivateStateTarget
   ) => void;
 
   /**

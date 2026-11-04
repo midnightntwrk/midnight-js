@@ -6,6 +6,6 @@
 
 # Type Alias: StateDecoders
 
-> **StateDecoders** = `Readonly`\<`Partial`\<`Record`\<[`LedgerVersion`](../../type-aliases/LedgerVersion.md), [`StateDecoder`](../interfaces/StateDecoder.md)\>\>\>
+> **StateDecoders** = `Readonly`\<`Partial`\<`Record`\<[`LedgerEra`](../../type-aliases/LedgerEra.md), [`StateDecoder`](../interfaces/StateDecoder.md)\>\>\>
 
 One decoder per ledger era. Only the decoder of the value's own era is called.

@@ -6,9 +6,9 @@
 
 # Type Alias: Ledger9CallTxOptionsBase\<C, PCK\>
 
-> **Ledger9CallTxOptionsBase**\<`C`, `PCK`\> = [`CallOptionsWithArguments`](CallOptionsWithArguments.md)\<`C`, `PCK`\>
+> **Ledger9CallTxOptionsBase**\<`C`, `PCK`\> = [`Ledger9CallOptionsWithArguments`](Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
-Base type for configuration for a call transaction; identical to [CallOptionsWithArguments](CallOptionsWithArguments.md).
+Base type for configuration for a call transaction; identical to [Ledger9CallOptionsWithArguments](Ledger9CallOptionsWithArguments.md).
 
 ## Type Parameters
 

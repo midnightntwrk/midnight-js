@@ -8,7 +8,7 @@
 
 > **DecodedState**\<`D`, `E`\> = `DecodedByEra`\<`D`, `E`\>
 
-What [SerializedState.deserialize](../classes/SerializedState.md#deserialize) returns for decoders `D` and a value of era `E`.
+What `deserialize` returns for decoders `D` and a value of era `E`.
 
 ## Type Parameters
 
@@ -18,4 +18,4 @@ What [SerializedState.deserialize](../classes/SerializedState.md#deserialize) re
 
 ### E
 
-`E` *extends* `LedgerVersion`
+`E` *extends* `LedgerEra`

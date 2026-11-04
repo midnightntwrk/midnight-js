@@ -99,7 +99,6 @@ describe('Contracts API', () => {
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
-    providers.privateStateProvider.setContractAddress(contractAddress);
   });
 
   beforeAll(async () => {
@@ -415,23 +414,23 @@ describe('Contracts API', () => {
         CounterPrivateStateId
       );
       const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
-      const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
 
       const incrementSubmittedCallTx = await contractCircuitsInterface.increment();
       const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
-      const privateState2 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateState2 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
 
       const increment2SubmittedCallTx = await contractCircuitsInterface.increment();
       const counterValue3 = await api.getCounterLedgerState(providers, contractAddress);
-      const privateState3 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateState3 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
 
       const decrementSubmittedCallTx = await contractCircuitsInterface.decrement(1n);
       const counterValue4 = await api.getCounterLedgerState(providers, contractAddress);
-      const privateState4 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateState4 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
 
       const resetSubmittedCallTx = await contractCircuitsInterface.reset();
       const counterValue5 = await api.getCounterLedgerState(providers, contractAddress);
-      const privateState5 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+      const privateState5 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
 
       expect(counterValue1).not.toBeNull();
       if (counterValue1) {
@@ -527,7 +526,7 @@ describe('Contracts API', () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
 
-    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    const privateState1 = await api.getCounterPrivateState(providers, contractAddress, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
     const callTxOptions = {

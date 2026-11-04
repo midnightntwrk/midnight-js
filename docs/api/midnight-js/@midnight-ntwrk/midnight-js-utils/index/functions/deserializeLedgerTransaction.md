@@ -56,7 +56,7 @@ On any underlying ledger deserialization
 
 ## Throws
 
-If `era` is not a ledger version.
+If `era` is not a ledger era.
 
 ## Throws
 

@@ -17,14 +17,19 @@ Configuration properties for the LevelDB based private state provider.
 Account identifier used to scope storage. This ensures data isolation
 between different accounts/wallets using the same database.
 
+For a new store, use the wallet's coin public key, `walletProvider.getCoinPublicKey()`,
+as it is. For an existing store, keep the value it was created with: another value
+opens another, empty store, and the private states and signing keys stored under the
+old value are no longer read.
+
 The accountId is hashed (SHA-256, first 32 chars) before being used
-in storage paths, so any unique identifier can be used (e.g., wallet address).
+in storage paths.
 
 #### Example
 
 ```typescript
 {
-  accountId: walletAddress
+  accountId: walletProvider.getCoinPublicKey()
 }
 ```
 
@@ -72,7 +77,7 @@ from `@midnight-ntwrk/midnight-js-utils`:
 - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
 
 The same policy is applied to custom passwords passed to
-[PrivateStateProvider.exportPrivateStates](../../midnight-js/types/interfaces/PrivateStateProvider.md#exportprivatestates) / `exportSigningKeys` and
+[ContractPrivateStates.exportPrivateStates](../../midnight-js/types/interfaces/ContractPrivateStates.md#exportprivatestates) / `exportSigningKeys` and
 their `importPrivateStates` / `importSigningKeys` counterparts. Violations
 surface as `PasswordValidationError` on storage paths, or wrapped as
 `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
@@ -87,7 +92,7 @@ Private state is stored with `superjson`. Plain objects, arrays, `string`,
 read back unchanged, and shared references and cycles are preserved. Anything
 else — including `Error`, `ArrayBuffer`, `DataView`, `BigInt64Array`, and any
 subclass of the types above — is refused by
-[PrivateStateProvider.set](../../midnight-js/types/interfaces/PrivateStateProvider.md#set) with a `PrivateStateSerializationError`,
+[ContractPrivateStates.set](../../midnight-js/types/interfaces/ContractPrivateStates.md#set) with a `PrivateStateSerializationError`,
 because storage would drop it, empty it or read it back as a different value.
 
 #### Example

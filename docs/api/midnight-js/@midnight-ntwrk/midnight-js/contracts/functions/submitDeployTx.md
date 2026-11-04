@@ -8,6 +8,30 @@
 
 ## Call Signature
 
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedDeployTxData`](../interfaces/Ledger8FinalizedDeployTxData.md)\<`C`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
+
+### Parameters
+
+#### providers
+
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, [`Ledger8CircuitId`](../type-aliases/Ledger8CircuitId.md)\<`C`\>\>
+
+#### options
+
+[`Ledger8DeployContractOptions`](../type-aliases/Ledger8DeployContractOptions.md)\<`C`\>
+
+### Returns
+
+`Promise`\<[`Ledger8FinalizedDeployTxData`](../interfaces/Ledger8FinalizedDeployTxData.md)\<`C`\>\>
+
+## Call Signature
+
 > **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedDeployTxData`](../interfaces/Ledger9FinalizedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
@@ -24,7 +48,7 @@
 
 #### options
 
-[`DeployTxOptionsBase`](../type-aliases/DeployTxOptionsBase.md)\<`C`\>
+[`Ledger9DeployTxOptionsBase`](../type-aliases/Ledger9DeployTxOptionsBase.md)\<`C`\>
 
 ### Returns
 
@@ -48,7 +72,7 @@
 
 #### options
 
-[`DeployTxOptionsWithPrivateStateId`](../type-aliases/DeployTxOptionsWithPrivateStateId.md)\<`C`\>
+[`Ledger9DeployTxOptionsWithPrivateStateId`](../type-aliases/Ledger9DeployTxOptionsWithPrivateStateId.md)\<`C`\>
 
 ### Returns
 

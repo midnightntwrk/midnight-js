@@ -8,7 +8,7 @@
 
 Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
 `latestNetworkLedgerVersion`) when a raw `protocolVersion` integer cannot be
-resolved to a `LedgerVersion`. Those live in `./version`, which imports this
+resolved to a `LedgerEra`. Those live in `./version`, which imports this
 module -- the dependency stays one-way, so they are named here rather than
 linked.
 

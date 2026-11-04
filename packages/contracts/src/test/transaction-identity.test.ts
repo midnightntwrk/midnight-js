@@ -233,11 +233,44 @@ describe('TransactionContextImpl identity validation', () => {
       const before = contractState.serialize();
       txCtx[CacheStates]({ ...createMockStates(), contractState }, MOCK_READ, identity, MOCK_BLOCK_HASH);
 
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', createMockUnprovenCallTxData(), identity.privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', createMockUnprovenCallTxData());
       const running = txCtx[GetCurrentStatesForIdentity](identity)?.states.contractState;
 
       expect(running?.serialize()).not.toEqual(before);
       expect(txCtx.getCurrentStates()?.contractState.serialize()).toEqual(running?.serialize());
+    });
+  });
+
+  describe('getLastUnsubmittedCallTxDataToTransact', () => {
+    it('reports the private state id of the last merged call', () => {
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const callData = createMockUnprovenCallTxData();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', callData, {
+        contractAddress: createMockContractAddress(),
+        privateStateId
+      });
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([callData, privateStateId]);
+    });
+
+    it('reports no private state id for a call that stores none', () => {
+      const callData = createMockUnprovenCallTxData();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', callData);
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([callData, undefined]);
+    });
+
+    it('reports the latest call when a later call replaces an earlier one', () => {
+      const first = createMockUnprovenCallTxData();
+      const second = createMockUnprovenCallTxData();
+      const contractAddress = createMockContractAddress();
+
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', first, { contractAddress, privateStateId: 'first' });
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', second, { contractAddress, privateStateId: 'second' });
+
+      expect(txCtx.getLastUnsubmittedCallTxDataToTransact()).toEqual([second, 'second']);
     });
   });
 
@@ -250,7 +283,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -267,8 +300,8 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData2 = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, { contractAddress, privateStateId });
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -285,7 +318,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -302,8 +335,8 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData2 = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, { contractAddress, privateStateId });
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -319,7 +352,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -336,8 +369,8 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData2 = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, identity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, { contractAddress, privateStateId });
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, { contractAddress, privateStateId });
 
       const result = txCtx[GetCurrentStatesForIdentity](identity)?.states as Ledger9ContractStates<AnyPrivateState>;
 
@@ -354,7 +387,7 @@ describe('TransactionContextImpl identity validation', () => {
       const mockCallData = createMockUnprovenCallTxData();
 
       txCtx[CacheStates](mockStates, MOCK_READ, cachedIdentity, MOCK_BLOCK_HASH);
-      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, { contractAddress: contractAddress1, privateStateId });
 
       expect(() => txCtx[GetCurrentStatesForIdentity](differentIdentity)).toThrow(
         ScopedTransactionIdentityMismatchError

@@ -114,7 +114,7 @@ Construct via the static factory methods to ensure the message and
 
 ### malformedProtocolVersion()
 
-> `static` **malformedProtocolVersion**(`protocolVersion`, `cause`): `IndexerDataError`
+> `static` **malformedProtocolVersion**(`protocolVersion`, `cause`, `read?`): `IndexerDataError`
 
 #### Parameters
 
@@ -125,6 +125,16 @@ Construct via the static factory methods to ensure the message and
 ##### cause
 
 `unknown`
+
+##### read?
+
+###### contractAddress
+
+`string`
+
+###### method
+
+[`StateReadMethod`](../../../midnight-js/types/type-aliases/StateReadMethod.md)
 
 #### Returns
 
