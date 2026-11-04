@@ -41,7 +41,7 @@ An era-named subpath always means the same ledger. At the next fork, a new
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the root barrel. `protocol-acl.test.ts` pins the exact list |
-| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
+| `./version` | (own) | `LEDGER_ERAS`, `protocolVersionToLedger`, `versionOfRecord`, `latestNetworkLedgerVersion` and the types `LedgerEra`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./v9` | `@midnightntwrk/ledger-v9` | Ledger 9 types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Ledger 8 — do not import at runtime; use `loadLedger8Protocol()` |
 | `./v8/engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
@@ -63,7 +63,7 @@ Nothing under `src/lib/` is a build entry, so this layout is internal and no con
 |---|---|---|
 | `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `executable.ts`, `compose.ts`, `deploy.ts`, `prove.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
 | `lib/v9/` | the current era's composition code: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
-| `lib/shared/` | what both eras run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerVersion` parameter, never chosen here |
+| `lib/shared/` | what both eras run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerEra` parameter, never chosen here |
 | `lib/era/` | the facade and the dispatch: `load-era.ts`, `era.ts`, `envelope.ts` | reaches both, which is the point of the layer |
 
 The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
@@ -83,7 +83,7 @@ docstring resolves to it.
 
 | Document | What it explains |
 |---|---|
-| [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
+| [Era boundary](./docs/era-boundary.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEraFacade` and `Ledger8Engine`, and the memoisation rules |
 | [Retained-era execution](./docs/retained-era-execution.md) | The state a circuit runs against, why the Merkle walk was removed, the era pin, and what a `TranscriptPojo` carries |
 | [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the version tag is the only authority over the bytes, and the division of labour between the three decode failures |
@@ -194,7 +194,7 @@ const deploy = era.composeDeployTx({ contractStateBytes, verifierKeys, networkId
 | `composeCallTx` | Composes an UNPROVEN call transaction and answers with its bytes plus each call's guaranteed/fallible split |
 | `composeDeployTx` | Composes an UNPROVEN deploy and returns it with the address it will have and the initial state that address came from |
 
-Derive the era with `versionOfRecord` or `latestNetworkLedgerVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerVersionError`; the offending value is on the error's `requestedVersion` field, not in its message.
+Derive the era with `versionOfRecord` or `latestNetworkLedgerVersion` (see [Version Module](#version-module)) rather than writing the string by hand. An era string that is not `'v8'` or `'v9'` rejects with `UnknownLedgerEraError`; the offending value is on the error's `requestedVersion` field, not in its message.
 
 Each era is memoised, so the retained pre-fork WASM is instantiated at most once per process. Asking for `'v8'` is what acquires it — a consumer that only ever asks for `'v9'` never loads it at all, which is gated by `dist-laziness.test.ts`. A **failed** v8 acquisition is not memoised: the rejection propagates unchanged as `Ledger8RuntimeMissingError` and the next call retries.
 
@@ -224,9 +224,9 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 | `StateInconsistentError` | `MIDNIGHT_JS_P_STATE_INCONSISTENT` | Contract-state bytes were read, but the state is internally inconsistent: an entry point it cannot resolve, a verifier key that will not hash, or no usable balance. Retrying with the other era will not fix it |
 | `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | Something about a CALL or a DEPLOY could not be composed: an operation that is missing, unkeyed, or names a circuit the contract does not declare; an empty call list; a pre-call state or a recorded query context the era cannot bridge; a supplied transcript with neither half; a public transcript or a set of call inputs the ledger itself rejected; or a claimed payout the transaction cannot settle (dust, or a shielded token type). `stage` is a closed union naming which of those it was — see its own docs for the full list; `version` names the era |
 | `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose version tag the era rejected, an offer the era's decoder rejected, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field, `version` names the era |
-| `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
+| `UnknownLedgerEraError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA` | The requested era is not `'v8'` or `'v9'`, or the value carries no era (`requestedVersion` is `undefined`: a pre-5.0.0 provider) |
 
-Each names the era it was raised for — `version` on the first four, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first four preserve the underlying runtime failure on `cause` where there was one.
+Each names the era it was raised for — `version` on the first four, `requestedVersion` on `UnknownLedgerEraError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first four preserve the underlying runtime failure on `cause` where there was one.
 
 ### Planned follow-ups
 
@@ -250,7 +250,7 @@ Anything outside those ranges throws rather than guessing. Node 0.x is deliberat
 
 ```typescript
 import {
-  LEDGER_VERSIONS,          // readonly ['v8', 'v9']
+  LEDGER_ERAS,          // readonly ['v8', 'v9']
   protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'   (path defaults to 'construct')
   versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
   latestNetworkLedgerVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>

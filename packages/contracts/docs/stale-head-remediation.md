@@ -66,7 +66,7 @@ crossing, and a message saying the network crossed the fork would be simply
 false. Inequality alone cannot tell those two apart, so the positions on the
 timeline are compared rather than the values.
 
-The timeline order is read off `LEDGER_VERSIONS`, which is declared oldest-first,
+The timeline order is read off `LEDGER_ERAS`, which is declared oldest-first,
 rather than restated — a second ordering could disagree with it. The order is
 pinned by `packages/contracts/src/test/scoped-era.test.ts`, so an era inserted
 out of order fails a test instead of silently inverting the direction test.

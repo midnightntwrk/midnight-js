@@ -15,7 +15,7 @@
 
 import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import {
-  type LedgerVersion,
+  type LedgerEra,
   type VersionedRecord,
   versionOfRecord
 } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -49,7 +49,7 @@ import { UnknownRecordEraError } from './errors';
  *         network outside the node 1.x/2.x range this framework supports, or a
  *         value that is not a non-negative integer.
  */
-export const resolveReadEra = (record: VersionedRecord, method: ReadMethod, recordRef?: string): LedgerVersion => {
+export const resolveReadEra = (record: VersionedRecord, method: ReadMethod, recordRef?: string): LedgerEra => {
   try {
     return versionOfRecord(record);
   } catch (error) {

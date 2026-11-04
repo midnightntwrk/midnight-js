@@ -14,8 +14,8 @@
  */
 
 import {
-  LEDGER_VERSIONS,
-  type LedgerVersion,
+  LEDGER_ERAS,
+  type LedgerEra,
   protocolVersionToLedger,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -80,7 +80,7 @@ type ReadDetails = Readonly<Record<string, string | number>>;
  * deserialization wrapper from `@midnight-ntwrk/midnight-js-utils`. Re-exported from the package
  * entry point, so its signature is public API.
  */
-export const parseHexTransaction = <E extends LedgerVersion>(
+export const parseHexTransaction = <E extends LedgerEra>(
   era: E,
   s: string,
   details?: ReadDetails
@@ -89,7 +89,7 @@ export const parseHexTransaction = <E extends LedgerVersion>(
 
 const parametersBytesAndLedgerVersion = (
   hexParameters: string
-): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerVersion } => {
+): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerEra } => {
   // Hex first, as in `stateBytesAndLedgerVersion`.
   if (!isHex(hexParameters)) {
     throw IndexerDataError.malformedParametersEncoding();
@@ -111,17 +111,17 @@ type DistributivePick<T, K extends keyof T> = T extends unknown ? Pick<T, K> : n
 export type DecodedRecordTransaction = DistributivePick<FinalizedTxRead, 'era' | 'tx'>;
 
 /**
- * One decoder per {@link LedgerVersion}, each returning only its own variant of
+ * One decoder per {@link LedgerEra}, each returning only its own variant of
  * {@link DecodedRecordTransaction}.
  *
  * A total `Record` on a null prototype, frozen — see
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
- * `LedgerVersion`: an era added there stops this table type-checking. That an
+ * `LedgerEra`: an era added there stops this table type-checking. That an
  * era also has a *read variant* is asserted separately, by `_EveryEraHasAReadVariant`
  * in `@midnight-ntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
-  readonly [V in LedgerVersion]: (
+  readonly [V in LedgerEra]: (
     hexTransaction: string,
     details: ReadDetails
   ) => Promise<Extract<DecodedRecordTransaction, { era: V }>>;
@@ -173,7 +173,7 @@ export interface TransactionDecodeContext {
  *            merely type-checked.
  * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
- * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_VERSIONS`.
+ * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_ERAS`.
  * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
  *   runtime and it cannot be acquired. From
  *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
@@ -182,7 +182,7 @@ export interface TransactionDecodeContext {
  */
 export const decodeRecordTransaction = async (
   hexTransaction: string,
-  era: LedgerVersion,
+  era: LedgerEra,
   context: TransactionDecodeContext
 ): Promise<DecodedRecordTransaction> => {
   if (!isHex(hexTransaction)) {
@@ -211,7 +211,7 @@ export const decodeRecordTransaction = async (
  */
 const stateBytesAndLedgerVersion = (
   hexState: string
-): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerVersion } => {
+): { readonly raw: Uint8Array; readonly ledgerVersion: LedgerEra } => {
   if (!isHex(hexState)) {
     throw IndexerDataError.malformedStateEncoding();
   }
@@ -222,11 +222,11 @@ const stateBytesAndLedgerVersion = (
 /**
  * Whether `left` is a strictly newer ledger era than `right`.
  *
- * Positional: an era's index in `LEDGER_VERSIONS` is its place on the timeline,
+ * Positional: an era's index in `LEDGER_ERAS` is its place on the timeline,
  * so a newer era appended there needs no change here.
  */
-const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
-  LEDGER_VERSIONS.indexOf(left) > LEDGER_VERSIONS.indexOf(right);
+const isNewerEra = (left: LedgerEra, right: LedgerEra): boolean =>
+  LEDGER_ERAS.indexOf(left) > LEDGER_ERAS.indexOf(right);
 
 /**
  * The era an indexer-reported `protocolVersion` resolves to, or `undefined`
@@ -239,7 +239,7 @@ const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
  * {@link UnknownProtocolVersionError} is treated that way — anything else is a
  * real failure and propagates.
  */
-export const reportedEra = (protocolVersion: number): LedgerVersion | undefined => {
+export const reportedEra = (protocolVersion: number): LedgerEra | undefined => {
   try {
     return protocolVersionToLedger(protocolVersion, 'read');
   } catch (error) {
@@ -273,7 +273,7 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
 export type UpperBoundCheck = 'check' | 'skip';
 
 const assertStateNotNewerThanBlock = (
-  ledgerVersion: LedgerVersion,
+  ledgerVersion: LedgerEra,
   protocolVersion: number,
   upperBound: UpperBoundCheck = 'check'
 ): void => {
@@ -326,7 +326,7 @@ const blockLedgerParameters = (hexParameters: string, protocolVersion: number): 
   return SerializedLedgerParameters.fromBytes(ledgerVersion, raw);
 };
 
-const zswapChainState = (hexZswapState: string, era: LedgerVersion): SerializedZswapChainState => {
+const zswapChainState = (hexZswapState: string, era: LedgerEra): SerializedZswapChainState => {
   const raw = zswapBytes(hexZswapState);
   try {
     return SerializedZswapChainState.fromBytes(era, raw);

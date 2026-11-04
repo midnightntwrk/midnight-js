@@ -15,7 +15,7 @@
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -94,13 +94,13 @@ export const dappConnectorWalletProviders = async (
   api: DAppConnectorWalletAPI
 ): Promise<{ walletProvider: WalletProvider; midnightProvider: MidnightProvider }> => {
   const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } = await api.getShieldedAddresses();
-  const balance = async <E extends LedgerVersion>(
+  const balance = async <E extends LedgerEra>(
     era: E,
     tx: LedgerTransactionTypes[E]['Unbound']
   ): Promise<LedgerTransactionTypes[E]['Finalized']> =>
     deserializeTransactionAtStage(era, 'Finalized', fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
 
-  const submit = async (tx: LedgerTransactionTypes[LedgerVersion]['Finalized']): Promise<string> => {
+  const submit = async (tx: LedgerTransactionTypes[LedgerEra]['Finalized']): Promise<string> => {
     const txId = firstIdentifier(tx.identifiers());
     await api.submitTransaction(toHex(tx.serialize()));
     return txId;

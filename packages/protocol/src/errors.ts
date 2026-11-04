@@ -15,7 +15,7 @@
 
 import { causeChain } from './lib/shared/cause-chain';
 import type { TransactionStage } from './lib/shared/ledger-transaction';
-import type { LedgerVersion } from './lib/shared/ledger-version';
+import type { LedgerEra } from './lib/shared/ledger-version';
 
 /**
  * Stable error-code strings for this package. Every error class in this module
@@ -33,7 +33,7 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
   STATE_INCONSISTENT: 'MIDNIGHT_JS_P_STATE_INCONSISTENT',
-  UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+  UNKNOWN_LEDGER_ERA: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   PAYLOAD_NOT_A_TRANSACTION: 'MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION',
   CONTRACT_EXECUTION_FAILED: 'MIDNIGHT_JS_P_CONTRACT_EXECUTION_FAILED',
@@ -84,7 +84,7 @@ export const PROTOCOL_ERROR_CATEGORIES: Readonly<Record<ProtocolErrorCode, Midni
   [PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID]: USAGE,
   [PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED]: INTEGRITY,
   [PROTOCOL_ERROR_CODES.STATE_INCONSISTENT]: INTEGRITY,
-  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION]: ENVIRONMENT,
+  [PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID]: ENVIRONMENT,
   [PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION]: USAGE,
   [PROTOCOL_ERROR_CODES.CONTRACT_EXECUTION_FAILED]: REJECTED,
@@ -151,7 +151,7 @@ export class InvariantViolationError extends MidnightJsError {
 }
 
 /**
- * Which call path asked for a ledger version:
+ * Which call path asked for a ledger era:
  * - `'read'` — the version was taken off an existing record.
  * - `'construct'` — the version was chosen to build something new against the
  *   network's latest block.
@@ -159,7 +159,7 @@ export class InvariantViolationError extends MidnightJsError {
 export type VersionResolutionPath = 'read' | 'construct';
 
 /**
- * Why `protocolVersionToLedger` could not resolve a ledger version:
+ * Why `protocolVersionToLedger` could not resolve a ledger era:
  * - `'malformed'` — the input was not even a well-formed protocolVersion
  *   value (not a non-negative integer).
  * - `'unknown'` — the input was a well-formed integer, but outside every
@@ -170,7 +170,7 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
 /**
  * Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
  * `latestNetworkLedgerVersion`) when a raw `protocolVersion` integer cannot be
- * resolved to a `LedgerVersion`. Those live in `./version`, which imports this
+ * resolved to a `LedgerEra`. Those live in `./version`, which imports this
  * module -- the dependency stays one-way, so they are named here rather than
  * linked.
  *
@@ -266,7 +266,7 @@ export class Ledger8RuntimeMissingError extends MidnightJsError {
  *
  * `'state conversion'` is the structural round trip `lib/v8/executable.ts`
  * runs before a circuit executes; the other two decode a serialized contract state
- * written by that ledger version, in `lib/era/envelope.ts`.
+ * written by that ledger era, in `lib/era/envelope.ts`.
  *
  * @see {@link FailClosedDecoding}
  */
@@ -298,7 +298,7 @@ export class StateConversionFailedError extends MidnightJsError {
     super(
       `Failed to convert a contract state into one a circuit can execute against, during ${stage}. Read the ` +
         'wrapped cause for what the runtime actually reported; it distinguishes a version tag for a different ' +
-        'ledger version than the one requested from truncated, trailing, or empty input bytes.',
+        'ledger era than the one requested from truncated, trailing, or empty input bytes.',
       { cause }
     );
     this.name = 'StateConversionFailedError';
@@ -437,7 +437,7 @@ export class ComposeFailedError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_FAILED];
 
   constructor(
-    readonly version: LedgerVersion,
+    readonly version: LedgerEra,
     readonly stage: ComposeStage,
     readonly circuitId: string,
     cause?: unknown
@@ -449,7 +449,7 @@ export class ComposeFailedError extends MidnightJsError {
   // A total Record, and every entry takes the era rather than naming one --
   // see SharedTableDiscipline. Keep both properties when adding a stage.
   private static readonly MESSAGES: Readonly<
-    Record<ComposeStage, (version: LedgerVersion, circuitId: string) => string>
+    Record<ComposeStage, (version: LedgerEra, circuitId: string) => string>
   > = {
     'wrap-call': (version, circuitId) =>
       `Failed to compose a ${version}-native keep-state call: no registered operation found for circuit ` +
@@ -625,7 +625,7 @@ export class ComposeOptionError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID];
 
   constructor(
-    readonly version: LedgerVersion,
+    readonly version: LedgerEra,
     readonly option: ComposeOption,
     cause?: unknown
   ) {
@@ -635,7 +635,7 @@ export class ComposeOptionError extends MidnightJsError {
 
   // A total Record, for exactly the reason `ComposeFailedError.MESSAGES` above
   // is one -- see SharedTableDiscipline. Never make this an if-chain.
-  private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerVersion) => string>> = {
+  private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerEra) => string>> = {
     contractStateBytes: (version) =>
       `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
       `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
@@ -739,7 +739,7 @@ export class MaintenanceAuthorityMismatchError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.MAINTENANCE_AUTHORITY_MISMATCH];
 
   constructor(
-    readonly version: LedgerVersion,
+    readonly version: LedgerEra,
     readonly contractAddress: string,
     readonly reason: MaintenanceAuthorityMismatchReason
   ) {
@@ -769,7 +769,7 @@ export class StateDecodeFailedError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED];
 
   constructor(
-    readonly version: LedgerVersion,
+    readonly version: LedgerEra,
     cause: unknown
   ) {
     super(
@@ -804,7 +804,7 @@ export class StateInconsistentError extends MidnightJsError {
   readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.STATE_INCONSISTENT];
 
   constructor(
-    readonly version: LedgerVersion,
+    readonly version: LedgerEra,
     cause: unknown
   ) {
     super(
@@ -864,11 +864,11 @@ const describeRequestedVersion = (value: unknown): string | undefined => {
 
 /**
  * Thrown when a ledger era was requested by a value that is not a member of
- * `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
+ * `LEDGER_ERAS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
  * `extractEncodedStateValue` (`lib/era/envelope.ts`).
  *
  * Two sources: an untyped JavaScript caller passing a value that is not a
- * `LedgerVersion`, and a provider returning a value with no era or an unknown
+ * `LedgerEra`, and a provider returning a value with no era or an unknown
  * one. The second is named by `context`.
  *
  * Carries no `version` field, unlike every other era-aware error here — there
@@ -878,15 +878,15 @@ const describeRequestedVersion = (value: unknown): string | undefined => {
  *   value carried no era, as the kind (`'object'`, `'function'`) for a value
  *   that is not a scalar, and as its string form otherwise. Carried for
  *   programmatic use only; it is deliberately kept out of the message.
- * @param context The call that read the version off a value it was handed,
+ * @param context The call that read the era off a value it was handed,
  *   for example the provider method that returned a record. Named in the
  *   message, so a caller can tell which provider produced the value.
  * @see {@link SharedTableDiscipline}
  * @see {@link FailClosedDecoding}
  */
-export class UnknownLedgerVersionError extends MidnightJsError {
-  readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
-  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION];
+export class UnknownLedgerEraError extends MidnightJsError {
+  readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA;
+  readonly category = PROTOCOL_ERROR_CATEGORIES[PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_ERA];
 
   readonly requestedVersion: string | undefined;
 
@@ -895,7 +895,7 @@ export class UnknownLedgerVersionError extends MidnightJsError {
     readonly context?: string
   ) {
     super(
-      `${context === undefined ? 'Unknown ledger version requested.' : `${context} returned a value with an unknown ledger version.`} ` +
+      `${context === undefined ? 'Unknown ledger era requested.' : `${context} returned a value with an unknown ledger era.`} ` +
         'Supported eras are v8 (node 1.x) and ' +
         'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. ' +
         (context === undefined
@@ -904,7 +904,7 @@ export class UnknownLedgerVersionError extends MidnightJsError {
         'A `requestedVersion` of `undefined` means the value carried no era, which is the shape of a ' +
         'pre-5.0.0 provider: upgrade that provider.'
     );
-    this.name = 'UnknownLedgerVersionError';
+    this.name = 'UnknownLedgerEraError';
     this.requestedVersion = describeRequestedVersion(requestedVersion);
   }
 }
@@ -1017,7 +1017,7 @@ export class PayloadNotATransactionError extends MidnightJsError {
 
   /** The era's runtime refused to read the payload at the requested stage; its refusal is on `cause`. */
   static undecodable(
-    version: LedgerVersion,
+    version: LedgerEra,
     stage: TransactionStage,
     byteLength: number,
     cause: unknown

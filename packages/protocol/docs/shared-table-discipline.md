@@ -16,11 +16,11 @@ symbols above them do not have to repeat it.
 The rule is that anything this package hands out — or memoises and hands to
 every caller in the process — is frozen.
 
-`LEDGER_VERSIONS` (`packages/protocol/src/lib/shared/ledger-version.ts`) is
+`LEDGER_ERAS` (`packages/protocol/src/lib/shared/ledger-version.ts`) is
 frozen, not merely `as const`: it is a public exported constant, and an unfrozen
 array is one a downstream package can mutate for every other consumer in the
 process. Nothing reads the value at runtime to dispatch on — the era tables are
-typed by `LedgerVersion` and built independently — so the freeze guards the
+typed by `LedgerEra` and built independently — so the freeze guards the
 export, not the dispatch.
 
 `PROTOCOL_ERROR_CODES` (`packages/protocol/src/errors.ts`) applies the same
@@ -56,9 +56,9 @@ Both are typed as an `EncodedStateValue`, and neither throws. That is the whole
 argument: the failure mode of a plain object literal here is not an exception,
 it is a plausible-looking value flowing on as if a decode had happened.
 
-The same exposure is why `UnknownLedgerVersionError`
+The same exposure is why `UnknownLedgerEraError`
 (`packages/protocol/src/errors.ts`) exists at all. TypeScript callers cannot
-produce it, because `version` is typed as `LedgerVersion`; it exists for the
+produce it, because `version` is typed as `LedgerEra`; it exists for the
 untyped JavaScript consumers this package also serves, where an unvalidated era
 string threaded from an indexer response would otherwise reach an era-keyed
 decision — and, where that decision is a lookup table rather than a `switch`,
@@ -89,15 +89,15 @@ to make.
 Every era-keyed table in the package is total by construction, and the
 totality is checked by the type system rather than by review.
 
-`_allLedgerVersionsAreMapped` in `packages/protocol/src/version.ts` is the
+`_allLedgerErasAreMapped` in `packages/protocol/src/version.ts` is the
 canonical form and the one the other sites name. It is a compile-time-only
-guard: if `LEDGER_VERSIONS` ever grows without a matching entry being added to
+guard: if `LEDGER_ERAS` ever grows without a matching entry being added to
 `NODE_MAJOR_TO_LEDGER`, the assignment stops type-checking, because the
 conditional type resolves to `never`.
 
 `loadLedgerEra` (`packages/protocol/src/lib/era/load-era.ts`) does the same in a
-`switch`, in the style of `version.ts`'s `_allLedgerVersionsAreMapped`: a new
-member of `LEDGER_VERSIONS` stops the `const unhandled: never = version`
+`switch`, in the style of `version.ts`'s `_allLedgerErasAreMapped`: a new
+member of `LEDGER_ERAS` stops the `const unhandled: never = version`
 assignment type-checking, so the omission is a build failure rather than a
 review miss.
 
@@ -115,7 +115,7 @@ neither replaces the other.
 
 In `loadLedgerEra`, the runtime rejection is not redundant with the
 `never` assignment, because `version` reaches the function from untyped callers
-too. A TypeScript caller cannot produce an `UnknownLedgerVersionError` there; it
+too. A TypeScript caller cannot produce an `UnknownLedgerEraError` there; it
 exists for the untyped JavaScript consumers this package also serves, where an
 era string threaded from an indexer response would otherwise fall through to a
 plausible-looking non-era. The shape of the dispatch decides how much the
@@ -140,8 +140,8 @@ prevent.
 
 ## A Record rather than a ternary or an if-chain
 
-`ENVELOPE_DECODERS` holds one decoder per `LedgerVersion` as a `Record` rather
-than a ternary, so that adding a member to `LEDGER_VERSIONS` fails to compile
+`ENVELOPE_DECODERS` holds one decoder per `LedgerEra` as a `Record` rather
+than a ternary, so that adding a member to `LEDGER_ERAS` fails to compile
 there instead of silently routing the new era's bytes to the pre-fork decoder —
 the same discipline `packages/protocol/src/version.ts` applies to its own
 mapping tables.
@@ -178,7 +178,7 @@ supported era. This is a fail-closed choice, not a mirror.
 `lookupLedger` in the same module is kept as a small typed function, rather than
 indexing the `as const` table directly, because a `number`-typed key cannot
 index an object type with only numeric literal properties. The
-`Partial<Record<number, LedgerVersion>>` parameter type is what makes the
+`Partial<Record<number, LedgerEra>>` parameter type is what makes the
 `=== undefined` guard in `protocolVersionToLedger` type-driven instead of
 relying on a cast.
 
@@ -197,6 +197,6 @@ would cost.
   `onchain-runtime-v3` is the only package it names.
 - [FailClosedDecoding](./fail-closed-decoding.md) — what the decode guarantees once a decoder has been
   selected, and how the failure classes divide the work between them.
-- [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
+- [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_ERAS` lives in a leaf module,
   and which modules are build entries.
 - [EraBoundary](./era-boundary.md) — why the era objects are memoised per era and what crosses the boundary.

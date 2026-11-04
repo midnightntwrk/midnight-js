@@ -39,7 +39,7 @@ import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
 import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type LedgerVersion, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerEra, loadLedger8Protocol, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type ContractStateAndParametersRead,
@@ -170,14 +170,14 @@ const recordThenReject = (seen: SeenPayloads, rejection: unknown) =>
 // not.
 const OPERATION_CONTRACT_ADDRESS = '0200aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
 
-const callOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
+const callOperation = (head: LedgerEra = 'v8'): SubmittedOperation => ({
   networkVersion: head,
   kind: 'call',
   circuitId: CIRCUIT_ID,
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
-const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
+const deployOperation = (head: LedgerEra = 'v8'): SubmittedOperation => ({
   networkVersion: head,
   kind: 'deploy',
   // A deploy has no circuit of its own and reports the constructor's own name.
@@ -185,7 +185,7 @@ const deployOperation = (head: LedgerVersion = 'v8'): SubmittedOperation => ({
   contractAddress: OPERATION_CONTRACT_ADDRESS
 });
 
-const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerVersion = 'v8'): SubmittedOperation => ({
+const maintenanceOperation = (circuitId: string = CIRCUIT_ID, head: LedgerEra = 'v8'): SubmittedOperation => ({
   networkVersion: head,
   kind: 'maintenance',
   circuitId,

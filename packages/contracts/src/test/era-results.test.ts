@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CURRENT_LEDGER_VERSION, type LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
@@ -22,7 +22,7 @@ import { EraMismatchError } from '../errors';
 
 // A result is only ever read here through its `era` tag, so the smallest thing
 // carrying one is the whole fixture this needs.
-const taggedResult = (era: LedgerVersion) => ({ era, txId: 'tx-1' });
+const taggedResult = (era: LedgerEra) => ({ era, txId: 'tx-1' });
 
 // The shape an untyped JavaScript caller hands over: no compile-time era to lean on.
 const isLedger8ResultUntyped = (value: unknown): unknown => Reflect.apply(isLedger8Result, undefined, [value]);
@@ -30,7 +30,7 @@ const isLedger8ResultUntyped = (value: unknown): unknown => Reflect.apply(isLedg
 describe('isLedger8Result', () => {
   it('answers true for the retained pipeline and false for the current one', () => {
     expect(isLedger8Result(taggedResult('v8'))).toBe(true);
-    expect(isLedger8Result(taggedResult(CURRENT_LEDGER_VERSION))).toBe(false);
+    expect(isLedger8Result(taggedResult(CURRENT_LEDGER_ERA))).toBe(false);
   });
 
   // The failure this exists to stop: answering `false` for a tag it cannot

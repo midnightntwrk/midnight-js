@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era';
@@ -31,7 +31,7 @@ import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era
 
 describe('a pairing table must rule every artifact era', () => {
   it('is a total map from artifact era to rulings', () => {
-    expectTypeOf<EraPairingTable>().toEqualTypeOf<Readonly<Record<LedgerVersion, EraRulings>>>();
+    expectTypeOf<EraPairingTable>().toEqualTypeOf<Readonly<Record<LedgerEra, EraRulings>>>();
   });
 
   it('refuses a table missing an artifact era', () => {
@@ -46,7 +46,7 @@ describe('a pairing table must rule every artifact era', () => {
     const excessRow: EraPairingTable = {
       v8: { v8: 'run', v9: 'call-only' },
       v9: { v8: 'artifact-newer-than-head', v9: 'run' },
-      // @ts-expect-error - `v10` is not a `LedgerVersion`, so this cell could only ever be
+      // @ts-expect-error - `v10` is not a `LedgerEra`, so this cell could only ever be
       // reached by a value the vocabulary has already refused
       v10: { v8: 'run', v9: 'run' }
     };
@@ -56,7 +56,7 @@ describe('a pairing table must rule every artifact era', () => {
 
 describe('one row must rule every head era', () => {
   it('is a total map from head era to verdict', () => {
-    expectTypeOf<EraRulings>().toEqualTypeOf<Readonly<Record<LedgerVersion, EraPairing>>>();
+    expectTypeOf<EraRulings>().toEqualTypeOf<Readonly<Record<LedgerEra, EraPairing>>>();
   });
 
   it('refuses a row that rules only some of the head eras', () => {
@@ -73,7 +73,7 @@ describe('one row must rule every head era', () => {
     const excessColumn: EraRulings = {
       v8: 'run',
       v9: 'call-only',
-      // @ts-expect-error - `v10` is not a `LedgerVersion`
+      // @ts-expect-error - `v10` is not a `LedgerEra`
       v10: 'run'
     };
     void excessColumn;

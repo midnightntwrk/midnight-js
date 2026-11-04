@@ -29,7 +29,7 @@ import type {
   ComposeDeployOptions,
   PartitionedCallTranscript
 } from '../lib/shared/compose-types';
-import type { LedgerVersion } from '../lib/shared/ledger-version';
+import type { LedgerEra } from '../lib/shared/ledger-version';
 import { expectStructuredCloneable } from './clone-assertions';
 import { emptyPartitionContext, fixturePath, readHexFixture } from './fixtures';
 
@@ -313,9 +313,9 @@ const ledger9Fixture: EraFixture = {
   }
 };
 
-const FIXTURES: Readonly<Record<LedgerVersion, EraFixture>> = { v8: ledger8Fixture, v9: ledger9Fixture };
+const FIXTURES: Readonly<Record<LedgerEra, EraFixture>> = { v8: ledger8Fixture, v9: ledger9Fixture };
 
-const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
+const callOptionsFor = (version: LedgerEra): ComposeCallOptions => ({
   calls: [
     {
       contractAddress: ocrt3.dummyContractAddress(),
@@ -338,7 +338,7 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
   ttl: ttl()
 });
 
-const deployOptionsFor = (version: LedgerVersion): ComposeDeployOptions => ({
+const deployOptionsFor = (version: LedgerEra): ComposeDeployOptions => ({
   contractStateBytes: FIXTURES[version].blankContractState(),
   verifierKeys: new Map([['increment', VERIFIER_KEY]]),
   networkId: NETWORK_ID,
