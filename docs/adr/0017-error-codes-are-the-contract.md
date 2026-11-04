@@ -32,8 +32,8 @@ chain, and a generic retry would submit it twice (a second deploy lands at a new
 first deploy's signing key).
 
 Building a plain `Error`/`TypeError`/`RangeError`/`AggregateError` to throw or reject with, and declaring a
-class that extends one of them directly, are forbidden in `packages/*/src` (tests and the `compact` CLI exempt).
-The lint gate matches the usual shapes
+class that extends one of them directly, are forbidden in `packages/*/src` (tests, the `compact` CLI and
+`network-id` exempt; `network-id` is deprecated and being removed). The lint gate matches the usual shapes
 (`throw new`, `throw Error(...)`, a variable later thrown, `Promise.reject`, `reject(...)`, `Effect.fail`);
 a plain error built only as a `cause` stays allowed. Failures of `fetch` at provider I/O seams, including
 reading the response body, are wrapped with the original on `cause`. An error midnight-js did not raise —
@@ -176,3 +176,8 @@ Issue #1557. The decision is unchanged. It changes how classes are cut.
   `LEDGER8_UNCONFIRMED`, `LEDGER8_NOT_STORED`, `LEDGER8_CALL_UNSUPPORTED`); and in `utils`
   `LEDGER8_VALUE_UNSUPPORTED` and `UNRECOGNISED_ERA_TAG`. The "TxFailedError families sit three levels
   down" sentence above is history: there is one class now. The code tables above already show the result.
+
+## Amendment — network-id removed in 5.0.0 (2026-11-04)
+
+`network-id` is removed (#1546), so the plain-error gate exempts only tests and
+the `compact` CLI.

@@ -76,7 +76,7 @@ interface MidnightProviders {
   but no longer affects the framework.
 - **Negative:** a `WalletProvider` that ignores the `ttl` argument still gives its
   balancing intent its own TTL; the framework cannot enforce it.
-- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 5.0.0 (#1546).
+- **Follow-ups:** remove `@midnight-ntwrk/midnight-js-network-id` in 6.0.
 
 The Zswap Merkle-root retention window (`ZSWAP_MERKLE_ROOT_RETENTION_SECONDS`)
 stays an internal constant. It controls how many past roots are kept when the
@@ -100,3 +100,12 @@ built, so there is no user need to configure it.
   date that has already expired.
 - **Per-call TTL on `CallOptions` / `DeployOptions`.** Not needed yet; the
   provider-level value covers the known use.
+
+## Amendment — network-id removed in 5.0.0 (2026-11-04)
+
+The follow-up landed early. `@midnight-ntwrk/midnight-js-network-id` is removed
+in 5.0.0 instead of 6.0 (#1546), together with the `networkId` namespace and the
+`./network-id` subpath of `@midnight-ntwrk/midnight-js`. A deprecated package the
+framework ignores fails silently, and every dApp moving to 5.0.0 already has to
+change where it builds its providers. Code that still calls `setNetworkId()` now
+fails to compile. The `no-restricted-imports` rule for the package is gone.

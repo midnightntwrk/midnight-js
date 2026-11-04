@@ -114,6 +114,7 @@ const PACKAGE_TEST_DIRS = 'packages/*/src/test/**';
 const PROTOCOL_SOURCE_DIRS = 'packages/protocol/src/**';
 // The compact CLI is not a runtime API.
 const PLAIN_THROW_EXEMPT_DIRS = ['packages/compact/**'];
+
 // Generic hygiene: applies everywhere, since a dist import is wrong in any
 // package regardless of who owns the module being imported.
 const distImportPattern = {

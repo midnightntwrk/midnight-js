@@ -324,4 +324,12 @@ describe('sub-path exports', () => {
 
     expect(subpaths.filter((subpath) => subpath.startsWith('./protocol'))).toEqual(['./protocol/v9']);
   });
+
+  it('publishes exactly the documented sub-paths', () => {
+    const subpaths = Object.keys(
+      (JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf8')) as { exports: Record<string, unknown> }).exports
+    );
+
+    expect(subpaths.sort()).toEqual(['.', './contracts', './package.json', './protocol/v9', './types', './utils']);
+  });
 });
