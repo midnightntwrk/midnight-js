@@ -37,9 +37,20 @@ import {
   mintLedger9ContractStateHex,
   mintLedger9LedgerParametersHex,
   mintLedger9ZswapChainStateHex,
+  NEWER_NETWORK_PROTOCOL_VERSION,
   UNRESOLVABLE_PROTOCOL_VERSION} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
+
+const UNPLACEABLE_VERSIONS = [
+  { network: 'node 0.x', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION },
+  { network: 'a newer network', protocolVersion: NEWER_NETWORK_PROTOCOL_VERSION }
+] as const;
+
+const UNPLACEABLE_READS = UNPLACEABLE_VERSIONS.flatMap((version) => [
+  { ...version, read: 'an unpinned', config: undefined },
+  { ...version, read: 'a pinned', config: { type: 'blockHeight', blockHeight: 7 } as const }
+]);
 
 type QueryMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => Promise<unknown>>>;
 
@@ -154,13 +165,10 @@ describe('queryContractState dates the state it reads', () => {
     expect(headRequestCount(query)).toBe(before + 1);
   });
 
-  test.each([
-    { read: 'an unpinned', config: undefined },
-    { read: 'a pinned', config: { type: 'blockHeight', blockHeight: 7 } as const }
-  ])('refuses $read read whose dating block reports a version this client cannot place', async ({ config }) => {
+  test.each(UNPLACEABLE_READS)('refuses $read read dated by $network', async ({ protocolVersion, config }) => {
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_WITH_PARAMETERS_QUERY, stateResponse(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]
+        [CONTRACT_STATE_WITH_PARAMETERS_QUERY, stateResponse(mintLedger9ContractStateHex(), protocolVersion)]
       ])
     );
 
@@ -168,8 +176,8 @@ describe('queryContractState dates the state it reads', () => {
 
     expect(unknownRecordEraOf(rejection)).toEqual({
       method: 'queryContractState',
-      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
-      recordRef: ADDRESS
+      protocolVersion,
+      recordRef: `contractAddress ${ADDRESS}`
     });
   });
 
@@ -338,20 +346,17 @@ describe('queryZSwapAndContractState dates the triple it reads', () => {
     expect((rejection as IndexerDataError).cause).toBeInstanceOf(InvalidSerializedStateError);
   });
 
-  test.each([
-    { read: 'an unpinned', config: undefined },
-    { read: 'a pinned', config: { type: 'blockHeight', blockHeight: 7 } as const }
-  ])('refuses $read triple whose block reports a version this client cannot place', async ({ config }) => {
+  test.each(UNPLACEABLE_READS)('refuses $read triple dated by $network', async ({ protocolVersion, config }) => {
     const query = dispatchingQuery(
-      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)]])
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, await tripleResponse(mintLedger9ContractStateHex(), protocolVersion)]])
     );
 
     const rejection = await rejectionOf(buildProvider(query).queryZSwapAndContractState(ADDRESS, config));
 
     expect(unknownRecordEraOf(rejection)).toEqual({
       method: 'queryZSwapAndContractState',
-      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
-      recordRef: ADDRESS
+      protocolVersion,
+      recordRef: `contractAddress ${ADDRESS}`
     });
   });
 
@@ -420,11 +425,11 @@ describe('watchForContractState dates the state it reads', () => {
     expect(stateHex(state)).toEqual({ version: 'v8', hex: hexState });
   });
 
-  test('refuses a state whose dating block reports a version this client cannot place', async () => {
+  test.each(UNPLACEABLE_VERSIONS)('refuses a state dated by $network', async ({ protocolVersion }) => {
     const watchQuery = vi.fn().mockReturnValue(
       Rx.of({
         data: {
-          block: { protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION },
+          block: { protocolVersion },
           contract: { state: mintLedger9ContractStateHex() }
         },
         dataState: 'complete',
@@ -439,8 +444,8 @@ describe('watchForContractState dates the state it reads', () => {
 
     expect(unknownRecordEraOf(rejection)).toEqual({
       method: 'watchForContractState',
-      protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
-      recordRef: ADDRESS
+      protocolVersion,
+      recordRef: `contractAddress ${ADDRESS}`
     });
   });
 });

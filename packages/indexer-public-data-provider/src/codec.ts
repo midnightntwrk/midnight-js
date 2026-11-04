@@ -258,7 +258,7 @@ export type UpperBoundCheck = 'check' | 'skip';
 export interface StateReadContext {
   readonly method: StateReadMethod;
   readonly contractAddress: ContractAddress;
-  readonly upperBound?: UpperBoundCheck;
+  readonly upperBound: UpperBoundCheck;
 }
 
 const blockEra = (protocolVersion: number, context: StateReadContext): LedgerEra => {
@@ -269,9 +269,17 @@ const blockEra = (protocolVersion: number, context: StateReadContext): LedgerEra
       throw error;
     }
     if (error.reason === 'malformed') {
-      throw IndexerDataError.malformedProtocolVersion(protocolVersion, error);
+      throw IndexerDataError.malformedProtocolVersion(protocolVersion, error, {
+        method: context.method,
+        contractAddress: context.contractAddress
+      });
     }
-    throw new UnknownRecordEraError(context.method, protocolVersion, { cause: error }, context.contractAddress);
+    throw new UnknownRecordEraError(
+      context.method,
+      protocolVersion,
+      { cause: error },
+      `contractAddress ${context.contractAddress}`
+    );
   }
 };
 
@@ -286,7 +294,7 @@ const datedContractState = (
   hexState: string,
   protocolVersion: number,
   blockVersion: LedgerEra,
-  upperBound: UpperBoundCheck = 'check'
+  upperBound: UpperBoundCheck
 ): SerializedContractState => {
   const { raw, ledgerVersion } = stateBytesAndLedgerVersion(hexState);
   if (upperBound === 'check' && isNewerEra(ledgerVersion, blockVersion)) {
@@ -333,8 +341,8 @@ const zswapChainState = (hexZswapState: string, era: LedgerEra): SerializedZswap
  * @param hexState The hex-encoded serialized contract state, as the indexer serves it.
  * @param protocolVersion The protocol-version integer of the block that dates the state.
  * @param context The method and contract a refusal names. `upperBound` states whether
- *                `protocolVersion` certainly describes the same block as the bytes. Defaults to
- *                `'check'`. See {@link UpperBoundCheck}.
+ *                `protocolVersion` certainly describes the same block as the bytes. See
+ *                {@link UpperBoundCheck}.
  * @throws {UnknownRecordEraError} When `protocolVersion` maps to no ledger era this build knows.
  * @throws {IndexerDataError} When `protocolVersion` is malformed, the state is not hex-encoded, or
  *   the state is newer than a checked dating block.
@@ -384,9 +392,13 @@ export const toContractStateAndParametersRead = (
  * than mixed. The zswap chain state carries no era of its own on the wire — v8 and v9 write the same
  * format — so it takes the era of the ledger parameters of its block.
  *
+ * @throws {UnknownRecordEraError} When `protocolVersion` maps to no ledger era this build knows.
  * @throws {IndexerDataError} `mixed-era-public-states` when the state and the parameters were
- *   written by different eras, and `malformed-zswap-encoding` / `malformed-zswap-state` when the
- *   zswap chain state is not hex-encoded or not a zswap chain state of that era.
+ *   written by different eras, `malformed-zswap-encoding` / `malformed-zswap-state` when the
+ *   zswap chain state is not hex-encoded or not a zswap chain state of that era, and every
+ *   `IndexerDataError` of {@link toContractStateAndParametersRead}, `malformed-protocol-version`
+ *   among them.
+ * @throws {TagParseError} When a payload carries no supported version tag.
  */
 export const toPublicStatesRead = (
   hexZswapState: string,

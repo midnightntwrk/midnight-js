@@ -403,9 +403,14 @@ describe('queryContractState', () => {
           (error: unknown) => error
         );
 
-      expect(rejection).toBeInstanceOf(IndexerDataError);
-      expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-protocol-version', protocolVersion: -1 });
-      expect((rejection as IndexerDataError).cause).toBeInstanceOf(UnknownProtocolVersionError);
+      assert(rejection instanceof IndexerDataError);
+      expect(rejection.context).toEqual({
+        kind: 'malformed-protocol-version',
+        protocolVersion: -1,
+        method: 'queryContractState',
+        contractAddress: ADDRESS
+      });
+      expect(rejection.cause).toBeInstanceOf(UnknownProtocolVersionError);
     });
   });
 

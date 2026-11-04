@@ -121,7 +121,12 @@ export type IndexerDataErrorContext =
       parametersVersion: LedgerEra;
     }
   | { kind: 'mixed-era-public-states'; stateVersion: LedgerEra; parametersVersion: LedgerEra }
-  | { kind: 'malformed-protocol-version'; protocolVersion: number };
+  | {
+      kind: 'malformed-protocol-version';
+      protocolVersion: number;
+      method?: StateReadMethod;
+      contractAddress?: string;
+    };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -230,8 +235,12 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'mixed-era-public-states', stateVersion, parametersVersion });
   }
 
-  static malformedProtocolVersion(protocolVersion: number, cause: unknown): IndexerDataError {
-    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion }, { cause });
+  static malformedProtocolVersion(
+    protocolVersion: number,
+    cause: unknown,
+    read?: { readonly method: StateReadMethod; readonly contractAddress: string }
+  ): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-protocol-version', protocolVersion, ...read }, { cause });
   }
 
   private static formatMessage(context: IndexerDataErrorContext): string {
@@ -313,7 +322,9 @@ export class IndexerDataError extends IndexerError {
         );
       case 'malformed-protocol-version':
         return (
-          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state, which is ` +
+          `The indexer reported protocolVersion ${String(context.protocolVersion)} for a contract state` +
+          `${context.method === undefined ? '' : ` read by ${context.method}`}` +
+          `${context.contractAddress === undefined ? '' : ` (contractAddress ${context.contractAddress})`}, which is ` +
           'not a non-negative integer. The contract-state reads copy protocolVersion onto every record, so a ' +
           'malformed value is refused rather than passed on. Check that the indexer and this client agree on the ' +
           'GraphQL schema.'

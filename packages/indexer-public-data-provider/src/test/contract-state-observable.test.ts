@@ -227,7 +227,7 @@ describe('contractStateObservable — latest', () => {
 
     expect(seen).toEqual(['v9']);
     assert(rejection instanceof UnknownRecordEraError);
-    expect({ method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef }).toEqual({ method: 'contractStateObservable', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION, recordRef: ADDRESS });
+    expect({ method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef }).toEqual({ method: 'contractStateObservable', protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION, recordRef: `contractAddress ${ADDRESS}` });
   });
 
   test('ends the stream on a record whose version tag is newer than the block that dates it', async () => {

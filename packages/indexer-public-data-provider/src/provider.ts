@@ -357,7 +357,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         }
         return toContractStateRead(record.state, record.stateAt.protocolVersion, {
           method: 'queryDeployContractState',
-          contractAddress
+          contractAddress,
+          upperBound: 'check'
         });
       });
   }
@@ -539,7 +540,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config: ContractStateObservableConfig = DEFAULT_STATE_CONFIG
   ): Rx.Observable<PositionedRecord<ContractStateRead>> {
     return this.contractStates$(contractAddress, config, (state, protocolVersion) =>
-      toContractStateRead(state, protocolVersion, { method: 'contractStateObservable', contractAddress })
+      toContractStateRead(state, protocolVersion, {
+        method: 'contractStateObservable',
+        contractAddress,
+        upperBound: 'check'
+      })
     );
   }
 

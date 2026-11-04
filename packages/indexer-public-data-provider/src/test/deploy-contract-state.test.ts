@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
 import { assert, describe, expect, test, vi } from 'vitest';
@@ -118,8 +119,28 @@ describe('queryDeployContractState', () => {
     expect({ method: rejection.method, protocolVersion: rejection.protocolVersion, recordRef: rejection.recordRef }).toEqual({
       method: 'queryDeployContractState',
       protocolVersion: UNRESOLVABLE_PROTOCOL_VERSION,
-      recordRef: ADDRESS
+      recordRef: `contractAddress ${ADDRESS}`
     });
+  });
+
+  test('refuses a deploy state whose block reports a malformed protocol version', async () => {
+    const { provider } = providerAnswering(
+      answer('ContractDeploy', recordTransaction(mintLedger9ContractStateHex(), -1))
+    );
+
+    const rejection = await provider.queryDeployContractState(ADDRESS).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    assert(rejection instanceof IndexerDataError);
+    expect(rejection.context).toEqual({
+      kind: 'malformed-protocol-version',
+      protocolVersion: -1,
+      method: 'queryDeployContractState',
+      contractAddress: ADDRESS
+    });
+    expect(rejection.cause).toBeInstanceOf(UnknownProtocolVersionError);
   });
 
   test('refuses a deploy transaction that carries no action for the address', async () => {
