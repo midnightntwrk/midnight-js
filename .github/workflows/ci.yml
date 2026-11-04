@@ -105,7 +105,7 @@ jobs:
   # The fork-crossing gate: blocking, and expected green -- a red shard is a
   # regression to investigate, never a known state to wave through. The path
   # filter below also means the lane is SKIPPED, not passing, on a range that
-  # touches neither `packages/**` nor `consumer-e2e/**`.
+  # touches none of `packages/**`, `consumer-e2e/**` or the `shared` paths.
   hardfork:
     needs: ci
     name: Hard fork

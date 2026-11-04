@@ -124,7 +124,7 @@ All CI checks block merge unless noted:
 | Integration Tests | Docker-based provider tests (skip: `[skip_it]` in commit message) |
 | API Docs | TypeDoc generation (non-blocking) |
 
-CI uses path filtering: midnight-js jobs run only if `packages/**` changed; testkit jobs if `packages/**` or `testkit-js/**` changed. Changes to workflows, `yarn.lock`, or root `package.json` trigger everything.
+CI uses path filtering: midnight-js jobs run only if `packages/**` changed; testkit jobs if `packages/**` or `testkit-js/**` changed. Changes to the shared root config listed under `shared` in `.github/workflows/ci.yml` (workflows, `yarn.lock`, root `package.json`, any `turbo.json`, `build-tools/`, ...) trigger everything.
 
 ## PR Conventions
 

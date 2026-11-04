@@ -59,7 +59,7 @@ jobs:
       # four persona installs.
       #
       # THIS LANE AND NOT THE MIDNIGHT.JS ONE, which is where it was first put
-      # and where it cannot work: that leg builds `--filter="./packages/*"`, and
+      # and where it cannot work: that leg builds only `./packages/*`, and
       # `fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name.
       # With testkit unbuilt the check reports `TS2307` for it and nothing else
       # -- a red lane carrying no information. Resolving testkit from source

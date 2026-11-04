@@ -19,7 +19,7 @@ on:
         default: ''
       yarn_lint_paths:
         type: string
-        description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
+        description: Optional paths passed to `yarn lint` (e.g., ./packages).
         required: false
         default: ''
 
