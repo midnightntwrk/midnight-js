@@ -2,6 +2,88 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.0-rc.6](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.5...v5.0.0-rc.6) (2026-11-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **midnight-js:** hold LedgerTransaction as bytes decoded by the caller's ledger (#1551) (#1617)
+* **midnight-js:** keep the transaction era in contract results and LedgerTransaction.unwrap (#1612)
+* **midnight-js:** scope private state access to a per-contract view (#812) (#1609)
+* **midnight-js:** remove deprecated network-id package in 5.0.0 (#1546) (#1606)
+* **midnight-js:** refuse an unknown protocolVersion on contract-state reads (#1604)
+* **midnight-js:** name the ledger era "era" in the public API (#1603)
+* **midnight-js:** carry contract states as one serialized class per kind (#1601)
+* **midnight-js:** read the declared runtime version for ledger 9 containers (#1591)
+* **midnight-js:** diagnose a submitTx rejection across the fork (#1584)
+* **midnight-js:** name every public export bound to ledger 9 after its ledger (#1581)
+* **midnight-js:** report each fault through one error class (#1576)
+* **midnight-js:** drop the AnyEra prefix from cross-era names (#1575)
+* **midnight-js:** rename LedgerState to SerializedState (#1571)
+* **midnight-js:** export the ledger 8 types flat (#1563)
+* **midnight-js:** name ledger 9 types and pick the era by contract (#1562)
+* **midnight-js:** name the ledger in every protocol subpath (#1560)
+* **midnight-js:** carry on-chain state as bytes decoded by the caller's runtime (#1555)
+* **midnight-js:** use plain language in era error names and messages (#1547)
+* **midnight-js:** carry transactions as opaque era-carrying handles (#1544)
+
+### Features
+
+* **midnight-js:** add the low-level functions for ledger 8 contracts ([#1583](https://github.com/midnightntwrk/midnight-js/pull/1583)) ([9c2971e](https://github.com/midnightntwrk/midnight-js/commit/9c2971eff29b233b4f708dba6fee73d44b667b18)), closes [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524) [#1584](https://github.com/midnightntwrk/midnight-js/pull/1584) [#1585](https://github.com/midnightntwrk/midnight-js/pull/1585) [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524)
+* **midnight-js:** bound watchFor* waits with an opt-in maxWaitMs ([#1454](https://github.com/midnightntwrk/midnight-js/pull/1454)) ([9322b12](https://github.com/midnightntwrk/midnight-js/commit/9322b123a86394e8b1b4d97af7e1032b0e51cdd7)), closes [#1131](https://github.com/midnightntwrk/midnight-js/pull/1131) [#1131](https://github.com/midnightntwrk/midnight-js/pull/1131)
+* **midnight-js:** build call options for both ledger eras in createCallTxOptions ([#1554](https://github.com/midnightntwrk/midnight-js/pull/1554)) ([d0775c8](https://github.com/midnightntwrk/midnight-js/commit/d0775c82c4e86b7e3f034d9159341c292c2d68bd)), closes [#1552](https://github.com/midnightntwrk/midnight-js/pull/1552)
+* **midnight-js:** build wallet and midnight providers from the DApp Connector ([#1522](https://github.com/midnightntwrk/midnight-js/pull/1522)) ([a093626](https://github.com/midnightntwrk/midnight-js/commit/a093626d378d6fa8f5fa33470af12d59f5a1b891)), closes [midnightntwrk/midnight-dapp-connector-api#102](https://github.com/midnightntwrk/midnight-js/pull/102) [#762](https://github.com/midnightntwrk/midnight-js/pull/762)
+* **midnight-js:** carry on-chain state as bytes decoded by the caller's runtime ([#1555](https://github.com/midnightntwrk/midnight-js/pull/1555)) ([1fe7fce](https://github.com/midnightntwrk/midnight-js/commit/1fe7fcee0662d6bcec236f8cbe08e440cf58dd92)), closes [#1550](https://github.com/midnightntwrk/midnight-js/pull/1550)
+* **midnight-js:** carry transactions as opaque era-carrying handles ([#1544](https://github.com/midnightntwrk/midnight-js/pull/1544)) ([65cb360](https://github.com/midnightntwrk/midnight-js/commit/65cb360764e1c499f68d3b835f64895d883cbb94)), closes [#1533](https://github.com/midnightntwrk/midnight-js/pull/1533) [#1543](https://github.com/midnightntwrk/midnight-js/pull/1543) [#1525](https://github.com/midnightntwrk/midnight-js/pull/1525)
+* **midnight-js:** diagnose a submitTx rejection across the fork ([#1584](https://github.com/midnightntwrk/midnight-js/pull/1584)) ([5719f41](https://github.com/midnightntwrk/midnight-js/commit/5719f41858e199923b761179fdefb91835ba26ae)), closes [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524) [#1583](https://github.com/midnightntwrk/midnight-js/pull/1583) [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524)
+* **midnight-js:** export the ledger 8 types flat ([#1563](https://github.com/midnightntwrk/midnight-js/pull/1563)) ([b4dd38e](https://github.com/midnightntwrk/midnight-js/commit/b4dd38e3b9868a610d2ee39ee82dec95c8860424)), closes [#1561](https://github.com/midnightntwrk/midnight-js/pull/1561) [#1562](https://github.com/midnightntwrk/midnight-js/pull/1562) [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557) [#1492](https://github.com/midnightntwrk/midnight-js/pull/1492)
+* **midnight-js:** hold LedgerTransaction as bytes decoded by the caller's ledger ([#1551](https://github.com/midnightntwrk/midnight-js/pull/1551)) ([#1617](https://github.com/midnightntwrk/midnight-js/pull/1617)) ([4ae6699](https://github.com/midnightntwrk/midnight-js/commit/4ae6699ef670fba29b0ee19d13c8e06613bf3da5))
+* **midnight-js:** name ledger 9 types and pick the era by contract ([#1562](https://github.com/midnightntwrk/midnight-js/pull/1562)) ([d02b53c](https://github.com/midnightntwrk/midnight-js/commit/d02b53c9be99f45d03f831427a5ba0a3d4306f24)), closes [#1536](https://github.com/midnightntwrk/midnight-js/pull/1536) [#1555](https://github.com/midnightntwrk/midnight-js/pull/1555) [#1560](https://github.com/midnightntwrk/midnight-js/pull/1560) [#1536](https://github.com/midnightntwrk/midnight-js/pull/1536) [#1560](https://github.com/midnightntwrk/midnight-js/pull/1560) [/github.com/midnightntwrk/midnight-js/issues/1536#issuecomment-6478899757](https://github.com/midnightntwrk/midnight-js/pull/issuecomment-6478899757) [#1561](https://github.com/midnightntwrk/midnight-js/pull/1561) [#1527](https://github.com/midnightntwrk/midnight-js/pull/1527) [/github.com/midnightntwrk/midnight-js/issues/1527#issuecomment-6498016974](https://github.com/midnightntwrk/midnight-js/pull/issuecomment-6498016974) [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557) [#1492](https://github.com/midnightntwrk/midnight-js/pull/1492)
+* **midnight-js:** name the ledger in every protocol subpath ([#1560](https://github.com/midnightntwrk/midnight-js/pull/1560)) ([f3dd585](https://github.com/midnightntwrk/midnight-js/commit/f3dd58550544bfa32da4642fd213cabb4c8d993b)), closes [#1536](https://github.com/midnightntwrk/midnight-js/pull/1536)
+* **midnight-js:** read the declared runtime version for ledger 9 containers ([#1591](https://github.com/midnightntwrk/midnight-js/pull/1591)) ([fd77387](https://github.com/midnightntwrk/midnight-js/commit/fd77387918ee7cc6a9e1864e12b7985b836342cc)), closes [#1526](https://github.com/midnightntwrk/midnight-js/pull/1526) [#1583](https://github.com/midnightntwrk/midnight-js/pull/1583) [#1583](https://github.com/midnightntwrk/midnight-js/pull/1583) [#1592](https://github.com/midnightntwrk/midnight-js/pull/1592)
+* **midnight-js:** remove deprecated network-id package in 5.0.0 ([#1546](https://github.com/midnightntwrk/midnight-js/pull/1546)) ([#1606](https://github.com/midnightntwrk/midnight-js/pull/1606)) ([912aa9b](https://github.com/midnightntwrk/midnight-js/commit/912aa9b2ed81dcd4ce6d6a3bfd02ac63b37e30ca)), closes [#982](https://github.com/midnightntwrk/midnight-js/pull/982) [#1587](https://github.com/midnightntwrk/midnight-js/pull/1587) [#1587](https://github.com/midnightntwrk/midnight-js/pull/1587)
+* **midnight-js:** report each fault through one error class ([#1576](https://github.com/midnightntwrk/midnight-js/pull/1576)) ([815b78c](https://github.com/midnightntwrk/midnight-js/commit/815b78c6ebf22ba4f71d6cda41fe883cd401895e)), closes [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557) [#1492](https://github.com/midnightntwrk/midnight-js/pull/1492) [#1492](https://github.com/midnightntwrk/midnight-js/pull/1492) [#1575](https://github.com/midnightntwrk/midnight-js/pull/1575) [#1566](https://github.com/midnightntwrk/midnight-js/pull/1566) [#1566](https://github.com/midnightntwrk/midnight-js/pull/1566) [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557) [#1492](https://github.com/midnightntwrk/midnight-js/pull/1492)
+* **midnight-js:** scope private state access to a per-contract view ([#812](https://github.com/midnightntwrk/midnight-js/pull/812)) ([#1609](https://github.com/midnightntwrk/midnight-js/pull/1609)) ([4eebcbe](https://github.com/midnightntwrk/midnight-js/commit/4eebcbe4765349ce31685e25973f259febf4a4d1))
+* **midnight-js:** ship predefined network endpoints for preview, preprod and mainnet ([#1570](https://github.com/midnightntwrk/midnight-js/pull/1570)) ([6e93187](https://github.com/midnightntwrk/midnight-js/commit/6e93187be1795e6831f22ae865767924b23d404f)), closes [#1540](https://github.com/midnightntwrk/midnight-js/pull/1540) [#1573](https://github.com/midnightntwrk/midnight-js/pull/1573) [#1529](https://github.com/midnightntwrk/midnight-js/pull/1529) [#1540](https://github.com/midnightntwrk/midnight-js/pull/1540)
+* **midnight-js:** take both ledger eras in createCircuitCallTxInterface ([#1531](https://github.com/midnightntwrk/midnight-js/pull/1531)) ([8bbcede](https://github.com/midnightntwrk/midnight-js/commit/8bbcede462a7721bd424819d05515d306f4786ca)), closes [#1523](https://github.com/midnightntwrk/midnight-js/pull/1523)
+
+
+### Bug Fixes
+
+* **midnight-js:** check the network ledger version before proving a ledger 9 deploy ([#1613](https://github.com/midnightntwrk/midnight-js/pull/1613)) ([1bea26f](https://github.com/midnightntwrk/midnight-js/commit/1bea26f6ba7a73329d60239e6227f3ac71b6e422)), closes [#1559](https://github.com/midnightntwrk/midnight-js/pull/1559)
+* **midnight-js:** keep the transaction era in contract results and LedgerTransaction.unwrap ([#1612](https://github.com/midnightntwrk/midnight-js/pull/1612)) ([8188a16](https://github.com/midnightntwrk/midnight-js/commit/8188a166edf89fb5eee0905f732cb9ee80db95bf)), closes [#1611](https://github.com/midnightntwrk/midnight-js/pull/1611)
+* **midnight-js:** refuse an unknown protocolVersion on contract-state reads ([#1604](https://github.com/midnightntwrk/midnight-js/pull/1604)) ([69df3b4](https://github.com/midnightntwrk/midnight-js/commit/69df3b4f2b47cf161a028716be4d7e9c9352fef2)), closes [#1410](https://github.com/midnightntwrk/midnight-js/pull/1410) [#1410](https://github.com/midnightntwrk/midnight-js/pull/1410) [#1510](https://github.com/midnightntwrk/midnight-js/pull/1510) [#1601](https://github.com/midnightntwrk/midnight-js/pull/1601) [#1396](https://github.com/midnightntwrk/midnight-js/pull/1396) [#1155](https://github.com/midnightntwrk/midnight-js/pull/1155) [#1396](https://github.com/midnightntwrk/midnight-js/pull/1396) [#1410](https://github.com/midnightntwrk/midnight-js/pull/1410)
+* **midnight-js:** reject duplicate keys in ZK artifact manifests ([#1605](https://github.com/midnightntwrk/midnight-js/pull/1605)) ([e978aa9](https://github.com/midnightntwrk/midnight-js/commit/e978aa99d00cb713007bcb7fe1d51130eab52e3c)), closes [#1484](https://github.com/midnightntwrk/midnight-js/pull/1484) [#1479](https://github.com/midnightntwrk/midnight-js/pull/1479)
+
+
+### Documentation
+
+* add ADR for the per-era function mirror and one router per role ([#1579](https://github.com/midnightntwrk/midnight-js/pull/1579)) ([346aee7](https://github.com/midnightntwrk/midnight-js/commit/346aee7fce210f2e1002fc19c0fb3a2813ed8fe3)), closes [#1527](https://github.com/midnightntwrk/midnight-js/pull/1527) [#1581](https://github.com/midnightntwrk/midnight-js/pull/1581) [#1574](https://github.com/midnightntwrk/midnight-js/pull/1574) [#1581](https://github.com/midnightntwrk/midnight-js/pull/1581) [#1576](https://github.com/midnightntwrk/midnight-js/pull/1576) [#1575](https://github.com/midnightntwrk/midnight-js/pull/1575) [#1570](https://github.com/midnightntwrk/midnight-js/pull/1570) [#1576](https://github.com/midnightntwrk/midnight-js/pull/1576)
+* API documentation update ([#1553](https://github.com/midnightntwrk/midnight-js/pull/1553)) ([7cfbfbd](https://github.com/midnightntwrk/midnight-js/commit/7cfbfbdeaa8f7a1852626a078bbc59a1db2c17fa))
+* API documentation update ([#1610](https://github.com/midnightntwrk/midnight-js/pull/1610)) ([bfa386f](https://github.com/midnightntwrk/midnight-js/commit/bfa386f142d5527d843f3201ab80873add4041bc))
+* API documentation update ([#1622](https://github.com/midnightntwrk/midnight-js/pull/1622)) ([b1b9fd3](https://github.com/midnightntwrk/midnight-js/commit/b1b9fd36eac118bf112a515150079f26d0753bab))
+
+
+### Code Refactoring
+
+* **midnight-js:** carry contract states as one serialized class per kind ([#1601](https://github.com/midnightntwrk/midnight-js/pull/1601)) ([610b93b](https://github.com/midnightntwrk/midnight-js/commit/610b93b62edd1f7b430182ae7e1d8f753c590928)), closes [#1558](https://github.com/midnightntwrk/midnight-js/pull/1558) [#1551](https://github.com/midnightntwrk/midnight-js/pull/1551)
+* **midnight-js:** drop the AnyEra prefix from cross-era names ([#1575](https://github.com/midnightntwrk/midnight-js/pull/1575)) ([6bc4c6e](https://github.com/midnightntwrk/midnight-js/commit/6bc4c6eaa05d43a44d076180a8518c625c5a2559)), closes [#1566](https://github.com/midnightntwrk/midnight-js/pull/1566)
+* **midnight-js:** name every public export bound to ledger 9 after its ledger ([#1581](https://github.com/midnightntwrk/midnight-js/pull/1581)) ([edc216f](https://github.com/midnightntwrk/midnight-js/commit/edc216f5a455563e6b5342ef075afb855cbd4d59)), closes [#1574](https://github.com/midnightntwrk/midnight-js/pull/1574) [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524)
+* **midnight-js:** name the ledger era "era" in the public API ([#1603](https://github.com/midnightntwrk/midnight-js/pull/1603)) ([9452122](https://github.com/midnightntwrk/midnight-js/commit/9452122c98a3d2cd6005b1ace6e0b177ebcff755)), closes [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557) [#1506](https://github.com/midnightntwrk/midnight-js/pull/1506)
+* **midnight-js:** rename LedgerState to SerializedState ([#1571](https://github.com/midnightntwrk/midnight-js/pull/1571)) ([93f6b4a](https://github.com/midnightntwrk/midnight-js/commit/93f6b4a5e3238cf15617a4349ac4c7e87281be2c)), closes [#1560](https://github.com/midnightntwrk/midnight-js/pull/1560) [#1562](https://github.com/midnightntwrk/midnight-js/pull/1562) [#1563](https://github.com/midnightntwrk/midnight-js/pull/1563) [#1568](https://github.com/midnightntwrk/midnight-js/pull/1568) [#1557](https://github.com/midnightntwrk/midnight-js/pull/1557)
+* **midnight-js:** route each public contracts function with an exhaustive era switch ([#1593](https://github.com/midnightntwrk/midnight-js/pull/1593)) ([65db8a8](https://github.com/midnightntwrk/midnight-js/commit/65db8a801ddfc2b9f5a03bd96ee36c328dc6caea)), closes [#1528](https://github.com/midnightntwrk/midnight-js/pull/1528)
+* **midnight-js:** use plain language in era error names and messages ([#1547](https://github.com/midnightntwrk/midnight-js/pull/1547)) ([ee6d0d0](https://github.com/midnightntwrk/midnight-js/commit/ee6d0d096649eb47cfdba7a83f03716aa1580c58)), closes [#1491](https://github.com/midnightntwrk/midnight-js/pull/1491) [#1544](https://github.com/midnightntwrk/midnight-js/pull/1544) [#1544](https://github.com/midnightntwrk/midnight-js/pull/1544) [#1531](https://github.com/midnightntwrk/midnight-js/pull/1531)
+
+
+### Tests
+
+* **midnight-js:** pin verifyContractState on decoded states of both eras ([#1585](https://github.com/midnightntwrk/midnight-js/pull/1585)) ([7acacfc](https://github.com/midnightntwrk/midnight-js/commit/7acacfca02c7ca6d44b26526118a8fa75525d7e9)), closes [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524) [#1524](https://github.com/midnightntwrk/midnight-js/pull/1524)
+
+
+### Improvements
+
+* **deps:** bump the HF stack, Compact toolchain to 0.36 and the local prover to zkir-v3 ([#1599](https://github.com/midnightntwrk/midnight-js/pull/1599)) ([a2e241e](https://github.com/midnightntwrk/midnight-js/commit/a2e241e90f486f8e5c907c373659bdb8542ffb75)), closes [midnightntwrk/midnight-faucet-api#171](https://github.com/midnightntwrk/midnight-js/pull/171) [midnightntwrk/midnight-node#2375](https://github.com/midnightntwrk/midnight-js/pull/2375) [#1618](https://github.com/midnightntwrk/midnight-js/pull/1618)
+
 ## [5.0.0-rc.5](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.4...v5.0.0-rc.5) (2026-10-16)
 
 
@@ -57,6 +139,11 @@ All notable changes to this project will be documented in this file. See [commit
 
 * **deps:** bump GitHub Actions (junit-report, gh-release, skywalking-eyes) ([#1460](https://github.com/midnightntwrk/midnight-js/pull/1460)) ([8d93732](https://github.com/midnightntwrk/midnight-js/commit/8d93732504d13e7790b88a6ae50ba99393a4c141)), closes [#1273](https://github.com/midnightntwrk/midnight-js/pull/1273) [#1272](https://github.com/midnightntwrk/midnight-js/pull/1272) [#1271](https://github.com/midnightntwrk/midnight-js/pull/1271)
 * give each e2e lane its own test report comment ([#1471](https://github.com/midnightntwrk/midnight-js/pull/1471)) ([067adb3](https://github.com/midnightntwrk/midnight-js/commit/067adb3a24fba12d2a88326929d284b2e5c5e331)), closes [#1462](https://github.com/midnightntwrk/midnight-js/pull/1462) [#1463](https://github.com/midnightntwrk/midnight-js/pull/1463)
+
+
+### Improvements
+
+* **release:** bump version to 5.0.0-rc.5 ([#1519](https://github.com/midnightntwrk/midnight-js/pull/1519)) ([d570fb5](https://github.com/midnightntwrk/midnight-js/commit/d570fb5753d024e2cc206325fe270969e65fc2a7))
 
 ## [5.0.0-rc.4](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.3...v5.0.0-rc.4) (2026-10-09)
 
