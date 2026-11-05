@@ -7,11 +7,13 @@
 # Class: InvalidTransactionHandleError
 
 Thrown when a value reaching a method that takes a transaction handle is not
-a usable one, or when `LedgerTransaction.seal` is given a value it cannot
-seal at the stage it is asked for.
+a usable one, or when `LedgerTransaction.fromBytes` or `LedgerTransaction.seal`
+is given a value that is not a transaction of that era at that stage.
 
-The types rule these values out, so it is reachable only from JavaScript,
-across an untyped boundary, or from a second copy of this package.
+The types rule out every reason but `header-mismatch`, so those are reachable
+only from JavaScript, across an untyped boundary, or from a second copy of this
+package. `header-mismatch` is a check of the bytes at run time: typed code meets
+it with bytes, or a provider answer, of another era or stage.
 
 Catch it via its stable `code`, using `hasErrorCode` from
 `@midnight-ntwrk/midnight-js-utils`.

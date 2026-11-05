@@ -78,10 +78,13 @@ transaction object belongs to the ledger copy this framework loaded. It is an
   synchronous and must not load the v8 WASM.
 
 It guards both positions described above: a foreign object is refused before it
-can be an argument or a receiver. `LedgerTransaction.seal` in `types` turns a
-non-`'own'` answer into `ForeignLedgerTransactionError`, with the answer as its
-`reason`. Every handle is made by `seal`, so no transaction handle can hold a
-foreign object (`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`).
+can be an argument or a receiver. `proveLedger8Transaction` turns a non-`'own'`
+answer into `InvalidArgumentError`. `types` no longer uses it: a transaction
+handle holds bytes, not a ledger object, so `LedgerTransaction.seal` takes an
+object of any copy and keeps only its `serialize()` bytes, and the caller decodes
+the handle with its own copy
+(`docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md`).
+`ForeignLedgerTransactionError` was removed with that change.
 
 ## What checks this today
 

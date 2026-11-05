@@ -52,6 +52,12 @@ EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained
 
 ## Throws
 
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` If a ledger 9 artifact is deployed
+                               before the fork. Raised after one network version read, before the
+                               constructor runs and before anything is proven.
+
+## Throws
+
 Ledger8UnconfirmedError with operation `'deploy'` If what the chain did with a submitted retained-era
                                        deployment cannot be confirmed - the record unreadable, or
                                        back from an era the head it composed on cannot have

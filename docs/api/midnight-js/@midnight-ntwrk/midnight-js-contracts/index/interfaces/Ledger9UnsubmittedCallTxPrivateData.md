@@ -113,10 +113,10 @@ The JS representation of the value the circuit returned.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
+> `readonly` **unprovenTx**: [`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Unproven"`, `"v9"`\>
 
-The unproven transaction produced, as a v9 handle. Read it with
-`LedgerTransaction.unwrap(unprovenTx, 'v9')`.
+The unproven transaction produced, as a v9 handle. Read it with your own
+ledger copy: `unprovenTx.deserialize({ v9: Transaction })`.
 
 #### Inherited from
 
