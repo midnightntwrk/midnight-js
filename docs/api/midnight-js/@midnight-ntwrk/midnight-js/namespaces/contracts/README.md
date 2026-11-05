@@ -20,6 +20,12 @@ Re-exports [AnyFinalizedCallTxData](../../contracts/type-aliases/AnyFinalizedCal
 
 ***
 
+### AnyLedger8TransactionContext
+
+Re-exports [AnyLedger8TransactionContext](../../contracts/type-aliases/AnyLedger8TransactionContext.md)
+
+***
+
 ### AnySubmittedCallTx
 
 Re-exports [AnySubmittedCallTx](../../contracts/type-aliases/AnySubmittedCallTx.md)
@@ -374,6 +380,12 @@ Re-exports [isLedger8Result](../../contracts/variables/isLedger8Result.md)
 
 ***
 
+### isLedger8TransactionContext
+
+Re-exports [isLedger8TransactionContext](../../contracts/variables/isLedger8TransactionContext.md)
+
+***
+
 ### isLedger9TransactionContext
 
 Re-exports [isLedger9TransactionContext](../../contracts/variables/isLedger9TransactionContext.md)
@@ -647,6 +659,12 @@ Re-exports [Ledger8SigningKeyReason](../../contracts/type-aliases/Ledger8Signing
 ### Ledger8SubmittedCallTx
 
 Re-exports [Ledger8SubmittedCallTx](../../contracts/interfaces/Ledger8SubmittedCallTx.md)
+
+***
+
+### Ledger8TransactionContext
+
+Re-exports [Ledger8TransactionContext](../../contracts/interfaces/Ledger8TransactionContext.md)
 
 ***
 
@@ -1270,7 +1288,13 @@ Re-exports [verifyContractState](../../contracts/variables/verifyContractState.m
 
 ### withContractScopedTransaction
 
-Re-exports [withContractScopedTransaction](../../contracts/variables/withContractScopedTransaction.md)
+Re-exports [withContractScopedTransaction](../../contracts/functions/withContractScopedTransaction.md)
+
+***
+
+### withLedger8ContractScopedTransaction
+
+Re-exports [withLedger8ContractScopedTransaction](../../contracts/functions/withLedger8ContractScopedTransaction.md)
 
 ***
 

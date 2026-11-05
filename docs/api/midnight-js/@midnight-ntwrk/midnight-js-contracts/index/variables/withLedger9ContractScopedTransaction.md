@@ -9,7 +9,7 @@
 > `const` **withLedger9ContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Executes a function within a contract-scoped transaction on a ledger 9 head. The rules are those of
-[withContractScopedTransaction](withContractScopedTransaction.md).
+[withContractScopedTransaction](../functions/withContractScopedTransaction.md).
 
 ## Type Parameters
 
@@ -41,5 +41,5 @@ Executes a function within a contract-scoped transaction on a ledger 9 head. The
 
 ## Throws
 
-with reason `'scope-on-ledger8-network'` when the network is not on ledger 9.
+with reason `'scope-era-mismatch'` when the network is not on ledger 9.
         Raised before `fn` runs.

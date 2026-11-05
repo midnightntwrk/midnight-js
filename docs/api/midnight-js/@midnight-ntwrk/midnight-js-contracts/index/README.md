@@ -62,6 +62,7 @@
 - [Ledger8FoundDeployTxPublicData](interfaces/Ledger8FoundDeployTxPublicData.md)
 - [Ledger8InitialStateResult](interfaces/Ledger8InitialStateResult.md)
 - [Ledger8SubmittedCallTx](interfaces/Ledger8SubmittedCallTx.md)
+- [Ledger8TransactionContext](interfaces/Ledger8TransactionContext.md)
 - [Ledger8UnprovenDeployTxOptionsBase](interfaces/Ledger8UnprovenDeployTxOptionsBase.md)
 - [Ledger8UnsubmittedCallTxData](interfaces/Ledger8UnsubmittedCallTxData.md)
 - [Ledger8UnsubmittedDeployTxData](interfaces/Ledger8UnsubmittedDeployTxData.md)
@@ -106,6 +107,7 @@
 
 - [AnyContract](type-aliases/AnyContract.md)
 - [AnyFinalizedCallTxData](type-aliases/AnyFinalizedCallTxData.md)
+- [AnyLedger8TransactionContext](type-aliases/AnyLedger8TransactionContext.md)
 - [AnySubmittedCallTx](type-aliases/AnySubmittedCallTx.md)
 - [CallResultPrivate](type-aliases/CallResultPrivate.md)
 - [CallTxOptions](type-aliases/CallTxOptions.md)
@@ -192,8 +194,8 @@
 ## Variables
 
 - [DISPATCH\_BREADCRUMB\_MESSAGE](variables/DISPATCH_BREADCRUMB_MESSAGE.md)
+- [isLedger8TransactionContext](variables/isLedger8TransactionContext.md)
 - [isLedger9TransactionContext](variables/isLedger9TransactionContext.md)
-- [withContractScopedTransaction](variables/withContractScopedTransaction.md)
 - [withLedger9ContractScopedTransaction](variables/withLedger9ContractScopedTransaction.md)
 
 ## Functions
@@ -233,3 +235,5 @@
 - [submitTxAsync](functions/submitTxAsync.md)
 - [verifierKeysEqual](functions/verifierKeysEqual.md)
 - [verifyContractState](functions/verifyContractState.md)
+- [withContractScopedTransaction](functions/withContractScopedTransaction.md)
+- [withLedger8ContractScopedTransaction](functions/withLedger8ContractScopedTransaction.md)

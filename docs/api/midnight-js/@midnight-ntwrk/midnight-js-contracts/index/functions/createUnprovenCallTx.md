@@ -13,7 +13,12 @@ their documentation covers the parameters and the privacy-sensitive result.
 ## Throws
 
 EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 8 contract called with a
-        transaction context: a ledger 8 call cannot join a scoped transaction.
+        ledger 9 transaction context: after the hard fork a ledger 8 call cannot join a scoped transaction.
+
+## Throws
+
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 9 contract called
+        with a ledger 8 transaction context.
 
 ## Throws
 
@@ -29,7 +34,7 @@ EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-
 
 ## Call Signature
 
-> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -50,6 +55,10 @@ EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-
 #### options
 
 [`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+
+#### transactionContext?
+
+[`Ledger8TransactionContext`](../interfaces/Ledger8TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
