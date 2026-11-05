@@ -571,7 +571,7 @@ named twin per era:
 | `createUnprovenDeployTx` | `createLedger9UnprovenDeployTx` | `createLedger8UnprovenDeployTx` |
 | `createUnprovenDeployTxFromVerifierKeys` | `createLedger9UnprovenDeployTxFromVerifierKeys` | `createLedger8UnprovenDeployTxFromVerifierKeys` |
 | `submitDeployTx` | `submitLedger9DeployTx` | `submitLedger8DeployTx` |
-| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` | — |
+| `withContractScopedTransaction` | `withLedger9ContractScopedTransaction` | `withLedger8ContractScopedTransaction` |
 
 `createUnprovenDeployTxFromVerifierKeys` takes `config` as a new last argument:
 
@@ -611,8 +611,14 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
   };
 ```
 
-`withContractScopedTransaction` now refuses to run while the network is still on ledger 8
-(`EraMismatchError`, reason `'scope-on-ledger8-network'`).
+`withContractScopedTransaction` reads the network's era once and runs the scope of that era. Before
+the fork its function receives a `Ledger8TransactionContext`: type the function's parameter as one, or
+call `withLedger8ContractScopedTransaction`. A ledger 8 call joins the scope through
+`submitCallTx(providers, options, txCtx)` or `callTx.<circuit>(txCtx, ...args)`.
+`createUnprovenCallTx(providers, options, txCtx)` and `createLedger8UnprovenCallTx(providers, options, txCtx)`
+build against the scope's states without adding the call to it. The
+era-bound scope functions refuse a network of the other era (`EraMismatchError`, reason
+`'scope-era-mismatch'`).
 
 ### Changed: `submitTx`, `submitTxAsync`
 
@@ -744,7 +750,8 @@ a worker.
 `Ledger8FoundDeployTxPublicData`, `Ledger8FindDeployedContractOptions`, `Ledger8FoundContract`,
 `Ledger8DeployedContract`, `Ledger8FinalizedMaintenanceTxData`,
 `Ledger8CircuitMaintenanceTxInterface`, `Ledger8CircuitMaintenanceTxInterfaces`,
-`Ledger8ContractMaintenanceTxInterface`.
+`Ledger8ContractMaintenanceTxInterface`, `Ledger8TransactionContext`, `AnyLedger8TransactionContext`,
+`isLedger8TransactionContext`.
 
 Two shapes worth knowing:
 
@@ -865,7 +872,7 @@ export type EraMismatchReason =
   | 'ledger8-maintenance-on-ledger9-network'
   | 'ledger8-artifact-on-ledger9-contract'
   | 'ledger8-contract-state-unsupported'
-  | 'scope-on-ledger8-network'
+  | 'scope-era-mismatch'
   | 'ledger8-call-in-scope'
   | 'contract-era-unsupported'
   | 'unrecognised-result-era';

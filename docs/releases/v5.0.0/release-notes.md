@@ -112,8 +112,8 @@ Each item links to the full description in [breaking-changes.md](./breaking-chan
 - **Contract-state reads refuse an unknown `protocolVersion` (#1604)** with `UnknownRecordEraError`.
 - **The level private-state provider refuses state that would not survive storage (#1365)** with
   `PrivateStateSerializationError`.
-- **Contract-scoped transactions are refused while the network is on ledger 8 (#1218)** with
-  `EraMismatchError`. Before the fork, submit each call on its own.
+- **A contract-scoped transaction before the fork needs a ledger 8 context.** Type the scope
+  function's parameter as `Ledger8TransactionContext`, or call `withLedger8ContractScopedTransaction`.
 - **`SigningKey` is `{ tag, value }` (#970, #1414).** Keys stored by a 4.x client are still read.
 - **testkit-js (#1249, #1435, #1599, #1627).** Wallet SDK 2.0.0-rc.3; `NodeClient` takes the network id.
 

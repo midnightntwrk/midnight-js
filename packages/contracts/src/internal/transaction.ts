@@ -101,6 +101,8 @@ export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-j
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
+/** @internal The ledger era a scope context composes for. */
+export const ScopeEra = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/ScopeEra');
 
 /**
  * @internal The states a scope caches between its calls, decoded by the framework's own runtime.
@@ -173,16 +175,18 @@ export const readScopeHead = async (pdp: HeadVersionSource, logger?: BreadcrumbS
 };
 
 /**
- * The refusal of a scope on a head era that composes one call per transaction.
+ * The refusal of a scope function bound to one ledger era, run on a head of another.
  *
  * @internal
  */
-export const scopeRefusal = (head: LedgerEra): EraMismatchError =>
-  new EraMismatchError('scope-on-ledger8-network', { detail: `Network version: '${head}'.` });
+export const scopeEraMismatch = (
+  entryPoint: 'withLedger8ContractScopedTransaction' | 'withLedger9ContractScopedTransaction',
+  head: LedgerEra
+): EraMismatchError =>
+  new EraMismatchError('scope-era-mismatch', { detail: `Function: ${entryPoint}. Network version: '${head}'.` });
 
 /**
- * Resolves the ONE era reading a scope runs under, and refuses a scope the head
- * era cannot express.
+ * Resolves the ONE era reading a ledger 9 scope runs under, and refuses a head of another era.
  *
  * Read once, when the scope is created, and threaded down as a value. Nothing is
  * cached ACROSS scopes.
@@ -193,17 +197,13 @@ export const scopeRefusal = (head: LedgerEra): EraMismatchError =>
  * failing.
  *
  * The reading is breadcrumbed BEFORE the refusal below, so a refused scope
- * still says in the log which head it was refused on. No pipeline-selection
- * breadcrumb is written here: a scope does not select a pipeline -- the scope
- * machinery is current-era-only by construction -- so its only era decision is
- * the refusal, which already carries a registered code and remediation text.
+ * still says in the log which head it was refused on.
  *
  * @internal
  * @param pdp The read surface, for the single head read.
  * @param logger The optional logger the network-version-read breadcrumb is written to.
  * @returns The era facts the scope runs under.
- * @throws EraMismatchError with reason `'scope-on-ledger8-network'` if the head era composes only one call
- * per transaction, so has nothing for a scope to batch into.
+ * @throws EraMismatchError with reason `'scope-era-mismatch'` if the head is not on ledger 9.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  * @see {@link ForkCrossedRemediation} for why both properties of this placement
  *      are load-bearing.
@@ -212,11 +212,9 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   const reading = await readScopeHead(pdp, logger);
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
-  // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
-  // the caller the lazy pre-fork subpath exists for, would be told to acquire the retained runtime
-  // instead of being told what to do about its scope.
+  // refusal depend on that instantiation succeeding.
   if (reading.head !== 'v9') {
-    throw scopeRefusal(reading.head);
+    throw scopeEraMismatch('withLedger9ContractScopedTransaction', reading.head);
   }
 
   return acquireHeadEra(reading);
@@ -228,6 +226,7 @@ export class TransactionContextImpl<
   PCK extends Contract.ProvableCircuitId<C>
 > implements Transaction.Ledger9TransactionContext<C, PCK>, ScopeStateCache<C> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
+  readonly [ScopeEra] = 'v9';
   readonly providers: Ledger9ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
   /**
@@ -393,8 +392,7 @@ export const mergeUnsubmittedCallTxData = <
 };
 
 /**
- * Whether `u` is a scope context: the ONE runtime check, against the branded
- * `TypeId` the implementation stamps.
+ * Whether `u` carries the scope brand `TypeId`, of either era.
  *
  * Type-parameterised so a caller can narrow to ITS OWN context type instead of
  * the widest one. Both parameters default to the widest, so supplying none
@@ -410,44 +408,121 @@ export const isTransactionContext = <
   u: unknown
 ): u is Transaction.Ledger9TransactionContext<C, PCK> => typeof u === "object" && u != null && TypeId in u;
 
+/** @internal The entry points that take a transaction context, named in a refusal. */
+export type ScopeEntryPoint =
+  | 'submitCallTx'
+  | 'createUnprovenCallTx'
+  | 'createLedger8UnprovenCallTx'
+  | 'createLedger9UnprovenCallTx'
+  | 'withContractScopedTransaction'
+  | 'withLedger8ContractScopedTransaction'
+  | 'withLedger9ContractScopedTransaction'
+  | 'callTx';
+
 /**
- * Refuses a retained-era call that was handed a scope to join.
+ * The era a value's scope brand names: `undefined` when it carries no brand, `'unrecognised'`
+ * when the brand names no era this version knows. Read through `Symbol.for` keys, so a context
+ * made by another copy of this package reads the same.
  *
- * Reachable only from JavaScript today — the retained-era `submitCallTx` and
- * `createUnprovenCallTx` overloads declare no scope parameter — and still checked.
+ * @internal
+ */
+export const readScopeEra = (u: unknown): LedgerEra | 'unrecognised' | undefined => {
+  if (!isTransactionContext(u)) {
+    return undefined;
+  }
+  const era: unknown = Reflect.get(u, ScopeEra);
+  return era === 'v8' || era === 'v9' ? era : 'unrecognised';
+};
+
+/** @internal Whether `u` is a scope context of the ledger 9 era. */
+export const isLedger9ScopeContext = <
+  C extends Contract.Any = Contract.Any,
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+>(
+  u: unknown
+): u is Transaction.Ledger9TransactionContext<C, PCK> => readScopeEra(u) === 'v9';
+
+/** @internal The refusal of a value passed where a transaction context goes that is not one. */
+export const notATransactionContext = (entryPoint: ScopeEntryPoint, value: unknown): InvalidArgumentError =>
+  new InvalidArgumentError(
+    `${entryPoint} was passed a third argument that is not a transaction context (received ` +
+      `${value === null ? 'null' : typeof value}). A transaction context comes ` +
+      `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
+      `run this call as its own transaction.`
+  );
+
+/** @internal The refusal of a scope context whose brand names no era this version knows. */
+export const unrecognisedScopeContext = (entryPoint: ScopeEntryPoint): InvalidArgumentError =>
+  new InvalidArgumentError(
+    `${entryPoint} was passed a transaction context that names no ledger era this version of midnight-js ` +
+      'knows. Pass the context withContractScopedTransaction hands to its function.'
+  );
+
+/** @internal The refusal of a ledger 8 scope context made by another copy of this package. */
+export const foreignLedger8ScopeContext = (entryPoint: ScopeEntryPoint): InvalidArgumentError =>
+  new InvalidArgumentError(
+    `${entryPoint} was passed a ledger 8 transaction context made by another copy of ` +
+      '@midnight-ntwrk/midnight-js-contracts. Install one copy of the package.'
+  );
+
+/**
+ * The ledger 9 scope a ledger 9 call was handed, or `undefined` when it was handed none.
  *
- * KEEP THE THREE OUTCOMES APART. No third argument is the normal case; a real
- * scope is the mixed-era refusal; anything else is a malformed argument.
+ * @internal
+ * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
+ * @throws InvalidArgumentError for a value that is not a scope context, or one of an unknown era.
+ */
+export const ledger9ScopeOf = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  transactionContext: unknown,
+  circuitId: string,
+  entryPoint: ScopeEntryPoint
+): Transaction.Ledger9TransactionContext<C, PCK> | undefined => {
+  if (transactionContext === undefined) {
+    return undefined;
+  }
+  if (isLedger9ScopeContext<C, PCK>(transactionContext)) {
+    return transactionContext;
+  }
+  switch (readScopeEra(transactionContext)) {
+    case 'v8':
+      throw new EraMismatchError('ledger9-artifact-on-ledger8-network', { detail: `Circuit: '${circuitId}'.`, circuitId });
+    case 'unrecognised':
+      throw unrecognisedScopeContext(entryPoint);
+    default:
+      throw notATransactionContext(entryPoint, transactionContext);
+  }
+};
+
+/**
+ * Refuses a ledger 8 call that was handed something other than a ledger 8 scope of this copy of
+ * midnight-js. No third argument passes.
  *
  * @internal
  * @param circuitId The circuit whose call was made.
- * @param transactionContext The scope the caller passed, if any. Typed as
- * `unknown` for the same reason `isTransactionContext` is: the era-dispatching
- * implementation signature widens both overloads, and a JavaScript caller can pass
- * anything at all here.
+ * @param transactionContext The value the caller passed. Typed as `unknown`: a JavaScript caller
+ * can pass anything at all here.
  * @param entryPoint The public function the caller called, named in the refusal.
- * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if a real transaction context was passed.
- * @throws InvalidArgumentError if a third argument was passed that is not one.
- * @see {@link ForkCrossedRemediation} for why a retained-era call cannot join a
- *      scope, and why the malformed-argument case is an `InvalidArgumentError`.
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 9 scope.
+ * @throws InvalidArgumentError for anything else that was passed.
+ * @see {@link ForkCrossedRemediation} for why a ledger 8 call cannot join a ledger 9 scope.
  */
 export const assertScopeAdmitsLedger8Call = (
   circuitId: string,
   transactionContext: unknown,
-  entryPoint: 'submitCallTx' | 'createUnprovenCallTx'
+  entryPoint: ScopeEntryPoint
 ): void => {
-  if (transactionContext === undefined) {
-    return;
+  switch (readScopeEra(transactionContext)) {
+    case 'v9':
+      throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
+    case 'v8':
+      throw foreignLedger8ScopeContext(entryPoint);
+    case 'unrecognised':
+      throw unrecognisedScopeContext(entryPoint);
+    default:
+      if (transactionContext !== undefined) {
+        throw notATransactionContext(entryPoint, transactionContext);
+      }
   }
-  if (isTransactionContext(transactionContext)) {
-    throw new EraMismatchError('ledger8-call-in-scope', { detail: `Circuit: '${circuitId}'.`, circuitId });
-  }
-  throw new InvalidArgumentError(
-    `${entryPoint} was passed a third argument that is not a transaction context (received ` +
-      `${transactionContext === null ? 'null' : typeof transactionContext}). A transaction context comes ` +
-      `from the callback withContractScopedTransaction runs; pass that value, or omit the argument to ` +
-      `run this call as its own transaction.`
-  );
 };
 
 /**
@@ -457,7 +532,7 @@ export const assertScopeAdmitsLedger8Call = (
  * The error object itself is logged under `err`, so a pino logger records its stack and `cause`
  * chain, not only the one-line message.
  */
-const logScopeFailure = (
+export const logScopeFailure = (
   providers: { readonly loggerProvider?: LoggerProvider } | undefined,
   outerTxCtx: unknown,
   txOptions: Transaction.ScopedTransactionOptions | undefined,
@@ -575,8 +650,8 @@ export const scoped: {
   txCtxOrOptions?: Transaction.Ledger9TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
-  const txOptions = isTransactionContext<C, PCK>(txCtxOrOptions)
+  const outerTxCtx = isLedger9ScopeContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  const txOptions = isLedger9ScopeContext<C, PCK>(txCtxOrOptions)
     ? options
     : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
 
@@ -584,16 +659,18 @@ export const scoped: {
 };
 
 /**
- * Runs `fn` as a USER scope: one head read up front, and a refusal if the head
- * era cannot express a scope at all.
+ * Runs `fn` as a USER ledger 9 scope: one head read up front, unless the caller
+ * hands in a reading it already took, and a refusal if the head is not on ledger 9.
  *
- * The era read happens BEFORE the context exists, so a scope on an era that
- * cannot batch is refused before any circuit runs -- see
- * {@link resolveScopeEra}. Every call merged into the scope afterwards inherits
- * that one reading, which is what makes the head read once per scope rather
- * than once per call.
+ * The era read happens BEFORE the context exists, so a scope on a head of another
+ * era is refused before any circuit runs -- see {@link resolveScopeEra}. Every call
+ * merged into the scope afterwards inherits that one reading, which is what makes
+ * the head read once per scope rather than once per call.
  *
  * @internal
+ * @throws EraMismatchError with reason `'scope-era-mismatch'` for a ledger 8 scope passed as the
+ * outer scope, or a head that is not on ledger 9.
+ * @throws InvalidArgumentError for a scope context of an unknown era.
  */
 export const scopedTransaction = async <
   C extends Contract.Any,
@@ -612,7 +689,13 @@ export const scopedTransaction = async <
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
   // it was handed" failure `'ledger8-call-in-scope'` exists to stop, one case over.
-  const outerTxCtx = isTransactionContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  switch (readScopeEra(txCtxOrOptions)) {
+    case 'v8':
+      throw scopeEraMismatch('withLedger9ContractScopedTransaction', 'v8');
+    case 'unrecognised':
+      throw unrecognisedScopeContext('withLedger9ContractScopedTransaction');
+  }
+  const outerTxCtx = isLedger9ScopeContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {
     // Nested: no head read of its own. The scope this joins already made one,
     // which is what keeps it at one read per scope, and the outer scope is the

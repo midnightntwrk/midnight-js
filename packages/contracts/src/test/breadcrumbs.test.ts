@@ -29,7 +29,7 @@
  * Several era decisions a reader might expect are REFUSALS rather than
  * choices, and a refusal already carries a registered error code and
  * remediation text, so it is not breadcrumbed a second time: the retained-era
- * deploy path refuses, a scope on a pre-fork head refuses, and a provider that
+ * deploy path refuses, a ledger 9 scope on a pre-fork head refuses, and a provider that
  * answers on the wrong era's payload variant refuses. The fourth decision is the inverse
  * case, and the reason it needs a breadcrumb: it refuses nothing and returns
  * nothing, so an operator has no other way to see it happened.
@@ -450,7 +450,7 @@ describe('the scope head read leaves a breadcrumb, and a refused scope leaves on
   });
 
   it('breadcrumbs the reading a REFUSED scope was refused on, and selects no pipeline', async () => {
-    // A pre-fork scope is refused outright, so there is no pipeline selection
+    // A ledger 9 scope on a pre-fork head is refused outright, so there is no pipeline selection
     // to report -- but the reading the refusal rests on is exactly what an
     // operator needs to see, and it is reported BEFORE the refusal.
     const sink = createSink();
