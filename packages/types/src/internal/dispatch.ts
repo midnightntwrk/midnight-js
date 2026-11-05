@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes, TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { deserializeTransactionAtStage, type TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { ProviderEraUnsupportedError, type TransactionMethod } from '../errors';
-import { LedgerTransaction } from '../ledger-transaction';
+import { LedgerTransaction, type TransactionAnswer } from '../ledger-transaction';
 
 /** What each era's handler answers with, keyed by era. */
 export type EraAnswers = Readonly<Record<LedgerEra, unknown>>;
 
-/** Each era's ledger transaction class at one stage, keyed by era. */
-export type TransactionsAt<S extends TransactionStage> = { readonly [E in LedgerEra]: LedgerTransactionTypes[E][S] };
+/** A transaction answer of any ledger copy, for each era. */
+export type TransactionAnswers = Readonly<Record<LedgerEra, TransactionAnswer>>;
 
 /** One handler per ledger era, `undefined` for an era that is not served. */
 export type EraHandlers<S extends TransactionStage, A extends readonly unknown[], R extends EraAnswers> = {
-  readonly [E in LedgerEra]: ((tx: LedgerTransactionTypes[E][S], ...args: A) => Promise<R[E]>) | undefined;
+  readonly [E in LedgerEra]: ((tx: LedgerTransaction<S, E>, ...args: A) => Promise<R[E]>) | undefined;
 };
 
 /** How a provider method routes a handle to its era's handler. */
@@ -37,23 +37,44 @@ export interface Route<S extends TransactionStage, A extends readonly unknown[],
   readonly handlers: EraHandlers<S, A, R>;
   readonly receiver: object;
   readonly supportedEras: readonly LedgerEra[];
-  readonly answer: <E extends LedgerEra>(era: E, result: R[E]) => T;
+  readonly answer: <E extends LedgerEra>(era: E, result: R[E]) => T | Promise<T>;
 }
+
+/**
+ * Makes the handle a provider method answers with, in the era of the request and at the stage the
+ * method produces, from an object of any ledger copy or from bytes. The bytes the handle holds are
+ * decoded once, so a corrupt body is refused here rather than at a later step.
+ *
+ * @throws InvalidTransactionHandleError if the answer is not a transaction of that era at that stage.
+ * @throws PayloadNotATransactionError if the body of the answer does not decode.
+ * @throws Ledger8RuntimeMissingError if the answer is a v8 transaction and the v8 runtime cannot be loaded.
+ */
+export const sealAnswer = async <E extends LedgerEra, S extends TransactionStage>(
+  era: E,
+  stage: S,
+  answer: TransactionAnswer,
+  method: TransactionMethod
+): Promise<LedgerTransaction<S, E>> => {
+  const handle =
+    answer instanceof Uint8Array
+      ? LedgerTransaction.fromBytes(era, stage, answer, method)
+      : LedgerTransaction.seal(era, stage, answer, method);
+  await deserializeTransactionAtStage(era, stage, handle.serialize());
+  return handle;
+};
 
 const serve = async <E extends LedgerEra, S extends TransactionStage, A extends readonly unknown[], R extends EraAnswers, T>(
   route: Route<S, A, R, T>,
-  era: E,
-  handle: LedgerTransaction<S>,
+  handle: LedgerTransaction<S, E>,
   args: A
 ): Promise<T> => {
-  // Generic in E so the handler call is checked against era E's types; answer(era, ...) is not tied to E by the types.
+  const era: E = handle.era;
   const handler = route.handlers[era];
   if (handler === undefined) {
     throw new ProviderEraUnsupportedError(route.method, era, route.supportedEras);
   }
-  const tx = LedgerTransaction.unwrap(handle, era);
-  const result = await Reflect.apply<object, [LedgerTransactionTypes[E][S], ...A], Promise<R[E]>>(handler, route.receiver, [
-    tx,
+  const result = await Reflect.apply<object, [LedgerTransaction<S, E>, ...A], Promise<R[E]>>(handler, route.receiver, [
+    handle,
     ...args
   ]);
   return route.answer(era, result);
@@ -61,7 +82,7 @@ const serve = async <E extends LedgerEra, S extends TransactionStage, A extends 
 
 /**
  * Runs one provider method call: checks the handle, refuses an unserved era
- * before any work, and hands the unwrapped transaction to its era's handler.
+ * before any work, and hands the handle to its era's handler.
  *
  * @throws InvalidTransactionHandleError if `handle` is not a handle of this
  *         package (`not-a-handle`) or is at another stage (`wrong-stage`).
@@ -71,7 +92,4 @@ export const dispatch = async <S extends TransactionStage, A extends readonly un
   route: Route<S, A, R, T>,
   handle: LedgerTransaction<S>,
   args: A
-): Promise<T> => {
-  const checked = LedgerTransaction.require(handle, route.stage, route.method);
-  return serve(route, checked.era, checked, args);
-};
+): Promise<T> => serve(route, LedgerTransaction.require(handle, route.stage, route.method), args);

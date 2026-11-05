@@ -83,8 +83,11 @@ await submitDeployTx(providers, deployOptions);
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const record = await submitTx(providers, { unprovenTx });
 
-// The record's tx is a FinalizedTx handle of the record's era.
-const finalized = LedgerTransaction.unwrap(record.tx, record.era);
+// The record's tx is a FinalizedTx handle of the record's era. Decode it with
+// your own ledger copy (Transaction from @midnightntwrk/ledger-v9).
+if (record.era === 'v9') {
+  const finalized = record.tx.deserialize({ v9: Transaction });
+}
 ```
 
 `LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you

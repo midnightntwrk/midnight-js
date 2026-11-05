@@ -17,7 +17,6 @@ import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protoco
 import { describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';
-import { LedgerTransaction } from '../ledger-transaction';
 import { createLedger9MidnightProvider } from '../midnight-provider';
 import { createLedger9WalletProvider } from '../wallet-provider';
 import { handles, ledgerTransactions } from './ledger-transaction-fixtures';
@@ -45,10 +44,10 @@ describe('createLedger9WalletProvider', () => {
     const result = await provider.balanceTx(await handles.v9.Unbound());
 
     expect([result.era, result.stage]).toEqual(['v9', 'Finalized']);
-    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(balanced);
+    expect(result.serialize()).toEqual(balanced.serialize());
   });
 
-  it('hands the implementation the unwrapped ledger object and the ttl', async () => {
+  it('hands the implementation the handle and the ttl', async () => {
     const handle = await handles.v9.Unbound();
     const ttl = new Date(0);
     const impl = buildImpl(await ledgerTransactions.v9.Finalized());
@@ -56,7 +55,7 @@ describe('createLedger9WalletProvider', () => {
 
     await provider.balanceTx(handle, ttl);
 
-    expect(impl.balanceTx).toHaveBeenCalledWith(LedgerTransaction.unwrap(handle, 'v9'), ttl);
+    expect(impl.balanceTx).toHaveBeenCalledWith(handle, ttl);
   });
 
   it('refuses a v8 handle as an unserved era, and never calls the implementation', async () => {
@@ -96,14 +95,14 @@ describe('createLedger9WalletProvider', () => {
 });
 
 describe('createLedger9MidnightProvider', () => {
-  it('hands the implementation the unwrapped ledger object and returns its transaction id', async () => {
+  it('hands the implementation the handle and returns its transaction id', async () => {
     const handle = await handles.v9.Finalized();
     const submit = vi.fn(async () => 'tx-id');
     const provider = createLedger9MidnightProvider(submit);
 
     const txId = await provider.submitTx(handle);
 
-    expect(submit).toHaveBeenCalledWith(LedgerTransaction.unwrap(handle, 'v9'));
+    expect(submit).toHaveBeenCalledWith(handle);
     expect(txId).toBe('tx-id');
   });
 

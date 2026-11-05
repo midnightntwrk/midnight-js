@@ -14,21 +14,25 @@ Every transaction crossing `proveTx`, `balanceTx` and `submitTx`, and every
 transaction a `contracts` function takes or returns, is now an opaque handle:
 `UnprovenTx`, `UnboundTx` or `FinalizedTx`. The handle carries its ledger era
 (`'v8'` or `'v9'`) as data, and the stage is part of the type, so passing an
-unproven transaction to `MidnightProvider.submitTx` is a compile error. Make a handle with
-`LedgerTransaction.seal(era, stage, tx)` and read it with
-`LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
-copy of the ledger package, so a duplicate install fails with a coded error
-instead of corrupting a WASM call.
+unproven transaction to `MidnightProvider.submitTx` is a compile error. The
+handle holds the transaction's bytes, never a ledger object. Make one with
+`LedgerTransaction.fromBytes(era, stage, bytes)`, which checks the header that
+era's ledger writes for that stage, or with `LedgerTransaction.seal(era, stage, tx)`,
+which takes an object of any ledger copy. Decode it with your own ledger copy:
+`handle.deserialize({ v9: Transaction })`, so a duplicate install of the ledger
+package never hands a WASM object to the wrong copy (#1551).
 
 `watchForTxData` / `watchForDeployTxData` report a `FinalizedTxRead`, an
-`era`-discriminated record whose `tx` is a `FinalizedTx` of the same era. Read it with
-`LedgerTransaction.unwrap(record.tx, record.era)`, or narrow with a plain
-`switch (record.era)` when the eras need different code.
+`era`-discriminated record whose `tx` is a `FinalizedTx` of the same era. Narrow on
+`record.era` and read it with `record.tx.deserialize({ v9: Transaction })`, or use a
+plain `switch (record.era)` when the eras need different code. Reading a v8 record
+does not load the v8 runtime.
 
 Implementations of `ProofProvider`, `WalletProvider` and `MidnightProvider`
 must be updated. `createLedger9WalletProvider` and `createLedger9MidnightProvider` wrap a
 v9-only implementation, and the `create*FromHandlers` factories build one from
-a handler per era, so the handle never enters your code.
+a handler per era: each handler receives the handle of its era and can answer
+with a transaction object of any ledger copy or its bytes.
 
 The discriminant on a read record is *derived* from the record's own
 `protocolVersion`, never asserted, and that same answer picks the ledger runtime

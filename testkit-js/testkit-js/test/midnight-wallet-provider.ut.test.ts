@@ -79,7 +79,6 @@ interface EraFixture {
   readonly walletFinalizedBytes: () => Promise<Uint8Array>;
   readonly walletTransactionClass: () => Promise<unknown>;
   readonly walletCopy: string;
-  readonly frameworkTransactionClass: () => Promise<unknown>;
 }
 
 const eras: readonly EraFixture[] = [
@@ -90,8 +89,7 @@ const eras: readonly EraFixture[] = [
     finalized: async () => LedgerTransaction.seal('v9', 'Finalized', (await ledger9Unbound()).bind()),
     walletFinalizedBytes: async () => (await ledger9Unbound(WALLET_NETWORK_ID)).bind().serialize(),
     walletTransactionClass: () => Promise.resolve(walletSdkLedger9.Transaction),
-    walletCopy: 'a separate object decoded from the bytes (the v9 ledger module is shared today, so not a separate instance)',
-    frameworkTransactionClass: () => Promise.resolve(Transaction)
+    walletCopy: 'a separate object decoded from the bytes (the v9 ledger module is shared today, so not a separate instance)'
   },
   {
     era: 'v8',
@@ -102,8 +100,7 @@ const eras: readonly EraFixture[] = [
     walletFinalizedBytes: async () =>
       (await ledger8Unbound(await loadLedger8Protocol(), WALLET_NETWORK_ID)).bind().serialize(),
     walletTransactionClass: () => Promise.resolve(walletSdkLedger8.Transaction),
-    walletCopy: "an object of the wallet SDK's own v8 ledger instance",
-    frameworkTransactionClass: async () => (await loadLedger8Protocol()).Transaction
+    walletCopy: "an object of the wallet SDK's own v8 ledger instance"
   }
 ];
 
@@ -120,12 +117,11 @@ interface BalancingWallet {
   readonly wallet: WalletFacade;
   readonly recipe: UnboundTransactionRecipe;
   readonly signedRecipe: BalancingRecipe;
-  readonly walletFinalized: object;
 }
 
 // Balance, sign and finalize are stubbed; the recipes are opaque markers. The
 // finalized stage is a real handle around a transaction of the wallet's own
-// ledger copy, because the provider reads it back into the framework's copy.
+// ledger copy, because the provider reads its bytes back.
 const createBalancingWallet = async (fixture: EraFixture = eras[0]): Promise<BalancingWallet> => {
   const recipe = {} as UnboundTransactionRecipe;
   const signedRecipe = {} as BalancingRecipe;
@@ -142,7 +138,7 @@ const createBalancingWallet = async (fixture: EraFixture = eras[0]): Promise<Bal
     submitTransaction: vi.fn(async () => TRANSACTION_ID),
     state: walletAt(fixture.activeVersion).state
   };
-  return { wallet: stub as WalletFacade, recipe, signedRecipe, walletFinalized };
+  return { wallet: stub as WalletFacade, recipe, signedRecipe };
 };
 
 const createKeystoreStub = (): UnshieldedKeystore => {
@@ -201,12 +197,12 @@ describe('MidnightWalletProvider', () => {
       const atRetainedEpoch = { ...wallet, state: walletAt(RETAINED_VERSION).state } as WalletFacade;
       const provider = await createProvider(atRetainedEpoch);
       const unbound = await eras[0].unbound();
-      const seal = vi.spyOn(LedgerTransaction, 'seal');
+      const fromBytes = vi.spyOn(LedgerTransaction, 'fromBytes');
 
       const rejection = await rejectionOf(provider.balanceTx(unbound));
 
       expect(String(rejection)).toContain('ProtocolVersionMismatchError');
-      expect(seal).not.toHaveBeenCalled();
+      expect(fromBytes).not.toHaveBeenCalled();
     });
   });
 
@@ -215,22 +211,20 @@ describe('MidnightWalletProvider', () => {
       const { wallet } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
       const unbound = await fixture.unbound();
-      const frameworkTx = LedgerTransaction.unwrap(unbound, fixture.era);
       const adopt = vi.spyOn(WalletTransaction, 'adopt');
 
       await provider.balanceTx(unbound);
 
       const [stage, adopted, version] = adopt.mock.calls[0];
       expect(stage).toBe('Unbound');
-      expect(adopted).not.toBe(frameworkTx);
       expect(adopted).toBeInstanceOf(await fixture.walletTransactionClass());
-      expect(adopted.serialize()).toEqual(frameworkTx.serialize());
+      expect(adopted.serialize()).toEqual(unbound.serialize());
       expect(version).toBe(fixture.activeVersion);
       expect(vi.mocked(wallet.balanceUnboundTransaction).mock.calls[0][0]).toBe(adopt.mock.results[0].value);
     });
 
-    it("returns a finalized handle of the same era around an object of the framework's ledger copy", async () => {
-      const { wallet, recipe, signedRecipe, walletFinalized } = await createBalancingWallet(fixture);
+    it('returns a finalized handle of the same era with the bytes the wallet finalized', async () => {
+      const { wallet, recipe, signedRecipe } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
 
       const unbound = await fixture.unbound();
@@ -241,9 +235,6 @@ describe('MidnightWalletProvider', () => {
       expect(vi.mocked(wallet.finalizeRecipe).mock.calls[0][0]).toBe(signedRecipe);
       expect(balanced.era).toBe(fixture.era);
       expect(balanced.stage).toBe('Finalized');
-      const unwrapped = LedgerTransaction.unwrap(balanced, fixture.era);
-      expect(unwrapped).toBeInstanceOf(await fixture.frameworkTransactionClass());
-      expect(unwrapped).not.toBe(walletFinalized);
       expect(balanced.serialize()).toEqual(await fixture.walletFinalizedBytes());
       expect(balanced.serialize()).not.toEqual(unbound.serialize());
     });
@@ -291,16 +282,14 @@ describe('MidnightWalletProvider', () => {
       const { wallet } = await createBalancingWallet(fixture);
       const provider = await createProvider(wallet);
       const finalized = await fixture.finalized();
-      const frameworkTx = LedgerTransaction.unwrap(finalized, fixture.era);
       const adopt = vi.spyOn(WalletTransaction, 'adopt');
 
       const submitted = await provider.submitTx(finalized);
 
       const [stage, adopted, version] = adopt.mock.calls[0];
       expect(stage).toBe('Finalized');
-      expect(adopted).not.toBe(frameworkTx);
       expect(adopted).toBeInstanceOf(await fixture.walletTransactionClass());
-      expect(adopted.serialize()).toEqual(frameworkTx.serialize());
+      expect(adopted.serialize()).toEqual(finalized.serialize());
       expect(version).toBe(fixture.activeVersion);
       expect(vi.mocked(wallet.submitTransaction).mock.calls[0][0]).toBe(adopt.mock.results[0].value);
       expect(submitted).toBe(TRANSACTION_ID);

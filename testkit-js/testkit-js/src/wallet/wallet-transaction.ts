@@ -13,10 +13,6 @@
  * limitations under the License.
  */
 
-import {
-  deserializeTransactionAtStage,
-  type LedgerTransactionTypes
-} from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { ProtocolVersion, type WalletFacade, WalletTransaction } from '@midnightntwrk/wallet-sdk';
 // From the same copy `loadWalletLedger8()` loads at runtime.
@@ -90,37 +86,32 @@ const activeEpoch = async (wallet: VersionedWallet): Promise<ProtocolVersion.Pro
   ProtocolVersion.epochOf(await activeProtocolVersion(wallet), FORK_SCHEDULE.v9);
 
 /**
- * Hands a framework transaction to the wallet SDK.
+ * Hands a transaction handle to the wallet SDK.
  *
- * The transaction is serialized and decoded with the wallet SDK's own copy of
- * the era's ledger, then adopted at the chain's active protocol version: the
- * framework's object is never passed to the SDK, whose ledger copy may be a
- * different WASM instance.
+ * The handle's bytes are decoded with the wallet SDK's own copy of the era's
+ * ledger, then adopted at the chain's active protocol version.
  */
 export const adoptInWallet = async <E extends LedgerEra, S extends WalletStage>(
   wallet: VersionedWallet,
   era: E,
   stage: S,
-  tx: LedgerTransactionTypes[E][S]
+  tx: { serialize(): Uint8Array }
 ): Promise<WalletTransaction<S>> => {
   const decoders = await walletDecoders[era]();
   return WalletTransaction.adopt(stage, decoders[stage](tx.serialize()), await activeProtocolVersion(wallet));
 };
 
 /**
- * Reads a finalized wallet SDK handle back into the framework's ledger copy.
- *
- * The era is the one the transaction was handed over in, never re-derived from
- * the chain: a transaction does not change era while it is being balanced.
+ * Reads the bytes of a finalized wallet SDK handle. The wallet provider factory
+ * seals them in the era of the request and decodes them once.
  */
-export const finalizedFromWallet = async <E extends LedgerEra>(
+export const finalizedFromWallet = async (
   wallet: VersionedWallet,
-  era: E,
   handle: WalletTransaction<'Finalized'>
-): Promise<LedgerTransactionTypes[E]['Finalized']> => {
+): Promise<Uint8Array> => {
   const unwrapped = WalletTransaction.unwrapWithin<Serializable>(handle, await activeEpoch(wallet));
   if (Either.isLeft(unwrapped)) {
     throw unwrapped.left;
   }
-  return deserializeTransactionAtStage(era, 'Finalized', unwrapped.right.serialize());
+  return unwrapped.right.serialize();
 };

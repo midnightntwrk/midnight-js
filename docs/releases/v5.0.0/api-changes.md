@@ -126,7 +126,7 @@ export const parseContractKeyLocation: (s: string) => ContractKeyLocation | unde
 export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 ```
 
-### Transaction handles at the provider methods (#1204, #1533)
+### Transaction handles at the provider methods (#1204, #1533, #1551)
 
 ```ts
 // Method names — closed, so a caught error's `method` can be switched on.
@@ -134,16 +134,21 @@ export type TransactionMethod = 'proveTx' | 'balanceTx' | 'submitTx';
 export type ReadMethod = 'watchForTxData' | 'watchForDeployTxData';
 export type ProviderMethod = TransactionMethod | ReadMethod;
 
-// One opaque handle per stage. The stage is in the type; the era is data on the handle, and in
-// the type too when it is known (`E` defaults to any era).
+// One opaque handle per stage, holding the transaction's bytes. The stage is in the type; the era
+// is data on the handle, and in the type too when it is known (`E` defaults to any era).
 export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
-export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.seal' | 'LedgerTransaction.unwrap';
-export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra = LedgerEra> {
+export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTransaction.fromBytes' | 'LedgerTransaction.seal';
+// The caller's own `Transaction` class, one per era, e.g. `{ v9: Transaction }` from `@midnightntwrk/ledger-v9`.
+export type TransactionDecoders = Readonly<Partial<Record<LedgerEra, TransactionDecoder>>>;
+// What a `proveTx` / `balanceTx` handler answers with: a transaction object of any ledger copy, or its bytes.
+export type TransactionAnswer = { serialize(): Uint8Array } | Uint8Array;
+export class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = LedgerEra> {
   readonly era: E;
   readonly stage: S;
+  static fromBytes<E extends LedgerEra, S extends TransactionStage>(era: E, stage: S, bytes: Uint8Array, method?: TransactionHandleMethod): LedgerTransaction<S, E>;
+  static seal<E extends LedgerEra, S extends TransactionStage>(era: E, stage: S, tx: { serialize(): Uint8Array }, method?: TransactionHandleMethod): LedgerTransaction<S, E>;
   serialize(): Uint8Array;
-  static seal<E extends LedgerEra, S extends TransactionStage>(era: E, stage: S, tx: LedgerTransactionTypes[E][S], method?: TransactionHandleMethod): LedgerTransaction<S, E>;
-  static unwrap<E extends LedgerEra, S extends TransactionStage>(handle: LedgerTransaction<S>, era: E): LedgerTransactionTypes[E][S];
+  deserialize<D extends TransactionDecoders>(decoders: TransactionDecodersFor<D, E>): DecodedTransaction<D, E, S>;
   static require<S extends TransactionStage>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
   static isLedgerTransaction(value: unknown): value is LedgerTransaction<TransactionStage>;
 }
@@ -161,16 +166,19 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord { readonly era
 export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
 // Refusals.
-export class ForeignLedgerTransactionError extends MidnightJsError { readonly era: LedgerEra; readonly reason: 'foreign-instance' | 'ledger8-not-loaded'; readonly method: TransactionHandleMethod; }
-export class InvalidTransactionHandleError extends MidnightJsError { readonly method: TransactionHandleMethod; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage' | 'not-a-transaction' | 'stage-mismatch'; readonly detail: string; }
+export class InvalidTransactionHandleError extends MidnightJsError { readonly method: TransactionHandleMethod; readonly reason: 'not-a-handle' | 'wrong-stage' | 'invalid-stage' | 'not-bytes' | 'not-a-transaction' | 'header-mismatch'; readonly detail: string; }
 export class TransactionEraMismatchError extends MidnightJsError { readonly expected: LedgerEra; readonly actual: LedgerEra; }
+export class TransactionDecoderMissingError extends MidnightJsError { readonly era: LedgerEra; }
+export class TransactionDecodeFailedError extends MidnightJsError { readonly era: LedgerEra; readonly stage: TransactionStage; }
 
 // Adapters: lift a v9-only implementation into the handle interfaces.
-export interface Ledger9WalletProvider { /* balanceTx / getCoinPublicKey / getEncryptionPublicKey, on v9 ledger objects */ }
+export interface Ledger9WalletProvider { balanceTx(tx: LedgerTransaction<'Unbound', 'v9'>, ttl?: Date): Promise<TransactionAnswer>; /* getCoinPublicKey / getEncryptionPublicKey */ }
 export const createLedger9WalletProvider: (impl: Ledger9WalletProvider) => WalletProvider;
-export const createLedger9MidnightProvider: (submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>) => MidnightProvider;
+export const createLedger9MidnightProvider: (submitTx: (tx: LedgerTransaction<'Finalized', 'v9'>) => Promise<TransactionId>) => MidnightProvider;
 
-// Per-era factories: one handler per ledger era, `undefined` for an era not served.
+// Per-era factories: one handler per ledger era, `undefined` for an era not served. Each handler
+// receives `LedgerTransaction<S, E>` of its era; a `proveTx` / `balanceTx` handler returns a
+// `TransactionAnswer`, which the factory seals in the request's era at the method's output stage.
 export const createProofProviderFromHandlers: (handlers: ProofProviderHandlers) => ProofProvider;
 export const createWalletProviderFromHandlers: (handlers: WalletProviderHandlers) => WalletProvider;
 export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHandlers) => MidnightProvider;
@@ -181,19 +189,23 @@ export const createMidnightProviderFromHandlers: (handlers: MidnightProviderHand
 narrows `tx.era` with it. `ProofProvider.proveTx`, `WalletProvider.balanceTx` and
 `MidnightProvider.submitTx` take and return handles; `submitTx` still resolves
 a bare `TransactionId`. `PublicDataProvider.watchForTxData` /
-`watchForDeployTxData` now resolve `FinalizedTxRead`; read its
-transaction with `LedgerTransaction.unwrap(record.tx, record.era)`.
+`watchForDeployTxData` now resolve `FinalizedTxRead`; narrow on `record.era`
+and read its transaction with `record.tx.deserialize({ v9: Transaction })`.
+
+`@midnight-ntwrk/midnight-js-protocol/version` publishes `LEDGER_TRANSACTION_TAGS`
+(the header each ledger writes in front of a transaction, one row per era and
+stage, which `fromBytes` checks) and `TRANSACTION_STAGES`.
 
 `@midnight-ntwrk/midnight-js-protocol/transaction` (new subpath) publishes
 `deserializeTransactionAtStage(era, stage, bytes)`, which reads bytes into the
-framework's own ledger copy, and the two checks `seal` runs:
-`isFrameworkLedgerTransaction(era, value)` and `transactionStageOf(tx)`, which
-reads a transaction's stage from its serialized tag.
+framework's own ledger copy, `isFrameworkLedgerTransaction(era, value)` and
+`transactionStageOf(tx)`, which reads a transaction's stage from its serialized
+tag.
 
 `utils.deserializeLedgerTransaction(era, bytes, ctx)` and the indexer's
 `parseHexTransaction(era, hex, details?)` take the era to read in and resolve a
-`LedgerTransaction<'Finalized', E>`; both are now async, because a v8 read loads
-the v8 runtime first.
+`LedgerTransaction<'Finalized', E>`. Both are async. They check only the header
+and do not decode, so a v8 read does not load the v8 runtime.
 
 ### On-chain state as bytes (#1550)
 
@@ -670,8 +682,8 @@ export const CONTRACTS_ERROR_CODES: Readonly<{ ERA_INVARIANT_VIOLATION: string }
 export const PROVIDER_ERROR_CODES: Readonly<{
   DECODER_ERA_UNSUPPORTED: string; UNKNOWN_RECORD_ERA: string;
   PROVIDER_ERA_UNSUPPORTED: string; UNUSABLE_ERA_ENTRY: string;
-  FOREIGN_LEDGER_TRANSACTION: string; INVALID_TRANSACTION_HANDLE: string;
-  TRANSACTION_ERA_MISMATCH: string;
+  INVALID_TRANSACTION_HANDLE: string; TRANSACTION_ERA_MISMATCH: string;
+  TRANSACTION_DECODER_MISSING: string; TRANSACTION_DECODE_FAILED: string;
 }>;
 export type ContractsErrorCode = /* union of the above values */;
 export type ProviderErrorCode = /* union of the above values */;

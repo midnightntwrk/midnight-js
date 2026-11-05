@@ -14,7 +14,12 @@
  */
 
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import {
+  type CoinPublicKey,
+  type ContractAddress,
+  type EncPublicKey,
+  Transaction as Ledger9Transaction
+} from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -150,7 +155,7 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
     unprovenTx: LedgerTransaction.seal(
       'v9',
       'Unproven',
-      LedgerTransaction.unwrap(current.unprovenTx, 'v9').merge(LedgerTransaction.unwrap(next.unprovenTx, 'v9'))
+      current.unprovenTx.deserialize({ v9: Ledger9Transaction }).merge(next.unprovenTx.deserialize({ v9: Ledger9Transaction }))
     ),
     circuitId: Array.from(circuitIds)
   };
