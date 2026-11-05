@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** If you recompile your contracts with the ledger 9 Compact toolchain, the fork costs no further code change beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-era-tagged-records) — there is no new API to call at the boundary. If you keep pre-fork artifacts callable, those calls answer with the retained era's own result types and fail with the same `TxFailedError`; both are covered in [Step 14](#step-14--operating-across-the-ledger-fork), which also carries the timing and operational consequences that apply either way. Adopt this major *before* the fork.
+**This is also the release that carries a dApp across the ledger v8 to v9 hard fork.** Recompile your contracts with the ledger 9 Compact toolchain for everything you deploy from now on; beyond the bump and the mechanical changes in [Step 13](#step-13--pass-transactions-as-handles-and-narrow-the-era-tagged-records), the fork then costs no further code change. A contract deployed before the fork is the exception: keep calling it through its pre-fork artifacts, because the recompiled ones carry different verifier keys and are refused for it ([Step 14](#step-14--operating-across-the-ledger-fork)). Those pre-fork calls answer with the retained era's own result types and fail with the same `TxFailedError`. Step 14 covers both, and also the timing and operational consequences that apply either way. Adopt this major *before* the fork.
 
 The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
@@ -528,28 +528,26 @@ This release is the one that carries a dApp across the ledger v8 → v9 hard
 fork. Steps 1 and 13 are the whole code migration — bump, then narrow where the
 compiler tells you to.
 
-**If you recompile your contracts with the ledger 9 Compact toolchain, there is
-no further code change**, and most of this step is about timing and operations
-rather than code. This includes re-attaching to a contract deployed before the
-fork: `findDeployedContract` accepts it, and reports its deploy record tagged `v8`
-(see Step 13). Nothing in that path asks you to call a new API, branch on
-the network's era, or maintain a second code path.
+**Contracts you deploy after the fork use recompiled artifacts**, and need no
+further code change: most of this step is about timing and operations rather
+than code.
 
-One case does need more. A contract deployed before the fork that has had **no
-state-changing call since the fork** still has its state in the ledger-8 format.
-The indexer serves it that way, so `findDeployedContract` itself throws
-`IndexerDataError`, and so does any call through recompiled artifacts. The first
-state-changing call after the fork must therefore go through the pre-fork
-artifacts (see the next paragraph). After that call, recompiled artifacts find
-and call the contract as described above.
-
-**If you keep pre-fork artifacts callable instead**, there is more to it, and it
-is not optional reading: those calls run the retained pipeline and answer with
-the retained era's result types, which differ from the current era's in six
-places, and they fail with a different error class. Both are described under
+**A contract deployed before the fork keeps its pre-fork artifacts.** compactc
+0.36 emits ZKIR v3 only, so recompiling a contract gives its circuits different
+verifier keys than the ones a pre-fork deploy (ZKIR v2) registered on chain.
+`findDeployedContract` with recompiled artifacts therefore refuses such a
+contract with `ContractTypeError`; the circuits whose keys differ are on
+`mismatchedCircuitIds`. Keep finding and calling it through the artifacts it was
+deployed with. Those calls run the retained pipeline: they answer with the
+retained era's result types, which differ from the current era's in six places,
+and they fail with a different error class. Both are described under
 [What a retained-era call answers with](#what-a-retained-era-call-answers-with)
-below. Recompiling remains the preferred path — a retained artifact cannot be
-deployed at all, only called.
+below. A retained artifact can only be called, never deployed.
+
+A contract deployed before the fork that has had **no state-changing call since
+the fork** still has its state in the ledger-8 format. The indexer serves it
+that way, and its first state-changing call after the fork goes through the
+pre-fork artifacts like every other call to it.
 
 Adopt this major **before** the fork, with enough lead time to ship it to your
 users rather than merely to merge it. A build still on the previous major when
