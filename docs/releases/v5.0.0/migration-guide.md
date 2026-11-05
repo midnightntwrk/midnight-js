@@ -52,7 +52,7 @@ features, see [new-features.md](./new-features.md).
 12. [Rename the ledger 9 types and fix generic code](#step-12--rename-the-ledger-9-types-and-fix-generic-code)
 13. [Fix deploy options and scoped transactions](#step-13--fix-deploy-options-and-scoped-transactions)
 14. [Update error handling](#step-14--update-error-handling)
-15. [Move signing keys to `{ tag, value }`](#step-15--move-signing-keys-to--tag-value-)
+15. [Move signing keys to `{ tag, value }`](#step-15--move-signing-keys-to-the--tag-value--shape)
 16. [Code that uses the ledger directly](#step-16--code-that-uses-the-ledger-directly)
 17. [Custom `PublicDataProvider` implementations](#step-17--custom-publicdataprovider-implementations)
 18. [testkit-js users](#step-18--testkit-js-users)
@@ -573,14 +573,24 @@ const txId = await midnightProvider.submitTx(balanced);
 
 ### `submitTx` from `contracts`
 
-```ts
-// Before (v4.1.1)
-const finalized = await submitTx(providers, { unprovenTx }); // UnprovenTransaction
+Before (v4.1.1), `unprovenTx` was a ledger `UnprovenTransaction`:
 
-// After (v5.0.0)
-const finalized = await submitTx(providers, {
-  unprovenTx: LedgerTransaction.seal('v9', 'Unproven', unprovenTx)
-});
+```ts
+const finalized = await submitTx(providers, { unprovenTx });
+```
+
+After (v5.0.0), seal it first. `ledgerUnprovenTx` stands for the ledger transaction you built:
+
+```ts
+import { contracts, types } from '@midnight-ntwrk/midnight-js';
+
+declare const providers: types.MidnightProviders;
+declare const ledgerUnprovenTx: types.LedgerTransactionTypes['v9']['Unproven'];
+
+const submitBuiltTransaction = async (): Promise<types.FinalizedTxRead> => {
+  const unprovenTx = types.LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
+  return contracts.submitTx(providers, { unprovenTx });
+};
 ```
 
 `submitTx` now resolves to `FinalizedTxRead` ([Step 11](#step-11--narrow-finalized-records-on-era))
@@ -592,17 +602,33 @@ The results of `createUnprovenCallTx`, `createUnprovenDeployTx` and the deploy a
 functions carry `private.unprovenTx` as a handle. Pass it on as it is. Decode it only where
 you need the ledger object.
 
+Before (v4.1.1):
+
 ```ts
-// Before (v4.1.1)
 console.log(callTx.private.unprovenTx.identifiers());
+```
 
-// After (v5.0.0)
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+After (v5.0.0), decode it with your own ledger copy only where you need the object, and pass
+the handle on unchanged. `inspect` stands for your own code:
 
-const { unprovenTx } = callTx.private;
-if (unprovenTx.era === 'v9') {
-  console.log(unprovenTx.deserialize({ v9: Transaction }).identifiers());
-}
+```ts
+import { contracts, type ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
+import { Transaction, type UnprovenTransaction } from '@midnightntwrk/ledger-v9';
+
+declare const callTx: contracts.UnsubmittedCallTxData<
+  contracts.Ledger9Contract,
+  ledger9Protocol.Contract.ProvableCircuitId<contracts.Ledger9Contract>
+>;
+declare const proofProvider: types.ProofProvider;
+declare const inspect: (tx: UnprovenTransaction) => void;
+
+const proveCall = async (): Promise<types.UnboundTx> => {
+  const { unprovenTx } = callTx.private;
+  if (unprovenTx.era === 'v9') {
+    inspect(unprovenTx.deserialize({ v9: Transaction }));
+  }
+  return proofProvider.proveTx(unprovenTx);
+};
 ```
 
 Gotcha: a copy of a handle (`structuredClone`, `postMessage`, JSON, object spread) is **not**
@@ -646,7 +672,7 @@ await providers.privateStateProvider.clearAll(); // every contract
   with upper-case letters are no longer found. Fix them **before** you upgrade, with 4.1.1:
   - States: export them with 4.1.1 and import them after the upgrade.
   - Signing keys: do not export them, because 5.0.0 refuses a 4.1.1 key export
-    ([Step 15](#step-15--move-signing-keys-to--tag-value-)). Store each one again under the
+    ([Step 15](#step-15--move-signing-keys-to-the--tag-value--shape)). Store each one again under the
     lower-case address instead:
     `setSigningKey(address.toLowerCase(), await getSigningKey(address))`. 5.0.0 then reads
     it as usual.
@@ -807,29 +833,51 @@ record now says which era it belongs to.
 `FinalizedTxRead`. Its `tx` is a `FinalizedTx` handle of the same era
 (`record.tx.era === record.era`). Narrow on `record.era` before you touch `tx`.
 
+Before (v4.1.1):
+
 ```ts
-// Before (v4.1.1)
 const record = await publicDataProvider.watchForTxData(txId);
 const ids = record.tx.identifiers();
-
-// After (v5.0.0)
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
-
-const record = await publicDataProvider.watchForTxData(txId);
-switch (record.era) {
-  case 'v9':
-    handle(record.tx.deserialize({ v9: Transaction }).identifiers());
-    break;
-  case 'v8':
-    handlePreForkRecord(record);
-    break;
-  default:
-    assertNever(record, 'watchForTxData');
-}
 ```
 
-`handle` and `handlePreForkRecord` stand for your own code.
+After (v5.0.0), if you expect only ledger 9 records, check the era and decode with your own
+ledger copy:
+
+```ts
+import { types } from '@midnight-ntwrk/midnight-js';
+import { Transaction } from '@midnightntwrk/ledger-v9';
+
+declare const publicDataProvider: types.PublicDataProvider;
+
+const readIdentifiers = async (txId: string): Promise<string[]> => {
+  const record = await publicDataProvider.watchForTxData(txId);
+  if (record.era !== 'v9') {
+    throw new Error(`Expected a ledger 9 record, got ${record.era}`);
+  }
+  return record.tx.deserialize({ v9: Transaction }).identifiers();
+};
+```
+
+To treat both eras, switch on `record.era`. `describeNative` and `describeRetained` stand for
+your own code:
+
+```ts
+import { types, utils } from '@midnight-ntwrk/midnight-js';
+
+declare const describeNative: (tx: types.LedgerTransaction<'Finalized', 'v9'>) => string;
+declare const describeRetained: (tx: types.LedgerTransaction<'Finalized', 'v8'>) => string;
+
+const summarize = (record: types.FinalizedTxRead): string => {
+  switch (record.era) {
+    case 'v9':
+      return `native ${record.txId}: ${describeNative(record.tx)}`;
+    case 'v8':
+      return `retained ${record.txId}: ${describeRetained(record.tx)}`;
+    default:
+      return utils.assertNever(record, 'summarize');
+  }
+};
+```
 
 - Close the switch with `assertNever(value, '<where>')`. If a new era is ever added, that line
   stops compiling and shows you the switch to change. The second argument is required: it is
@@ -1062,7 +1110,7 @@ you deploy again. See
 
 ---
 
-## Step 15 — Move signing keys to `{ tag, value }`
+## Step 15 — Move signing keys to the `{ tag, value }` shape
 
 **Why:** compact-runtime 0.21 types a signing key as `{ tag: 'schnorr' | 'ecdsa'; value: string }`
 instead of a bare hex string.
@@ -1291,7 +1339,24 @@ To work on both sides of the fork, all three transaction providers must list bot
 For your own providers, write one handler per era with `createProofProviderFromHandlers`,
 `createWalletProviderFromHandlers` or `createMidnightProviderFromHandlers` from
 `@midnight-ntwrk/midnight-js-types`. Each handler receives the handle of its era. Set an era
-you do not serve to `undefined`. The factory works out `supportedEras` for you.
+you do not serve to `undefined`. The factory works out `supportedEras` for you. The
+smallest form, where `proveOnLedger8` and `proveOnLedger9` stand for your own code that
+proves the bytes:
+
+```ts
+import { types } from '@midnight-ntwrk/midnight-js';
+
+declare const proveOnLedger8: (unproven: Uint8Array) => Promise<Uint8Array>;
+declare const proveOnLedger9: (unproven: Uint8Array) => Promise<Uint8Array>;
+
+const buildProofProvider = (): types.ProofProvider =>
+  types.createProofProviderFromHandlers({
+    v8: (tx) => proveOnLedger8(tx.serialize()),
+    v9: (tx) => proveOnLedger9(tx.serialize())
+  });
+```
+
+A fuller example, proving in-process and balancing with a wallet:
 
 ```ts
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
