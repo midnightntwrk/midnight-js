@@ -326,8 +326,10 @@ narrowing becomes an unchecked assumption.
 
 ## Why the scope-context guard is type-parameterised
 
-The internal `isTransactionContext` takes type parameters so a caller can narrow to ITS OWN
-context type instead of the widest one. Both default to the widest, so a caller
+The internal `isTransactionContext` and `isLedger9ScopeContext` take type parameters so a caller
+can narrow to ITS OWN context type instead of the widest one. `isTransactionContext` checks only
+the scope brand, so it matches a context of either era; a caller that must tell the eras apart
+reads `readScopeEra` first. Both default to the widest, so a caller
 that supplies none behaves exactly as it did before the parameters existed.
 
 The internal call sites do supply them. Their parameter union already names one

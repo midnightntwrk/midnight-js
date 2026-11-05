@@ -6,7 +6,7 @@
 
 # Variable: isLedger9TransactionContext
 
-> `const` **isLedger9TransactionContext**: (`u`) => `u is Ledger9TransactionContext<Contract.Any>` = `Internal.isTransactionContext`
+> `const` **isLedger9TransactionContext**: (`u`) => `u is Ledger9TransactionContext<Contract.Any>` = `Internal.isLedger9ScopeContext`
 
 Type guard to determine if a value is a Ledger9TransactionContext.
 

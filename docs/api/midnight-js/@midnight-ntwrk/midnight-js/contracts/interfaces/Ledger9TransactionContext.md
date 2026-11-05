@@ -44,6 +44,12 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
+### \[ScopeEra\]
+
+> `readonly` **\[ScopeEra\]**: `"v9"`
+
+***
+
 ### \[Submit\]
 
 > `readonly` **\[Submit\]**: () => `Promise`\<[`Ledger9FinalizedCallTxData`](Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
