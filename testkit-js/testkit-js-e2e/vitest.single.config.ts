@@ -35,7 +35,7 @@ export default defineConfig({
     include: [`./test/${testFile}`],
     reporters: [
       'default',
-      ['junit', { outputFile: `./reports/test-report-${testBaseName}.xml` }],
+      ['junit', { outputFile: `./reports/test-report-${testBaseName}.xml`, includeConsoleOutput: false }],
       ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports', outputFile: `ctrf-report-${testBaseName}.json` }],
       ['allure-vitest/reporter', { resultsDir: `./reports/allure-results-${testBaseName}` }]
     ]
