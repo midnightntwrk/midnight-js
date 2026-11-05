@@ -1218,7 +1218,7 @@ Skip this step if you use `indexerPublicDataProvider`.
 
 ## Step 18 — testkit-js users
 
-- testkit-js uses `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 (was `@midnight-ntwrk/wallet-sdk`
+- testkit-js uses `@midnightntwrk/wallet-sdk` 2.0.0 (was `@midnight-ntwrk/wallet-sdk`
   1.1.0). If you build wallets yourself, follow the wallet SDK 2.0 changes. For example,
   `createKeystore` now takes `{ kind, secret }` and the network id:
   `createKeystore({ kind: 'schnorr', secret: seed }, networkId)`.

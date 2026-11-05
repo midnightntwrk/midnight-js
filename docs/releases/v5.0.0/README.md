@@ -81,9 +81,8 @@ Pin the protocol package versions given in the [migration guide](./migration-gui
 (`@midnightntwrk/ledger-v9` 1.0.0, `@midnightntwrk/onchain-runtime-v4` 4.0.0,
 `@midnight-ntwrk/platform-js` 3.0.0) so your dApp and the framework load one copy of each.
 
-Two dependencies are still pre-releases: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
-used by the DApp Connector providers) and `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 (a release
-candidate, used by testkit-js).
+One dependency is still a pre-release: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
+used by the DApp Connector providers).
 
 ---
 

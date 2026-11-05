@@ -36,7 +36,7 @@ This page is a summary. For the details:
 | Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0** (current); `@midnightntwrk/ledger-v8` 8.1.3 (pre-fork contracts, loaded on demand) |
 | On-chain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | **`@midnightntwrk/onchain-runtime-v4` 4.0.0** (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | **3.0.0** |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0-rc.3** |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0** |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | **`@midnightntwrk/dapp-connector-api` 4.1.0-beta.1** |
 
 The framework packages stay under `@midnight-ntwrk/midnight-js-*`. The ledger, on-chain runtime,
@@ -115,7 +115,7 @@ Each item links to the full description in [breaking-changes.md](./breaking-chan
 - **A contract-scoped transaction before the fork needs a ledger 8 context.** Type the scope
   function's parameter as `Ledger8TransactionContext`, or call `withLedger8ContractScopedTransaction`.
 - **`SigningKey` is `{ tag, value }` (#970, #1414).** Keys stored by a 4.x client are still read.
-- **testkit-js (#1249, #1435, #1599, #1627).** Wallet SDK 2.0.0-rc.3; `NodeClient` takes the network id.
+- **testkit-js (#1249, #1435, #1599, #1627).** Wallet SDK 2.0.0; `NodeClient` takes the network id.
 
 ## Security
 
