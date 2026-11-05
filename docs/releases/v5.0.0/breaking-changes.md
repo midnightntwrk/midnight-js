@@ -17,15 +17,15 @@ see [new features](./new-features.md).
 | Module format | CommonJS and ESM | ESM only |
 | TypeScript (for consumers) | any | ESM project: `>=5.8` with `module: nodenext`, or `module: preserve` + `moduleResolution: bundler`. CommonJS project: `>=5.9` with `module: node20` |
 | Indexer | 4.3.x | `>=4.4.0-rc.6` |
-| Node (blockchain node, testkit) | 1.0.0 | 2.1.0-rc.4 |
-| Proof server (testkit) | 8.1.0 | 9.0.0-rc.7 |
-| compactc (contract compiler) | 0.31.0 | 0.35.0 |
-| `@midnight-ntwrk/compact-runtime` | 0.16.0 | 0.20.0 |
-| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0-rc.3 |
-| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | `@midnightntwrk/ledger-v9` 1.0.0-rc.5 (ledger 8.1.2 is kept for pre-fork contracts) |
+| Node (blockchain node) | 1.0.0 | a node that accepts `@midnightntwrk/ledger-v9` 1.0.0-rc.7 transactions (section 14) |
+| Proof server | 8.1.0 | 9.0.0 |
+| compactc (contract compiler) | 0.31.0 | 0.36.0 |
+| `@midnight-ntwrk/compact-runtime` | 0.16.0 | 0.21.0 |
+| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0-rc.6 |
+| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | `@midnightntwrk/ledger-v9` 1.0.0-rc.7 (ledger 8.1.2 is kept for pre-fork contracts) |
 | Onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4 (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | 3.0.0 |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0-rc.0 |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 |
 
 The framework packages keep the `@midnight-ntwrk/midnight-js-*` names. The ledger, onchain runtime,
@@ -34,8 +34,8 @@ hyphen, public npm).
 
 ## Index
 
-1. [Ledger 9 is the current ledger](#1-ledger-9-is-the-current-ledger) — recompile with compactc 0.35.0; protocol subpaths renamed.
-2. [ESM-only packages](#2-esm-only-packages-node-2212-and-typescript-58) — Node >= 22.12 and TypeScript >= 5.8.
+1. [Ledger 9 is the current ledger](#1-ledger-9-is-the-current-ledger) — pre-fork contracts keep their ledger 8 artifacts, later ones are recompiled with compactc 0.36.0; protocol subpaths renamed.
+2. [ESM-only packages](#2-esm-only-packages-node--2212-and-typescript--58) — Node >= 22.12 and TypeScript >= 5.8.
 3. [`MidnightProviders.config` is required](#3-midnightprovidersconfig-is-required-the-network-id-package-is-removed) — the network-id package is removed.
 4. [ZK artifacts need their `compiler/` metadata](#4-zk-artifacts-need-their-compiler-metadata) — integrity check and declared runtime version.
 5. [Transactions are `LedgerTransaction` handles](#5-transactions-are-ledgertransaction-handles) — at the three provider methods and in `contracts`.
@@ -43,19 +43,19 @@ hyphen, public npm).
 7. [Private state is reached per contract](#7-private-state-is-reached-per-contract) — `forContract(address)` replaces `setContractAddress`.
 8. [On-chain state is returned as bytes](#8-on-chain-state-is-returned-as-bytes) — you decode it with your own runtime.
 9. [State and balance streams emit `PositionedRecord`](#9-state-and-balance-streams-emit-positionedrecord) — each value carries its block.
-10. [Finalized-transaction records carry their era](#10-finalized-transaction-records-carry-their-era) — `FinalizedTxData` becomes `FinalizedTxRead`.
+10. [Finalized-transaction records carry their era](#10-finalized-transaction-records-carry-their-era) — `FinalizedTxData` becomes `Ledger9FinalizedTxData`; the read surface returns `FinalizedTxRead`.
 11. [Ledger-9-only names carry `Ledger9`](#11-ledger-9-only-names-carry-ledger9) — kept names pick the era from the contract.
 12. [New error model](#12-new-error-model) — coded `MidnightJsError`, one `TxFailedError`, wrapped provider rejections.
 13. [`PublicDataProvider` implementations](#13-publicdataprovider-implementations-need-new-members) — four new required members.
-14. [Indexer >= 4.4.0-rc.6](#14-indexer-440-rc6-and-a-ledger-9-network-stack) — and a ledger-9-capable network stack.
+14. [Indexer >= 4.4.0-rc.6](#14-indexer--440-rc6-and-a-ledger-9-network-stack) — and a ledger-9-capable network stack, with proof server 9.0.0.
 15. [`findDeployedContract` deploy record](#15-finddeployedcontract-reports-the-deploy-record-of-either-era) — tagged by era.
-16. [Maintenance results are `{ era, public }`](#16-maintenance-functions-return-era-public) — read `result.public.status`.
+16. [Maintenance results are `{ era, public }`](#16-maintenance-functions-return--era-public-) — read `result.public.status`.
 17. [`proveTxConfig.timeout` refused](#17-provetxconfigtimeout-is-refused-by-some-proof-providers) — by some proof providers.
 18. [`privateStateId` needs `initialPrivateState`](#18-deploy-privatestateid-needs-initialprivatestate) — on deploy.
 19. [Unplaceable blocks are refused](#19-contract-state-reads-refuse-a-block-they-cannot-place-on-an-era) — on contract-state reads.
 20. [Private state must round-trip](#20-levelprivatestateprovider-refuses-private-state-that-does-not-round-trip) — in `levelPrivateStateProvider`.
 21. [Scoped transactions refused on ledger 8](#21-contract-scoped-transactions-are-refused-while-the-network-is-on-ledger-8) — before the fork.
-22. [Signing keys are `{ tag, value }`](#22-signing-keys-are-tag-value) — no longer a hex string.
+22. [Signing keys are `{ tag, value }`](#22-signing-keys-are--tag-value-) — no longer a hex string.
 23. [testkit-js](#23-testkit-js) — wallet SDK 2.0 and `NodeClient` network id.
 
 ---
@@ -87,8 +87,19 @@ The barrel `@midnight-ntwrk/midnight-js` adds the subpath `./protocol/v9` (`Comp
 `ContractExecutable`, type `Contract`) and the root namespace `ledger9Protocol`.
 
 The framework maps a contract to an era by the runtime version its compiler wrote: runtime 0.16
-(compactc 0.31) is ledger 8, runtime 0.20 (compactc 0.35.0) is ledger 9. Any other runtime version is
-refused with `EraMismatchError`, so artifacts from compactc 0.33 or 0.34 do not load.
+(compactc 0.31) is ledger 8, runtime 0.21 (compactc 0.36.0) is ledger 9. Any other runtime version is
+refused with `EraMismatchError`, so artifacts from compactc 0.33, 0.34 or 0.35 (runtime 0.18, 0.19
+or 0.20) do not load.
+
+Two rules decide which artifacts a contract needs:
+
+- While the network is still on ledger 8 (before the fork), a ledger 9 contract can be neither
+  deployed nor called (`EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`).
+- A contract keeps the verifier keys it was deployed with. compactc 0.36 emits ZKIR v3 only (ZKIR is
+  the circuit format proofs are made from), so a recompiled circuit has a different verifier key than
+  the one a pre-fork deploy (compactc 0.31, ZKIR v2) registered. `findDeployedContract` with
+  recompiled artifacts refuses a pre-fork contract with `ContractTypeError`; the circuits are listed
+  in `mismatchedCircuitIds`.
 
 Two ledger 9 behaviour changes come with the new ledger package:
 
@@ -98,25 +109,30 @@ Two ledger 9 behaviour changes come with the new ledger package:
 
 **What to do**
 
-1. Recompile every contract with compactc 0.35.0 and depend on `@midnight-ntwrk/compact-runtime@0.20.0`.
-   Wrap the result with `CompiledContract.make(...)` as in 4.x.
-2. Or, to keep using a contract compiled for v4.1.1 (runtime 0.16), pass the generated contract
-   instance (`new Contract(witnesses)`) instead of a `CompiledContract`. See
-   [new features](./new-features.md) for when this works before and after the fork.
-3. Replace removed subpaths: `/ledger` → `/v9`, `/compact-runtime` → `/v9/compact-runtime`,
+1. For every contract deployed before the fork (including those you deploy before the fork with
+   this release), keep the v4.1.1 build (runtime 0.16) and pass the generated contract instance
+   (`new Contract(witnesses)`) instead of a `CompiledContract`. Use it before and after the fork.
+2. For contracts deployed after the fork, recompile with compactc 0.36.0 and depend on
+   `@midnight-ntwrk/compact-runtime@0.21.0`. Wrap the result with `CompiledContract.make(...)` as in
+   4.x. A dApp that deploys contracts at run time ships both builds and switches at the fork.
+3. A dApp that ships before the fork needs providers that serve both eras until the fork (section 6).
+   See the [migration guide](./migration-guide.md#step-2--choose-the-artifacts-for-each-contract) for
+   the full path.
+4. Replace removed subpaths: `/ledger` → `/v9`, `/compact-runtime` → `/v9/compact-runtime`,
    `/compact-js` → `/v9/compact-js`, `/compact-js/effect` → `/v9/compact-js/effect`,
    `/compact-js/effect/Contract` → `/v9/compact-js/effect/Contract`,
    `/onchain-runtime` → `/v9/onchain-runtime`.
-4. Replace the root namespaces `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` of
+5. Replace the root namespaces `ledger`, `compactRuntime`, `compactJs` and `onchainRuntime` of
    `@midnight-ntwrk/midnight-js-protocol` with `import * as x from` the matching `/v9` subpath.
-5. Import `Transaction` from `@midnight-ntwrk/midnight-js-protocol/v9`, not from
+6. Import `Transaction` from `@midnight-ntwrk/midnight-js-protocol/v9`, not from
    `@midnight-ntwrk/midnight-js-types`.
-6. Keep exactly one copy of each protocol package. Two copies of a WASM package break `instanceof`.
-   Pin them in your root `resolutions` (Yarn) or `overrides` (npm), for example
-   `"@midnightntwrk/ledger-v9": "1.0.0-rc.5"` and `"@midnight-ntwrk/platform-js": "3.0.0"`.
+7. Keep exactly one copy of each protocol package. Two copies of a WASM package break `instanceof`.
+   Pin them in your root `resolutions` (Yarn) or `overrides` (npm):
+   `"@midnightntwrk/ledger-v9": "1.0.0-rc.7"`, `"@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.4"`
+   and `"@midnight-ntwrk/platform-js": "3.0.0"`.
 
 **Sources:** #970, #1068, #1125, #1190, #1244, #1384 (toolchain), #1081, #1341 (compact-js 3), #1249,
-#1375 (ledger-v9), #1560 (issue #1536), #1562, #1581.
+#1375 (ledger-v9), #1560 (issue #1536), #1562, #1581, #1599 (compactc 0.36, runtime 0.21).
 
 ---
 
@@ -215,8 +231,10 @@ The low-level builders need the config too: `createUnprovenCallTxFromInitialStat
 **What to do**
 
 1. Delete every `setNetworkId` / `getNetworkId` call and the network-id dependency.
-2. Add `config: { networkId, ttlSeconds }` to your provider set. `ttlSeconds: 3600` keeps the 4.x
-   behaviour.
+2. Add `config: { networkId, ttlSeconds }` to your provider set. `ttlSeconds: 3600` keeps the
+   one-hour lifetime of the intents the framework builds. New: the framework now passes this TTL to
+   `walletProvider.balanceTx(tx, ttl)`. In 4.1.1 it called `balanceTx(tx)` with no TTL, so the wallet
+   chose its own.
 3. Import `NetworkId` from `@midnight-ntwrk/midnight-js-types`.
 4. Optional: build the set with `createMidnightProviders` from `@midnight-ntwrk/midnight-js-utils`
    to check it at start-up.
@@ -256,7 +274,7 @@ new FetchZkConfigProvider(baseURL, { fetchFunc: myFetch, expectedManifestHash: M
 
 class MyZkConfigProvider extends ZKConfigProvider<string> {
   override async getArtifactRuntimeVersion(): Promise<string> {
-    return '0.20.0';
+    return '0.21.0';
   }
   // ...other methods as before
 }
@@ -270,7 +288,7 @@ against someone who can replace both the artifacts and the manifest.
 
 **What to do**
 
-1. Serve the whole `compiler/` directory next to `keys/` and `zkir/`. compactc 0.35.0 writes the
+1. Serve the whole `compiler/` directory next to `keys/` and `zkir/`. compactc 0.36.0 writes the
    manifest.
 2. For contracts compiled for v4.1.1 (compactc 0.31: `contract-info.json`, no manifest), pass
    `verify: 'require-if-present'`.
@@ -386,14 +404,19 @@ const midnightProvider = createLedger9MidnightProvider((tx) => wallet.submitTran
 ```
 
 `LedgerEra` comes from `@midnight-ntwrk/midnight-js-protocol/version` or the barrel, not from
-`@midnight-ntwrk/midnight-js-types`. To serve both eras across the fork, see the per-era handler
-factories in [new features](./new-features.md).
+`@midnight-ntwrk/midnight-js-types`.
+
+The `createLedger9*` adapters serve `'v9'` only, so they fit a dApp that starts after the fork. A dApp
+that runs before the fork needs providers that serve `'v8'` and `'v9'`: `httpClientProofProvider`,
+`dappConnectorProofProvider`, `dappConnectorWalletProviders`, or your own built with the per-era
+handler factories in [new features](./new-features.md#10-providers-built-from-one-handler-per-era).
 
 **What to do**
 
 1. Rename `createProofProvider` to `createLedger9ProofProvider`.
 2. Wrap hand-written wallet and midnight providers with the adapters above, or add `supportedEras`
    that lists exactly the eras you serve.
+3. If your dApp runs before the fork, give it providers that serve both eras (see above).
 
 **Sources:** #1218 (issue #1004), #1364, #1475, #1581 (issue #1574). ADR 0014.
 
@@ -439,10 +462,13 @@ contract it used.
 
 1. Replace `setContractAddress` plus the unscoped calls with `forContract(address)`.
 2. Replace `clear()` with `clearAll()` (all contracts) or `forContract(address).clear()` (one).
-3. If you stored states or keys yourself under an address with upper-case letters, export them before
-   upgrading and import them after. Otherwise they are not found.
-4. If you changed a password in 4.x while the selected contract had no states, nothing was
-   re-encrypted. Run `changePassword(() => oldPassword, () => newPassword)` again.
+3. If you stored states or signing keys under an address with upper-case letters, they are not found
+   after the upgrade. States: export them with 4.1.1 and import them after. Signing keys: do not
+   export them (5.0 refuses a 4.1.1 key export); instead, with 4.1.1, store each one again under the
+   lower-case address: `setSigningKey(address.toLowerCase(), await getSigningKey(address))`.
+4. If you rotated a password in 4.x, run `changePassword(() => oldPassword, () => newPassword)` again
+   after upgrading. In 4.x, when the contract set by `setContractAddress` had no states, nothing was
+   re-encrypted.
 5. Implementers: add `forContract` and `clearAll`; remove `setContractAddress`, `get`, `set`,
    `remove`, `clear`, `exportPrivateStates` and `importPrivateStates` from the provider.
 6. Keep the `accountId` your store was created with. Another value opens an empty store.
@@ -548,7 +574,17 @@ unshieldedBalancesObservable(address, config): Observable<PositionedRecord<Unshi
 2. To resume after a restart, pass `{ type: 'blockHeight', blockHeight: record.blockHeight }`.
    Values from that block may be emitted again.
 
-**Sources:** #1425 (issue #1399), #1555.
+Both streams now read the indexer's per-contract action feed, not every block on chain. What they
+emit changed with it:
+
+- `{ type: 'all' }` emits the contract's full history, from the first block.
+- `inclusive: false` still skips the starting block, or the named transaction, after a reconnect.
+- `{ type: 'txId' }` now finds the transaction on a real indexer. With `inclusive: false` it skips the
+  whole transaction. A transaction with no action for the contract is refused with
+  `IndexerProviderConfigError` before anything is subscribed.
+- Values replayed after a reconnect are dropped, so each value is emitted once per subscription.
+
+**Sources:** #1425 (issue #1399), #1428, #1555.
 
 ---
 
@@ -761,15 +797,20 @@ they cannot place on an era (section 19).
 
 **After (v5.0.0):** `indexerPublicDataProvider` asks for `stateAt` on every contract-state read and
 for `contractZswapState` on blocks. Older indexers do not serve these fields. Indexer 4.4.0-rc.6 also
-serves every contract's state in ledger 9 format after the fork. testkit-js pins indexer
-`4.4.0-rc.6-68702121`, node `2.1.0-rc.4` and proof server `9.0.0-rc.7`.
+serves every contract's state in ledger 9 format after the fork.
+
+The proof server must prove ZKIR v3 circuits, the only format compactc 0.36 emits. Proof server
+9.0.0-rc.7 refuses them with `400 Bad Request`; 9.0.0 proves them. The node must accept
+`@midnightntwrk/ledger-v9` 1.0.0-rc.7 transactions: node 2.1.0-rc.4 refuses every such contract call
+(error 1010, custom error 104). At release, the framework's tests used proof server 9.0.0 and
+pre-release builds of the node (2.1.100) and the indexer (4.4.100).
 
 **What to do**
 
 1. Upgrade the indexer to 4.4.0-rc.6 or newer before you upgrade the framework.
-2. Use a node and proof server that support ledger 9.
+2. Use proof server 9.0.0, and a node that accepts ledger-v9 1.0.0-rc.7 transactions.
 
-**Sources:** #1507 (issue #1452), #1031, #1045, #1375.
+**Sources:** #1507 (issue #1452), #1031, #1045, #1375, #1599.
 
 ---
 
@@ -781,8 +822,9 @@ serves every contract's state in ledger 9 format after the fork. testkit-js pins
 ContractState` and `tx: Transaction`.
 
 **After (v5.0.0)** — for a ledger 9 contract, `found.deployTxData.public` is a `FoundDeployTxPublicData`:
-a ledger 8 or ledger 9 record, tagged by `era`. A contract deployed before the fork keeps a `'v8'`
-record. Both kinds have `contractAddress` and `initialContractState` (a `SerializedContractState`).
+a ledger 8 or ledger 9 record, tagged by `era`. A ledger 8 contract, found through its ledger 8
+instance (section 1), reports a `'v8'` record. Both kinds have `contractAddress` and
+`initialContractState` (a `SerializedContractState`).
 
 ```ts
 const { public: deploy } = found.deployTxData;
@@ -971,7 +1013,7 @@ with `InvalidExportFormatError`. Keys already stored by 4.x in a level store are
 **Before (v4.1.1):** `@midnight-ntwrk/wallet-sdk` 1.1.0; `new NodeClient(nodeURL, logger)`; tests
 called `setNetworkId`.
 
-**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0-rc.0, with structured signatures.
+**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0-rc.2, with structured signatures.
 `NodeClient` takes the network id as a third argument and rejects an empty one.
 `initializeMidnightProviders` sets `config` (with `ttlSeconds: 3600`).
 
@@ -985,7 +1027,7 @@ const nodeClient = new NodeClient(nodeURL, logger, networkId);
 2. Pass the network id to `NodeClient`.
 3. Remove `setNetworkId` calls from your tests (section 3).
 
-**Sources:** #970, #1249, #1337, #1375, #1435.
+**Sources:** #970, #1249, #1337, #1375, #1435, #1599.
 
 ---
 
@@ -1018,7 +1060,6 @@ const nodeClient = new NodeClient(nodeURL, logger, networkId);
 | `@midnight-ntwrk/midnight-js-protocol` | `ledger`, `compactRuntime`, `compactJs`, `onchainRuntime` namespaces | `import * as x from` the matching `/v9` subpath |
 | `@midnight-ntwrk/midnight-js-types` | `Transaction` | `@midnight-ntwrk/midnight-js-protocol/v9` |
 | `@midnight-ntwrk/midnight-js-contracts` | `CallTxFailedError`, `DeployTxFailedError`, `InsertVerifierKeyTxFailedError`, `RemoveVerifierKeyTxFailedError`, `ReplaceMaintenanceAuthorityTxFailedError` | `TxFailedError` with `operation` (section 12) |
-| `@midnight-ntwrk/midnight-js-contracts` | `PublicContractStates` | `PublicStatesRead` from `@midnight-ntwrk/midnight-js-types` |
 
 Removed members (not exports): `PrivateStateProvider.setContractAddress`, `get`, `set`, `remove`,
 `clear`, `exportPrivateStates` and `importPrivateStates` (section 7); `TxFailedError.finalizedTxData`
@@ -1071,9 +1112,6 @@ The left column has only names that existed in v4.1.1.
 | `ContractExecutableRuntimeOptions` | `Ledger9ContractExecutableRuntimeOptions` | types |
 | `makeContractExecutableRuntime` | `makeLedger9ContractExecutableRuntime` | types |
 | `createProofProvider` | `createLedger9ProofProvider` | types |
-| `Transaction` | `Transaction` from `@midnight-ntwrk/midnight-js-protocol/v9` | types → protocol |
-| `NetworkId` | `NetworkId` | network-id → types |
-| `CallTxFailedError` and the four other `*TxFailedError` classes | `TxFailedError` with `operation` | contracts |
 
 Names kept from v4.1.1 whose meaning changed (they now pick the era from the contract type) are listed
 in section 11.

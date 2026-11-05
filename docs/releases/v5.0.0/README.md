@@ -3,12 +3,15 @@
 **Release Date:** TBD
 **Previous Version:** v4.1.1
 **Node.js Requirement:** >=22.12
-**Migration Complexity:** High. Every dApp must recompile its contracts (or keep them as ledger 8
-contracts), add a `config` to its providers and move to ESM. dApps that wire their own providers,
+**Migration Complexity:** High. Every dApp must decide, for each contract, whether it runs as a
+ledger 8 contract (deployed before the fork) or is recompiled (deployed after the fork), add a
+`config` to its providers and move to ESM. dApps that wire their own providers,
 read on-chain state or catch framework errors need more changes.
 
 These documents describe the difference between **v4.1.1** and **v5.0.0**. If you used a 5.0.0
-beta or release candidate, follow the same guide: it uses the final names only.
+beta or release candidate, names that existed only in those pre-releases (for example
+`unwrapLedger9`, `VersionedTransaction`) have no entry here; replace them with the final API these
+documents describe.
 
 ## Quick Links
 
@@ -22,7 +25,9 @@ beta or release candidate, follow the same guide: it uses the final names only.
 
 v5.0.0 moves the framework from **ledger 8** to **ledger 9**. It is the version a dApp must run
 **before** the network's ledger 8 → ledger 9 hard fork: the same code keeps working on both sides
-of it. A contract deployed before the fork can still be found and called after it.
+of it. A contract deployed before the fork keeps its pre-fork (ledger 8) artifacts and can still be
+found and called after it with them. Contracts deployed after the fork use artifacts recompiled
+with `compactc` 0.36.0.
 
 To serve two ledgers at once, the framework no longer hands out decoded ledger objects.
 Transactions and on-chain state travel as bytes tagged with their era (`'v8'` or `'v9'`), and your
@@ -31,7 +36,7 @@ two copies of the same WASM package in one bundle.
 
 ## Breaking Changes (high level)
 
-1. **Ledger 9 is the current ledger.** Recompile with `compactc` 0.35.0, or run your v4.1.1 build as a ledger 8 contract. Protocol subpaths name their ledger (`/v9`, `/v9/compact-runtime`, ...).
+1. **Ledger 9 is the current ledger.** Keep your v4.1.1 build as a ledger 8 contract for contracts deployed before the fork; recompile with `compactc` 0.36.0 for contracts deployed after it. Protocol subpaths name their ledger (`/v9`, `/v9/compact-runtime`, ...).
 2. **ESM-only packages.** Node >=22.12 and TypeScript >=5.8.
 3. **`MidnightProviders.config` is required.** `{ networkId, ttlSeconds }` replaces `setNetworkId()`; the network-id package is removed.
 4. **ZK artifacts ship their `compiler/` directory.** The integrity manifest is checked, and the runtime version picks the ledger.
@@ -65,16 +70,21 @@ two copies of the same WASM package in one bundle.
 | Node.js | >=22.12 |
 | TypeScript | >=5.8 (`module: nodenext`, or `preserve` + `moduleResolution: bundler`); >=5.9 with `module: node20` for a CommonJS project |
 | Indexer | >=4.4.0-rc.6 |
-| `compactc` | 0.35.0 (runtime 0.20.0) for ledger 9 contracts |
-| `@midnightntwrk/ledger-v9` | 1.0.0-rc.5 |
-| `@midnight-ntwrk/compact-js` | 3.0.0-rc.3 |
+| Proof server | 9.0.0 (9.0.0-rc.7 cannot prove circuits compiled by `compactc` 0.36) |
+| `compactc` | 0.36.0 (runtime 0.21.0) for ledger 9 contracts |
+| `@midnightntwrk/ledger-v9` | 1.0.0-rc.7 |
+| `@midnight-ntwrk/compact-js` | 3.0.0-rc.6 |
 
 ## Pre-release protocol note
 
 The ledger 9 packages this release targets are release candidates (`@midnightntwrk/ledger-v9`
-1.0.0-rc.5, `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4, `@midnight-ntwrk/compact-js`
-3.0.0-rc.3). Pin the exact versions given in the [migration guide](./migration-guide.md) so your
+1.0.0-rc.7, `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4, `@midnight-ntwrk/compact-js`
+3.0.0-rc.6). Pin the exact versions given in the [migration guide](./migration-guide.md) so your
 dApp and the framework load one copy of each.
+
+Two more dependencies are pre-releases: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
+used by the DApp Connector providers) and `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 (a release
+candidate, used by testkit-js).
 
 ---
 

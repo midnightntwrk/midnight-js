@@ -373,7 +373,7 @@ config providers implement it.
 
 | v4.1.1 | v5.0.0 |
 |---|---|
-| `string` (hex) | `{ tag: 'schnorr' \| 'ecdsa'; value: string }` (from compact-runtime 0.20) |
+| `string` (hex) | `{ tag: 'schnorr' \| 'ecdsa'; value: string }` (the compact-runtime 0.21 type) |
 
 This package does not export `SigningKey`. Import it from
 `@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime`.
@@ -887,9 +887,9 @@ the era.
 
 | v4.1.1 subpath (removed) | v5.0.0 subpath | Package behind it |
 |---|---|---|
-| `/ledger` (`@midnight-ntwrk/ledger-v8`) | `/v9` | `@midnightntwrk/ledger-v9` 1.0.0-rc.5 |
-| `/compact-runtime` | `/v9/compact-runtime` | `@midnight-ntwrk/compact-runtime` 0.20.0 |
-| `/compact-js` | `/v9/compact-js` | `@midnight-ntwrk/compact-js` 3.0.0-rc.3 |
+| `/ledger` (`@midnight-ntwrk/ledger-v8`) | `/v9` | `@midnightntwrk/ledger-v9` 1.0.0-rc.7 |
+| `/compact-runtime` | `/v9/compact-runtime` | `@midnight-ntwrk/compact-runtime` 0.21.0 |
+| `/compact-js` | `/v9/compact-js` | `@midnight-ntwrk/compact-js` 3.0.0-rc.6 |
 | `/compact-js/effect` | `/v9/compact-js/effect` | same |
 | `/compact-js/effect/Contract` | `/v9/compact-js/effect/Contract` | same |
 | `/onchain-runtime` (`onchain-runtime-v3`) | `/v9/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4` |
@@ -1381,6 +1381,6 @@ No exports were removed.
 | `initializeMidnightProviders` | sets `config` with `ttlSeconds: 3600` |
 | Added | `ForkTestEnvironment`, `ForkEnactment`, `HEALTH_CHECK_TIMEOUT_MS` (10 000 ms), `redactUrl`, `redactedJson` |
 | Added subpath `./fixtures-hf` | `HF_FIXTURE_NAMES`, `HF_FIXTURE_STATUSES`, `readHfFixture`, `hfFixturePath`, `hfFixturesManifest`, types `HfFixtureName`, `HfFixtureStatus`, `HfFixtureEntry` |
-| Wallet SDK | `@midnightntwrk/wallet-sdk` 2.0.0-rc.0 (was `@midnight-ntwrk/wallet-sdk` 1.1.0) |
+| Wallet SDK | `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 (was `@midnight-ntwrk/wallet-sdk` 1.1.0) |
 
 `@midnight-ntwrk/testkit-js-e2e` is no longer published.

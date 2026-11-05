@@ -29,13 +29,14 @@ This page is a summary. For the details:
 | Module format | CommonJS and ESM | **ESM only** |
 | TypeScript (consumer) | any | **>=5.8** with `module: nodenext` or `preserve` + `moduleResolution: bundler`; a CommonJS project needs **>=5.9** with `module: node20` |
 | Indexer | 4.3.x | **>=4.4.0-rc.6** |
-| `compactc` (ledger 9 contracts) | 0.31.0 | **0.35.0** |
-| `@midnight-ntwrk/compact-runtime` | 0.16.0 | **0.20.0** |
-| `@midnight-ntwrk/compact-js` | 2.5.1 | **3.0.0-rc.3** |
-| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0-rc.5** (current); `@midnightntwrk/ledger-v8` 8.1.2 (pre-fork contracts, loaded on demand) |
+| Proof server | 8.1.0 | **9.0.0** (9.0.0-rc.7 cannot prove circuits compiled by `compactc` 0.36) |
+| `compactc` (ledger 9 contracts) | 0.31.0 | **0.36.0** |
+| `@midnight-ntwrk/compact-runtime` | 0.16.0 | **0.21.0** |
+| `@midnight-ntwrk/compact-js` | 2.5.1 | **3.0.0-rc.6** |
+| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0-rc.7** (current); `@midnightntwrk/ledger-v8` 8.1.2 (pre-fork contracts, loaded on demand) |
 | On-chain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | **`@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4** (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | **3.0.0** |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0-rc.0** |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0-rc.2** |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | **`@midnightntwrk/dapp-connector-api` 4.1.0-beta.1** |
 
 The framework packages stay under `@midnight-ntwrk/midnight-js-*`. The ledger, on-chain runtime,
@@ -46,11 +47,14 @@ wallet SDK and DApp Connector API packages it depends on are now published under
 
 Each item links to the full description in [breaking-changes.md](./breaking-changes.md).
 
-- **Ledger 9 is the current ledger (#970).** Recompile your contracts with `compactc` 0.35.0, or keep
-  your v4.1.1 build and run it as a ledger 8 contract. Artifacts from any other runtime version are
-  refused. The protocol subpaths now name their ledger: `/ledger` → `/v9`, `/compact-runtime` →
-  `/v9/compact-runtime`, `/compact-js*` → `/v9/compact-js*`, `/onchain-runtime` →
-  `/v9/onchain-runtime` (#1560). Import `Transaction` from
+- **Ledger 9 is the current ledger (#970, #1599).** A contract deployed before the fork keeps its
+  v4.1.1 build and runs as a ledger 8 contract, before and after the fork. Contracts deployed after
+  the fork are recompiled with `compactc` 0.36.0 (runtime 0.21.0). Recompiled artifacts do not find a
+  pre-fork contract: `compactc` 0.36 emits ZKIR v3 only, so the verifier keys differ, and
+  `findDeployedContract` refuses with `ContractTypeError`. Artifacts of any other runtime version,
+  including `compactc` 0.35 (runtime 0.20), are refused. The protocol subpaths now name their
+  ledger: `/ledger` → `/v9`, `/compact-runtime` → `/v9/compact-runtime`, `/compact-js*` →
+  `/v9/compact-js*`, `/onchain-runtime` → `/v9/onchain-runtime` (#1560). Import `Transaction` from
   `@midnight-ntwrk/midnight-js-protocol/v9`, not from `types` (#1562).
 - **ESM-only packages (#1180).** `require()` of a `midnight-js-*` package needs Node >=22.12.
   TypeScript `node16` / `node18` module settings fail with TS1479.
@@ -93,6 +97,10 @@ Each item links to the full description in [breaking-changes.md](./breaking-chan
   members: `queryBlock`, `queryLatestProtocolVersion`, `queryContractEvents`,
   `contractEventsObservable`.
 - **Indexer >=4.4.0-rc.6 (#1507).** Contract-state reads need fields older indexers do not serve.
+- **Proof server 9.0.0 and larger prover keys (#1599).** `compactc` 0.36 emits circuits in ZKIR v3
+  only (ZKIR is the circuit format proofs are made from). Proof server 9.0.0-rc.7 refuses them with
+  `400 Bad Request`; use 9.0.0. In the framework's own test contracts the ZKIR v3 prover keys are 1.7
+  to 4.7 times the size of the ZKIR v2 ones, so expect larger artifact downloads.
 - **`findDeployedContract` reports a deploy record of either era (#1416).** Narrow on
   `found.deployTxData.public.era`.
 - **Maintenance functions resolve `{ era, public }` (#1517).** Read `result.public.status`.
@@ -107,16 +115,17 @@ Each item links to the full description in [breaking-changes.md](./breaking-chan
 - **Contract-scoped transactions are refused while the network is on ledger 8 (#1218)** with
   `EraMismatchError`. Before the fork, submit each call on its own.
 - **`SigningKey` is `{ tag, value }` (#970, #1414).** Keys stored by a 4.x client are still read.
-- **testkit-js (#1249, #1435).** Wallet SDK 2.0.0-rc.0; `NodeClient` takes the network id.
+- **testkit-js (#1249, #1435, #1599).** Wallet SDK 2.0.0-rc.2; `NodeClient` takes the network id.
 
 ## Security
 
 - **Duplicate keys in a ZK artifact manifest are refused (#1605).** `JSON.parse` keeps only the last
   copy of a repeated key, so a manifest pinned by `expectedManifestHash` could certify a forged file
   entry. The parser now refuses the manifest with `ZkArtifactIntegrityError`.
-- **`changePassword` re-encrypts every contract (#1609).** In 4.x it rotated only the contract set by
-  `setContractAddress`, rotated nothing when that contract had no states, and still reported success.
-  If you rotated a password in 4.x, run `changePassword` again after upgrading.
+- **`changePassword` re-encrypts every contract (#1609).** In 4.x, when the contract set by
+  `setContractAddress` had no states, it re-encrypted nothing and still reported success. If you
+  rotated a password in 4.x, run `changePassword(() => oldPassword, () => newPassword)` again after
+  upgrading.
 - **API tokens no longer appear in indexer errors (#1570).** URL query strings are removed from the
   message and stack of a failed indexer request.
 - **Faster password-cache hits in the level provider (#1448).** A cache hit no longer re-runs PBKDF2;
@@ -129,7 +138,7 @@ See [new-features.md](./new-features.md) for examples.
 
 - **Ledger 8 contracts and the hard fork (#1218, #1316, #1517, #1531, #1583, #1584).** The same
   functions deploy, find, call and maintain contracts of both ledgers. A contract deployed before the
-  fork keeps working after it. When the fork happens in the middle of an operation, you get
+  fork keeps working after it, through its ledger 8 artifacts. When the fork happens in the middle of an operation, you get
   `ForkCrossedDuringOperationError` with what to do next.
 - **Cross-contract calls (#967, #1307).** Proof providers accept a `ZKConfigRegistry`
   (`nodeZkConfigRegistry`). Dynamic calls resolve the callee through the new optional

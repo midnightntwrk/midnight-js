@@ -40,8 +40,16 @@ contracts, and keep calling them after the fork.
 
 **How the framework picks the era.** It reads the runtime version your contract's artifacts
 declare (`compiler/contract-manifest.json` or `compiler/contract-info.json`). Runtime `0.16` means
-ledger 8 (compactc 0.31, as in 4.x). Runtime `0.20` means ledger 9 (compactc 0.35.0). Any other
-version is refused with `EraMismatchError` (`'unknown-artifact-runtime-version'`).
+ledger 8 (compactc 0.31, as in 4.x). Runtime `0.21` means ledger 9 (compactc 0.36.0). Any other
+version, including runtime `0.20` (compactc 0.35), is refused with `EraMismatchError`
+(`'unknown-artifact-runtime-version'`).
+
+**Which artifacts a contract uses.** A contract keeps the verifier keys it was deployed with.
+compactc 0.36 emits ZKIR v3 only (ZKIR is the circuit format proofs are made from), so recompiled
+circuits have different verifier keys than a pre-fork deploy registered. A contract deployed before
+the fork is therefore found and called through its ledger 8 instance, before and after the fork.
+Recompiled artifacts are for contracts deployed after the fork; `findDeployedContract` with them
+refuses a pre-fork contract with `ContractTypeError`.
 
 **A ledger 8 contract** is the instance the 4.x toolchain generates, typed `Ledger8Contract`. Pass
 it directly as `compiledContract`. Do not wrap it in `CompiledContract.make`:
@@ -70,7 +78,7 @@ console.log(result.era, result.public.status);
 | | Before the fork (network on ledger 8) | After the fork (network on ledger 9) |
 |---|---|---|
 | Deploy a ledger 8 contract | yes | no: `EraMismatchError('ledger8-deploy-on-ledger9-network')` |
-| Call a ledger 8 contract | yes | yes, with the ledger 8 instance or with artifacts recompiled by compactc 0.35.0 |
+| Call a ledger 8 contract | yes | yes, with the ledger 8 instance (recompiled artifacts are refused) |
 | Maintain a ledger 8 contract | yes | no: `EraMismatchError('ledger8-maintenance-on-ledger9-network')`. Recompile and use the same function |
 | Deploy or call a ledger 9 contract | no: `EraMismatchError('ledger9-artifact-on-ledger8-network')`, raised before proving | yes |
 | `withContractScopedTransaction` | no: `EraMismatchError('scope-on-ledger8-network')` | yes (ledger 9 contracts only) |
@@ -108,8 +116,8 @@ replacement that may have landed throws `Ledger8UnconfirmedError` instead; keep 
 and check the address on chain before you deploy again.
 
 **Providers across the fork.** All three transaction providers must list both eras in
-`supportedEras`. `dappConnectorProofProvider` and `dappConnectorWalletProviders` (section 7) serve
-both. The `createLedger9*` adapters serve `'v9'` only. To serve both eras with your own code, see
+`supportedEras`. `httpClientProofProvider`, `dappConnectorProofProvider` and
+`dappConnectorWalletProviders` (section 7) serve both. The `createLedger9*` adapters serve `'v9'` only. To serve both eras with your own code, see
 section 10.
 
 **Low-level functions.** New ledger 8 twins: `createLedger8UnprovenCallTx`,
@@ -122,7 +130,7 @@ section 10.
 The step-by-step guide for running across the fork is in [migration-guide.md](./migration-guide.md).
 
 **Sources:** #1218, #1316, #1324, #1349, #1375, #1415, #1416, #1517, #1531, #1554, #1583, #1584,
-#1591, #1593, #1612, #1613.
+#1591, #1593, #1599, #1612, #1613.
 
 ---
 
@@ -157,9 +165,9 @@ publicDataProvider
 To resume after the last event you saw, pass `{ startAt: { fromId: lastSeenId + 1 } }`. `amount` is
 always a string: do not convert it with `Number()`.
 
-To **emit** events, the contract must be built with compactc 0.35.0. Ledger 8 contracts cannot emit
-events. Shielded and unshielded events are tested end to end. The end-to-end test for `Misc`
-emission is still skipped.
+To **emit** events, the contract must be built with compactc 0.36.0. Ledger 8 contracts cannot emit
+events. Shielded and unshielded events are tested end to end. `Misc` emission is not yet verified
+end to end.
 
 **Sources:** #988, #971, #975.
 
