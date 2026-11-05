@@ -81,7 +81,7 @@ console.log(result.era, result.public.status);
 | Call a ledger 8 contract | yes | yes, with the ledger 8 instance (recompiled artifacts are refused) |
 | Maintain a ledger 8 contract | yes | no: `EraMismatchError('ledger8-maintenance-on-ledger9-network')`. Recompile and use the same function |
 | Deploy or call a ledger 9 contract | no: `EraMismatchError('ledger9-artifact-on-ledger8-network')`, raised before proving | yes |
-| `withContractScopedTransaction` | no: `EraMismatchError('scope-on-ledger8-network')` | yes (ledger 9 contracts only) |
+| `withContractScopedTransaction` | yes (ledger 8 contracts only) | yes (ledger 9 contracts only) |
 
 **Results name their era.** Every result has `era: 'v8' | 'v9'`. Narrow with `isLedger8Result`. To
 accept both eras in one variable, use `AnyFinalizedCallTxData`, `AnySubmittedCallTx` or
@@ -122,7 +122,8 @@ section 10.
 
 **Low-level functions.** New ledger 8 twins: `createLedger8UnprovenCallTx`,
 `createLedger8UnprovenCallTxFromInitialStates`, `createLedger8UnprovenDeployTx`,
-`createLedger8UnprovenDeployTxFromVerifierKeys`, `submitLedger8DeployTx`. In `protocol`:
+`createLedger8UnprovenDeployTxFromVerifierKeys`, `submitLedger8DeployTx`,
+`withLedger8ContractScopedTransaction`. In `protocol`:
 `loadLedger8Protocol` (root) and `proveLedger8Transaction` (`@midnight-ntwrk/midnight-js-protocol/prove`). Era helpers: `LedgerEra`,
 `CURRENT_LEDGER_ERA`, `LEDGER_ERAS`, `latestNetworkLedgerVersion`, `versionOfRecord`,
 `protocolVersionToLedger`.

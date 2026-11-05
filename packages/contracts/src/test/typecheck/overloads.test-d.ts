@@ -92,6 +92,7 @@ import {
   type Ledger8FoundContract,
   type Ledger8InitialStateResult,
   type Ledger8SubmittedCallTx,
+  type Ledger8UnsubmittedCallTxData,
   type Ledger8Witness,
   type NEITHER_ERA_CONTRACT_MESSAGE,
   type NeitherContractShape,
@@ -99,7 +100,7 @@ import {
 } from '../../ledger8-contract';
 import { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from '../../submit-call-tx';
 import type { Ledger9SubmitTxProviders } from '../../submit-tx';
-import type { Ledger9TransactionContext } from '../../transaction';
+import type { Ledger8TransactionContext, Ledger9TransactionContext } from '../../transaction';
 import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
   FoundDeployTxPublicData,
@@ -154,6 +155,7 @@ declare const optionsCoin: Ledger8CallTxOptionsBase<CoinReceiver016Contract, 're
 // Current-era call-site material, typed off the real generated declaration file.
 declare const providers018: Ledger9ContractProviders<Twin018, 'increment'>;
 declare const currentCallTx: Ledger9FoundContract<Twin018>['callTx']['increment'];
+declare const retainedCallTx: Ledger8FoundContract<Counter016Contract>['callTx']['increment'];
 declare const options018: Ledger9CallTxOptionsWithPrivateStateId<Twin018, 'increment'>;
 declare const compiledContract018: CompiledContract.CompiledContract<Twin018, Twin018PrivateState>;
 declare const contract018: Twin018;
@@ -807,21 +809,17 @@ describe('both eras resolve a call to the SAME result structure', () => {
       Ledger8CircuitId<Counter016Contract>
     >();
     expectTypeOf<keyof Ledger9FoundContract<Twin018>['callTx']>().toEqualTypeOf<Contract.ProvableCircuitId<Twin018>>();
-    expectTypeOf<
-      ReturnType<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>
-    >().toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
+    expectTypeOf(retainedCallTx()).toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
   });
 
-  it('declares BOTH call overloads on the current era, and only the bare one on the retained era', () => {
-    // The key sets above match while the SIGNATURES diverge, so nothing there
-    // notices an overload going missing. The current era lifts each circuit to a
-    // PAIR -- bare args, or a scope context plus args -- and the retained era
-    // to a single overload.
+  it('declares BOTH call overloads in BOTH eras', () => {
+    // The key sets above match while the SIGNATURES may diverge, so nothing there
+    // notices an overload going missing. Each era lifts each circuit to a
+    // PAIR -- bare args, or a scope context of its own era plus args.
     //
     // Asserted through `Parameters`/`ReturnType`, which resolve from the LAST
     // overload by design. That is what makes them usable here: the scoped overload
-    // is declared last on the current era, so reading the last overload names it,
-    // and on the retained era the last overload is the only one.
+    // is declared last in both eras, so reading the last overload names it.
     expectTypeOf(currentCallTx).toBeCallableWith();
     expectTypeOf<ReturnType<Ledger9FoundContract<Twin018>['callTx']['increment']>>().toEqualTypeOf<
       Promise<Ledger9CallResult<Twin018, 'increment'>>
@@ -830,12 +828,12 @@ describe('both eras resolve a call to the SAME result structure', () => {
       [txCtx: Ledger9TransactionContext<Twin018, 'increment'>]
     >();
 
-    // The retained era's ONE overload takes the circuit's own args with no context
-    // prepended: a scope refuses a retained-era call outright with
-    // `EraMismatchError`, so there is nothing for a second overload to reach. Add
-    // a context overload here and this equality is what fails.
+    expectTypeOf(retainedCallTx).toBeCallableWith();
+    expectTypeOf<ReturnType<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>>().toEqualTypeOf<
+      Promise<Ledger8UnsubmittedCallTxData<Counter016Contract, 'increment'>>
+    >();
     expectTypeOf<Parameters<Ledger8FoundContract<Counter016Contract>['callTx']['increment']>>().toEqualTypeOf<
-      Ledger8CircuitParameters<Counter016Contract, 'increment'>
+      [txCtx: Ledger8TransactionContext<Counter016Contract, 'increment'>]
     >();
   });
 
@@ -1358,9 +1356,7 @@ describe('createCircuitCallTxInterface selects its era by the artifact, and answ
     const callTx = createCircuitCallTxInterface(providers016, contract016, contractAddress, undefined);
 
     expectTypeOf(callTx).toEqualTypeOf<Ledger8CircuitCallTxInterface<Counter016Contract>>();
-    expectTypeOf(callTx.increment).returns.resolves.toEqualTypeOf<
-      Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>
-    >();
+    expectTypeOf(callTx.increment()).resolves.toEqualTypeOf<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>();
   });
 
   it('builds the current interface for a current-era artifact', () => {

@@ -147,16 +147,35 @@ a single chain snapshot, and a second head reading could answer differently
 mid-scope and leave the batched transaction composed half against each era.
 Nothing is cached ACROSS scopes.
 
-### Why a pre-fork scope is refused rather than narrowed
+### A scope runs on the era of the head
 
-The pre-fork era composes exactly one call per transaction and refuses a longer
-list outright — a call tree is a post-fork ledger feature, so that era has no
-structure to express a second call in. That leaves a pre-fork scope nothing to
-batch into. A contract compiled by the retained toolchain is also single-call by
-construction, so a pre-fork scope has little to be atomic about in the first
-place.
+`withContractScopedTransaction` reads the head once and runs the scope of that
+era: the ledger 8 scope before the fork, the ledger 9 scope after it.
 
-Two properties of WHERE the refusal is raised are load-bearing:
+The ledger 8 scope composes each call as its own ledger 8 transaction and merges
+them with `Transaction.merge()` of the framework's ledger 8 copy, as 4.1.1 did.
+This is not a call tree: `composeCallTx` still composes exactly one call per
+ledger 8 transaction (see `packages/protocol/docs/era-boundary.md`). A scope
+merges whole transactions, which the ledger 8 ledger accepts.
+
+Only the first call of a scope reads the head, the contract state and the stored
+private state. Every later call runs on the runtime the scope acquired and on the
+contract state and private state the call before it ended on. Three limits hold
+in both eras:
+
+- The contract's balance stays as the first call read it.
+- The ledger does not keep the order of merged calls. A circuit whose transcript
+  depends on another call of the same scope running first can fail on chain.
+- A scope calls one contract with one private state;
+  `ScopedTransactionIdentityMismatchError` refuses a second.
+
+### Why a scope function of one era is refused on a head of the other
+
+`withLedger8ContractScopedTransaction` serves only a ledger 8 head and
+`withLedger9ContractScopedTransaction` only a ledger 9 head. On a head of the
+other era each raises `EraMismatchError` with reason `'scope-era-mismatch'`,
+naming the function and the head era. Two properties of WHERE it is raised are
+load-bearing:
 
 1. **Before the scope body runs**, so no circuit is executed and no private
    state is touched on a batch that could never be submitted.
@@ -167,30 +186,28 @@ Two properties of WHERE the refusal is raised are load-bearing:
    subpath cannot be loaded at all
    (`docs/adr/0004-lazy-v8-era-access-via-protocol-subpath.md`).
 
-Both ways forward are named in the message, because the caller's batching intent
-cannot be honoured either way and it needs to choose: give up the batching and
-submit each call on its own, or keep the batching and run the scope once the
-network head has crossed the fork.
+The message points at `withContractScopedTransaction`, which follows the head.
 
-### Why a retained-era call cannot join a scope
+### Why a retained-era call cannot join a ledger 9 scope
 
-The scope's merge is `unprovenTx.merge(...)` on live CURRENT-era transactions,
-and a retained-era call never produces one: it is composed against whichever era
-the head is on and is passed to the providers as its own transaction, in that
-era's own form. So there is nothing to merge it into, at either head — the scope
-would have to hold, and MERGE, two transactions built by two different WASM
-modules, which is the cross-module operation no ADR makes safe.
+After the fork a scope is a ledger 9 one, and its calls are composed by the
+current toolchain's pipeline, which keeps a cache of decoded ledger 9 states. A
+retained-era call is composed by the retained pipeline and submitted on its own,
+so a ledger 9 scope has no way to run it against the scope's states.
 
-This is reachable only from JavaScript today, because the retained-era
-`submitCallTx` overload declares no scope parameter. It is still checked,
-because the alternative is what it replaces: the retained-era path accepted the scope
+This is reachable only from JavaScript, because the retained-era `submitCallTx`
+overload takes only a ledger 8 scope. It is still checked, because the
+alternative is what it replaces: the retained-era path accepted the scope
 context and quietly ran outside it, returning a transaction the caller believed
-had been batched with the rest.
+had been batched with the rest. The reverse — a ledger 9 contract called with a
+ledger 8 scope — is refused with reason `'ledger9-artifact-on-ledger8-network'`,
+because that contract cannot run before the fork at all.
 
 The three outcomes are kept apart on purpose:
 
 - **No third argument** is the normal case.
-- **A real scope** is the mixed-era refusal, `EraMismatchError` with reason `'ledger8-call-in-scope'`.
+- **A ledger 8 scope** is joined.
+- **A ledger 9 scope** is the mixed-era refusal, `EraMismatchError` with reason `'ledger8-call-in-scope'`.
 - **Anything else** — `null`, or a stray value a JavaScript caller passed by
   mistake — is a malformed argument and gets an `InvalidArgumentError`
   (`MIDNIGHT_JS_G_INVALID_ARGUMENT`, category `USAGE`). Reporting it as

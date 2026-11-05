@@ -408,7 +408,7 @@ docstring resolves to it.
 | [Era dispatch](./docs/era-dispatch.md) | How an operation's pipeline era and the network's ledger version are each established, why the artifact check is structural rather than branded, and which pairings may run |
 | [Verification path](./docs/verification-path.md) | What the pre-proving verifier-key check buys, and why routing on key generation is unavailable rather than unimplemented |
 | [Keep-state pipeline](./docs/keep-state-pipeline.md) | The order one retained-era operation runs in, the two composition paths, per-recipient shielded encryption, provider-failure sanitization, and why a retained-era deploy is refused |
-| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and why a pre-fork contract-scoped transaction is refused outright |
+| [Fork crossed during an operation](./docs/stale-head-remediation.md) | How a submit rejection is told apart from a fork crossing, the two-step remediation it carries, and which scope a contract-scoped transaction runs on each side of the fork |
 | [Breadcrumbs](./docs/breadcrumbs.md) | Which era decisions reach the log and which deliberately do not, the four network version readings and their provenance, the privacy rule, and the one fault that is swallowed |
 | [Error taxonomy](./docs/error-taxonomy.md) | Which class to catch across both eras, how the ledger 8 names are used, the code every class registers, the four refusals that fire before a caller pays, and the after-submission region the signing key rides through |
 

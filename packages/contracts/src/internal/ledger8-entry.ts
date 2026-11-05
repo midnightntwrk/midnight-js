@@ -101,7 +101,9 @@ import type {
 } from '../ledger8-contract';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
+  acquireHeadEra,
   assertEraCompatible,
+  type HeadEraReading,
   type HeadVersionSource,
   ownContractState,
   ownLedgerParameters,
@@ -119,10 +121,10 @@ import {
   type Ledger8DeployPipelineResult,
   type Ledger8ExecutionEngine,
   type Ledger8MaintenanceUpdate,
+  type Ledger8Snapshot,
   type Ledger8SnapshotBytes,
   type Ledger8StateValue,
   readLedger8Snapshot,
-  runLedger8CallPipeline,
   runLedger8DeployPipeline,
   runLedger8MaintenancePipeline
 } from './ledger8-pipeline';
@@ -193,6 +195,30 @@ export interface Ledger8Runtime {
 }
 
 /**
+ * The gates every acquired retained runtime passes: the era pairing, the provider set and the
+ * pipeline-selection breadcrumb, in that order.
+ */
+const admitLedger8Runtime = (
+  runtime: Ledger8Runtime,
+  providers: TransactionProviders,
+  kind: SubmittedOperationKind,
+  breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
+): Ledger8Runtime => {
+  const { resolved } = runtime;
+  assertEraCompatible('v8', resolved.head, kind);
+  // AFTER the era gate, and both before the selection breadcrumb and before any
+  // composition: a proof is the expensive step and the first of the three, so a
+  // provider that cannot take this operation's payload has to be found now rather
+  // than after one has been paid for.
+  assertProvidersSupportEra(resolved.head, providers);
+  // AFTER the gates: a selection breadcrumb written before them would claim a
+  // pipeline for an operation the very next line refuses.
+  emitPipelineSelection(breadcrumbs?.logger, resolved, 'v8', breadcrumbs?.contractAddress);
+
+  return runtime;
+};
+
+/**
  * Resolves the head era and acquires the retained engine, then refuses the
  * `(retained artifact, head era)` pairings that cannot run and the provider
  * sets that cannot carry a retained-era transaction.
@@ -231,17 +257,27 @@ export const acquireLedger8Runtime = async (
     loadLedger8Engine(),
     loadLedgerEra('v8')
   ]);
-  assertEraCompatible('v8', resolved.head, kind);
-  // AFTER the era gate, and both before the selection breadcrumb and before any
-  // composition: a proof is the expensive step and the first of the three, so a
-  // provider that cannot take this operation's payload has to be found now rather
-  // than after one has been paid for.
-  assertProvidersSupportEra(resolved.head, providers);
-  // AFTER the gates: a selection breadcrumb written before them would claim a
-  // pipeline for an operation the very next line refuses.
-  emitPipelineSelection(breadcrumbs?.logger, resolved, 'v8', breadcrumbs?.contractAddress);
+  return admitLedger8Runtime({ resolved, engine, retainedEra }, providers, kind, breadcrumbs);
+};
 
-  return { resolved, engine, retainedEra };
+/**
+ * {@link acquireLedger8Runtime} for a head reading the caller already took, so a scope that read the
+ * head once acquires its runtime without a second read.
+ *
+ * @throws Everything {@link acquireLedger8Runtime} raises after its head read.
+ */
+export const acquireLedger8RuntimeForReading = async (
+  reading: HeadEraReading,
+  providers: TransactionProviders,
+  kind: SubmittedOperationKind,
+  breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
+): Promise<Ledger8Runtime> => {
+  const [resolved, engine, retainedEra] = await Promise.all([
+    acquireHeadEra(reading),
+    loadLedger8Engine(),
+    loadLedgerEra('v8')
+  ]);
+  return admitLedger8Runtime({ resolved, engine, retainedEra }, providers, kind, breadcrumbs);
 };
 
 /**
@@ -452,7 +488,7 @@ export const findLedger8Contract = async (
  * @throws TxFailedError if the recorded status is not `SucceedEntirely`.
  * @see {@link ErrorTaxonomy} for why the two eras cannot share a record type.
  */
-const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string, contractAddress: string): void => {
+export const assertLedger8TxSucceeded = (record: FinalizedTxRead, circuitId: string, contractAddress: string): void => {
   if (record.status === SucceedEntirely) {
     return;
   }
@@ -511,7 +547,7 @@ const assertLedger8DeploySucceeded = (
  * @see {@link EraDispatch} for why a mislabelled record fails silently without
  * this, and why the check precedes the status read.
  */
-const assertLedger8RecordEra = (
+export const assertLedger8RecordEra = (
   record: FinalizedTxRead,
   head: LedgerEra,
   circuitId: string,
@@ -691,6 +727,33 @@ export interface Ledger8BuiltCall {
   readonly head: LedgerEra;
 }
 
+/** The contract and private state a call in a scope is made against. */
+export interface Ledger8CallIdentity {
+  readonly contractAddress: string;
+  readonly privateStateId?: string;
+}
+
+/** The states a call in a scope runs against: those the scope read first, or those its last call ended on. */
+export interface Ledger8ScopeStates {
+  readonly snapshot: Ledger8Snapshot;
+  readonly privateState: unknown;
+}
+
+/**
+ * What a call in a scope reads from the scope instead of from the network and the private-state
+ * store: the runtime the scope acquired once, and the states of the calls already in it.
+ */
+export interface Ledger8CallScope {
+  readonly runtime: Ledger8Runtime;
+  /**
+   * @returns The states to run against, or `undefined` before the first call of the scope.
+   * @throws ScopedTransactionIdentityMismatchError if the scope holds states of another contract or private state.
+   */
+  statesFor(identity: Ledger8CallIdentity): Ledger8ScopeStates | undefined;
+  /** Keeps the states the first call of the scope read. */
+  keepStates(identity: Ledger8CallIdentity, states: Ledger8ScopeStates): void;
+}
+
 /**
  * Builds one retained-era call and submits nothing: the local refusals, the private-state read,
  * the era acquisition, the verifier-key fetch and the pipeline, in that order. Persists nothing.
@@ -704,13 +767,18 @@ export interface Ledger8BuiltCall {
  * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded outputs are encrypted
  * per recipient and an unresolvable recipient is refused rather than mis-encrypted.
  *
+ * In a scope, only the first call reads the head, the contract state and the stored private state;
+ * every later call runs on the runtime the scope acquired and the states the call before it ended on.
+ *
  * @param providers The provider set.
  * @param options The call, in the shape this layer reads.
+ * @param scope The scope the call joins, if any.
  * @returns The execution data and the head era the transaction was composed for.
  * @throws InvalidArgumentError if the contract address is malformed, or if the artifact declares no
  * such circuit.
  * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named with no private-state
  * provider.
+ * @throws ScopedTransactionIdentityMismatchError if the scope holds states of another contract or private state.
  * @throws PrivateStateNotFoundError if a named `privateStateId` has nothing stored under it.
  * @throws EraMismatchError, UnknownLedgerEraError from era resolution.
  * @throws NetworkVersionStateMismatchError, IndexerInconsistencyError if the fetched envelope's era
@@ -730,7 +798,8 @@ export interface Ledger8BuiltCall {
  */
 export const buildLedger8CallTx = async (
   providers: Ledger8CallEntryProviders,
-  options: Ledger8CallEntryOptions
+  options: Ledger8CallEntryOptions,
+  scope?: Ledger8CallScope
 ): Promise<Ledger8BuiltCall> => {
   // The same two local refusals the current-era path makes before any provider
   // is touched. A malformed address would otherwise cost a network round trip
@@ -746,20 +815,26 @@ export const buildLedger8CallTx = async (
   if (options.privateStateId !== undefined && providers.privateStateProvider === undefined) {
     throw new IncompleteCallTxPrivateStateConfig();
   }
+  const identity: Ledger8CallIdentity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
+  const scopeStates = scope?.statesFor(identity);
   const privateState =
-    providers.privateStateProvider === undefined
-      ? undefined
-      : await readLedger8PrivateState(
-          providers.privateStateProvider.forContract(options.contractAddress),
-          options.privateStateId
-        );
+    scopeStates !== undefined
+      ? scopeStates.privateState
+      : providers.privateStateProvider === undefined
+        ? undefined
+        : await readLedger8PrivateState(
+            providers.privateStateProvider.forContract(options.contractAddress),
+            options.privateStateId
+          );
 
   const { networkId } = providers.config;
   const ttl = intentTtl(providers.config);
-  const { resolved, engine, retainedEra } = await acquireLedger8Runtime(providers, 'call', {
-    logger: providers.loggerProvider,
-    contractAddress: options.contractAddress
-  });
+  const { resolved, engine, retainedEra } =
+    scope?.runtime ??
+    (await acquireLedger8Runtime(providers, 'call', {
+      logger: providers.loggerProvider,
+      contractAddress: options.contractAddress
+    }));
   const localVerifierKey = await providers.zkConfigProvider.getVerifierKey(options.circuitId);
 
   // Read ONCE and used for both the circuit's coin public key and the
@@ -776,13 +851,24 @@ export const buildLedger8CallTx = async (
   // test in this repo can catch its absence.
   const coinPublicKey = parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), networkId);
 
-  const call = await runLedger8CallPipeline({
+  const snapshot =
+    scopeStates?.snapshot ??
+    (await readLedger8Snapshot(
+      retainedEra,
+      resolved.era,
+      resolved.head,
+      providers.publicDataProvider,
+      options.contractAddress,
+      providers.loggerProvider
+    ));
+  if (scope !== undefined && scopeStates === undefined) {
+    scope.keepStates(identity, { snapshot, privateState });
+  }
+
+  const call = await composeLedger8Call({
     era: resolved.era,
-    retainedEra,
     engine,
-    publicDataProvider: providers.publicDataProvider,
     head: resolved.head,
-    logger: providers.loggerProvider,
     contract: options.compiledContract,
     contractAddress: options.contractAddress,
     circuitId: options.circuitId,
@@ -798,7 +884,7 @@ export const buildLedger8CallTx = async (
       providers.walletProvider.getEncryptionPublicKey(),
       options.additionalCoinEncPublicKeyMappings
     )
-  });
+  }, snapshot);
 
   return { data: toLedger8CallTxData(call), head: resolved.head };
 };

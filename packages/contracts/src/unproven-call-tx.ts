@@ -30,7 +30,7 @@ import type {
   Ledger9CallOptionsWithProviderDataDependencies
 } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
-import { IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
+import { EraMismatchError, IncompleteCallTxPrivateStateConfig, isEffectContractError,NetworkVersionReadFailedError } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import {
   decodeLedger9InitialStates,
@@ -47,6 +47,7 @@ import {
   buildLedger8CallTxFromStates,
   toLedger8CallEntryOptions
 } from './internal/ledger8-entry';
+import { ledger8ScopeOf } from './internal/ledger8-scope';
 import * as Transaction from './internal/transaction';
 import {
   createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver,
@@ -63,7 +64,7 @@ import type {
   Ledger8ContractProviders,
   Ledger8UnsubmittedCallTxData
 } from './ledger8-contract';
-import { type Ledger9TransactionContext } from './transaction';
+import { type AnyLedger8TransactionContext, type Ledger8TransactionContext, type Ledger9TransactionContext } from './transaction';
 import type { Ledger9UnsubmittedCallTxData } from './tx-model';
 
 /**
@@ -475,6 +476,9 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   options: Ledger9CallTxOptions<C, PCK>,
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
+  if (Transaction.scopeContextEra(transactionContext) === 'v8') {
+    throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
+  }
   await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger9UnprovenCallTx');
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
@@ -528,7 +532,8 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
 
 export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, PCK>,
-  options: Ledger8CallTxOptions<C, PCK>
+  options: Ledger8CallTxOptions<C, PCK>,
+  transactionContext?: Ledger8TransactionContext<C, PCK>
 ): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 /**
@@ -568,11 +573,14 @@ export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK
  */
 export async function createLedger8UnprovenCallTx(
   providers: Ledger8ContractProviders<Ledger8Contract, Ledger8CircuitId<Ledger8Contract>>,
-  options: AnyLedger8CallTxOptions
+  options: AnyLedger8CallTxOptions,
+  transactionContext?: AnyLedger8TransactionContext
 ): Promise<AnyLedger8UnsubmittedCallTxData> {
   await requireLedger8Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger8UnprovenCallTx');
-  return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(options))).data;
+  const scope = ledger8ScopeOf(options.circuitId, transactionContext, 'createLedger8UnprovenCallTx');
+  return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(options), scope)).data;
 }
+
 
 export function createLedger8UnprovenCallTxFromInitialStates<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -682,7 +690,8 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
 
 export async function createUnprovenCallTx<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, PCK>,
-  options: Ledger8CallTxOptions<C, PCK>
+  options: Ledger8CallTxOptions<C, PCK>,
+  transactionContext?: Ledger8TransactionContext<C, PCK>
 ): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
 
 export async function createUnprovenCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
@@ -703,7 +712,9 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * their documentation covers the parameters and the privacy-sensitive result.
  *
  * @throws EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 8 contract called with a
- *         transaction context: a ledger 8 call cannot join a scoped transaction.
+ *         ledger 9 transaction context: after the hard fork a ledger 8 call cannot join a scoped transaction.
+ * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 9 contract called
+ *         with a ledger 8 transaction context.
  * @throws InvalidArgumentError for a ledger 8 contract given without `publicDataProvider`,
  *         `proofProvider` or `midnightProvider`, before the network is read.
  *
@@ -715,7 +726,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
   options: Ledger9CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
-  transactionContext?: Ledger9TransactionContext<C, PCK>
+  transactionContext?: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK> | AnyLedger8UnsubmittedCallTxData> {
   const request = await resolveEraRequest<AnyLedger8CallTxOptions, Ledger9CallTxOptions<C, PCK>>(
     options,
@@ -723,11 +734,19 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   );
   switch (request.era) {
     case 'v9':
-      return createLedger9UnprovenCallTx(providers, request.options, transactionContext);
-    case 'v8':
-      Transaction.assertScopeAdmitsLedger8Call(request.options.circuitId, transactionContext, 'createUnprovenCallTx');
+      if (Transaction.scopeContextEra(transactionContext) === 'v8') {
+        throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
+      }
+      return createLedger9UnprovenCallTx(
+        providers,
+        request.options,
+        Transaction.isLedger9ScopeContext<C, PCK>(transactionContext) ? transactionContext : undefined
+      );
+    case 'v8': {
+      const scope = ledger8ScopeOf(request.options.circuitId, transactionContext, 'createUnprovenCallTx');
       assertLedger8TransactionProviders(providers, 'createUnprovenCallTx');
-      return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(request.options))).data;
+      return (await buildLedger8CallTx(providers, toLedger8CallEntryOptions(request.options), scope)).data;
+    }
     default:
       return assertNever(request, 'createUnprovenCallTx');
   }

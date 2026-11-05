@@ -40,9 +40,10 @@
     "compact-shielded": "run-compactc src/contract/shielded.compact ./src/contract/compiled/shielded",
     "compact-shielded-fallible": "run-compactc src/contract/shielded-fallible.compact ./src/contract/compiled/shielded-fallible",
     "compact-fee-mint": "run-compactc src/contract/fee-mint.compact ./src/contract/compiled/fee-mint",
-    "compact-retained": "rimraf ./src/contract/compiled-retained && yarn fetch-compactc --version=0.31.1 && yarn compact-retained-unshielded && yarn compact-retained-block-time && node ./scripts/rewrite-retained-runtime.mjs ./src/contract/compiled-retained",
+    "compact-retained": "rimraf ./src/contract/compiled-retained && yarn fetch-compactc --version=0.31.1 && yarn compact-retained-unshielded && yarn compact-retained-block-time && yarn compact-retained-double-counter && node ./scripts/rewrite-retained-runtime.mjs ./src/contract/compiled-retained",
     "compact-retained-unshielded": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/unshielded.compact ./src/contract/compiled-retained/unshielded",
-    "compact-retained-block-time": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/block-time.compact ./src/contract/compiled-retained/block-time"
+    "compact-retained-block-time": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/block-time.compact ./src/contract/compiled-retained/block-time",
+    "compact-retained-double-counter": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/double-counter.compact ./src/contract/compiled-retained/double-counter"
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",

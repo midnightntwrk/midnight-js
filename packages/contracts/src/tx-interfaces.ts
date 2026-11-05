@@ -132,6 +132,10 @@ export function createCallTxOptions<C extends Contract.Any, PCK extends Contract
   return callTxOptions as Ledger9CallTxOptions<C, PCK>;
 }
 
+const isLedger8ContextOf = <C extends Ledger8Contract>(
+  u: unknown
+): u is Transaction.Ledger8TransactionContext<C, Ledger8CircuitId<C>> => Transaction.isLedger8TransactionContext(u);
+
 /**
  * Creates a circuit call transaction interface for a RETAINED-ERA contract.
  *
@@ -158,11 +162,18 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   return circuitIds.reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (...args: Ledger8CircuitParameters<C, typeof circuitId>) =>
-        submitCallTx(
-          providers,
-          createLedger8CallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, undefined, args)
-        )
+      [circuitId]: (...args: unknown[]) => {
+        const txCtx = args.length > 0 && isLedger8ContextOf<C>(args[0]) ? args[0] : undefined;
+        const callOptions = createLedger8CallTxOptions(
+          compiledContract,
+          circuitId,
+          contractAddress,
+          privateStateId,
+          txCtx?.getAdditionalMappings(),
+          (txCtx ? args.slice(1) : args) as Ledger8CircuitParameters<C, typeof circuitId>
+        );
+        return txCtx ? submitCallTx(providers, callOptions, txCtx) : submitCallTx(providers, callOptions);
+      }
     }),
     {}
   ) as Ledger8CircuitCallTxInterface<C>;

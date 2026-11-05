@@ -1008,15 +1008,14 @@ await deployContract(providers, {
 });
 ```
 
-### Scoped transactions are refused while the network is on ledger 8
+### Scoped transactions on ledger 8 take a `Ledger8TransactionContext`
 
-`withContractScopedTransaction` batches several calls into one transaction. In 5.0.0 it
-reads the network's era first. **Before the fork it throws `EraMismatchError`** (reason
-`'scope-on-ledger8-network'`). In 4.1.1 it worked on the ledger 8 network. A ledger 8
-contract called inside a scope is refused too (reason `'ledger8-call-in-scope'`).
-
-What to do: until the fork, submit each call on its own with `submitCallTx`. After the fork,
-scoped transactions work again for ledger 9 contracts.
+`withContractScopedTransaction` batches several calls into one transaction, as in 4.1.1. In 5.0.0
+it reads the network's era first and runs the scope of that era. **Before the fork the scope
+function receives a `Ledger8TransactionContext`**: type the function's parameter as one, or call
+`withLedger8ContractScopedTransaction`. After the fork the scope takes ledger 9 contracts only; a
+ledger 8 contract called inside it is refused (reason `'ledger8-call-in-scope'`), so submit those
+calls on their own with `submitCallTx`.
 
 ---
 

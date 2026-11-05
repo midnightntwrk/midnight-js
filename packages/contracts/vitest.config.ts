@@ -44,7 +44,7 @@ export default defineConfig({
         // PER-FILE floors for the retained-era modules. The package-wide floors
         // above are in the low thirties, so ~1,200 lines of new orchestration
         // could lose most of its coverage without any of them moving. These
-        // pin the three files at what they actually achieve, so a gap becomes a
+        // pin these files at what they actually achieve, so a gap becomes a
         // failing build rather than an omission nobody sees.
         //
         // A per-glob entry is an EXTRA gate, not an exclusion from the global
@@ -61,6 +61,7 @@ export default defineConfig({
         // makes unreachable for a typed caller.
         'src/internal/ledger8-pipeline.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/internal/ledger8-entry.ts': { lines: 97, functions: 100, branches: 84, statements: 97 },
+        'src/internal/ledger8-scope.ts': { lines: 100, functions: 100, branches: 93, statements: 100 },
         'src/internal/submit-payload.ts': { lines: 100, functions: 100, branches: 90, statements: 100 },
         'src/internal/era.ts': { lines: 92, functions: 100, branches: 91, statements: 92 }
       }

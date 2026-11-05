@@ -219,10 +219,14 @@ export { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } fro
 export { Ledger9DeployTxOptions, submitDeployTx, submitLedger8DeployTx, submitLedger9DeployTx } from './submit-deploy-tx';
 export { Ledger9SubmitTxProviders, submitTx, submitTxAsync, SubmitTxOptions } from './submit-tx';
 export {
+  type AnyLedger8TransactionContext,
+  isLedger8TransactionContext,
   isLedger9TransactionContext,
+  type Ledger8TransactionContext,
   Ledger9TransactionContext,
   ScopedTransactionOptions,
   withContractScopedTransaction,
+  withLedger8ContractScopedTransaction,
   withLedger9ContractScopedTransaction
 } from './transaction';
 export type { Ledger9CircuitCallTxInterface } from './tx-interfaces';
