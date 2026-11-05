@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
-
 import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type CoinPublicKey,
@@ -40,29 +37,6 @@ import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
 import { adoptInWallet, finalizedFromWallet } from './wallet-transaction';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
-
-// TEMPORARY (PR #1599): dumps every transaction around balancing so CI keeps them as artifacts.
-const dumpTx = (label: string, tx: { serialize(): Uint8Array; toString(compact?: boolean): string }): void => {
-  const dir = path.resolve('reports', 'tx-dump');
-  mkdirSync(dir, { recursive: true });
-  const name = `${Date.now()}-${label}`;
-  writeFileSync(path.join(dir, `${name}.hex`), Buffer.from(tx.serialize()).toString('hex'));
-  writeFileSync(path.join(dir, `${name}.txt`), tx.toString());
-};
-
-const dumpLedgerParameters = async (indexerUrl: string): Promise<void> => {
-  const file = path.join(path.resolve('reports', 'tx-dump'), `${Date.now()}-ledger-parameters.json`);
-  try {
-    const response = await fetch(indexerUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ query: '{ block { height ledgerParameters } }' })
-    });
-    writeFileSync(file, await response.text());
-  } catch (error) {
-    writeFileSync(file, JSON.stringify({ dumpError: String(error) }));
-  }
-};
 
 /**
  * Provider class that implements wallet functionality for the Midnight network.
@@ -138,11 +112,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) =>
       this.unshieldedKeystore.signDataAsync(payload)
     );
-    dumpTx(`${era}-unbound`, tx);
-    const finalized = await finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
-    dumpTx(`${era}-finalized`, finalized);
-    await dumpLedgerParameters(this.env.indexer);
-    return finalized;
+    return finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
   }
 
   private async submit<E extends LedgerEra>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
