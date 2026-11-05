@@ -1388,6 +1388,6 @@ No exports were removed.
 | `initializeMidnightProviders` | sets `config` with `ttlSeconds: 3600` |
 | Added | `ForkTestEnvironment`, `ForkEnactment`, `HEALTH_CHECK_TIMEOUT_MS` (10 000 ms), `redactUrl`, `redactedJson` |
 | Added subpath `./fixtures-hf` | `HF_FIXTURE_NAMES`, `HF_FIXTURE_STATUSES`, `readHfFixture`, `hfFixturePath`, `hfFixturesManifest`, types `HfFixtureName`, `HfFixtureStatus`, `HfFixtureEntry` |
-| Wallet SDK | `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 (was `@midnight-ntwrk/wallet-sdk` 1.1.0) |
+| Wallet SDK | `@midnightntwrk/wallet-sdk` 2.0.0 (was `@midnight-ntwrk/wallet-sdk` 1.1.0) |
 
 `@midnight-ntwrk/testkit-js-e2e` is no longer published.

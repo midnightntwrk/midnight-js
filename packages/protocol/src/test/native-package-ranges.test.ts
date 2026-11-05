@@ -137,7 +137,7 @@ describe('native package ranges a consumer resolves', () => {
     expectOneRange('@midnightntwrk/onchain-runtime-v4');
   });
 
-  // compact-js 3.0.0 asks for `^1.0.0` and protocol pins `1.0.0`, while the wallet SDK pins `1.0.0-rc.7`.
+  // compact-js 3.0.0 and the wallet SDK 2.0.0 ask for `^1.0.0`, while protocol pins `1.0.0`.
   // Expected to fail until they align (midnightntwrk/compact-js#42); flip it then.
   it.fails('asks for @midnightntwrk/ledger-v9 with one range everywhere', () => {
     expectOneRange('@midnightntwrk/ledger-v9');
