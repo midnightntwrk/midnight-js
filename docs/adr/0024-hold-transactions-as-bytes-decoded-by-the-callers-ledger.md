@@ -3,7 +3,9 @@
 - Status: Accepted
 - Date: 2026-11-05
 - Deciders: Szymon Paluchowski
-- Related: amends [0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md); follows
+- Related: amends [0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md),
+  [0014](./0014-build-provider-seams-from-per-era-handlers.md) and
+  [0013](./0013-publish-the-retained-era-as-one-namespace.md); follows
   [0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md); issues #1551, #1543
 
 ## Context
@@ -61,11 +63,11 @@ with its own ledger copy. The handle keeps its name, its `era`, its `stage` and 
 parameter.
 
 ```ts
-class LedgerTransaction<S extends TransactionStage, E extends LedgerEra = LedgerEra> {
+class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = LedgerEra> {
   readonly era: E;
   readonly stage: S;
-  static fromBytes<E, S>(era: E, stage: S, bytes: Uint8Array): LedgerTransaction<S, E>;
-  static seal<E, S>(era: E, stage: S, tx: { serialize(): Uint8Array }): LedgerTransaction<S, E>;
+  static fromBytes<E, S>(era: E, stage: S, bytes: Uint8Array, method?: TransactionHandleMethod): LedgerTransaction<S, E>;
+  static seal<E, S>(era: E, stage: S, tx: { serialize(): Uint8Array }, method?: TransactionHandleMethod): LedgerTransaction<S, E>;
   serialize(): Uint8Array;
   deserialize<D extends TransactionDecoders>(decoders: TransactionDecodersFor<D, E>): DecodedTransaction<D, E, S>;
   static require<S>(value: unknown, stage: S, method: TransactionHandleMethod): LedgerTransaction<S>;
@@ -91,17 +93,20 @@ The rules:
    The handle passes the markers of its own stage, so a caller cannot decode a transaction at the
    wrong stage. Only the decoder of the handle's own era is called. A missing decoder is refused
    with a coded error, and a decoder that throws an error that is not a `MidnightJsError` is
-   reported as a coded INTEGRITY error with the cause, as for `SerializedState`. Decoders that
-   hold none for any era the handle can be do not compile. A type test proves that each stage
+   reported as a coded INTEGRITY error with the cause, as for `SerializedState`. Decoders with no
+   class for any era the handle's type allows do not compile; a class for one era is enough, and a
+   handle of an era with no class is refused at run time. A type test proves that each stage
    returns the caller's transaction type at that stage, not the framework's.
 4. **`unwrap` is removed from the public API.** The framework decodes with its own copy only where
-   it builds, proves or merges a transaction: `contracts`, `http-client-proof-provider` and
-   `dapp-connector-proof-provider`. It does that through `deserialize`, with the framework's
-   classes. There is no form that decodes with the framework's copy by default.
+   it builds, proves, merges, submits or checks a transaction: `contracts`, the provider factories
+   in `types`, `http-client-proof-provider`, `dapp-connector-proof-provider` and the testkit
+   wallet. It does that through `deserialize` or `deserializeTransactionAtStage`, with the
+   framework's classes. There is no form that decodes with the framework's copy by default.
 5. **A handler receives the handle and returns an object or bytes.** The per-era handler of
    `create*FromHandlers` receives `LedgerTransaction<S, E>` for its era and decodes it with its own
    copy. It returns an object of any ledger copy, or bytes. The factory seals the answer with the
-   era of the request and the stage the method produces, so the answer is checked as it is today.
+   era of the request and the stage the method produces, so the answer is checked as it is today,
+   and decodes the bytes the handle holds once, whether the answer was an object or bytes.
    ADR 0019 point 4 (serialize on the way out) becomes a property of the type, and the exception
    in ADR 0019 point 7 (handlers speak raw framework objects) is removed.
 6. **Bytes that enter from outside are decoded once, at once.** Where a wallet, a DApp Connector or

@@ -14,8 +14,9 @@ instances, and a type checker cannot tell their objects apart.
 This package handles that fact in three ways:
 
 - A transaction passed to a provider method is a **handle**
-  (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle carries its era as data
-  and checks the WASM instance when it is made.
+  (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle holds the transaction's
+  bytes and its era, checks the header when it is made, and is decoded by the
+  caller's own ledger copy ([ADR 0024](../../../docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)).
 - A value the ledger wrote and the read side returns — a contract state, ledger
   parameters, a zswap chain state — is a **serialized state**, one class per kind
   (`SerializedContractState`, `SerializedLedgerParameters`,
@@ -61,16 +62,16 @@ object. There is one way in and one way out:
   Only the class of the handle's era is called. A missing class is refused with
   `TransactionDecoderMissingError`; a class that throws an error that is not a
   `MidnightJsError` is reported as `TransactionDecodeFailedError`, with its
-  error as `cause`. Decoders with none for any era the handle can be do not
-  compile.
+  error as `cause`. Decoders with no class for any era the handle's type
+  allows do not compile.
 
 The era is data on the handle, so the handle has the same shape in every era.
 When a new ledger becomes current, a ledger 9 handle does not change shape.
 
 The stage is part of the type, so passing an unproven handle to
-`MidnightProvider.submitTx` is a compile error. At run time `fromBytes` reads
-the stage from the header, because a ledger uses one class for all three
-stages, and refuses bytes at another stage with
+`MidnightProvider.submitTx` is a compile error. At run time `fromBytes` checks
+the header against the era and stage it is given, because a ledger uses one
+class for all three stages, and refuses bytes at another stage with
 `InvalidTransactionHandleError`, reason `header-mismatch`. The provider methods
 check the handle they receive with `LedgerTransaction.require`, and refuse a
 handle at the wrong stage with reason `wrong-stage`.

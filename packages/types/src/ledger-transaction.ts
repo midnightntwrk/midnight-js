@@ -41,7 +41,8 @@ export type TransactionAnswer = { serialize(): Uint8Array } | Uint8Array;
 
 /**
  * The `Transaction` class of a ledger copy, such as `Transaction` from `@midnightntwrk/ledger-v9`.
- * `deserialize` reads the bytes; `fromParts` gives the types of the transactions it decodes.
+ * `deserialize` reads the bytes; `fromParts`, `prove` and `bind` give the types of the
+ * transactions it decodes at each stage.
  */
 export interface TransactionDecoder {
   deserialize(
@@ -50,7 +51,7 @@ export interface TransactionDecoder {
     markerB: 'pre-binding' | 'binding',
     raw: Uint8Array
   ): unknown;
-  fromParts(networkId: string): unknown;
+  fromParts(networkId: string): { prove(...args: never[]): Promise<{ bind(): unknown }> };
 }
 
 /**
@@ -227,9 +228,11 @@ export class LedgerTransaction<S extends TransactionStage, out E extends LedgerE
    * Decodes the transaction with the class for its own era, at its own stage.
    *
    * @param decoders One `Transaction` class per ledger era, from the caller's own ledger copy, e.g.
-   *   `{ v9: Transaction }`. Decoders with none for any era this handle can be do not compile.
+   *   `{ v9: Transaction }`. It must have a class for at least one era the handle's type allows, or
+   *   the call does not compile. Narrow on `era` first, or pass a class for each era, so the
+   *   handle's own era is always covered.
    * @returns An object of the caller's class at this handle's stage.
-   * @throws TransactionDecoderMissingError When `decoders` has none for {@link era}.
+   * @throws TransactionDecoderMissingError When `decoders` has no class for `this.era`.
    * @throws TransactionDecodeFailedError When the class throws an error that is not a
    *   `MidnightJsError`, for example because the bytes after the header are corrupt. A
    *   `MidnightJsError` is rethrown unchanged.

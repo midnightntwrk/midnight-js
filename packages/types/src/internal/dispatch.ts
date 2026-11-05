@@ -42,11 +42,12 @@ export interface Route<S extends TransactionStage, A extends readonly unknown[],
 
 /**
  * Makes the handle a provider method answers with, in the era of the request and at the stage the
- * method produces, from an object of any ledger copy or from bytes. Bytes are decoded once, so a
- * corrupt body is refused here rather than at a later step.
+ * method produces, from an object of any ledger copy or from bytes. The bytes the handle holds are
+ * decoded once, so a corrupt body is refused here rather than at a later step.
  *
  * @throws InvalidTransactionHandleError if the answer is not a transaction of that era at that stage.
- * @throws PayloadNotATransactionError if the answer is bytes whose body does not decode.
+ * @throws PayloadNotATransactionError if the body of the answer does not decode.
+ * @throws Ledger8RuntimeMissingError if the answer is a v8 transaction and the v8 runtime cannot be loaded.
  */
 export const sealAnswer = async <E extends LedgerEra, S extends TransactionStage>(
   era: E,
@@ -54,11 +55,11 @@ export const sealAnswer = async <E extends LedgerEra, S extends TransactionStage
   answer: TransactionAnswer,
   method: TransactionMethod
 ): Promise<LedgerTransaction<S, E>> => {
-  if (!(answer instanceof Uint8Array)) {
-    return LedgerTransaction.seal(era, stage, answer, method);
-  }
-  const handle = LedgerTransaction.fromBytes(era, stage, answer, method);
-  await deserializeTransactionAtStage(era, stage, answer);
+  const handle =
+    answer instanceof Uint8Array
+      ? LedgerTransaction.fromBytes(era, stage, answer, method)
+      : LedgerTransaction.seal(era, stage, answer, method);
+  await deserializeTransactionAtStage(era, stage, handle.serialize());
   return handle;
 };
 

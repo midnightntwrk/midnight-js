@@ -47,6 +47,10 @@ export interface WalletProvider {
    * @throws InvalidTransactionHandleError if the balanced transaction is not a transaction object
    *         or bytes (`not-a-transaction`), or is not a Finalized transaction of the handle's era
    *         (`header-mismatch`).
+   * @throws PayloadNotATransactionError if a provider built with {@link createWalletProviderFromHandlers}
+   *         is answered with a transaction whose body does not decode.
+   * @throws Ledger8RuntimeMissingError if such a provider is answered with a v8 transaction and the
+   *         v8 runtime cannot be loaded.
    */
   balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
 
@@ -62,8 +66,8 @@ export interface WalletProvider {
  *
  * A handler receives the handle of its own era. It passes `tx.serialize()` to a
  * wallet, or decodes the handle with its own ledger copy. It answers with a
- * transaction object of any ledger copy, or with its bytes. Bytes are decoded
- * once, so a corrupt body is refused at `balanceTx`.
+ * transaction object of any ledger copy, or with its bytes. The answer is
+ * decoded once, so a corrupt body is refused at `balanceTx`.
  *
  * The two key readers sit beside the handlers rather than inside one: they are
  * properties of the wallet, not of the era a transaction belongs to.

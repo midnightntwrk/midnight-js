@@ -13,10 +13,19 @@
  * limitations under the License.
  */
 
+import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { LedgerTransaction } from '../ledger-transaction';
+
+const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn() }));
+
+vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+  const original = await importOriginal<typeof protocol>();
+  loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
+  return { ...original, loadLedger8Protocol: loadLedger8Spy };
+});
 
 const ledger8Bytes = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v8.Unproven}:body`);
 
@@ -28,6 +37,7 @@ describe('a v8 handle before the v8 ledger is loaded', () => {
 
     expect([handle.era, handle.stage]).toEqual(['v8', 'Unproven']);
     expect(handle.serialize()).toEqual(ledger8Bytes);
+    expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
   it('is sealed from an object of any ledger copy', () => {
@@ -36,5 +46,6 @@ describe('a v8 handle before the v8 ledger is loaded', () => {
     const handle = LedgerTransaction.seal('v8', 'Unproven', userBuiltV8Tx);
 
     expect(handle.serialize()).toEqual(ledger8Bytes);
+    expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 });

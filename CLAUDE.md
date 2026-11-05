@@ -111,7 +111,7 @@ bytes it gets back. See
 which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
 and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md), and
 [ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md),
-which amends ADR 0019.
+which amends ADR 0019, ADR 0014 and ADR 0013.
 
 ## CI Pipeline & PR Gates
 

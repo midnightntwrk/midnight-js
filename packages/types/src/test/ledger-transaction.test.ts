@@ -130,6 +130,7 @@ describe('LedgerTransaction.fromBytes', () => {
     const error = thrownBy(() => LedgerTransaction.fromBytes('v9', 'Unproven', new TextEncoder().encode('SECRET-BODY')));
 
     expect(String(error)).toContain("got ''");
+    expect(String(error)).not.toContain('SECRET');
   });
 
   it('refuses a header whose signature marker belongs to another era', () => {
@@ -314,9 +315,9 @@ describe('LedgerTransaction.deserialize', () => {
       code: PROVIDER_ERROR_CODES.TRANSACTION_DECODE_FAILED,
       category: 'INTEGRITY',
       era: 'v9',
-      stage: 'Finalized'
+      stage: 'Finalized',
+      cause: expect.any(Error)
     });
-    expect((error as Error).cause).toBeDefined();
   });
 
   it('rethrows a MidnightJsError from the decoder unchanged', () => {

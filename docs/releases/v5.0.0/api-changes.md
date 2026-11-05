@@ -142,7 +142,7 @@ export type TransactionHandleMethod = TransactionMethod | ReadMethod | 'LedgerTr
 export type TransactionDecoders = Readonly<Partial<Record<LedgerEra, TransactionDecoder>>>;
 // What a `proveTx` / `balanceTx` handler answers with: a transaction object of any ledger copy, or its bytes.
 export type TransactionAnswer = { serialize(): Uint8Array } | Uint8Array;
-export class LedgerTransaction<S extends TransactionStage, E extends LedgerEra = LedgerEra> {
+export class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = LedgerEra> {
   readonly era: E;
   readonly stage: S;
   static fromBytes<E extends LedgerEra, S extends TransactionStage>(era: E, stage: S, bytes: Uint8Array, method?: TransactionHandleMethod): LedgerTransaction<S, E>;

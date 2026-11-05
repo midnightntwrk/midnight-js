@@ -354,8 +354,10 @@ const INVALID_TRANSACTION_HANDLE_REMEDIES: Readonly<Record<InvalidTransactionHan
  * a usable one, or when `LedgerTransaction.fromBytes` or `LedgerTransaction.seal`
  * is given a value that is not a transaction of that era at that stage.
  *
- * The types rule these values out, so it is reachable only from JavaScript,
- * across an untyped boundary, or from a second copy of this package.
+ * The types rule out every reason but `header-mismatch`, so those are reachable
+ * only from JavaScript, across an untyped boundary, or from a second copy of this
+ * package. `header-mismatch` is a check of the bytes at run time: typed code meets
+ * it with bytes, or a provider answer, of another era or stage.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from
  * `@midnight-ntwrk/midnight-js-utils`.
@@ -434,8 +436,9 @@ export class TransactionDecoderMissingError extends MidnightJsError {
 /**
  * Thrown by `LedgerTransaction.deserialize` when the decoder for the era of the handle throws an
  * error that is not a `MidnightJsError`. The bytes carry the right header, so either the bytes after
- * it are corrupt or the decoder is the wrong one. Categorised `INTEGRITY`. The decoder's failure is
- * the `cause`.
+ * it are corrupt or the decoder is the wrong one. Also raised inside a provider of this framework
+ * that decodes the handle it receives, with no decoder passed by the caller. Categorised
+ * `INTEGRITY`. The decoder's failure is the `cause`.
  *
  * Catch it via its stable `code`, using `hasErrorCode` from `@midnight-ntwrk/midnight-js-utils`.
  */
@@ -454,9 +457,8 @@ export class TransactionDecodeFailedError extends MidnightJsError {
     options: { readonly cause: unknown }
   ) {
     super(
-      `The decoder passed for ${era} could not decode a ${stage} ${era} transaction. ` +
-        `Check that you pass { ${era}: Transaction }, with ${TRANSACTION_DECODER_SOURCE[era]}; ` +
-        `if you do, the bytes are corrupt.`,
+      `Could not decode a ${stage} ${era} transaction. Either the bytes after the header are corrupt, ` +
+        `or the decoder is not { ${era}: Transaction }, with ${TRANSACTION_DECODER_SOURCE[era]}.`,
       options
     );
     this.name = 'TransactionDecodeFailedError';

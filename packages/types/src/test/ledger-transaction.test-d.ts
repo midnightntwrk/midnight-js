@@ -21,6 +21,7 @@ import {
   type FinalizedTx,
   LedgerTransaction,
   type LedgerTransactionTypes,
+  type TransactionDecoders,
   type UnboundTx,
   type UnprovenTx
 } from '../ledger-transaction';
@@ -122,6 +123,19 @@ describe('LedgerTransaction.deserialize', () => {
   it('refuses a class that cannot decode a transaction', () => {
     // @ts-expect-error an object without deserialize and fromParts is not a Transaction class
     ledger9UnprovenHandle.deserialize({ v9: { deserialize: (raw: Uint8Array) => raw } });
+  });
+
+  it('refuses a class whose transactions cannot be proven and bound', () => {
+    const notALedgerClass = { deserialize: (): string => 'decoded', fromParts: () => ({ x: 1 }) };
+
+    // @ts-expect-error fromParts gives no transaction with prove and bind
+    ledger9UnprovenHandle.deserialize({ v9: notALedgerClass });
+  });
+
+  it('returns a usable type, not never, for decoders typed as TransactionDecoders', () => {
+    const decoders: TransactionDecoders = { v9: CallerTransaction };
+
+    expectTypeOf(ledger9FinalizedHandle.deserialize(decoders)).not.toBeNever();
   });
 
   it('is not on the class: there is no unwrap', () => {

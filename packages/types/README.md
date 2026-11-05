@@ -241,8 +241,8 @@ ledger copy, or passes `tx.serialize()` to a prover or wallet that takes bytes.
 A `proveTx` or `balanceTx` handler answers with a transaction object of any
 ledger copy, or with its bytes. The factory seals the answer in the era of the
 request, never an era read from the bytes, and refuses an answer of another era
-or stage with `InvalidTransactionHandleError` (reason `header-mismatch`). Bytes
-are decoded once, so a corrupt body is refused at once with
+or stage with `InvalidTransactionHandleError` (reason `header-mismatch`). The
+answer is decoded once, so a corrupt body is refused at once with
 `PayloadNotATransactionError`.
 
 A provider with no handler at all is refused when it is built. The factory also

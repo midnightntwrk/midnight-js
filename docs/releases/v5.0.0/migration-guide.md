@@ -468,7 +468,7 @@ To serve both eras, write one handler per era with
 era you do not serve to `undefined`. Each handler receives the handle of its own
 era. A `proveTx` or `balanceTx` handler answers with a transaction object of any
 ledger copy, or with its bytes; the factory seals the answer in the era and at
-the stage of the method, decodes bytes once so a corrupt body is refused at
+the stage of the method, decodes the answer once so a corrupt body is refused at
 once, and computes `supportedEras`:
 
 ```ts
@@ -499,21 +499,21 @@ If you built against a 5.0.0 pre-release, the handler keys changed:
   });
 ```
 
-A v8 handler now receives a live ledger 8 object, not bytes. The full list of
+A v8 handler now receives the v8 handle, `LedgerTransaction<'Unproven', 'v8'>`.
+Decode it, or pass `tx.serialize()` on. The full list of
 pre-release names that changed is in
 [breaking-changes.md 18](./breaking-changes.md#18-transactions-are-handles-1533).
 
 ### How the indexer provider reads both eras
 
-A v8-era record is served rather than refused: the indexer provider decodes
-each record with the runtime of the era that record reports, acquiring the
-pre-fork runtime lazily on first use. Because the record's `tx` is a handle
-that holds a live ledger object, reading a ledger 8 record loads the ledger 8
-runtime, also in a session that otherwise only uses ledger 9 (known
-limitation, [#1525](https://github.com/midnightntwrk/midnight-js/issues/1525)). What throws at the read
+A v8-era record is served rather than refused: the indexer provider makes the
+record's `tx` a handle of the era that record reports, from its bytes. It checks
+only the header, so reading a ledger 8 record does not load the ledger 8
+runtime. A body that is corrupt after a right header is refused when you decode
+it, with `TransactionDecodeFailedError`. What throws at the read
 boundary is a `protocolVersion` this client cannot place on the era timeline at
 all (`UnknownRecordEraError`), where before it would have returned a record that
-failed later inside the codec. Bytes that will not decode on the era selected
+failed later inside the codec. Bytes without the header of the era selected
 for them — whether the record disagrees with itself or your ledger package is a
 different vintage than the network's — surface as `DeserializationError`,
 carrying the era, the `protocolVersion`, the provider method and the record on
@@ -836,7 +836,10 @@ operation actually happens.
 If the retained runtime is in your dependency tree because you put it there and
 your own code does not use it, remove it. A transaction you build with your own
 copy is accepted: `LedgerTransaction.seal` takes the bytes of an object of any
-ledger copy.
+ledger copy. To decode a v8 handle, pass the framework's class,
+`(await loadLedger8Protocol()).Transaction`; only add `@midnightntwrk/ledger-v8`
+yourself when your own code works with v8 objects. `proveLedger8Transaction`
+takes only an object of the framework's class.
 
 ### Bundlers
 

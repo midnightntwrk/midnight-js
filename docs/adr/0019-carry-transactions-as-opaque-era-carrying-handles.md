@@ -222,4 +222,8 @@ Issue #1551, recorded in [ADR-0024](./0024-hold-transactions-as-bytes-decoded-by
 The decision "The handle holds a live ledger object, guarded, rather than bytes" no longer holds. The
 handle holds the bytes and is decoded by the caller's own ledger copy. `unwrap` is removed,
 `ForeignLedgerTransactionError` is no longer raised, and the per-era handlers receive the handle
-instead of a raw object (points 4 and 7). The rest of this decision stands.
+instead of a raw object. The mechanisms of points 1, 2, 3, 4, 6, 7, 8, 10 and 11 are replaced as
+ADR 0024 describes: `fromBytes` and `seal` check the header instead of the WASM instance, the stage
+is read from the header, and a record's `tx` is read with `deserialize`. What those points decide
+stands: a synchronous `seal`, the stage checked at every method, era routing, and the tagged read
+record.

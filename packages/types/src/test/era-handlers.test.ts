@@ -446,9 +446,35 @@ describe.each(factories.filter(({ answerStage }) => answerStage !== undefined))(
       });
     });
 
-    it('refuses bytes with the right header and a corrupt body at once, before the handle is made', async () => {
+    const corruptAnswers = (era: LedgerEra) => {
+      const corrupt = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS[era][answerStage ?? 'Finalized']}:`);
+      return [
+        ['bytes', corrupt],
+        ['an object', { serialize: () => corrupt }]
+      ] as const;
+    };
+
+    it.each(['v8', 'v9'] as const)('refuses a %s answer with the right header and a corrupt body at once', async (era) => {
+      for (const [, corrupt] of corruptAnswers(era)) {
+        const answerCorrupt = () => Promise.resolve(corrupt);
+        const handlers = era === 'v9' ? { v8: undefined, v9: answerCorrupt } : { v8: answerCorrupt, v9: undefined };
+        const provider = create({ ...otherHandlers, ...handlers });
+
+        const rejection = await rejectionOf(provider.send(era));
+
+        expect(rejection).toMatchObject({
+          code: PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION,
+          message: expect.stringContaining(`ledger ${era} runtime`)
+        });
+      }
+    });
+
+    it('checks the bytes the answer handle holds, not a later read of the answer', async () => {
+      const valid = ((await answer('v9')) as { serialize(): Uint8Array }).serialize();
       const corrupt = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v9[answerStage ?? 'Finalized']}:`);
-      const provider = create({ ...otherHandlers, v8: undefined, v9: () => Promise.resolve(corrupt) });
+      let reads = 0;
+      const changingAnswer = { serialize: () => (reads++ === 0 ? corrupt : valid) };
+      const provider = create({ ...otherHandlers, v8: undefined, v9: () => Promise.resolve(changingAnswer) });
 
       const rejection = await rejectionOf(provider.send('v9'));
 

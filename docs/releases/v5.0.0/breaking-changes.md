@@ -413,9 +413,11 @@ the factory compute the declaration:
 
 ```typescript
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
 import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
 
+// ledger8ProvingProvider and provingProvider are your provers for each era.
 const proofProvider = createProofProviderFromHandlers({
   v8: async (tx) =>
     proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), ledger8ProvingProvider),
@@ -430,7 +432,7 @@ for one you do not. Each handler receives the handle of its own era,
 transaction object of any ledger copy, or with its bytes. The factory seals the
 answer in the era of the request at the stage the method produces, refuses an
 answer of another era or stage with `InvalidTransactionHandleError` (reason
-`header-mismatch`), decodes bytes once so a corrupt body is refused with
+`header-mismatch`), decodes the answer once so a corrupt body is refused with
 `PayloadNotATransactionError`, and raises `ProviderEraUnsupportedError` for an
 era you did not supply a handler for.
 
@@ -489,8 +491,8 @@ returning a `Transaction`.
 **`@midnight-ntwrk/midnight-js-protocol`** — added on the `./transaction`
 subpath: `deserializeTransactionAtStage`, `isFrameworkLedgerTransaction`,
 `transactionStageOf`, `TransactionStage`, `LedgerTransactionTypes`,
-`FrameworkInstanceCheck`; on the `./version` subpath: `LEDGER_TRANSACTION_TAGS`
-and `TRANSACTION_STAGES`. `proveLedger8Transaction` (`./prove`) now refuses,
+`FrameworkInstanceCheck`; on the `./version` subpath: `LEDGER_TRANSACTION_TAGS`,
+`TRANSACTION_STAGES` and `TransactionStage`. `proveLedger8Transaction` (`./prove`) now refuses,
 with `InvalidArgumentError`, an argument that is not an unproven v8 transaction
 of the framework's ledger copy.
 
@@ -1037,7 +1039,7 @@ transaction's bytes, and you decode it with your own ledger copy
   `LedgerTransaction<S, E>` of its era instead of a ledger object. A `proveTx`
   or `balanceTx` handler returns a `TransactionAnswer`: a transaction object of
   any ledger copy, or its bytes. The factory seals it in the request's era at
-  the method's output stage, and decodes bytes once so a corrupt body is refused
+  the method's output stage, and decodes the answer once so a corrupt body is refused
   at once (`PayloadNotATransactionError`). `createLedger9WalletProvider`'s
   `balanceTx` receives `LedgerTransaction<'Unbound', 'v9'>`, and
   `createLedger9MidnightProvider`'s function receives

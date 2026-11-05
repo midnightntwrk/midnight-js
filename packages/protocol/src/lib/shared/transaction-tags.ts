@@ -15,13 +15,16 @@
 
 import type { LedgerEra } from './ledger-version';
 
+/** Every transaction stage, in the order a transaction goes through them. */
+export const TRANSACTION_STAGES = Object.freeze(['Unproven', 'Unbound', 'Finalized'] as const);
+
 /** The point in its life a transaction has reached: before proving, after proving, after binding. */
-export type TransactionStage = 'Unproven' | 'Unbound' | 'Finalized';
+export type TransactionStage = (typeof TRANSACTION_STAGES)[number];
 
-export const TRANSACTION_STAGES = Object.freeze(['Unproven', 'Unbound', 'Finalized'] as const satisfies TransactionStage[]);
-
-// The full header each ledger writes in front of a transaction: schema version, then the signature,
-// proof and binding markers. Pinned by test/transaction-tags.test.ts.
+/**
+ * The full header each ledger era writes in front of a transaction at each stage: the schema
+ * version, then the signature, proof and binding markers.
+ */
 export const LEDGER_TRANSACTION_TAGS = Object.freeze({
   v8: Object.freeze({
     Unproven: 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1])',

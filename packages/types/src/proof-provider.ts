@@ -86,6 +86,11 @@ export interface ProofProvider {
    * @throws InvalidTransactionHandleError if the proven transaction is not a transaction object or
    *         bytes (`not-a-transaction`), or is not an Unbound transaction of the handle's era
    *         (`header-mismatch`).
+   * @throws PayloadNotATransactionError if a provider built with {@link createProofProviderFromHandlers}
+   *         is answered with a transaction whose body does not decode.
+   * @throws Ledger8RuntimeMissingError if a provider of this framework proves a v8 transaction and
+   *         the v8 runtime cannot be loaded.
+   * @throws TransactionDecodeFailedError if a provider of this framework cannot decode `unprovenTx`.
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
    *         apply it. {@link createLedger9ProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
@@ -101,8 +106,11 @@ export interface ProofProvider {
  *
  * A handler receives the handle of its own era. It decodes it with its own
  * ledger copy (`tx.deserialize({ v9: Transaction })`), or passes
- * `tx.serialize()` to a prover that takes bytes. It answers with a transaction
- * object of any ledger copy, or with its bytes.
+ * `tx.serialize()` to a prover that takes bytes. To prove a v8 transaction
+ * with `proveLedger8Transaction`, decode it with the framework's class,
+ * `(await loadLedger8Protocol()).Transaction`. It answers with a transaction
+ * object of any ledger copy, or with its bytes. The answer is decoded once,
+ * so a corrupt body is refused at `proveTx`.
  */
 export type ProofProviderHandlers = {
   readonly [E in LedgerEra]:
