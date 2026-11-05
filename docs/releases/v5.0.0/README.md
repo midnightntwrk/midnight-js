@@ -72,18 +72,17 @@ two copies of the same WASM package in one bundle.
 | Indexer | >=4.4.0-rc.6 |
 | Proof server | 9.0.0 (9.0.0-rc.7 cannot prove circuits compiled by `compactc` 0.36) |
 | `compactc` | 0.36.0 (runtime 0.21.0) for ledger 9 contracts |
-| `@midnightntwrk/ledger-v9` | 1.0.0-rc.7 |
-| `@midnight-ntwrk/compact-js` | 3.0.0-rc.6 |
+| `@midnightntwrk/ledger-v9` | 1.0.0 |
+| `@midnight-ntwrk/compact-js` | 3.0.0 |
 
-## Pre-release protocol note
+## Protocol package versions
 
-The ledger 9 packages this release targets are release candidates (`@midnightntwrk/ledger-v9`
-1.0.0-rc.7, `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4, `@midnight-ntwrk/compact-js`
-3.0.0-rc.6). Pin the exact versions given in the [migration guide](./migration-guide.md) so your
-dApp and the framework load one copy of each.
+Pin the protocol package versions given in the [migration guide](./migration-guide.md)
+(`@midnightntwrk/ledger-v9` 1.0.0, `@midnightntwrk/onchain-runtime-v4` 4.0.0,
+`@midnight-ntwrk/platform-js` 3.0.0) so your dApp and the framework load one copy of each.
 
-Two more dependencies are pre-releases: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
-used by the DApp Connector providers) and `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 (a release
+Two dependencies are still pre-releases: `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 (a beta,
+used by the DApp Connector providers) and `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 (a release
 candidate, used by testkit-js).
 
 ---
