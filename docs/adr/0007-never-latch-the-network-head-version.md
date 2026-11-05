@@ -208,3 +208,13 @@ Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded
 the envelope of its bytes, as the amendment above describes for `RawContractState.version`. The
 record's `protocolVersion` still dates the block and, on an enforced read, bounds the state's era
 from above. The rule of this ADR is unchanged.
+
+## Amendment — a current-era deploy reads the head before it proves (2026-11-04)
+
+Issue #1559. The gap recorded under Decision — a current-era deploy against a pre-fork head fails
+late — is closed for deploys. `submitLedger9DeployTx`, which `deployContract` and `submitDeployTx`
+both reach, makes one head read after the config check and before the constructor runs, and refuses
+a pre-fork head with `EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`, before
+anything is proven. The read is not latched: it is made per deploy and used only for that refusal.
+Current-era calls and maintenance updates still buy no head read, and the standalone transaction
+builders stay head-independent. A fork between the read and the submit is not diagnosed.

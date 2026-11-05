@@ -42,7 +42,7 @@ const inertProvingProvider: ProvingProvider = {
 /** Handles of each era at each stage, sealed around real, empty ledger transactions. */
 export const handles = {
   v9: {
-    Unproven: (): UnprovenTx => LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID)),
+    Unproven: (): LedgerTransaction<'Unproven', 'v9'> => LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID)),
     Unbound: async (): Promise<UnboundTx> =>
       LedgerTransaction.seal(
         'v9',
