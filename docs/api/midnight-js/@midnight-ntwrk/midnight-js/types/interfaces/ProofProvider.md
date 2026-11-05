@@ -55,7 +55,7 @@ The configuration for the proof request to the proof provider. Empty in case
 `Promise`\<[`UnboundTx`](../type-aliases/UnboundTx.md)\>
 
 The proven transaction handle, in the SAME era as `unprovenTx`. Read it with
-         `LedgerTransaction.unwrap(proven, proven.era)`.
+         `proven.deserialize({ v9: Transaction })`, with `Transaction` from your own ledger copy.
 
 #### Throws
 
@@ -69,13 +69,23 @@ ProviderEraUnsupportedError if the implementation does not serve the handle's er
 
 #### Throws
 
-ForeignLedgerTransactionError if the proven transaction is not an object of the
-        ledger copy this framework loaded for its era.
+InvalidTransactionHandleError if the proven transaction is not a transaction object or
+        bytes (`not-a-transaction`), or is not an Unbound transaction of the handle's era
+        (`header-mismatch`).
 
 #### Throws
 
-InvalidTransactionHandleError if the proven transaction is not a ledger transaction
-        object (`not-a-transaction`) or is not at the Unbound stage (`stage-mismatch`).
+PayloadNotATransactionError if a provider built with [createProofProviderFromHandlers](../variables/createProofProviderFromHandlers.md)
+        is answered with a transaction whose body does not decode.
+
+#### Throws
+
+Ledger8RuntimeMissingError if a provider of this framework proves a v8 transaction and
+        the v8 runtime cannot be loaded.
+
+#### Throws
+
+TransactionDecodeFailedError if a provider of this framework cannot decode `unprovenTx`.
 
 #### Throws
 

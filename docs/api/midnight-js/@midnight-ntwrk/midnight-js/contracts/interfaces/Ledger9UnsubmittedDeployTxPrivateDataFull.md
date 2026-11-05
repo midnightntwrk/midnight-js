@@ -72,10 +72,10 @@ The signing key that was added as the deployed contract's maintenance authority.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTx`](../../types/type-aliases/UnprovenTx.md)
+> `readonly` **unprovenTx**: [`LedgerTransaction`](../../types/classes/LedgerTransaction.md)\<`"Unproven"`, `"v9"`\>
 
-The unproven transaction produced, as a v9 handle. Read it with
-`LedgerTransaction.unwrap(unprovenTx, 'v9')`.
+The unproven transaction produced, as a v9 handle. Read it with your own
+ledger copy: `unprovenTx.deserialize({ v9: Transaction })`.
 
 #### Inherited from
 

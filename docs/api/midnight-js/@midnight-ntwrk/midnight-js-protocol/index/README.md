@@ -70,6 +70,7 @@
 - [RetainedLedgerEra](type-aliases/RetainedLedgerEra.md)
 - [StateConversionStage](type-aliases/StateConversionStage.md)
 - [StateKind](type-aliases/StateKind.md)
+- [TransactionStage](type-aliases/TransactionStage.md)
 - [VerifierKeyReader](type-aliases/VerifierKeyReader.md)
 - [VersionResolutionPath](type-aliases/VersionResolutionPath.md)
 - [ZswapOfferFactory](type-aliases/ZswapOfferFactory.md)
@@ -83,11 +84,13 @@
 - [LEDGER\_ERAS](variables/LEDGER_ERAS.md)
 - [LEDGER\_STATE\_KINDS](variables/LEDGER_STATE_KINDS.md)
 - [LEDGER\_STATE\_TAGS](variables/LEDGER_STATE_TAGS.md)
+- [LEDGER\_TRANSACTION\_TAGS](variables/LEDGER_TRANSACTION_TAGS.md)
 - [MIDNIGHT\_JS\_ERROR\_CATEGORIES](variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
 - [NO\_CIRCUIT](variables/NO_CIRCUIT.md)
 - [PROTOCOL\_ERROR\_CATEGORIES](variables/PROTOCOL_ERROR_CATEGORIES.md)
 - [PROTOCOL\_ERROR\_CODES](variables/PROTOCOL_ERROR_CODES.md)
 - [RETAINED\_LEDGER\_ERAS](variables/RETAINED_LEDGER_ERAS.md)
+- [TRANSACTION\_STAGES](variables/TRANSACTION_STAGES.md)
 - [TRANSACTION\_TAG\_PREFIX](variables/TRANSACTION_TAG_PREFIX.md)
 
 ## Functions

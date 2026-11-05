@@ -80,7 +80,7 @@ The era's runtime refused to read the payload at the requested stage; its refusa
 
 ##### stage
 
-`TransactionStage`
+`"Unproven"` \| `"Unbound"` \| `"Finalized"`
 
 ##### byteLength
 

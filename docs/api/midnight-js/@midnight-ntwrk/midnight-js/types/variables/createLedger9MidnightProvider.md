@@ -9,7 +9,7 @@
 > `const` **createLedger9MidnightProvider**: (`submitTx`) => [`MidnightProvider`](../interfaces/MidnightProvider.md)
 
 Lifts a v9-only submission function into the [MidnightProvider](../interfaces/MidnightProvider.md)
-interface, unwrapping each handle on the way in.
+interface.
 
 The returned provider serves v9 only — `supportedEras` says so — and refuses
 a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use

@@ -63,7 +63,7 @@ key exists nowhere else, so a caller that submits this deploy has to store it.
 
 #### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTx`](../../types/type-aliases/UnprovenTx.md)
+> `readonly` **unprovenTx**: [`LedgerTransaction`](../../types/classes/LedgerTransaction.md)\<`"Unproven"`, `"v8"`\>
 
 The unproven deploy transaction, a ledger 8 one.
 
