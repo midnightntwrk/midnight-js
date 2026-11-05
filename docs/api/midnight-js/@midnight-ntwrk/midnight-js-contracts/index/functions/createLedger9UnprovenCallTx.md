@@ -36,6 +36,10 @@ EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contrac
 
 ## Throws
 
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
+
+## Throws
+
 InvalidArgumentError If `transactionContext` was not made by `withContractScopedTransaction`.
 
 ## Throws
