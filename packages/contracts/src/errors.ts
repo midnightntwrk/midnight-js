@@ -16,7 +16,7 @@
 import { type LedgerEra, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, RETAINED_LEDGER_ERAS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   FailFallible,
@@ -265,7 +265,7 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'which serves contracts of both eras.',
   'unrecognised-result-era':
     `A result carried an era tag naming neither pipeline. ` +
-    `Results are tagged '${CURRENT_LEDGER_ERA}' or 'v8' by the pipeline that built ` +
+    `Results are tagged ${[CURRENT_LEDGER_ERA, ...RETAINED_LEDGER_ERAS].map((era) => `'${era}'`).join(' or ')} by the pipeline that built ` +
     `them. A tag lost in transit -- through a queue, a JSON boundary, a structured clone -- cannot be ` +
     `recovered here: narrow the result before it crosses that boundary, or carry the era beside it. ` +
     `A result stored under a 5.0.0 pre-release carries 'ledger9' or 'ledger8': map those to 'v9' and 'v8'.`

@@ -550,7 +550,7 @@ const ASYNC_FUNCTION = 'AsyncFunction';
 const RUNTIME_VERSION_TO_ERA = Object.freeze({
   '0.16': 'v8',
   '0.20': 'v9'
-} as const);
+} as const satisfies Readonly<Record<`${number}.${number}`, LedgerEra>>);
 
 // Compile-time gate: every pipeline era must be reachable from some declared runtime version.
 // Without it a third era could be added to `LedgerEra` with no toolchain mapped to it, and every
