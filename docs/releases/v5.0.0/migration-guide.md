@@ -100,13 +100,13 @@ Gotchas:
 | Service | v4.1.1 used | v5.0.0 needs |
 |---|---|---|
 | Indexer | 4.3.x | **4.4.0-rc.6 or later** |
-| Node | 1.0.0 | a node that accepts `@midnightntwrk/ledger-v9` 1.0.0-rc.7 transactions |
+| Node | 1.0.0 | a node that accepts `@midnightntwrk/ledger-v9` 1.0.0 transactions |
 | Proof server | 8.1.0 | **9.0.0** |
 
 - **Proof server 9.0.0.** compactc 0.36 emits circuits in ZKIR v3 only (ZKIR is the circuit format
   proofs are made from). Proof server 9.0.0-rc.7 refuses them with `400 Bad Request`.
-- **Node.** Node 2.1.0-rc.4 refuses every contract call built with ledger-v9 1.0.0-rc.7 (error
-  1010, custom error 104).
+- **Node.** The node must accept ledger-v9 1.0.0 transactions. Node 2.1.0-rc.4 refused every
+  contract call built with ledger-v9 1.0.0-rc.7 (error 1010, custom error 104).
 - At release, the framework's tests used proof server 9.0.0 and pre-release builds of the node
   (2.1.100) and the indexer (4.4.100).
 
@@ -151,11 +151,11 @@ yarn remove @midnight-ntwrk/midnight-js-network-id
 |---|---|---|
 | `compactc` (compiler for ledger 9 contracts) | 0.31.0 | **0.36.0** |
 | `@midnight-ntwrk/compact-runtime` | 0.16.0 | **0.21.0** |
-| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0-rc.6 |
-| ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0-rc.7** |
-| onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4 |
-| ledger 8 (loaded on demand) | see the ledger row | `@midnightntwrk/ledger-v8` 8.1.2 |
-| ledger 8 onchain runtime | see the onchain runtime row | `@midnight-ntwrk/onchain-runtime-v3` 3.1.1 (the version the framework is tested with; the protocol package asks for `^3.0.0`) |
+| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0 |
+| ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0** |
+| onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0 |
+| ledger 8 (loaded on demand) | see the ledger row | `@midnightntwrk/ledger-v8` 8.1.3 |
+| ledger 8 onchain runtime | see the onchain runtime row | `@midnight-ntwrk/onchain-runtime-v3` 3.1.2 (the version the framework is tested with; the protocol package asks for `^3.0.0`) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | 3.0.0 |
 | `effect` | 3.20.0 | 3.22.1 |
 
@@ -170,16 +170,16 @@ contracts import it.
 **Pin one copy of each protocol package.** Two installed copies of a WASM-based package
 break in two ways: TypeScript sees two different classes (`TS2345`), and at run time each
 copy refuses objects made by the other (`expected instance of StateValue`). The framework
-asks for `onchain-runtime-v4` with a caret range (`^4.0.0-rc.3`), and `compact-js` asks for
-`ledger-v9` and `platform-js` with a caret range. A newer pre-release can then install a
-second copy. Pin all three in your root `package.json` (`resolutions` for yarn, `overrides`
-for npm and pnpm):
+pins `ledger-v9` and `onchain-runtime-v4` to exact versions, but `compact-js` asks for
+`ledger-v9` and `platform-js` with caret ranges (`^1.0.0`, `^3.0.0`), and your own
+dependencies may ask for ranges too. A newer release can then install a second copy. Pin all
+three in your root `package.json` (`resolutions` for yarn, `overrides` for npm and pnpm):
 
 ```jsonc
 {
   "resolutions": {
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.7",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.4",
+    "@midnightntwrk/ledger-v9": "1.0.0",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0",
     "@midnight-ntwrk/platform-js": "3.0.0"
   }
 }
@@ -188,7 +188,7 @@ for npm and pnpm):
 After `yarn install`, check that each of `@midnightntwrk/ledger-v9`,
 `@midnightntwrk/onchain-runtime-v4` and `@midnight-ntwrk/platform-js` is installed once.
 
-If you ship a ledger 8 contract, also pin `@midnight-ntwrk/onchain-runtime-v3` to `3.1.1`, so that
+If you ship a ledger 8 contract, also pin `@midnight-ntwrk/onchain-runtime-v3` to `3.1.2`, so that
 your ledger 8 contract module and the framework share one copy (see
 [Dependencies of a ledger 8 contract](#dependencies-of-a-ledger-8-contract)).
 
@@ -1219,7 +1219,7 @@ Skip this step if you use `indexerPublicDataProvider`.
 
 ## Step 18 — testkit-js users
 
-- testkit-js uses `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 (was `@midnight-ntwrk/wallet-sdk`
+- testkit-js uses `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 (was `@midnight-ntwrk/wallet-sdk`
   1.1.0). If you build wallets yourself, follow the wallet SDK 2.0 changes. For example,
   `createKeystore` now takes `{ kind, secret }` and the network id:
   `createKeystore({ kind: 'schnorr', secret: seed }, networkId)`.
@@ -1545,10 +1545,10 @@ There is no official recipe for this yet. The framework's own fork test does it 
   `@midnight-ntwrk/compact-runtime@0.16.0`. The package also has a `./runtime` entry that
   re-exports that runtime (`export * from '@midnight-ntwrk/compact-runtime';`), so the dApp
   uses the exact copy the contract module imports.
-- It pins `@midnight-ntwrk/onchain-runtime-v3` to 3.1.1 (the version the framework is tested
+- It pins `@midnight-ntwrk/onchain-runtime-v3` to 3.1.2 (the version the framework is tested
   with), so that compact-runtime 0.16.0 and the framework share one copy.
 - It aliases `@midnight-ntwrk/ledger-v8` to the framework's copy:
-  `"@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.2"`.
+  `"@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.3"`.
 
 You do not need to add the ledger 8 ledger package for the framework itself; it carries what
 it needs. Add `@midnightntwrk/ledger-v8` yourself only if your own code works with v8
@@ -1614,9 +1614,9 @@ you run serves both eras, and test your dApp against it.
 Setup
 - [ ] Node >= 22.12. ESM project: TypeScript >= 5.8 with `module: nodenext`, or `module: preserve` + `moduleResolution: bundler`. CommonJS project: TypeScript >= 5.9 with `module: node20`.
 - [ ] All midnight-js packages on 5.0.0; `@midnight-ntwrk/midnight-js-network-id` removed.
-- [ ] `resolutions` (or `overrides`) pin `@midnightntwrk/ledger-v9` 1.0.0-rc.7, `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4 and `@midnight-ntwrk/platform-js` 3.0.0; one installed copy each of `ledger-v9`, `onchain-runtime-v4` and `platform-js`.
+- [ ] `resolutions` (or `overrides`) pin `@midnightntwrk/ledger-v9` 1.0.0, `@midnightntwrk/onchain-runtime-v4` 4.0.0 and `@midnight-ntwrk/platform-js` 3.0.0; one installed copy each of `ledger-v9`, `onchain-runtime-v4` and `platform-js`.
 - [ ] `@midnight-ntwrk/compact-runtime` 0.21.0 in your dependencies.
-- [ ] Indexer 4.4.0-rc.6 or later; proof server 9.0.0; a node that accepts ledger-v9 1.0.0-rc.7 transactions.
+- [ ] Indexer 4.4.0-rc.6 or later; proof server 9.0.0; a node that accepts ledger-v9 1.0.0 transactions.
 - [ ] `yarn build` and `yarn lint` succeed.
 
 Contracts and artifacts
@@ -1655,6 +1655,6 @@ Fork readiness
 - [ ] Contracts deployed at run time have compactc 0.36.0 artifacts shipped.
 - [ ] No pre-fork contract is found or called with recompiled artifacts.
 - [ ] `error.signingKey` kept after a failed deploy or authority replacement.
-- [ ] If you ship ledger 8 contracts: providers serve both eras, compact-runtime 0.16.0 is resolvable for the contract module, `@midnight-ntwrk/onchain-runtime-v3` is pinned to 3.1.1, and the bundle keeps the ledger 8 chunks lazy and has one copy of each WASM package.
+- [ ] If you ship ledger 8 contracts: providers serve both eras, compact-runtime 0.16.0 is resolvable for the contract module, `@midnight-ntwrk/onchain-runtime-v3` is pinned to 3.1.2, and the bundle keeps the ledger 8 chunks lazy and has one copy of each WASM package.
 - [ ] Proof server 9.0.0; wallet version confirmed for both eras.
 - [ ] Passwords rotated in 4.x rotated again with `changePassword`; states and signing keys under upper-case addresses moved before the upgrade.

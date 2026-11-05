@@ -17,15 +17,15 @@ see [new features](./new-features.md).
 | Module format | CommonJS and ESM | ESM only |
 | TypeScript (for consumers) | any | ESM project: `>=5.8` with `module: nodenext`, or `module: preserve` + `moduleResolution: bundler`. CommonJS project: `>=5.9` with `module: node20` |
 | Indexer | 4.3.x | `>=4.4.0-rc.6` |
-| Node (blockchain node) | 1.0.0 | a node that accepts `@midnightntwrk/ledger-v9` 1.0.0-rc.7 transactions (section 14) |
+| Node (blockchain node) | 1.0.0 | a node that accepts `@midnightntwrk/ledger-v9` 1.0.0 transactions (section 14) |
 | Proof server | 8.1.0 | 9.0.0 |
 | compactc (contract compiler) | 0.31.0 | 0.36.0 |
 | `@midnight-ntwrk/compact-runtime` | 0.16.0 | 0.21.0 |
-| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0-rc.6 |
-| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | `@midnightntwrk/ledger-v9` 1.0.0-rc.7 (ledger 8.1.2 is kept for pre-fork contracts) |
-| Onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4 (v3 is kept for pre-fork contracts) |
+| `@midnight-ntwrk/compact-js` | 2.5.1 | 3.0.0 |
+| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | `@midnightntwrk/ledger-v9` 1.0.0 (ledger 8.1.3 is kept for pre-fork contracts) |
+| Onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0 (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | 3.0.0 |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0-rc.2 |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 |
 
 The framework packages keep the `@midnight-ntwrk/midnight-js-*` names. The ledger, onchain runtime,
@@ -128,7 +128,7 @@ Two ledger 9 behaviour changes come with the new ledger package:
    `@midnight-ntwrk/midnight-js-types`.
 7. Keep exactly one copy of each protocol package. Two copies of a WASM package break `instanceof`.
    Pin them in your root `resolutions` (Yarn) or `overrides` (npm):
-   `"@midnightntwrk/ledger-v9": "1.0.0-rc.7"`, `"@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.4"`
+   `"@midnightntwrk/ledger-v9": "1.0.0"`, `"@midnightntwrk/onchain-runtime-v4": "4.0.0"`
    and `"@midnight-ntwrk/platform-js": "3.0.0"`.
 
 **Sources:** #970, #1068, #1125, #1190, #1244, #1384 (toolchain), #1081, #1341 (compact-js 3), #1249,
@@ -801,14 +801,14 @@ serves every contract's state in ledger 9 format after the fork.
 
 The proof server must prove ZKIR v3 circuits, the only format compactc 0.36 emits. Proof server
 9.0.0-rc.7 refuses them with `400 Bad Request`; 9.0.0 proves them. The node must accept
-`@midnightntwrk/ledger-v9` 1.0.0-rc.7 transactions: node 2.1.0-rc.4 refuses every such contract call
-(error 1010, custom error 104). At release, the framework's tests used proof server 9.0.0 and
-pre-release builds of the node (2.1.100) and the indexer (4.4.100).
+`@midnightntwrk/ledger-v9` 1.0.0 transactions. Node 2.1.0-rc.4 refused every contract call built
+with ledger-v9 1.0.0-rc.7 (error 1010, custom error 104). At release, the framework's tests used
+proof server 9.0.0 and pre-release builds of the node (2.1.100) and the indexer (4.4.100).
 
 **What to do**
 
 1. Upgrade the indexer to 4.4.0-rc.6 or newer before you upgrade the framework.
-2. Use proof server 9.0.0, and a node that accepts ledger-v9 1.0.0-rc.7 transactions.
+2. Use proof server 9.0.0, and a node that accepts ledger-v9 1.0.0 transactions.
 
 **Sources:** #1507 (issue #1452), #1031, #1045, #1375, #1599.
 
@@ -1013,7 +1013,7 @@ with `InvalidExportFormatError`. Keys already stored by 4.x in a level store are
 **Before (v4.1.1):** `@midnight-ntwrk/wallet-sdk` 1.1.0; `new NodeClient(nodeURL, logger)`; tests
 called `setNetworkId`.
 
-**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0-rc.2, with structured signatures.
+**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0-rc.3, with structured signatures.
 `NodeClient` takes the network id as a third argument and rejects an empty one.
 `initializeMidnightProviders` sets `config` (with `ttlSeconds: 3600`).
 

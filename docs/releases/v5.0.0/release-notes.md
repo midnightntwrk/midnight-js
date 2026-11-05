@@ -32,11 +32,11 @@ This page is a summary. For the details:
 | Proof server | 8.1.0 | **9.0.0** (9.0.0-rc.7 cannot prove circuits compiled by `compactc` 0.36) |
 | `compactc` (ledger 9 contracts) | 0.31.0 | **0.36.0** |
 | `@midnight-ntwrk/compact-runtime` | 0.16.0 | **0.21.0** |
-| `@midnight-ntwrk/compact-js` | 2.5.1 | **3.0.0-rc.6** |
-| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0-rc.7** (current); `@midnightntwrk/ledger-v8` 8.1.2 (pre-fork contracts, loaded on demand) |
-| On-chain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | **`@midnightntwrk/onchain-runtime-v4` 4.0.0-rc.4** (v3 is kept for pre-fork contracts) |
+| `@midnight-ntwrk/compact-js` | 2.5.1 | **3.0.0** |
+| Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | **`@midnightntwrk/ledger-v9` 1.0.0** (current); `@midnightntwrk/ledger-v8` 8.1.3 (pre-fork contracts, loaded on demand) |
+| On-chain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | **`@midnightntwrk/onchain-runtime-v4` 4.0.0** (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | **3.0.0** |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0-rc.2** |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | **`@midnightntwrk/wallet-sdk` 2.0.0-rc.3** |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | **`@midnightntwrk/dapp-connector-api` 4.1.0-beta.1** |
 
 The framework packages stay under `@midnight-ntwrk/midnight-js-*`. The ledger, on-chain runtime,
@@ -115,7 +115,7 @@ Each item links to the full description in [breaking-changes.md](./breaking-chan
 - **Contract-scoped transactions are refused while the network is on ledger 8 (#1218)** with
   `EraMismatchError`. Before the fork, submit each call on its own.
 - **`SigningKey` is `{ tag, value }` (#970, #1414).** Keys stored by a 4.x client are still read.
-- **testkit-js (#1249, #1435, #1599).** Wallet SDK 2.0.0-rc.2; `NodeClient` takes the network id.
+- **testkit-js (#1249, #1435, #1599, #1627).** Wallet SDK 2.0.0-rc.3; `NodeClient` takes the network id.
 
 ## Security
 
