@@ -217,8 +217,11 @@ describe('supported-era lists in error messages', () => {
     Array.from({ length: NODE_MAJORS_TO_PROBE }, (_, major) => major).flatMap((major) => {
       try {
         return [`${protocolVersionToLedger(major * 1_000_000)} (node ${major}.x)`];
-      } catch {
-        return [];
+      } catch (error) {
+        if (error instanceof UnknownProtocolVersionError && error.reason === 'unknown') {
+          return [];
+        }
+        throw error;
       }
     });
 
@@ -231,10 +234,10 @@ describe('supported-era lists in error messages', () => {
   it.each([
     ['UnknownProtocolVersionError', new UnknownProtocolVersionError(3_000_000, 'construct', 'unknown')],
     ['UnknownLedgerEraError', new UnknownLedgerEraError('v10')]
-  ])('%s names every era with its node major', (_, error) => {
-    for (const entry of supportedEraEntries()) {
-      expect(error.message).toContain(entry);
-    }
+  ])('%s names exactly the supported eras with their node majors', (_, error) => {
+    const named = [...error.message.matchAll(/v\d+ \(node \d+\.x\)/g)].map(([entry]) => entry);
+
+    expect(named.sort()).toEqual(supportedEraEntries().sort());
   });
 });
 

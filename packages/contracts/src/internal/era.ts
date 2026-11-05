@@ -541,7 +541,8 @@ const ASYNC_FUNCTION = 'AsyncFunction';
  * `major.minor` because a patch release never moves a toolchain across the fork.
  *
  * Frozen, and the ONE place a toolchain version is turned into an era. Adding an era adds a row
- * here; the gate below refuses to compile if one is added without a row.
+ * here; the gate below refuses to compile if one is added without a row, and a row naming a
+ * removed era fails at that row.
  *
  * The gate has to be a CONSTRAINT, not a bare conditional type: `type X = ... ? true : never` is a
  * legal declaration that nothing reads, so it computes the answer and discards it. Passing the
