@@ -54,7 +54,7 @@ hyphen, public npm).
 18. [`privateStateId` needs `initialPrivateState`](#18-deploy-privatestateid-needs-initialprivatestate) — on deploy.
 19. [Unplaceable blocks are refused](#19-contract-state-reads-refuse-a-block-they-cannot-place-on-an-era) — on contract-state reads.
 20. [Private state must round-trip](#20-levelprivatestateprovider-refuses-private-state-that-does-not-round-trip) — in `levelPrivateStateProvider`.
-21. [Scoped transactions refused on ledger 8](#21-contract-scoped-transactions-are-refused-while-the-network-is-on-ledger-8) — before the fork.
+21. [Scoped transactions on ledger 8 take a typed context](#21-a-contract-scoped-transaction-on-ledger-8-takes-a-ledger8transactioncontext) — before the fork.
 22. [Signing keys are `{ tag, value }`](#22-signing-keys-are--tag-value-) — no longer a hex string.
 23. [testkit-js](#23-testkit-js) — wallet SDK 2.0 and `NodeClient` network id.
 
@@ -674,8 +674,8 @@ type Providers = Ledger9ContractProviders<MyContract, MyCircuitId, MyPrivateStat
 functions keep their 4.1.1 names and pick the era from the contract: `createUnprovenCallTx`,
 `createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
 `createUnprovenDeployTxFromVerifierKeys`, `submitDeployTx`. `withContractScopedTransaction` also
-keeps its name, but it serves ledger 9 contracts only and is refused while the network is on
-ledger 8 (see section 21).
+keeps its name. It serves ledger 8 contracts before the fork and ledger 9 contracts after it (see
+section 21).
 
 **What to do**
 
@@ -955,18 +955,26 @@ other values that do not survive storage.
 
 ---
 
-## 21. Contract-scoped transactions are refused while the network is on ledger 8
+## 21. A contract-scoped transaction on ledger 8 takes a `Ledger8TransactionContext`
 
 **Who is affected:** dApps that use `withContractScopedTransaction` before the fork.
 
-**Before (v4.1.1):** calls inside the scope were batched into one transaction.
+**Before (v4.1.1):** the scope function received a `TransactionContext`, and calls inside the scope
+were batched into one transaction.
 
-**After (v5.0.0):** on a ledger 8 network, `withContractScopedTransaction` throws `EraMismatchError`.
-A ledger 8 contract called inside a scope is also refused.
+**After (v5.0.0):** calls are still batched into one transaction. On a ledger 8 network the scope
+function receives a `Ledger8TransactionContext`. Without a type on the function's parameter,
+TypeScript picks the ledger 9 overload, so a ledger 8 call inside the scope does not compile.
 
 **What to do**
 
-1. Before the fork, submit each call with `submitCallTx`.
+1. Type the parameter, or call the ledger 8 function directly:
+
+```ts
+await withLedger8ContractScopedTransaction<typeof contract, Circuits>(providers, async (txCtx) => {
+  await submitCallTx(providers, options, txCtx);
+});
+```
 
 **Sources:** #1218, #1576, #1581.
 
