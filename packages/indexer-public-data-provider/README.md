@@ -6,7 +6,7 @@ Public data provider implementation based on the Midnight Pub-sub Indexer. Provi
 
 Indexer `4.4.0-rc.6` or later. This provider selects `stateAt` on every
 contract-state read, and older indexers do not serve that field. The framework's
-own test environments pin the build tag `4.4.0-rc.6-68702121`.
+own test environments pin `4.4.0-rc.6`.
 
 ## Installation
 

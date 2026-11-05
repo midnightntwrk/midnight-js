@@ -17,7 +17,7 @@
  * The retained-era contract type family: the shape of a contract produced by
  * the PREVIOUS Compact toolchain (`compact-runtime@0.16`), which the current
  * entry points accept through an additive overload alongside the current
- * (`compact-runtime@0.20`) `CompiledContract` container.
+ * (`compact-runtime@0.21`) `CompiledContract` container.
  *
  * Every declaration here is hand-written. The retained toolchain DOES emit an
  * `index.d.ts`, but it describes one contract in terms of

@@ -8,12 +8,17 @@ Guide for local development environment setup and IDE configuration. For basic c
 |------|----------|---------|
 | [nvm](https://github.com/nvm-sh/nvm) | Yes | Node.js version management |
 | [Yarn](https://yarnpkg.com/) | Yes | Package manager (managed by corepack, see `package.json`) |
+| [Git LFS](https://git-lfs.com/) | Yes | Stores the e2e prover keys (`testkit-js/testkit-js-e2e/src/contract/compiled/**/*.prover`) |
 | [direnv](https://direnv.net/) | No | Automatic environment setup |
 | [Docker](https://www.docker.com/) | No | Required only for integration tests |
 
 ## Initial Setup
 
 ```bash
+# 0. Register the Git LFS filters once per machine. `--skip-repo` matters: Husky owns
+#    the hooks and already calls Git LFS from them, so `git lfs install` must not overwrite them.
+git lfs install --skip-repo
+
 # 1. Clone and enter repository
 git clone git@github.com:midnightntwrk/midnight-js.git
 cd midnight-js
@@ -185,7 +190,8 @@ The repository uses Husky for git hooks:
 |------|--------|
 | `pre-commit` | Runs ESLint on staged `.ts` files |
 | `commit-msg` | Validates conventional commit format |
-| `pre-push` | Runs lint and test file typecheck |
+| `pre-push` | Uploads Git LFS objects, then runs lint and test file typecheck |
+| `post-checkout`, `post-commit`, `post-merge` | Run the matching Git LFS hook |
 
 ### Bypassing Hooks (Use Sparingly)
 

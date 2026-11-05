@@ -52,7 +52,7 @@ class ShieldedMapKeys extends ZKConfigProvider<string> {
     return Promise.resolve(DEPOSIT_VERIFIER_KEY);
   }
   override getArtifactRuntimeVersion(): Promise<string> {
-    return Promise.resolve('0.20.0');
+    return Promise.resolve('0.21.0');
   }
 }
 

@@ -19,11 +19,13 @@ import {
   type DefaultDustConfiguration,
   type DefaultShieldedConfiguration,
   type DefaultUnshieldedConfiguration,
+  type DustKeysByEpoch,
   DustWallet,
   type DustWalletAPI,
   InMemoryTransactionHistoryStorage,
   mergeWalletEntries,
   PublicKey,
+  type ShieldedKeysByEpoch,
   ShieldedWallet,
   type ShieldedWalletAPI,
   type UnshieldedKeystore,
@@ -52,7 +54,7 @@ export class WalletFactory {
   static createShieldedWallet(
     config: DefaultShieldedConfiguration,
     seed: Uint8Array
-  ): Promise<ShieldedWalletAPI> {
+  ): Promise<ShieldedWalletAPI<ShieldedKeysByEpoch>> {
     const Shielded = ShieldedWallet(config);
     return Shielded.startWithSeed(seed);
   }
@@ -71,7 +73,7 @@ export class WalletFactory {
     config: DefaultDustConfiguration,
     seed: Uint8Array,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
-  ): Promise<DustWalletAPI> {
+  ): Promise<DustWalletAPI<DustKeysByEpoch>> {
     const dustConfig = {
       ...config,
       costParameters: {
@@ -87,9 +89,9 @@ export class WalletFactory {
 
   static async createWalletFacade(
     config: DefaultConfiguration,
-    shieldedWallet: ShieldedWalletAPI,
+    shieldedWallet: ShieldedWalletAPI<ShieldedKeysByEpoch>,
     unshieldedWallet: UnshieldedWalletAPI,
-    dustWallet: DustWalletAPI
+    dustWallet: DustWalletAPI<DustKeysByEpoch>
   ): Promise<WalletFacade> {
     return WalletFacade.init({
       configuration: config,
