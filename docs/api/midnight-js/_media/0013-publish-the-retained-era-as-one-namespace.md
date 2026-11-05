@@ -128,7 +128,9 @@ Issue #1489. The decision is unchanged.
 Issue #1533. Of the two errors the Follow-ups name, the instance-mismatch error and its code are
 removed. Its job is done by `ForeignLedgerTransactionError` in `types`, raised by
 `LedgerTransaction.seal` ([ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md)).
-`Ledger8RuntimeMissingError` stays flat in `protocol`.
+`Ledger8RuntimeMissingError` stays flat in `protocol`. (Amended by
+[ADR-0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md): the handle holds
+bytes and `ForeignLedgerTransactionError` is removed.)
 
 ## Amendment — ledger 9 gets flat `Ledger9*` names, and flat names pick the era (2026-10-28)
 

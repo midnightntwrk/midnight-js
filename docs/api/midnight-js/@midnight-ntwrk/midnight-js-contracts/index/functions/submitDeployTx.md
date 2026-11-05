@@ -27,6 +27,11 @@ EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-
         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
         ZK config provider propagates unchanged.
 
+## Throws
+
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 9 contract
+        deployed before the fork, before anything is proven.
+
 ## Call Signature
 
 > **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`Ledger8FinalizedDeployTxData`](../interfaces/Ledger8FinalizedDeployTxData.md)\<`C`\>\>

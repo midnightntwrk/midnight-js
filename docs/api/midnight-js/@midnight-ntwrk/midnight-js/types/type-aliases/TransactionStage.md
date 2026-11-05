@@ -6,6 +6,6 @@
 
 # Type Alias: TransactionStage
 
-> **TransactionStage** = `"Unproven"` \| `"Unbound"` \| `"Finalized"`
+> **TransactionStage** = *typeof* `TRANSACTION_STAGES`\[`number`\]
 
 The point in its life a transaction has reached: before proving, after proving, after binding.

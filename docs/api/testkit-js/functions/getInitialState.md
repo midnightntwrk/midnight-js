@@ -2,14 +2,14 @@
 
 ***
 
-> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
+> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`\> \| `UnshieldedWalletState`\<`string`\>\>
 
 ## Parameters
 
 ### wallet
 
-`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
+`UnshieldedWalletAPI` \| `ShieldedWalletAPI`
 
 ## Returns
 
-`Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
+`Promise`\<`ShieldedWalletState`\<`string`\> \| `UnshieldedWalletState`\<`string`\>\>

@@ -11,8 +11,8 @@ non-success status, in either ledger era. The one class to catch.
 
 Read [TxFailedError.operation](#operation) for which operation failed, and
 [TxFailedError.record](#record) for what the chain recorded. `record.tx` is a
-`FinalizedTx` in the era `record.era` names; read it with
-`LedgerTransaction.unwrap(record.tx, record.era)` after narrowing on `era`.
+`FinalizedTx` in the era `record.era` names; after narrowing on `era`, read it
+with your own ledger copy: `record.tx.deserialize({ v9: Transaction })`.
 
 [TxFailedError.signingKey](#signingkey) is NAMED in the message but never rendered
 into it: after a failed deploy or replacement it may be the only copy of the

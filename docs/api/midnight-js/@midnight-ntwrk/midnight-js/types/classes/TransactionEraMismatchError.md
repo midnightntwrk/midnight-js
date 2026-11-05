@@ -6,8 +6,8 @@
 
 # Class: TransactionEraMismatchError
 
-Thrown by `LedgerTransaction.unwrap` when the handle carries a transaction of
-another era than the one asked for.
+Thrown when a handle carries a transaction of another era than the one the
+caller serves.
 
 Catch it via its stable `code`, using `hasErrorCode` from
 `@midnight-ntwrk/midnight-js-utils`.

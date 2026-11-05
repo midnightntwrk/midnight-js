@@ -12,13 +12,13 @@ A [WalletProvider](WalletProvider.md) written against the v9 ledger runtime only
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<[`TransactionAnswer`](../type-aliases/TransactionAnswer.md)\>
 
 #### Parameters
 
 ##### tx
 
-[`Ledger9UnboundTransaction`](../type-aliases/Ledger9UnboundTransaction.md)
+[`LedgerTransaction`](../classes/LedgerTransaction.md)\<`"Unbound"`, `"v9"`\>
 
 ##### ttl?
 
@@ -26,7 +26,7 @@ A [WalletProvider](WalletProvider.md) written against the v9 ledger runtime only
 
 #### Returns
 
-`Promise`\<[`FinalizedTransaction`](https://github.com/midnightntwrk/midnight-ledger)\>
+`Promise`\<[`TransactionAnswer`](../type-aliases/TransactionAnswer.md)\>
 
 ***
 

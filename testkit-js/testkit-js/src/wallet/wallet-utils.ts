@@ -52,24 +52,24 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
     wallet.state().pipe(
       Rx.tap((state) => {
         logger.info(
-          `Wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
+          `Wallet synced state emission: { shielded=${state.shielded.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.throttleTime(throttleTime),
       Rx.tap((state) => {
         const isSynced =
-          state.shielded.state.progress.isStrictlyComplete() &&
-          state.dust.state.progress.isStrictlyComplete() &&
+          state.shielded.progress.isStrictlyComplete() &&
+          state.dust.progress.isStrictlyComplete() &&
           state.unshielded.progress?.isStrictlyComplete() === true;
 
         logger.info(
-          `Wallet synced state emission (synced=${isSynced}, protocol=${state.protocol._tag}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
+          `Wallet synced state emission (synced=${isSynced}, protocol=${state.protocol._tag}): { shielded=${state.shielded.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.filter(
         (state) =>
-          state.shielded.state.progress.isStrictlyComplete() &&
-          state.dust.state.progress.isStrictlyComplete() &&
+          state.shielded.progress.isStrictlyComplete() &&
+          state.dust.progress.isStrictlyComplete() &&
           state.unshielded.progress.isStrictlyComplete() === true &&
           state.protocol._tag === 'Settled'
       ),

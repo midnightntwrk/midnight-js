@@ -6,12 +6,21 @@
 
 # Class: LedgerTransaction\<S, E\>
 
-An opaque ledger transaction of one era at one [TransactionStage](../type-aliases/TransactionStage.md).
+A ledger transaction of one era at one [TransactionStage](../type-aliases/TransactionStage.md), as the bytes that ledger wrote.
 
-Made only by [LedgerTransaction.seal](#seal), which refuses an object of any
-ledger copy other than the one this framework loaded, or one at another
-stage, and read only by [LedgerTransaction.unwrap](#unwrap), which refuses the
-wrong era.
+Made only by [LedgerTransaction.fromBytes](#frombytes), which checks the header the ledger of that era
+writes for that stage, or by [LedgerTransaction.seal](#seal), which does the same with an object's
+bytes. No handle holds a ledger object. The caller decodes it with its own ledger copy:
+
+```ts
+import { Transaction } from '@midnightntwrk/ledger-v9';
+
+const tx = record.tx.deserialize({ v9: Transaction });
+```
+
+The bytes live in a private field, so `structuredClone`, `postMessage` and JSON drop them. To send
+one elsewhere, send `serialize()`, `era` and `stage`, and rebuild it with
+[LedgerTransaction.fromBytes](#frombytes).
 
 ## Type Parameters
 
@@ -41,21 +50,121 @@ The era the transaction belongs to; any era when not known.
 
 ## Methods
 
+### deserialize()
+
+> **deserialize**\<`D`\>(`decoders`): [`DecodedTransaction`](../type-aliases/DecodedTransaction.md)\<`D`, `E`, `S`\>
+
+Decodes the transaction with the class for its own era, at its own stage.
+
+#### Type Parameters
+
+##### D
+
+`D` *extends* `Readonly`\<`Partial`\<`Record`\<`"v8"` \| `"v9"`, [`TransactionDecoder`](../interfaces/TransactionDecoder.md)\>\>\>
+
+#### Parameters
+
+##### decoders
+
+[`TransactionDecodersFor`](../type-aliases/TransactionDecodersFor.md)\<`D`, `E`\>
+
+One `Transaction` class per ledger era, from the caller's own ledger copy, e.g.
+  `{ v9: Transaction }`. It must have a class for at least one era the handle's type allows, or
+  the call does not compile. Narrow on `era` first, or pass a class for each era, so the
+  handle's own era is always covered.
+
+#### Returns
+
+[`DecodedTransaction`](../type-aliases/DecodedTransaction.md)\<`D`, `E`, `S`\>
+
+An object of the caller's class at this handle's stage.
+
+#### Throws
+
+TransactionDecoderMissingError When `decoders` has no class for `this.era`.
+
+#### Throws
+
+TransactionDecodeFailedError When the class throws an error that is not a
+  `MidnightJsError`, for example because the bytes after the header are corrupt. A
+  `MidnightJsError` is rethrown unchanged.
+
+***
+
 ### serialize()
 
 > **serialize**(): `Uint8Array`
-
-The transaction's serialized bytes.
 
 #### Returns
 
 `Uint8Array`
 
+A copy of the bytes, exactly as the ledger wrote them.
+
+***
+
+### fromBytes()
+
+> `static` **fromBytes**\<`E`, `S`\>(`era`, `stage`, `bytes`, `method?`): `LedgerTransaction`\<`S`, `E`\>
+
+Makes a handle from the bytes of a transaction.
+
+#### Type Parameters
+
+##### E
+
+`E` *extends* `"v8"` \| `"v9"`
+
+##### S
+
+`S` *extends* `"Unproven"` \| `"Unbound"` \| `"Finalized"`
+
+#### Parameters
+
+##### era
+
+`E`
+
+The era of the ledger that wrote the bytes.
+
+##### stage
+
+`S`
+
+The stage the transaction is at.
+
+##### bytes
+
+`Uint8Array`
+
+The serialized transaction. The handle keeps a copy.
+
+##### method?
+
+[`TransactionHandleMethod`](../type-aliases/TransactionHandleMethod.md) = `'LedgerTransaction.fromBytes'`
+
+The provider method whose answer is wrapped, named in a refusal;
+  `LedgerTransaction.fromBytes` when omitted.
+
+#### Returns
+
+`LedgerTransaction`\<`S`, `E`\>
+
+#### Throws
+
+UnknownLedgerEraError If `era` is not a ledger era.
+
+#### Throws
+
+InvalidTransactionHandleError If `stage` is not a transaction stage (`invalid-stage`),
+  `bytes` is not a `Uint8Array` (`not-bytes`), or the bytes do not start with the header the
+  ledger of `era` writes for `stage` (`header-mismatch`).
+
 ***
 
 ### isLedgerTransaction()
 
-> `static` **isLedgerTransaction**(`value`): value is LedgerTransaction\<TransactionStage, "v8" \| "v9"\>
+> `static` **isLedgerTransaction**(`value`): value is LedgerTransaction\<"Unproven" \| "Unbound" \| "Finalized", "v8" \| "v9"\>
 
 Whether `value` is a handle made by this copy of the package. A look-alike object, or a
 handle made by a second installed copy of the package, gives `false`.
@@ -68,7 +177,7 @@ handle made by a second installed copy of the package, gives `false`.
 
 #### Returns
 
-value is LedgerTransaction\<TransactionStage, "v8" \| "v9"\>
+value is LedgerTransaction\<"Unproven" \| "Unbound" \| "Finalized", "v8" \| "v9"\>
 
 ***
 
@@ -83,7 +192,7 @@ method takes.
 
 ##### S
 
-`S` *extends* [`TransactionStage`](../type-aliases/TransactionStage.md)
+`S` *extends* `"Unproven"` \| `"Unbound"` \| `"Finalized"`
 
 #### Parameters
 
@@ -122,7 +231,8 @@ InvalidTransactionHandleError If `value` is not a handle
 
 > `static` **seal**\<`E`, `S`\>(`era`, `stage`, `tx`, `method?`): `LedgerTransaction`\<`S`, `E`\>
 
-Wraps a ledger transaction object in a handle.
+Makes a handle from a transaction object of any ledger copy:
+`fromBytes(era, stage, tx.serialize())`.
 
 #### Type Parameters
 
@@ -132,7 +242,7 @@ Wraps a ledger transaction object in a handle.
 
 ##### S
 
-`S` *extends* [`TransactionStage`](../type-aliases/TransactionStage.md)
+`S` *extends* `"Unproven"` \| `"Unbound"` \| `"Finalized"`
 
 #### Parameters
 
@@ -150,17 +260,16 @@ The stage the object is at.
 
 ##### tx
 
-[`LedgerTransactionTypes`](../interfaces/LedgerTransactionTypes.md)\[`E`\]\[`S`\]
+The transaction.
 
-The transaction, an object of the ledger copy this framework
-  loaded for `era`.
+###### serialize
 
 ##### method?
 
 [`TransactionHandleMethod`](../type-aliases/TransactionHandleMethod.md) = `'LedgerTransaction.seal'`
 
-The provider method whose answer is sealed, named in a
-  refusal; `LedgerTransaction.seal` when omitted.
+The provider method whose answer is sealed, named in a refusal;
+  `LedgerTransaction.seal` when omitted.
 
 #### Returns
 
@@ -168,66 +277,9 @@ The provider method whose answer is sealed, named in a
 
 #### Throws
 
-InvalidTransactionHandleError If `stage` is not a transaction stage
-  (`invalid-stage`), `tx` is not a ledger transaction object
-  (`not-a-transaction`), or `tx` is at another stage (`stage-mismatch`).
-
-#### Throws
-
-ForeignLedgerTransactionError If `tx` is an object of another
-  ledger copy, or `era` is v8 and the v8 ledger is not loaded yet.
+InvalidTransactionHandleError If `tx` has no `serialize` method (`not-a-transaction`),
+  or as [LedgerTransaction.fromBytes](#frombytes) does.
 
 #### Throws
 
 UnknownLedgerEraError If `era` is not a ledger era.
-
-***
-
-### unwrap()
-
-> `static` **unwrap**\<`E`, `S`\>(`handle`, `era`): [`LedgerTransactionTypes`](../interfaces/LedgerTransactionTypes.md)\[`E`\]\[`S`\]
-
-Reads the ledger transaction object out of a handle.
-
-#### Type Parameters
-
-##### E
-
-`E` *extends* `"v8"` \| `"v9"`
-
-##### S
-
-`S` *extends* [`TransactionStage`](../type-aliases/TransactionStage.md)
-
-#### Parameters
-
-##### handle
-
-`LedgerTransaction`\<`S`\>
-
-A handle made by [LedgerTransaction.seal](#seal).
-
-##### era
-
-`E`
-
-The era the caller serves.
-
-#### Returns
-
-[`LedgerTransactionTypes`](../interfaces/LedgerTransactionTypes.md)\[`E`\]\[`S`\]
-
-The object that was sealed.
-
-#### Throws
-
-InvalidTransactionHandleError If `handle` is not a handle of this
-  copy of the package.
-
-#### Throws
-
-UnknownLedgerEraError If `era` is not a ledger era.
-
-#### Throws
-
-TransactionEraMismatchError If the handle carries another era.

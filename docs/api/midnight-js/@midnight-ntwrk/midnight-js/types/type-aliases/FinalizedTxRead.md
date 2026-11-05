@@ -11,7 +11,7 @@
 A finalized transaction record, discriminated by which ledger runtime
 produced it. Both variants carry identical metadata and a [FinalizedTx](FinalizedTx.md)
 handle of their own era, so narrowing on `era` narrows `tx.era` with it.
-Read the transaction with `LedgerTransaction.unwrap(record.tx, record.era)`.
+Read the transaction with your own ledger copy: `record.tx.deserialize({ v9: Transaction })`.
 
 The providers in this framework resolve `era` from the record's own
 `protocolVersion` at the one construction point per provider, and throw
