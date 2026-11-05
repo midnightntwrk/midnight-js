@@ -215,3 +215,11 @@ ADR 0006 left them") no longer holds. They are now a `LedgerState`: bytes and th
 ledger that wrote them, decoded by the caller's own runtime. Transactions are unchanged: a
 `LedgerTransaction` still holds a live object. The #1525 follow-up is closed by ADR 0020: a v8
 state is decoded with `ContractState` from a ledger 8 `compact-runtime` (0.16).
+
+## Amendment — the handle holds bytes (2026-11-05)
+
+Issue #1551, recorded in [ADR-0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md).
+The decision "The handle holds a live ledger object, guarded, rather than bytes" no longer holds. The
+handle holds the bytes and is decoded by the caller's own ledger copy. `unwrap` is removed,
+`ForeignLedgerTransactionError` is no longer raised, and the per-era handlers receive the handle
+instead of a raw object (points 4 and 7). The rest of this decision stands.

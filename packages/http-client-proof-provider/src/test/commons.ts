@@ -22,6 +22,7 @@ import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
+  Transaction,
   type UnprovenTransaction,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
@@ -35,7 +36,6 @@ import {
 import { createProverKey,
   createVerifierKey,
   createZKIR,
-  LedgerTransaction,
   type ProverKey,
   SerializedLedgerParameters,
   SerializedZswapChainState,
@@ -151,5 +151,5 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     encryptionPublicKey
   );
 
-  return LedgerTransaction.unwrap(result.private.unprovenTx, 'v9');
+  return result.private.unprovenTx.deserialize({ v9: Transaction });
 };

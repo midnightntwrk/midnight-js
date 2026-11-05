@@ -19,6 +19,7 @@ import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleSigningKey,
+  Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -33,7 +34,7 @@ import {
 } from '../../governance/unproven-tx';
 import { createMockCompiledContract, createMockZKConfigProvider, MOCK_CONFIG, networkIdOf } from '../test-mocks';
 
-const ledgerTxOf = (handle: UnprovenTx): UnprovenTransaction => LedgerTransaction.unwrap(handle, 'v9');
+const ledgerTxOf = (handle: UnprovenTx): UnprovenTransaction => handle.deserialize({ v9: Transaction });
 
 const ttlOfTx = (handle: UnprovenTx): Date => {
   const [intent, ...others] = ledgerTxOf(handle).intents?.values() ?? [];

@@ -209,8 +209,7 @@ interface SeenPayloads {
 /** The network id and intent TTL of the retained-era transaction a provider method was handed. */
 const retainedTxFacts = async (tx: UnprovenTx | undefined): Promise<{ networkId?: string; ttl?: Date }> => {
   assertDefined(tx, 'Expected proveTx to have been handed a transaction');
-  await loadLedger8Protocol();
-  const decoded = LedgerTransaction.unwrap(tx, 'v8');
+  const decoded = tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction });
   const [intent, ...others] = decoded.intents?.values() ?? [];
   expect(others).toEqual([]);
   return { networkId: networkIdOf(decoded), ttl: intent?.ttl };

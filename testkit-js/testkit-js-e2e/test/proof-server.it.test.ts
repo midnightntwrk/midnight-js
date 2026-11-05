@@ -27,6 +27,7 @@ import {
   type Proof,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
+  Transaction,
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
@@ -69,14 +70,13 @@ describe('Proof server integration', () => {
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
   // `proveTx` carries a transaction handle in both directions. This suite only
-  // ever sends v9 transactions, so it seals the request and unwraps the v9
+  // ever sends v9 transactions, so it seals the request and decodes the v9
   // response once here, keeping every assertion below written against the
   // plain ledger transaction.
   const proveLedger9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<Ledger9UnboundTransaction> =>
-    LedgerTransaction.unwrap(
-      await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config),
-      'v9'
-    );
+    (await proofProvider.proveTx(LedgerTransaction.seal('v9', 'Unproven', unprovenTx), config)).deserialize({
+      v9: Transaction
+    });
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -100,7 +100,7 @@ describe('Proof server integration', () => {
       encryptionPublicKey,
       MIDNIGHT_CONFIG
     );
-    unprovenDeployTx = LedgerTransaction.unwrap(unprovenDeployTxResult.private.unprovenTx, 'v9');
+    unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx.deserialize({ v9: Transaction });
     const unprovenCallTxResult = await createUnprovenCallTxFromInitialStates(
       zkConfigProvider,
       {
@@ -116,7 +116,7 @@ describe('Proof server integration', () => {
       },
       encryptionPublicKey
     );
-    unprovenCallTx = LedgerTransaction.unwrap(unprovenCallTxResult.private.unprovenTx, 'v9');
+    unprovenCallTx = unprovenCallTxResult.private.unprovenTx.deserialize({ v9: Transaction });
   });
 
   afterAll(async () => {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { UnprovenTransaction as Ledger8UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import type { UnprovenTransaction as Ledger9UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { FinalizedTransaction as Ledger9FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import {
@@ -30,10 +30,20 @@ import type { FinalizedTxRead,Ledger8FinalizedTxData } from '../versioned';
 declare const unprovenTx: UnprovenTx;
 declare const unboundTx: UnboundTx;
 declare const finalizedTx: FinalizedTx;
-declare const ledger8Unbound: LedgerTransactionTypes['v8']['Unbound'];
-declare const ledger9Unproven: Ledger9UnprovenTransaction;
 declare const ledger9UnprovenHandle: LedgerTransaction<'Unproven', 'v9'>;
 declare const finalizedTxRead: FinalizedTxRead;
+declare const ledger9UnboundHandle: LedgerTransaction<'Unbound', 'v9'>;
+declare const ledger9FinalizedHandle: LedgerTransaction<'Finalized', 'v9'>;
+declare const anyCopy: { serialize(): Uint8Array };
+declare const bytes: Uint8Array;
+
+declare class CallerTransaction<S, P, B> {
+  private readonly markers: [S, P, B];
+  static fromParts(networkId: string): CallerTransaction<'signature', 'pre-proof', 'pre-binding'>;
+  static deserialize(markerS: string, markerP: string, markerB: string, raw: Uint8Array): unknown;
+  prove(provider: unknown): Promise<CallerTransaction<S, 'proof', B>>;
+  bind(): CallerTransaction<S, P, 'binding'>;
+}
 
 describe('LedgerTransaction stages', () => {
   it('keeps the three stages apart', () => {
@@ -54,44 +64,68 @@ describe('LedgerTransaction stages', () => {
   });
 });
 
-describe('LedgerTransaction.seal', () => {
-  it('returns the handle at the stage and era it was given', () => {
-    expectTypeOf(LedgerTransaction.seal('v9', 'Unproven', ledger9Unproven)).toEqualTypeOf<LedgerTransaction<'Unproven', 'v9'>>();
+describe('LedgerTransaction.fromBytes and seal', () => {
+  it('return the handle at the stage and era they were given', () => {
+    expectTypeOf(LedgerTransaction.fromBytes('v9', 'Unproven', bytes)).toEqualTypeOf<LedgerTransaction<'Unproven', 'v9'>>();
+    expectTypeOf(LedgerTransaction.seal('v8', 'Finalized', anyCopy)).toEqualTypeOf<LedgerTransaction<'Finalized', 'v8'>>();
   });
 
-  it('returns a handle that is a handle of its stage in any era', () => {
-    expectTypeOf(LedgerTransaction.seal('v9', 'Unproven', ledger9Unproven)).toExtend<UnprovenTx>();
+  it('return a handle that is a handle of its stage in any era', () => {
+    expectTypeOf(LedgerTransaction.fromBytes('v9', 'Unproven', bytes)).toExtend<UnprovenTx>();
   });
 
-  it('refuses an object of the same era at another stage', () => {
-    // @ts-expect-error an unproven transaction cannot be sealed as finalized
-    LedgerTransaction.seal('v9', 'Finalized', ledger9Unproven);
-  });
-
-  it('refuses an object of the other era', () => {
-    // @ts-expect-error a v8 unbound transaction cannot be sealed as v9
-    LedgerTransaction.seal('v9', 'Unbound', ledger8Unbound);
+  it('seal an object of any ledger copy', () => {
+    expectTypeOf(LedgerTransaction.seal).parameter(2).toEqualTypeOf<{ serialize(): Uint8Array }>();
   });
 });
 
-describe('LedgerTransaction.unwrap', () => {
-  it('returns the ledger class of the requested era at the handle stage', () => {
-    expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v8')).toEqualTypeOf<Ledger8UnprovenTransaction>();
-    expectTypeOf(LedgerTransaction.unwrap(unprovenTx, 'v9')).toEqualTypeOf<Ledger9UnprovenTransaction>();
+describe('LedgerTransaction.deserialize', () => {
+  it('returns the caller transaction type at each stage', () => {
+    expectTypeOf(ledger9UnprovenHandle.deserialize({ v9: CallerTransaction })).toEqualTypeOf<
+      CallerTransaction<'signature', 'pre-proof', 'pre-binding'>
+    >();
+    expectTypeOf(ledger9UnboundHandle.deserialize({ v9: CallerTransaction })).toEqualTypeOf<
+      CallerTransaction<'signature', 'proof', 'pre-binding'>
+    >();
+    expectTypeOf(ledger9FinalizedHandle.deserialize({ v9: CallerTransaction })).toEqualTypeOf<
+      CallerTransaction<'signature', 'proof', 'binding'>
+    >();
   });
 
-  it('returns the ledger class of the era a handle of known era carries', () => {
-    expectTypeOf(LedgerTransaction.unwrap(ledger9UnprovenHandle, 'v9')).toEqualTypeOf<Ledger9UnprovenTransaction>();
+  it('returns the caller type, not the framework one', () => {
+    expectTypeOf(ledger9UnprovenHandle.deserialize({ v9: CallerTransaction })).not.toEqualTypeOf<
+      LedgerTransactionTypes['v9']['Unproven']
+    >();
   });
 
-  it('refuses another era for a handle of known era', () => {
-    // @ts-expect-error a v9 handle cannot be unwrapped as v8
-    LedgerTransaction.unwrap(ledger9UnprovenHandle, 'v8');
+  it('returns the ledger type of a ledger class', () => {
+    expectTypeOf(ledger9FinalizedHandle.deserialize({ v9: Transaction })).toEqualTypeOf<Ledger9FinalizedTransaction>();
   });
 
-  it('accepts either era for a handle whose era is one of several', () => {
-    expectTypeOf(LedgerTransaction.unwrap(finalizedTxRead.tx, 'v8')).toEqualTypeOf<LedgerTransactionTypes['v8']['Finalized']>();
-    expectTypeOf(LedgerTransaction.unwrap(finalizedTxRead.tx, 'v9')).toEqualTypeOf<LedgerTransactionTypes['v9']['Finalized']>();
+  it('decodes the tx of a record of either era with a class per era', () => {
+    expectTypeOf(finalizedTxRead.tx.deserialize({ v8: CallerTransaction, v9: CallerTransaction })).toEqualTypeOf<
+      CallerTransaction<'signature', 'proof', 'binding'>
+    >();
+  });
+
+  it('decodes the tx of a record narrowed to one era with that era class only', () => {
+    const decode = (record: FinalizedTxRead) => (record.era === 'v9' ? record.tx.deserialize({ v9: CallerTransaction }) : undefined);
+
+    expectTypeOf(decode).returns.toEqualTypeOf<CallerTransaction<'signature', 'proof', 'binding'> | undefined>();
+  });
+
+  it('refuses decoders with none for the handle era', () => {
+    // @ts-expect-error a v9 handle cannot be decoded with a v8 class only
+    ledger9UnprovenHandle.deserialize({ v8: CallerTransaction });
+  });
+
+  it('refuses a class that cannot decode a transaction', () => {
+    // @ts-expect-error an object without deserialize and fromParts is not a Transaction class
+    ledger9UnprovenHandle.deserialize({ v9: { deserialize: (raw: Uint8Array) => raw } });
+  });
+
+  it('is not on the class: there is no unwrap', () => {
+    expectTypeOf(LedgerTransaction).not.toHaveProperty('unwrap');
   });
 });
 

@@ -86,7 +86,7 @@ export const mintLedger8ZswapChainStateBytes = async (populated = false): Promis
   const v8 = await loadLedger8Protocol();
   return (
     populated
-      ? new v8.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME, ZSWAP_ROOT_RETENTION_SECONDS)
+      ? new v8.ZswapChainState().postBlockUpdate(ZSWAP_BLOCK_TIME)
       : new v8.ZswapChainState()
   ).serialize();
 };

@@ -118,9 +118,10 @@ otherwise miss. It is published so the barrel's class set matches its code set.
 The remaining codes in the table differ. `STATE_CONVERSION_FAILED` has a live
 thrower — `decodeExecutableStateValue` in `lib/v8/executable.ts`, which refuses
 a state that does not decode or does not re-encode to its source.
-`LEDGER8_INSTANCE_MISMATCH` and its class were removed: nothing raised them,
-and the WASM-instance fault they described is now reported by
-`ForeignLedgerTransactionError`, raised by `LedgerTransaction.seal` in `types`.
+`LEDGER8_INSTANCE_MISMATCH` and its class were removed: nothing raised them.
+A transaction handle holds bytes, not a ledger object, so it cannot carry an
+object of another WASM instance; `proveLedger8Transaction` refuses such an
+object with `InvalidArgumentError`.
 
 ## The error base and the general errors
 

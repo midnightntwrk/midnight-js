@@ -277,13 +277,13 @@ describe('httpClientProofProvider', () => {
       expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
     });
 
-    test('carries the proved transaction itself, not a copy of it', async () => {
+    test('carries the bytes of the proved transaction', async () => {
       wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
 
       const result = await provider.proveTx(unprovenLedger9Handle());
 
-      expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+      expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
     });
   });
 

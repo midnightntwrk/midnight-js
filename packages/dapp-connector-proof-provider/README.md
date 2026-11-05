@@ -18,6 +18,7 @@ yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -29,7 +30,7 @@ const proofProvider = await dappConnectorProofProvider(
 // The proven handle comes back in the same era.
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const provenTx = await proofProvider.proveTx(unprovenTx);
-const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ```
 
 ### Wallet and midnight providers

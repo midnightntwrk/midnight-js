@@ -14,8 +14,9 @@
  */
 
 import { createUnprovenCallTx, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import type { UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -110,7 +111,7 @@ describe('Fee-mint segment routing — regression #731', () => {
     partitionedTranscript: Awaited<ReturnType<typeof createUnprovenCallTx>>['public']['partitionedTranscript'],
     unprovenTxHandle: UnprovenTx
   ) => {
-    const unprovenTx = LedgerTransaction.unwrap(unprovenTxHandle, 'v9');
+    const unprovenTx = unprovenTxHandle.deserialize({ v9: Transaction });
     // The heavy pre-checkpoint writes push the whole circuit into the fallible
     // segment, so there is no guaranteed transcript at all.
     expect(partitionedTranscript[0]).toBeUndefined();

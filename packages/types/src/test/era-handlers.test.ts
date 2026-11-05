@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LEDGER_TRANSACTION_TAGS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   PROVIDER_ERROR_CODES,
   ProviderEraUnsupportedError,
@@ -167,7 +166,7 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
     it.each<[LedgerEra, LedgerEra]>([
       ['v9', 'v8'],
       ['v8', 'v9']
-    ])('hands a %s handle unwrapped to its own handler only, never to the %s one', async (era, otherEra) => {
+    ])('hands a %s handle as it is to its own handler only, never to the %s one', async (era, otherEra) => {
       const handlers = { [era]: handlerFor(era), [otherEra]: handlerFor(otherEra) };
       const provider = build(handlers);
       const handle = await handleAt(era, inputStage);
@@ -175,7 +174,7 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
       await provider.sendValue(handle);
 
       expect(handlers[era]).toHaveBeenCalledTimes(1);
-      expect(handlers[era].mock.calls[0]?.[0]).toBe(LedgerTransaction.unwrap(handle, era));
+      expect(handlers[era].mock.calls[0]?.[0]).toBe(handle);
       expect(handlers[otherEra]).not.toHaveBeenCalled();
     });
 
@@ -190,7 +189,9 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
       } else {
         expect(LedgerTransaction.isLedgerTransaction(answered)).toBe(true);
         expect(answered).toMatchObject({ era, stage: answerStage });
-        expect(LedgerTransaction.isLedgerTransaction(answered) && LedgerTransaction.unwrap(answered, era)).toBe(result);
+        expect(LedgerTransaction.isLedgerTransaction(answered) && answered.serialize()).toEqual(
+          (result as { serialize(): Uint8Array }).serialize()
+        );
       }
     });
 
@@ -413,31 +414,49 @@ describe.each(factories)('$method built from per-era handlers', ({ method, input
 
 describe.each(factories.filter(({ answerStage }) => answerStage !== undefined))(
   '$method sealing the answer',
-  ({ method, inputStage, answer, otherHandlers, create }) => {
+  ({ method, answerStage, answer, otherHandlers, create }) => {
+    it.each(['v8', 'v9'] as const)('seals the bytes a %s handler returns, in the era of the request', async (era) => {
+      const bytes = ((await answer(era)) as { serialize(): Uint8Array }).serialize();
+      const handlers = era === 'v9' ? { v8: undefined, v9: () => Promise.resolve(bytes) } : { v8: () => Promise.resolve(bytes), v9: undefined };
+      const provider = create({ ...otherHandlers, ...handlers });
+
+      const answered = await provider.send(era);
+
+      expect(answered).toMatchObject({ era });
+      expect(LedgerTransaction.isLedgerTransaction(answered) && answered.serialize()).toEqual(bytes);
+    });
+
     it.each([
-      ['a structural lookalike', 'v9', () => Promise.resolve({ serialize: () => new Uint8Array() })],
-      ['a v8 object from the v9 handler', 'v9', () => answer('v8')],
-      ['a v9 object from the v8 handler', 'v8', () => answer('v9')]
-    ] as const)('refuses %s as a foreign transaction, naming the method', async (_label, era, returned) => {
+      ['a v8 object from the v9 handler', 'v9', (): Promise<unknown> => answer('v8')],
+      ['a v9 object from the v8 handler', 'v8', (): Promise<unknown> => answer('v9')],
+      ['the bytes of a v8 answer from the v9 handler', 'v9', async (): Promise<unknown> => ((await answer('v8')) as { serialize(): Uint8Array }).serialize()],
+      ['an object of any copy whose bytes are not a transaction', 'v9', (): Promise<unknown> => Promise.resolve({ serialize: () => new Uint8Array() })],
+      ['bytes that are not a transaction', 'v9', (): Promise<unknown> => Promise.resolve(new Uint8Array([1, 2, 3]))]
+    ] as const)('refuses %s through a direct provider call, naming the method', async (_label, era, returned) => {
       const handlers = era === 'v9' ? { v8: undefined, v9: returned } : { v8: returned, v9: undefined };
       const provider = create({ ...otherHandlers, ...handlers });
 
       const rejection = await rejectionOf(provider.send(era));
 
-      expect(rejection).toBeInstanceOf(ForeignLedgerTransactionError);
+      expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
       expect(rejection).toMatchObject({
-        code: PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION,
-        era,
-        reason: 'foreign-instance',
+        code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE,
+        reason: 'header-mismatch',
         method
       });
     });
 
-    it.each([
-      ['serialized bytes', () => Promise.resolve(new Uint8Array([1, 2, 3]))],
-      ['undefined', () => Promise.resolve(undefined)]
-    ])('refuses %s returned by a handler as not a transaction, naming the method', async (_label, returned) => {
-      const provider = create({ ...otherHandlers, v8: undefined, v9: returned });
+    it('refuses bytes with the right header and a corrupt body at once, before the handle is made', async () => {
+      const corrupt = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v9[answerStage ?? 'Finalized']}:`);
+      const provider = create({ ...otherHandlers, v8: undefined, v9: () => Promise.resolve(corrupt) });
+
+      const rejection = await rejectionOf(provider.send('v9'));
+
+      expect(rejection).toMatchObject({ code: PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION });
+    });
+
+    it('refuses undefined returned by a handler as not a transaction, naming the method', async () => {
+      const provider = create({ ...otherHandlers, v8: undefined, v9: () => Promise.resolve(undefined) });
 
       const rejection = await rejectionOf(provider.send('v9'));
 
@@ -445,7 +464,7 @@ describe.each(factories.filter(({ answerStage }) => answerStage !== undefined))(
       expect(rejection).toMatchObject({ method, reason: 'not-a-transaction' });
     });
 
-    it.each(['v8', 'v9'] as const)('refuses a %s handler that returns its input unchanged as a stage mismatch', async (era) => {
+    it.each(['v8', 'v9'] as const)('refuses a %s handler that returns its input unchanged, as the wrong stage', async (era) => {
       const returnInput = (tx: unknown) => Promise.resolve(tx);
       const handlers = era === 'v9' ? { v8: undefined, v9: returnInput } : { v8: returnInput, v9: undefined };
       const provider = create({ ...otherHandlers, ...handlers });
@@ -453,8 +472,8 @@ describe.each(factories.filter(({ answerStage }) => answerStage !== undefined))(
       const rejection = await rejectionOf(provider.send(era));
 
       expect(rejection).toBeInstanceOf(InvalidTransactionHandleError);
-      expect(rejection).toMatchObject({ method, reason: 'stage-mismatch' });
-      expect(String(rejection)).toContain(`${inputStage} transaction sealed as`);
+      expect(rejection).toMatchObject({ method, reason: 'header-mismatch' });
+      expect(String(rejection)).toContain(`transaction of the ${era} ledger`);
     });
   }
 );

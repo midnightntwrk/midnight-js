@@ -16,7 +16,8 @@
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { LedgerTransaction, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import { isDeserializationError } from '../deserialization';
@@ -83,15 +84,12 @@ describe('typed wrappers — source attribution', () => {
   });
 
   it.each(['v8', 'v9'] as const)(
-    'deserializeLedgerTransaction attributes a %s failure to ledger; dataType becomes "Transaction" via D9 regex override',
+    'deserializeLedgerTransaction attributes a %s header failure to ledger, with the caller',
     async (era) => {
-      // The wrapper hardcodes `dataType: 'LedgerTransaction'` (the TS import alias),
-      // but the WASM error reports "Unable to deserialize Transaction. Error: ..." —
-      // classifier extracts `what: 'Transaction'` and overrides per D9.
       const caught = await deserializeLedgerTransaction(era, garbage, { caller }).catch((e: unknown) => e);
 
       expect(isDeserializationError(caught)).toBe(true);
-      expect(caught).toMatchObject({ context: { dataType: 'Transaction', source: 'ledger', caller } });
+      expect(caught).toMatchObject({ context: { dataType: 'LedgerTransaction', source: 'ledger', caller } });
     }
   );
 
@@ -133,15 +131,25 @@ describe('deserializeLedgerTransaction', () => {
     expect(handle.serialize()).toEqual(bytes);
   });
 
-  it('returns a finalized v8 handle around an object of the framework v8 ledger', async () => {
+  it('returns a finalized v8 handle the caller decodes with its own v8 class', async () => {
     const v8 = await loadLedger8Protocol();
     const bytes = v8.Transaction.fromParts('undeployed').mockProve().serialize();
 
     const handle = await deserializeLedgerTransaction('v8', bytes, { caller });
 
     expect([handle.era, handle.stage]).toEqual(['v8', 'Finalized']);
-    expect(LedgerTransaction.unwrap(handle, 'v8')).toBeInstanceOf(v8.Transaction);
+    expect(handle.deserialize({ v8: v8.Transaction })).toBeInstanceOf(v8.Transaction);
+  });
+
+  it.each(['v8', 'v9'] as const)('does not decode a %s record, so a body it cannot read is refused only when decoded', async (era) => {
+    const bytes = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS[era].Finalized}:truncated`);
+
+    const handle = await deserializeLedgerTransaction(era, bytes, { caller });
+
     expect(handle.serialize()).toEqual(bytes);
+    expect(() => handle.deserialize({ v8: Transaction, v9: Transaction })).toThrow(
+      expect.objectContaining({ code: PROVIDER_ERROR_CODES.TRANSACTION_DECODE_FAILED })
+    );
   });
 
   it('reads the bytes in the era it is given, refusing a transaction of the other era', async () => {

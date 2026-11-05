@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import {
   CostModel,
@@ -23,13 +23,13 @@ import {
   type Proof,
   type ProvingProvider,
   type SignatureEnabled,
-  type Transaction
+  Transaction
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
+import { dispatch, type Route, sealAnswer, type TransactionAnswers } from './internal/dispatch';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
-import { LedgerTransaction, type UnboundTx, type UnprovenTx } from './ledger-transaction';
+import type { LedgerTransaction, TransactionAnswer, UnboundTx, UnprovenTx } from './ledger-transaction';
 
 /** A proven ledger 9 transaction, not yet bound: what `Ledger9WalletProvider.balanceTx` takes. */
 export type Ledger9UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -78,15 +78,14 @@ export interface ProofProvider {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    * @returns The proven transaction handle, in the SAME era as `unprovenTx`. Read it with
-   *          `LedgerTransaction.unwrap(proven, proven.era)`.
+   *          `proven.deserialize({ v9: Transaction })`, with `Transaction` from your own ledger copy.
    * @throws InvalidTransactionHandleError if `unprovenTx` is not an unproven handle of this package.
    * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
    *         {@link createLedger9ProofProvider} serves v9 only; `httpClientProofProvider` and
    *         `dappConnectorProofProvider` serve both eras.
-   * @throws ForeignLedgerTransactionError if the proven transaction is not an object of the
-   *         ledger copy this framework loaded for its era.
-   * @throws InvalidTransactionHandleError if the proven transaction is not a ledger transaction
-   *         object (`not-a-transaction`) or is not at the Unbound stage (`stage-mismatch`).
+   * @throws InvalidTransactionHandleError if the proven transaction is not a transaction object or
+   *         bytes (`not-a-transaction`), or is not an Unbound transaction of the handle's era
+   *         (`header-mismatch`).
    * @throws InvalidArgumentError if `proveTxConfig.timeout` is set and the implementation cannot
    *         apply it. {@link createLedger9ProofProvider}, {@link createProofProviderFromProvingProviders} and
    *         `dappConnectorProofProvider` refuse it before any proving starts;
@@ -100,16 +99,14 @@ export interface ProofProvider {
  * {@link ProofProvider} from: one key per ledger era, a handler for an era the
  * provider serves and `undefined` for one it does not.
  *
- * A handler takes and returns objects of the ledger copy this framework
- * loaded for its era. A handler that hands the transaction to another ledger
- * copy — a wallet SDK, a second install of the ledger package —
- * serializes it on the way out and decodes the answer into the framework's copy
- * on the way in, with `deserializeTransactionAtStage` from
- * `@midnight-ntwrk/midnight-js-protocol/transaction`.
+ * A handler receives the handle of its own era. It decodes it with its own
+ * ledger copy (`tx.deserialize({ v9: Transaction })`), or passes
+ * `tx.serialize()` to a prover that takes bytes. It answers with a transaction
+ * object of any ledger copy, or with its bytes.
  */
 export type ProofProviderHandlers = {
   readonly [E in LedgerEra]:
-    | ((tx: LedgerTransactionTypes[E]['Unproven'], config?: ProveTxConfig) => Promise<LedgerTransactionTypes[E]['Unbound']>)
+    | ((tx: LedgerTransaction<'Unproven', E>, config?: ProveTxConfig) => Promise<TransactionAnswer>)
     | undefined;
 };
 
@@ -118,8 +115,8 @@ export type ProofProviderHandlers = {
  *
  * `supportedEras` is computed from the handlers given, so it cannot disagree
  * with what the provider does. Each handle is routed to the handler of its own
- * era, and the answer is sealed in that same era, so a handler never sees a
- * handle and cannot answer in the wrong era.
+ * era, and the answer is sealed in that same era at the Unbound stage, so an
+ * answer of another era or stage is refused.
  *
  * Every handler is called with `handlers` as `this`.
  *
@@ -134,8 +131,8 @@ export type ProofProviderHandlers = {
  * @example
  * ```typescript
  * const proofProvider = createProofProviderFromHandlers({
- *   v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
- *   v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
+ *   v8: async (tx) => proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), ledger8ProvingProvider),
+ *   v9: (tx) => tx.deserialize({ v9: Transaction }).prove(provingProvider, CostModel.initialCostModel())
  * });
  * // proofProvider.supportedEras is ['v8', 'v9']
  * ```
@@ -143,13 +140,13 @@ export type ProofProviderHandlers = {
 export const createProofProviderFromHandlers = (handlers: ProofProviderHandlers): ProofProvider => {
   const served = readEraEntries('proveTx', handlers, 'handler');
   const supportedEras = Object.freeze(LEDGER_ERAS.filter((era) => served[era] !== undefined));
-  const route: Route<'Unproven', [ProveTxConfig?], TransactionsAt<'Unbound'>, UnboundTx> = {
+  const route: Route<'Unproven', [ProveTxConfig?], TransactionAnswers, UnboundTx> = {
     method: 'proveTx',
     stage: 'Unproven',
     handlers: served,
     receiver: handlers,
     supportedEras,
-    answer: (era, proven) => LedgerTransaction.seal(era, 'Unbound', proven, 'proveTx')
+    answer: (era, proven) => sealAnswer(era, 'Unbound', proven, 'proveTx')
   };
   return {
     supportedEras,
@@ -232,16 +229,16 @@ export const createProofProviderFromProvingProviders = (provingProviders: Provin
     v8:
       v8 === undefined
         ? undefined
-        : (tx, config) => {
+        : async (tx, config) => {
             refuseTimeout(config);
-            return proveLedger8Transaction(tx, v8);
+            return proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), v8);
           },
     v9:
       v9 === undefined
         ? undefined
         : (tx, config) => {
             refuseTimeout(config);
-            return tx.prove(v9, costModel);
+            return tx.deserialize({ v9: Transaction }).prove(v9, costModel);
           }
   });
 };

@@ -140,9 +140,7 @@ describe('dappConnectorProofProvider', () => {
       costModel
     );
     expect([result.era, result.stage]).toEqual(['v9', 'Unbound']);
-    // Identity, not structural equality: ledger objects from different WASM
-    // instances must not be interchanged, so a structurally-equal copy must fail.
-    expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+    expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
   });
 
   describe('proveTxConfig.timeout', () => {
@@ -173,7 +171,7 @@ describe('dappConnectorProofProvider', () => {
 
       const result = await proofProvider.proveTx(unprovenLedger9Handle(), {});
 
-      expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+      expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
     });
 
     it('proves a v9 transaction when the timeout key is present but undefined', async () => {
@@ -181,7 +179,7 @@ describe('dappConnectorProofProvider', () => {
 
       const result = await proofProvider.proveTx(unprovenLedger9Handle(), { timeout: undefined });
 
-      expect(LedgerTransaction.unwrap(result, 'v9')).toBe(provenLedger9Tx);
+      expect(result.serialize()).toEqual(provenLedger9Tx.serialize());
     });
   });
 
