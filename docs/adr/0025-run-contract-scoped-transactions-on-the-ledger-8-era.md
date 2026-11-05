@@ -2,8 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-05
-- Deciders: Szymon Paluchowski
-- Related: #1218, #1576, #1581, [ADR-0021](./0021-mirror-per-era-functions-and-route-each-role-once.md)
+- Related: [ADR 0021](./0021-mirror-per-era-functions-and-route-each-role-once.md)
 
 ## Context
 
@@ -34,8 +33,7 @@ contracts.
   `Ledger8TransactionContext`.
 - `withLedger8ContractScopedTransaction` mirrors `withLedger9ContractScopedTransaction`. Each
   refuses a head of the other era with `EraMismatchError`, reason `'scope-era-mismatch'`, from the
-  head reading alone and before the scope function runs. That reason replaces
-  `'scope-on-ledger8-network'`.
+  head reading alone and before the scope function runs.
 - The ledger 8 scope acquires the retained runtime once, before its function runs. The first call
   added to it reads the contract state and the stored private state; every later call runs on the
   states the call before it ended on.

@@ -2,219 +2,91 @@
 
 - Status: Accepted
 - Date: 2026-09-04
-- Deciders: Szymon Paluchowski
+- Related: [ADR 0006](./0006-version-tagged-payloads-at-provider-seams.md), [ADR 0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md)
 
 ## Context
 
-Across the ledger fork this framework has to answer two different questions
-about eras, and they have different shapes.
+Across the ledger fork the framework asks two different questions about eras.
 
-**Which era does this record belong to?** Every era-sensitive read in
-`@midnight-ntwrk/midnight-js-indexer-public-data-provider` now selects the
-`protocolVersion` that dates the bytes it returns as a sibling field of those
-bytes in the same GraphQL document — `CONTRACT_STATE_QUERY`,
-`RAW_CONTRACT_STATE_QUERY`, `CONTRACT_AND_ZSWAP_STATE_QUERY`, `TX_ID_QUERY`,
-`DEPLOY_TX_QUERY`, `DEPLOY_CONTRACT_STATE_TX_QUERY`, `CONTRACT_STATE_SUB` and
-`TXS_FROM_BLOCK_SUB`. The era therefore arrives with the data, per record, at
-no extra round trip, and `RawContractState.version` and
-`VersionedFinalizedTxData.version` are derived from it rather than asserted.
-That is also the granularity a history read needs: a read spanning the fork
-returns records from both eras at once, which no single "where is the network"
-answer can describe.
+**Which era does this value belong to?** The answer comes with the data. Every era-sensitive read
+in `@midnight-ntwrk/midnight-js-indexer-public-data-provider` selects `protocolVersion` as a sibling
+of the bytes it returns, in the same GraphQL document. A state's era is read from the version tag
+at the start of its bytes (`SerializedContractState` and its siblings); the record's
+`protocolVersion` dates the block. A transaction record's era comes from its `protocolVersion`,
+because a transaction is written by the era of the block that includes it. This is per record, so a
+history read that spans the fork returns records of both eras correctly.
 
-**Which era will a transaction I am building now land in?** No record answers
-this. The transaction lands in a future block. The only available signal is the
-network's current head version, which `PublicDataProvider.queryLatestProtocolVersion`
-reports and `latestNetworkLedgerVersion` (`packages/protocol/src/version.ts`) resolves
-to a `LedgerVersion`. The distinction is already in the error surface: an
-`UnknownProtocolVersionError` carries `path: 'construct' | 'read'` precisely
-because these are two paths.
+**Which era will a transaction I build now land in?** No record answers this: the transaction lands
+in a future block. The only signal is the network head version, which
+`PublicDataProvider.queryLatestProtocolVersion()` reports and `latestNetworkLedgerVersion` maps to a
+`LedgerEra`. `UnknownProtocolVersionError` carries `path: 'construct' | 'read'` because these are two
+different paths.
 
-Two further facts shape the decision:
+Two more facts:
 
-- A head reading is itself only a lower bound on the answer to the second
-  question. Inclusion happens after construction, and an era can advance in
-  between. Nothing available to a client closes that window; only the node's
-  fork schedule would, and this framework does not read it.
-- Of the write paths, only deploy has no prior state to date. A call reads the
-  contract state it executes against, so its era arrives with that read. A
-  deploy has no such read — and it is also the write whose era mistake is
-  worst, because a contract deployed with the wrong-era runtime is a permanent
-  on-chain artifact with an address already handed out, not a transaction that
-  can be rebuilt and resubmitted.
-
-A spike during the fork work explored caching the head reading behind a
-"corroboration" protocol: the provider would store the head version once it had
-seen either a state read whose envelope and head version both reported the
-newer era, or a finalized record it had decoded itself; the stored value would
-only ever move forward, and the interface would have required the same protocol
-of every implementation. That shape never reached `main`; this ADR records why
-we did not take it.
+- A head reading is only a lower bound. The era can advance between building and inclusion. A
+  client cannot close that window.
+- A deploy has no prior state to date it, and its era mistake is the worst one: a contract
+  deployed with the wrong runtime is a permanent on-chain artifact.
 
 ## Decision
 
-We will never latch the network head version: it is either read fresh, or
-served from a cache that expires by itself. Read-path era questions are
-answered from per-record data instead, not from a head reading at all.
+We will never latch the network head version. It is read fresh, or served from a cache that
+expires by itself. The era of data already read comes from that data, never from a head reading.
 
-Concretely:
+- `queryLatestProtocolVersion(): Promise<number>` takes no arguments. An implementation may cache
+  the answer only if the cache expires by itself, on a bound short relative to block time. A
+  reading held indefinitely is forbidden.
+- `IndexerPublicDataProvider` caches nothing: one `HEAD_PROTOCOL_VERSION_QUERY` with
+  `fetchPolicy: 'no-cache'` per call.
+- A head reading is not evidence about any record, and a record's era is not evidence about where
+  the network is now. A provider must not substitute one for the other.
+- A read never issues a head request as a side effect. A read costs the requests the caller asked
+  for.
 
-- `PublicDataProvider.queryLatestProtocolVersion(): Promise<number>` takes no
-  arguments. Its contract permits a cache on one condition: the cached answer
-  must **expire by itself**, on a bound short relative to block time. What it
-  forbids is a reading held indefinitely — a latch. The condition is what makes
-  the member need no freshness option: under a bound, every answer is at most
-  one bound old, so there is nothing to opt out of.
-- `IndexerPublicDataProvider` takes the simplest option the contract allows and
-  caches nothing: one `HEAD_PROTOCOL_VERSION_QUERY` with
-  `fetchPolicy: 'no-cache'` per call. There is no measured cost to spend a
-  cache on, and an expiring cache is not free to get right.
-- The era of data already read is answered by the `protocolVersion` the read
-  itself carries, never by a head reading. A provider must not substitute one
-  for the other in either direction: a head reading is not evidence about the
-  bytes of any particular record, and a record's version is not evidence about
-  where the network is now.
-- A read must not issue a head request as a side effect of the caller's
-  request. This is what makes the per-call cost of a read predictable.
+Where the head is read (`readHeadEra` in `packages/contracts/src/internal/era.ts`, once per
+operation, nothing cached across calls):
 
-**How the deploy path resolves its era.** Deploy is the one call site that
-needs the head reading, and it resolves the era in three steps:
+- **Current-era deploy.** `submitLedger9DeployTx`, which `deployContract` and `submitDeployTx`
+  reach, reads the head after the artifact and config checks and before the constructor runs. A
+  pre-fork head is refused with `EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`,
+  before anything is proven.
+- **Retained-era operations.** `resolveOperationEra` reads the head and acquires the era facade
+  (`acquireHeadEra`); `assertEraCompatible` rules the `(artifact era, head era)` pair against
+  `ERA_PAIRING`.
+- **`submitTx` with a handle.** It reads the head once and refuses a handle whose era is not the
+  head's with `EraMismatchError`, before proving.
+- **A scoped transaction.** `resolveScopeEra` reads the head once when the scope is created.
+- **After a rejected submission.** `handleSubmitRejection` reads the head once more, to tell a
+  fork crossed during the operation (`ForkCrossedDuringOperationError`) from an ordinary rejection.
 
-1. Read the head version fresh, immediately before composing, and resolve it
-   with `latestNetworkLedgerVersion`. One request per deploy — the rarest write in the
-   framework, once per contract.
-2. Compose with the era that resolves to. A version the client cannot place on
-   the era timeline is a refusal (`UnknownProtocolVersionError` with
-   `path: 'construct'`), never a guess: this is the fail-closed direction, and
-   `protocolVersionToLedger`'s narrower-than-the-indexer table
-   (`NODE_MAJOR_TO_LEDGER`, node majors 1 and 2 only) is deliberate for the
-   same reason.
-3. Confirm after the fact from the `protocolVersion` on the finalized record
-   that `watchForDeployTxData` returns. That closes the construction-to-
-   inclusion window in the only way a client can: by observing which era the
-   deploy actually landed in, rather than by asserting the era it was built
-   for.
+A head the client cannot place on the era timeline is refused (`UnknownProtocolVersionError`,
+`path: 'construct'`), never guessed. `NODE_MAJOR_TO_LEDGER` maps node majors 1 and 2 only, on
+purpose.
 
-Step 1 is wired for every operation that dispatches by era. `readHeadEra` makes
-the single read and `acquireHeadEra` binds the era facade to it
-(`packages/contracts/src/internal/era.ts`); `resolveOperationEra` is the one
-entry both call sites come through, and nothing caches across calls. The
-retained-era deploy arm, `runLedger8Deploy`
-(`packages/contracts/src/internal/ledger8-entry.ts`), resolves its era this way.
-
-It is NOT wired into `createUnprovenDeployTx`
-(`packages/contracts/src/unproven-deploy-tx.ts`), which composes with the
-current era unconditionally and reads no head — it does not even take a
-`PublicDataProvider`. When this ADR was written that was justified by there
-being no second era arm to choose between, so an era read there could only
-produce an earlier version of a refusal the v9-only flow already produced. That
-justification has expired: the second arm exists.
-
-`deployContract`'s retained-era arm is now wired through to the chain, and the
-gap recorded here is UNCHANGED in scope by that. The retained arm reads the head
-itself — `acquireLedger8Runtime` resolves it through `resolveOperationEra` and
-rules the `(artifact era, head era)` pair before the constructor runs — and it
-reaches `submitLedger8DeployTx`, never this function. The only arm that reaches
-`createUnprovenDeployTx` is the CURRENT era's, through `submitDeployTx`, which
-is the arm it has always served. So what is unguarded here is what was
-unguarded before: a current-era deploy against a PRE-FORK head, the one cell
-`ERA_PAIRING` rules (`'artifact-newer-than-head'`) and this path never consults.
-It fails late — at a provider seam or at the node — rather than at the table.
-The gap is real, it is unchanged, and it is recorded here rather than closed.
+A current-era single call and the current-era transaction builders (`createLedger9UnprovenDeployTx`
+and the like) read no head. After submission, the finalized record's own era confirms where the
+transaction landed: a current-era flow refuses a v8 record (`requireLedger9Record`).
 
 ## Consequences
 
-- **Positive:** the answer to "which era is the network on" cannot be latched,
-  so the next fork (v9 to v10) is observed rather than reported away; a read
-  costs exactly the requests the caller asked for, with no corroborating
-  request bolted on; the interface carries one bound instead of a five-paragraph
-  protocol prescribing *how* to corroborate, which every future
-  `PublicDataProvider` implementation would have had to reproduce — an
-  implementation is free to cache or not, and either choice is correct; the read
-  path's era answer is per-record, which is the granularity a fork-spanning
-  history read needs; `queryLatestProtocolVersion` means what its name says, to
-  within one bound.
-- **Negative:** the deploy path will pay one extra small request per deploy
-  once step 1 is wired; as long as no implementation takes up the bounded
-  cache, a consumer that polls the head version in a loop pays per iteration;
-  the bound is stated in prose and cannot be type-checked, so an implementation
-  that latches anyway is a review question rather than a build failure; and the
-  construction-to-inclusion window stays open — this decision narrows it to the
-  smallest a client can achieve, but only step 3's after-the-fact confirmation
-  detects a crossing, and only after the fact.
-- **Follow-ups:** wire steps 1 and 2 into `createUnprovenDeployTx`, which is
-  the one write path still composing with an era it never read. Doing so
-  changes its signature — it needs a read surface it does not currently take —
-  so it is a breaking change to a published function and its own decision. If
-  head reads
-  ever become a measured cost, two shapes are open and neither is a return to
-  corroboration: an expiring cache inside the provider, as the contract above
-  allows; or, cheaper and with no staleness at all, coalescing concurrent
-  in-flight head reads into one request — the same promise-memo discipline
-  `loadLedgerEra` uses, but released the moment it resolves, so it bounds
-  bursts without ever answering from the past.
+- The next fork (v9 to v10) is observed, not reported away by a stale value.
+- Every implementation is free to cache or not, within one bound; there is no protocol to copy.
+- A deploy pays one small extra request. A consumer that polls the head in a loop pays per
+  iteration.
+- The bound is prose, not a type. A latching implementation is a review finding, not a build
+  failure.
+- The window between building and inclusion stays open. A fork crossed in that window is detected
+  only after the fact, from the record or from the re-read after a rejection.
 
 ## Alternatives considered
 
-- **Cache the head reading behind a corroboration protocol** (explored as a
-  spike, not adopted) — rejected on three grounds. First, an inverted risk
-  profile: the corroboration step would only ever raise the stored value, and
-  only from a newer-era reading, so on a move to v10 nothing would clear it and
-  the provider would report v9 for the life of the process. It would save a
-  request mid-era, where the answer is stable and uninteresting, and misreport
-  at the era boundary, which is the only place the answer matters. Second, it
-  would have been inert in the window it was built for: its own contract forbade
-  caching while the network was still on the older era, so it would have done
-  nothing during the v8-to-v9 transition, engaging only afterwards. Third, its
-  net cost would have been negative: corroborating from a finalized record would
-  have issued an extra head request on every
-  `watchForTxData`/`watchForDeployTxData` until it engaged, repeating on every
-  finalized transaction whenever the head read failed or the head was still
-  pre-fork.
-- **Cache with a TTL, or memoise within one flow** — **permitted** by the
-  contract above, and simply not implemented here. It is the defensible shape:
-  bounded staleness, trivial to explain, no protocol in the interface. It is
-  not implemented because the cost it would save has not been measured, and the
-  only call site that needs the head reading is the rarest write in the
-  framework — but an implementation that wants it does not need a new ADR.
-- **Cache the era, with invalidation on a contradicting record** — not
-  implemented, and recorded here as the shape to prefer if an unbounded answer
-  is ever genuinely wanted. It caches the monotone quantity (the era, not a head integer, so the
-  "era does not go backwards" argument actually applies to what is stored), and
-  because every read now carries its own `protocolVersion`, reads become a
-  free continuous cross-check: any record whose era contradicts the cached one
-  clears it. `resolveReadEra` (`packages/indexer-public-data-provider/src/era.ts`)
-  already sees every record and is the natural hook. That inverts the rejected
-  design — light continuous invalidation on contradiction, instead of heavy
-  one-shot corroboration on entry.
-- **Derive the construct-path era from the last state read instead of a head
-  read** — rejected: it works for calls, which read state anyway, and not at
-  all for deploys, which read none. It would also silently substitute an answer
-  about specific bytes for an answer about the network, which is the conflation
-  the decision above forbids.
-
-## Amendment — the raw record takes its era from the envelope (2026-10-16)
-
-Issue #1508. `RawContractState.version` is no longer derived from `protocolVersion`: it is the era
-read off the envelope of `raw`, the era that wrote the bytes. `protocolVersion` still arrives with
-the data, per record, and still dates the block; on an enforced read it bounds the envelope from
-above. `VersionedFinalizedTxData.version` is still derived from `protocolVersion`, because a
-transaction is written by the era of the block that includes it.
-
-## Amendment — the era of a state lives on the state (2026-10-28)
-
-Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-`RawContractState` is removed. Every state read returns a `LedgerState`, whose `era` is read off
-the envelope of its bytes, as the amendment above describes for `RawContractState.version`. The
-record's `protocolVersion` still dates the block and, on an enforced read, bounds the state's era
-from above. The rule of this ADR is unchanged.
-
-## Amendment — a current-era deploy reads the head before it proves (2026-11-04)
-
-Issue #1559. The gap recorded under Decision — a current-era deploy against a pre-fork head fails
-late — is closed for deploys. `submitLedger9DeployTx`, which `deployContract` and `submitDeployTx`
-both reach, makes one head read after the config check and before the constructor runs, and refuses
-a pre-fork head with `EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`, before
-anything is proven. The read is not latched: it is made per deploy and used only for that refusal.
-Current-era calls and maintenance updates still buy no head read, and the standalone transaction
-builders stay head-independent. A fork between the read and the submit is not diagnosed.
+- **Cache the head behind a corroboration protocol that only moves forward.** Rejected: on the
+  next fork nothing would clear the stored value, so it would misreport exactly at the era
+  boundary, the only place the answer matters.
+- **Cache with a TTL, or coalesce concurrent head reads.** Allowed by the contract above, not
+  implemented: no measured cost justifies it.
+- **Cache the era and clear it on any record that contradicts it.** Not implemented; the shape to
+  prefer if an unbounded answer is ever needed, since every read already carries its own era.
+- **Take the construct-path era from the last state read.** Rejected: deploys read no state, and it
+  answers a question about bytes with a question about the network.

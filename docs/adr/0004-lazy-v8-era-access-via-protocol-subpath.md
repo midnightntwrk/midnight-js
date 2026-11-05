@@ -1,142 +1,90 @@
-# 0004. Access the v8 ledger era lazily via a protocol subpath and loadLedger8()
+# 0004. Load the v8 ledger era lazily through a protocol subpath and one accessor
 
 - Status: Accepted
 - Date: 2026-08-20
-- Deciders: Szymon Paluchowski
 
 ## Context
 
-The Midnight node hard fork introduces a v9 ledger era while transactions and
-state from the v8 era must remain readable. Both ledger WASM packages
-(`@midnightntwrk/ledger-v8` and `@midnightntwrk/ledger-v9`) therefore need to
-be co-installed in `@midnight-ntwrk/midnight-js-protocol`.
+After the hard fork the node runs the v9 ledger era, but transactions and state from the v8 era
+must stay readable. So `@midnight-ntwrk/midnight-js-protocol` installs both ledger packages,
+`@midnightntwrk/ledger-v8` and `@midnightntwrk/ledger-v9`.
 
-Each ledger package carries a multi-megabyte WASM artifact that is compiled
-and instantiated at module load. Most sessions after the fork are v9-only:
-they must not pay the v8 WASM cost (load time, memory) just because the
-protocol package supports reading the previous era. Loading two copies of the
-same ledger WASM is also a known hazard (`instanceof` fails across copies), so
-however v8 is exposed, there must be exactly one way to reach it.
+Each ledger package carries a WASM module of several megabytes that is compiled and instantiated
+when it loads. Most sessions after the fork use v9 only. They must not pay the v8 load time and
+memory just because the package can read the previous era. Loading two copies of the same ledger
+WASM is also a known hazard (`instanceof` fails across copies), so there must be exactly one way
+to reach v8.
 
-Two properties of the current build shape the mechanism. Every `exports`
-subpath is built as its own entry, enforced by the export-surface gate that
-requires one subpath per top-level module under `src/`. And all entries are
-emitted by a single bundler pass into a directory, so a module reached by more
-than one entry is emitted once and imported by relative path rather than
-inlined into each bundle.
+Two properties of the build shape the mechanism. Every `exports` subpath is built as its own
+entry, from a top-level module under `src/`. And all entries come out of a single bundler pass, so
+a module reached by more than one entry is emitted once and imported by relative path, not inlined
+into each bundle.
 
 ## Decision
 
-We will expose the v8 era through a dedicated `./v8` subpath export of the
-protocol package (`export * from '@midnightntwrk/ledger-v8'`) and a single
-lazy accessor, `loadLedger8`, which lives in `src/lib/v8/load.ts` and is
-re-exported by the barrel:
+We will expose the v8 era through a dedicated `./v8` subpath of the protocol package
+(`src/v8.ts`: `export * from '@midnightntwrk/ledger-v8'`) and one lazy accessor,
+`loadLedger8Protocol(): Promise<Ledger8Protocol>`. It lives in `src/lib/v8/load.ts` and the
+package root re-exports it.
 
-```typescript
-export const loadLedger8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
-    v8ModulePromise = undefined;
-    throw new Ledger8RuntimeMissingError('/v8', error);
-  }));
-```
-
-Specifically:
-
-- **Relative dynamic import of the v8 entry.** `./v8` is an `exports`
-  subpath, so the build emits `dist/v8.js` as its own entry chunk and leaves
-  the dynamic import in `dist/index.js` verbatim. The v8 module is therefore
-  never part of the eagerly-loaded index bundle, and the specifier resolves
-  within the installed copy of the package — no name resolution, no exports
-  map, no second copy. The accessor itself is not a published subpath, so it
-  sits under `src/lib/` rather than at the top of `src/`, which the
-  export-surface gate reserves for entries; hence `../../v8.js` and not
-  `./v8.js`. `lib/` marks a
-  module that is not a build entry, which is a different thing from
-  `contracts/src/internal` — that name marks implementation hidden from
-  consumers, and `loadLedger8` is public API.
-- **Memoisation with retry.** The module promise is memoised so concurrent and
-  repeated callers share one load. A failed load is *not* memoised: the
-  rejection is wrapped in `Ledger8RuntimeMissingError` (code
-  `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`, original error as `cause`) and the
-  next call retries. This keeps fail-fast semantics without letting one
-  transient WASM-instantiation failure poison the process.
+- **A relative dynamic import of the v8 entry.** The accessor calls `import('../../v8.js')`.
+  Because `./v8` is an `exports` subpath, the build emits `dist/v8.js` as its own chunk and keeps
+  the dynamic import in `dist/index.js` as written. The v8 module is never part of the eagerly
+  loaded root bundle. The specifier resolves inside the installed copy of the package: no name
+  lookup, no exports map, no second copy. The accessor is not a published subpath, so it sits
+  under `src/lib/` (modules that are not build entries) rather than at the top of `src/`.
+- **Memoised, with retry.** Concurrent and repeated callers share one load. A failed load is
+  *not* memoised: the rejection is wrapped in `Ledger8RuntimeMissingError` (code
+  `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`, original error on `cause`) and the next call tries
+  again. Callers fail fast, and one transient WASM failure does not poison the process.
+- **The retained execution engine follows the same pattern.** Its `./v8/engine` subpath is
+  reached at run time only through `loadLedger8Engine()` in `src/lib/v8/load-engine.ts`.
 - **One sanctioned path, enforced three ways.**
-  1. ESLint blocks runtime imports of the `/v8` subpath outside
-     `packages/protocol/src/`. Static imports are barred by
-     `@typescript-eslint/no-restricted-imports` (its own rule id, type-only
-     imports allowed); dynamic imports by `no-restricted-syntax` selectors.
-     Because flat config replaces a rule's options wholesale, the
-     `no-restricted-syntax` scopes are mutually exclusive blocks that each
-     spell out every selector list applying to them, and the protocol
-     exemption is expressed with `ignores` — never as
-     `'no-restricted-syntax': 'off'`, which would silently drop the unsafe-cast
-     gate sharing that rule.
-  2. A source-scan test (`v8-surface.test.ts`) asserts `lib/v8/load.ts` is the
-     only module in the protocol package that imports the v8 module at
-     runtime, reading past comments and type-only imports and re-exports. It
-     resolves each relative specifier against the file naming it, so the
-     `./engine` build entry is never confused with the `lib/v8/engine.ts`
-     sibling that shares its name.
-  3. A dist gate (`dist-laziness.test.ts`) inspects the built bundles: no
-     static linkage of `ledger-v8` or of the v8 entry may appear in the index
-     bundle, the lazy dynamic import must survive the build, and the artifacts
-     the `./v8` exports entry points at must exist.
-- **The laziness is a build invariant, and it fails loudly.** Laziness holds
-  because the build emits one chunk per entry and preserves dynamic imports.
-  A build that bundled each entry into a single file instead cannot silently
-  re-inline v8: rollup rejects a second chunk under a single-file output
-  outright (`when building multiple chunks, the "output.dir" option must be
-  used`). The dist gate covers the remaining case, a bundler that chooses to
-  inline rather than refuse.
+  1. ESLint (`eslint.config.mjs`) blocks runtime imports of the `/v8` and `/v8/engine` subpaths
+     outside `packages/protocol/src/`. Static imports are blocked by
+     `@typescript-eslint/no-restricted-imports` (type-only imports allowed), dynamic imports by
+     `no-restricted-syntax` selectors. Flat config replaces a rule's options as a whole, so each
+     `no-restricted-syntax` block lists every selector group that applies to its files, and the
+     protocol exemption is written with `ignores`. It is never written as
+     `'no-restricted-syntax': 'off'`, which would also drop the unsafe-cast gate that shares the
+     rule.
+  2. A source-scan test (`packages/protocol/src/test/v8-surface.test.ts`) asserts that
+     `lib/v8/load.ts` is the only module that imports the v8 entry at run time, and
+     `lib/v8/load-engine.ts` the only one that imports the engine entry. It skips comments and
+     type-only imports and re-exports, and resolves each relative specifier against the file that
+     names it.
+  3. A dist gate (`packages/protocol/src/test/dist-laziness.test.ts`) reads the built bundles: the
+     root bundle must not link `ledger-v8`, the v8 chunk or the engine chunk statically, and the
+     lazy dynamic imports must survive the build.
+- **Laziness is a build invariant that fails loudly.** It holds because the build emits one chunk
+  per entry and keeps dynamic imports. A build that tried to put every entry in a single file
+  cannot silently inline v8: rollup refuses multiple chunks without `output.dir`. The dist gate
+  covers the remaining case, a bundler that inlines instead of refusing.
 
 ## Consequences
 
-- **Positive:** v9-only sessions never load the v8 WASM; there is exactly one
-  runtime path to v8, resolved inside the installed copy, so a second WASM
-  copy cannot appear through this package; consumers get a typed, actionable
-  error when the v8 runtime is missing; nothing in the publish pipeline has to
-  rewrite specifiers inside built JS or declarations; the laziness property is
-  pinned by tests rather than convention.
-- **Negative:** v8 access is async (`await loadLedger8()`), which shapes every
-  downstream API that touches the previous era; correctness is coupled to the
-  build emitting `./v8` as its own chunk, so a bundler swap has to keep the
-  dist gate green; that gate reads the built output, so it needs a prior
+- **Positive:** v9-only sessions never load the v8 WASM. There is exactly one runtime path to
+  v8, resolved inside the installed copy, so this package cannot create a second WASM copy.
+  Consumers get a coded, actionable error when the v8 runtime is missing. Nothing in the publish
+  pipeline rewrites specifiers in built files. Tests, not convention, pin the laziness.
+- **Negative:** v8 access is async (`await loadLedger8Protocol()`), which shapes every API that
+  touches the previous era.
+- **Negative:** correctness depends on the build emitting `./v8` as its own chunk, so a bundler
+  change must keep the dist gate green. The gate reads built output, so it needs a prior
   `yarn build` and is skipped without one.
-- **Follow-ups:** downstream read-path code (era detection, deserialisation of
-  v8 records) builds on `loadLedger8()`; when the next fork retires v8, the
-  subpath and accessor are removed in a major release.
+- **Follow-up:** when a later fork retires v8, the subpath and the accessor are removed in a major
+  release.
 
 ## Alternatives considered
 
-- **Static re-export of both eras from the barrel** — rejected: every consumer
-  pays both WASM loads eagerly; this is the exact cost the fork migration must
-  avoid.
-- **Package self-reference (`import('@midnight-ntwrk/midnight-js-protocol/v8')`)**
-  — rejected: it buys nothing the relative import does not already give, and
-  costs two things. The specifier would have to be rewritten inside built JS
-  and declarations whenever the package is published under a different scope,
-  since a self-reference only resolves under the published name. And in a tree
-  holding two installed copies of the protocol package it can resolve to the
-  *other* copy, instantiating a second v8 WASM — the one outcome the
-  single-path rule exists to prevent.
-- **Separate npm package for the v8 era** — rejected: another publish surface
-  and version to coordinate, and it invites direct installs that bypass the
-  single-path guarantee.
-- **Consumer-side dynamic import of `@midnightntwrk/ledger-v8`** — rejected:
-  scatters era-loading across packages, breaks the one-copy guarantee, and
-  couples consumers to the versioned ledger package name the protocol package
-  exists to hide.
-
----
-
-## Amendment — the accessor moved when `src/lib/` was split by era (2026-08-26)
-
-`loadLedger8` moved from `src/lib/load-v8.ts` to `src/lib/v8/load.ts`. Paths and
-the quoted specifier above track that move; the decision itself is unchanged.
-
-## Amendment — the accessor is renamed (2026-10-14)
-
-Issue #1489. `loadLedger8` is `loadLedger8Protocol`, and `ProtocolV8` is
-`Ledger8Protocol`: the name now says what the accessor returns. The decision is
-unchanged, and the sections above keep the names that were current when they
-were written.
+- **Re-export both eras statically from the root.** Rejected: every consumer pays both WASM loads
+  up front, which is exactly the cost to avoid.
+- **Package self-reference (`import('@midnight-ntwrk/midnight-js-protocol/v8')`).** Rejected: it
+  only resolves under the published name, so it must be rewritten whenever the package is
+  published under another scope, and with two installed copies of the package it can resolve to
+  the *other* copy and load a second v8 WASM.
+- **A separate npm package for the v8 era.** Rejected: another package to publish and version,
+  and it invites direct installs that bypass the single path.
+- **Consumers import `@midnightntwrk/ledger-v8` themselves.** Rejected: era loading spreads across
+  packages, the one-copy guarantee breaks, and consumers depend on the versioned ledger package
+  name the protocol package exists to hide.

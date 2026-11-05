@@ -107,11 +107,10 @@ before an operation starts so a set that cannot carry a transaction end to end i
 refused before the proof is paid for. A handler that talks to another ledger copy
 (wallet-sdk, a DApp Connector wallet) passes `tx.serialize()` and can return the
 bytes it gets back. See
-[ADR 0019](./docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md),
-which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
-and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md), and
-[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md),
-which amends ADR 0019, ADR 0014 and ADR 0013.
+[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
+(the transaction handle) and
+[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md)
+(providers built from per-era handlers).
 
 ## CI Pipeline & PR Gates
 
