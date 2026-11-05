@@ -1,292 +1,505 @@
 # New Features v5.0.0
 
-## Cross-contract call support (#967)
+This page gives a short overview of what is new in v5.0.0 compared with v4.1.1. Each section says
+what the feature is, why it matters, and shows a small example. For full signatures, see
+[api-changes.md](./api-changes.md). For the changes you must make to upgrade, see
+[breaking-changes.md](./breaking-changes.md) and [migration-guide.md](./migration-guide.md).
 
-v5.0.0 can assemble, prove, and submit **cross-contract calls** — a single transaction whose call tree spans several deployed contracts, each carrying its own proof.
+A word used often below: an **era** is the ledger version a contract, transaction or state belongs
+to. `'v8'` is the ledger before the hard fork. `'v9'` is the ledger after it.
 
-Because one such transaction needs artifacts for every contract in the tree, proving is driven by a `ZKConfigRegistry` that resolves artifacts across a *set* of compiled-contract sources — the per-contract `ZKConfigProvider`s the application already builds:
+## Contents
 
-```ts
-import { ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
-
-// One source per compiled contract the app can call (its own + call targets).
-const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig]);
-```
-
-- **No address registration.** The binding from a call to its artifacts is *derived* by joining on the verifier key: each key location embeds the SHA-256 of the call's deployed verifier key (known at assembly from the contract's resolved on-chain state), and resolution selects the source whose local verifier key for that circuit matches. The join is exactly the predicate the chain enforces (a proof must verify against the deployed key), so it is immune to redeploys, multiple deployments of one contract, and circuit-name collisions across contracts. Resolutions are memoized.
-- `resolveKeyLocation()` returns `undefined` for non-contract key locations (e.g. a `midnight/` protocol builtin) and throws `ZKArtifactNotFoundError` when a contract location's embedded hash matches no source.
-- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/v9/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
-
-Cross-contract call assembly resolves on-chain state at a chosen block via the new **"as-of" endpoint** on `PublicDataProvider`:
-
-```ts
-import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
-
-const latest: BlockInfo | null = await publicDataProvider.queryBlock();                        // latest block
-const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeight: 12_345 });  // by height
-// or { type: 'blockHash', blockHash }. Null if no match.
-// BlockInfo = { hash: string; height: number; protocolVersion: number }.
-// `protocolVersion` dates the block to a ledger era; resolve it with
-// `versionOfRecord(block)` from `@midnight-ntwrk/midnight-js-protocol`.
-// It is the era of *that* block, so a block read at an explicit offset from before a hard fork keeps
-// reporting the era it was produced in, unlike `queryLatestProtocolVersion()`, which always reports
-// the latest block. (For `queryBlock()` with no offset the two agree, by definition.)
-```
+1. [Ledger 8 contracts and working across the hard fork](#1-ledger-8-contracts-and-working-across-the-hard-fork)
+2. [Contract events on `PublicDataProvider`](#2-contract-events-on-publicdataprovider)
+3. [Log events on call results](#3-log-events-on-call-results)
+4. [Cross-contract calls](#4-cross-contract-calls)
+5. [Options-object factories and a disposable indexer provider](#5-options-object-factories-and-a-disposable-indexer-provider)
+6. [Predefined network endpoints](#6-predefined-network-endpoints)
+7. [Wallet and midnight providers from the DApp Connector](#7-wallet-and-midnight-providers-from-the-dapp-connector)
+8. [Start-up check of the provider set](#8-start-up-check-of-the-provider-set)
+9. [Time limits on `watchFor*` calls](#9-time-limits-on-watchfor-calls)
+10. [Providers built from one handler per era](#10-providers-built-from-one-handler-per-era)
+11. [Error codes and categories](#11-error-codes-and-categories)
+12. [Classified deserialization errors](#12-classified-deserialization-errors)
+13. [Compressed indexer subscriptions](#13-compressed-indexer-subscriptions)
+14. [testkit-js additions](#14-testkit-js-additions)
 
 ---
 
-## MIP-0002 contract events on `PublicDataProvider` (#988)
+## 1. Ledger 8 contracts and working across the hard fork
 
-The `PublicDataProvider` can now read and stream decoded on-chain **contract events**, sourced from the indexer's server-side-decoded scalar fields (per the MIP-0002 indexer-events spec, rev 2).
+**What it is.** The network moves from ledger 8 to ledger 9 at a hard fork. v5.0.0 can work with
+contracts of both ledgers, before and after the fork, through the same functions:
+`deployContract`, `findDeployedContract`, `submitCallTx`, `submitCallTxAsync`,
+`createCircuitCallTxInterface`, `createCallTxOptions`, `submitInsertVerifierKeyTx`,
+`submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` and the maintenance interfaces.
 
-### Querying (point-in-time, paged)
+**Why it matters.** You can upgrade to v5.0.0 before the fork, keep running your existing
+contracts, and keep calling them after the fork.
+
+**How the framework picks the era.** It reads the runtime version your contract's artifacts
+declare (`compiler/contract-manifest.json` or `compiler/contract-info.json`). Runtime `0.16` means
+ledger 8 (compactc 0.31, as in 4.x). Runtime `0.20` means ledger 9 (compactc 0.35.0). Any other
+version is refused with `EraMismatchError` (`'unknown-artifact-runtime-version'`).
+
+**A ledger 8 contract** is the instance the 4.x toolchain generates, typed `Ledger8Contract`. Pass
+it directly as `compiledContract`. Do not wrap it in `CompiledContract.make`:
 
 ```ts
-import type { ContractEvent, ContractEventQueryFilter } from '@midnight-ntwrk/midnight-js-types';
+import { deployContract, findDeployedContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { Contract } from './managed/counter/contract/index.js'; // generated by compactc 0.31
 
-const filter: ContractEventQueryFilter = {
+const deployed = await deployContract(providers, { compiledContract: new Contract({}) });
+
+const found = await findDeployedContract(providers, {
+  compiledContract: new Contract({}),
+  contractAddress
+});
+
+const result = await submitCallTx(providers, {
+  compiledContract: new Contract({}),
   contractAddress,
-  fromBlock: 100,   // inclusive
-  toBlock: 200,     // inclusive — pin for stable multi-page offsets
-};
-
-const events: ContractEvent[] = await publicDataProvider.queryContractEvents(
-  filter,
-  { limit: 50, offset: 0 },
-);
+  circuitId: 'increment'
+});
+console.log(result.era, result.public.status);
 ```
 
-`offset` is only stable within a window with a fixed upper bound, so pin `toBlock` for multi-page reads — or prefer the iterator helper.
+**What works when:**
 
-### Iterating every matching event
+| | Before the fork (network on ledger 8) | After the fork (network on ledger 9) |
+|---|---|---|
+| Deploy a ledger 8 contract | yes | no: `EraMismatchError('ledger8-deploy-on-ledger9-network')` |
+| Call a ledger 8 contract | yes | yes, with the ledger 8 instance or with artifacts recompiled by compactc 0.35.0 |
+| Maintain a ledger 8 contract | yes | no: `EraMismatchError('ledger8-maintenance-on-ledger9-network')`. Recompile and use the same function |
+| Deploy or call a ledger 9 contract | no: `EraMismatchError('ledger9-artifact-on-ledger8-network')`, raised before proving | yes |
+| `withContractScopedTransaction` | no: `EraMismatchError('scope-on-ledger8-network')` | yes (ledger 9 contracts only) |
+
+**Results name their era.** Every result has `era: 'v8' | 'v9'`. Narrow with `isLedger8Result`. To
+accept both eras in one variable, use `AnyFinalizedCallTxData`, `AnySubmittedCallTx` or
+`FinalizedMaintenanceTxData`. A ledger 8 result has no `logEvents`. Both eras publish
+`public.nextContractStateEncoded`, which is safe to persist.
+
+```ts
+import { type AnyFinalizedCallTxData, isLedger8Result } from '@midnight-ntwrk/midnight-js-contracts';
+
+const describe = (result: AnyFinalizedCallTxData): string =>
+  isLedger8Result(result) ? `ledger 8 call ${result.circuitId}` : `ledger 9 call ${result.circuitId}`;
+```
+
+**Ledger 8 specifics:**
+
+- A ledger 8 deploy registers one maintenance key: `options.signingKey`, or a new one. It is
+  returned at `deployTxData.private.signingKey` and stored with
+  `privateStateProvider.setSigningKey`. Ledger 8 signs only with `schnorr` keys; anything else
+  throws `Ledger8SigningKeyError` (reason `'unusable'`).
+- To pay a shielded coin to someone else from a ledger 8 call, pass
+  `additionalCoinEncPublicKeyMappings` in the call options. Without it the call throws
+  `Ledger8CallUnsupportedError` (reason `'unmappable-recipient'`).
+- Serve `compiler/contract-info.json` with the artifacts. compactc 0.31 writes no integrity
+  manifest, so configure the ZK config provider with `verify: 'require-if-present'`.
+
+**If the fork happens during an operation**, the framework throws
+`ForkCrossedDuringOperationError` (fields `kind`, `startEra`, `freshEra`, `circuitId`,
+`contractAddress`). If it cannot tell whether the fork caused the rejection, it throws
+`SubmitRejectionUndiagnosedError`. First check that the earlier attempt did not finalize. Then run a
+call again, or recompile and run a maintenance update again. A ledger 8 deploy or authority
+replacement that may have landed throws `Ledger8UnconfirmedError` instead; keep its `signingKey`
+and check the address on chain before you deploy again.
+
+**Providers across the fork.** All three transaction providers must list both eras in
+`supportedEras`. `dappConnectorProofProvider` and `dappConnectorWalletProviders` (section 7) serve
+both. The `createLedger9*` adapters serve `'v9'` only. To serve both eras with your own code, see
+section 10.
+
+**Low-level functions.** New ledger 8 twins: `createLedger8UnprovenCallTx`,
+`createLedger8UnprovenCallTxFromInitialStates`, `createLedger8UnprovenDeployTx`,
+`createLedger8UnprovenDeployTxFromVerifierKeys`, `submitLedger8DeployTx`. In `protocol`:
+`loadLedger8Protocol` (root) and `proveLedger8Transaction` (`@midnight-ntwrk/midnight-js-protocol/prove`). Era helpers: `LedgerEra`,
+`CURRENT_LEDGER_ERA`, `LEDGER_ERAS`, `latestNetworkLedgerVersion`, `versionOfRecord`,
+`protocolVersionToLedger`.
+
+The step-by-step guide for running across the fork is in [migration-guide.md](./migration-guide.md).
+
+**Sources:** #1218, #1316, #1324, #1349, #1375, #1415, #1416, #1517, #1531, #1554, #1583, #1584,
+#1591, #1593, #1612, #1613.
+
+---
+
+## 2. Contract events on `PublicDataProvider`
+
+**What it is.** You can read and stream the events a contract emits (MIP-0002). There are 11 event
+types: four `Shielded*`, four `Unshielded*`, `Paused`, `Unpaused` and `Misc`.
+
+**Why it matters.** You can react to transfers, mints and burns of a contract without decoding
+transactions yourself.
 
 ```ts
 import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-for await (const event of getAllContractEvents(publicDataProvider, filter)) {
-  handle(event);
+// One page, between two blocks (both inclusive).
+const page = await publicDataProvider.queryContractEvents(
+  { contractAddress, fromBlock: 100, toBlock: 200 },
+  { limit: 50, offset: 0 }
+);
+
+// Every matching event, page by page.
+for await (const event of getAllContractEvents(publicDataProvider, { contractAddress })) {
+  console.log(event.eventType, event.id);
 }
-```
 
-### Streaming (replay-from-cursor, then live tail)
-
-```ts
-import type { ContractEventCursor, ContractEventSubscriptionFilter } from '@midnight-ntwrk/midnight-js-types';
-
-const cursor: ContractEventCursor = { fromBlock: 100 }; // or { fromId: 42 } — fromId xor fromBlock, both numbers
-const subscription: ContractEventSubscriptionFilter = { contractAddress /*, toBlock */ };
-
-// The start cursor is passed via opts.startAt (not positionally).
+// Replay from block 100, then follow new events.
 publicDataProvider
-  .contractEventsObservable(subscription, { startAt: cursor })
-  .subscribe((event) => handle(event));
+  .contractEventsObservable({ contractAddress }, { startAt: { fromBlock: 100 } })
+  .subscribe((event) => console.log(event.eventType));
 ```
 
-`{ fromId }` resumes **inclusively** from a known event id — to resume *after* the last seen event, pass `{ fromId: lastSeenId + 1 }`. Omitting `startAt` streams from the start of history.
+To resume after the last event you saw, pass `{ startAt: { fromId: lastSeenId + 1 } }`. `amount` is
+always a string: do not convert it with `Number()`.
 
-### The `ContractEvent` union
+To **emit** events, the contract must be built with compactc 0.35.0. Ledger 8 contracts cannot emit
+events. Shielded and unshielded events are tested end to end. The end-to-end test for `Misc`
+emission is still skipped.
 
-`ContractEvent` is an 11-variant discriminated union keyed on `eventType` (four `Shielded*`, four `Unshielded*`, plus `Paused` / `Unpaused` / `Misc`). A `ContractEventBase` carries the fields common to every variant; each variant adds its own:
-
-```ts
-type ContractEvent =
-  | (ContractEventBase & { eventType: 'ShieldedSpend';   nullifier: string })
-  | (ContractEventBase & { eventType: 'ShieldedReceive'; commitment: string; ciphertext?: string; receivingContractAddress?: string })
-  | (ContractEventBase & { eventType: 'ShieldedMint';    commitment: string; domainSep: string; amount?: string })
-  | (ContractEventBase & { eventType: 'ShieldedBurn';    nullifier: string; amount?: string })
-  | (ContractEventBase & { eventType: 'UnshieldedSpend';   sender: ContractEventAddress; domainSep: string; tokenType: string; amount: string })
-  | (ContractEventBase & { eventType: 'UnshieldedReceive'; recipient: ContractEventAddress; domainSep: string; tokenType: string; amount: string })
-  | (ContractEventBase & { eventType: 'UnshieldedMint';    domainSep: string; tokenType: string; amount: string })
-  | (ContractEventBase & { eventType: 'UnshieldedBurn';    sender: ContractEventAddress; tokenType: string; amount: string })
-  | (ContractEventBase & { eventType: 'Paused' })
-  | (ContractEventBase & { eventType: 'Unpaused' })
-  | (ContractEventBase & { eventType: 'Misc'; name: string; payload: string });
-```
-
-Notable schema-driven decisions:
-
-- `sender` / `recipient` (on the `Unshielded*` variants) map to `ContractEventAddress = { kind: 'user' | 'contract'; value }` (the schema's tagged `Either<ZswapCoinPublicKey, ContractAddress>` is an object, not a scalar).
-- `amount` is always a `string` (encodes up to a 16-byte integer) — never round it through `Number()`. Absent nullable fields are normalized to `undefined`, never `null`.
-- `Misc` carries an opaque `{ name, payload }`.
-- The node→`ContractEvent` mapper **fails fast** on an unknown `__typename` or a missing required field (it never silently produces `undefined`), and carries a compile-time exhaustiveness guard so a schema change becomes a type error rather than runtime drift.
-
-> The query / streaming surface covers all 11 variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** remain skipped pending an indexer decode fix (midnight-indexer#1279); **Misc** is skipped separately because proving `emitMisc` — the suite's heaviest circuit (~5× the next-largest zkir) — needs a proof-server-side fix. Neither is usable end-to-end yet.
+**Sources:** #988, #971, #975.
 
 ---
 
-## MIP-0002 log events on `Ledger9CallResult` (#1083)
+## 3. Log events on call results
 
-The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
+**What it is.** A ledger 9 call result carries the events the call emitted, in order, at
+`result.public.logEvents`. They come from the local run of the circuit, so you get them before the
+transaction reaches the indexer.
 
-`Ledger9CallResultPublic` now carries them:
-
-```ts
-interface Ledger9CallResultPublic {
-  // ...existing fields
-  readonly logEvents: readonly Ledger9LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
-}
-```
-
-Events are carried **raw** (no eager decode). Decode them with the `Ledger9ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
+**Why it matters.** You can show the effect of a call right away. One list covers the whole call
+tree, including contracts reached through cross-contract calls.
 
 ```ts
 import { contracts } from '@midnight-ntwrk/midnight-js';
 
-const result = await callTx(/* ... */);
-
-// lenient: never throws — undecodable entries are skipped
+const result = await contracts.submitCallTx(providers, callOptions);
 const logs = contracts.Ledger9ContractLog.decodeAll(result.public.logEvents);
 ```
 
-The single `logEvents` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
+The events are kept raw (`Ledger9LogEvent`). `Ledger9ContractLog` decodes them, so you do not need
+a direct dependency on `compact-js`.
+
+**Sources:** #1083.
 
 ---
 
-## `provider(options)` factories for proof and ZK-config providers (#1078)
+## 4. Cross-contract calls
 
-The provider layer moves toward a uniform `provider(options)` convention: wire a provider by passing one options object instead of remembering positional-argument order. **Additive and backward-compatible** — existing positional and class-based usage keeps working.
+**What it is.** One transaction can call circuits of several deployed contracts. Each contract in
+the call tree brings its own proof. Ledger 9 contracts only.
 
-`httpClientProofProvider` gains an object-options form with a flattened config:
+**Why it matters.** Contracts can build on each other, for example a DEX that calls a token
+contract.
+
+Proving needs the artifacts of every contract in the tree. A `ZKConfigRegistry` finds them across a
+set of ZK config providers. It matches each call to its artifacts by the hash of the verifier key
+deployed on chain, so you do not register addresses.
 
 ```ts
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { nodeZkConfigRegistry } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 
-// new — preferred
-const proofProvider = httpClientProofProvider({
-  url: 'https://proof-server.example',
-  zkConfigProvider,
-  timeout: 30_000, // optional
-  headers: { authorization: `Bearer ${token}` }, // optional
-});
-
-// old — still works, now marked @deprecated for one release cycle
-const legacy = httpClientProofProvider('https://proof-server.example', zkConfigProvider);
+const registry = await nodeZkConfigRegistry('/path/to/artifacts'); // one provider per contract directory
+const proofProvider = httpClientProofProvider({ url: proofServerUrl, zkConfigProvider: registry });
 ```
 
-The ZK-config providers gain thin factory functions alongside the existing classes (the classes stay exported for subclassing/composition):
+In a browser, build the registry yourself: `new ZKConfigRegistry([dexZkConfig, tokenZkConfig])`
+from `@midnight-ntwrk/midnight-js-types`. `dappConnectorProofProvider` also accepts a registry.
+
+**Dynamic calls.** When the callee is chosen at run time, the Compact runtime must find the
+callee's compiled module. List the modules your app ships with the new package
+`@midnight-ntwrk/midnight-js-bundled-contract-module-provider`, and pass the result as
+`contractModuleProvider`:
 
 ```ts
-import { nodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { bundledContractModuleProvider, type ModulesByAddress } from '@midnight-ntwrk/midnight-js-bundled-contract-module-provider';
+
+const modules: ModulesByAddress = new Map([
+  [dexAddress, () => import('./managed/dex/contract/index.js')],
+  [tokenAddress, () => import('./managed/token/contract/index.js')]
+]);
+
+const providers = { ...otherProviders, contractModuleProvider: bundledContractModuleProvider(modules) };
+```
+
+Each call transaction reads the latest block with `publicDataProvider.queryBlock()` and uses that
+block's state for every contract in the tree.
+
+**Sources:** #967, #1034, #1307.
+
+---
+
+## 5. Options-object factories and a disposable indexer provider
+
+**What it is.** Each provider can be built from one options object. The positional forms still
+work. Only the positional `indexerPublicDataProvider` and `httpClientProofProvider` are marked
+`@deprecated`. The `FetchZkConfigProvider` and `NodeZkConfigProvider` constructors are not.
+
+**Why it matters.** You do not have to remember argument order, and new options do not break your
+code.
+
+```ts
 import { fetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { nodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 
-const zkNode = nodeZkConfigProvider(options);
-const zkFetch = fetchZkConfigProvider(options);
+// Node.js
+const zkConfigProvider = nodeZkConfigProvider({ directory: './managed/counter' });
+// Browser (use instead of the Node.js line above)
+// const zkConfigProvider = fetchZkConfigProvider({ baseURL: window.location.origin, verify: 'require' });
+
+const proofProvider = httpClientProofProvider({ url: proofServerUrl, zkConfigProvider, timeout: 30_000 });
+
+const publicDataProvider = indexerPublicDataProvider({ queryURL, subscriptionURL, pollInterval: 1_000 });
+// ...
+await publicDataProvider.dispose(); // closes the WebSocket
 ```
 
-> Low-level `httpClientProvingProvider` is intentionally left positional and tracked as a follow-up — converting it re-couples internal test mocks and it is a lower-traffic advanced-scenarios primitive.
+`indexerPublicDataProvider` now returns the class `IndexerPublicDataProvider`, which has
+`dispose()`. An invalid `pollInterval` throws `IndexerProviderConfigError`.
+
+**Sources:** #1078, #961.
 
 ---
 
-## Disposable `IndexerPublicDataProvider` with structured config (#961)
+## 6. Predefined network endpoints
 
-Phase 2 of #808 (closes #820). The indexer provider gains a structured configuration object, becomes a class (`IndexerPublicDataProvider`), and exposes explicit resource cleanup.
+**What it is.** `networks` (in `@midnight-ntwrk/midnight-js-utils`) returns the network id and the
+indexer and node URLs of each public network. `dappConnectorNetwork(api)` reads the same data from
+a connected wallet.
+
+**Why it matters.** You do not copy URLs by hand, and the network id always matches the URLs.
+
+```ts
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { networks } from '@midnight-ntwrk/midnight-js-utils';
+
+const net = networks.preview(); // or networks.preprod(blockfrostProjectId), networks.mainnet(blockfrostProjectId)
+const publicDataProvider = indexerPublicDataProvider(net.indexer);
+const config = { networkId: net.networkId, ttlSeconds: 3600 };
+```
+
+The indexer provider also removes URL query strings (which may hold API tokens) from its error
+messages.
+
+**Sources:** #1570.
+
+---
+
+## 7. Wallet and midnight providers from the DApp Connector
+
+**What it is.** `dappConnectorWalletProviders(api)` builds the `walletProvider` and the
+`midnightProvider` from a wallet connected through the DApp Connector API. Both serve ledger 8 and
+ledger 9 transactions.
+
+**Why it matters.** A browser dApp no longer writes this glue code, and it works across the fork.
 
 ```ts
 import {
-  indexerPublicDataProvider,
-  IndexerPublicDataProvider,
-} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+  dappConnectorNetwork,
+  dappConnectorWalletProviders
+} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
 
-// Preferred: object-config form. Returns the concrete IndexerPublicDataProvider.
-const provider: IndexerPublicDataProvider = indexerPublicDataProvider({
-  queryURL,            // indexer HTTP/GraphQL endpoint
-  subscriptionURL,     // indexer WebSocket endpoint
-  pollInterval: 1_000, // optional; defaults to DEFAULT_POLL_INTERVAL (1000ms)
+const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(connectedAPI);
+const network = await dappConnectorNetwork(connectedAPI);
+```
+
+**Sources:** #1522, #1570.
+
+---
+
+## 8. Start-up check of the provider set
+
+**What it is.** `createMidnightProviders(providers)` checks that every required provider is present
+and that `config` is valid. It returns the same object.
+
+**Why it matters.** A missing provider or a bad `ttlSeconds` fails when your app starts, not in
+the middle of the first transaction.
+
+```ts
+import { createMidnightProviders } from '@midnight-ntwrk/midnight-js-utils';
+
+const providers = createMidnightProviders({
+  privateStateProvider,
+  publicDataProvider,
+  zkConfigProvider,
+  proofProvider,
+  walletProvider,
+  midnightProvider,
+  config: { networkId: 'preview', ttlSeconds: 3600 }
 });
-
-// ... use the provider ...
-
-await provider.dispose(); // releases the underlying graphql-ws WebSocket
 ```
 
-- The structured config is `{ queryURL, subscriptionURL, webSocket?, pollInterval? }`. An invalid `pollInterval` (non-integer, `0`, or negative) fails fast at construction.
-- `dispose()` (on the concrete `IndexerPublicDataProvider`) stops the Apollo client then awaits the `graphql-ws` teardown; concurrent dispose calls share one in-flight promise (no double teardown under `Promise.all`).
-- The positional factory form `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)` is retained but `@deprecated` — migrate to the object form.
+A missing provider throws `ConfigurationError`. A bad `networkId` or `ttlSeconds` throws
+`InvalidArgumentError`.
+
+**Sources:** #1442.
 
 ---
 
-## Classified deserialization / versioning errors (#955)
+## 9. Time limits on `watchFor*` calls
 
-Foundation for issue #816. A new `deserialization` module in `@midnight-ntwrk/midnight-js-utils` converts cryptic ledger/runtime deserialization failures into structured, classified errors.
+**What it is.** `watchForTxData`, `watchForDeployTxData`, `watchForContractState` and
+`watchForUnshieldedBalances` accept `{ maxWaitMs }`. When the time runs out they reject with
+`WatchTimeoutError`.
+
+**Why it matters.** Your app no longer waits forever for a transaction that never lands.
 
 ```ts
-import {
-  deserializeLedger9ContractState,
-  isDeserializationError,
-} from '@midnight-ntwrk/midnight-js-utils';
+import { WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types';
 
 try {
-  const state = deserializeLedger9ContractState(bytes);
-} catch (error) {
-  if (isDeserializationError(error)) {
-    error.classification; // 'version-mismatch' | 'generic-param-mismatch' | 'format-mismatch' | 'unknown'
-    error.mitigation;     // actionable, per-source hint
+  const record = await publicDataProvider.watchForTxData(txId, { maxWaitMs: 120_000 });
+} catch (e) {
+  if (e instanceof WatchTimeoutError) {
+    console.warn(`${e.operation} gave up on ${e.target} after ${e.maxWaitMs} ms`);
   }
-  throw error;
+  throw e;
 }
 ```
 
-- `DeserializationError` with classification, direction inference, per-source mitigation hints, and structural-tag extraction.
-- `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).
-- 6 typed wrappers (`deserializeLedger9ContractState`, …, `decodeLedger9StateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
+A timeout does not mean the transaction failed. It may still be included later. The error's
+category is `UNCERTAIN` (code `MIDNIGHT_JS_PR_WATCH_TIMED_OUT`).
+
+**Sources:** #1454.
 
 ---
 
-## ZK artifact integrity verification (#1015)
+## 10. Providers built from one handler per era
 
-`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted integrity manifest (`compiler/contract-manifest.json`). A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the manifest and drives the check.
+**What it is.** `createProofProviderFromHandlers`, `createWalletProviderFromHandlers` and
+`createMidnightProviderFromHandlers` (in `@midnight-ntwrk/midnight-js-types`) build a provider from
+one function per era, keyed `v8` and `v9`. Pass `undefined` for an era you do not serve. The
+factory derives `supportedEras` for you. `createProofProviderFromProvingProviders({ v8, v9 })` does
+the same from two proving providers.
+
+**Why it matters.** This is the simple way to write your own provider that works on both sides of
+the fork.
 
 ```ts
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { createWalletProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
 
-// Default: fail-closed. A missing manifest or a digest mismatch throws ZkArtifactIntegrityError.
-const provider = new NodeZkConfigProvider(baseDir);
-
-// Explicit control via ZkConfigIntegrityOptions:
-const lenient = new NodeZkConfigProvider(baseDir, {
-  verify: 'require-if-present',          // 'require' (default) | 'require-if-present' | 'warn' | 'off'
-  onWarn: (msg) => logger.warn(msg),     // default: console.warn
-  expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
+// `wallet` is your wallet. It runs its own ledger copy, so pass it bytes.
+const walletProvider = createWalletProviderFromHandlers({
+  v8: (tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl),
+  v9: (tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl),
+  getCoinPublicKey: () => wallet.coinPublicKey,
+  getEncryptionPublicKey: () => wallet.encryptionPublicKey
 });
 ```
 
-Exports from `@midnight-ntwrk/midnight-js-utils`: `ZkArtifactManifest`, `ZkArtifactManifestFile`, `ZkConfigIntegrityOptions`, `ZkArtifactIntegrityMode`, `ZkArtifactIntegrityError`, and the `ZK_MANIFEST_DIR` / `ZK_MANIFEST_FILE_NAME` constants. See [breaking-changes.md](./breaking-changes.md) for the fail-closed default.
+A handler may answer with a transaction object of any ledger copy, or with its bytes. The factory
+seals the answer in the request's era. A handler that is not a function throws
+`UnusableEraEntryError` when the provider is built. `assertProvidersSupportEra(era, providers)`
+checks a provider set yourself.
+
+**Sources:** #1218, #1364, #1475.
 
 ---
 
-## Deflate-compressed subscriptions (#977)
+## 11. Error codes and categories
 
-The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket subprotocol and transparently inflates compressed subscription frames. Decompression uses the universal `DecompressionStream` global (RFC 1950 zlib), covering Node ≥ 18 and modern browsers (Chrome 80 / Firefox 113 / Safari 16.4+). It is entirely transparent to callers:
+**What it is.** Every framework error extends `MidnightJsError` and has a `code` (for example
+`MIDNIGHT_JS_C_TX_FAILED`) and a `category`: `USAGE`, `ENVIRONMENT`, `TRANSIENT`, `REJECTED`,
+`UNCERTAIN`, `INTEGRITY` or `INTERNAL`.
 
-- The user-supplied WebSocket is wrapped before it reaches `graphql-ws`; mixed compressed/plain frame ordering is preserved via a promise queue.
-- If the server selects the plain subprotocol, it falls back with no behavioral change.
-- A **16 MiB hard cap** on inflated payload size guards against compression-bomb DoS.
-
-No API change is required — construct the provider as before and compression is negotiated automatically when the server supports it.
-
----
-
-## Contract-event GraphQL schema enhancements (#971, #975)
-
-The generated contract-event GraphQL schema was enhanced with transaction references and beta markers, richer contract-event types, and **dust generation** support — underpinning the `PublicDataProvider` event surface above.
-
-## Low-level functions for ledger 8 contracts (#1524)
-
-A contract produced by the ledger 8 toolchain now has the same low-level functions as a ledger 9
-one: `createLedger8UnprovenCallTx`, `createLedger8UnprovenCallTxFromInitialStates`,
-`createLedger8UnprovenDeployTx`, `createLedger8UnprovenDeployTxFromVerifierKeys` and
-`submitLedger8DeployTx`. The unprefixed routers (`createUnprovenCallTx`, …, `submitDeployTx`)
-send a ledger 8 contract to them.
-
-A builder stores nothing. Submit what it built with `submitTx`:
+**Why it matters.** You can decide what to do with an error (fix the input, retry, show it to the
+user) without matching message text. Codes also work when two copies of a package make
+`instanceof` unreliable.
 
 ```ts
-const built = await createLedger8UnprovenCallTx(providers, callOptions);
-// 'v8' before the fork, 'v9' after it: the call keeps the contract's ledger 8 verifier keys.
-console.log(built.private.unprovenTx.era);
-const record = await submitTx(providers, { unprovenTx: built.private.unprovenTx });
+import { CONTRACTS_ERROR_CODES, errorCategory, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  await submitCallTx(providers, callOptions);
+} catch (e) {
+  if (hasErrorCode(e, CONTRACTS_ERROR_CODES.TX_FAILED)) {
+    console.error('The transaction was included but failed.');
+  } else if (errorCategory(e) === 'TRANSIENT') {
+    // safe to try again
+  }
+  throw e;
+}
 ```
 
-`createLedger8UnprovenCallTxFromInitialStates` runs a call on states the caller read, with every
-era stated: `head`, `initialContractState: { era, state }` and `ledgerParameters: { era, parameters }`.
-A ledger 8 deploy works only before the fork.
+Helpers in `@midnight-ntwrk/midnight-js-utils`: `hasErrorCode`, `hasForeignErrorCode` (for codes of
+other libraries), `isMidnightJsError`, `errorCategory`. Code tables: `MIDNIGHT_JS_ERROR_CODES`,
+`CONTRACTS_ERROR_CODES`, `PROVIDER_ERROR_CODES`, `UTILS_ERROR_CODES`,
+`MIDNIGHT_JS_ERROR_CATEGORIES`. `findCodedCause` (in `@midnight-ntwrk/midnight-js-protocol`) walks
+an error's `cause` chain to the first coded error. `PROVIDER_ERROR_CODES` is also on the
+`@midnight-ntwrk/midnight-js-types/errors` subpath.
+
+**Sources:** #1310, #1440.
+
+---
+
+## 12. Classified deserialization errors
+
+**What it is.** When ledger bytes cannot be decoded, the framework throws `DeserializationError`
+(in `@midnight-ntwrk/midnight-js-utils`). Its `context` says what kind of failure it is and how to
+fix it.
+
+**Why it matters.** "Version mismatch: upgrade the framework" is much easier to act on than a raw
+error from a WASM module.
+
+```ts
+import { deserializeLedger9ContractState, isDeserializationError } from '@midnight-ntwrk/midnight-js-utils';
+
+try {
+  const state = deserializeLedger9ContractState(bytes, { caller: 'my-app:loadState' });
+} catch (e) {
+  if (isDeserializationError(e)) {
+    console.error(e.context.classification); // 'version-mismatch' | 'format-mismatch' | 'unknown'
+    console.error(e.context.mitigation.join('\n'));
+  }
+  throw e;
+}
+```
+
+`DeserializationError` extends `MidnightJsError`. `isDeserializationError` is a plain `instanceof`
+check. Typed wrappers: `deserializeLedger9ContractState`, `deserializeLedger9CompactContractState`,
+`deserializeLedger9ZswapChainState`, `deserializeLedger9Parameters`, `decodeLedger9StateValue` and
+`deserializeLedgerTransaction(era, bytes, ctx)` (async; returns a finalized `LedgerTransaction`).
+For other decoders, wrap the call in `withDeserializationContext`.
+
+**Sources:** #955, #1581.
+
+---
+
+## 13. Compressed indexer subscriptions
+
+**What it is.** The indexer provider asks the server for the `graphql-transport-ws+deflate`
+sub-protocol and inflates compressed frames. If the server does not support it, nothing changes.
+
+**Why it matters.** Less data over the network, with no code change. A frame larger than 16 MiB
+after inflating is refused with `IndexerPayloadTooLargeError`, which protects against compression
+bombs.
+
+**Sources:** #977.
+
+---
+
+## 14. testkit-js additions
+
+**What it is.** New tools in `@midnight-ntwrk/testkit-js` for tests that run across the hard fork:
+
+- `ForkTestEnvironment` and `ForkEnactment`: a test environment that performs the fork.
+- Subpath `@midnight-ntwrk/testkit-js/fixtures-hf`: recorded ledger states for fork tests
+  (`HF_FIXTURE_NAMES`, `HF_FIXTURE_STATUSES`, `readHfFixture`, `hfFixturePath`,
+  `hfFixturesManifest`).
+- `HEALTH_CHECK_TIMEOUT_MS` (10 seconds), `redactUrl` and `redactedJson`. Health checks keep URL
+  query parameters such as `?project_id=` and hide them in logs.
+
+```ts
+import { readHfFixture } from '@midnight-ntwrk/testkit-js/fixtures-hf';
+
+const bytes = readHfFixture('state-v8.hex');
+```
+
+**Sources:** #1184, #1218, #1421, #1485.
