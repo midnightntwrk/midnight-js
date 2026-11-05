@@ -40,7 +40,7 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
+    "@midnightntwrk/dapp-connector-api": "4.1.0",
     "@midnightntwrk/wallet-sdk": "2.0.0-rc.3",
     "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-rc.1",
     "@midnightntwrk/zkir-v3": "3.2.0",
