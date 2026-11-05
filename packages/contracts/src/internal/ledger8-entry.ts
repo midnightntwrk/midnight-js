@@ -1172,7 +1172,7 @@ export const toLedger8UnsubmittedDeployTxData = (deploy: Ledger8DeployPipelineRe
     signingKey: toStoredLedger8SigningKey(deploy.signingKey),
     initialPrivateState: deploy.nextPrivateState,
     initialZswapState: deploy.initialZswapState,
-    unprovenTx: LedgerTransaction.seal('v8', 'Unproven', LedgerTransaction.unwrap(deploy.unprovenTx, 'v8'))
+    unprovenTx: LedgerTransaction.fromBytes('v8', 'Unproven', deploy.unprovenTx.serialize())
   }
 });
 

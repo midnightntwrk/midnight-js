@@ -13,6 +13,7 @@ yarn add @midnight-ntwrk/midnight-js-http-client-proof-provider
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -23,7 +24,7 @@ const proofProvider = httpClientProofProvider(
 // The proven handle comes back in the same era.
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const provenTx = await proofProvider.proveTx(unprovenTx);
-const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ```
 
 ## Configuration
@@ -92,8 +93,8 @@ Proves all circuits in a transaction and returns the proven transaction.
 
 The argument and the result are transaction handles from
 `@midnight-ntwrk/midnight-js-types`. The result has the same era as the
-argument. Read the ledger object with
-`LedgerTransaction.unwrap(provenTx, provenTx.era)`. This provider serves both
+argument. Read the ledger object with your own ledger copy:
+`provenTx.deserialize({ v9: Transaction })`. This provider serves both
 eras: `supportedEras` is `['v8', 'v9']`.
 
 ### ProvingProvider (Low-Level)

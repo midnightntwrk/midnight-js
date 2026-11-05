@@ -153,16 +153,17 @@ export interface TransactionDecodeContext {
 }
 
 /**
- * Decodes one finalized transaction with the runtime of the era it was written
- * under, and tags the result with that era.
+ * Wraps one finalized transaction in a handle of the era it was written under,
+ * and tags the result with that era. Only the header is checked; the caller
+ * decodes the handle with its own ledger copy, so no ledger runtime is loaded.
  *
- * `era` is the authority on which decoder runs, and it is derived from the
+ * `era` is the authority on which header is checked, and it is derived from the
  * record's own `protocolVersion` by `resolveReadEra` (`./era.ts`) before this
  * is called. Nothing here re-derives it: the era and the `era` on the
  * returned record are the same fact.
  *
- * A payload that will not decode leaves as the `DeserializationError` the
- * runtime produced, carrying the era, the `protocolVersion`, the method and the
+ * A payload without the header of that era leaves as a `DeserializationError`,
+ * carrying the era, the `protocolVersion`, the method and the
  * record on its context. This layer deliberately does not re-attribute the
  * failure: whether the record disagrees with itself or the consumer's ledger
  * package is a different vintage than the network's are indistinguishable from
@@ -170,16 +171,13 @@ export interface TransactionDecodeContext {
  *
  * @param hexTransaction The hex-encoded serialized transaction, as the indexer
  *                       serves it.
- * @param era The era whose runtime reads the payload. Validated at runtime, not
+ * @param era The era that wrote the payload. Validated at runtime, not
  *            merely type-checked.
  * @param context The record and read method a failure should name.
  * @throws IndexerDataError if `hexTransaction` is not a whole hex byte string.
  * @throws DecoderEraUnsupportedError if `era` is not a member of `LEDGER_ERAS`.
- * @throws Ledger8RuntimeMissingError if a v8-era record needs the pre-fork
- *   runtime and it cannot be acquired. From
- *   `@midnight-ntwrk/midnight-js-protocol`, and deliberately not an
- *   `IndexerError` — see {@link IndexerError}.
- * @throws DeserializationError for every decode failure.
+ * @throws DeserializationError if the payload does not start with the header
+ *   the ledger of `era` writes for a finalized transaction.
  */
 export const decodeRecordTransaction = async (
   hexTransaction: string,

@@ -156,9 +156,9 @@ and why it is needed; the isolated linker is what the lane actually runs under.
 
 The rule the fix follows: **a transaction crosses into another ledger copy as bytes, and the receiver
 inflates them with its own module** (ADR 0019). `adoptInWallet` serializes the framework's handle and
-decodes it with the SDK's copy, in both eras; `finalizedFromWallet` serializes the SDK's answer and
-decodes it with protocol's copy through `deserializeTransactionAtStage`, in the era the transaction was
-handed over in. The SDK's v8 copy is loaded through the SDK's own `./ledger/v8` subpath — by definition
+decodes it with the SDK's copy, in both eras; `finalizedFromWallet` returns the bytes of the SDK's
+answer, and the wallet provider factory seals them in the era the transaction was handed over in and
+decodes them once (ADR 0024). The SDK's v8 copy is loaded through the SDK's own `./ledger/v8` subpath — by definition
 whichever copy the installed SDK uses, so it cannot drift if the SDK finishes the scope migration.
 `packages/protocol`'s copy stays where it belongs: retained execution, which never hands a ledger
 object to the wallet SDK.

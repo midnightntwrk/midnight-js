@@ -14,20 +14,29 @@
  */
 
 import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  ForeignLedgerTransactionError,
   InvalidTransactionHandleError,
   PROVIDER_ERROR_CODES,
-  TransactionEraMismatchError
+  TransactionDecodeFailedError,
+  TransactionDecoderMissingError
 } from '../errors';
-import { LedgerTransaction, type UnprovenTx } from '../ledger-transaction';
+import { LedgerTransaction, type TransactionStage } from '../ledger-transaction';
 import { ledgerTransactions } from './ledger-transaction-fixtures';
 
 const NETWORK_ID = 'undeployed';
+
+const STAGES = ['Unproven', 'Unbound', 'Finalized'] as const;
+
+const MARKERS: Readonly<Record<TransactionStage, readonly [string, string, string]>> = {
+  Unproven: ['signature', 'pre-proof', 'pre-binding'],
+  Unbound: ['signature', 'proof', 'pre-binding'],
+  Finalized: ['signature', 'proof', 'binding']
+};
 
 const thrownBy = (action: () => unknown): unknown => {
   try {
@@ -38,17 +47,137 @@ const thrownBy = (action: () => unknown): unknown => {
   return undefined;
 };
 
-describe('LedgerTransaction.seal', () => {
-  it('seals an own v9 transaction into a handle that reports its era and stage and serializes it', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
+const v9Bytes = (): Uint8Array => Transaction.fromParts(NETWORK_ID).serialize();
 
-    const handle = LedgerTransaction.seal('v9', 'Unproven', tx);
+const recordingDecoder = () => {
+  const calls: unknown[][] = [];
+  const decoded = { decoded: true };
+  return {
+    calls,
+    decoded,
+    decoder: {
+      deserialize: (...args: unknown[]) => {
+        calls.push(args);
+        return decoded;
+      },
+      fromParts: Transaction.fromParts
+    }
+  };
+};
 
-    expect([LedgerTransaction.isLedgerTransaction(handle), handle.era, handle.stage]).toEqual([true, 'v9', 'Unproven']);
-    expect(handle.serialize()).toEqual(tx.serialize());
+describe('LedgerTransaction.fromBytes', () => {
+  it.each(['v9', 'v8'] as const)('makes a %s handle at every stage from the bytes that ledger writes', async (era) => {
+    for (const stage of STAGES) {
+      const bytes = (await ledgerTransactions[era][stage]()).serialize();
+
+      const handle = LedgerTransaction.fromBytes(era, stage, bytes);
+
+      expect([LedgerTransaction.isLedgerTransaction(handle), handle.era, handle.stage]).toEqual([true, era, stage]);
+      expect(handle.serialize()).toEqual(bytes);
+    }
   });
 
-  it('seals an own v8 transaction once the framework has loaded its v8 ledger', async () => {
+  it('copies the bytes in and out, so neither the caller nor a reader can change the handle', () => {
+    const bytes = v9Bytes();
+    const original = new Uint8Array(bytes);
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', bytes);
+
+    bytes.fill(0);
+    handle.serialize().fill(0);
+
+    expect(handle.serialize()).toEqual(original);
+  });
+
+  it('accepts a body it cannot read, because it checks only the header', () => {
+    const bytes = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v9.Finalized}:truncated`);
+
+    const handle = LedgerTransaction.fromBytes('v9', 'Finalized', bytes);
+
+    expect(handle.serialize()).toEqual(bytes);
+  });
+
+  it.each([
+    ['v9 bytes read as v8', 'v8', 'Unproven', 'v9', 'Unproven'],
+    ['v8 bytes read as v9', 'v9', 'Unproven', 'v8', 'Unproven'],
+    ['unproven bytes read as finalized', 'v9', 'Finalized', 'v9', 'Unproven'],
+    ['unbound bytes read as finalized', 'v8', 'Finalized', 'v8', 'Unbound'],
+    ['finalized bytes read as unbound', 'v9', 'Unbound', 'v9', 'Finalized']
+  ] as const)('refuses %s', async (_label, era, stage, actualEra, actualStage) => {
+    const bytes = (await ledgerTransactions[actualEra][actualStage]()).serialize();
+
+    const error = thrownBy(() => LedgerTransaction.fromBytes(era, stage, bytes));
+
+    expect(error).toBeInstanceOf(InvalidTransactionHandleError);
+    expect(error).toMatchObject({
+      code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE,
+      method: 'LedgerTransaction.fromBytes',
+      reason: 'header-mismatch'
+    });
+  });
+
+  it('names the expected header and only the header-shaped start of the bytes, never the body', () => {
+    const bytes = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v9.Unproven}:SECRET-BODY`);
+
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v8', 'Unproven', bytes));
+
+    expect(String(error)).toContain(
+      `expected header tag '${LEDGER_TRANSACTION_TAGS.v8.Unproven}:', got '${LEDGER_TRANSACTION_TAGS.v9.Unproven}:'`
+    );
+    expect(String(error)).not.toContain('SECRET');
+  });
+
+  it('names no bytes at all when they do not start with a ledger header', () => {
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v9', 'Unproven', new TextEncoder().encode('SECRET-BODY')));
+
+    expect(String(error)).toContain("got ''");
+    expect(String(error)).not.toContain('SECRET');
+  });
+
+  it('refuses a header whose signature marker belongs to another era', () => {
+    const forged = LEDGER_TRANSACTION_TAGS.v9.Unproven.replace('signature[v2]', 'signature[v1]');
+
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v9', 'Unproven', new TextEncoder().encode(`${forged}:`)));
+
+    expect(error).toMatchObject({ reason: 'header-mismatch' });
+  });
+
+  it('refuses a header without the separator after it', () => {
+    const bytes = new TextEncoder().encode(LEDGER_TRANSACTION_TAGS.v9.Unproven);
+
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v9', 'Unproven', bytes));
+
+    expect(error).toMatchObject({ reason: 'header-mismatch' });
+  });
+
+  it.each([
+    ['an Array of byte values', [1, 2, 3]],
+    ['a hex string', '6d69646e69676874'],
+    ['undefined', undefined]
+  ])('refuses %s as not bytes', (_label, value) => {
+    // @ts-expect-error the value is not a Uint8Array
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v9', 'Unproven', value));
+
+    expect(error).toMatchObject({ name: 'InvalidTransactionHandleError', reason: 'not-bytes' });
+  });
+
+  it('refuses an era that is not a ledger era', () => {
+    // @ts-expect-error 'v7' is not a ledger era
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v7', 'Unproven', v9Bytes()));
+
+    expect(error).toBeInstanceOf(UnknownLedgerEraError);
+    expect(error).toMatchObject({ requestedVersion: 'v7' });
+  });
+
+  it.each(['Proven', 'constructor', '__proto__'])('refuses %s as a stage', (stage) => {
+    // @ts-expect-error the value is not a transaction stage
+    const error = thrownBy(() => LedgerTransaction.fromBytes('v9', stage, v9Bytes()));
+
+    expect(error).toMatchObject({ name: 'InvalidTransactionHandleError', reason: 'invalid-stage' });
+  });
+});
+
+describe('LedgerTransaction.seal', () => {
+  it('seals an object of the framework ledger copy', async () => {
     const v8 = await loadLedger8Protocol();
     const tx = v8.Transaction.fromParts(NETWORK_ID);
 
@@ -58,174 +187,153 @@ describe('LedgerTransaction.seal', () => {
     expect(handle.serialize()).toEqual(tx.serialize());
   });
 
-  it('refuses an object that is not a transaction of the framework ledger copy as a foreign instance', () => {
-    const lookalike = { serialize: () => new Uint8Array() };
+  it('seals an object of another ledger copy by its bytes', () => {
+    const bytes = v9Bytes();
+    const otherCopy = { serialize: () => bytes };
 
-    // @ts-expect-error a structural lookalike is not a ledger transaction
-    const error = thrownBy(() => LedgerTransaction.seal('v9', 'Unproven', lookalike));
+    const handle = LedgerTransaction.seal('v9', 'Unproven', otherCopy);
 
-    expect(error).toBeInstanceOf(ForeignLedgerTransactionError);
-    expect(error).toMatchObject({
-      code: PROVIDER_ERROR_CODES.FOREIGN_LEDGER_TRANSACTION,
-      era: 'v9',
-      reason: 'foreign-instance'
-    });
-  });
-
-  it('refuses a v9 object sealed as a v8 transaction', async () => {
-    await loadLedger8Protocol();
-    const v9Tx = Transaction.fromParts(NETWORK_ID);
-
-    // @ts-expect-error a v9 transaction is not a v8 one
-    const error = thrownBy(() => LedgerTransaction.seal('v8', 'Unproven', v9Tx));
-
-    expect(error).toMatchObject({ name: 'ForeignLedgerTransactionError', era: 'v8', reason: 'foreign-instance' });
+    expect(handle.serialize()).toEqual(bytes);
   });
 
   it.each([
     ['serialized bytes', new Uint8Array([1, 2, 3])],
-    ['undefined', undefined]
-  ])('refuses %s as not a transaction, pointing at deserializeTransactionAtStage', (_label, value) => {
-    // @ts-expect-error the value is not a ledger transaction
+    ['undefined', undefined],
+    ['an object whose serialize is not a function', { serialize: 'bytes' }]
+  ])('refuses %s as not a transaction, pointing at fromBytes', (_label, value) => {
+    // @ts-expect-error the value is not a transaction
     const error = thrownBy(() => LedgerTransaction.seal('v9', 'Unproven', value));
 
     expect(error).toBeInstanceOf(InvalidTransactionHandleError);
     expect(error).toMatchObject({ method: 'LedgerTransaction.seal', reason: 'not-a-transaction' });
-    expect(String(error)).toContain('deserializeTransactionAtStage');
+    expect(String(error)).toContain('LedgerTransaction.fromBytes');
   });
 
-  it.each([
-    ['v9', 'Finalized', 'Unproven'],
-    ['v9', 'Unbound', 'Finalized'],
-    ['v9', 'Finalized', 'Unbound'],
-    ['v8', 'Finalized', 'Unproven'],
-    ['v8', 'Unproven', 'Unbound']
-  ] as const)('refuses a %s object sealed as %s when it is at the %s stage', async (era, claimed, actual) => {
-    const tx = await ledgerTransactions[era][actual]();
-
-    const error = thrownBy(() => LedgerTransaction.seal(era, claimed, tx));
-
-    expect(error).toBeInstanceOf(InvalidTransactionHandleError);
-    expect(error).toMatchObject({ method: 'LedgerTransaction.seal', reason: 'stage-mismatch' });
-    expect(String(error)).toContain(`${actual} transaction sealed as ${claimed}`);
-  });
-
-  it('names the provider method that produced a refused object', async () => {
+  it('refuses an object at another stage, naming the provider method that produced it', async () => {
     const unbound = await ledgerTransactions.v9.Unbound();
 
-    // @ts-expect-error an unbound transaction is not a finalized one
     const error = thrownBy(() => LedgerTransaction.seal('v9', 'Finalized', unbound, 'balanceTx'));
 
-    expect(error).toMatchObject({ method: 'balanceTx', reason: 'stage-mismatch' });
+    expect(error).toMatchObject({ method: 'balanceTx', reason: 'header-mismatch' });
   });
 
-  it('names the provider method in a foreign-instance refusal', () => {
-    const lookalike = { serialize: () => new Uint8Array() };
+  it('refuses a v9 object sealed as v8', () => {
+    const error = thrownBy(() => LedgerTransaction.seal('v8', 'Unproven', Transaction.fromParts(NETWORK_ID)));
 
-    // @ts-expect-error a structural lookalike is not a ledger transaction
-    const error = thrownBy(() => LedgerTransaction.seal('v9', 'Unbound', lookalike, 'proveTx'));
-
-    expect(error).toMatchObject({ name: 'ForeignLedgerTransactionError', method: 'proveTx', reason: 'foreign-instance' });
-    expect(String(error)).toContain('proveTx');
-  });
-
-  it('refuses an era that is not a ledger era', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
-
-    // @ts-expect-error 'v7' is not a ledger era
-    const error = thrownBy(() => LedgerTransaction.seal('v7', 'Unproven', tx));
-
-    expect(error).toBeInstanceOf(UnknownLedgerEraError);
-    expect(error).toMatchObject({ requestedVersion: 'v7' });
-  });
-
-  it('refuses a stage that is not a transaction stage', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
-
-    // @ts-expect-error 'Proven' is not a transaction stage
-    const error = thrownBy(() => LedgerTransaction.seal('v9', 'Proven', tx));
-
-    expect(error).toBeInstanceOf(InvalidTransactionHandleError);
-    expect(error).toMatchObject({
-      code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE,
-      method: 'LedgerTransaction.seal',
-      reason: 'invalid-stage'
-    });
+    expect(error).toMatchObject({ method: 'LedgerTransaction.seal', reason: 'header-mismatch' });
   });
 });
 
-describe('LedgerTransaction.unwrap', () => {
-  it('returns the very object that was sealed', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
-    const handle = LedgerTransaction.seal('v9', 'Unproven', tx);
+describe('LedgerTransaction.deserialize', () => {
+  it.each(STAGES)('decodes a v9 %s handle with the caller class into an object of that class', async (stage) => {
+    const bytes = (await ledgerTransactions.v9[stage]()).serialize();
+    const handle = LedgerTransaction.fromBytes('v9', stage, bytes);
 
-    const unwrapped = LedgerTransaction.unwrap(handle, 'v9');
+    const tx = handle.deserialize({ v9: Transaction });
 
-    expect(unwrapped).toBe(tx);
+    expect(tx).toBeInstanceOf(Transaction);
+    expect(tx.serialize()).toEqual(bytes);
   });
 
-  it('refuses to read a v9 handle as v8', () => {
-    const handle: UnprovenTx = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+  it.each(STAGES)('decodes a v8 %s handle with the v8 class', async (stage) => {
+    const v8 = await loadLedger8Protocol();
+    const bytes = (await ledgerTransactions.v8[stage]()).serialize();
+    const handle = LedgerTransaction.fromBytes('v8', stage, bytes);
 
-    const error = thrownBy(() => LedgerTransaction.unwrap(handle, 'v8'));
+    const tx = handle.deserialize({ v8: v8.Transaction });
 
-    expect(error).toBeInstanceOf(TransactionEraMismatchError);
-    expect(error).toMatchObject({
-      code: PROVIDER_ERROR_CODES.TRANSACTION_ERA_MISMATCH,
-      expected: 'v8',
-      actual: 'v9'
-    });
+    expect(tx).toBeInstanceOf(v8.Transaction);
+    expect(tx.serialize()).toEqual(bytes);
   });
 
-  it('refuses to read a v8 handle as v9', async () => {
-    const handle: UnprovenTx = LedgerTransaction.seal('v8', 'Unproven', await ledgerTransactions.v8.Unproven());
+  it.each(STAGES)('passes the markers of a %s handle, so the caller cannot pick the stage', async (stage) => {
+    const handle = LedgerTransaction.fromBytes('v9', stage, (await ledgerTransactions.v9[stage]()).serialize());
+    const { calls, decoded, decoder } = recordingDecoder();
 
-    const error = thrownBy(() => LedgerTransaction.unwrap(handle, 'v9'));
+    const result = handle.deserialize({ v9: decoder });
 
-    expect(error).toBeInstanceOf(TransactionEraMismatchError);
-    expect(error).toMatchObject({ expected: 'v9', actual: 'v8' });
+    expect(result).toBe(decoded);
+    expect(calls.map((args) => args.slice(0, 3))).toEqual([MARKERS[stage]]);
   });
 
-  it.each(['constructor', '__proto__', 'toString', 'hasOwnProperty', 'v10'])(
-    'refuses %s as an unknown era instead of reading it off the slot',
-    (era) => {
-      const handle = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+  it('calls only the decoder of the handle era', () => {
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
+    const v8 = recordingDecoder();
+    const v9 = recordingDecoder();
 
-      // @ts-expect-error the era is not a ledger era
-      const error = thrownBy(() => LedgerTransaction.unwrap(handle, era));
+    handle.deserialize({ v8: v8.decoder, v9: v9.decoder });
 
-      expect(error).toBeInstanceOf(UnknownLedgerEraError);
-      expect(error).toMatchObject({ requestedVersion: era });
-    }
-  );
+    expect([v8.calls.length, v9.calls.length]).toEqual([0, 1]);
+  });
+
+  it('hands the decoder a copy, so a decoder cannot change the handle', () => {
+    const bytes = v9Bytes();
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', bytes);
+    const decoder = {
+      deserialize: (_s: string, _p: string, _b: string, raw: Uint8Array) => raw.fill(0),
+      fromParts: Transaction.fromParts
+    };
+
+    handle.deserialize({ v9: decoder });
+
+    expect(handle.serialize()).toEqual(bytes);
+  });
+
+  it('refuses decoders with none for the handle era, naming the class to import', () => {
+    const handle: LedgerTransaction<'Unproven'> = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
+
+    const error = thrownBy(() => handle.deserialize({ v8: Transaction }));
+
+    expect(error).toBeInstanceOf(TransactionDecoderMissingError);
+    expect(error).toMatchObject({ code: PROVIDER_ERROR_CODES.TRANSACTION_DECODER_MISSING, era: 'v9' });
+    expect(String(error)).toContain('@midnightntwrk/ledger-v9');
+  });
 
   it.each([
-    ['an object shaped like a handle', { era: 'v9', stage: 'Unproven' }],
-    ['the pre-handle version-tagged payload', { version: 'v9', tx: {} }],
     ['null', null],
-    ['undefined', undefined]
-  ])('refuses %s as not a handle', (_label, value) => {
-    // @ts-expect-error the value is not a LedgerTransaction
-    const error = thrownBy(() => LedgerTransaction.unwrap(value, 'v9'));
+    ['an inherited era key', Object.create({ v9: Transaction })]
+  ])('refuses %s as decoders', (_label, decoders) => {
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
 
-    expect(error).toBeInstanceOf(InvalidTransactionHandleError);
+    // @ts-expect-error the value is not a decoder map
+    const error = thrownBy(() => handle.deserialize(decoders));
+
+    expect(error).toBeInstanceOf(TransactionDecoderMissingError);
+  });
+
+  it('reports a body the decoder cannot read as a decode failure with the cause', () => {
+    const handle = LedgerTransaction.fromBytes(
+      'v9',
+      'Finalized',
+      new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v9.Finalized}:truncated`)
+    );
+
+    const error = thrownBy(() => handle.deserialize({ v9: Transaction }));
+
+    expect(error).toBeInstanceOf(TransactionDecodeFailedError);
     expect(error).toMatchObject({
-      code: PROVIDER_ERROR_CODES.INVALID_TRANSACTION_HANDLE,
-      method: 'LedgerTransaction.unwrap',
-      reason: 'not-a-handle'
+      code: PROVIDER_ERROR_CODES.TRANSACTION_DECODE_FAILED,
+      category: 'INTEGRITY',
+      era: 'v9',
+      stage: 'Finalized',
+      cause: expect.any(Error)
     });
   });
 
-  it('refuses a handle sealed by a second copy of the module, naming a duplicate midnight-js-types install', async () => {
-    vi.resetModules();
-    const secondCopy = await import('../ledger-transaction');
-    const foreignHandle = secondCopy.LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+  it('rethrows a MidnightJsError from the decoder unchanged', () => {
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
+    const own = new TransactionDecoderMissingError('v8');
+    const decoder = {
+      deserialize: (): never => {
+        throw own;
+      },
+      fromParts: Transaction.fromParts
+    };
 
-    const error = thrownBy(() => LedgerTransaction.unwrap(foreignHandle, 'v9'));
+    const error = thrownBy(() => handle.deserialize({ v9: decoder }));
 
-    expect([LedgerTransaction.isLedgerTransaction(foreignHandle), secondCopy.LedgerTransaction.isLedgerTransaction(foreignHandle)]).toEqual([false, true]);
-    expect(error).toMatchObject({ name: 'InvalidTransactionHandleError', reason: 'not-a-handle' });
-    expect(String(error)).toContain('midnight-js-types');
+    expect(error).toBe(own);
+    expect(error).toBeInstanceOf(MidnightJsError);
   });
 });
 
@@ -258,65 +366,42 @@ describe('LedgerTransaction.require', () => {
 
 describe('LedgerTransaction handle', () => {
   it('is frozen and exposes only its era and stage as own properties', () => {
-    const handle = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
 
     expect(Object.isFrozen(handle)).toBe(true);
     expect(Object.keys(handle).sort()).toEqual(['era', 'stage']);
   });
 
-  it('cannot be constructed without LedgerTransaction.seal', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
-
-    const error = thrownBy(() =>
-      Reflect.construct(LedgerTransaction, ['v9', 'Unproven', { v9: tx }, () => tx.serialize()])
-    );
+  it('cannot be constructed without LedgerTransaction.fromBytes', () => {
+    const error = thrownBy(() => Reflect.construct(LedgerTransaction, ['v9', 'Unproven', v9Bytes()]));
 
     expect(error).toBeInstanceOf(InvalidTransactionHandleError);
-    expect(error).toMatchObject({ method: 'LedgerTransaction.seal', reason: 'not-a-handle' });
-  });
-
-  it('cannot be constructed through a subclass', () => {
-    const tx = Transaction.fromParts(NETWORK_ID);
-    const Subclass = class extends Object {};
-    Reflect.setPrototypeOf(Subclass, LedgerTransaction);
-
-    const error = thrownBy(() =>
-      Reflect.construct(LedgerTransaction, ['v9', 'Unproven', { v9: tx }, () => tx.serialize()], Subclass)
-    );
-
-    expect(error).toBeInstanceOf(InvalidTransactionHandleError);
+    expect(error).toMatchObject({ method: 'LedgerTransaction.fromBytes', reason: 'not-a-handle' });
   });
 
   it('tells a caller that a copied handle is refused, and how to pass it on', () => {
-    const handle = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+    const handle = LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
     const copy = { ...handle };
 
-    // @ts-expect-error a spread copy is not a handle
-    const error = thrownBy(() => LedgerTransaction.unwrap(copy, 'v9'));
+    const error = thrownBy(() => LedgerTransaction.require(copy, 'Unproven', 'proveTx'));
 
     expect(error).toMatchObject({ reason: 'not-a-handle' });
     expect(String(error)).toContain('structuredClone');
+    expect(String(error)).toContain('LedgerTransaction.fromBytes');
   });
 
-  it.each([['a plain object', {}], ['null', null], ['a string', 'v9']])('is() is false for %s', (_label, value) => {
+  it('is not a handle of a second copy of the module, which names a duplicate midnight-js-types install', async () => {
+    vi.resetModules();
+    const secondCopy = await import('../ledger-transaction');
+    const foreignHandle = secondCopy.LedgerTransaction.fromBytes('v9', 'Unproven', v9Bytes());
+
+    const error = thrownBy(() => LedgerTransaction.require(foreignHandle, 'Unproven', 'proveTx'));
+
+    expect([LedgerTransaction.isLedgerTransaction(foreignHandle), secondCopy.LedgerTransaction.isLedgerTransaction(foreignHandle)]).toEqual([false, true]);
+    expect(String(error)).toContain('midnight-js-types');
+  });
+
+  it.each([['a plain object', {}], ['null', null], ['a string', 'v9']])('isLedgerTransaction is false for %s', (_label, value) => {
     expect(LedgerTransaction.isLedgerTransaction(value)).toBe(false);
-  });
-});
-
-describe('ForeignLedgerTransactionError', () => {
-  it('names loadLedger8Protocol() as the fix when v8 is not loaded', () => {
-    const error = new ForeignLedgerTransactionError('v8', 'ledger8-not-loaded');
-
-    expect([error.name, error.category, error.message.includes('loadLedger8Protocol()')]).toEqual([
-      'ForeignLedgerTransactionError',
-      'ENVIRONMENT',
-      true
-    ]);
-  });
-
-  it('names a duplicate ledger install for a foreign instance', () => {
-    const error = new ForeignLedgerTransactionError('v9', 'foreign-instance');
-
-    expect(error.message).toContain('duplicate');
   });
 });

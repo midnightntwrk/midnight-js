@@ -14,10 +14,10 @@
  */
 
 import { PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type FinalizedTxRead,
   InvalidTransactionHandleError,
-  LedgerTransaction,
   type ReadMethod} from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
@@ -51,7 +51,7 @@ describe.each(HELPERS)('%s: a read record a third-party provider got wrong', (_n
       const record: FinalizedTxRead = {
         ...v9,
         // @ts-expect-error a record from before the handle carries the raw ledger transaction
-        tx: LedgerTransaction.unwrap(v9.tx, 'v9')
+        tx: v9.tx.deserialize({ v9: Transaction })
       };
 
       const error = thrownBy(() => read(record, method));

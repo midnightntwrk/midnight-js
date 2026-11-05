@@ -13,27 +13,39 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
+import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { describe, expect, it, vi } from 'vitest';
 
-import { ForeignLedgerTransactionError } from '../errors';
 import { LedgerTransaction } from '../ledger-transaction';
 
+const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn() }));
+
+vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+  const original = await importOriginal<typeof protocol>();
+  loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
+  return { ...original, loadLedger8Protocol: loadLedger8Spy };
+});
+
+const ledger8Bytes = new TextEncoder().encode(`${LEDGER_TRANSACTION_TAGS.v8.Unproven}:body`);
+
 // A file of its own: the v8 ledger, once loaded, stays loaded for the process,
-// so this refusal is only reachable in a test file that never loads it.
-describe('LedgerTransaction.seal before the v8 ledger is loaded', () => {
-  it('refuses a v8 value and names loadLedger8Protocol() as the fix', () => {
-    const userBuiltV8Tx = { serialize: () => new Uint8Array() };
+// so only a test file that never loads it shows that a v8 handle does not need it.
+describe('a v8 handle before the v8 ledger is loaded', () => {
+  it('is made from bytes', () => {
+    const handle = LedgerTransaction.fromBytes('v8', 'Unproven', ledger8Bytes);
 
-    let error: unknown;
-    try {
-      // @ts-expect-error the value stands in for a v8 transaction built from the user's own ledger import
-      LedgerTransaction.seal('v8', 'Unproven', userBuiltV8Tx);
-    } catch (thrown: unknown) {
-      error = thrown;
-    }
+    expect([handle.era, handle.stage]).toEqual(['v8', 'Unproven']);
+    expect(handle.serialize()).toEqual(ledger8Bytes);
+    expect(loadLedger8Spy).not.toHaveBeenCalled();
+  });
 
-    expect(error).toBeInstanceOf(ForeignLedgerTransactionError);
-    expect(error).toMatchObject({ era: 'v8', reason: 'ledger8-not-loaded' });
-    expect(String(error)).toContain('loadLedger8Protocol()');
+  it('is sealed from an object of any ledger copy', () => {
+    const userBuiltV8Tx = { serialize: () => ledger8Bytes };
+
+    const handle = LedgerTransaction.seal('v8', 'Unproven', userBuiltV8Tx);
+
+    expect(handle.serialize()).toEqual(ledger8Bytes);
+    expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 });

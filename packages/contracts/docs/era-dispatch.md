@@ -466,7 +466,7 @@ than widening their own public return types. Both record checks, it and
 `requireTaggedRecord`, also refuse a record whose `tx` is not a handle
 (`InvalidTransactionHandleError`) or is a handle of another era than `era`
 (`EraInvariantViolationError`), naming the read method, so a third-party
-provider's mistake surfaces at the read and not in the caller's own `unwrap`.
+provider's mistake surfaces at the read and not in the caller's own `deserialize`.
 
 ## Refusing a provider set before it costs anything
 

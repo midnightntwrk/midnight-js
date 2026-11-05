@@ -114,8 +114,9 @@ a boundary is chosen from the era of the request rather than inferred from the b
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransaction(era, …)`, chosen by
   the record's own era
-- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet` and
-  `finalizedFromWallet`, chosen by the era of the handle the wallet provider received
+- `testkit-js/testkit-js/src/wallet/wallet-transaction.ts` — `adoptInWallet`, chosen by the era
+  of the handle the wallet provider received; `finalizedFromWallet` returns bytes, which the wallet
+  provider factory seals and decodes in the era of the request
 - `packages/dapp-connector-proof-provider/src/dapp-connector-wallet-providers.ts` —
   `deserializeTransactionAtStage(era, 'Finalized', …)`, chosen by the era of the handle passed to
   `balanceTx`

@@ -157,7 +157,7 @@ describe('unproven-call-tx', () => {
         era: 'v9',
         stage: 'Unproven'
       });
-      expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(built);
+      expect(result.private.unprovenTx.serialize()).toEqual(built.serialize());
     });
 
     it('should create unproven call tx from initial states with private state', async () => {

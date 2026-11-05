@@ -18,7 +18,7 @@ import type { CoinPublicKey, EncPublicKey, TransactionId } from '@midnight-ntwrk
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { describe, expectTypeOf, it } from 'vitest';
 
-import type { FinalizedTx, UnboundTx, UnprovenTx } from '../ledger-transaction';
+import type { FinalizedTx, LedgerTransaction, TransactionAnswer, UnboundTx, UnprovenTx } from '../ledger-transaction';
 import { createMidnightProviderFromHandlers, type MidnightProvider, type MidnightProviderHandlers } from '../midnight-provider';
 import {
   createProofProviderFromHandlers,
@@ -56,25 +56,22 @@ describe('provider methods', () => {
 });
 
 describe('per-era handlers', () => {
-  it('type each era handler against that era ledger classes', () => {
-    expectTypeOf<NonNullable<ProofProviderHandlers['v8']>>().parameter(0).toEqualTypeOf<
-      LedgerTransactionTypes['v8']['Unproven']
-    >();
-    expectTypeOf<NonNullable<ProofProviderHandlers['v9']>>().returns.toEqualTypeOf<
-      Promise<LedgerTransactionTypes['v9']['Unbound']>
-    >();
-    expectTypeOf<NonNullable<WalletProviderHandlers['v8']>>().returns.toEqualTypeOf<
-      Promise<LedgerTransactionTypes['v8']['Finalized']>
-    >();
-    expectTypeOf<NonNullable<MidnightProviderHandlers['v9']>>().parameter(0).toEqualTypeOf<
-      LedgerTransactionTypes['v9']['Finalized']
-    >();
+  it('hand each era handler the handle narrowed to that era', () => {
+    expectTypeOf<NonNullable<ProofProviderHandlers['v8']>>().parameter(0).toEqualTypeOf<LedgerTransaction<'Unproven', 'v8'>>();
+    expectTypeOf<NonNullable<WalletProviderHandlers['v9']>>().parameter(0).toEqualTypeOf<LedgerTransaction<'Unbound', 'v9'>>();
+    expectTypeOf<NonNullable<MidnightProviderHandlers['v9']>>().parameter(0).toEqualTypeOf<LedgerTransaction<'Finalized', 'v9'>>();
   });
 
-  it('refuses a handler answering in the other era', () => {
+  it('let a handler answer with an object of any ledger copy or with bytes', () => {
+    expectTypeOf<NonNullable<ProofProviderHandlers['v9']>>().returns.toEqualTypeOf<Promise<TransactionAnswer>>();
+    expectTypeOf<NonNullable<WalletProviderHandlers['v8']>>().returns.toEqualTypeOf<Promise<TransactionAnswer>>();
+    createWalletProviderFromHandlers({ v8: undefined, v9: async (tx) => tx.serialize(), ...keyReaders });
+  });
+
+  it('refuses a handler answering with something that is not a transaction', () => {
     createProofProviderFromHandlers({
-      // @ts-expect-error a v8 handler answers with a v8 transaction
-      v8: async () => ledger9Unbound,
+      // @ts-expect-error a handler answers with a transaction or its bytes
+      v8: async () => 'proven',
       v9: async () => ledger9Unbound
     });
   });

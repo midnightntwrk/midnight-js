@@ -22,6 +22,7 @@ import {
   PROTOCOL_ERROR_CODES,
   UnknownProtocolVersionError
 } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { Transaction as Ledger9Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   type AnyProvableCircuitId,
   type FinalizedTx,
@@ -379,8 +380,8 @@ describe('submit-tx', () => {
       ['submitTxAsync', submitTxAsync]
     ] as const)('%s with a value that is not a handle', (_name, submit) => {
       it.each([
-        ['the pre-handle { version, tx } record', () => ({ version: 'v9', tx: LedgerTransaction.unwrap(createMockUnprovenTx(), 'v9') })],
-        ['a raw ledger transaction', () => LedgerTransaction.unwrap(createMockUnprovenTx(), 'v9')],
+        ['the pre-handle { version, tx } record', () => ({ version: 'v9', tx: createMockUnprovenTx().deserialize({ v9: Ledger9Transaction }) })],
+        ['a raw ledger transaction', () => createMockUnprovenTx().deserialize({ v9: Ledger9Transaction })],
         ['null', () => null]
       ])('refuses %s with InvalidTransactionHandleError before reading the head', async (_label, value) => {
         onHead(LEDGER9_HEAD);
@@ -719,7 +720,7 @@ describe('submit-tx', () => {
     });
 
     it.each([
-      ['the pre-handle { version, tx } record', () => ({ version: 'v9', tx: LedgerTransaction.unwrap(createMockUnprovenTx(), 'v9') })],
+      ['the pre-handle { version, tx } record', () => ({ version: 'v9', tx: createMockUnprovenTx().deserialize({ v9: Ledger9Transaction }) })],
       ['null', () => null]
     ])('refuses %s with InvalidTransactionHandleError before proving it', async (_label, value) => {
       // @ts-expect-error neither value is an UnprovenTx

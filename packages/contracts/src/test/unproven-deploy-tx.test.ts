@@ -85,7 +85,7 @@ describe('unproven-deploy-tx', () => {
       expect(result.private.signingKey).toEqual(options.signingKey);
       expect(LedgerTransaction.isLedgerTransaction(result.private.unprovenTx)).toBe(true);
       expect(result.private.unprovenTx.era).toBe('v9');
-      expect(LedgerTransaction.unwrap(result.private.unprovenTx, 'v9')).toBe(await BUILT_DEPLOY_TX);
+      expect(result.private.unprovenTx.serialize()).toEqual((await BUILT_DEPLOY_TX).serialize());
     });
 
     it('should create unproven deploy tx from verifier keys with private state', async () => {
