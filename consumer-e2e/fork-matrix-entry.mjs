@@ -42,6 +42,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
   createLedger8UnprovenCallTx,
   createLedger8UnprovenDeployTx,
+  ContractTypeError,
   deployContract,
   EraMismatchError,
   findDeployedContract,
@@ -2396,6 +2397,26 @@ for (const entry of RETAINED_MATRIX.filter((candidate) => covers(SELECTED.retain
   });
 }
 
+// compactc 0.36 emits ZKIR v3 only, so a recompiled contract's verifier keys differ from the ones the pre-fork
+// (compactc 0.31.1, ZKIR v2) deploy registered, and finding the contract with them is refused.
+const expectRecompiledVerifierKeysRefused = async (providers, compiledContract, contractAddress) => {
+  const error = await findDeployedContract(providers, { compiledContract, contractAddress }).then(
+    () => undefined,
+    (refusal) => refusal
+  );
+  if (
+    !(error instanceof ContractTypeError) ||
+    JSON.stringify(error.mismatchedCircuitIds) !== JSON.stringify(['noop']) ||
+    error.missingCircuitIds.length > 0 ||
+    error.keylessCircuitIds.length > 0
+  ) {
+    throw new Error(`expected ContractTypeError with only 'noop' mismatched; got ${describeError(error)}`, {
+      cause: error
+    });
+  }
+  return { refusedWith: error.name, mismatchedCircuitIds: error.mismatchedCircuitIds };
+};
+
 if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
   const name = 'a dormant pre-fork simple, found after the fork with recompiled artifacts';
   await leg(name, async () => {
@@ -2422,15 +2443,8 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
     }
     const deployStateVersion = await expectLedger8DeployState(name, providers.publicDataProvider, deployed.contractAddress);
 
-    const found = await findDeployedContract(providers, {
-      compiledContract,
-      contractAddress: deployed.contractAddress
-    });
-
-    if (found.deployTxData.public.era !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
-    }
-    return { envelope, deployStateVersion, deployRecordVersion: found.deployTxData.public.era };
+    const refusal = await expectRecompiledVerifierKeysRefused(providers, compiledContract, deployed.contractAddress);
+    return { envelope, deployStateVersion, ...refusal };
   });
 }
 
@@ -2924,29 +2938,7 @@ if (covers(SELECTED.retained, 'simple') && covers(SELECTED.current, 'simple')) {
       privateStateStoreName: 'fork-recompiled-simple'
     });
 
-    const found = await findDeployedContract(providers, {
-      compiledContract,
-      contractAddress: deployed.contractAddress
-    });
-
-    if (found.deployTxData.public.era !== 'v8') {
-      failures.push(`${name}: expected the deploy record tagged 'v8', got '${found.deployTxData.public.era}'`);
-    }
-    if (found.deployTxData.public.contractAddress !== deployed.contractAddress) {
-      failures.push(`${name}: the deploy record names a different contract address`);
-    }
-    const { state } = retainedEntry('simple');
-    const before = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
-    const called = await found.callTx.noop();
-    const after = await readRetainedLedger('simple', providers, deployed.contractAddress, state.read);
-    if (after !== before + 1n) {
-      failures.push(`${name}: ledger ${state.label} went from ${before} to ${after}, expected ${before + 1n}`);
-    }
-    return {
-      deployRecordVersion: found.deployTxData.public.era,
-      afterFindCall: { circuitId: called.circuitId, txId: called.public.txId },
-      [state.label]: { before: before.toString(), after: after.toString() }
-    };
+    return expectRecompiledVerifierKeysRefused(providers, compiledContract, deployed.contractAddress);
   });
 }
 
