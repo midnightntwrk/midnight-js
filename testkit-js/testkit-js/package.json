@@ -41,7 +41,7 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
-    "@midnightntwrk/wallet-sdk": "2.0.0-rc.2",
+    "@midnightntwrk/wallet-sdk": "2.0.0-rc.3",
     "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-rc.1",
     "@midnightntwrk/zkir-v3": "3.2.0",
     "@scure/bip39": "^2.3.0",
@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.21.0",
-    "@midnightntwrk/ledger-v8": "8.1.2",
+    "@midnightntwrk/ledger-v8": "8.1.3",
     "@midnightntwrk/ledger-v9": "1.0.0",
     "@types/ws": "^8.18.2",
     "@vitest/runner": "^4.1.11",
