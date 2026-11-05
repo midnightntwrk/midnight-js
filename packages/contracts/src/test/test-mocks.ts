@@ -57,6 +57,7 @@ import {
   type ContractStateRead,
   type Ledger8FinalizedTxData,
   type Ledger9FinalizedTxData,
+  type LedgerTransaction,
   type MidnightConfig,
   type PrivateStateId,
   type PrivateStateProvider,
@@ -67,7 +68,6 @@ import {
   SerializedZswapChainState,
   SucceedEntirely,
   type TxStatus,
-  type UnprovenTx,
   type VerifierKey,
   ZKConfigProvider,
   type ZKIR
@@ -203,7 +203,7 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
   ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-export const createMockUnprovenTx = (): UnprovenTx => handles.v9.Unproven();
+export const createMockUnprovenTx = (): LedgerTransaction<'Unproven', 'v9'> => handles.v9.Unproven();
 
 const MOCK_FINALIZED_TX = await handles.v9.Finalized();
 

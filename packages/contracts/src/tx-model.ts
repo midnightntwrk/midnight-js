@@ -18,9 +18,9 @@ import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnight-ntwr
 import type {
   Ledger8FinalizedTxData,
   Ledger9FinalizedTxData,
+  LedgerTransaction,
   SerializedContractState,
   SubmittedCallTxBase,
-  UnprovenTx,
   UnsubmittedTxDataBase
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -47,7 +47,7 @@ export interface Ledger9UnsubmittedTxData extends UnsubmittedTxDataBase {
    * The unproven transaction produced, as a v9 handle. Read it with
    * `LedgerTransaction.unwrap(unprovenTx, 'v9')`.
    */
-  readonly unprovenTx: UnprovenTx;
+  readonly unprovenTx: LedgerTransaction<'Unproven', 'v9'>;
 }
 
 /**

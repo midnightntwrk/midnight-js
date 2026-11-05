@@ -24,7 +24,7 @@ import {
   PROVIDER_ERROR_CODES,
   TransactionEraMismatchError
 } from '../errors';
-import { LedgerTransaction } from '../ledger-transaction';
+import { LedgerTransaction, type UnprovenTx } from '../ledger-transaction';
 import { ledgerTransactions } from './ledger-transaction-fixtures';
 
 const NETWORK_ID = 'undeployed';
@@ -165,7 +165,7 @@ describe('LedgerTransaction.unwrap', () => {
   });
 
   it('refuses to read a v9 handle as v8', () => {
-    const handle = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
+    const handle: UnprovenTx = LedgerTransaction.seal('v9', 'Unproven', Transaction.fromParts(NETWORK_ID));
 
     const error = thrownBy(() => LedgerTransaction.unwrap(handle, 'v8'));
 
@@ -178,7 +178,7 @@ describe('LedgerTransaction.unwrap', () => {
   });
 
   it('refuses to read a v8 handle as v9', async () => {
-    const handle = LedgerTransaction.seal('v8', 'Unproven', await ledgerTransactions.v8.Unproven());
+    const handle: UnprovenTx = LedgerTransaction.seal('v8', 'Unproven', await ledgerTransactions.v8.Unproven());
 
     const error = thrownBy(() => LedgerTransaction.unwrap(handle, 'v9'));
 
