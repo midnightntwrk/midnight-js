@@ -13,14 +13,18 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import {
+  COMMON_ERROR_CODES,
+  InvalidArgumentError,
+  UnknownProtocolVersionError
+} from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../errors';
+import { EraMismatchError, IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../errors';
 import { submitDeployTx } from '../submit-deploy-tx';
 import { submitLedger9Payload } from '../submit-tx';
 import { createLedger9UnprovenDeployTx } from '../unproven-deploy-tx';
@@ -468,6 +472,68 @@ describe('submit-deploy-tx', () => {
         });
         expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
         expect(submitLedger9Payload).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('the network ledger version', () => {
+      const LEDGER8_HEAD = 1_000_000;
+      const deployOptions = () => ({
+        compiledContract: mockCompiledContract,
+        args: [],
+        signingKey: mockSigningKey
+      });
+
+      it('refuses a ledger 9 deploy on a ledger 8 network before anything is built or proven', async () => {
+        mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(LEDGER8_HEAD);
+
+        const deploying = submitDeployTx(mockProviders, deployOptions());
+
+        await expect(deploying).rejects.toBeInstanceOf(EraMismatchError);
+        await expect(deploying).rejects.toMatchObject({ reason: 'ledger9-artifact-on-ledger8-network' });
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
+        expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
+      });
+
+      it('reads the network ledger version exactly once for a ledger 9 deploy on a ledger 9 network', async () => {
+        vi.mocked(createLedger9UnprovenDeployTx).mockResolvedValue(createMockUnprovenDeployTxData());
+        vi.mocked(submitLedger9Payload).mockResolvedValue(createMockFinalizedTxData());
+
+        await submitDeployTx(mockProviders, deployOptions());
+
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+        expect(submitLedger9Payload).toHaveBeenCalledTimes(1);
+      });
+
+      it('propagates a failed network version read before anything is built', async () => {
+        const readFailure = new Error('indexer unavailable');
+        mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockRejectedValue(readFailure);
+
+        const deploying = submitDeployTx(mockProviders, deployOptions());
+
+        await expect(deploying).rejects.toBe(readFailure);
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
+      });
+
+      it('refuses a network version this build cannot place before anything is built', async () => {
+        mockProviders.publicDataProvider.queryLatestProtocolVersion = vi.fn().mockResolvedValue(99_000_000);
+
+        const deploying = submitDeployTx(mockProviders, deployOptions());
+
+        await expect(deploying).rejects.toBeInstanceOf(UnknownProtocolVersionError);
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
+        expect(submitLedger9Payload).not.toHaveBeenCalled();
+      });
+
+      it('refuses an invalid config before the network version is read', async () => {
+        const providers = { ...mockProviders, config: { networkId: 'preview', ttlSeconds: 0 } };
+
+        const deploying = submitDeployTx(providers, deployOptions());
+
+        await expect(deploying).rejects.toBeInstanceOf(InvalidArgumentError);
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+        expect(createLedger9UnprovenDeployTx).not.toHaveBeenCalled();
       });
     });
   });

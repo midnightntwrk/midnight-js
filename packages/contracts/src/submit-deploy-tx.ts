@@ -19,7 +19,13 @@ import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { TxFailedError } from './errors';
-import { requireLedger8Contract, requireLedger9Contract, resolveEraRequest } from './internal/era';
+import {
+  assertEraCompatible,
+  readHeadEra,
+  requireLedger8Contract,
+  requireLedger9Contract,
+  resolveEraRequest
+} from './internal/era';
 import { deployLedger8Contract, toLedger8DeployEntryOptions } from './internal/ledger8-entry';
 import { assertDeployPrivateStatePairing } from './internal/private-state-pairing';
 import type {
@@ -93,6 +99,11 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
  * @throws {EraMismatchError} With reason `'contract-era-unsupported'` for a ledger 8 contract, and
  *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
  *         ledger 8, before anything else.
+ * @throws {EraMismatchError} With reason `'ledger9-artifact-on-ledger8-network'` when the network is
+ *         still on ledger 8. Raised after one network version read, before the constructor runs and
+ *         before anything is proven.
+ * @throws {UnknownProtocolVersionError} When the network version cannot be placed on the era timeline.
+ *         A rejection of the network version read propagates unchanged.
  * @throws {TxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  * @throws {IncompleteDeployContractPrivateStateConfig} When `privateStateId` is present without
@@ -113,6 +124,9 @@ export async function submitLedger9DeployTx<C extends Contract.Any>(
 ): Promise<Ledger9FinalizedDeployTxData<C>> {
   await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'submitLedger9DeployTx');
   assertDeployPrivateStatePairing(options);
+  assertValidMidnightConfig(providers.config);
+  const { head } = await readHeadEra(providers.publicDataProvider);
+  assertEraCompatible('v9', head, 'deploy');
   const unprovenDeployTxData = await createLedger9UnprovenDeployTx(providers, options);
   const finalizedTxData = await submitLedger9Payload(providers, {
     unprovenTx: unprovenDeployTxData.private.unprovenTx
@@ -214,6 +228,8 @@ export async function submitDeployTx<C extends Contract.Any>(
  *         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
  *         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
  *         ZK config provider propagates unchanged.
+ * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 9 contract
+ *         deployed before the fork, before anything is proven.
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,

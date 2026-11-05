@@ -182,6 +182,15 @@ describe('submit-call-tx', () => {
         expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
       });
 
+      it('submits a ledger 9 call without reading the network ledger version', async () => {
+        const options = createBasicCallOptions();
+        setupSuccessfulMocks();
+
+        await submitCallTx(mockProviders, options);
+
+        expect(mockProviders.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+      });
+
       it('tags the result with the era the ARTIFACT reports', async () => {
         const options = createBasicCallOptions();
         setupSuccessfulMocks();
