@@ -674,8 +674,8 @@ type Providers = Ledger9ContractProviders<MyContract, MyCircuitId, MyPrivateStat
 functions keep their 4.1.1 names and pick the era from the contract: `createUnprovenCallTx`,
 `createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`,
 `createUnprovenDeployTxFromVerifierKeys`, `submitDeployTx`. `withContractScopedTransaction` also
-keeps its name, but it serves ledger 9 contracts only and is refused while the network is on
-ledger 8 (see section 21).
+keeps its name. It serves ledger 8 contracts before the fork and ledger 9 contracts after it (see
+section 21).
 
 **What to do**
 

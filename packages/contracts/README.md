@@ -133,8 +133,8 @@ if (record.status === 'SucceedEntirely') {
 }
 ```
 
-Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call cannot join a
-scoped transaction; `createLedger8UnprovenCallTxFromInitialStates` takes the head era as well as
+Ledger 8 differences: a ledger 8 deploy works only before the fork; a ledger 8 call joins a scoped
+transaction only before the fork; `createLedger8UnprovenCallTxFromInitialStates` takes the head era as well as
 the states, because the fork translates a ledger 8 contract's state into a ledger 9 one.
 
 Both eras' `FromInitialStates` builders take the states as a read returns them. Pass

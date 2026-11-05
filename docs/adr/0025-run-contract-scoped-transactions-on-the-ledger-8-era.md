@@ -36,14 +36,20 @@ contracts.
   refuses a head of the other era with `EraMismatchError`, reason `'scope-era-mismatch'`, from the
   head reading alone and before the scope function runs. That reason replaces
   `'scope-on-ledger8-network'`.
-- The ledger 8 scope acquires the retained runtime once. Its first call reads the contract state
-  and the stored private state; every later call runs on the states the call before it ended on.
+- The ledger 8 scope acquires the retained runtime once, before its function runs. The first call
+  added to it reads the contract state and the stored private state; every later call runs on the
+  states the call before it ended on.
   The calls are merged with the framework's own ledger 8 copy and submitted once; the private state
   is stored once, after the chain records success.
-- A ledger 8 call joins the scope through the ledger 8 overloads of `submitCallTx`,
-  `createUnprovenCallTx`, `createLedger8UnprovenCallTx` and `Ledger8CircuitCallTxInterface`.
+- A ledger 8 call joins the scope through the ledger 8 overloads of `submitCallTx` and
+  `Ledger8CircuitCallTxInterface`. `createUnprovenCallTx` and `createLedger8UnprovenCallTx` given
+  the scope build against its states and add nothing to it; only a joined call fixes the contract
+  and private state the scope runs against.
 - After the fork a ledger 8 call handed a ledger 9 scope is still refused (`'ledger8-call-in-scope'`).
   A ledger 9 call handed a ledger 8 scope is refused with `'ledger9-artifact-on-ledger8-network'`.
+  Both refusals hold on every path a call takes, `callTx.<circuit>` included. A scope context
+  whose era is unknown, or a ledger 8 one made by another copy of the package, is refused with
+  `InvalidArgumentError`.
 
 ## Consequences
 
@@ -53,7 +59,9 @@ contracts.
   context. `ReturnType<typeof withContractScopedTransaction>` names the ledger 8 result, because it
   reads the last overload.
 - **Negative:** as in the ledger 9 scope, the contract's balance stays as the first call read it,
-  and the ledger does not keep the order of merged calls.
+  and the ledger does not keep the order of merged calls. A JavaScript caller that nests a scope by
+  passing a running scope's context as the options gets that scope's last call data, not a
+  finalized transaction, whatever the declared return type says.
 - **Follow-ups:** none required. Running a ledger 8 contract's calls in a ledger 9 scope after the
   fork is a separate decision.
 

@@ -1298,14 +1298,12 @@ fork, its calls are recorded as ledger 9 transactions
 
 ### Contracts deployed after the fork (ledger 9 contracts)
 
-These use the recompiled artifacts and need no further code change. Two limits apply before
+These use the recompiled artifacts and need no further code change. One limit applies before
 the fork:
 
-- A ledger 9 contract cannot be deployed or called while the network is still on ledger 8.
-  The framework refuses it before proving, with `EraMismatchError` (reason
-  `'ledger9-artifact-on-ledger8-network'`).
-- Contract-scoped transactions (`withContractScopedTransaction`) are refused
-  ([Step 13](#step-13--fix-deploy-options-and-scoped-transactions)).
+- A ledger 9 contract cannot be deployed or called while the network is still on ledger 8,
+  inside a contract-scoped transaction or outside one. The framework refuses it before proving,
+  with `EraMismatchError` (reason `'ledger9-artifact-on-ledger8-network'`).
 
 So a dApp that runs on both sides of the fork and deploys contracts ships **both** builds of
 those contracts: the ledger 8 instance for deploys before the fork, and the recompiled one
@@ -1318,7 +1316,7 @@ for deploys after it.
 | Deploy | works | refused: `EraMismatchError`, reason `'ledger8-deploy-on-ledger9-network'` |
 | Call | works | works |
 | Maintenance (verifier keys, authority) | works | refused: `EraMismatchError`, reason `'ledger8-maintenance-on-ledger9-network'` |
-| Inside `withContractScopedTransaction` | refused | refused |
+| Inside `withContractScopedTransaction` | works: type the scope function's parameter as `Ledger8TransactionContext`, or use `withLedger8ContractScopedTransaction` | refused: `EraMismatchError`, reason `'ledger8-call-in-scope'` |
 
 After the fork, to deploy or maintain, recompile with compactc 0.36.0 and call the same
 function with the new artifact. The stored signing key still authorizes: the fork keeps the
@@ -1643,7 +1641,7 @@ Your code
 - [ ] Maintenance results read as `result.public.status`.
 - [ ] Generic code uses `Ledger9*` names; `ContractProviders` given a contract; `submitTx<PCK>`.
 - [ ] Deploys pass `privateStateId` and `initialPrivateState` together, or neither.
-- [ ] No `withContractScopedTransaction` call runs before the fork.
+- [ ] Scope functions that run before the fork type their parameter as `Ledger8TransactionContext`, or use `withLedger8ContractScopedTransaction`.
 - [ ] `catch` blocks use `TxFailedError` + `operation`, `ProviderFailedError`, or `hasErrorCode`; no `instanceof TypeError` for `ContractTypeError`; no old `*TxFailedError` names.
 - [ ] Signing keys are `{ tag, value }`; tests compare keys with `toEqual`; 4.1.1 export files re-exported or converted.
 

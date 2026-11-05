@@ -85,8 +85,9 @@ export interface Ledger9TransactionContext<
 /**
  * Encapsulates the context of a contract-scoped transaction on a ledger 8 (pre-fork) network.
  *
- * Every call made with it is composed against the states the call before it ended on, and all of them
- * are submitted as one ledger 8 transaction when the scope's function returns.
+ * Every call added with `submitCallTx` or `callTx.<circuit>` is composed against the states the
+ * scope's last call ended on, and all of them are submitted as one ledger 8 transaction when the
+ * scope's function returns. `createUnprovenCallTx` builds against the same states and adds nothing.
  */
 export interface Ledger8TransactionContext<
   C extends Ledger8Contract,
@@ -150,6 +151,12 @@ export const isLedger9TransactionContext: (u: unknown) => u is Ledger9Transactio
 export const isLedger8TransactionContext: (u: unknown) => u is AnyLedger8TransactionContext =
   Ledger8Scope.isLedger8ScopeContext;
 
+type Ledger9ScopeBody<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = (
+  txCtx: Ledger9TransactionContext<C, PCK>
+) => Promise<void>;
+
+type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
+
 /**
  * Executes a function within the context of a contract-scoped transaction, on the ledger era the
  * network head is on: a ledger 8 head runs {@link withLedger8ContractScopedTransaction}, a ledger 9 head
@@ -170,13 +177,11 @@ export const isLedger8TransactionContext: (u: unknown) => u is AnyLedger8Transac
  * produced by the ledger 8 Compact toolchain; type `fn`'s parameter as {@link Ledger8TransactionContext}
  * to call them. After the fork it takes calls against contracts produced by the ledger 9 toolchain, and a
  * ledger 8 contract's calls are submitted individually with `submitCallTx`.
+ *
+ * A JavaScript caller that passes a running scope's context in place of `options` runs `fn` inside that
+ * scope. Nothing is submitted then, and the result is the execution data of the scope's last call, not
+ * a finalized transaction.
  */
-type Ledger9ScopeBody<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = (
-  txCtx: Ledger9TransactionContext<C, PCK>
-) => Promise<void>;
-
-type Ledger8ScopeBody = (txCtx: AnyLedger8TransactionContext) => Promise<void>;
-
 export function withContractScopedTransaction<
   C extends Contract.Any,
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
@@ -202,15 +207,17 @@ export async function withContractScopedTransaction<C extends Contract.Any, PCK 
   options?: ScopedTransactionOptions
 ): Promise<Ledger9FinalizedCallTxData<C, PCK> | AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> {
   // The overload the caller chose types `fn` for one era; the head decides which context it is called
-  // with. A function typed for the other era is refused at its first call, which names the mismatch.
+  // with. A function typed for the other era is refused when it hands that context to a call.
   const ledger9Body = fn as Ledger9ScopeBody<C, PCK>;
   const ledger8Body = fn as Ledger8ScopeBody;
   assertValidMidnightConfig(providers.config);
-  if (Ledger8Scope.isLedger8ScopeContext(options)) {
-    return Ledger8Scope.nestLedger8Scope(ledger8Body, options);
-  }
-  if (Internal.isTransactionContext<C, PCK>(options)) {
-    return Internal.scopedTransaction(providers, ledger9Body, options);
+  switch (Internal.readScopeEra(options)) {
+    case 'v8':
+      return Ledger8Scope.nestLedger8Scope(ledger8Body, Ledger8Scope.requireLedger8Scope(options, 'withContractScopedTransaction'));
+    case 'v9':
+      return Internal.scopedTransaction(providers, ledger9Body, options);
+    case 'unrecognised':
+      throw Internal.unrecognisedScopeContext('withContractScopedTransaction');
   }
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
   switch (reading.head) {
@@ -229,6 +236,11 @@ export async function withContractScopedTransaction<C extends Contract.Any, PCK 
  *
  * @throws {EraMismatchError} with reason `'scope-era-mismatch'` when the network is not on ledger 8.
  *         Raised before `fn` runs, and before the ledger 8 runtime is loaded.
+ *
+ * @remarks
+ * A JavaScript caller that passes a running ledger 8 scope's context in place of `options` runs `fn`
+ * inside that scope. Nothing is submitted then, and the result is the execution data of the scope's
+ * last call, not a finalized transaction.
  */
 export function withLedger8ContractScopedTransaction<C extends Ledger8Contract, PCK extends Ledger8CircuitId<C>>(
   providers: Ledger8ContractProviders<C, PCK>,
@@ -242,8 +254,13 @@ export async function withLedger8ContractScopedTransaction(
   options?: ScopedTransactionOptions
 ): Promise<AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> {
   assertValidMidnightConfig(providers.config);
-  if (Ledger8Scope.isLedger8ScopeContext(options)) {
-    return Ledger8Scope.nestLedger8Scope(fn, options);
+  switch (Internal.readScopeEra(options)) {
+    case 'v8':
+      return Ledger8Scope.nestLedger8Scope(fn, Ledger8Scope.requireLedger8Scope(options, 'withLedger8ContractScopedTransaction'));
+    case 'v9':
+      throw Internal.scopeEraMismatch('withLedger8ContractScopedTransaction', 'v9');
+    case 'unrecognised':
+      throw Internal.unrecognisedScopeContext('withLedger8ContractScopedTransaction');
   }
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
   if (reading.head !== 'v8') {

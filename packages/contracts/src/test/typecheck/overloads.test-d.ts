@@ -67,6 +67,7 @@ import {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '../../governance';
+import { ScopeEra } from '../../internal/transaction';
 import {
   type AnyLedger8CallTxOptions,
   type Ledger8CallResultPrivate,
@@ -100,7 +101,12 @@ import {
 } from '../../ledger8-contract';
 import { type Ledger9SubmitCallTxProviders,submitCallTx, submitCallTxAsync } from '../../submit-call-tx';
 import type { Ledger9SubmitTxProviders } from '../../submit-tx';
-import type { Ledger8TransactionContext, Ledger9TransactionContext } from '../../transaction';
+import {
+  type Ledger8TransactionContext,
+  type Ledger9TransactionContext,
+  withContractScopedTransaction,
+  withLedger8ContractScopedTransaction
+} from '../../transaction';
 import { createCircuitCallTxInterface,type Ledger9CircuitCallTxInterface } from '../../tx-interfaces';
 import type {
   FoundDeployTxPublicData,
@@ -142,6 +148,7 @@ declare const contractAddress: ContractAddress;
 
 // Retained-era ("0.16") call-site material.
 declare const providers016: Ledger8ContractProviders<Counter016Contract, 'increment'>;
+declare const retainedScope: Ledger8TransactionContext<Counter016Contract, 'increment'>;
 declare const options016: Ledger8CallTxOptionsBase<Counter016Contract, 'increment'>;
 declare const options016WithPrivateStateId: Ledger8CallTxOptionsWithPrivateStateId<Counter016Contract, 'increment'>;
 declare const contract016: Counter016Contract;
@@ -1373,5 +1380,41 @@ describe('createCircuitCallTxInterface selects its era by the artifact, and answ
   it('takes the same argument count in both eras, so a short call is not reported in the other era', () => {
     // @ts-expect-error - the private state id is required, `undefined` included, as in the current era
     createCircuitCallTxInterface(providers016, contract016, contractAddress);
+  });
+});
+
+describe('withContractScopedTransaction picks its overload from the type of the scope function', () => {
+  // The two provider types are the same structure, so only the scope function's parameter tells the
+  // overloads apart. The ledger 9 overload is first, so existing untyped ledger 9 code keeps compiling.
+  it('gives an untyped scope function the ledger 9 context, even with ledger 8 providers', () => {
+    const scoped = withContractScopedTransaction(providers016, async (txCtx) => {
+      expectTypeOf(txCtx[ScopeEra]).toEqualTypeOf<'v9'>();
+    });
+
+    expectTypeOf(scoped).resolves.toHaveProperty('era').toEqualTypeOf<'v9'>();
+  });
+
+  it('runs the ledger 8 overload for a scope function typed with the ledger 8 context', () => {
+    expectTypeOf(
+      withContractScopedTransaction(providers016, async (_txCtx: Ledger8TransactionContext<Counter016Contract, 'increment'>) => undefined)
+    ).toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
+  });
+
+  it('infers the ledger 8 context in withLedger8ContractScopedTransaction', () => {
+    const scoped = withLedger8ContractScopedTransaction(providers016, async (txCtx) => {
+      expectTypeOf(txCtx).toEqualTypeOf<Ledger8TransactionContext<Counter016Contract, 'increment'>>();
+    });
+
+    expectTypeOf(scoped).toEqualTypeOf<Promise<Ledger8FinalizedCallTxData<Counter016Contract, 'increment'>>>();
+  });
+
+  it('answers a ledger 8 call joining a scope with its unsubmitted execution data', () => {
+    expectTypeOf(
+      submitCallTx(
+        providers016,
+        { compiledContract: contract016, contractAddress, circuitId: 'increment' },
+        retainedScope
+      )
+    ).toEqualTypeOf<Promise<Ledger8UnsubmittedCallTxData<Counter016Contract, 'increment'>>>();
   });
 });

@@ -22,6 +22,8 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';
 import { hasLedger8ContractShape } from './internal/era';
+import { ledger8ScopeOf } from './internal/ledger8-scope';
+import * as Internal from './internal/transaction';
 import type {
   Ledger8CallTxOptions,
   Ledger8CircuitCallTxInterface,
@@ -31,7 +33,7 @@ import type {
   Ledger8ContractProviders
 } from './ledger8-contract';
 import { submitCallTx } from './submit-call-tx';
-import * as Transaction from './transaction';
+import type * as Transaction from './transaction';
 import type { Ledger9FinalizedCallTxData } from './tx-model';
 import type { Ledger9CallTxOptions, Ledger9CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
 
@@ -133,8 +135,16 @@ export function createCallTxOptions<C extends Contract.Any, PCK extends Contract
 }
 
 const isLedger8ContextOf = <C extends Ledger8Contract>(
-  u: unknown
-): u is Transaction.Ledger8TransactionContext<C, Ledger8CircuitId<C>> => Transaction.isLedger8TransactionContext(u);
+  u: unknown,
+  circuitId: string
+): u is Transaction.Ledger8TransactionContext<C, Ledger8CircuitId<C>> =>
+  Internal.readScopeEra(u) !== undefined && ledger8ScopeOf(circuitId, u, 'callTx') !== undefined;
+
+const isLedger9ContextOf = <C extends Contract.Any>(
+  u: unknown,
+  circuitId: string
+): u is Transaction.Ledger9TransactionContext<C, Contract.ProvableCircuitId<C>> =>
+  Internal.readScopeEra(u) !== undefined && Internal.ledger9ScopeOf(u, circuitId, 'callTx') !== undefined;
 
 /**
  * Creates a circuit call transaction interface for a RETAINED-ERA contract.
@@ -162,8 +172,8 @@ export const createLedger8CircuitCallTxInterface = <C extends Ledger8Contract>(
   return circuitIds.reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (...args: unknown[]) => {
-        const txCtx = args.length > 0 && isLedger8ContextOf<C>(args[0]) ? args[0] : undefined;
+      [circuitId]: async (...args: unknown[]) => {
+        const txCtx = args.length > 0 && isLedger8ContextOf<C>(args[0], circuitId) ? args[0] : undefined;
         const callOptions = createLedger8CallTxOptions(
           compiledContract,
           circuitId,
@@ -217,8 +227,8 @@ export function createCircuitCallTxInterface<C extends Contract.Any>(
   return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (...args: unknown[]) => {
-        const txCtx = args.length > 0 && Transaction.isLedger9TransactionContext(args[0]) ? args[0] : undefined;
+      [circuitId]: async (...args: unknown[]) => {
+        const txCtx = args.length > 0 && isLedger9ContextOf<C>(args[0], circuitId) ? args[0] : undefined;
         const callArgs = txCtx ? args.slice(1) : args;
         const callOptions = createCallTxOptions<C, Contract.ProvableCircuitId<C>>(
           compiledContract,

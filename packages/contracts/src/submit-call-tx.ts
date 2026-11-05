@@ -78,9 +78,6 @@ const ledger8CallFlow = <C extends Contract.Any, PCK extends Contract.ProvableCi
   options: AnyLedger8CallTxOptions,
   transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
 ): Promise<AnyLedger8FinalizedCallTxData | AnyLedger8UnsubmittedCallTxData> => {
-  // A ledger 9 scope merges live ledger 9 transactions, and a ledger 8 call is composed and submitted
-  // on its own after the fork, so there is nothing for it to merge into. REFUSED rather than ignored:
-  // ignoring it submitted a transaction the caller believed had been batched with the rest of its scope.
   const scope = ledger8ScopeOf(options.circuitId, transactionContext, 'submitCallTx');
   return scope === undefined
     ? submitLedger8CallTx(providers, toLedger8CallEntryOptions(options))
@@ -92,10 +89,7 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
   options: Ledger9CallTxOptions<C, PCK>,
   transactionContext: Ledger9TransactionContext<C, PCK> | AnyLedger8TransactionContext | undefined
 ): Promise<Ledger9FinalizedCallTxData<C, PCK> | Ledger9CallResult<C, PCK>> => {
-  if (Transaction.scopeContextEra(transactionContext) === 'v8') {
-    throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
-  }
-  const ledger9Context = Transaction.isLedger9ScopeContext<C, PCK>(transactionContext) ? transactionContext : undefined;
+  const ledger9Context = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'submitCallTx');
   assertIsContractAddress(options.contractAddress);
   const declaredCircuitId = ContractExecutable.make(options.compiledContract)
     .getProvableCircuitIds()

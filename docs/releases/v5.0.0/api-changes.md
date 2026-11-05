@@ -614,8 +614,9 @@ export type Ledger8CallOptionsWithInitialStates<C extends Ledger8Contract, PCK e
 `withContractScopedTransaction` reads the network's era once and runs the scope of that era. Before
 the fork its function receives a `Ledger8TransactionContext`: type the function's parameter as one, or
 call `withLedger8ContractScopedTransaction`. A ledger 8 call joins the scope through
-`submitCallTx(providers, options, txCtx)`, `createUnprovenCallTx(providers, options, txCtx)`,
-`createLedger8UnprovenCallTx(providers, options, txCtx)` or `callTx.<circuit>(txCtx, ...args)`. The
+`submitCallTx(providers, options, txCtx)` or `callTx.<circuit>(txCtx, ...args)`.
+`createUnprovenCallTx(providers, options, txCtx)` and `createLedger8UnprovenCallTx(providers, options, txCtx)`
+build against the scope's states without adding the call to it. The
 era-bound scope functions refuse a network of the other era (`EraMismatchError`, reason
 `'scope-era-mismatch'`).
 

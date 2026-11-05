@@ -456,6 +456,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
  *         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
  *         ledger 8, before anything else.
+ * @throws EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
  * @throws InvalidArgumentError If `transactionContext` was not made by `withContractScopedTransaction`.
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
@@ -476,10 +477,8 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   options: Ledger9CallTxOptions<C, PCK>,
   transactionContext?: Ledger9TransactionContext<C, PCK>
 ): Promise<Ledger9UnsubmittedCallTxData<C, PCK>> {
-  if (Transaction.scopeContextEra(transactionContext) === 'v8') {
-    throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
-  }
   await requireLedger9Contract(options.compiledContract, providers.zkConfigProvider, 'createLedger9UnprovenCallTx');
+  const scope = Transaction.ledger9ScopeOf<C, PCK>(transactionContext, options.circuitId, 'createLedger9UnprovenCallTx');
   assertValidMidnightConfig(providers.config);
   assertIsContractAddress(options.contractAddress);
   const declaredCircuitId = ContractExecutable.make(options.compiledContract)
@@ -500,7 +499,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
   // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
   // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { states, blockHash } = await getContractStates(providers, options, transactionContext);
+    const { states, blockHash } = await getContractStates(providers, options, scope);
     return runLedger9Call(
       providers.zkConfigProvider,
       createCallRequest(
@@ -515,7 +514,7 @@ export async function createLedger9UnprovenCallTx<C extends Contract.Any, PCK ex
     );
   }
 
-  const { states, blockHash } = await getContractPublicStates(providers, options, transactionContext);
+  const { states, blockHash } = await getContractPublicStates(providers, options, scope);
   return runLedger9Call(
     providers.zkConfigProvider,
     createCallRequest(
@@ -541,6 +540,9 @@ export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK
  * state read from the private state provider, then creates an unproven, unsubmitted call
  * transaction. Proves, submits and stores nothing.
  *
+ * Given a ledger 8 scope, the call runs against the states the scope's last call ended on, and is
+ * not added to the scope.
+ *
  * The transaction is composed for the network's ledger: before the fork it is a ledger 8
  * transaction, after it a ledger 9 one that keeps the contract's ledger 8 verifier keys. Read which from
  * `result.private.unprovenTx.era`, and pass the transaction to `submitTx` or `submitTxAsync`.
@@ -550,11 +552,17 @@ export async function createLedger8UnprovenCallTx<C extends Ledger8Contract, PCK
  *        given, is pointed at `options.contractAddress`; its state is read only when
  *        `options.privateStateId` is given.
  * @param options Configuration.
+ * @param transactionContext Optional ledger 8 scope to build the call in.
  *
  * @returns All data produced by the circuit call and the unproven transaction.
  *
  * @throws EraMismatchError with reason `'contract-era-unsupported'` for a contract whose artifacts
  *         do not declare ledger 8, before anything else.
+ * @throws EraMismatchError with reason `'ledger8-call-in-scope'` for a ledger 9 scope.
+ * @throws InvalidArgumentError For a `transactionContext` that is not a ledger 8 scope of this copy
+ *         of the package.
+ * @throws ScopedTransactionIdentityMismatchError If the scope holds a call of another contract or
+ *         private state.
  * @throws InvalidArgumentError If the contract address is malformed, the artifact declares no such
  *         circuit, or `providers.config` is invalid.
  * @throws ConfigurationError If `providers.config` is missing.
@@ -734,13 +742,10 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   );
   switch (request.era) {
     case 'v9':
-      if (Transaction.scopeContextEra(transactionContext) === 'v8') {
-        throw new EraMismatchError('ledger9-artifact-on-ledger8-network');
-      }
       return createLedger9UnprovenCallTx(
         providers,
         request.options,
-        Transaction.isLedger9ScopeContext<C, PCK>(transactionContext) ? transactionContext : undefined
+        Transaction.ledger9ScopeOf<C, PCK>(transactionContext, request.options.circuitId, 'createUnprovenCallTx')
       );
     case 'v8': {
       const scope = ledger8ScopeOf(request.options.circuitId, transactionContext, 'createUnprovenCallTx');

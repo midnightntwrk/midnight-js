@@ -51,8 +51,9 @@ Its constructor is `TxFailedError(operation, record, details)`:
   constructor requires the ones each operation always has: `contractAddress`
   and `signingKey` for a deploy or a replacement, `contractAddress` and
   `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
-  call never sets `contractAddress`, because a scope can call several
-  contracts; `circuitId` is then a list.
+  call never sets `contractAddress`; a ledger 9 scope's `circuitId` is a list of
+  every circuit it merged. A ledger 8 scope sets `contractAddress`, and its
+  `circuitId` names every merged circuit, joined by `', '`.
 
 ### Why the shared code sits on the class
 

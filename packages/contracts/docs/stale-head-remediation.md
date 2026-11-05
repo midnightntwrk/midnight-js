@@ -10,11 +10,12 @@ the fork window the head can move inside that gap, and when it does the node
 rejects a transaction that was correct when it was built.
 
 This document records how that rejection is told apart from an ordinary one,
-what a caller is told to do about it, and why a contract-scoped transaction is
-refused outright on a pre-fork head instead of being narrowed.
+what a caller is told to do about it, and which scope a contract-scoped
+transaction runs on each side of the fork.
 
-The code is `packages/contracts/src/internal/stale-head.ts` and the scope half
-of `packages/contracts/src/internal/transaction.ts`. How the head era is read in
+The code is `packages/contracts/src/internal/stale-head.ts`, the scope half of
+`packages/contracts/src/internal/transaction.ts`, and
+`packages/contracts/src/internal/ledger8-scope.ts`. How the head era is read in
 the first place is [EraDispatch](./era-dispatch.md).
 
 ## Why a submit rejection is diagnosed rather than propagated
@@ -158,10 +159,12 @@ This is not a call tree: `composeCallTx` still composes exactly one call per
 ledger 8 transaction (see `packages/protocol/docs/era-boundary.md`). A scope
 merges whole transactions, which the ledger 8 ledger accepts.
 
-Only the first call of a scope reads the head, the contract state and the stored
-private state. Every later call runs on the runtime the scope acquired and on the
-contract state and private state the call before it ended on. Three limits hold
-in both eras:
+The scope reads the head and acquires the ledger 8 runtime once, before its
+function runs. The first call added to the scope reads the contract state and the
+stored private state, and fixes the contract and private state the scope runs
+against. Every later call runs on the contract state and private state the call
+before it ended on. `createUnprovenCallTx` builds against the same states and adds
+nothing to the scope, so it fixes nothing either. Three limits hold in both eras:
 
 - The contract's balance stays as the first call read it.
 - The ledger does not keep the order of merged calls. A circuit whose transcript
@@ -195,19 +198,22 @@ current toolchain's pipeline, which keeps a cache of decoded ledger 9 states. A
 retained-era call is composed by the retained pipeline and submitted on its own,
 so a ledger 9 scope has no way to run it against the scope's states.
 
-This is reachable only from JavaScript, because the retained-era `submitCallTx`
-overload takes only a ledger 8 scope. It is still checked, because the
-alternative is what it replaces: the retained-era path accepted the scope
+A typed caller reaches it with a scope function typed for ledger 8 that runs
+after the fork. It is checked on every path a call can take — `submitCallTx`,
+`createUnprovenCallTx` and `callTx.<circuit>` — because the alternative is what it
+replaces: the retained-era path accepted the scope
 context and quietly ran outside it, returning a transaction the caller believed
 had been batched with the rest. The reverse — a ledger 9 contract called with a
 ledger 8 scope — is refused with reason `'ledger9-artifact-on-ledger8-network'`,
 because that contract cannot run before the fork at all.
 
-The three outcomes are kept apart on purpose:
+The outcomes are kept apart on purpose:
 
 - **No third argument** is the normal case.
 - **A ledger 8 scope** is joined.
 - **A ledger 9 scope** is the mixed-era refusal, `EraMismatchError` with reason `'ledger8-call-in-scope'`.
+- **A scope context of an unknown era, or a ledger 8 one made by another copy of
+  the package**, gets an `InvalidArgumentError`: the era it names cannot be trusted.
 - **Anything else** — `null`, or a stray value a JavaScript caller passed by
   mistake — is a malformed argument and gets an `InvalidArgumentError`
   (`MIDNIGHT_JS_G_INVALID_ARGUMENT`, category `USAGE`). Reporting it as

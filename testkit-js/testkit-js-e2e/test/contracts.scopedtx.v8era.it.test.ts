@@ -25,6 +25,7 @@ import {
   withLedger8ContractScopedTransaction
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
@@ -215,7 +216,7 @@ describe('Contract-scoped transactions on a pre-fork (ledger v8) network', () =>
       }).catch((e: unknown) => e);
 
       // Assert
-      expect(error).toBeInstanceOf(Error);
+      expect(error).toBeInstanceOf(ContractExecutionError);
       expect(await tickers()).toEqual(before);
       expect(await storedPrivateCounter()).toBe(privateCounter);
     },

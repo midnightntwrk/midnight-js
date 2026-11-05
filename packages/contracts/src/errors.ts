@@ -163,7 +163,7 @@ export type EraMismatchReason =
   | 'ledger8-contract-state-unsupported'
   /** A contract-scoped transaction function bound to one ledger, run on a network of another ledger. `detail` carries the function and the network version. */
   | 'scope-era-mismatch'
-  /** A call against a ledger 8 (pre-fork) contract given a contract-scoped transaction to join. `detail` carries the circuit id. */
+  /** A call against a ledger 8 (pre-fork) contract given a ledger 9 contract-scoped transaction to join. `detail` carries the circuit id. */
   | 'ledger8-call-in-scope'
   /** A contract whose artifacts declare an era the low-level function does not serve. `detail` carries the function name and that era. */
   | 'contract-era-unsupported'
@@ -246,7 +246,7 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'older indexer.',
   'scope-era-mismatch':
     'This contract-scoped transaction function serves one ledger era, and the network is on another, ' +
-    'both named below. withLedger8ContractScopedTransaction runs only before the hard fork and ' +
+    'the function and the network era are named below. withLedger8ContractScopedTransaction runs only before the hard fork and ' +
     'withLedger9ContractScopedTransaction only after it. Use withContractScopedTransaction, which ' +
     'runs the scope of the era the network is on.',
   'ledger8-call-in-scope':
@@ -280,7 +280,7 @@ export interface EraMismatchOptions extends ErrorOptions {
   readonly detail?: string;
   /** The contract the refused value belongs to. Set for `'ledger8-artifact-on-ledger9-contract'` and `'ledger8-contract-state-unsupported'`. */
   readonly contractAddress?: ContractAddress;
-  /** The circuit the refused call names. Set for `'ledger8-call-in-scope'`. */
+  /** The circuit the refused call names. Set for `'ledger8-call-in-scope'`, and for `'ledger9-artifact-on-ledger8-network'` raised for a call given a ledger 8 scope. */
   readonly circuitId?: string;
 }
 
@@ -301,7 +301,7 @@ export class EraMismatchError extends MidnightJsError {
   declare readonly detail?: string;
   /** The contract the refused value belongs to, for the reasons that have one. */
   declare readonly contractAddress?: ContractAddress;
-  /** The circuit the refused call names, for `'ledger8-call-in-scope'`. */
+  /** The circuit the refused call names, for the reasons {@link EraMismatchOptions.circuitId} lists. */
   declare readonly circuitId?: string;
 
   /**

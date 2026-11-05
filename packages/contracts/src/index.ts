@@ -48,8 +48,8 @@ export { DISPATCH_BREADCRUMB_MESSAGE } from './internal/breadcrumbs';
 // EARLIER era: reported as undiagnosable rather than as a fork, because neither case establishes
 // one, and carrying a registered code of its own so a retry handler branching on `hasErrorCode`
 // behaves the same whichever failure came first. The scoped-transaction era rules are reasons of
-// `EraMismatchError` -- a scope is refused outright on a head era that composes only one call per
-// transaction, and a retained-toolchain call cannot join a scope at all.
+// `EraMismatchError` -- a scope function bound to one era refuses a head of the other, and a
+// retained-toolchain call cannot join a ledger 9 scope.
 //
 // The three `Incomplete*PrivateStateConfig` refusals are one family stating one client-side rule
 // per entry point -- call, deploy, find -- and they stay together on the flat surface; the deploy

@@ -18,7 +18,7 @@ import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-proto
 import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LedgerTransaction, type LoggerProvider, type PrivateStateId, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
 
-import { ScopedTransactionIdentityMismatchError } from '../errors';
+import { IncompleteCallTxPrivateStateConfig, ScopedTransactionIdentityMismatchError } from '../errors';
 import type { AnyLedger8FinalizedCallTxData, AnyLedger8UnsubmittedCallTxData } from '../ledger8-contract';
 import type * as Transaction from '../transaction';
 import type { HeadEraReading } from './era';
@@ -35,7 +35,25 @@ import {
   type Ledger8ScopeStates,
   submitLedger8Tx
 } from './ledger8-entry';
-import { assertScopeAdmitsLedger8Call, logScopeFailure, type PrivateStateTarget, ScopeEra, Submit, TypeId } from './transaction';
+import {
+  assertScopeAdmitsLedger8Call,
+  foreignLedger8ScopeContext,
+  logScopeFailure,
+  readScopeEra,
+  type ScopeEntryPoint,
+  ScopeEra,
+  Submit,
+  TypeId
+} from './transaction';
+
+type PrivateStateProvider = NonNullable<Ledger8CallEntryProviders['privateStateProvider']>;
+
+/** Where the scope stores the private state its last call ended on. */
+interface PrivateStateWrite {
+  readonly provider: PrivateStateProvider;
+  readonly contractAddress: string;
+  readonly privateStateId: PrivateStateId;
+}
 
 const mergeUnproven = async (current: UnprovenTx | undefined, next: UnprovenTx): Promise<UnprovenTx> => {
   if (current === undefined) {
@@ -73,7 +91,7 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
     | {
         readonly callTxData: AnyLedger8UnsubmittedCallTxData;
         readonly circuitId: string;
-        readonly privateStateTarget?: PrivateStateTarget;
+        readonly privateStateWrite?: PrivateStateWrite;
       }
     | undefined;
 
@@ -90,7 +108,7 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
   getLastUnsubmittedCallTxDataToTransact(): [AnyLedger8UnsubmittedCallTxData, PrivateStateId?] | undefined {
     return this.#lastCall === undefined
       ? undefined
-      : [this.#lastCall.callTxData, this.#lastCall.privateStateTarget?.privateStateId];
+      : [this.#lastCall.callTxData, this.#lastCall.privateStateWrite?.privateStateId];
   }
 
   statesFor(identity: Ledger8CallIdentity): Ledger8ScopeStates | undefined {
@@ -107,18 +125,21 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
     return this.#states.states;
   }
 
-  keepStates(identity: Ledger8CallIdentity, states: Ledger8ScopeStates): void {
-    this.#states = { identity, states };
-  }
-
-  /** Adds a built call to the scope's transaction and advances the scope's states past it. */
-  async merge(circuitId: string, callTxData: AnyLedger8UnsubmittedCallTxData, privateStateTarget?: PrivateStateTarget): Promise<void> {
+  /**
+   * Adds a built call to the scope's transaction and advances the scope's states past it. The first
+   * call added fixes the contract and private state the scope runs against.
+   */
+  async merge(
+    identity: Ledger8CallIdentity,
+    statesBefore: Ledger8ScopeStates,
+    circuitId: string,
+    callTxData: AnyLedger8UnsubmittedCallTxData,
+    privateStateWrite?: PrivateStateWrite
+  ): Promise<void> {
     this.#merged = await mergeUnproven(this.#merged, callTxData.private.unprovenTx);
     this.#circuitIds.push(circuitId);
-    this.#lastCall = { callTxData, circuitId, privateStateTarget };
-    if (this.#states !== undefined) {
-      this.#states = { identity: this.#states.identity, states: statesAfter(this.#states.states, callTxData) };
-    }
+    this.#lastCall = { callTxData, circuitId, privateStateWrite };
+    this.#states = { identity, states: statesAfter(statesBefore, callTxData) };
   }
 
   async [Submit](): Promise<AnyLedger8FinalizedCallTxData> {
@@ -139,11 +160,9 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
     const record = await this.providers.publicDataProvider.watchForTxData(txId);
     assertLedger8RecordEra(record, head, circuitIds, 'watchForTxData');
     assertLedger8TxSucceeded(record, circuitIds, identity.contractAddress);
-    const target = last.privateStateTarget;
-    if (target !== undefined && this.providers.privateStateProvider !== undefined) {
-      await this.providers.privateStateProvider
-        .forContract(target.contractAddress)
-        .set(target.privateStateId, last.callTxData.private.nextPrivateState);
+    const write = last.privateStateWrite;
+    if (write !== undefined) {
+      await write.provider.forContract(write.contractAddress).set(write.privateStateId, last.callTxData.private.nextPrivateState);
     }
     return {
       era: 'v8',
@@ -156,26 +175,27 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
 }
 
 /**
- * Whether `u` is a scope context of the ledger 8 era.
+ * Whether `u` is a scope context of the ledger 8 era, read from its brand.
  *
  * @internal
  */
-export const isLedger8ScopeContext = (u: unknown): u is Ledger8TransactionContextImpl =>
-  u instanceof Ledger8TransactionContextImpl;
+export const isLedger8ScopeContext = (u: unknown): u is Transaction.AnyLedger8TransactionContext =>
+  readScopeEra(u) === 'v8';
 
 /**
  * The ledger 8 scope a ledger 8 call was handed, or `undefined` when it was handed none.
  *
  * @internal
  * @throws EraMismatchError with reason `'ledger8-call-in-scope'` if it was handed a ledger 9 scope.
- * @throws InvalidArgumentError if it was handed a third argument that is not a scope.
+ * @throws InvalidArgumentError if it was handed a third argument that is not a scope, a scope of an
+ * unknown era, or a ledger 8 scope of another copy of this package.
  */
 export const ledger8ScopeOf = (
   circuitId: string,
   transactionContext: unknown,
-  entryPoint: 'submitCallTx' | 'createUnprovenCallTx' | 'createLedger8UnprovenCallTx'
+  entryPoint: ScopeEntryPoint
 ): Ledger8TransactionContextImpl | undefined => {
-  if (isLedger8ScopeContext(transactionContext)) {
+  if (transactionContext instanceof Ledger8TransactionContextImpl) {
     return transactionContext;
   }
   assertScopeAdmitsLedger8Call(circuitId, transactionContext, entryPoint);
@@ -187,26 +207,41 @@ export const ledger8ScopeOf = (
  * Nothing is submitted: the scope submits once its body returns.
  *
  * @internal
+ * @throws IncompleteCallTxPrivateStateConfig if the call names a private state and the scope's
+ * providers cannot store one, before the call is built.
  */
 export const joinLedger8Scope = async (
   providers: Ledger8CallEntryProviders,
   options: Ledger8CallEntryOptions,
   scope: Ledger8TransactionContextImpl
 ): Promise<AnyLedger8UnsubmittedCallTxData> => {
-  const { data } = await buildLedger8CallTx(providers, options, scope);
-  const privateStateTarget =
-    options.privateStateId === undefined
-      ? undefined
-      : { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
-  await scope.merge(options.circuitId, data, privateStateTarget);
+  let privateStateWrite: PrivateStateWrite | undefined;
+  if (options.privateStateId !== undefined) {
+    const provider = scope.providers.privateStateProvider;
+    if (provider === undefined) {
+      throw new IncompleteCallTxPrivateStateConfig();
+    }
+    privateStateWrite = { provider, contractAddress: options.contractAddress, privateStateId: options.privateStateId };
+  }
+  const { data, states } = await buildLedger8CallTx(providers, options, scope);
+  await scope.merge(
+    { contractAddress: options.contractAddress, privateStateId: options.privateStateId },
+    states,
+    options.circuitId,
+    data,
+    privateStateWrite
+  );
   return data;
 };
 
 /**
  * Runs `fn` inside `outer`, a scope already running. The outer scope submits.
  *
+ * Reachable from JavaScript only, through the options argument of the scope functions.
+ *
  * @internal
- * @returns The execution data of the last call made in the scope so far.
+ * @returns The execution data of the last call made in the scope so far, which is a call of the
+ * outer scope when `fn` made none — not a finalized transaction, whatever the caller's types say.
  */
 export const nestLedger8Scope = async (
   fn: (txCtx: Transaction.AnyLedger8TransactionContext) => Promise<void>,
@@ -218,6 +253,19 @@ export const nestLedger8Scope = async (
     throw new InvalidArgumentError('No calls were submitted.');
   }
   return last;
+};
+
+/**
+ * `u` as a ledger 8 scope of this copy of the package. Called on a value whose brand names ledger 8.
+ *
+ * @internal
+ * @throws InvalidArgumentError for a ledger 8 scope of another copy of this package.
+ */
+export const requireLedger8Scope = (u: unknown, entryPoint: ScopeEntryPoint): Ledger8TransactionContextImpl => {
+  if (u instanceof Ledger8TransactionContextImpl) {
+    return u;
+  }
+  throw foreignLedger8ScopeContext(entryPoint);
 };
 
 /**

@@ -725,6 +725,8 @@ const toLedger8CallTxData = (
 export interface Ledger8BuiltCall {
   readonly data: AnyLedger8UnsubmittedCallTxData;
   readonly head: LedgerEra;
+  /** The contract state and private state the call ran against. */
+  readonly states: Ledger8ScopeStates;
 }
 
 /** The contract and private state a call in a scope is made against. */
@@ -746,12 +748,10 @@ export interface Ledger8ScopeStates {
 export interface Ledger8CallScope {
   readonly runtime: Ledger8Runtime;
   /**
-   * @returns The states to run against, or `undefined` before the first call of the scope.
+   * @returns The states to run against, or `undefined` before the scope holds a call.
    * @throws ScopedTransactionIdentityMismatchError if the scope holds states of another contract or private state.
    */
   statesFor(identity: Ledger8CallIdentity): Ledger8ScopeStates | undefined;
-  /** Keeps the states the first call of the scope read. */
-  keepStates(identity: Ledger8CallIdentity, states: Ledger8ScopeStates): void;
 }
 
 /**
@@ -767,13 +767,15 @@ export interface Ledger8CallScope {
  * The pipeline is handed a RESOLVER, never a bare encryption key, so shielded outputs are encrypted
  * per recipient and an unresolvable recipient is refused rather than mis-encrypted.
  *
- * In a scope, only the first call reads the head, the contract state and the stored private state;
- * every later call runs on the runtime the scope acquired and the states the call before it ended on.
+ * In a scope, the call runs on the runtime the scope acquired. It reads the contract state and the
+ * stored private state only while the scope holds no call; after that it runs on the states the
+ * scope's last call ended on. Nothing is stored in the scope here.
  *
  * @param providers The provider set.
  * @param options The call, in the shape this layer reads.
- * @param scope The scope the call joins, if any.
- * @returns The execution data and the head era the transaction was composed for.
+ * @param scope The scope the call is built in, if any.
+ * @returns The execution data, the head era the transaction was composed for, and the states the
+ * call ran against.
  * @throws InvalidArgumentError if the contract address is malformed, or if the artifact declares no
  * such circuit.
  * @throws IncompleteCallTxPrivateStateConfig if a `privateStateId` is named with no private-state
@@ -861,9 +863,6 @@ export const buildLedger8CallTx = async (
       options.contractAddress,
       providers.loggerProvider
     ));
-  if (scope !== undefined && scopeStates === undefined) {
-    scope.keepStates(identity, { snapshot, privateState });
-  }
 
   const call = await composeLedger8Call({
     era: resolved.era,
@@ -886,7 +885,7 @@ export const buildLedger8CallTx = async (
     )
   }, snapshot);
 
-  return { data: toLedger8CallTxData(call), head: resolved.head };
+  return { data: toLedger8CallTxData(call), head: resolved.head, states: { snapshot, privateState } };
 };
 
 /**
