@@ -52,12 +52,22 @@ jobs:
               - '.github/scripts/**'
               - 'yarn.lock'
               - 'package.json'
+              - '**/turbo.json'
+              - 'tsconfig.base.json'
+              - 'build-tools/**'
+              - 'scripts/**'
+              - '.nvmrc'
+              - '.yarnrc.yml'
+              - 'eslint.config.mjs'
+              - '.envrc'
+              - 'yarn.config.cjs'
             midnight-js:
               - 'packages/**'
               # Subjects of the doc gates in packages/*/src/test: without these
               # a doc-only commit skips the job that enforces them entirely.
               - 'TROUBLESHOOTING.md'
               - 'docs/releases/v5.0.0/migration-guide.md'
+              - 'llms.txt'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
@@ -95,7 +105,7 @@ jobs:
   # The fork-crossing gate: blocking, and expected green -- a red shard is a
   # regression to investigate, never a known state to wave through. The path
   # filter below also means the lane is SKIPPED, not passing, on a range that
-  # touches neither `packages/**` nor `consumer-e2e/**`.
+  # touches none of `packages/**`, `consumer-e2e/**` or the `shared` paths.
   hardfork:
     needs: ci
     name: Hard fork
@@ -180,6 +190,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -219,7 +230,7 @@ jobs:
       - name: Publish packages
         if: steps.changes.outputs.midnight-js == 'true'
         run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./packages/*" --concurrency=1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -253,7 +264,7 @@ jobs:
       - name: Publish testkit-js packages
         if: steps.changes.outputs.testkit-js == 'true'
         run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./testkit-js/*" --concurrency=1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

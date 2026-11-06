@@ -25,9 +25,9 @@ on:
         type: string
       yarn_filter:
         type: string
-        description: Yarn workspace filter applied to `yarn build` (e.g., `--filter="./testkit-js/*"`). Unit tests use a hardcoded filter.
+        description: Turbo --filter pattern applied to `yarn build` (e.g., `./testkit-js/*`). Unit tests use a hardcoded filter.
         required: false
-        default: '--filter="./testkit-js/*"'
+        default: './testkit-js/*'
       yarn_lint_paths:
         type: string
         description: Optional paths passed to `yarn lint` (e.g., ./packages).
@@ -60,58 +60,47 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
-      - name: Install direnv
-        uses: ./.github/actions/install-direnv
-
-      - name: Load environment from .envrc
-        env:
-          TESTKIT_DOCKER_ENV: ${{ inputs.testkit_docker_env }}
+      - name: Check workflow inputs
         run: |
-          direnv allow .
-          direnv export gha >> "$GITHUB_ENV"
-
-      - name: Log in to GitHub Container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
-        with:
-          registry: 'https://ghcr.io'
-          username: MidnightCI
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
-        with:
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
+          case "$WORKSPACE_FILTER" in
+            -*|*\"*|*\'*)
+              echo "::error::yarn_filter must be a bare turbo pattern such as ./packages/*, got: $WORKSPACE_FILTER"
+              exit 1
+              ;;
+          esac
+          if [ -z "$LINT_PATHS" ]; then
+            echo "::error::yarn_lint_paths is empty, which would lint the whole repository"
+            exit 1
+          fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
         with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-testkit-${{ runner.os }}-
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          docker-login: 'true'
+          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-testkit'
+          testkit-docker-env: ${{ inputs.testkit_docker_env }}
 
       - name: Install dependencies
         run: |
           yarn install --immutable
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+        run: |
+          read -ra paths <<< "$LINT_PATHS"
+          yarn lint -- "${paths[@]}"
+        env:
+          LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       # The `packages/*` half runs in the Midnight.js leg (ci-base.yml); this covers
       # the testkit workspaces, whose test files are outside tsconfig.build.json for
@@ -121,7 +110,7 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
+          yarn test --filter="./testkit-js/*"
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
