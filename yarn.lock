@@ -2088,7 +2088,7 @@ __metadata:
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.1.0"
     graphql: "npm:^17.0.1"
-    graphql-ws: "npm:^6.0.8"
+    graphql-ws: "npm:^6.4.1"
     isomorphic-ws: "npm:^5.0.0"
     rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
@@ -7937,13 +7937,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql-ws@npm:^6.0.8":
-  version: 6.0.8
-  resolution: "graphql-ws@npm:6.0.8"
+"graphql-ws@npm:^6.4.1":
+  version: 6.4.1
+  resolution: "graphql-ws@npm:6.4.1"
   peerDependencies:
     "@fastify/websocket": ^10 || ^11
-    crossws: ~0.3
-    graphql: ^15.10.1 || ^16
+    crossws: ~0.3 || ~0.4
+    graphql: ^15.10.1 || ^16 || ^17
     ws: ^8
   peerDependenciesMeta:
     "@fastify/websocket":
@@ -7952,7 +7952,7 @@ __metadata:
       optional: true
     ws:
       optional: true
-  checksum: 10/503d581c7dab4b9a884dad844fa9642a896803161aa1f1c8d3f12619e4e428f43cb39fe06a198c30bb685a521689d525b2870539c07bd68bb4bf704d039bdd9a
+  checksum: 10/bb5267e30b99e9c2db2fd9fd3cb6e23f651d3c9bd6a56d9fa9988315fd0de1a252bf434e16fd5e687f808ec065a7431f8057246767c0b4a318a88d731a4046a8
   languageName: node
   linkType: hard
 
