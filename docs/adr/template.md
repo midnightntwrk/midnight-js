@@ -1,7 +1,7 @@
 # NNNN. <short title in imperative mood>
 
 - Status: Accepted
-- Date: YYYY-MM-DD
+- Date: YYYY-MM-DD (the day the decision was accepted; in-place edits do not change it)
 - Related: <optional: links to other ADRs, e.g. [ADR 0017](./0017-error-codes-are-the-contract.md)>
 
 ## Context

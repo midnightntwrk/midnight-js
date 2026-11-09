@@ -10,7 +10,7 @@ envelope; `protocolVersion` is the era of the block that dated the read. A value
 network — a contract state, ledger parameters, a zswap chain state — is a `SerializedState`: the bytes
 and their `era`, the same shape in both eras, decoded by the caller (ADR 0020). A
 finalized-transaction record is the `FinalizedTxRead` union: both of its variants carry a
-`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0019). A consumer
+`FinalizedTx` handle of the record's era, `record.tx.era === record.era` (ADR 0024). A consumer
 narrows it with `switch (record.era)` closed by `assertNever`. A `contracts` pipeline result also carries `era`, naming the pipeline that produced it;
 its `public.era` names the ledger that recorded the transaction.
 
@@ -110,7 +110,7 @@ the same way, and one does not classify it at all:
 ### Decoders that are correct because the era comes from the request
 
 The provider methods carry transaction handles, and each handle carries its era, so a decoder at
-a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0019).
+a boundary is chosen from the era of the request rather than inferred from the bytes (ADR 0024).
 
 - `packages/indexer-public-data-provider/src/codec.ts` — `parseHexTransaction(era, …)`, chosen by
   the record's own era

@@ -75,8 +75,10 @@ itself and gets no per-handle check for free.
 `assertProvidersSupportEra(era, providers)` (`packages/types/src/era-support.ts`) reads the three
 declarations in pipeline order and throws `ProviderEraUnsupportedError`
 (`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) naming the first method that does not list the era.
-`packages/contracts` calls it before the first provider call: in `acquireLedger8Runtime`, the
-single entry for every retained-era operation, and in the submit paths of `submit-tx.ts`.
+`packages/contracts` calls it before the first provider call: in `admitLedger8Runtime`, shared by
+`acquireLedger8Runtime` and `acquireLedger8RuntimeForReading`, and in the submit paths of
+`submit-tx.ts`. The builders that take initial states or verifier keys read nothing from the
+network and skip admission; `submitTx` checks their transaction.
 
 The era checked is the one the transaction will carry. On the retained pipeline that is the
 network head's era, not the artifact's: a keep-state call runs a v8 artifact against a post-fork

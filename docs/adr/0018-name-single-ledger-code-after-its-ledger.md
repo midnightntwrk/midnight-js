@@ -40,7 +40,10 @@ era?
    satisfies `Contract.Any`): `FoundContract<C>`, `DeployedContract<C>`, `FinalizedCallTxData<C, PCK>`,
    `SubmitTxProviders<C, PCK>`, `ContractProviders<C, PCK>`. Without a contract parameter, it is the
    union of every era: `FinalizedMaintenanceTxData`, `FoundDeployTxPublicData`, `FinalizedTxRead`.
-   These aliases live in `packages/contracts/src/era-aliases.ts`. A new ledger adds one branch to each.
+   The conditional aliases and `FinalizedMaintenanceTxData` live in
+   `packages/contracts/src/era-aliases.ts`, `FoundDeployTxPublicData` in
+   `packages/contracts/src/tx-model.ts` and `FinalizedTxRead` in `packages/types/src/versioned.ts`.
+   A new ledger adds one branch to each.
 4. **`Any` means any contract and any circuit**, never "any era" by itself. `AnyContract` is the
    constraint `Ledger8Contract | Ledger9Contract`. A call of any contract in either era is
    `AnyFinalizedCallTxData` / `AnySubmittedCallTx`: a weaker type whose `result` and
@@ -55,7 +58,7 @@ era?
    `./v9/compact-js`, `./v9/compact-js/effect`, `./v9/compact-js/effect/Contract` and
    `./v9/onchain-runtime`. A new ledger adds `./v10` and `./v10/*`. There is no unnamed subpath that
    means "the current era". The `midnight-js` barrel publishes the ledger 9 runtime names under
-   `./protocol/v9` and the namespace `ledger9Protocol`. `./compact-js/v8/effect` keeps its path.
+   `./protocol/v9` and the namespace `ledger9Protocol`. `protocol` keeps `./compact-js/v8/effect`.
 7. **Era-generic code may say "current" and "retained"** only when its type follows the era table
    (`CurrentLedgerEra`, `RetainedLedgerEra`, `CURRENT_LEDGER_ERA`, `RETAINED_LEDGER_ERAS`), so it stays
    true after the next fork. The README glossary defines both terms.
@@ -64,7 +67,8 @@ era?
    as `'ledger8-deploy-on-ledger9-network'` and `'ledger9-artifact-on-ledger8-network'`.
 9. **Tests enforce it.** The `published-names.test.ts` of each published package uses
    `build-tools/published-names.mjs`:
-   - `namingViolations` flags a published name that spells the era `V8` / `V9` or ends with the era.
+   - `namingViolations` flags a published name that spells the era `V8` / `V9`, a type or class name
+     that ends with the era, and a name containing `seam` or the word `arm` / `arms`.
    - `unprefixedLedger9Types` (run for `types` and `contracts`) flags an exported type alias or
      interface with a type parameter constrained to `Contract.Any` or `Ledger9Contract` that has no
      ledger prefix and is declared outside `era-aliases.ts`.

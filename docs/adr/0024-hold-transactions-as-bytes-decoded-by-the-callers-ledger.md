@@ -104,7 +104,7 @@ class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = Le
 12. **We use our own class, not wallet-sdk's `WalletTransaction`.** Its era stamp is the node
     `protocolVersion` integer, not `LedgerEra`; it checks neither the stage nor the copy; it returns
     errors instead of throwing coded ones; and the central types would follow wallet-sdk's releases.
-    No package outside `testkit-js` depends on wallet-sdk.
+    No package outside `testkit-js` depends on the wallet-sdk transaction packages.
 13. **No cache in the handle.** Each use decodes. If a benchmark shows the scope's repeated merges
     cost too much, `contracts` may keep decoded objects for the length of one scope. That stays
     inside `contracts` and never reaches the handle.

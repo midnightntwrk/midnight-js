@@ -79,8 +79,8 @@ On-chain state is bytes, never a decoded object. `watchForContractState`,
 `queryDeployContractState` and `contractStateObservable` return
 `ContractStateRead`; `queryContractState` returns
 `ContractStateAndParametersRead` (adds `ledgerParameters`);
-`queryZSwapAndContractState` and `Ledger9TransactionContext.getCurrentStates()` return
-`PublicStatesRead`. Each state is one class per kind from `types`:
+`queryZSwapAndContractState` returns `PublicStatesRead`, and
+`Ledger9TransactionContext.getCurrentStates()` returns `PublicStatesRead | undefined`. Each state is one class per kind from `types`:
 `SerializedContractState`, `SerializedLedgerParameters` or
 `SerializedZswapChainState` (bytes + `era`, the ledger that wrote them), made
 only by its own `fromBytes(era, bytes)`. The caller decodes it with its own runtime:

@@ -56,7 +56,8 @@ operation, nothing cached across calls):
   `ERA_PAIRING`.
 - **`submitTx` with a handle.** It reads the head once and refuses a handle whose era is not the
   head's with `EraMismatchError`, before proving.
-- **A scoped transaction.** `resolveScopeEra` reads the head once when the scope is created.
+- **A scoped transaction.** The root scope reads the head once (`readScopeHead`) and runs the
+  scope of that era. A nested scope reuses the outer scope's era.
 - **After a rejected submission.** `handleSubmitRejection` reads the head once more, to tell a
   fork crossed during the operation (`ForkCrossedDuringOperationError`) from an ordinary rejection.
 

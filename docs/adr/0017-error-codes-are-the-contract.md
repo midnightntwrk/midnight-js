@@ -44,7 +44,8 @@ next to it. A class reads its category from that table.
 | U | `MIDNIGHT_JS_U_` | `packages/utils/src/error-codes.ts` (`UTILS_ERROR_CODES`) |
 
 - `PROVIDER_ERROR_CODES` is declared once, in `types`, and published on the `./errors` leaf
-  subpath, which imports nothing. Reading a code must not load `effect` or a ledger. `utils`
+  subpath, whose only runtime import is `protocol`'s `./errors` leaf. Reading a code must not load
+  `effect` or a ledger. `utils`
   imports the group from there and folds it into the registry. `types` does not depend on
   `utils` in any form: with the `utils → types` edge, a dev dependency back would be a cycle in
   the build graph.
@@ -83,7 +84,10 @@ raise (from a dependency, the platform or user code) passes through unchanged an
 exception: a rejection from a provider method that `contracts` calls is wrapped in
 `ProviderFailedError` with a sanitized `cause` (`atProviderMethod`), because it may carry external
 material. A registered error with no `cause` passes through unchanged, and a sanitized `cause` keeps
-its registered `code`. Several
+its registered `code`. When a private-state database operation and the close after it both fail,
+`cause` holds the operation's failure and `closeError` the close failure. Scoped-transaction
+wrappers rethrow a failure of the scope body or its submission unchanged; the root scope logs it
+under `err`. Several
 concurrent failures are reported together as `ContractExecutionError`, which keeps every failure
 on `errors`.
 

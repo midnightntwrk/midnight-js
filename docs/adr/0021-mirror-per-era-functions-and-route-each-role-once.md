@@ -8,7 +8,8 @@
   [ADR 0014](./0014-build-provider-seams-from-per-era-handlers.md),
   [ADR 0017](./0017-error-codes-are-the-contract.md),
   [ADR 0018](./0018-name-single-ledger-code-after-its-ledger.md),
-  [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
+  [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md),
+  [ADR 0025](./0025-run-contract-scoped-transactions-on-the-ledger-8-era.md)
 
 ## Context
 
@@ -36,7 +37,8 @@ Facts that shape the layout:
   `createLedger8UnprovenCallTx`, `createLedger9UnprovenCallTx`,
   `createLedger8UnprovenCallTxFromInitialStates`, `createLedger8UnprovenDeployTx`,
   `createLedger8UnprovenDeployTxFromVerifierKeys` (and their `Ledger9` twins),
-  `submitLedger8DeployTx`, `submitLedger9DeployTx`, `withLedger9ContractScopedTransaction`. They are
+  `submitLedger8DeployTx`, `submitLedger9DeployTx`, `withLedger8ContractScopedTransaction`,
+  `withLedger9ContractScopedTransaction`. They are
   flat exports, never namespaces. Each era carries only the functions that work for it, and their
   signatures use only that era's types. A per-era function checks positively that the artifacts
   declare its own era, and refuses any other with `EraMismatchError`, reason
@@ -53,7 +55,7 @@ Facts that shape the layout:
 |---|---|
 | the artifact era (`resolveArtifactEra`) | `createUnprovenCallTx`, `createUnprovenCallTxFromInitialStates`, `createUnprovenDeployTx`, `createUnprovenDeployTxFromVerifierKeys`, `submitDeployTx`, `deployContract`, `findDeployedContract`, `submitCallTx`, `submitCallTxAsync`, `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` |
 | the contract's shape (`hasLedger8ContractShape`), synchronously | `createCallTxOptions`, `createCircuitCallTxInterface`, `createCircuitMaintenanceTxInterface`, `createCircuitMaintenanceTxInterfaces`, `createContractMaintenanceTxInterface` |
-| the head era, from one head read | `withContractScopedTransaction` (a ledger 8 head is refused with `'scope-on-ledger8-network'`) |
+| the head era, from one head read | `withContractScopedTransaction` (runs the scope of the head's era, [ADR 0025](./0025-run-contract-scoped-transactions-on-the-ledger-8-era.md)) |
 | the era of the transaction handle, checked against one head read | `submitTx`, `submitTxAsync` |
 | the era of the state; one check serves both eras | `verifyContractState` |
 

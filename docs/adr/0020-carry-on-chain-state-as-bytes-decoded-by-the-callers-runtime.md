@@ -31,7 +31,7 @@ own runtime.
 
 There is one class per kind, in `packages/types/src/serialized-state.ts`:
 `SerializedContractState`, `SerializedLedgerParameters` and `SerializedZswapChainState`. Each has
-`era`, `fromBytes(era, bytes)`, `serialize()`, `deserialize(decoders)` and a guard
+`era`, `fromBytes(era, bytes)`, `serialize()`, `deserialize(decoders)` and a static guard
 (`isSerializedContractState`, `isSerializedLedgerParameters`, `isSerializedZswapChainState`).
 
 1. **`fromBytes` checks the tag against the era.** `LEDGER_STATE_TAGS` in
@@ -83,7 +83,7 @@ There is one class per kind, in `packages/types/src/serialized-state.ts`:
    classes, in both eras: call inputs (pass `read.contractState` as it is), deploy and found
    `initialContractState`, `verifyContractState`, and `ContractTypeError.contractState`.
    `Ledger9TransactionContext.getCurrentStates()` returns a `PublicStatesRead` whose contract state is
-   the running state of the scope. The one exception is
+   the running state of the scope, or `undefined` before the scope has read any state. The one exception is
    `Ledger9ContractConstructorResult.nextContractState`, a decoded ledger 9 `ContractState`.
 
 A dApp reads its state like this:
