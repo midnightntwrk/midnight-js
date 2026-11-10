@@ -146,7 +146,13 @@ describe('Cross-contract calls', () => {
 
     // Assert
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.newCoins).toEqual([{ nonce: sent.nonce, color: sent.color, value: SEND_AMOUNT }]);
+    expect(txData.private.newCoins).toEqual([
+      {
+        nonce: Buffer.from(sent.nonce).toString('hex'),
+        type: Buffer.from(sent.color).toString('hex'),
+        value: SEND_AMOUNT
+      }
+    ]);
   });
 
   test('lets the callee receive a shielded coin sent through the caller', async () => {
