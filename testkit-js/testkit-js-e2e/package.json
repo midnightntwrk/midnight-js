@@ -28,11 +28,13 @@
     "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
     "e2e-single": "docker compose -f ../compose.yml pull --policy missing && DEBUG='testcontainers:*' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.single.config.ts run",
     "compact-copy": "mkdir -p ./dist/contract/ && cp -Rf ./src/contract/compiled ./dist/contract",
-    "compact": "rimraf ./src/contract/compiled && yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time && yarn compact-unshielded && yarn compact-shielded && yarn compact-shielded-fallible && yarn compact-fee-mint && yarn compact-double-counter && yarn compact-events && yarn compact-private-counter",
+    "compact": "rimraf ./src/contract/compiled && yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time && yarn compact-unshielded && yarn compact-shielded && yarn compact-shielded-fallible && yarn compact-fee-mint && yarn compact-double-counter && yarn compact-events && yarn compact-private-counter && yarn compact-vault && yarn compact-vault-caller",
     "compact-events": "run-compactc src/contract/events.compact ./src/contract/compiled/events",
     "compact-counter": "run-compactc src/contract/counter.compact ./src/contract/compiled/counter",
     "compact-double-counter": "run-compactc src/contract/double-counter.compact ./src/contract/compiled/double-counter",
     "compact-private-counter": "run-compactc src/contract/private-counter.compact ./src/contract/compiled/private-counter",
+    "compact-vault": "run-compactc src/contract/vault.compact ./src/contract/compiled/vault",
+    "compact-vault-caller": "run-compactc src/contract/vault-caller.compact ./src/contract/compiled/vault-caller",
     "compact-simple": "run-compactc src/contract/simple.compact ./src/contract/compiled/simple",
     "compact-counter-clone": "run-compactc src/contract/counter-clone.compact ./src/contract/compiled/counter-clone",
     "compact-block-time": "run-compactc src/contract/block-time.compact ./src/contract/compiled/block-time",
@@ -46,6 +48,7 @@
     "compact-retained-double-counter": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/double-counter.compact ./src/contract/compiled-retained/double-counter"
   },
   "dependencies": {
+    "@midnight-ntwrk/midnight-js-bundled-contract-module-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "workspace:*",

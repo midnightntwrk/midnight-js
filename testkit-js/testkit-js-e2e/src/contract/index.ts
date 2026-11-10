@@ -25,6 +25,8 @@ import * as CompiledShielded from './compiled/shielded/contract/index.js';
 import * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 import * as CompiledSimple from './compiled/simple/contract/index.js';
 import * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
+import * as CompiledVault from './compiled/vault/contract/index.js';
+import * as CompiledVaultCaller from './compiled/vault-caller/contract/index.js';
 import * as DoubleCounterWitnesses from './double-counter-witnesses.js';
 import * as Witnesses from './witnesses.js';
 
@@ -85,6 +87,16 @@ export const CompiledFeeMintContract = CompiledContract.make<CompiledFeeMint.Con
   CompiledFeeMint.Contract
 ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/fee-mint'));
 
+export const CompiledVaultContract = CompiledContract.make<CompiledVault.Contract>(
+  'Vault',
+  CompiledVault.Contract
+).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/vault'));
+
+export const CompiledVaultCallerContract = CompiledContract.make<CompiledVaultCaller.Contract>(
+  'VaultCaller',
+  CompiledVaultCaller.Contract
+).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/vault-caller'));
+
 export * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 export * as CompiledCounter from './compiled/counter/contract/index.js';
 export * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
@@ -95,5 +107,7 @@ export * as CompiledShielded from './compiled/shielded/contract/index.js';
 export * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 export * as CompiledSimple from './compiled/simple/contract/index.js';
 export * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
+export * as CompiledVault from './compiled/vault/contract/index.js';
+export * as CompiledVaultCaller from './compiled/vault-caller/contract/index.js';
 export * as DoubleCounterWitnesses from './double-counter-witnesses.js';
 export * as CounterWitnesses from './witnesses.js';

@@ -1,0 +1,20 @@
+import CompactStandardLibrary;
+
+contract Vault {
+    circuit deposit(coin: ShieldedCoinInfo): [];
+    circuit mintAndSend(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult;
+}
+
+export ledger vault: Vault;
+
+constructor(target: Vault) {
+    vault = disclose(target);
+}
+
+export circuit depositToVault(coin: ShieldedCoinInfo): [] {
+    vault.deposit(disclose(coin));
+}
+
+export circuit mintAndSendFromVault(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult {
+    return vault.mintAndSend(disclose(domainSep), disclose(mintValue), disclose(mintNonce), disclose(publicKey), disclose(sendValue));
+}
