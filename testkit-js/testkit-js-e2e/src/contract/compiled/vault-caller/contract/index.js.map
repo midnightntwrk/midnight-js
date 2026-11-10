@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../../../",
+  "sources": ["src/contract/vault-caller.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EASA;;;;;;;;;;MAIA,AAAA,cAEC;;;;;cAF6B,MAAsB;;;;;;;;;;;;;;;;;;yCAAtB,MAAsB;;;;;;;;;sDAAtB,MAAsB;;;;OAEnD;MAED,AAAA,oBAEC;;;;;cAFmC,WAAoB;cAAE,WAAmB;cAAE,WAAoB;cAAE,WAA6B;cAAE,WAAoB;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;yCAApH,WAAoB,+BAAE,WAAmB,+BAAE,WAAoB,+BAAE,WAA6B,+BAAE,WAAoB;;;;;;;;;4DAApH,WAAoB;4DAAE,WAAmB;4DAAE,WAAoB;4DAAE,WAA6B;4DAAE,WAAoB;;;;OAEvJ;;;;;;;;;;GARA;EAFD;;;;;UAAY,QAAa;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAFzB;;;;;;;;;yEAA2B;IAGvB;;;;;;;2HAAiB,QAAM;;yEAAlB;;;;;;;GACR;EAED,AAAA,uBAEC,4BAF6B,MAAsB;;;;;;oFAChD;;;;;;;;;;;yJAAK;;YAAkB,MAAI;;;GAC9B;EAED,AAAA,6BAEC;;gCAFmC,WAAoB;gCAAE,WAAmB;gCAAE,WAAoB;gCAAE,WAA6B;gCAAE,WAAoB;;;;;;;2FAC7I;;;;;;;;;;;gKAAK;;mBAAsB,WAAS;mBAAY,WAAS;mBAAY,WAAS;mBAAY,WAAS;mBAAY,WAAS;;GAClI;;;;;;;;;;;;;;;;IAZD;qCAAA;;;;;;;;;;;0GAA2B;KAAA;;;;;;;;;;;;;;;;;;;;;;"
+}
