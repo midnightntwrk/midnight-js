@@ -2,142 +2,85 @@
 
 - Status: Accepted
 - Date: 2026-09-11
-- Deciders: Szymon Paluchowski
-- Related: #1218 (the dual-ledger dispatch this hardens), #1004
+- Related: [ADR 0011](./0011-tag-every-result-with-the-pipeline-that-produced-it.md)
 
 ## Context
 
-Across the ledger hard fork the contract entry points accept artifacts from two
-Compact toolchains through one API, and each operation must decide which
-pipeline runs. That decision was made from the shape of the caller's contract
-object, in `pipelineEraOf`:
+Across the ledger fork the contract entry points accept artifacts from two Compact toolchains
+through one API, and each operation must decide which pipeline runs. The era is a consensus-level
+fact. A wrong answer sends a call to the wrong ledger.
 
-| shape | verdict |
-| ----- | ------- |
-| own `tag`, no `impureCircuits` | current era |
-| own `impureCircuits`, `initialState.constructor.name === 'Function'` | retained era |
-| own `impureCircuits`, `initialState.constructor.name === 'AsyncFunction'` | refused |
-| anything else | refused |
+The shape of the caller's contract object is not a stable source for that fact. The current
+toolchain emits `async initialState`; a consumer build that targets below ES2017 rewrites it into a
+plain function, and `initialState.constructor.name` then reads `'Function'`, exactly like a
+retained-era contract. A decision based on that detail fails open, silently, on a build setting
+this framework never sees. A `class` used as `initialState` has the same problem.
 
-The second and third rows are not stable facts about the artifacts. The current
-toolchain emits `async initialState`; a consumer's build targeting below ES2017
-— TypeScript, esbuild, older Babel presets — rewrites that into a plain
-function, and `constructor.name` then reads `'Function'` on it. A current-era
-contract passed raw therefore stopped being refused and was routed into the
-RETAINED pipeline instead. Every other branch of that function fails closed;
-this one failed open, and it failed open silently, on a consumer build setting
-this framework never sees.
+Build-stable facts exist:
 
-The era is a consensus-level fact. It was being inferred from a detail of
-generated JavaScript that a build step is free to rewrite.
-
-Two build-stable facts were available and unused:
-
-- a current-era contract arrives wrapped in a `CompiledContract` container
-  carrying an own `tag`. The tag's VALUE is chosen by the caller
-  (`CompiledContract.make(tag, ctor)`) and says nothing about an era — what is
-  usable is that no other shape has this one, and that an own property survives
-  both a bundler and the object spread the container's own combinators perform;
-- `compactc` records `runtime-version` on disk: in `compiler/contract-manifest.json`
-  from 0.33 onward, and in `compiler/contract-info.json` for every version
-  including the retained toolchain (0.31), which emits no manifest at all.
+- `compactc` records `runtime-version` on disk: in the integrity manifest
+  (`compiler/contract-manifest.json`) for toolchains that write one, and in
+  `compiler/contract-info.json` for every toolchain, including the retained one, which writes no
+  manifest.
+- A current-era contract arrives in a `CompiledContract` container with an own string `tag` and no
+  circuit collections. No other shape looks like that, and an own property survives bundlers and
+  the object spread the container's combinators perform. The tag's value is chosen by the caller
+  and says nothing about the era.
 
 ## Decision
 
-We will establish an artifact's era only from what the artifact declares, never
-from the shape of the code the compiler generated.
+We will establish every artifact's era from the `runtime-version` its bundle declares, never from
+the shape of generated code.
 
-- A current-era container is placed by recognising the container — an own string
-  `tag` with no circuit collections. The artifact bundle is NOT read for it.
-- A retained-era candidate is placed by the `runtime-version` its bundle
-  declares, read through a new `ZKConfigProvider.getArtifactRuntimeVersion()`
-  and mapped by one frozen `major.minor` table in
-  `packages/contracts/src/internal/era.ts`, guarded by a compile-time gate that
-  every pipeline era is reachable from some declared version.
-- That version is taken from the INTEGRITY MANIFEST when the bundle has one,
-  because `expectedManifestHash` pins the manifest to a digest the application
-  controls and nothing else in the bundle can be anchored that way. The value
-  decides which ledger executes the call, so whoever serves the artifacts must
-  not be the one who decides it. `contract-info.json` is the fallback for
-  pre-0.33 bundles, and where a manifest exists it vouches for that file too, so
-  the fallback passes the same integrity gate as every key and ZKIR.
-- `constructor.name` may only REFUSE, and may never route. An `AsyncFunction`
-  reading is proof of the current era that a build step can erase but never
-  fabricate, so it stays as a refusal; a plain-function reading proves nothing
-  and only earns the artifact the right to have its bundle consulted.
-- An artifact set that declares nothing, or declares a toolchain this framework
-  cannot place, is refused — `artifact-era-undeclared` and
-  `unknown-artifact-runtime-version`. Neither resolves to a default, because
-  every default would be a guess about which ledger executes the call.
+- `resolveArtifactEra` (`packages/contracts/src/internal/era.ts`) reads the declaration through
+  `ZKConfigProvider.getArtifactRuntimeVersion()` for every contract, and maps its `major.minor`
+  through one frozen table, `RUNTIME_VERSION_TO_ERA`. A compile-time gate requires every
+  `LedgerEra` to be reachable from some declared version.
+- The shape only refuses; it never routes. A container must declare ledger 9, or it is refused as
+  `ledger8-artifacts-in-ledger9-container`. A retained-era candidate (own `impureCircuits`, plain
+  `initialState`) must declare ledger 8; if it declares ledger 9 it is a ledger 9 contract passed
+  raw and is refused as `unwrapped-ledger9-contract`. An `AsyncFunction` `initialState` is refused
+  as `unwrapped-ledger9-contract` without reading the bundle. Any other shape is
+  `unrecognised-contract-shape`.
+- The shipped providers read the version from the integrity manifest first, because
+  `expectedManifestHash` pins the manifest to a digest the application controls. The value decides
+  which ledger runs the call, so whoever serves the artifacts must not decide it.
+  `contract-info.json` is the fallback, and goes through the same integrity gate as every key and
+  ZKIR.
+- Nothing resolves to a default. A bundle that declares nothing is `artifact-era-undeclared`; a
+  provider that cannot report a version is `provider-cannot-declare-era`; a toolchain this
+  framework cannot place is `unknown-artifact-runtime-version`. All are `EraMismatchError` reasons.
+  Any other provider failure propagates unchanged.
+- Because the declaration is read for both shapes, the answer does not depend on which era is
+  current. When a next ledger keeps the container shape, ledger 9 containers still resolve to
+  ledger 9.
 
 ## Consequences
 
-- **Positive:** the fail-open closes. A transpiled current-era contract is now
-  refused by the same declaration that places a real retained one. The hole the
-  shape check could not close either — a `class` used as `initialState`, whose
-  own constructor IS `Function` — closes with it.
-- **Positive:** the current era pays nothing. It ships no new file, makes no new
-  round trip, and its dispatch is unchanged.
-- **Positive:** the era comes from the same bundle the proof will be built from,
-  rather than from an object handed in beside it.
-- **Negative:** retained-era callers must serve `compiler/` from the same
-  location as `keys/` and `zkir/`. A bundle that ships only keys and ZKIR is
-  refused on that arm.
-- **Negative:** a retained bundle has no manifest, so under the default
-  `verify: 'require'` its unvouched-for description is refused. Such callers must
-  construct the provider with `verify: 'require-if-present'` — the mode the
-  integrity work already defines for pre-0.33 artifacts, and which their key and
-  ZKIR reads need anyway.
-- **Negative:** `ZKConfigProvider` grows a member. It is concrete rather than
-  abstract, with a default that throws, so a provider written outside this
-  framework keeps compiling and keeps working for current-era artifacts; it
-  fails, loudly and by name, only if handed retained-era ones. A provider mocked
-  as an object literal in a consumer's tests does have to add the member.
-- **Follow-ups:** when the fork window closes and the retained arm is removed,
-  `getArtifactRuntimeVersion`, the version table and the two new refusal reasons
-  go with it, in one step.
+- A transpiled current-era contract is refused by the same declaration that places a real
+  retained one. The `class`-as-`initialState` hole closes with it.
+- The era comes from the bundle the proof is built from, not from an object handed in beside it.
+- Every contract operation reads the declaration. The shipped providers cache it per instance (a
+  failed read is not cached), so it costs one read per provider.
+- Every bundle must serve its manifest `runtime-version` or `compiler/contract-info.json` from the
+  same location as `keys/` and `zkir/`.
+- A retained-era bundle has no manifest, so under the default `verify: 'require'` its description
+  is refused. Such callers construct the provider with `verify: 'require-if-present'`, which their
+  key and ZKIR reads need anyway.
+- `getArtifactRuntimeVersion()` is a concrete member whose default throws
+  `ArtifactRuntimeVersionUnavailableError`. A provider written outside this framework keeps
+  compiling but must implement it to be used for contract operations. A provider mocked as an
+  object literal must add it.
 
 ## Alternatives considered
 
-- **Keep sniffing, detect transpiled `async` better** — inspect
-  `Symbol.toStringTag`, or match `__awaiter`/`regeneratorRuntime` in
-  `Function.prototype.toString()`. Rejected: it chases each transpiler's output
-  and stays a guess about generated code, which is the class of defect being
-  removed, not an instance of it.
-- **A framework-owned container for the retained era**, so the caller declares
-  the era the way the current toolchain's container does. Rejected for this
-  change: it works, but it puts the declaration on the CALLER rather than on the
-  artifact, and it makes the retained era visibly different to use — against the
-  single-API premise of #1218. Kept as the fallback if serving
-  `contract-info.json` turns out to be impractical for real deployments.
-- **Separate era-specific entry points** (`submitLedger8CallTx`, …), making the
-  era a compile-time fact. Rejected outright: it contradicts the goal of one
-  common API across this fork and the next.
-- **Cross-check the current era against `contract-info.json` too.** Rejected on
-  cost: it would make the file mandatory for every existing consumer, which is a
-  breaking change for artifacts that are already correctly placed by a
-  declaration they carry.
-
-## Amendment — the container reads its declaration too (2026-11-03)
-
-Issue #1526. The decision stands: an artifact's era comes only from what the
-artifact declares. What changes is the first Decision bullet, and with it the
-rejected alternative "Cross-check the current era against `contract-info.json`
-too".
-
-- A `CompiledContract` container no longer places itself. Its bundle's
-  `runtime-version` is read like any other, and the container shape only
-  requires that declaration to name ledger 9. A container whose bundle declares
-  the ledger 8 toolchain is refused as `ledger8-artifacts-in-ledger9-container`.
-- Why: the container answer was `CURRENT_LEDGER_VERSION`, not ledger 9. If the
-  next ledger keeps the container shape, every ledger 9 container would be sent
-  to the next ledger's pipeline, without an error, the day that constant moves.
-  The retained refusal (`unwrapped-ledger9-contract`) compared against the same
-  constant, so it now compares against the era its shape admits, ledger 8.
-- Cost, accepted: every contract operation reads the declaration. The shipped
-  providers cache it per instance, so it is one read per provider. Every bundle
-  must serve its manifest `runtime-version` or `compiler/contract-info.json`,
-  and every provider used for contract operations must implement
-  `getArtifactRuntimeVersion()`. The Consequences bullets "the current era pays
-  nothing" and "keeps working for current-era artifacts" no longer hold.
-- Landed in 5.0.0, with the other era breaking changes.
+- **Keep inspecting the code, and detect transpiled `async` better** (`Symbol.toStringTag`,
+  `__awaiter` in the source text). Rejected: it chases each transpiler and stays a guess about
+  generated code.
+- **A framework-owned container for the retained era.** Rejected: it puts the declaration on the
+  caller instead of the artifact, and makes the retained era look different to use.
+- **Separate era-specific entry points only.** Rejected as the routing mechanism: it breaks the
+  single API across the fork.
+- **Let the container place itself as the current era without reading the bundle.** Rejected: the
+  answer would follow the "current era" constant, so every ledger 9 container would silently move
+  to the next ledger's pipeline the day that constant changes.

@@ -246,7 +246,7 @@ yarn test --coverage
 
 1. Understand current flow in `contracts/` package
 2. Check impact on other packages
-3. Keep transactions as handles (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) in every public API from `types` up; a handle holds bytes; a ledger object lives only between `handle.deserialize({ v9: Transaction })` and `LedgerTransaction.seal` inside one function (ADR 0019, ADR 0024)
+3. Keep transactions as handles (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) in every public API from `types` up; a handle holds bytes; a ledger object lives only between `handle.deserialize({ v9: Transaction })` and `LedgerTransaction.seal` inside one function (ADR 0024)
 4. Update types if transaction shape changes
 5. Test full flow with E2E tests
 
@@ -374,14 +374,16 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 2. Fill in Context / Decision / Consequences / Alternatives, marked `Accepted` —
    approving the PR is the acceptance, so ADRs land `Accepted`, not `Proposed`.
    There is no shared index to update, so ADR PRs never conflict with each other.
-3. To reverse a decision already on `main`, add a new ADR and mark the old one
-   `Superseded by ADR-NNNN`. Both files stay.
-4. An ADR that has not yet reached `main` has no published number — edit or
-   delete it in place and close the numbering up behind it, rather than
-   shipping a file that was superseded before anyone could read it.
-5. To amend an ADR whose decision still stands, append an
-   `## Amendment — <what changed> (date)` section. Do not edit the original
-   sections, and do not add an `Amended:` header field.
+3. An ADR describes only the current decision. When a decision still stands but
+   a detail changes (a name, a mechanism, a follow-up that landed), edit the ADR
+   in place in the same PR as the code. Do not add amendment or changelog
+   sections; git keeps the history.
+4. To reverse a decision already on `main`, add a new ADR. Replace the old
+   ADR's body with a short note naming the new one and set its status to
+   `Superseded by ADR-NNNN`. Keep the file and never rename it: code and docs
+   link to it.
+5. An ADR that has not yet reached `main` has no published number — edit or
+   delete it in place and close the numbering up behind it.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

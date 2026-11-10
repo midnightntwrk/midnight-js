@@ -1,0 +1,33 @@
+{
+  "version": { "major": 3, "minor": 1 },
+  "do_communications_commitment": true,
+  "inputs": [
+    { "name": "%coin.0", "type": "Scalar<BLS12-381>" },
+    { "name": "%coin.1", "type": "Scalar<BLS12-381>" },
+    { "name": "%coin.2", "type": "Scalar<BLS12-381>" },
+    { "name": "%coin.3", "type": "Scalar<BLS12-381>" },
+    { "name": "%coin.4", "type": "Scalar<BLS12-381>" }
+  ],
+  "outputs": [
+  ],
+  "instructions": [
+    { "op": "constrain_bits", "val": "%coin.0", "bits": 8 },
+    { "op": "constrain_bits", "val": "%coin.1", "bits": 248 },
+    { "op": "constrain_bits", "val": "%coin.2", "bits": 8 },
+    { "op": "constrain_bits", "val": "%coin.3", "bits": 248 },
+    { "op": "constrain_bits", "val": "%coin.4", "bits": 128 },
+    { "op": "public_input", "type": "Scalar<BLS12-381>", "output": "%value.5", "guard": null },
+    { "op": "public_input", "type": "Scalar<BLS12-381>", "output": "%value.6", "guard": null },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x32"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x60", "0x01", "0x01", "0x00"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x0d", "0x01", "0x20", "%value.5", "%value.6"] },
+    { "op": "persistent_hash", "output": "%bytes.7", "alignment": [{ "tag": "atom", "value": { "length": 21, "tag": "bytes" } }, { "tag": "atom", "value": { "length": 32, "tag": "bytes" } }, { "tag": "atom", "value": { "length": 32, "tag": "bytes" } }, { "tag": "atom", "value": { "length": 16, "tag": "bytes" } }, { "tag": "atom", "value": { "length": 1, "tag": "bytes" } }, { "tag": "atom", "value": { "length": 32, "tag": "bytes" } }], "inputs": ["0x6d69646e696768743a7a737761702d63635b76315d", "%coin.0", "%coin.1", "%coin.2", "%coin.3", "%coin.4", "0x00", "%value.5", "%value.6"] },
+    { "op": "bytes_into_natives", "outputs": ["%tmp.8", "%tmp.9"], "bytes": "%bytes.7" },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x40"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x80", "0x01", "0x01", "0x01"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x10", "0x01", "0x01", "0x20", "%tmp.9", "%tmp.8"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x10", "0x00"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0xa2"] },
+    { "op": "impact", "guard": "0x01", "inputs": ["0x40"] }
+  ]
+}

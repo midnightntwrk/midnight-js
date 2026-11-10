@@ -88,7 +88,7 @@ the record:
 The four reason and stage types are exported flat, next to the classes:
 `Ledger8SigningKeyReason`, `Ledger8KeyedOperation`, `Ledger8NotStoredStage` and
 `Ledger8CallUnsupportedReason`. There is no `Ledger8` namespace
-([ADR 0013](../../../docs/adr/0013-publish-the-retained-era-as-one-namespace.md)).
+([ADR 0018](../../../docs/adr/0018-name-single-ledger-code-after-its-ledger.md)).
 
 Every refusal for a value of the wrong era is one `EraMismatchError`
 (`ERA_MISMATCH`), and its `reason` says which. Where the old classes carried a

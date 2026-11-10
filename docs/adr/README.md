@@ -1,10 +1,9 @@
 # Architecture Decision Records
 
 This directory records architecturally significant decisions for Midnight.js.
-Each ADR captures the context, the decision, and its consequences so the
-reasoning survives beyond the PR thread where it was made.
-
-See [ADR-0001](./0001-record-architecture-decisions.md) for why we keep ADRs.
+Each ADR states one decision as it stands today: the context, the decision, and
+its consequences. See [ADR-0001](./0001-record-architecture-decisions.md) for why
+we keep ADRs.
 
 ## When to write one
 
@@ -18,35 +17,28 @@ future work. In this repo that means, at minimum:
 
 The full contributor/agent rules live in [AGENTS.md](../../AGENTS.md#architecture-decision-records-adrs).
 
-## How to add one
+## How to add or change one
 
 1. Copy [`template.md`](./template.md) to `NNNN-kebab-title.md`, where `NNNN`
-   is the next sequential zero-padded number — list this directory to find the
+   is the next sequential zero-padded number. List this directory to find the
    highest existing one.
-2. Fill it in as `Accepted`: approving the PR *is* the acceptance, so there is
-   no separate status flip after merge.
-3. To reverse a decision that is already on `main`, write a new ADR and mark
-   the old one `Superseded by ADR-NNNN`. Both files stay, so the reasoning
-   behind the old choice remains readable.
-4. An ADR that has **not** yet reached `main` has no published number. Edit or
-   delete it in place instead, and close the numbering up behind it. Shipping
-   a file that was superseded before anyone could read it records a decision no
-   consumer ever saw.
-5. To amend an ADR whose decision still stands — a fact it rested on changed,
-   or a follow-up landed — append an `## Amendment — <what changed> (date)`
-   section. Leave the original sections untouched.
+2. Fill it in as `Accepted`. Approving the PR is the acceptance.
+3. **An ADR describes only the current decision.** When the decision still
+   stands but a detail changes (a name, a mechanism, a follow-up that landed),
+   edit the ADR in place, in the same PR as the code. Do not add amendment or
+   changelog sections. Git keeps the history.
+4. **To reverse a decision**, write a new ADR. Replace the old ADR's body with
+   a short note that names the new one, and set its status to
+   `Superseded by ADR-NNNN`. Keep the file, so links to it still work.
+5. An ADR that has not reached `main` yet has no published number. Edit or
+   delete it in place, and close the numbering up behind it.
 
-There is no index to maintain — the ADR files in this directory are the list.
-This keeps each ADR PR limited to its own new file, so concurrent PRs never
-conflict on a shared table.
+Never rename an ADR file: code, tests and docs link to it.
+
+There is no index to maintain. The files in this directory are the list, so
+concurrent ADR PRs never conflict on a shared table.
 
 ## Statuses
 
-- `Accepted` — in force. Every ADR lands in this state; approving the PR is the
-  acceptance.
-- `Superseded by ADR-NNNN` — reversed by a later decision, which the status
-  names.
-
-There is no `Proposed` state: a decision still being argued belongs in the PR
-thread, not in this directory. There is no `Deprecated` state either — an ADR
-is either in force or superseded by a named replacement.
+- `Accepted`: in force.
+- `Superseded by ADR-NNNN`: reversed by the named ADR.
