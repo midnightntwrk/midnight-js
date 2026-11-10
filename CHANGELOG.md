@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.6...v5.0.0) (2026-11-05)
+
+
+### Features
+
+* **midnight-js:** run contract-scoped transactions on the ledger 8 network ([#1632](https://github.com/midnightntwrk/midnight-js/pull/1632)) ([f795c2f](https://github.com/midnightntwrk/midnight-js/commit/f795c2f112a1717ab4a0b02cab7eb2ca8972d2b4)), closes [#21](https://github.com/midnightntwrk/midnight-js/pull/21)
+
+
+### Bug Fixes
+
+* **midnight-js:** keep the node's refusal when a wallet rejects with an Effect FiberFailure ([#1616](https://github.com/midnightntwrk/midnight-js/pull/1616)) ([#1630](https://github.com/midnightntwrk/midnight-js/pull/1630)) ([888982c](https://github.com/midnightntwrk/midnight-js/commit/888982cb4cdfb05139ed8c25054e6cee67f1db96))
+
+
+### Documentation
+
+* API documentation update ([#1628](https://github.com/midnightntwrk/midnight-js/pull/1628)) ([9c24040](https://github.com/midnightntwrk/midnight-js/commit/9c24040acaf5bdd7ee84773567c6818e10877bc3))
+* API documentation update ([#1633](https://github.com/midnightntwrk/midnight-js/pull/1633)) ([595346f](https://github.com/midnightntwrk/midnight-js/commit/595346ff63f7338f1a23b1206059b717a8c55ded))
+* **midnight-js:** rewrite v5.0.0 release docs as the v4.1.1 to v5.0.0 difference ([#1623](https://github.com/midnightntwrk/midnight-js/pull/1623)) ([e866195](https://github.com/midnightntwrk/midnight-js/commit/e8661950e202df3c2dbc9a90c003e80528f04510)), closes [#1621](https://github.com/midnightntwrk/midnight-js/pull/1621) [#1599](https://github.com/midnightntwrk/midnight-js/pull/1599) [#1599](https://github.com/midnightntwrk/midnight-js/pull/1599) [#1451](https://github.com/midnightntwrk/midnight-js/pull/1451) [#1481](https://github.com/midnightntwrk/midnight-js/pull/1481) [#1440](https://github.com/midnightntwrk/midnight-js/pull/1440) [#1325](https://github.com/midnightntwrk/midnight-js/pull/1325) [#1433](https://github.com/midnightntwrk/midnight-js/pull/1433) [#1428](https://github.com/midnightntwrk/midnight-js/pull/1428) [#1307](https://github.com/midnightntwrk/midnight-js/pull/1307) [#1570](https://github.com/midnightntwrk/midnight-js/pull/1570) [#1522](https://github.com/midnightntwrk/midnight-js/pull/1522) [#1442](https://github.com/midnightntwrk/midnight-js/pull/1442) [#1454](https://github.com/midnightntwrk/midnight-js/pull/1454) [#1554](https://github.com/midnightntwrk/midnight-js/pull/1554) [#1605](https://github.com/midnightntwrk/midnight-js/pull/1605) [#1448](https://github.com/midnightntwrk/midnight-js/pull/1448) [#1166](https://github.com/midnightntwrk/midnight-js/pull/1166) [#1365](https://github.com/midnightntwrk/midnight-js/pull/1365) [#1360](https://github.com/midnightntwrk/midnight-js/pull/1360) [#1274](https://github.com/midnightntwrk/midnight-js/pull/1274) [#1431](https://github.com/midnightntwrk/midnight-js/pull/1431) [#1613](https://github.com/midnightntwrk/midnight-js/pull/1613) [#1031](https://github.com/midnightntwrk/midnight-js/pull/1031) [#1180](https://github.com/midnightntwrk/midnight-js/pull/1180) [midnightntwrk/midnight-node#2375](https://github.com/midnightntwrk/midnight-js/pull/2375)
+* **midnight-js:** update v5.0.0 release docs to the stable protocol versions ([#1629](https://github.com/midnightntwrk/midnight-js/pull/1629)) ([e728c55](https://github.com/midnightntwrk/midnight-js/commit/e728c558e7b2b2531b53ed7b703e50b13c894f49)), closes [#1623](https://github.com/midnightntwrk/midnight-js/pull/1623) [#1624](https://github.com/midnightntwrk/midnight-js/pull/1624) [#1625](https://github.com/midnightntwrk/midnight-js/pull/1625) [#1627](https://github.com/midnightntwrk/midnight-js/pull/1627) [#1599](https://github.com/midnightntwrk/midnight-js/pull/1599)
+
+
+### Build System
+
+* **deps:** bump compact-js to 3.0.0 and wallet-sdk to 2.0.0-rc.3 ([#1627](https://github.com/midnightntwrk/midnight-js/pull/1627)) ([a266cc0](https://github.com/midnightntwrk/midnight-js/commit/a266cc0b1a5aef13762466d69dff8c45b58c2fc5)), closes [midnightntwrk/compact-js#42](https://github.com/midnightntwrk/midnight-js/pull/42)
+* **deps:** bump ledger-v9 to 1.0.0 and onchain runtimes to stable ([#1625](https://github.com/midnightntwrk/midnight-js/pull/1625)) ([314634f](https://github.com/midnightntwrk/midnight-js/commit/314634ffe1d9f840b98d7c591b994f0502f04e5c))
+* **deps:** bump wallet-sdk to 2.0.0 ([#1635](https://github.com/midnightntwrk/midnight-js/pull/1635)) ([0e2e4e7](https://github.com/midnightntwrk/midnight-js/commit/0e2e4e76a3b2bfa0e15613dbe2dea7de951999c6)), closes [midnightntwrk/compact-js#42](https://github.com/midnightntwrk/midnight-js/pull/42)
+
+
+### Improvements
+
+* **deps:** bump @midnightntwrk/dapp-connector-api to 4.1.0 ([#1631](https://github.com/midnightntwrk/midnight-js/pull/1631)) ([2775c3a](https://github.com/midnightntwrk/midnight-js/commit/2775c3a73706e29e78f0a14842af4f69782db242))
+
 ## [5.0.0-rc.6](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.5...v5.0.0-rc.6) (2026-11-05)
 
 
@@ -83,6 +115,7 @@ All notable changes to this project will be documented in this file. See [commit
 ### Improvements
 
 * **deps:** bump the HF stack, Compact toolchain to 0.36 and the local prover to zkir-v3 ([#1599](https://github.com/midnightntwrk/midnight-js/pull/1599)) ([a2e241e](https://github.com/midnightntwrk/midnight-js/commit/a2e241e90f486f8e5c907c373659bdb8542ffb75)), closes [midnightntwrk/midnight-faucet-api#171](https://github.com/midnightntwrk/midnight-js/pull/171) [midnightntwrk/midnight-node#2375](https://github.com/midnightntwrk/midnight-js/pull/2375) [#1618](https://github.com/midnightntwrk/midnight-js/pull/1618)
+* **release:** bump version to 5.0.0-rc.6 ([#1624](https://github.com/midnightntwrk/midnight-js/pull/1624)) ([1e9217d](https://github.com/midnightntwrk/midnight-js/commit/1e9217d8a68441ab3022798cdf2728da752c6cec))
 
 ## [5.0.0-rc.5](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.4...v5.0.0-rc.5) (2026-10-16)
 

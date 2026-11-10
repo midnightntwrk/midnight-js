@@ -309,10 +309,11 @@ MAINTENANCE cells on a `v8` head are reachable from tests alone.
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
 an artifact against. A deploy pays for the read because it is rare and the
-proof it saves is not. The scoped path does pay for one, which is why a scope on a
-pre-fork head is refused (`EraMismatchError`, reason `'scope-on-ledger8-network'`) and a single call on the
-same head is not. A current-era call against a pre-fork head therefore fails
-LATE — at a provider method or at the node — rather than at this table.
+proof it saves is not. The scoped path does pay for one: a scope on a pre-fork head
+is a ledger 8 scope, and a current-era call made in it is refused with
+`EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`, while a single
+call on the same head is not. A current-era single call against a pre-fork head
+therefore fails LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction handle rather than an artifact. It reads the handle's `era`, pays for

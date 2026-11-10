@@ -25,7 +25,7 @@ see [new features](./new-features.md).
 | Ledger | `@midnight-ntwrk/ledger-v8` 8.1.0 | `@midnightntwrk/ledger-v9` 1.0.0 (ledger 8.1.3 is kept for pre-fork contracts) |
 | Onchain runtime | `@midnight-ntwrk/onchain-runtime-v3` 3.0.0 | `@midnightntwrk/onchain-runtime-v4` 4.0.0 (v3 is kept for pre-fork contracts) |
 | `@midnight-ntwrk/platform-js` | 2.2.4 | 3.0.0 |
-| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0-rc.3 |
+| Wallet SDK (testkit-js) | `@midnight-ntwrk/wallet-sdk` 1.1.0 | `@midnightntwrk/wallet-sdk` 2.0.0 |
 | DApp Connector API | `@midnight-ntwrk/dapp-connector-api` 4.0.1 | `@midnightntwrk/dapp-connector-api` 4.1.0-beta.1 |
 
 The framework packages keep the `@midnight-ntwrk/midnight-js-*` names. The ledger, onchain runtime,
@@ -1021,7 +1021,7 @@ with `InvalidExportFormatError`. Keys already stored by 4.x in a level store are
 **Before (v4.1.1):** `@midnight-ntwrk/wallet-sdk` 1.1.0; `new NodeClient(nodeURL, logger)`; tests
 called `setNetworkId`.
 
-**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0-rc.3, with structured signatures.
+**After (v5.0.0):** `@midnightntwrk/wallet-sdk` 2.0.0, with structured signatures.
 `NodeClient` takes the network id as a third argument and rejects an empty one.
 `initializeMidnightProviders` sets `config` (with `ttlSeconds: 3600`).
 

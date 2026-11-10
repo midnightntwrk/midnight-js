@@ -18,7 +18,7 @@ Options for [EraMismatchError](../classes/EraMismatchError.md).
 
 > `readonly` `optional` **circuitId?**: `string`
 
-The circuit the refused call names. Set for `'ledger8-call-in-scope'`.
+The circuit the refused call names. Set for `'ledger8-call-in-scope'`, and for `'ledger9-artifact-on-ledger8-network'` raised for a call given a ledger 8 scope.
 
 ***
 

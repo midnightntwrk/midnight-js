@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "5.0.0-rc.6",
+  "version": "5.0.0",
   "type": "module",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "types": "dist/index.d.ts",
@@ -30,7 +30,7 @@
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "graphql": "^17.0.1",
-    "graphql-ws": "^6.0.8",
+    "graphql-ws": "^6.4.1",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.8.2",
     "ws": "^8.20.0"

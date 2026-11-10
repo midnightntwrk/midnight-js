@@ -68,7 +68,7 @@ Carries the originating failure on `cause` -- a provider that could not serve th
 
 > `readonly` `optional` **circuitId?**: `string`
 
-The circuit the refused call names, for `'ledger8-call-in-scope'`.
+The circuit the refused call names, for the reasons [EraMismatchOptions.circuitId](../interfaces/EraMismatchOptions.md#circuitid) lists.
 
 ***
 

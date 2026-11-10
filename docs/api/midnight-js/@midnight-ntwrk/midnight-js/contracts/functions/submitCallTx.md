@@ -48,6 +48,42 @@ retained-era-native pipeline runs, after it the keep-state one.
 
 ## Call Signature
 
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+Calls a circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain inside a scope
+made by `withLedger8ContractScopedTransaction` or `withContractScopedTransaction` before the hard
+fork. The call is added to the scope rather than submitted on its own.
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
+
+#### options
+
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+
+#### transactionContext
+
+[`Ledger8TransactionContext`](../interfaces/Ledger8TransactionContext.md)\<`C`, `PCK`\>
+
+### Returns
+
+`Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+## Call Signature
+
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger9FinalizedCallTxData`](../interfaces/Ledger9FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Calls a circuit on a contract that declares no private state.
