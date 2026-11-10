@@ -136,6 +136,14 @@ const validateSalt = (salt: string): void => {
   }
 };
 
+const validateSigningKeyAddress = (address: string): void => {
+  try {
+    assertIsContractAddress(address);
+  } catch {
+    throw new InvalidExportFormatError(`Invalid contract address '${address}'`);
+  }
+};
+
 const validateSigningKeyValue = (value: unknown): void => {
   if (!isValidSigningKey(value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
@@ -374,27 +382,27 @@ export const inMemoryPrivateStateProvider = <
      * @param {SigningKey} signingKey - The signing key to set.
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
      */
-    setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+    async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      assertIsContractAddress(address);
       signingKeys[storedAddress(address)] = signingKey;
-      return Promise.resolve();
     },
     /**
      * Gets the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
      */
-    getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      const value = signingKeys[storedAddress(address)] ?? null;
-      return Promise.resolve(value);
+    async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      assertIsContractAddress(address);
+      return signingKeys[storedAddress(address)] ?? null;
     },
     /**
      * Removes the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
      */
-    removeSigningKey(address: ContractAddress): Promise<void> {
+    async removeSigningKey(address: ContractAddress): Promise<void> {
+      assertIsContractAddress(address);
       delete signingKeys[storedAddress(address)];
-      return Promise.resolve();
     },
     /**
      * Clears all signing keys.
@@ -514,6 +522,7 @@ export const inMemoryPrivateStateProvider = <
       }
 
       for (const address of addresses) {
+        validateSigningKeyAddress(address);
         validateSigningKeyValue(payload.keys[address]);
       }
 

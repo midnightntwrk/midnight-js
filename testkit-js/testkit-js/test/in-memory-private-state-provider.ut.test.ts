@@ -34,8 +34,9 @@ const PBKDF2_ITERATIONS = 100000;
 const ENCRYPTION_VERSION = 1;
 const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
-const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
-const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
+const CONTRACT_ADDRESS_1 = '01'.repeat(32) as ContractAddress;
+const CONTRACT_ADDRESS_2 = '02'.repeat(32) as ContractAddress;
+const INVALID_ADDRESSES = ['__proto__', 'constructor', '', 'contract-address-1', `0x${'ab'.repeat(32)}`];
 const VALID_SIGNING_KEY = { tag: 'schnorr', value: 'ab'.repeat(32) };
 
 const encryptPayload = (data: string, password: string, salt: Buffer): string => {
@@ -107,6 +108,17 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
     });
   });
 
+  it.each(INVALID_ADDRESSES)('refuses a payload holding the address %j and writes no key', async (invalid) => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const badExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY, [invalid]: VALID_SIGNING_KEY });
+
+    await expect(
+      provider.importSigningKeys(badExport, { password: VALID_PASSWORD })
+    ).rejects.toThrow(InvalidExportFormatError);
+
+    expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toBeNull();
+  });
+
   it('accepts a well-formed structured signing key', async () => {
     const provider = inMemoryPrivateStateProvider<PSI, PS>();
     const goodExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
@@ -115,6 +127,20 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
 
     expect(result.imported).toBe(1);
     expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(VALID_SIGNING_KEY);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider signing-key addresses', () => {
+  it.each(INVALID_ADDRESSES)('signing-key methods refuse %j and keep stored keys', async (invalid) => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const signingKey = sampleSigningKey();
+    await provider.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+    await expect(provider.getSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+    await expect(provider.setSigningKey(invalid, sampleSigningKey())).rejects.toThrow(InvalidArgumentError);
+    await expect(provider.removeSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+
+    expect(await provider.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(signingKey);
   });
 });
 

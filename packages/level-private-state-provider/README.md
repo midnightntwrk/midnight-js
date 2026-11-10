@@ -109,6 +109,8 @@ await provider.removeSigningKey(contractAddress);
 await provider.clearSigningKeys();
 ```
 
+These methods, and `importSigningKeys`, refuse a value that is not a contract address.
+
 ### Password Rotation
 
 ```typescript

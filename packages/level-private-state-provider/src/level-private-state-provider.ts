@@ -697,6 +697,14 @@ const validateSalt = (salt: string): void => {
   }
 };
 
+const validateSigningKeyAddress = (address: string): void => {
+  try {
+    assertIsContractAddress(address);
+  } catch {
+    throw new InvalidExportFormatError(`Invalid contract address '${address}'`);
+  }
+};
+
 const validateSigningKeyValue = (value: unknown): void => {
   if (!isValidSigningKey(value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
@@ -1031,6 +1039,21 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       (await subLevel.get(storedAddress(address))) !== undefined
     );
 
+  const writeSigningKey = (address: ContractAddress, signingKey: SigningKey): Promise<void> => {
+    const { signingKey: signingKeyLevelName } = scopedNames;
+    const serialized = superjson.stringify(signingKey);
+
+    return withSubLevel<void>(ctx, signingKeyLevelName, async (subLevel) => {
+      const encryption = await resolveEncryption(
+        subLevel,
+        `${ctx.dbName}:${signingKeyLevelName}`,
+        passwordProvider,
+        ctx.cryptoBackend
+      );
+      await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
+    });
+  };
+
   return {
     /** {@inheritDoc PrivateStateProvider.forContract} */
     forContract(contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> {
@@ -1044,12 +1067,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
     /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      assertIsContractAddress(address);
       const { signingKey } = scopedNames;
       const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, storedAddress(address), passwordProvider);
       return stored === null ? null : readStoredSigningKey(stored, address);
     },
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
+      assertIsContractAddress(address);
       const { signingKey } = scopedNames;
       return withSubLevel<void>(ctx, signingKey, (subLevel) =>
         subLevel.del(storedAddress(address)),
@@ -1057,18 +1082,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
     /** {@inheritDoc PrivateStateProvider.setSigningKey} */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      const { signingKey: signingKeyLevelName } = scopedNames;
-      const serialized = superjson.stringify(signingKey);
-
-      return withSubLevel<void>(ctx, signingKeyLevelName, async (subLevel) => {
-        const encryption = await resolveEncryption(
-          subLevel,
-          `${ctx.dbName}:${signingKeyLevelName}`,
-          passwordProvider,
-          ctx.cryptoBackend
-        );
-        await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
-      });
+      assertIsContractAddress(address);
+      return writeSigningKey(address, signingKey);
     },
     /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
@@ -1180,6 +1195,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       for (const address of addresses) {
+        validateSigningKeyAddress(address);
         validateSigningKeyValue(payload.keys[address]);
       }
 
@@ -1212,7 +1228,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           }
         }
 
-        await this.setSigningKey(address, signingKey);
+        await writeSigningKey(address, signingKey);
 
         if (!exists) {
           imported++;
