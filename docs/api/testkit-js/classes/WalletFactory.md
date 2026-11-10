@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.5**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.6**](../README.md)
 
 ***
 
@@ -16,7 +16,7 @@
 
 ### createDustWallet()
 
-> `static` **createDustWallet**(`config`, `seed`, `dustOptions?`): `Promise`\<`DustWalletAPI`\>
+> `static` **createDustWallet**(`config`, `seed`, `dustOptions?`): `Promise`\<`DustWalletAPI`\<`Readonly`\<\{ \}\>\>\>
 
 #### Parameters
 
@@ -34,13 +34,13 @@
 
 #### Returns
 
-`Promise`\<`DustWalletAPI`\>
+`Promise`\<`DustWalletAPI`\<`Readonly`\<\{ \}\>\>\>
 
 ***
 
 ### createShieldedWallet()
 
-> `static` **createShieldedWallet**(`config`, `seed`): `Promise`\<`ShieldedWalletAPI`\>
+> `static` **createShieldedWallet**(`config`, `seed`): `Promise`\<`ShieldedWalletAPI`\<`Readonly`\<\{ \}\>\>\>
 
 #### Parameters
 
@@ -54,7 +54,7 @@
 
 #### Returns
 
-`Promise`\<`ShieldedWalletAPI`\>
+`Promise`\<`ShieldedWalletAPI`\<`Readonly`\<\{ \}\>\>\>
 
 ***
 
@@ -90,7 +90,7 @@
 
 ##### shieldedWallet
 
-`ShieldedWalletAPI`
+`ShieldedWalletAPI`\<`Readonly`\<\{ \}\>\>
 
 ##### unshieldedWallet
 
@@ -98,7 +98,7 @@
 
 ##### dustWallet
 
-`DustWalletAPI`
+`DustWalletAPI`\<`Readonly`\<\{ \}\>\>
 
 #### Returns
 

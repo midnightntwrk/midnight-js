@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -57,7 +57,6 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`VerifierKeyMismatchError`](../contracts/classes/VerifierKeyMismatchError.md)
 - [`ZswapOutputResolutionError`](../contracts/classes/ZswapOutputResolutionError.md)
 - [`ArtifactRuntimeVersionUnavailableError`](../types/classes/ArtifactRuntimeVersionUnavailableError.md)
-- [`ForeignLedgerTransactionError`](../types/classes/ForeignLedgerTransactionError.md)
 - [`InvalidProtocolSchemeError`](../types/classes/InvalidProtocolSchemeError.md)
 - [`InvalidSerializedStateError`](../types/classes/InvalidSerializedStateError.md)
 - [`InvalidTransactionHandleError`](../types/classes/InvalidTransactionHandleError.md)
@@ -72,6 +71,8 @@ dependency, the platform or user code, and midnight-js passed it through unchang
 - [`SerializedStateDecodeFailedError`](../types/classes/SerializedStateDecodeFailedError.md)
 - [`SerializedStateDecoderMissingError`](../types/classes/SerializedStateDecoderMissingError.md)
 - [`SigningKeyExportError`](../types/classes/SigningKeyExportError.md)
+- [`TransactionDecodeFailedError`](../types/classes/TransactionDecodeFailedError.md)
+- [`TransactionDecoderMissingError`](../types/classes/TransactionDecoderMissingError.md)
 - [`TransactionEraMismatchError`](../types/classes/TransactionEraMismatchError.md)
 - [`UnusableEraEntryError`](../types/classes/UnusableEraEntryError.md)
 - [`WatchTimeoutError`](../types/classes/WatchTimeoutError.md)

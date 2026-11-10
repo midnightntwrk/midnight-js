@@ -15,6 +15,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { inspect } from 'node:util';
 
 import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
 import {
@@ -33,6 +34,7 @@ import {
   type UnboundTx
 } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { Data, Effect } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -473,6 +475,86 @@ describe('submit-tx', () => {
 
       expect(rejection).toBeInstanceOf(ProviderFailedError);
       expect(Reflect.get(Object(Reflect.get(Object(rejection), 'cause')), 'code')).toBeUndefined();
+    });
+
+    describe('a wallet rejection that is an Effect FiberFailure', () => {
+      const payloadHex = 'ef'.repeat(32);
+
+      class SubmissionError extends Data.TaggedError('SubmissionError')<{
+        readonly message: string;
+        readonly cause?: unknown;
+        readonly txData?: string;
+      }> {}
+
+      const walletRejection = (): Promise<unknown> => {
+        const nodeRefusal = Object.assign(new Error('1010: Invalid Transaction: Custom error: 194'), {
+          name: 'RpcError',
+          code: 1010
+        });
+        return rejectionOf(
+          Effect.runPromise(
+            Effect.fail(
+              new SubmissionError({
+                message: 'Transaction submission error',
+                cause: new SubmissionError({
+                  message: `Transaction submission failed for 0x${payloadHex}`,
+                  cause: nodeRefusal,
+                  txData: `0x${payloadHex}`
+                })
+              })
+            )
+          )
+        );
+      };
+
+      const causeMessages = (error: unknown): readonly string[] => {
+        const cause: unknown = Reflect.get(Object(error), 'cause');
+        return cause instanceof Error ? [cause.message, ...causeMessages(cause)] : [];
+      };
+
+      const submitRejectedWith = async (rejection: unknown): Promise<unknown> => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(await handles.v9.Unbound());
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(await handles.v9.Finalized());
+        mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(rejection);
+        return rejectionOf(submitLedger9Payload(mockProviders, { unprovenTx: createMockUnprovenTx() }));
+      };
+
+      it('keeps the node refusal at the end of the sanitized cause chain', async () => {
+        const failure = await walletRejection();
+
+        const rejection = await submitRejectedWith(failure);
+
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
+        expect(rejection).toMatchObject({ method: 'submitTx' });
+        expect(causeMessages(rejection).at(-1)).toBe('RpcError: 1010: Invalid Transaction: Custom error: 194');
+      });
+
+      it('redacts the payload everywhere in the followed chain and drops the wallet\'s own properties', async () => {
+        const failure = await walletRejection();
+
+        const rejection = await submitRejectedWith(failure);
+
+        const serialized = inspect(rejection, { depth: null, showHidden: true });
+        expect(serialized).toContain('Custom error: 194');
+        expect(serialized).toContain('0x[redacted]');
+        expect(serialized).not.toContain(payloadHex);
+        expect(serialized).not.toContain('txData');
+        expect(serialized).not.toContain('effect/Runtime/FiberFailure');
+        expect(inspect(failure, { depth: null })).toContain(payloadHex);
+      });
+
+      it('still reports a value branded as a FiberFailure that carries no Cause', async () => {
+        const failure = Object.assign(new Error('wallet down'), {
+          [Symbol.for('effect/Runtime/FiberFailure')]: Symbol.for('effect/Runtime/FiberFailure'),
+          [Symbol.for('effect/Runtime/FiberFailure/Cause')]: null
+        });
+
+        const rejection = await submitRejectedWith(failure);
+
+        expect(rejection).toBeInstanceOf(ProviderFailedError);
+        expect(rejection).toMatchObject({ method: 'submitTx', cause: { message: 'Error: wallet down' } });
+        expect(causeMessages(rejection)).toEqual(['Error: wallet down']);
+      });
     });
 
     it('wraps a provider rejection on the pipelines\' v9 path the same way', async () => {

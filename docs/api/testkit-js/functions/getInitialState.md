@@ -1,15 +1,15 @@
-[**@midnight-ntwrk/testkit-js v5.0.0-rc.5**](../README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-rc.6**](../README.md)
 
 ***
 
-> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
+> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`\> \| `UnshieldedWalletState`\<`string`\>\>
 
 ## Parameters
 
 ### wallet
 
-`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
+`UnshieldedWalletAPI` \| `ShieldedWalletAPI`
 
 ## Returns
 
-`Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
+`Promise`\<`ShieldedWalletState`\<`string`\> \| `UnshieldedWalletState`\<`string`\>\>

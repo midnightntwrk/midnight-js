@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -68,7 +68,7 @@ Carries the originating failure on `cause` -- a provider that could not serve th
 
 > `readonly` `optional` **circuitId?**: `string`
 
-The circuit the refused call names, for `'ledger8-call-in-scope'`.
+The circuit the refused call names, for the reasons [EraMismatchOptions.circuitId](../interfaces/EraMismatchOptions.md#circuitid) lists.
 
 ***
 

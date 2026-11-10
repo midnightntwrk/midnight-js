@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -12,8 +12,8 @@ Assembles a [ProofProvider](../interfaces/ProofProvider.md) from one handler per
 
 `supportedEras` is computed from the handlers given, so it cannot disagree
 with what the provider does. Each handle is routed to the handler of its own
-era, and the answer is sealed in that same era, so a handler never sees a
-handle and cannot answer in the wrong era.
+era, and the answer is sealed in that same era at the Unbound stage, so an
+answer of another era or stage is refused.
 
 Every handler is called with `handlers` as `this`.
 
@@ -46,8 +46,8 @@ InvalidArgumentError if `handlers` is not an object, has no key for
 
 ```typescript
 const proofProvider = createProofProviderFromHandlers({
-  v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
-  v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
+  v8: async (tx) => proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), ledger8ProvingProvider),
+  v9: (tx) => tx.deserialize({ v9: Transaction }).prove(provingProvider, CostModel.initialCostModel())
 });
 // proofProvider.supportedEras is ['v8', 'v9']
 ```

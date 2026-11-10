@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Variable: isLedger9TransactionContext
 
-> `const` **isLedger9TransactionContext**: (`u`) => `u is Ledger9TransactionContext<Contract.Any>` = `Internal.isTransactionContext`
+> `const` **isLedger9TransactionContext**: (`u`) => `u is Ledger9TransactionContext<Contract.Any>` = `Internal.isLedger9ScopeContext`
 
 Type guard to determine if a value is a Ledger9TransactionContext.
 

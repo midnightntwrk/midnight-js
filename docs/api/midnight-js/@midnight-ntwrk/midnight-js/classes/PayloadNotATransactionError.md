@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -80,7 +80,7 @@ The era's runtime refused to read the payload at the requested stage; its refusa
 
 ##### stage
 
-`TransactionStage`
+`"Finalized"` \| `"Unproven"` \| `"Unbound"`
 
 ##### byteLength
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -37,10 +37,10 @@ So a provider built by a `…FromHandlers` factory checks again when a handle
 arrives: a handle of an era it has no handler for is refused with
 `ProviderEraUnsupportedError` before any work. That check is what actually
 holds. A provider that implements the interface directly has no such check built
-in. If it calls `LedgerTransaction.unwrap(handle, era)` for an era it does not
-serve, it is refused with a different error, `TransactionEraMismatchError`
-(`MIDNIGHT_JS_PR_TRANSACTION_ERA_MISMATCH`); otherwise it refuses with its own
-code, or not at all.
+in. If it calls `handle.deserialize({ v9: Transaction })` on a handle of an era
+it does not serve, it is refused with a different error,
+`TransactionDecoderMissingError` (`MIDNIGHT_JS_PR_TRANSACTION_DECODER_MISSING`);
+otherwise it refuses with its own code, or not at all.
 
 ## One error, raised in two places
 
@@ -93,9 +93,10 @@ and derives the handlers and the declaration from them. The section below says
 when you want it.
 
 **Contingently, from a concrete provider.** `httpClientProofProvider` and
-`dappConnectorProofProvider` both DO serve v8. Each proves the live ledger object
-in this process — `proveLedger8Transaction(tx, …)` for v8, `tx.prove(…)` for v9 —
-and only circuit preimages cross the wire to the proof server or the wallet.
+`dappConnectorProofProvider` both DO serve v8. Each decodes the handle with the
+framework's ledger copy and proves it in this process —
+`proveLedger8Transaction(…)` for v8, `.prove(…)` for v9 — and only circuit
+preimages cross the wire to the proof server or the wallet.
 Serializing the transaction and decoding the answer is what
 `dappConnectorWalletProviders` and the testkit wallet do, because they hand the
 whole transaction to a wallet with its own ledger copy. Other implementations
@@ -144,5 +145,5 @@ the handle does not have — rather than the missing `seal`, which is the actual
 problem. An implementer meeting that error has no path from it to the fix.
 
 Going through `createLedger9WalletProvider` or `createLedger9MidnightProvider` means the error
-never arises: both adapters unwrap each handle on the way in, and the wallet
-adapter seals its answer on the way out.
+never arises: both adapters hand your function the v9 handle, and the wallet
+adapter seals its answer (an object of any ledger copy, or bytes) on the way out.

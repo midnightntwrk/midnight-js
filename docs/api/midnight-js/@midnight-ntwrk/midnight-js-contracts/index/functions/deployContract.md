@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -49,6 +49,12 @@ Ledger8SigningKeyError with reason `'unusable'` If a retained-era deploy is give
 EraMismatchError with reason `'ledger8-deploy-on-ledger9-network'` If a retained-era artifact is deployed after the fork.
                                Raised before the constructor runs and before any verifier key is
                                fetched.
+
+## Throws
+
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` If a ledger 9 artifact is deployed
+                               before the fork. Raised after one network version read, before the
+                               constructor runs and before anything is proven.
 
 ## Throws
 

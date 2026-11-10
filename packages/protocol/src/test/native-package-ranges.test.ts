@@ -124,15 +124,24 @@ const expectOneRange = (native: string): void => {
 };
 
 describe('native package ranges a consumer resolves', () => {
-  it.each(['@midnightntwrk/onchain-runtime-v4', '@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/ledger-v8'])(
-    'asks for %s with one range everywhere',
-    (native) => {
-      expectOneRange(native);
-    }
-  );
+  it('asks for @midnight-ntwrk/onchain-runtime-v3 with one range everywhere', () => {
+    expectOneRange('@midnight-ntwrk/onchain-runtime-v3');
+  });
 
-  // compact-js 3.0.0-rc.6 asks for `^1.0.0-rc.7` while protocol and the wallet SDK pin `1.0.0-rc.7`, so a later rc.8
-  // would split them. Expected to fail until compact-js pins it too; flip it then.
+  // compact-js 3.0.0 and protocol pin `8.1.3`, while the wallet SDK 2.0.0 asks for `^8.1.3`.
+  // Expected to fail until they align (midnightntwrk/compact-js#42); flip it then.
+  it.fails('asks for @midnightntwrk/ledger-v8 with one range everywhere', () => {
+    expectOneRange('@midnightntwrk/ledger-v8');
+  });
+
+  // compact-js 3.0.0 pins `4.0.0` while compact-runtime 0.21.0 asks for `^4.0.0-rc.3`, so a 4.0.1 would split them.
+  // Expected to fail until they align (midnightntwrk/compact-js#42); flip it then.
+  it.fails('asks for @midnightntwrk/onchain-runtime-v4 with one range everywhere', () => {
+    expectOneRange('@midnightntwrk/onchain-runtime-v4');
+  });
+
+  // compact-js 3.0.0 and the wallet SDK 2.0.0 ask for `^1.0.0`, while protocol pins `1.0.0`.
+  // Expected to fail until they align (midnightntwrk/compact-js#42); flip it then.
   it.fails('asks for @midnightntwrk/ledger-v9 with one range everywhere', () => {
     expectOneRange('@midnightntwrk/ledger-v9');
   });

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -6,6 +6,6 @@
 
 # Type Alias: TransactionStage
 
-> **TransactionStage** = `"Unproven"` \| `"Unbound"` \| `"Finalized"`
+> **TransactionStage** = *typeof* `TRANSACTION_STAGES`\[`number`\]
 
 The point in its life a transaction has reached: before proving, after proving, after binding.

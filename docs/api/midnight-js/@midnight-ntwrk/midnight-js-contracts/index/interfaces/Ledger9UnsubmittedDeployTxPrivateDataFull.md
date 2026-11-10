@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -72,10 +72,10 @@ The signing key that was added as the deployed contract's maintenance authority.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
+> `readonly` **unprovenTx**: [`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Unproven"`, `"v9"`\>
 
-The unproven transaction produced, as a v9 handle. Read it with
-`LedgerTransaction.unwrap(unprovenTx, 'v9')`.
+The unproven transaction produced, as a v9 handle. Read it with your own
+ledger copy: `unprovenTx.deserialize({ v9: Transaction })`.
 
 #### Inherited from
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -33,6 +33,10 @@ Optional scoped transaction context to participate in an
 EraMismatchError with reason `'contract-era-unsupported'` for a ledger 8 contract, and
         `'ledger8-artifacts-in-ledger9-container'` for a ledger 9 container whose artifacts declare
         ledger 8, before anything else.
+
+## Throws
+
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 8 scope.
 
 ## Throws
 

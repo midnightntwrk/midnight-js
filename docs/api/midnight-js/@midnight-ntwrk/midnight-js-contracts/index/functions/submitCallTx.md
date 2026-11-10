@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -107,6 +107,42 @@ retained-era-native pipeline runs, after it the keep-state one.
  - [KeepStatePipeline](../../documents/KeepStatePipeline.md) for the era table, and for why a provider needs to serve v8
      handles only while the network is still before the fork.
  - [OverloadTyping](../../documents/OverloadTyping.md) for how the two eras are discriminated.
+
+## Call Signature
+
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+
+Calls a circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain inside a scope
+made by `withLedger8ContractScopedTransaction` or `withContractScopedTransaction` before the hard
+fork. The call is added to the scope rather than submitted on its own.
+
+### Type Parameters
+
+#### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)\<`unknown`\>
+
+#### PCK
+
+`PCK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`Ledger8ContractProviders`](../type-aliases/Ledger8ContractProviders.md)\<`C`, `PCK`\>
+
+#### options
+
+[`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
+
+#### transactionContext
+
+[`Ledger8TransactionContext`](../interfaces/Ledger8TransactionContext.md)\<`C`, `PCK`\>
+
+### Returns
+
+`Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -61,13 +61,19 @@ ProviderEraUnsupportedError if the implementation does not serve the handle's er
 
 #### Throws
 
-ForeignLedgerTransactionError if the balanced transaction is not an object of the
-        ledger copy this framework loaded for its era.
+InvalidTransactionHandleError if the balanced transaction is not a transaction object
+        or bytes (`not-a-transaction`), or is not a Finalized transaction of the handle's era
+        (`header-mismatch`).
 
 #### Throws
 
-InvalidTransactionHandleError if the balanced transaction is not a ledger transaction
-        object (`not-a-transaction`) or is not at the Finalized stage (`stage-mismatch`).
+PayloadNotATransactionError if a provider built with [createWalletProviderFromHandlers](../functions/createWalletProviderFromHandlers.md)
+        is answered with a transaction whose body does not decode.
+
+#### Throws
+
+Ledger8RuntimeMissingError if such a provider is answered with a v8 transaction and the
+        v8 runtime cannot be loaded.
 
 ***
 

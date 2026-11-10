@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -6,6 +6,6 @@
 
 # Type Alias: TransactionHandleMethod
 
-> **TransactionHandleMethod** = [`TransactionMethod`](TransactionMethod.md) \| [`ReadMethod`](ReadMethod.md) \| `"LedgerTransaction.seal"` \| `"LedgerTransaction.unwrap"`
+> **TransactionHandleMethod** = [`TransactionMethod`](TransactionMethod.md) \| [`ReadMethod`](ReadMethod.md) \| `"LedgerTransaction.fromBytes"` \| `"LedgerTransaction.seal"`
 
 The methods that check transaction handles, named in a refusal.

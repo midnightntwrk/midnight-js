@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -29,7 +29,7 @@ const proofProvider = httpClientProofProvider(
 // midnight-js code.
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const provenTx = await proofProvider.proveTx(unprovenTx);
-const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+const ledgerProvenTx = provenTx.deserialize({ v9: Transaction }); // Transaction from your own ledger-v9
 ```
 
 ### Both ledger eras

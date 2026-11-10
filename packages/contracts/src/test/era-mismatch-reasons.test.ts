@@ -23,7 +23,7 @@ import { EraMismatchError, type EraMismatchReason } from '../errors';
 const DETAIL_CASES: readonly (readonly [EraMismatchReason, string])[] = [
   ['ledger8-artifact-on-ledger9-contract', 'Contract address: ab12.'],
   ['ledger8-contract-state-unsupported', 'Contract address: ab12. Operation: findDeployedContract.'],
-  ['scope-on-ledger8-network', "Network version: 'v8'."],
+  ['scope-era-mismatch', "Function: withLedger8ContractScopedTransaction. Network version: 'v9'."],
   ['ledger8-call-in-scope', "Circuit: 'increment'."],
   ['contract-era-unsupported', "Function: createUnprovenCallTx. Contract era: 'v8'."],
   ['unrecognised-result-era', 'Received: v7.']
@@ -38,11 +38,13 @@ describe('EraMismatchError reasons that carry a detail', () => {
     expect(hasErrorCode(error, CONTRACTS_ERROR_CODES.ERA_MISMATCH)).toBe(true);
   });
 
-  it('does not name the network era in the scope refusal, so the message holds for any head that is not ledger 9', () => {
-    const error = new EraMismatchError('scope-on-ledger8-network', { detail: "Network version: 'v10'." });
+  it('points a scope function of the wrong era at the scope function that follows the network', () => {
+    const error = new EraMismatchError('scope-era-mismatch', {
+      detail: "Function: withLedger9ContractScopedTransaction. Network version: 'v8'."
+    });
 
-    expect(error.message).not.toContain('ledger 8');
-    expect(error.message).toContain("Network version: 'v10'.");
+    expect(error.message).toContain('Use withContractScopedTransaction');
+    expect(error.message).toContain("Network version: 'v8'.");
   });
 
   it('keeps the pre-fork and indexer-upgrade advice on a state the v8 ledger wrote', () => {

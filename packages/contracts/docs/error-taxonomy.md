@@ -51,8 +51,9 @@ Its constructor is `TxFailedError(operation, record, details)`:
   constructor requires the ones each operation always has: `contractAddress`
   and `signingKey` for a deploy or a replacement, `contractAddress` and
   `circuitId` for a verifier key update, `circuitId` for a call. A ledger 9
-  call never sets `contractAddress`, because a scope can call several
-  contracts; `circuitId` is then a list.
+  call never sets `contractAddress`; a ledger 9 scope's `circuitId` is a list of
+  every circuit it merged. A ledger 8 scope sets `contractAddress`, and its
+  `circuitId` names every merged circuit, joined by `', '`.
 
 ### Why the shared code sits on the class
 
@@ -187,15 +188,16 @@ The fix is to supply the retained-era path with a Zswap chain state, tracked
 separately. Until then this refuses in the caller's own test run rather than in
 production.
 
-### `EraMismatchError`, reason `'scope-on-ledger8-network'`
+### `EraMismatchError`, reason `'scope-era-mismatch'`
 
-The pre-fork era composes exactly one call per transaction and refuses a longer
-list, which leaves a pre-fork scope nothing to batch into.
+A scope function bound to one ledger era — `withLedger8ContractScopedTransaction`
+or `withLedger9ContractScopedTransaction` — was run on a head of the other era.
+`detail` names the function and the head era.
 
 It is raised when the scope is CREATED, and from the head READING alone — before
 that era's runtime is acquired. Both placements are load-bearing and must not
-move later. The message names both ways forward, because the caller's batching
-intent cannot be honoured either way and it has to choose.
+move later. The message points at `withContractScopedTransaction`, which runs the
+scope of the era the head is on.
 
 ## After submission, the signing key rides along
 

@@ -37,7 +37,7 @@ and are not breadcrumbed a second time. Each already throws a registered,
 remediation-carrying error, which is a stronger signal than a debug line:
 
 - the retained-era deploy path refuses a POST-FORK head;
-- a scoped transaction on a pre-fork head refuses;
+- a scope function bound to one era refuses a head of the other;
 - a provider answering with the other era's payload variant refuses;
 - a fetched state whose envelope disagrees with the head refuses.
 
