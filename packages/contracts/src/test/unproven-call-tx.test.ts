@@ -268,7 +268,7 @@ describe('unproven-call-tx', () => {
 
     describe('with a cross-contract callee in the call tree', () => {
       const calleeAddress = sampleContractAddress();
-      const calleeZswapChainState = new ZswapChainState();
+      const calleeZswapChainState = new ZswapChainState().postBlockUpdate(new Date(1_000_000), 3600n);
       const rootZswapChainState = new ZswapChainState();
 
       const createCallingCircuit = () => {
