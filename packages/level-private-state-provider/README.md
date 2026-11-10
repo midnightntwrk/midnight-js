@@ -109,7 +109,9 @@ await provider.removeSigningKey(contractAddress);
 await provider.clearSigningKeys();
 ```
 
-These methods, and `importSigningKeys`, refuse a value that is not a contract address.
+`getSigningKey`, `setSigningKey` and `removeSigningKey` throw `InvalidArgumentError` for a value that is
+not a contract address. `importSigningKeys` refuses an export that holds such an address with
+`InvalidExportFormatError` and imports nothing.
 
 ### Password Rotation
 
@@ -129,14 +131,24 @@ await provider.changeSigningKeysPassword(
 
 Password rotation is atomic—all data is re-encrypted or none is.
 
-Each store keeps a key check, so an operation whose password does not match the store fails with
-`PrivateStateDecryptionError` (reason `wrong-key`) and writes nothing. Make
-`privateStoragePasswordProvider` return the new password as soon as the rotation resolves. An operation
-that reads the provider while it still returns the other password fails this way; run it again once the
-provider returns the new password.
+Each of the two stores, private states and signing keys, keeps a key check: a known value encrypted
+with the store's password. Every read, write, remove and clear checks the password against it first.
+A password that does not match fails with `PrivateStateDecryptionError` (reason `wrong-key`), and nothing
+is changed. A rotation whose old password does not match fails with `InvalidArgumentError`.
+`clearAll` and `clearSigningKeys` need the password too, so a store whose password is lost can only be
+reset by deleting the database.
 
-A store written before the key check gets one on first use, after the password has opened one of its
-encrypted records. A store that already holds records encrypted under two passwords is not repaired.
+Both stores read the same `privateStoragePasswordProvider`, and each has its own rotation. Run
+`changePassword` and `changeSigningKeysPassword`, then make the provider return the new password.
+Until then, operations on a store that is already rotated fail with `wrong-key`; run them again once
+the provider returns the new password.
+
+A store written before the key check gets one on its first operation:
+
+- if the store holds an encrypted record, only after the password has opened that record;
+- if the store holds no encrypted record, with the password of that first operation.
+
+A store that already holds records encrypted under two passwords is not repaired.
 
 ### Export/Import
 
@@ -212,11 +224,11 @@ Compares two `Buffer`s or `Uint8Array`s in constant time. If the inputs differ i
 ```
 LevelDB (midnight-level-db)
 ├── private-states:{hashedAccountId}
-│   ├── __midnight_encryption_metadata__  (salt, version)
+│   ├── __midnight_encryption_metadata__  (salt, version, keyCheck)
 │   └── {contractAddress}:{privateStateId}  (encrypted state)
 │
 └── signing-keys:{hashedAccountId}
-    ├── __midnight_encryption_metadata__  (salt, version)
+    ├── __midnight_encryption_metadata__  (salt, version, keyCheck)
     └── {contractAddress}  (encrypted signing key)
 ```
 
@@ -239,8 +251,8 @@ LevelDB (midnight-level-db)
 │          │                    │                                 │
 │          ▼                    ▼                                 │
 │  ┌──────────────┐    ┌──────────────────┐                       │
-│  │ Rotation     │    │ Account-scoped   │                       │
-│  │ Lock         │    │ Sublevels        │                       │
+│  │ DB access    │    │ Account-scoped   │                       │
+│  │ queue        │    │ Sublevels        │                       │
 │  └──────────────┘    └──────────────────┘                       │
 └─────────────────────────────────────────────────────────────────┘
 ```

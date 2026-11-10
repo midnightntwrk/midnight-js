@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -139,8 +140,11 @@ const validateSalt = (salt: string): void => {
 const validateSigningKeyAddress = (address: string): void => {
   try {
     assertIsContractAddress(address);
-  } catch {
-    throw new InvalidExportFormatError(`Invalid contract address '${address}'`);
+  } catch (error: unknown) {
+    if (!(error instanceof InvalidArgumentError)) {
+      throw error;
+    }
+    throw new InvalidExportFormatError(`Invalid contract address in import: ${error.message}`);
   }
 };
 
@@ -381,6 +385,7 @@ export const inMemoryPrivateStateProvider = <
      * @param {ContractAddress} address - The contract address.
      * @param {SigningKey} signingKey - The signing key to set.
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
       assertIsContractAddress(address);
@@ -390,6 +395,7 @@ export const inMemoryPrivateStateProvider = <
      * Gets the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       assertIsContractAddress(address);
@@ -399,6 +405,7 @@ export const inMemoryPrivateStateProvider = <
      * Removes the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       assertIsContractAddress(address);
