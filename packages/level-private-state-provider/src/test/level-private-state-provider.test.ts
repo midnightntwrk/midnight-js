@@ -3691,8 +3691,35 @@ describe('Level Private State Provider', (): void => {
           ? await provider.forContract(KEY_CHECK_CONTRACT).get(SIGNING_KEY_ADDRESS)
           : await provider.getSigningKey(SIGNING_KEY_ADDRESS);
 
-        expect(value).not.toBeNull();
+        expect(value).toEqual(store === 'private states' ? `value-${SIGNING_KEY_ADDRESS}` : expect.objectContaining({ tag: 'schnorr' }));
         expect(await readRawMetadata(STORES[store])).toEqual({ salt, version: 1, keyCheck: expect.any(String) });
+      }
+    );
+
+    test('reads with a wrong password are refused', async () => {
+      const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+      await provider.forContract(KEY_CHECK_CONTRACT).set('existing', 'existing-value');
+      await provider.setSigningKey(SIGNING_KEY_ADDRESS, sampleSigningKey());
+      const wrong = providerWithPassword(() => WRONG_PASSWORD);
+
+      await expect(wrong.forContract(KEY_CHECK_CONTRACT).get('existing')).rejects.toMatchObject({ reason: 'wrong-key' });
+      await expect(wrong.getSigningKey(SIGNING_KEY_ADDRESS)).rejects.toMatchObject({ reason: 'wrong-key' });
+      await expect(wrong.forContract(KEY_CHECK_CONTRACT).exportPrivateStates({ password: WRONG_PASSWORD }))
+        .rejects.toMatchObject({ reason: 'wrong-key' });
+    });
+
+    test.each(['skip', 'error'] as const)(
+      'importSigningKeys with a wrong store password is refused with the %s strategy', async (conflictStrategy) => {
+        const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+        await provider.setSigningKey(SIGNING_KEY_ADDRESS, sampleSigningKey());
+        const exported = await provider.exportSigningKeys({ password: KEY_CHECK_NEW_PASSWORD });
+
+        const error = await captureError(() =>
+          providerWithPassword(() => WRONG_PASSWORD).importSigningKeys(exported, { password: KEY_CHECK_NEW_PASSWORD, conflictStrategy })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+        expect(error).toMatchObject({ reason: 'wrong-key' });
       }
     );
 

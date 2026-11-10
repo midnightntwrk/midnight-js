@@ -1035,9 +1035,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   };
 
   const hasStoredSigningKey = (address: ContractAddress): Promise<boolean> =>
-    withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
-      (await subLevel.get(storedAddress(address))) !== undefined
-    );
+    withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) => {
+      await resolveEncryption(subLevel, `${ctx.dbName}:${scopedNames.signingKey}`, passwordProvider, ctx.cryptoBackend);
+      return (await subLevel.get(storedAddress(address))) !== undefined;
+    });
 
   const writeSigningKey = (address: ContractAddress, signingKey: SigningKey): Promise<void> => {
     const { signingKey: signingKeyLevelName } = scopedNames;
