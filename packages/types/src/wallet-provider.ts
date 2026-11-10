@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { CoinPublicKey, EncPublicKey, FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import { dispatch, type Route, type TransactionsAt } from './internal/dispatch';
+import { dispatch, type Route, sealAnswer, type TransactionAnswers } from './internal/dispatch';
 import { assertFunction, readEraEntries } from './internal/read-era-entries';
-import { type FinalizedTx, LedgerTransaction, type UnboundTx } from './ledger-transaction';
-import type { Ledger9UnboundTransaction } from './proof-provider';
+import type { FinalizedTx, LedgerTransaction, TransactionAnswer, UnboundTx } from './ledger-transaction';
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -46,10 +44,13 @@ export interface WalletProvider {
    * @returns The balanced, signed transaction handle, in the SAME era as `tx`.
    * @throws InvalidTransactionHandleError if `tx` is not an unbound handle of this package.
    * @throws ProviderEraUnsupportedError if the implementation does not serve the handle's era.
-   * @throws ForeignLedgerTransactionError if the balanced transaction is not an object of the
-   *         ledger copy this framework loaded for its era.
-   * @throws InvalidTransactionHandleError if the balanced transaction is not a ledger transaction
-   *         object (`not-a-transaction`) or is not at the Finalized stage (`stage-mismatch`).
+   * @throws InvalidTransactionHandleError if the balanced transaction is not a transaction object
+   *         or bytes (`not-a-transaction`), or is not a Finalized transaction of the handle's era
+   *         (`header-mismatch`).
+   * @throws PayloadNotATransactionError if a provider built with {@link createWalletProviderFromHandlers}
+   *         is answered with a transaction whose body does not decode.
+   * @throws Ledger8RuntimeMissingError if such a provider is answered with a v8 transaction and the
+   *         v8 runtime cannot be loaded.
    */
   balanceTx(tx: UnboundTx, ttl?: Date): Promise<FinalizedTx>;
 
@@ -63,19 +64,17 @@ export interface WalletProvider {
  * assembles a {@link WalletProvider} from: one key per ledger era, a handler for
  * an era the wallet balances and `undefined` for one it does not.
  *
- * A handler takes and returns objects of the ledger copy this framework loaded
- * for its era. A handler that hands the transaction to another ledger copy —
- * a wallet SDK built on its own install of the ledger package — serializes it
- * on the way out and decodes the answer into the framework's copy on the way in,
- * with `deserializeTransactionAtStage` from
- * `@midnight-ntwrk/midnight-js-protocol/transaction`.
+ * A handler receives the handle of its own era. It passes `tx.serialize()` to a
+ * wallet, or decodes the handle with its own ledger copy. It answers with a
+ * transaction object of any ledger copy, or with its bytes. The answer is
+ * decoded once, so a corrupt body is refused at `balanceTx`.
  *
  * The two key readers sit beside the handlers rather than inside one: they are
  * properties of the wallet, not of the era a transaction belongs to.
  */
 export type WalletProviderHandlers = {
   readonly [E in LedgerEra]:
-    | ((tx: LedgerTransactionTypes[E]['Unbound'], ttl?: Date) => Promise<LedgerTransactionTypes[E]['Finalized']>)
+    | ((tx: LedgerTransaction<'Unbound', E>, ttl?: Date) => Promise<TransactionAnswer>)
     | undefined;
 } & {
   readonly getCoinPublicKey: () => CoinPublicKey;
@@ -105,13 +104,13 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
   assertFunction('balanceTx', 'getCoinPublicKey', getCoinPublicKey);
   assertFunction('balanceTx', 'getEncryptionPublicKey', getEncryptionPublicKey);
   const supportedEras = Object.freeze(LEDGER_ERAS.filter((era) => served[era] !== undefined));
-  const route: Route<'Unbound', [Date?], TransactionsAt<'Finalized'>, FinalizedTx> = {
+  const route: Route<'Unbound', [Date?], TransactionAnswers, FinalizedTx> = {
     method: 'balanceTx',
     stage: 'Unbound',
     handlers: served,
     receiver: handlers,
     supportedEras,
-    answer: (era, balanced) => LedgerTransaction.seal(era, 'Finalized', balanced, 'balanceTx')
+    answer: (era, balanced) => sealAnswer(era, 'Finalized', balanced, 'balanceTx')
   };
   return {
     supportedEras,
@@ -125,15 +124,14 @@ export const createWalletProviderFromHandlers = (handlers: WalletProviderHandler
  * A {@link WalletProvider} written against the v9 ledger runtime only.
  */
 export interface Ledger9WalletProvider {
-  balanceTx(tx: Ledger9UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: LedgerTransaction<'Unbound', 'v9'>, ttl?: Date): Promise<TransactionAnswer>;
   getCoinPublicKey(): CoinPublicKey;
   getEncryptionPublicKey(): EncPublicKey;
 }
 
 /**
  * Lifts a v9-only wallet implementation into the {@link WalletProvider}
- * interface, unwrapping each handle on the way in and sealing the answer on the
- * way out.
+ * interface, sealing the answer on the way out.
  *
  * The returned provider serves v9 only — `supportedEras` says so — and refuses
  * a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use
@@ -146,8 +144,7 @@ export interface Ledger9WalletProvider {
  * ```typescript
  * // The wallet runs its own copy of the ledger, so the transaction crosses as bytes.
  * const walletProvider = createLedger9WalletProvider({
- *   balanceTx: async (tx, ttl) =>
- *     deserializeTransactionAtStage('v9', 'Finalized', await wallet.balanceTransaction(tx.serialize(), ttl)),
+ *   balanceTx: (tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl),
  *   getCoinPublicKey: () => wallet.coinPublicKey,
  *   getEncryptionPublicKey: () => wallet.encryptionPublicKey
  * });

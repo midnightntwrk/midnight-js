@@ -215,3 +215,15 @@ ADR 0006 left them") no longer holds. They are now a `LedgerState`: bytes and th
 ledger that wrote them, decoded by the caller's own runtime. Transactions are unchanged: a
 `LedgerTransaction` still holds a live object. The #1525 follow-up is closed by ADR 0020: a v8
 state is decoded with `ContractState` from a ledger 8 `compact-runtime` (0.16).
+
+## Amendment — the handle holds bytes (2026-11-05)
+
+Issue #1551, recorded in [ADR-0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md).
+The decision "The handle holds a live ledger object, guarded, rather than bytes" no longer holds. The
+handle holds the bytes and is decoded by the caller's own ledger copy. `unwrap` is removed,
+`ForeignLedgerTransactionError` is no longer raised, and the per-era handlers receive the handle
+instead of a raw object. The mechanisms of points 1, 2, 3, 4, 6, 7, 8, 10 and 11 are replaced as
+ADR 0024 describes: `fromBytes` and `seal` check the header instead of the WASM instance, the stage
+is read from the header, and a record's `tx` is read with `deserialize`. What those points decide
+stands: a synchronous `seal`, the stage checked at every method, era routing, and the tagged read
+record.

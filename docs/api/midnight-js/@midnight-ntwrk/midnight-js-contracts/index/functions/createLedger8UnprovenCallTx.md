@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: createLedger8UnprovenCallTx()
 
-> **createLedger8UnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createLedger8UnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`Ledger8UnsubmittedCallTxData`](../interfaces/Ledger8UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Type Parameters
 
@@ -33,6 +33,12 @@ The providers to use to create the call transaction. `privateStateProvider`, whe
 [`Ledger8CallTxOptions`](../type-aliases/Ledger8CallTxOptions.md)\<`C`, `PCK`\>
 
 Configuration.
+
+### transactionContext?
+
+[`Ledger8TransactionContext`](../interfaces/Ledger8TransactionContext.md)\<`C`, `PCK`\>
+
+Optional ledger 8 scope to build the call in.
 
 ## Returns
 

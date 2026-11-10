@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -8,14 +8,10 @@
 
 > `const` **deserializeLedgerTransaction**: \<`E`\>(`era`, `bytes`, `ctx`) => `Promise`\<[`LedgerTransaction`](../../types/classes/LedgerTransaction.md)\<`"Finalized"`, `E`\>\>
 
-Deserialize a finalized ledger transaction of the given era from raw bytes
-and seal it in a [LedgerTransaction](../../types/classes/LedgerTransaction.md) handle of that era.
-The proof / signature / binding markers are hidden — all current callers
-use `('signature', 'proof', 'binding', ...)`. Add a new wrapper if a
-different combination is needed.
-
-A v8 transaction is read through `loadLedger8Protocol`, so the handle wraps
-an object of the v8 ledger copy this framework loaded.
+Wraps the bytes of a finalized ledger transaction of the given era in a
+[LedgerTransaction](../../types/classes/LedgerTransaction.md) handle of that era. Only the header is checked;
+the caller decodes the handle with its own ledger copy, so reading a v8
+record does not load the v8 runtime.
 
 ## Type Parameters
 
@@ -51,19 +47,10 @@ A finalized handle of `era`.
 
 ## Throws
 
-On any underlying ledger deserialization
-  failure, including bytes written by the other era.
+If the bytes do not start with the header the
+  ledger of `era` writes for a finalized transaction, including bytes written
+  by the other era.
 
 ## Throws
 
 If `era` is not a ledger era.
-
-## Throws
-
-If `era` is `'v8'` and the v8 runtime
-  cannot be loaded.
-
-## Throws
-
-If a duplicate install of the ledger
-  package decoded the bytes.

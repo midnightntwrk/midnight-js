@@ -144,6 +144,7 @@ describe('Protocol type ACL', () => {
       'RetainedLedgerEra',
       'StateConversionStage',
       'StateKind',
+      'TransactionStage',
       'TranscriptPojo',
       'VerifierKeyReader',
       'VersionedRecord',

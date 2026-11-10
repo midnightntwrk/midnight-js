@@ -105,9 +105,10 @@ Category meanings: `USAGE` fix own code/config, do not retry · `ENVIRONMENT` fi
 | PR | `INDEXER_INVARIANT_VIOLATED` | INTERNAL | `IndexerInvariantError` |
 | PR | `INDEXER_PAYLOAD_TOO_LARGE` | INTEGRITY | `IndexerPayloadTooLargeError`* |
 | PR | `UNUSABLE_ERA_ENTRY` | USAGE | `UnusableEraEntryError`* |
-| PR | `FOREIGN_LEDGER_TRANSACTION` | ENVIRONMENT | `ForeignLedgerTransactionError`* |
 | PR | `INVALID_TRANSACTION_HANDLE` | USAGE | `InvalidTransactionHandleError`* |
 | PR | `TRANSACTION_ERA_MISMATCH` | USAGE | `TransactionEraMismatchError`* |
+| PR | `TRANSACTION_DECODER_MISSING` | USAGE | `TransactionDecoderMissingError`* |
+| PR | `TRANSACTION_DECODE_FAILED` | INTEGRITY | `TransactionDecodeFailedError`* |
 | PR | `INVALID_LEDGER_STATE` | USAGE | `InvalidLedgerStateError`* |
 | PR | `LEDGER_STATE_DECODER_MISSING` | USAGE | `LedgerStateDecoderMissingError`* |
 | PR | `LEDGER_STATE_DECODE_FAILED` | INTEGRITY | `LedgerStateDecodeFailedError`* |

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -63,7 +63,7 @@ key exists nowhere else, so a caller that submits this deploy has to store it.
 
 #### unprovenTx
 
-> `readonly` **unprovenTx**: [`UnprovenTx`](../../../midnight-js/types/type-aliases/UnprovenTx.md)
+> `readonly` **unprovenTx**: [`LedgerTransaction`](../../../midnight-js/types/classes/LedgerTransaction.md)\<`"Unproven"`, `"v8"`\>
 
 The unproven deploy transaction, a ledger 8 one.
 

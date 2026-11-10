@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage, type LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
@@ -96,7 +98,7 @@ export const dappConnectorWalletProviders = async (
   const { shieldedCoinPublicKey, shieldedEncryptionPublicKey } = await api.getShieldedAddresses();
   const balance = async <E extends LedgerEra>(
     era: E,
-    tx: LedgerTransactionTypes[E]['Unbound']
+    tx: { serialize(): Uint8Array }
   ): Promise<LedgerTransactionTypes[E]['Finalized']> =>
     deserializeTransactionAtStage(era, 'Finalized', fromWalletHex((await api.balanceUnsealedTransaction(toHex(tx.serialize()))).tx));
 
@@ -113,7 +115,10 @@ export const dappConnectorWalletProviders = async (
     v9: (tx) => balance('v9', tx)
   });
 
-  const midnightProvider = createMidnightProviderFromHandlers({ v8: submit, v9: submit });
+  const midnightProvider = createMidnightProviderFromHandlers({
+    v8: async (tx) => submit(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction })),
+    v9: (tx) => submit(tx.deserialize({ v9: Transaction }))
+  });
 
   return { walletProvider, midnightProvider };
 };

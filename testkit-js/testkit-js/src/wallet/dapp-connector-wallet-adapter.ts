@@ -14,10 +14,6 @@
  */
 
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  type KeyMaterialProvider as ZkirKeyMaterialProvider,
-  provingProvider as createLocalProvingProvider,
-} from '@midnight-ntwrk/zkir-v2';
 import type {
   APIError,
   Configuration,
@@ -38,6 +34,10 @@ import type { WalletTransaction } from '@midnightntwrk/wallet-sdk';
 import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
 import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
 import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
+import {
+  type KeyMaterialProvider as ZkirKeyMaterialProvider,
+  provingProvider as createLocalProvingProvider,
+} from '@midnightntwrk/zkir-v3';
 import { firstValueFrom } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '../test-environment/environment-configuration';
@@ -170,11 +170,9 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
         return defaultProvider.getParams(k);
       },
     };
-    // The prover engine (zkir-v2's provingProvider) and its SRS params (from WasmProver, i.e.
-    // wallet-sdk-prover-client) must be built against the same zkir-v2 version. wallet-sdk-prover-client
-    // depends on @midnight-ntwrk/zkir-v2 ^2.1.0, so testkit-js pins that same version. Bumping zkir-v2
-    // here without a matching wallet-sdk-prover-client yields proofs the node rejects as InvalidProof
-    // (RPC 1010, Custom error 115).
+    // compactc 0.36 emits ZKIR v3 only, so the prover engine is zkir-v3's provingProvider. Its SRS params
+    // still come from WasmProver (wallet-sdk-prover-client), which is built on @midnight-ntwrk/zkir-v2 ^2.1.0.
+    // An engine/params mismatch yields proofs the node rejects as InvalidProof (RPC 1010, Custom error 115).
     return createLocalProvingProvider(zkirProvider);
   }
 

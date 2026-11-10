@@ -14,14 +14,12 @@
  */
 
 import { COMMON_ERROR_CODES, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createProofProviderFromHandlers,
   createWalletProviderFromHandlers,
   InvalidTransactionHandleError,
-  LedgerTransaction,
   type ProofProvider,
   type UnprovenTx,
   type WalletProvider
@@ -46,11 +44,9 @@ interface RecordingProviders {
   readonly seen: { proveTx: LedgerEra[]; balanceTx: LedgerEra[]; submitTx: LedgerEra[] };
 }
 
-const unboundOf = async <E extends LedgerEra>(era: E): Promise<LedgerTransactionTypes[E]['Unbound']> =>
-  LedgerTransaction.unwrap(await handles[era].Unbound(), era);
+const unboundOf = async (era: LedgerEra): Promise<Uint8Array> => (await handles[era].Unbound()).serialize();
 
-const finalizedOf = async <E extends LedgerEra>(era: E): Promise<LedgerTransactionTypes[E]['Finalized']> =>
-  LedgerTransaction.unwrap(await handles[era].Finalized(), era);
+const finalizedOf = async (era: LedgerEra): Promise<Uint8Array> => (await handles[era].Finalized()).serialize();
 
 const recordingProviders = (): RecordingProviders => {
   const seen: RecordingProviders['seen'] = { proveTx: [], balanceTx: [], submitTx: [] };

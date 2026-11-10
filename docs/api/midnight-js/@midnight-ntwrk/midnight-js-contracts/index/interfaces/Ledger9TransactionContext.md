@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -41,6 +41,12 @@ Encapsulates the context for managing a scoped contract transaction.
 #### Returns
 
 `void`
+
+***
+
+### \[ScopeEra\]
+
+> `readonly` **\[ScopeEra\]**: `"v9"`
 
 ***
 

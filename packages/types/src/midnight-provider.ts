@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route } from './internal/dispatch';
 import { readEraEntries } from './internal/read-era-entries';
-import type { FinalizedTx } from './ledger-transaction';
+import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 
 /**
  * Interface for Midnight transaction submission logic. It could be implemented, e.g., by a wallet,
@@ -51,12 +50,11 @@ export interface MidnightProvider {
  * {@link MidnightProvider} from: one key per ledger era, a handler for an era
  * the provider submits and `undefined` for one it does not.
  *
- * A handler takes an object of the ledger copy this framework loaded for its
- * era. A handler that hands the transaction to another ledger copy serializes
- * it on the way out.
+ * A handler receives the handle of its own era, and passes `tx.serialize()` to
+ * the node or wallet that submits it.
  */
 export type MidnightProviderHandlers = {
-  readonly [E in LedgerEra]: ((tx: LedgerTransactionTypes[E]['Finalized']) => Promise<TransactionId>) | undefined;
+  readonly [E in LedgerEra]: ((tx: LedgerTransaction<'Finalized', E>) => Promise<TransactionId>) | undefined;
 };
 
 /**
@@ -95,7 +93,7 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
 
 /**
  * Lifts a v9-only submission function into the {@link MidnightProvider}
- * interface, unwrapping each handle on the way in.
+ * interface.
  *
  * The returned provider serves v9 only — `supportedEras` says so — and refuses
  * a v8 handle with `ProviderEraUnsupportedError`. To serve v8 as well, use
@@ -110,5 +108,5 @@ export const createMidnightProviderFromHandlers = (handlers: MidnightProviderHan
  * ```
  */
 export const createLedger9MidnightProvider = (
-  submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>
+  submitTx: (tx: LedgerTransaction<'Finalized', 'v9'>) => Promise<TransactionId>
 ): MidnightProvider => createMidnightProviderFromHandlers({ v8: undefined, v9: submitTx });

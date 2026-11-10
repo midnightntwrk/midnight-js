@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -62,6 +62,7 @@
 - [Ledger8FoundDeployTxPublicData](interfaces/Ledger8FoundDeployTxPublicData.md)
 - [Ledger8InitialStateResult](interfaces/Ledger8InitialStateResult.md)
 - [Ledger8SubmittedCallTx](interfaces/Ledger8SubmittedCallTx.md)
+- [Ledger8TransactionContext](interfaces/Ledger8TransactionContext.md)
 - [Ledger8UnprovenDeployTxOptionsBase](interfaces/Ledger8UnprovenDeployTxOptionsBase.md)
 - [Ledger8UnsubmittedCallTxData](interfaces/Ledger8UnsubmittedCallTxData.md)
 - [Ledger8UnsubmittedDeployTxData](interfaces/Ledger8UnsubmittedDeployTxData.md)
@@ -106,6 +107,7 @@
 
 - [AnyContract](type-aliases/AnyContract.md)
 - [AnyFinalizedCallTxData](type-aliases/AnyFinalizedCallTxData.md)
+- [AnyLedger8TransactionContext](type-aliases/AnyLedger8TransactionContext.md)
 - [AnySubmittedCallTx](type-aliases/AnySubmittedCallTx.md)
 - [CallResultPrivate](type-aliases/CallResultPrivate.md)
 - [CallTxOptions](type-aliases/CallTxOptions.md)
@@ -196,10 +198,10 @@
 - [getStates](variables/getStates.md)
 - [getUnshieldedBalances](variables/getUnshieldedBalances.md)
 - [isLedger8Result](variables/isLedger8Result.md)
+- [isLedger8TransactionContext](variables/isLedger8TransactionContext.md)
 - [isLedger9TransactionContext](variables/isLedger9TransactionContext.md)
 - [verifierKeysEqual](variables/verifierKeysEqual.md)
 - [verifyContractState](variables/verifyContractState.md)
-- [withContractScopedTransaction](variables/withContractScopedTransaction.md)
 - [withLedger9ContractScopedTransaction](variables/withLedger9ContractScopedTransaction.md)
 
 ## Functions
@@ -233,3 +235,5 @@
 - [submitReplaceAuthorityTx](functions/submitReplaceAuthorityTx.md)
 - [submitTx](functions/submitTx.md)
 - [submitTxAsync](functions/submitTxAsync.md)
+- [withContractScopedTransaction](functions/withContractScopedTransaction.md)
+- [withLedger8ContractScopedTransaction](functions/withLedger8ContractScopedTransaction.md)

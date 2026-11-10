@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
@@ -91,13 +92,13 @@ export const dappConnectorProofProvider = async <K extends string>(
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);
   return createProofProviderFromHandlers({
     // See the `costModel` parameter above for why the v8 handler does not take one.
-    v8: (tx, config) => {
+    v8: async (tx, config) => {
       refuseTimeout(config);
-      return proveLedger8Transaction(tx, provingProvider);
+      return proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), provingProvider);
     },
     v9: (tx, config) => {
       refuseTimeout(config);
-      return tx.prove(provingProvider, costModel);
+      return tx.deserialize({ v9: Transaction }).prove(provingProvider, costModel);
     }
   });
 };

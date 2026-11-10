@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
 import type { Ledger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { type ContractAddress, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { type LedgerEra, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol/version';
 import {
   type FinalizedTxRead,
@@ -272,8 +272,8 @@ describe('the read surface returns the decoded record, on both read methods and 
   });
 });
 
-describe('the v8 runtime is reached lazily, and only when a v8 record needs it', () => {
-  it('never acquires the v8 runtime while decoding v9 records', async () => {
+describe('a record is read without acquiring the v8 runtime: the caller decodes the handle', () => {
+  it('never acquires the v8 runtime while reading v9 records', async () => {
     const records = await Promise.all(
       [0, 1, 2].map(() => toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex)))
     );
@@ -282,39 +282,28 @@ describe('the v8 runtime is reached lazily, and only when a v8 record needs it',
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
-  it('acquires the v8 runtime once across many v8 records', async () => {
-    const RECORD_COUNT = 4;
-
+  it('never acquires the v8 runtime while reading v8 records', async () => {
     const records = await Promise.all(
-      Array.from({ length: RECORD_COUNT }, () =>
-        toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex))
-      )
+      [0, 1, 2].map(() => toFinalizedTxData(TX_ID, transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex)))
     );
-    const modules = await Promise.all(loadLedger8Spy.mock.results.map((result) => result.value));
 
-    expect(records.map((record) => record.era)).toEqual(Array.from({ length: RECORD_COUNT }, () => 'v8'));
-    expect(loadLedger8Spy).toHaveBeenCalled();
-    // One physical load is the claim, and a single module identity is how that
-    // shows from here. Deliberately not a call count: a memo added inside the
-    // codec would reduce the calls and still satisfy the claim.
-    expect(new Set(modules).size).toBe(1);
+    expect(records.map((record) => [record.era, record.tx.era])).toEqual([
+      ['v8', 'v8'],
+      ['v8', 'v8'],
+      ['v8', 'v8']
+    ]);
+    expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 
-  it('awaits the acquisition inside the query method, so the caller sees a resolved record', async () => {
-    const provider = providerReturning(transactionAt(LEDGER8_ERA_PROTOCOL_VERSION, ledger8TransactionHex));
+  it.each([
+    ['v8', LEDGER8_ERA_PROTOCOL_VERSION, () => ledger8TransactionHex],
+    ['v9', LEDGER9_ERA_PROTOCOL_VERSION, () => ledger9TransactionHex]
+  ] as const)('resolves a %s record through the query method without touching the v8 runtime', async (era, version, hex) => {
+    const provider = providerReturning(transactionAt(version, hex()));
 
     const record: FinalizedTxRead = await provider.watchForTxData(TX_ID);
 
-    expect(record.era).toBe('v8');
-    expect(loadLedger8Spy).toHaveBeenCalledTimes(1);
-  });
-
-  it('resolves a v9 record through the query method without touching the v8 runtime', async () => {
-    const provider = providerReturning(transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, ledger9TransactionHex));
-
-    const record: FinalizedTxRead = await provider.watchForTxData(TX_ID);
-
-    expect(record.era).toBe('v9');
+    expect(record.era).toBe(era);
     expect(loadLedger8Spy).not.toHaveBeenCalled();
   });
 });
@@ -509,16 +498,23 @@ describe('a decode that fails is reported by the layer that diagnosed it', () =>
     ['a payload truncated mid-body, its header tag intact', (): string => ledger9TransactionHex.slice(0, 90)],
     ['bytes that are not a serialized anything', (): string => 'ab'.repeat(64)],
     ['a payload whose first byte is flipped', (): string => flipByte(ledger9TransactionHex, 0)],
-    ['a payload with a byte flipped inside its header tag', (): string => flipByte(ledger9TransactionHex, 5)],
-    [
-      'a payload with a byte flipped after its header tag',
-      (): string => flipByte(ledger9TransactionHex, Buffer.from(ledger9TransactionHex, 'hex').length - 1)
-    ]
+    ['a payload with a byte flipped inside its header tag', (): string => flipByte(ledger9TransactionHex, 5)]
   ])('reports %s as a deserialization failure naming the read', async (_label, raw) => {
     const error = await rejectionOf(toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, raw())));
 
     expect(error).toBeInstanceOf(DeserializationError);
     expect((error as DeserializationError).context.details?.era).toBe('v9');
+  });
+
+  it('reads a payload with a byte flipped after its header tag, and refuses it when the caller decodes it', async () => {
+    const raw = flipByte(ledger9TransactionHex, Buffer.from(ledger9TransactionHex, 'hex').length - 1);
+
+    const record = await toFinalizedTxData(TX_ID, transactionAt(LEDGER9_ERA_PROTOCOL_VERSION, raw));
+
+    expect(record.era).toBe('v9');
+    expect(() => record.tx.deserialize({ v8: Transaction, v9: Transaction })).toThrow(
+      expect.objectContaining({ code: PROVIDER_ERROR_CODES.TRANSACTION_DECODE_FAILED })
+    );
   });
 
   it.each([

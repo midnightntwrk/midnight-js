@@ -166,7 +166,7 @@ describe('dappConnectorWalletProviders', () => {
       const txId = await midnightProvider.submitTx(finalized);
 
       expect(submitTransaction).toHaveBeenCalledWith(toHex(finalized.serialize()));
-      expect(txId).toBe(LedgerTransaction.unwrap(finalized, 'v9').identifiers()[0]);
+      expect(txId).toBe(finalized.deserialize({ v9: Transaction }).identifiers()[0]);
     });
 
     it('submits a ledger 8 transaction as hex and returns its identifier', async () => {

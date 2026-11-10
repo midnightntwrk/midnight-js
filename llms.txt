@@ -76,9 +76,9 @@ MidnightProviders
 - **Ledger era**: which ledger runtime produced a payload — `'v8'` (retained, pre-fork) or `'v9'` (current). `LedgerEra` is the union; `LEDGER_ERAS` is the tuple. compact-js names the same era by number: `Ledger.Era['ledger']` is `8` for `'v8'` and `9` for `'v9'`.
 - **`versionOfRecord(record)`**: the era a record was produced in, from its own `protocolVersion` (read path).
 - **`latestNetworkLedgerVersion(source)`**: the era of the network's latest block, read fresh on every call — never cached, never latched (ADR 0007). This is the construct path.
-- **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnight-ntwrk/midnight-js-types`. The handle carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.seal(era, stage, tx)`, read it with `LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another ledger WASM copy with `ForeignLedgerTransactionError`; `unwrap` refuses another era with `TransactionEraMismatchError`.
+- **Transaction handles**: the `proveTx` / `balanceTx` / `submitTx` methods carry `UnprovenTx` / `UnboundTx` / `FinalizedTx` — `LedgerTransaction<Stage>` from `@midnight-ntwrk/midnight-js-types`. The handle holds the transaction's bytes and carries its era (`handle.era`, `'v8'` or `'v9'`); the stage is in the type. Make one with `LedgerTransaction.fromBytes(era, stage, bytes)`, which checks the header that era's ledger writes for that stage, or with `LedgerTransaction.seal(era, stage, tx)` (= `fromBytes(era, stage, tx.serialize())`, an object of any ledger copy). Decode it with your own ledger copy: `handle.deserialize({ v9: Transaction })`, with `Transaction` from `@midnightntwrk/ledger-v9` (or `{ v8: Transaction }` from `@midnightntwrk/ledger-v8`); it decodes at the handle's own stage and returns your type. A refused value is an `InvalidTransactionHandleError`; a missing decoder is `TransactionDecoderMissingError`, a body that does not decode is `TransactionDecodeFailedError`.
 - **One era rule for every value**: the era (`'v8' | 'v9'`) of a value is the ledger era that WROTE it, and every value names it `era` — on a transaction record (`FinalizedTxRead`), on a handle (`LedgerTransaction`) and on a state (`SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`); `protocolVersion` dates the block. On-chain state is bytes in both eras (ADR 0020): `watchForContractState`, `contractStateObservable` and `queryDeployContractState` return `ContractStateRead` (`{ protocolVersion, contractState }`); `queryContractState` returns `ContractStateAndParametersRead` (adds the required `ledgerParameters`); `queryZSwapAndContractState`, `getPublicStates`, `getStates` and `Ledger9TransactionContext.getCurrentStates()` return `PublicStatesRead` (adds `zswapChainState`). Each state is one class per kind from types — `SerializedContractState`, `SerializedLedgerParameters` or `SerializedZswapChainState`: `era` is the ledger that wrote the bytes, `serialize()` gives the bytes, `deserialize({ v9: ContractState })` decodes with the decoder YOU pass — use the `ContractState` of the `compact-runtime` your contract was compiled against, or its `ledger()` refuses the result (`expected instance of ChargedState`). A missing decoder throws `SerializedStateDecoderMissingError`; a decoder that throws is reported as `SerializedStateDecodeFailedError` (INTEGRITY), unless its error is already a `MidnightJsError`, which is rethrown unchanged; decoders with none for any era the state can be do not compile. Only the class's own `fromBytes(era, bytes)` makes one (e.g. `SerializedContractState.fromBytes(era, bytes)`); `isSerializedContractState(value)` and its siblings check one. The contracts API uses the same classes for every full ledger state, in both eras (except `Ledger9ContractConstructorResult.nextContractState`, still a decoded `ContractState`): the `FromInitialStates` builders take `read.contractState`, `read.zswapChainState` and `read.ledgerParameters` as they are; `deployTxData.public.initialContractState` on deploy and found handles is a `SerializedContractState` (decode it with your own runtime); `verifyContractState(verifierKeys, read.contractState)` is async; `ContractTypeError.contractState` is a `SerializedContractState` and the message does not show it. The contracts `submitTx` takes `{ unprovenTx }`, an `UnprovenTx` handle, and accepts only a transaction of the network head's era.
-- **Era-tagged records**: `watchForTxData` / `watchForDeployTxData` return `FinalizedTxRead`. In both variants `tx` is a `FinalizedTx` of the record's era (`record.tx.era === record.era`); read it with `LedgerTransaction.unwrap(record.tx, record.era)`. To treat the eras differently, narrow with a `switch` on `era` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
+- **Era-tagged records**: `watchForTxData` / `watchForDeployTxData` return `FinalizedTxRead`. In both variants `tx` is a `FinalizedTx` of the record's era (`record.tx.era === record.era`); narrow on `record.era` and read it with `record.tx.deserialize({ v9: Transaction })`. The record is not decoded, so reading a v8 record does not load the v8 runtime. To treat the eras differently, narrow with a `switch` on `era` closed by `assertNever(record, '<call site>')`. The context argument is required; the message never renders the value. Reaching it raises `MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`.
 - **Keep-state**: calling a contract deployed before the fork, after the fork, through the same unchanged call site.
 - **Contract maintenance**: `submitInsertVerifierKeyTx`, `submitRemoveVerifierKeyTx`, `submitReplaceAuthorityTx` (and `circuitMaintenanceTx` / `contractMaintenanceTx` on both handles) take either era's artifact and resolve `{ era, public }`; `FinalizedMaintenanceTxData` is the union. A ledger 8 artifact maintains only before the fork; after the fork it is refused with `EraMismatchError` (reason `'ledger8-maintenance-on-ledger9-network'`) — recompile and use the same function with the ledger 9 artifact.
 - **Era-picking type names** (#1536): `FoundContract<C>`, `DeployedContract<C>`, `FinalizedCallTxData<C, PCK>`, `CallTxOptions<C, PCK>`, `ContractProviders<C, PCK>` and the rest of the family pick the ledger 8 or ledger 9 variant from the contract type. The entry points return the era-named type (`Ledger9FoundContract<C>`, `Ledger8FoundContract<C>`). In generic code (`<C extends Contract.Any>`) write the `Ledger9*` name. A flat name without a contract is the union of every era (`FinalizedMaintenanceTxData`, `AnyContract`); a call of any contract in either era is `AnyFinalizedCallTxData` / `AnySubmittedCallTx`. Narrow the results and handles with `isLedger8Result`; `AnyContract` is a constraint for `C`. A ledger 9 type without a contract has only its `Ledger9*` name: `Ledger9FinalizedTxData`, `Ledger9CallResultPublic`. A failed transaction is a `TxFailedError` in both eras; its `operation` says which.
@@ -103,13 +103,13 @@ MidnightProviders
 
 Transactions cross steps 2-4 as handles: `UnprovenTx` into `proveTx`, `UnboundTx`
 into `balanceTx`, `FinalizedTx` into `submitTx`. Each handle carries its era, and
-each provider answers in the same era. Read the ledger object with
-`LedgerTransaction.unwrap(handle, handle.era)`. Step 4 returns a bare
+each provider answers in the same era. Read the ledger object with your own
+ledger copy: `handle.deserialize({ v9: Transaction })`. Step 4 returns a bare
 `TransactionId`, which is era-independent.
 
 Step 5 reports an era-tagged *record* (`FinalizedTxRead`). Its `tx`
-is a `FinalizedTx` of the record's era; read it with
-`LedgerTransaction.unwrap(record.tx, record.era)`.
+is a `FinalizedTx` of the record's era; narrow on `record.era` and read it with
+`record.tx.deserialize({ v9: Transaction })`.
 
 Layer rule: `@midnight-ntwrk/midnight-js-protocol` speaks raw ledger objects; every
 package from `types` up speaks only handles in its public API.
@@ -258,6 +258,7 @@ await states.importPrivateStates(exported, { conflictStrategy: 'skip' });
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -268,7 +269,7 @@ const proofProvider = httpClientProofProvider(
 // The proven handle comes back in the same era.
 const unprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
 const provenTx = await proofProvider.proveTx(unprovenTx);
-const ledgerProvenTx = LedgerTransaction.unwrap(provenTx, 'v9');
+const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ```
 
 ### Proving a Retained-Era (v8) Transaction
@@ -278,13 +279,12 @@ is a v8 handle, passed the same way as a v9 one, and comes back in the era it wa
 
 ```typescript
 const proven = await proofProvider.proveTx(ledger8UnprovenTx);
-// proven.era is 'v8'; read it with LedgerTransaction.unwrap(proven, 'v8')
+// proven.era is 'v8'; read it with proven.deserialize({ v8: Transaction }), Transaction from @midnightntwrk/ledger-v8
 ```
 
-To seal a v8 transaction yourself, build it with the module that `await loadLedger8Protocol()` from
-`@midnight-ntwrk/midnight-js-protocol` returns. Do not import `ledger-v8` directly: an object of
-another copy is refused with `ForeignLedgerTransactionError`, and a v8 object sealed before
-`loadLedger8Protocol()` has resolved is refused with reason `ledger8-not-loaded`.
+To seal a v8 transaction yourself, pass `LedgerTransaction.seal('v8', stage, tx)` an object of any
+ledger 8 copy, or pass its bytes to `LedgerTransaction.fromBytes('v8', stage, bytes)`. Neither needs
+`loadLedger8Protocol()` to have run.
 
 Three things to know before wiring a retained-era flow:
 
@@ -300,21 +300,22 @@ Three things to know before wiring a retained-era flow:
 - To run one end to end, serve both eras on all three providers. Use
   `createProofProviderFromHandlers` / `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`,
   which take one handler per era, keyed `v8` / `v9`, and compute `supportedEras` from the handlers
-  supplied. Each handler gets a live ledger object of its own era and returns one; the factory unwraps
-  and seals the handles:
+  supplied. Each handler receives the handle of its own era. A `proveTx` or `balanceTx` handler
+  answers with a transaction object of any ledger copy, or with its bytes; the factory seals the
+  answer in the request's era at the method's output stage, and decodes the answer once so a corrupt
+  body is refused at once:
 
   ```typescript
   const proofProvider = createProofProviderFromHandlers({
-    v8: (tx) => proveLedger8Transaction(tx, ledger8ProvingProvider),
-    v9: (tx) => tx.prove(provingProvider, CostModel.initialCostModel())
+    v8: async (tx) =>
+      proveLedger8Transaction(tx.deserialize({ v8: (await loadLedger8Protocol()).Transaction }), ledger8ProvingProvider),
+    v9: (tx) => tx.deserialize({ v9: Transaction }).prove(provingProvider, CostModel.initialCostModel())
   });
   ```
 
   A handler that hands the transaction to another ledger copy (a wallet SDK, a DApp Connector wallet)
-  serializes it on the way out and decodes the answer with
-  `deserializeTransactionAtStage(era, stage, bytes)` from
-  `@midnight-ntwrk/midnight-js-protocol/transaction` on the way in. The era comes from the
-  request, never from the bytes.
+  passes `tx.serialize()` and can return the bytes it gets back. An answer of another era or stage
+  is refused with `InvalidTransactionHandleError` (reason `header-mismatch`).
 
   `ledger8ProvingProvider` and `provingProvider` can be the same object when it is a server-backed
   client — the proof server, the DApp Connector — because such a client frames each request with the ledger era that produced the transaction
@@ -340,11 +341,13 @@ Three things to know before wiring a retained-era flow:
   tell a prover built for the wrong era.
 
   Implementing a provider interface directly still works — write `supportedEras` yourself, and
-  unwrap and seal the handles yourself.
+  decode and seal the handles yourself.
 
-Bytes that are not a serialized transaction of the requested era and stage are refused by
-`deserializeTransactionAtStage` with `PayloadNotATransactionError` (from
-`@midnight-ntwrk/midnight-js-protocol/errors`, code `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`).
+A handler answer of another era or stage is refused by the factories with
+`InvalidTransactionHandleError` (reason `header-mismatch`). An answer with the right header and a
+body that does not decode is refused with `PayloadNotATransactionError` (from
+`@midnight-ntwrk/midnight-js-protocol/errors`, code `PROTOCOL_ERROR_CODES.PAYLOAD_NOT_A_TRANSACTION`),
+as are bytes `deserializeTransactionAtStage` cannot read at the requested era and stage.
 
 The proving function itself is `proveLedger8Transaction`, published from the leaf subpath
 `@midnight-ntwrk/midnight-js-protocol/prove` for anyone implementing a `ProofProvider` that serves
@@ -625,13 +628,11 @@ facade above — must be on a matching version. If you implement these interface
 yourself, wrap a v9-only implementation with `createLedger9WalletProvider` /
 `createLedger9MidnightProvider`, or build one per era with
 `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers`. The
-factories unwrap the incoming handle, and the wallet factories seal the
-transaction you return. A wallet that runs its own copy of the ledger (a wallet
-SDK, a DApp Connector wallet) must not be handed the framework's object or
-return its own: serialize the transaction on the way out, and decode the answer
-with `deserializeTransactionAtStage(era, 'Finalized', bytes)` from
-`@midnight-ntwrk/midnight-js-protocol/transaction`, taking the era from the
-request.
+factories hand your function the handle of its era, and the wallet factories
+seal the transaction you return, in the request's era. A wallet that runs its
+own copy of the ledger (a wallet SDK, a DApp Connector wallet) gets
+`tx.serialize()`, and your function can return the bytes it answers with:
+`(tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl)`.
 
 ## Testing
 

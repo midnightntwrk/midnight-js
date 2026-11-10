@@ -34,6 +34,7 @@ import type {
   WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
+import { Cause, Runtime } from 'effect';
 
 import { ProviderFailedError } from '../errors';
 import { requireProviderResult } from './era';
@@ -153,6 +154,25 @@ const redact = (text: string): string => {
 };
 
 /**
+ * The next link of a rejection's chain.
+ *
+ * An Effect `FiberFailure` — what wallet-sdk's Promise methods reject with —
+ * holds its failure as a `Cause` under a symbol, not on `cause`, and its
+ * message names only the outermost error. Squashing that `Cause` yields the
+ * failure itself, whose own `cause` chain reaches the node's refusal.
+ *
+ * @param cause The rejection whose next link to read.
+ * @returns The next link, or `undefined` at the end of the chain.
+ */
+const nextProviderCause = (cause: unknown): unknown => {
+  if (Runtime.isFiberFailure(cause)) {
+    const fiberCause: unknown = cause[Runtime.FiberFailureCauseId];
+    return Cause.isCause(fiberCause) ? Cause.squash(fiberCause) : undefined;
+  }
+  return isErrorLike(cause) ? cause.cause : undefined;
+};
+
+/**
  * Rebuilds an external failure as a plain {@link Error} carrying its class
  * name, a redacted message, a redacted stack and a redacted `cause` chain.
  *
@@ -169,7 +189,7 @@ const redact = (text: string): string => {
  * neither the stack nor the chain may be truncated.
  */
 const sanitizeProviderCause = (cause: unknown, depth = 0): Error => {
-  const nested = isErrorLike(cause) ? (cause as Error).cause : undefined;
+  const nested = nextProviderCause(cause);
   // eslint-disable-next-line no-restricted-syntax -- a redacted copy carried as a cause, never thrown
   const rebuilt = new Error(
     `${describeCauseKind(cause)}: ${redact(renderProviderCause(cause))}`,

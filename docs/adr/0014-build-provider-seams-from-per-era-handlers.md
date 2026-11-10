@@ -316,7 +316,9 @@ them (points 2, 3, 5, 7, 8 and 10 stand). What changed:
 - The handlers are keyed by `LedgerVersion`: `{ v8, v9 }`, with `undefined` for an era not served.
   `currentEra` / `retainedEras` are gone, and so are `RetainedEraEntries`, `erasServedBy`,
   `narrowToEra`, `EraRequest` and the `Ledger9*` / `RetainedEra*` handler types (point 4 no longer
-  applies). Every handler receives a live ledger object of its own era.
+  applies). Every handler receives a live ledger object of its own era. (Amended by
+  [ADR-0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md): a handler
+  receives the handle of its own era, and the factory no longer unwraps it.)
 - The factory unwraps the handle for its era's handler and seals a transaction answer (`proveTx`,
   `balanceTx`) in the same era; `submitTx`'s `TransactionId` passes through. A
   handle of an era with no handler is refused by the method with `ProviderEraUnsupportedError`;

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+import type * as V8 from '@midnightntwrk/ledger-v8';
+
 import { Ledger8RuntimeMissingError } from '../../errors';
-import type * as V8 from '../../v8.js';
 
 export type Ledger8Protocol = typeof V8;
 

@@ -137,8 +137,8 @@ describe('Hex Utils', () => {
       });
 
       it('should parse a valid Bech32m-encoded public key and return its hex representation', () => {
-        const bech32Input = 'mn_shield-epk_test1qvqpla2ttj8v49y52ayluya23spy3m6dgt3mxv9sp9cduuq8uw2lw0snz2sze';
-        const expectedHex = '03001ff54b5c8eca94945749fe13aa8c0248ef4d42e3b330b00970de7007e395f73e';
+        const bech32Input = 'mn_shield-epk_test1rl65khywe22fg46flcf64rqzfrh56shrkvctqztsmecq0cu47ulqhajzud';
+        const expectedHex = '1ff54b5c8eca94945749fe13aa8c0248ef4d42e3b330b00970de7007e395f73e';
         const result = parseEncPublicKeyToHex(bech32Input, mockNetworkId);
         expect(result).toBe(expectedHex);
       });
@@ -148,6 +148,13 @@ describe('Hex Utils', () => {
       it('should throw an error if the input is neither a valid hex string nor a valid Bech32m-encoded public key', () => {
         const invalidInput = 'invalidKey';
         expect(() => parseEncPublicKeyToHex(invalidInput, mockNetworkId)).toThrow();
+      });
+
+      it('should throw if the Bech32m-encoded public key is not 32 bytes long', () => {
+        const legacyLengthInput = 'mn_shield-epk_test1qvqpla2ttj8v49y52ayluya23spy3m6dgt3mxv9sp9cduuq8uw2lw0snz2sze';
+        expect(() => parseEncPublicKeyToHex(legacyLengthInput, mockNetworkId)).toThrow(
+          'Encryption public key needs to be 32 bytes long'
+        );
       });
     });
   });

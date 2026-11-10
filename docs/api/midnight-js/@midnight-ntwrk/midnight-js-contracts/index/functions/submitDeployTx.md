@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -26,6 +26,11 @@ EraMismatchError with the reasons of the artifact era read: `'unwrapped-ledger9-
         `'unrecognised-contract-shape'`, `'artifact-era-undeclared'`, `'provider-cannot-declare-era'`,
         `'unknown-artifact-runtime-version'`, `'ledger8-artifacts-in-ledger9-container'`. A failure of the
         ZK config provider propagates unchanged.
+
+## Throws
+
+EraMismatchError with reason `'ledger9-artifact-on-ledger8-network'` for a ledger 9 contract
+        deployed before the fork, before anything is proven.
 
 ## Call Signature
 

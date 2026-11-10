@@ -57,19 +57,21 @@ UnprovenTx → ProofProvider.proveTx() → UnboundTx
 ```
 
 Every transaction passed to those three methods is a transaction handle,
-`LedgerTransaction<Stage>` from `types`. The handle carries the era (`'v8'` /
-`'v9'`) as data; the stage is in the type. Make one with
-`LedgerTransaction.seal(era, stage, tx)` and read it with
-`LedgerTransaction.unwrap(handle, era)`. `seal` refuses an object of another
-ledger WASM copy (`ForeignLedgerTransactionError`), and a value that is not a
-transaction or is at another stage (`InvalidTransactionHandleError`). Layer rule: `protocol` speaks
+`LedgerTransaction<Stage>` from `types`. The handle holds the transaction's
+bytes and carries the era (`'v8'` / `'v9'`) as data; the stage is in the type.
+Make one with `LedgerTransaction.fromBytes(era, stage, bytes)` or
+`LedgerTransaction.seal(era, stage, tx)` (an object of any ledger copy), and
+decode it with the caller's own ledger copy:
+`handle.deserialize({ v9: Transaction })`. Bytes without the header that era
+writes for that stage, or a value that is not a transaction, are refused with
+`InvalidTransactionHandleError`. Layer rule: `protocol` speaks
 raw ledger objects; every package from `types` up speaks only handles in its
 public API.
 
 The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
 era-tagged *record*, `FinalizedTxRead`. Its `tx` is a `FinalizedTx`
-of the same era (`record.tx.era === record.era`); read it with
-`LedgerTransaction.unwrap(record.tx, record.era)`. To treat the eras
+of the same era (`record.tx.era === record.era`); narrow on `record.era` and
+read it with `record.tx.deserialize({ v9: Transaction })`. To treat the eras
 differently, narrow with a `switch (record.era)` closed by
 `assertNever(record, '<call site>')` from `utils`.
 
@@ -97,18 +99,19 @@ sealing by hand.
 Serving more than one era? Use `createProofProviderFromHandlers` /
 `createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one
 handler per era, keyed `v8` / `v9` (`undefined` for an era you do not serve).
-The factory unwraps each handle for its era's handler, seals a transaction
-answer (`proveTx`, `balanceTx`) in the same era and derives `supportedEras`.
-All three providers carry a required `supportedEras`, read before an operation
-starts so a set that cannot carry a transaction end to end is refused before the
-proof is paid for. A handler that
-hands a transaction to another ledger copy (wallet-sdk, a DApp Connector wallet)
-serializes it on the way out and decodes the answer with
-`deserializeTransactionAtStage` from `protocol` on the way in, taking the era
-from the request. See
+Each handler receives the handle of its era. A transaction answer (`proveTx`,
+`balanceTx`) is a transaction object of any ledger copy or its bytes; the factory
+seals it in the request's era at the method's output stage and derives
+`supportedEras`. All three providers carry a required `supportedEras`, read
+before an operation starts so a set that cannot carry a transaction end to end is
+refused before the proof is paid for. A handler that talks to another ledger copy
+(wallet-sdk, a DApp Connector wallet) passes `tx.serialize()` and can return the
+bytes it gets back. See
 [ADR 0019](./docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md),
 which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
-and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
+and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md), and
+[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md),
+which amends ADR 0019, ADR 0014 and ADR 0013.
 
 ## CI Pipeline & PR Gates
 

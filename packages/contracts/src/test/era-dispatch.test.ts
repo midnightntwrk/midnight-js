@@ -93,7 +93,7 @@ const LEDGER9_HEAD = 2_000_000;
 // One bundle per toolchain, which is what the dispatch reads for either shape. Declared here rather
 // than mocked per test: every case below wants one of the two answers.
 const LEDGER8_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.16.0' };
-const LEDGER9_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.20.0' };
+const LEDGER9_BUNDLE = { getArtifactRuntimeVersion: async (): Promise<string> => '0.21.0' };
 
 describe('resolveArtifactEra: which execution pipeline an artifact belongs to', () => {
   it('routes the current-era CompiledContract container to the ledger9 pipeline', async () => {

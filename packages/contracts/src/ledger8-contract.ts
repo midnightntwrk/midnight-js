@@ -17,7 +17,7 @@
  * The retained-era contract type family: the shape of a contract produced by
  * the PREVIOUS Compact toolchain (`compact-runtime@0.16`), which the current
  * entry points accept through an additive overload alongside the current
- * (`compact-runtime@0.20`) `CompiledContract` container.
+ * (`compact-runtime@0.21`) `CompiledContract` container.
  *
  * Every declaration here is hand-written. The retained toolchain DOES emit an
  * `index.d.ts`, but it describes one contract in terms of
@@ -77,6 +77,7 @@ import type {
   VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
+import type { Ledger8TransactionContext } from './transaction';
 import type { Ledger8FoundDeployTxPublicData } from './tx-model';
 
 
@@ -779,15 +780,19 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
  * Lifts every circuit a retained-era contract declares to a function that
  * builds and submits a call transaction against one address.
  *
- * ONE signature per circuit, where `Ledger9CircuitCallTxInterface`
- * has two: the retained era cannot join a scoped transaction — a scope refuses
- * a retained-era call with `EraMismatchError` (reason `'ledger8-call-in-scope'`) — so there is no context-taking
- * overload to declare.
+ * Two signatures per circuit, as `Ledger9CircuitCallTxInterface` has: called with a
+ * {@link Ledger8TransactionContext} first, the call joins that scope instead of being submitted on
+ * its own. A scope made after the hard fork is a ledger 9 one, which a retained-era call cannot join
+ * (`EraMismatchError`, reason `'ledger8-call-in-scope'`).
  */
 export type Ledger8CircuitCallTxInterface<C extends Ledger8Contract> = {
-  [PCK in Ledger8CircuitId<C>]: (
-    ...args: Ledger8CircuitParameters<C, PCK>
-  ) => Promise<Ledger8FinalizedCallTxData<C, PCK>>;
+  [PCK in Ledger8CircuitId<C>]: {
+    (...args: Ledger8CircuitParameters<C, PCK>): Promise<Ledger8FinalizedCallTxData<C, PCK>>;
+    (
+      txCtx: Ledger8TransactionContext<C, PCK>,
+      ...args: Ledger8CircuitParameters<C, PCK>
+    ): Promise<Ledger8UnsubmittedCallTxData<C, PCK>>;
+  };
 };
 
 /**

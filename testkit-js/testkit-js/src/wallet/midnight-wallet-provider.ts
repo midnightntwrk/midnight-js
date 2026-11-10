@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
   type CoinPublicKey,
   DustSecretKey,
@@ -25,6 +24,7 @@ import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
   type FinalizedTx,
+  type LedgerTransaction,
   type MidnightProvider,
   type UnboundTx,
   type WalletProvider
@@ -102,9 +102,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
   private async balance<E extends LedgerEra>(
     era: E,
-    tx: LedgerTransactionTypes[E]['Unbound'],
+    tx: LedgerTransaction<'Unbound', E>,
     ttl: Date = ttlOneHour()
-  ): Promise<LedgerTransactionTypes[E]['Finalized']> {
+  ): Promise<Uint8Array> {
     const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(
       await adoptInWallet(this.wallet, era, 'Unbound', tx),
       { ttl }
@@ -112,10 +112,10 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) =>
       this.unshieldedKeystore.signDataAsync(payload)
     );
-    return finalizedFromWallet(this.wallet, era, await this.wallet.finalizeRecipe(signed));
+    return finalizedFromWallet(this.wallet, await this.wallet.finalizeRecipe(signed));
   }
 
-  private async submit<E extends LedgerEra>(era: E, tx: LedgerTransactionTypes[E]['Finalized']): Promise<string> {
+  private async submit<E extends LedgerEra>(era: E, tx: LedgerTransaction<'Finalized', E>): Promise<string> {
     return this.wallet.submitTransaction(await adoptInWallet(this.wallet, era, 'Finalized', tx));
   }
 

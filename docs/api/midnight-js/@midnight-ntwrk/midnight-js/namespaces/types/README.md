@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
 
 ***
 
@@ -242,6 +242,12 @@ Re-exports [DecodedState](../../types/type-aliases/DecodedState.md)
 
 ***
 
+### DecodedTransaction
+
+Re-exports [DecodedTransaction](../../types/type-aliases/DecodedTransaction.md)
+
+***
+
 ### DecodersFor
 
 Re-exports [DecodersFor](../../types/type-aliases/DecodersFor.md)
@@ -317,18 +323,6 @@ Re-exports [FinalizedTxRead](../../types/type-aliases/FinalizedTxRead.md)
 ### FinalizedTxRecord
 
 Re-exports [FinalizedTxRecord](../../types/interfaces/FinalizedTxRecord.md)
-
-***
-
-### ForeignLedgerTransactionError
-
-Re-exports [ForeignLedgerTransactionError](../../types/classes/ForeignLedgerTransactionError.md)
-
-***
-
-### ForeignLedgerTransactionReason
-
-Re-exports [ForeignLedgerTransactionReason](../../types/type-aliases/ForeignLedgerTransactionReason.md)
 
 ***
 
@@ -773,6 +767,42 @@ Re-exports [SubmittedCallTxBase](../../types/interfaces/SubmittedCallTxBase.md)
 ### SucceedEntirely
 
 Re-exports [SucceedEntirely](../../types/variables/SucceedEntirely.md)
+
+***
+
+### TransactionAnswer
+
+Re-exports [TransactionAnswer](../../types/type-aliases/TransactionAnswer.md)
+
+***
+
+### TransactionDecodeFailedError
+
+Re-exports [TransactionDecodeFailedError](../../types/classes/TransactionDecodeFailedError.md)
+
+***
+
+### TransactionDecoder
+
+Re-exports [TransactionDecoder](../../types/interfaces/TransactionDecoder.md)
+
+***
+
+### TransactionDecoderMissingError
+
+Re-exports [TransactionDecoderMissingError](../../types/classes/TransactionDecoderMissingError.md)
+
+***
+
+### TransactionDecoders
+
+Re-exports [TransactionDecoders](../../types/type-aliases/TransactionDecoders.md)
+
+***
+
+### TransactionDecodersFor
+
+Re-exports [TransactionDecodersFor](../../types/type-aliases/TransactionDecodersFor.md)
 
 ***
 

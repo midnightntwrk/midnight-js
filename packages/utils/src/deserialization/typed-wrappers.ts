@@ -13,18 +13,12 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
 import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
 import {
-  type Binding,
   ContractState as LedgerContractState,
   type EncodedStateValue,
   LedgerParameters,
-  type Proof,
-  type SignatureEnabled,
   StateValue as LedgerStateValue,
-  Transaction,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -119,42 +113,20 @@ export const deserializeLedger9ZswapChainState = (
     () => ZswapChainState.deserialize(bytes)
   );
 
-type FinalizedReaders = {
-  readonly [E in LedgerEra]: () => Promise<(bytes: Uint8Array) => LedgerTransactionTypes[E]['Finalized']>;
-};
-
-const finalizedReaders: FinalizedReaders = Object.freeze({
-  v8: async () => {
-    const v8 = await loadLedger8Protocol();
-    return (bytes: Uint8Array) => v8.Transaction.deserialize('signature', 'proof', 'binding', bytes);
-  },
-  v9: () =>
-    Promise.resolve((bytes: Uint8Array) =>
-      Transaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', bytes)
-    )
-});
-
 /**
- * Deserialize a finalized ledger transaction of the given era from raw bytes
- * and seal it in a {@link LedgerTransaction} handle of that era.
- * The proof / signature / binding markers are hidden — all current callers
- * use `('signature', 'proof', 'binding', ...)`. Add a new wrapper if a
- * different combination is needed.
- *
- * A v8 transaction is read through `loadLedger8Protocol`, so the handle wraps
- * an object of the v8 ledger copy this framework loaded.
+ * Wraps the bytes of a finalized ledger transaction of the given era in a
+ * {@link LedgerTransaction} handle of that era. Only the header is checked;
+ * the caller decodes the handle with its own ledger copy, so reading a v8
+ * record does not load the v8 runtime.
  *
  * @param era The ledger era that wrote the bytes. Never derived from the bytes.
  * @param bytes The serialized finalized transaction.
  * @param ctx The call site, named on a refusal.
  * @returns A finalized handle of `era`.
- * @throws {DeserializationError} On any underlying ledger deserialization
- *   failure, including bytes written by the other era.
+ * @throws {DeserializationError} If the bytes do not start with the header the
+ *   ledger of `era` writes for a finalized transaction, including bytes written
+ *   by the other era.
  * @throws {UnknownLedgerEraError} If `era` is not a ledger era.
- * @throws {Ledger8RuntimeMissingError} If `era` is `'v8'` and the v8 runtime
- *   cannot be loaded.
- * @throws {ForeignLedgerTransactionError} If a duplicate install of the ledger
- *   package decoded the bytes.
  */
 export const deserializeLedgerTransaction = async <E extends LedgerEra>(
   era: E,
@@ -164,17 +136,15 @@ export const deserializeLedgerTransaction = async <E extends LedgerEra>(
   if (!LEDGER_ERAS.includes(era)) {
     throw new UnknownLedgerEraError(era);
   }
-  const read = await finalizedReaders[era]();
-  const tx = withDeserializationContext(
+  return withDeserializationContext(
     {
       dataType: 'LedgerTransaction',
       source: 'ledger',
       caller: ctx.caller,
       details: ctx.details
     },
-    () => read(bytes)
+    () => LedgerTransaction.fromBytes(era, 'Finalized', bytes)
   );
-  return LedgerTransaction.seal(era, 'Finalized', tx);
 };
 
 /**

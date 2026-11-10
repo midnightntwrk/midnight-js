@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -16,8 +16,9 @@ instances, and a type checker cannot tell their objects apart.
 This package handles that fact in three ways:
 
 - A transaction passed to a provider method is a **handle**
-  (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle carries its era as data
-  and checks the WASM instance when it is made.
+  (`UnprovenTx`, `UnboundTx`, `FinalizedTx`). The handle holds the transaction's
+  bytes and its era, checks the header when it is made, and is decoded by the
+  caller's own ledger copy ([ADR 0024](../../../_media/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)).
 - A value the ledger wrote and the read side returns — a contract state, ledger
   parameters, a zswap chain state — is a **serialized state**, one class per kind
   (`SerializedContractState`, `SerializedLedgerParameters`,
@@ -43,37 +44,46 @@ decisions this implements are
 
 ## A transaction crosses a provider method as a handle
 
-`LedgerTransaction<S>` holds one live ledger transaction, its era (`'v8'` or
-`'v9'`) and its stage `S` (`'Unproven'`, `'Unbound'` or `'Finalized'`). The
-ledger object sits in a private field. There is one way in and one way out:
+`LedgerTransaction<S, E>` holds the bytes of one ledger transaction, its era
+`E` (`'v8'` or `'v9'`) and its stage `S` (`'Unproven'`, `'Unbound'` or
+`'Finalized'`). The bytes sit in a private field; no handle holds a ledger
+object. There is one way in and one way out:
 
-- `LedgerTransaction.seal(era, stage, tx)` makes a handle. Before it does, it
-  checks that `tx` is an object of the ledger copy this framework loaded for
-  `era`. An object of another copy is refused with
-  `ForeignLedgerTransactionError`, reason `foreign-instance`. A v8 object
-  sealed before the framework loaded its v8 ledger is refused with reason
-  `ledger8-not-loaded`: until `loadLedger8Protocol()` has resolved, there is no
-  framework v8 class to compare with.
-- `LedgerTransaction.unwrap(handle, era)` reads the object back. A handle of
-  another era is refused with `TransactionEraMismatchError`.
+- `LedgerTransaction.fromBytes(era, stage, bytes)` makes a handle. It checks
+  that the bytes start with the full header the ledger of `era` writes for
+  `stage` (`LEDGER_TRANSACTION_TAGS` in
+  `@midnight-ntwrk/midnight-js-protocol/version`, one row per era and stage),
+  and refuses other bytes with `InvalidTransactionHandleError`, reason
+  `header-mismatch` (or `not-bytes`, `invalid-stage`).
+  `LedgerTransaction.seal(era, stage, tx)` is a shortcut for
+  `fromBytes(era, stage, tx.serialize())`. It takes an object of any ledger
+  copy, also a v8 object before `loadLedger8Protocol()` has run. A value with
+  no `serialize` method is refused with reason `not-a-transaction`.
+- `handle.deserialize({ v9: Transaction })` decodes with the `Transaction`
+  class the caller passes, from its own ledger copy, at the handle's own stage.
+  Only the class of the handle's era is called. A missing class is refused with
+  `TransactionDecoderMissingError`; a class that throws an error that is not a
+  `MidnightJsError` is reported as `TransactionDecodeFailedError`, with its
+  error as `cause`. Decoders with no class for any era the handle's type
+  allows do not compile.
 
 The era is data on the handle, so the handle has the same shape in every era.
 When a new ledger becomes current, a ledger 9 handle does not change shape.
 
 The stage is part of the type, so passing an unproven handle to
-`MidnightProvider.submitTx` is a compile error. At run time `seal` reads the
-stage from the object's serialized tag, because a ledger uses one class for all
-three stages, and refuses an object at another stage with
-`InvalidTransactionHandleError`, reason `stage-mismatch`. The provider methods
+`MidnightProvider.submitTx` is a compile error. At run time `fromBytes` checks
+the header against the era and stage it is given, because a ledger uses one
+class for all three stages, and refuses bytes at another stage with
+`InvalidTransactionHandleError`, reason `header-mismatch`. The provider methods
 check the handle they receive with `LedgerTransaction.require`, and refuse a
 handle at the wrong stage with reason `wrong-stage`.
 
 When a provider hands a transaction to another ledger copy (a wallet SDK, a
-DApp Connector wallet), it serializes the transaction on the way out and decodes the
-answer into the framework's copy on the way in, with
-`deserializeTransactionAtStage` from
-`@midnight-ntwrk/midnight-js-protocol/transaction`. The era for that decode
-comes from the request, never from the bytes.
+DApp Connector wallet), it passes `tx.serialize()`. A `…FromHandlers` factory
+takes the answer as an object of any ledger copy or as bytes, and seals it in
+the era of the request, never an era read from the bytes. Bytes are decoded
+once there, so a corrupt body is refused at once with
+`PayloadNotATransactionError`.
 
 ## On-chain state is bytes, decoded by the caller
 
@@ -120,8 +130,10 @@ too, except `Ledger9ContractConstructorResult.nextContractState`: the states a c
 deploy and found handles, `verifyContractState` and `ContractTypeError`.
 
 A finalized-transaction record names its era `era` too, and its `tx` is a
-`FinalizedTx` of that same era: `record.tx.era === record.era`. Read it with
-`LedgerTransaction.unwrap(record.tx, record.era)`.
+`FinalizedTx` of that same era: `record.tx.era === record.era`. Narrow on
+`record.era` and read it with `record.tx.deserialize({ v9: Transaction })`. The
+record is built with `fromBytes` and not decoded, so reading a v8 record does
+not load the v8 runtime.
 
 ## Three things the tag does not establish
 
@@ -165,8 +177,8 @@ path, and it is not rare.
 So narrow a `FinalizedTxRead` on `era` when your code treats the
 eras differently, and close the `switch` with `assertNever` from
 `@midnight-ntwrk/midnight-js-utils`, so a further era becomes a compile error
-rather than a fall-through. To read the transaction itself, pass
-`record.era` to `LedgerTransaction.unwrap`.
+rather than a fall-through. To read the transaction itself, call
+`record.tx.deserialize` with the `Transaction` class of that era.
 
 ## Ledger parameters travel with the state
 

@@ -161,9 +161,9 @@ export type EraMismatchReason =
   | 'ledger8-artifact-on-ledger9-contract'
   /** A read that handles only ledger 9 states met a state the v8 ledger wrote. `detail` carries the contract address and the operation. */
   | 'ledger8-contract-state-unsupported'
-  /** A contract-scoped transaction created while the network is still on ledger 8. `detail` carries the network version. */
-  | 'scope-on-ledger8-network'
-  /** A call against a ledger 8 (pre-fork) contract given a contract-scoped transaction to join. `detail` carries the circuit id. */
+  /** A contract-scoped transaction function bound to one ledger, run on a network of another ledger. `detail` carries the function and the network version. */
+  | 'scope-era-mismatch'
+  /** A call against a ledger 8 (pre-fork) contract given a ledger 9 contract-scoped transaction to join. `detail` carries the circuit id. */
   | 'ledger8-call-in-scope'
   /** A contract whose artifacts declare an era the low-level function does not serve. `detail` carries the function name and that era. */
   | 'contract-era-unsupported'
@@ -244,18 +244,17 @@ const ERA_MISMATCH_MESSAGES: Readonly<Record<EraMismatchReason, string>> = Objec
     'operation through the contract the ledger 8 (pre-fork) Compact toolchain produced. After the fork, the ' +
     'indexer serves every contract\'s state translated to v9 from version 4.4.0-rc.6 on: upgrade an ' +
     'older indexer.',
-  'scope-on-ledger8-network':
-    'A contract-scoped transaction cannot be created on the era the network is on, named below. ' +
-    'A scope batches several circuit calls into one transaction, and only the ledger 9 era composes ' +
-    'more than one call per transaction, so there is nothing for a scope to batch into. Either submit ' +
-    'each call as its own transaction with submitCallTx, or run the scope once the network is on the ' +
-    'ledger 9 era.',
+  'scope-era-mismatch':
+    'This contract-scoped transaction function serves one ledger era, and the network is on another, ' +
+    'the function and the network era are named below. withLedger8ContractScopedTransaction runs only before the hard fork and ' +
+    'withLedger9ContractScopedTransaction only after it. Use withContractScopedTransaction, which ' +
+    'runs the scope of the era the network is on.',
   'ledger8-call-in-scope':
     'A circuit of a contract produced by the ledger 8 (pre-fork) Compact toolchain cannot ' +
-    'join a contract-scoped transaction: a scope merges its calls into one ledger 9 transaction, ' +
-    'while a ledger 8 call is composed and submitted on its own. Submit this call as its own ' +
-    'transaction with submitCallTx, outside the scope, and keep the scope for calls against contracts ' +
-    'produced by the ledger 9 Compact toolchain.',
+    'join a contract-scoped transaction after the hard fork: there a scope merges its calls into one ' +
+    'ledger 9 transaction, while a ledger 8 call is composed and submitted on its own. Submit this call ' +
+    'as its own transaction with submitCallTx, outside the scope, and keep the scope for calls against ' +
+    'contracts produced by the ledger 9 Compact toolchain.',
   'contract-era-unsupported':
     'This low-level function does not serve the ledger era the contract\'s artifacts declare, named below. ' +
     'Each Ledger8 or Ledger9 low-level function serves the contracts of its own era only. Call the function ' +
@@ -281,7 +280,7 @@ export interface EraMismatchOptions extends ErrorOptions {
   readonly detail?: string;
   /** The contract the refused value belongs to. Set for `'ledger8-artifact-on-ledger9-contract'` and `'ledger8-contract-state-unsupported'`. */
   readonly contractAddress?: ContractAddress;
-  /** The circuit the refused call names. Set for `'ledger8-call-in-scope'`. */
+  /** The circuit the refused call names. Set for `'ledger8-call-in-scope'`, and for `'ledger9-artifact-on-ledger8-network'` raised for a call given a ledger 8 scope. */
   readonly circuitId?: string;
 }
 
@@ -302,7 +301,7 @@ export class EraMismatchError extends MidnightJsError {
   declare readonly detail?: string;
   /** The contract the refused value belongs to, for the reasons that have one. */
   declare readonly contractAddress?: ContractAddress;
-  /** The circuit the refused call names, for `'ledger8-call-in-scope'`. */
+  /** The circuit the refused call names, for the reasons {@link EraMismatchOptions.circuitId} lists. */
   declare readonly circuitId?: string;
 
   /**
@@ -978,8 +977,8 @@ const describeTxFailure = (operation: TxFailedOperation, record: FinalizedTxRead
  *
  * Read {@link TxFailedError.operation} for which operation failed, and
  * {@link TxFailedError.record} for what the chain recorded. `record.tx` is a
- * `FinalizedTx` in the era `record.era` names; read it with
- * `LedgerTransaction.unwrap(record.tx, record.era)` after narrowing on `era`.
+ * `FinalizedTx` in the era `record.era` names; after narrowing on `era`, read it
+ * with your own ledger copy: `record.tx.deserialize({ v9: Transaction })`.
  *
  * {@link TxFailedError.signingKey} is NAMED in the message but never rendered
  * into it: after a failed deploy or replacement it may be the only copy of the

@@ -246,7 +246,7 @@ yarn test --coverage
 
 1. Understand current flow in `contracts/` package
 2. Check impact on other packages
-3. Keep transactions as handles (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) in every public API from `types` up; a raw ledger object lives only between `LedgerTransaction.unwrap` and `LedgerTransaction.seal` inside one function (ADR 0019)
+3. Keep transactions as handles (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) in every public API from `types` up; a handle holds bytes; a ledger object lives only between `handle.deserialize({ v9: Transaction })` and `LedgerTransaction.seal` inside one function (ADR 0019, ADR 0024)
 4. Update types if transaction shape changes
 5. Test full flow with E2E tests
 

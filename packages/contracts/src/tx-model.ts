@@ -44,8 +44,8 @@ import type { Ledger9CallResult, Ledger9CallResultPrivate, Ledger9CallResultPubl
  */
 export interface Ledger9UnsubmittedTxData extends UnsubmittedTxDataBase {
   /**
-   * The unproven transaction produced, as a v9 handle. Read it with
-   * `LedgerTransaction.unwrap(unprovenTx, 'v9')`.
+   * The unproven transaction produced, as a v9 handle. Read it with your own
+   * ledger copy: `unprovenTx.deserialize({ v9: Transaction })`.
    */
   readonly unprovenTx: LedgerTransaction<'Unproven', 'v9'>;
 }

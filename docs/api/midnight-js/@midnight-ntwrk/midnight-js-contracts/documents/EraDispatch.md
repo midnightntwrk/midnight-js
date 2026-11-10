@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.5**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
 
 ***
 
@@ -298,17 +298,22 @@ artifact is refused after it with nothing proven or submitted, and replaces the
 authority again with the recompiled artifact and the key the first replacement
 stored. See `consumer-e2e/README.md`.
 
-Only the two RETAINED rows are enforced in production. Every call site passes
-the literal `'v8'`, so the current-era rows are reachable from tests alone,
-and the `current-era` + `v8` refusal — `EraMismatchError` with reason
-`'ledger9-artifact-on-ledger8-network'` — is not raised by any shipped path.
+The two RETAINED rows and the current-era DEPLOY cell are enforced in
+production. A current-era deploy (`deployContract`, `submitDeployTx`) reads the
+network's ledger version once, before the constructor runs, and a pre-fork head
+is refused there with `EraMismatchError`, reason
+`'ledger9-artifact-on-ledger8-network'`, before anything is proven. A fork
+between that read and the submit is not diagnosed. The current-era CALL and
+MAINTENANCE cells on a `v8` head are reachable from tests alone.
 
 That is a deliberate consequence of a cost decision, not an oversight: the
 current era's single-call path buys no head read, so it has nothing to compare
-an artifact against. The scoped path does pay for one, which is why a scope on a
-pre-fork head is refused (`EraMismatchError`, reason `'scope-on-ledger8-network'`) and a single call on the
-same head is not. A current-era call against a pre-fork head therefore fails
-LATE — at a provider method or at the node — rather than at this table.
+an artifact against. A deploy pays for the read because it is rare and the
+proof it saves is not. The scoped path does pay for one: a scope on a pre-fork head
+is a ledger 8 scope, and a current-era call made in it is refused with
+`EraMismatchError`, reason `'ledger9-artifact-on-ledger8-network'`, while a single
+call on the same head is not. A current-era single call against a pre-fork head
+therefore fails LATE — at a provider method or at the node — rather than at this table.
 
 The generic `submitTx` / `submitTxAsync` is the exception. It is handed a
 transaction handle rather than an artifact. It reads the handle's `era`, pays for
@@ -318,11 +323,12 @@ a v9 handle before the fork with reason `'ledger9-transaction-on-ledger8-network
 a v8 handle after the fork with reason `'ledger8-transaction-on-ledger9-network'`.
 The v9 ledger cannot read a v8 transaction, so there is nothing to route the
 second case to. The call and deploy pipelines do
-not go through that read: they submit through an internal current-era path.
+not go through that read: they submit through an internal current-era path, and
+the deploy pipeline reads the head itself, as above.
 
-Do not read the table as a guarantee that all four cells fail fast. Lifting that
-means buying a head read on the current era's single-call path, and the cost is
-the reason it has not been.
+Do not read the table as a guarantee that every cell fails fast. Lifting that
+for calls means buying a head read on the current era's single-call path, and
+the cost is the reason it has not been.
 
 The function returns nothing. Which pipeline runs is the `(pipeline, head)` pair
 the caller already holds; this decides only whether that pair may run, so it does
@@ -463,7 +469,7 @@ than widening their own public return types. Both record checks, it and
 `requireTaggedRecord`, also refuse a record whose `tx` is not a handle
 (`InvalidTransactionHandleError`) or is a handle of another era than `era`
 (`EraInvariantViolationError`), naming the read method, so a third-party
-provider's mistake surfaces at the read and not in the caller's own `unwrap`.
+provider's mistake surfaces at the read and not in the caller's own `deserialize`.
 
 ## Refusing a provider set before it costs anything
 

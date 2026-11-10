@@ -21,7 +21,7 @@ import type * as Types from '../index';
 describe('ledger 9 transaction types', () => {
   it('names the unbound ledger 9 transaction after its ledger', () => {
     expectTypeOf<Types.Ledger9UnboundTransaction>().toEqualTypeOf<Transaction<SignatureEnabled, Proof, PreBinding>>();
-    expectTypeOf<Types.Ledger9WalletProvider['balanceTx']>().parameter(0).toEqualTypeOf<Types.Ledger9UnboundTransaction>();
+    expectTypeOf<Types.Ledger9WalletProvider['balanceTx']>().parameter(0).toEqualTypeOf<Types.LedgerTransaction<'Unbound', 'v9'>>();
   });
 
   it('publishes no ledger 9 transaction under a name without the ledger', () => {
