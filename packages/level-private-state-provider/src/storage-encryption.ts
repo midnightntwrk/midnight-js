@@ -221,6 +221,9 @@ export class StorageEncryption {
   }
 }
 
+export const readEmbeddedSalt = (encryptedData: string): Buffer =>
+  Buffer.from(extractEncryptedComponents(Buffer.from(encryptedData, 'base64')).salt);
+
 export const getPasswordFromProvider = async (provider: PrivateStoragePasswordProvider): Promise<string> => {
   const password = await provider();
   validatePassword(password);

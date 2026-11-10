@@ -127,6 +127,15 @@ await provider.changeSigningKeysPassword(
 
 Password rotation is atomic—all data is re-encrypted or none is.
 
+Each store keeps a key check, so an operation whose password does not match the store fails with
+`PrivateStateDecryptionError` (reason `wrong-key`) and writes nothing. Make
+`privateStoragePasswordProvider` return the new password as soon as the rotation resolves. An operation
+that reads the provider while it still returns the other password fails this way; run it again once the
+provider returns the new password.
+
+A store written before the key check gets one on first use, after the password has opened one of its
+encrypted records. A store that already holds records encrypted under two passwords is not repaired.
+
 ### Export/Import
 
 ```typescript
@@ -241,7 +250,7 @@ LevelDB (midnight-level-db)
 | `levelPrivateStateProvider()`   | Factory returning PrivateStateProvider instance        |
 | `StorageEncryption`             | AES-256-GCM encryption with PBKDF2 key derivation      |
 | `encryptionCache`               | Module-level cache avoiding repeated key derivation    |
-| `passwordRotationLocks`         | Concurrent access protection during password changes   |
+| `dbAccessQueues`                | Runs operations on one database one at a time          |
 | `superjson`                     | Type-preserving serialization (Buffer, BigInt, Uint8Array) |
 
 ### Encryption Specification

@@ -53,6 +53,7 @@ import {
   decryptValue,
   getPasswordFromProvider,
   type PrivateStoragePasswordProvider,
+  readEmbeddedSalt,
   StorageEncryption,
   timingSafeEqual
 } from './storage-encryption';
@@ -336,26 +337,39 @@ interface EncryptionCacheEntry {
  */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
-const readOrCreateSalt = async (subLevel: StringSubLevel): Promise<Buffer> => {
+const KEY_CHECK_PLAINTEXT = 'midnight-private-state-key-check';
+
+interface StoreMetadata {
+  readonly salt: string;
+  readonly version: number;
+  readonly keyCheck?: string;
+}
+
+const readMetadata = async (subLevel: StringSubLevel): Promise<StoreMetadata | undefined> => {
   try {
     const metadataJson = await subLevel.get(METADATA_KEY);
-    if (metadataJson) {
-      const metadata = JSON.parse(metadataJson);
-      return Buffer.from(metadata.salt, 'hex');
-    }
+    return metadataJson ? JSON.parse(metadataJson) : undefined;
   } catch (error: unknown) {
-    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND')) {
-      throw error;
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+};
+
+const findEncryptedRecord = async (subLevel: StringSubLevel, salt?: Buffer): Promise<string | undefined> => {
+  for await (const [key, value] of subLevel.iterator()) {
+    if (key !== METADATA_KEY && StorageEncryption.isEncrypted(value) && (salt === undefined || readEmbeddedSalt(value).equals(salt))) {
+      return value;
     }
   }
+  return undefined;
+};
 
-  const salt = Buffer.from(randomBytes(32));
-  const metadata = {
-    salt: salt.toString('hex'),
-    version: 1
-  };
-  await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
-  return salt;
+const verifyKeyCheck = async (encryption: StorageEncryption, keyCheck: string): Promise<void> => {
+  if ((await encryption.decrypt(keyCheck)) !== KEY_CHECK_PLAINTEXT) {
+    throw new PrivateStateDecryptionError('The password does not match this store', 'wrong-key');
+  }
 };
 
 const resolveEncryption = async (
@@ -364,17 +378,34 @@ const resolveEncryption = async (
   passwordProvider: PrivateStoragePasswordProvider,
   cryptoBackend?: CryptoBackendType,
 ): Promise<StorageEncryption> => {
-  const salt = await readOrCreateSalt(subLevel);
-  const saltHex = salt.toString('hex');
   const password = await getPasswordFromProvider(passwordProvider);
+  const metadata = await readMetadata(subLevel);
+  const metadataSalt = metadata && Buffer.from(metadata.salt, 'hex');
+  const record = metadata?.keyCheck === undefined ? await findEncryptedRecord(subLevel, metadataSalt) : undefined;
+  const salt = metadataSalt ?? (record === undefined ? Buffer.from(randomBytes(32)) : readEmbeddedSalt(record));
+  const saltHex = salt.toString('hex');
   const fingerprint = computePasswordFingerprint(password, saltHex);
 
   const cached = encryptionCache.get(cacheKey);
-  if (cached && cached.saltHex === saltHex && timingSafeEqual(fingerprint, cached.passwordFingerprint)) {
-    return cached.encryption;
+  const encryption = cached && cached.saltHex === saltHex && timingSafeEqual(fingerprint, cached.passwordFingerprint)
+    ? cached.encryption
+    : await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
+
+  if (metadata?.keyCheck !== undefined) {
+    await verifyKeyCheck(encryption, metadata.keyCheck);
+  } else {
+    if (record !== undefined) {
+      await encryption.decryptWithPassword(record, password);
+    }
+    const upgraded: StoreMetadata = {
+      ...metadata,
+      salt: saltHex,
+      version: metadata?.version ?? 1,
+      keyCheck: await encryption.encrypt(KEY_CHECK_PLAINTEXT)
+    };
+    await subLevel.put(METADATA_KEY, JSON.stringify(upgraded));
   }
 
-  const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
   encryptionCache.set(cacheKey, { encryption, saltHex, passwordFingerprint: fingerprint });
   return encryption;
 };
@@ -409,10 +440,22 @@ const rotateStorePassword = async (
       const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
       const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
-      const salt = await readOrCreateSalt(subLevel);
+      const metadata = await readMetadata(subLevel);
+      const salt = metadata ? Buffer.from(metadata.salt, 'hex') : Buffer.from(randomBytes(32));
       const oldEncryption = await StorageEncryption.create(oldPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
       const newEncryption = await StorageEncryption.create(newPassword, { cryptoBackend: ctx.cryptoBackend });
       const newSalt = newEncryption.getSalt();
+
+      if (metadata?.keyCheck !== undefined) {
+        try {
+          await verifyKeyCheck(oldEncryption, metadata.keyCheck);
+        } catch (error: unknown) {
+          if (isWrongKeyError(error)) {
+            throw new InvalidArgumentError('Old password is incorrect: failed to decrypt existing data', { cause: error });
+          }
+          throw error;
+        }
+      }
 
       const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
       let firstEntryValidated = false;
@@ -453,10 +496,6 @@ const rotateStorePassword = async (
         }
       }
 
-      if (entriesToMigrate.length === 0) {
-        return { entriesMigrated: 0 };
-      }
-
       const operations: { type: 'put'; key: string; value: string }[] = [];
       for (const { key, decryptedValue } of entriesToMigrate) {
         try {
@@ -472,11 +511,12 @@ const rotateStorePassword = async (
         }
       }
 
-      const metadata = {
+      const newMetadata: StoreMetadata = {
         salt: newSalt.toString('hex'),
-        version: 1
+        version: 1,
+        keyCheck: await newEncryption.encrypt(KEY_CHECK_PLAINTEXT)
       };
-      operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
+      operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(newMetadata) });
 
       try {
         await subLevel.batch(operations);
