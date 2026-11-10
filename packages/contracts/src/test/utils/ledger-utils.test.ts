@@ -162,6 +162,54 @@ const makeOperation = (): ContractOperation => {
   return operation;
 };
 
+const makeShieldedTranscript = (
+  claimedShieldedReceives: CoinCommitment[] = [],
+  claimedShieldedSpends: CoinCommitment[] = [],
+  claimedNullifiers: string[] = []
+): Transcript<AlignedValue> => ({
+  gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+  effects: {
+    claimedNullifiers,
+    claimedShieldedReceives,
+    claimedShieldedSpends,
+    claimedContractCalls: [],
+    shieldedMints: new Map(),
+    unshieldedInputs: new Map(),
+    unshieldedOutputs: new Map(),
+    unshieldedMints: new Map(),
+    claimedUnshieldedSpends: new Map()
+  },
+  program: ['new', { noop: { n: 5 } }]
+});
+
+const seedContractCoin = (
+  coinInfo: ShieldedCoinInfo,
+  contractAddress: ContractAddress
+): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
+  const recipient: Recipient = { is_left: false, left: sampleCoinPublicKey(), right: contractAddress };
+  const constantResolver: EncryptionPublicKeyResolver = () => sampleEncryptionPublicKey();
+  const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
+  const seedTx = Transaction.fromParts(
+    MOCK_CONFIG.networkId,
+    ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
+  ).eraseProofs();
+  const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+  const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
+  return { chainState, qualifiedCoin };
+};
+
+const probeNullifier = (
+  qualifiedCoin: QualifiedShieldedCoinInfo,
+  chainState: ZswapChainState,
+  contractAddress: ContractAddress
+): string =>
+  ZswapInput.newContractOwned(
+    qualifiedCoin,
+    0,
+    contractAddress,
+    chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
+  ).nullifier;
+
 describe('ledger-utils', () => {
   const dummyContractState = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
@@ -481,26 +529,6 @@ describe('ledger-utils', () => {
       alignment: [{ tag: 'atom', value: { tag: 'field' } }]
     };
 
-    const makeTranscript = (
-      claimedShieldedReceives: CoinCommitment[] = [],
-      claimedShieldedSpends: CoinCommitment[] = [],
-      claimedNullifiers: string[] = []
-    ): Transcript<AlignedValue> => ({
-      gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
-      effects: {
-        claimedNullifiers,
-        claimedShieldedReceives,
-        claimedShieldedSpends,
-        claimedContractCalls: [],
-        shieldedMints: new Map(),
-        unshieldedInputs: new Map(),
-        unshieldedOutputs: new Map(),
-        unshieldedMints: new Map(),
-        claimedUnshieldedSpends: new Map()
-      },
-      program: ['new', { noop: { n: 5 } }]
-    });
-
     /**
      * A user-bound coin belongs in `claimedShieldedSpends`, never in `claimedShieldedReceives`:
      * the ledger requires the receives to equal the *contract-addressed* commitments exactly
@@ -509,35 +537,7 @@ describe('ledger-utils', () => {
      * segment they were written to pin.
      */
     const makeTranscriptWithSpends = (claimedShieldedSpends: CoinCommitment[]): Transcript<AlignedValue> =>
-      makeTranscript([], claimedShieldedSpends);
-
-    const seedContractCoin = (
-      coinInfo: ShieldedCoinInfo,
-      contractAddress: ContractAddress
-    ): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
-      const recipient: Recipient = { is_left: false, left: sampleCoinPublicKey(), right: contractAddress };
-      const constantResolver: EncryptionPublicKeyResolver = () => sampleEncryptionPublicKey();
-      const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
-      const seedTx = Transaction.fromParts(
-        MOCK_CONFIG.networkId,
-        ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
-      ).eraseProofs();
-      const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
-      const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
-      return { chainState, qualifiedCoin };
-    };
-
-    const probeNullifier = (
-      qualifiedCoin: QualifiedShieldedCoinInfo,
-      chainState: ZswapChainState,
-      contractAddress: ContractAddress
-    ): string =>
-      ZswapInput.newContractOwned(
-        qualifiedCoin,
-        0,
-        contractAddress,
-        chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
-      ).nullifier;
+      makeShieldedTranscript([], claimedShieldedSpends);
 
     it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {
       // Arrange
@@ -640,8 +640,8 @@ describe('ledger-utils', () => {
       const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, contractAddress);
       const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
       const partitioned: PartitionedTranscript = [
-        makeTranscript([], [], []),
-        makeTranscript([], [], [nullifier])
+        makeShieldedTranscript([], [], []),
+        makeShieldedTranscript([], [], [nullifier])
       ];
       const contractState = new CompactContractState();
       contractState.setOperation(circuitId, makeOperation());
@@ -688,8 +688,8 @@ describe('ledger-utils', () => {
       const coinInfo = createShieldedCoinInfo(nativeToken().raw, 750n);
       const commitment = coinCommitment(coinInfo, recipientCpk);
       const partitioned: PartitionedTranscript = [
-        makeTranscript([], [], []),
-        makeTranscript([], [commitment], [])
+        makeShieldedTranscript([], [], []),
+        makeShieldedTranscript([], [commitment], [])
       ];
       const contractState = new CompactContractState();
       contractState.setOperation(circuitId, makeOperation());
@@ -738,8 +738,8 @@ describe('ledger-utils', () => {
       const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
       const outputCommitment = ZswapOutput.newContractOwned(coinInfo, 0, contractAddress).commitment;
       const partitioned: PartitionedTranscript = [
-        makeTranscript([], [], []),
-        makeTranscript([outputCommitment], [], [nullifier])
+        makeShieldedTranscript([], [], []),
+        makeShieldedTranscript([outputCommitment], [], [nullifier])
       ];
       const contractState = new CompactContractState();
       contractState.setOperation(circuitId, makeOperation());
@@ -775,6 +775,243 @@ describe('ledger-utils', () => {
       expect(fallibleOffer.outputs.length).toBe(0);
       expect(fallibleOffer.transients.length).toBe(1);
       expect(fallibleOffer.transients[0]!.nullifier).toBe(nullifier);
+    });
+  });
+
+  describe('createUnprovenLedgerCallTx across a call tree, each call with its own Zswap states', () => {
+    const circuitId = 'treeCircuit';
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+    const contractState = new CompactContractState();
+    contractState.setOperation(circuitId, makeOperation());
+
+    type ZswapLocalState = LedgerCall['private']['zswapLocalState'];
+    type LocalOutput = ZswapLocalState['outputs'][number];
+
+    const localState = (
+      inputs: QualifiedShieldedCoinInfo[] = [],
+      outputs: LocalOutput[] = []
+    ): ZswapLocalState => ({ currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs, outputs });
+
+    const toContract = (coinInfo: ShieldedCoinInfo, address: ContractAddress): LocalOutput => ({
+      coinInfo,
+      recipient: { is_left: false, left: sampleCoinPublicKey(), right: address }
+    });
+
+    const contractCommitment = (coinInfo: ShieldedCoinInfo, address: ContractAddress): CoinCommitment =>
+      ZswapOutput.newContractOwned(coinInfo, 0, address).commitment;
+
+    const callOf = (
+      address: ContractAddress,
+      partitionedTranscript: PartitionedTranscript,
+      zswapLocalState: ZswapLocalState = localState()
+    ): LedgerCall => ({
+      contractAddress: PlatformContractAddress.ContractAddress(address),
+      circuitId,
+      public: {
+        contractState: contractState.data.state,
+        publicTranscript: [],
+        partitionedTranscript,
+        partitionInputs: makePartitionInputs()
+      },
+      private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [], zswapLocalState },
+      communicationCommitment: Option.none()
+    });
+
+    const guaranteed = (
+      receives: CoinCommitment[] = [],
+      spends: CoinCommitment[] = [],
+      nullifiers: string[] = []
+    ): PartitionedTranscript => [makeShieldedTranscript(receives, spends, nullifiers), undefined];
+
+    const fallible = (receives: CoinCommitment[]): PartitionedTranscript => [
+      makeShieldedTranscript(),
+      makeShieldedTranscript(receives)
+    ];
+
+    const assemble = (
+      calls: readonly LedgerCall[],
+      chainStates: ReadonlyMap<string, ZswapChainState> = new Map()
+    ): UnprovenTransaction =>
+      createUnprovenLedgerCallTx(
+        calls,
+        () => contractState,
+        (address) => chainStates.get(String(address)) ?? new ZswapChainState(),
+        sampleEncryptionPublicKey(),
+        MOCK_CONFIG
+      );
+
+    /** A coin settled for `owner` alone, as that contract's view of the chain holds it. */
+    const settledFor = (owner: ContractAddress) => {
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 1000n);
+      const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, owner);
+      return { chainState, qualifiedCoin, nullifier: probeNullifier(qualifiedCoin, chainState, owner) };
+    };
+
+    const nullifiersOf = (tx: UnprovenTransaction): string[] =>
+      (tx.guaranteedOffer?.inputs ?? []).map((input) => input.nullifier);
+
+    const commitmentsOf = (tx: UnprovenTransaction): string[] =>
+      (tx.guaranteedOffer?.outputs ?? []).map((output) => output.commitment);
+
+    it("builds a callee's spend against the callee's own chain state, not the root's", () => {
+      // Arrange
+      const root = sampleContractAddress();
+      const callee = sampleContractAddress();
+      const coin = settledFor(callee);
+
+      // Act
+      const tx = assemble(
+        [
+          callOf(callee, guaranteed([], [], [coin.nullifier]), localState([coin.qualifiedCoin])),
+          callOf(root, guaranteed())
+        ],
+        new Map([[callee, coin.chainState]])
+      );
+
+      // Assert
+      expect(nullifiersOf(tx)).toEqual([coin.nullifier]);
+    });
+
+    it('resolves the chain state of the deepest callee in A -> B -> C', () => {
+      // Arrange
+      const a = sampleContractAddress();
+      const b = sampleContractAddress();
+      const c = sampleContractAddress();
+      const spent = settledFor(c);
+      const received = createShieldedCoinInfo(shieldedToken().raw, 50n);
+      const receivedCommitment = contractCommitment(received, b);
+
+      // Act
+      const tx = assemble(
+        [
+          callOf(c, guaranteed([], [], [spent.nullifier]), localState([spent.qualifiedCoin])),
+          callOf(b, guaranteed([receivedCommitment]), localState([], [toContract(received, b)])),
+          callOf(a, guaranteed())
+        ],
+        new Map([[c, spent.chainState]])
+      );
+
+      // Assert
+      expect(nullifiersOf(tx)).toEqual([spent.nullifier]);
+      expect(commitmentsOf(tx)).toEqual([receivedCommitment]);
+    });
+
+    it('keeps both calls of a callee reached from two parents', () => {
+      // Arrange: A calls B directly, and A calls C, which calls B too.
+      const a = sampleContractAddress();
+      const b = sampleContractAddress();
+      const c = sampleContractAddress();
+      const spent = settledFor(b);
+      const received = createShieldedCoinInfo(shieldedToken().raw, 50n);
+      const receivedCommitment = contractCommitment(received, b);
+
+      // Act
+      const tx = assemble(
+        [
+          callOf(b, guaranteed([], [], [spent.nullifier]), localState([spent.qualifiedCoin])),
+          callOf(c, guaranteed()),
+          callOf(b, guaranteed([receivedCommitment]), localState([], [toContract(received, b)])),
+          callOf(a, guaranteed())
+        ],
+        new Map([[b, spent.chainState]])
+      );
+
+      // Assert
+      expect(nullifiersOf(tx)).toEqual([spent.nullifier]);
+      expect(commitmentsOf(tx)).toEqual([receivedCommitment]);
+    });
+
+    describe('refuses offers and receive claims that disagree, before proving', () => {
+      const coin = createShieldedCoinInfo(shieldedToken().raw, 50n);
+
+      it('accepts a coin one call sends and the callee claims as received', () => {
+        // Arrange
+        const root = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const commitment = contractCommitment(coin, callee);
+
+        // Act
+        const tx = assemble([
+          callOf(callee, guaranteed([commitment]), localState([], [toContract(coin, callee)])),
+          callOf(root, guaranteed([], [commitment]), localState([], [toContract(coin, callee)]))
+        ]);
+
+        // Assert
+        expect(commitmentsOf(tx)).toEqual([commitment]);
+      });
+
+      it('refuses a contract-addressed coin no call claims', () => {
+        // Arrange
+        const root = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const commitment = contractCommitment(coin, callee);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(callee, guaranteed()),
+            callOf(root, guaranteed([], [commitment]), localState([], [toContract(coin, callee)]))
+          ]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${callee}: offered 1, claimed 0`);
+      });
+
+      it('refuses a receive claim no offer carries', () => {
+        // Arrange
+        const root = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const commitment = contractCommitment(coin, callee);
+
+        // Act
+        const act = () => assemble([callOf(callee, guaranteed([commitment])), callOf(root, guaranteed())]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${callee}: offered 0, claimed 1`);
+      });
+
+      it('refuses one coin claimed as received by two calls', () => {
+        // Arrange
+        const root = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const commitment = contractCommitment(coin, callee);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(callee, guaranteed([commitment]), localState([], [toContract(coin, callee)])),
+            callOf(callee, guaranteed([commitment])),
+            callOf(root, guaranteed())
+          ]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${callee}: offered 1, claimed 2`);
+      });
+
+      it('refuses a coin offered in the guaranteed segment but claimed in the fallible one', () => {
+        // Arrange
+        const root = sampleContractAddress();
+        const callee = sampleContractAddress();
+        const commitment = contractCommitment(coin, callee);
+
+        // Act
+        const act = () =>
+          assemble([
+            callOf(callee, fallible([commitment])),
+            callOf(root, guaranteed([], [commitment]), localState([], [toContract(coin, callee)]))
+          ]);
+
+        // Assert
+        expect(act).toThrow(ZswapOutputResolutionError);
+        expect(act).toThrow(`segment 0 / ${commitment} / ${callee}: offered 1, claimed 0`);
+        expect(act).toThrow(`segment 1 / ${commitment} / ${callee}: offered 0, claimed 1`);
+      });
     });
   });
 

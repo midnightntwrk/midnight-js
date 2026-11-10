@@ -1991,7 +1991,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider":
+"@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:*, @midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider"
   dependencies:
@@ -2289,6 +2289,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js-e2e@workspace:testkit-js/testkit-js-e2e"
   dependencies:
+    "@midnight-ntwrk/midnight-js-bundled-contract-module-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "workspace:*"
