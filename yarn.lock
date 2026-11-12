@@ -1953,21 +1953,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:3.0.0":
-  version: 3.0.0
-  resolution: "@midnight-ntwrk/compact-js@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.0%2F385647b7d3d83633d76aed6ba982fd9db0f13587"
+"@midnight-ntwrk/compact-js@npm:3.0.1-rc.1":
+  version: 3.0.1-rc.1
+  resolution: "@midnight-ntwrk/compact-js@npm:3.0.1-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.1-rc.1%2F7c5b1674bd4efa5f6ffc502b3b6bad084268bcfb"
   dependencies:
     "@effect/platform": "npm:^0.97.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.3"
-    "@midnightntwrk/ledger-v9": "npm:^1.0.0"
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0"
+    "@midnightntwrk/ledger-v9": "npm:^1.0.2-rc.0"
+    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/hashes": "npm:^2.4.0"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
-  checksum: 10/df875adb0e2def6f61c55b4321aba5272f7198390bb8a69057ce84268453f0418573f87710dc5f503b7df7d27a3489a55d91b6736e3aeaec7555c51f0b665130
+  checksum: 10/0061a1bde51e5eede39d10e62cde6dcfe6d95c9f65b8436c4142508b3544a5842d5e244a524d3d24783d8d859c59849e564246895e10d38178e2207db879016b
   languageName: node
   linkType: hard
 
@@ -2199,14 +2199,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:3.0.0"
+    "@midnight-ntwrk/compact-js": "npm:3.0.1-rc.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
     "@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.3"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.3"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0"
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0"
+    "@midnightntwrk/ledger-v9": "npm:1.0.2-rc.0"
+    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.2-rc.0"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@vitest/coverage-v8": "npm:^5.0.4"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
@@ -2337,7 +2337,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0"
     "@midnightntwrk/ledger-v8": "npm:8.1.3"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0"
+    "@midnightntwrk/ledger-v9": "npm:1.0.2-rc.0"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0"
     "@midnightntwrk/zkir-v3": "npm:3.2.0"
@@ -2372,17 +2372,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:1.0.0":
-  version: 1.0.0
-  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0"
-  checksum: 10/7847ac3b0fa5c9cd43a79d6d664d44f53e097a9e0807b32327ed33969ee3304d887119199df62cf868df2a42d00978a1daced77b0c8e9f5df24d584069b62304
+"@midnightntwrk/ledger-v9@npm:1.0.2-rc.0":
+  version: 1.0.2-rc.0
+  resolution: "@midnightntwrk/ledger-v9@npm:1.0.2-rc.0"
+  checksum: 10/2bf81158ccd4160117deaaccabb45d63042b91a1ecb9d5d56d6a68d1f6cbc89eeebe905bd577caf8299cbe4f4d13fb951b3c1fb09dd1f080802992df10dcb7ac
   languageName: node
   linkType: hard
 
-"@midnightntwrk/onchain-runtime-v4@npm:4.0.0":
-  version: 4.0.0
-  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0"
-  checksum: 10/70d169878d43e17e819b48f17d9baa5229da6f1f72dcf0f86be70b4d8eef7ead4d2a21f4c10d7da673af0a5f65196c5009b7b52139184acfa3c30b435efdc1cf
+"@midnightntwrk/onchain-runtime-v4@npm:4.0.2-rc.0":
+  version: 4.0.2-rc.0
+  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.2-rc.0"
+  checksum: 10/cf9bfa95b9e70edb5d00fdb256b49560bfc29d4295d200dbd19a97da70c1bf8dc2df6f712772f6f71eb1c6670dade51f11c0aea75d44cd476d307fc4f7dabc2b
   languageName: node
   linkType: hard
 

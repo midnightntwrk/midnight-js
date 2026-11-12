@@ -51,8 +51,8 @@ const LINKER = argv.find((argument) => !argument.startsWith('--')) ?? 'pnp';
  *
  * Sharded one contract per CI job: the legs are strictly sequential and the
  * proving in them is what the run costs, so splitting the matrix is what shortens
- * it. A shard also builds only its OWN retained twin, which is why the 146 MB of
- * `fee-mint` prover keys stop being everyone's bill.
+ * it. A shard also builds only its OWN retained twin, so the largest prover
+ * keys stop being everyone's bill.
  *
  *   node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=simple
  */
