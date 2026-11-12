@@ -18,8 +18,8 @@ name: CI - Hard fork
 # SHARDED ONE CONTRACT PER JOB. Whole, the scenario ran 36 minutes, and 20 of
 # those were nineteen contract legs executed strictly one after another -- the
 # proving in them is what the run costs. A shard also compiles only its own
-# retained twin, so the largest prover keys stop being every job's bill. What
-# does NOT shard is the floor: ~2m of setup, a fork stack per shard,
+# retained twin, so `fee-mint`'s 146 MB of prover keys stop being every job's
+# bill. What does NOT shard is the floor: ~2m of setup, a fork stack per shard,
 # and `enactFork` itself, which is a real governance upgrade on a real chain and
 # measured 3m41s. That floor is why a shard lands near 13 minutes rather than
 # near the leg time.
