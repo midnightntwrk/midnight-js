@@ -13,24 +13,24 @@
  * limitations under the License.
  */
 
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { sampleContractAddress, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import type { PublicDataProvider, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
 import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError } from '../../errors';
 import { makeCalleeStateResolver } from '../../internal/utils';
-import { publicStatesReadStub } from '../test-mocks';
+import { createMockProviders, publicStatesReadStub } from '../test-mocks';
 
 const BLOCK_HASH = 'ab'.repeat(32);
 const OTHER_BLOCK_HASH = 'cd'.repeat(32);
-const ADDRESS = 'a'.repeat(64) as unknown as ContractAddress;
-const OTHER_ADDRESS = 'b'.repeat(64) as unknown as ContractAddress;
-const STATE = { tag: 'callee-state' } as unknown as ContractState;
-const ZSWAP_STATE = { tag: 'callee-zswap-state' } as unknown as ZswapChainState;
-const OTHER_STATE = { tag: 'other-state' } as unknown as ContractState;
-const OTHER_ZSWAP_STATE = { tag: 'other-zswap-state' } as unknown as ZswapChainState;
+const ADDRESS = sampleContractAddress();
+const OTHER_ADDRESS = sampleContractAddress();
+const STATE = new ContractState();
+const ZSWAP_STATE = new ZswapChainState();
+const OTHER_STATE = new ContractState();
+const OTHER_ZSWAP_STATE = new ZswapChainState();
 
 /**
  * A `PublicDataProvider` whose only exercised method is `queryZSwapAndContractState`. The resolver
@@ -39,7 +39,7 @@ const OTHER_ZSWAP_STATE = { tag: 'other-zswap-state' } as unknown as ZswapChainS
  */
 const providerWith = (
   queryZSwapAndContractState: PublicDataProvider['queryZSwapAndContractState']
-): PublicDataProvider => ({ queryZSwapAndContractState } as unknown as PublicDataProvider);
+): PublicDataProvider => ({ ...createMockProviders().publicDataProvider, queryZSwapAndContractState });
 
 // The framework decodes a read with its own runtime; these stand in for the decoded objects.
 const decode = vi.hoisted(() => ({

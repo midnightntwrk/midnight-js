@@ -1739,6 +1739,12 @@ describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)
           zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
           zswapChainState: chainState,
           partitionedTranscript: guaranteedOnly([], [calleeNullifier])
+        },
+        {
+          contractAddress: root,
+          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [] },
+          zswapChainState: chainState,
+          partitionedTranscript: guaranteedOnly([])
         }
       ],
       randomEncryptionPublicKey()

@@ -1,583 +1,74 @@
-# 0006. Carry version-tagged payloads across the provider seams
+# 0006. Carry the ledger era as data derived from what was observed
 
 - Status: Accepted
 - Date: 2026-08-28
-- Deciders: Szymon Paluchowski
+- Related: [ADR 0007](./0007-never-latch-the-network-head-version.md), [ADR 0014](./0014-build-provider-seams-from-per-era-handlers.md), [ADR 0017](./0017-error-codes-are-the-contract.md), [ADR 0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md), [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
 
 ## Context
 
-For the duration of the ledger-fork window midnight-js must be able to talk
-about transactions belonging to two ledger eras, v8 and v9. The two ledger
-builds are separate WASM instances: an object constructed by one cannot be
-handed to the other, and `instanceof` does not hold across them. A raw
-`Uint8Array` carries no statement about which runtime produced it, so a
-byte array crossing a provider seam is unattributable.
+Across the ledger fork midnight-js handles values of two ledger eras, v8 and v9. The two ledger
+builds are separate WASM instances. They expose the same method names, so duck-typing cannot tell
+their objects apart, and `instanceof` does not hold across them. A raw `Uint8Array` says nothing
+about which ledger wrote it.
 
-Three provider seams move a transaction between components:
-
-```
-UnprovenTransaction -> ProofProvider.proveTx    -> UnboundTransaction
-                    -> WalletProvider.balanceTx -> FinalizedTransaction
-                    -> MidnightProvider.submitTx -> TransactionId
-```
-
-and two read-surface methods report a finalized record back:
-`PublicDataProvider.watchForTxData` and `watchForDeployTxData`.
-
-Constraints shaping the decision:
-
-- `packages/types` is the package every other package depends on. It depends on
-  `packages/protocol` for ledger types and nothing else internal; the layer
-  table in `CLAUDE.md` places `utils` below it, so `types` importing values
-  from `utils` would invert the documented order.
-- The indexer reports a `protocolVersion` integer per record.
-  `@midnight-ntwrk/midnight-js-protocol` already resolves that integer to a
-  ledger era (`versionOfRecord`, `protocolVersionToLedger`), mapping node major
-  1 to v8 and node major 2 to v9 and failing closed on anything else.
-- No v8 deserializer is wired into any provider yet. The read path decodes with
-  the v9-only `deserializeLedgerTransaction`.
-- This is a 5.0.0 major, so a breaking change to the provider interfaces is
-  affordable now and expensive later.
+So every value whose meaning depends on the era must say which era it belongs to. That statement
+is only worth something if it is true. A label that a component writes by hand can disagree with
+the bytes beside it, and a caller who narrows on a wrong label is actively misled.
 
 ## Decision
 
-We will make every version-divergent payload a closed, `version`-discriminated
-union, and we will resolve the discriminant from observed data rather than
-asserting it.
+The era is data on the value, and it is derived from what was observed, never asserted.
 
-1. **Transaction flow.** The three seams carry `VersionedTx<T>` in both
-   directions where a transaction crosses: `{ version: 'v9', tx: T }` for a
-   live v9 ledger object, `{ version: 'v8', txBytes }` for the v8 era. There is
-   deliberately no untagged form, so a bare `Uint8Array` is not assignable at
-   any seam. `submitTx` is tagged inbound only; it returns a `TransactionId`,
-   which is era-independent.
+- Every era-dependent value carries `era: LedgerEra` (`'v8' | 'v9'`, from
+  `@midnight-ntwrk/midnight-js-protocol`). This holds for transaction handles (`LedgerTransaction`),
+  for state (`SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`),
+  for read records (`FinalizedTxRead`) and for `contracts` results.
+- The era comes from observed data:
+  - a state's era is read from the version tag at the start of its bytes;
+  - a finalized-transaction record's era comes from the record's own `protocolVersion`
+    (`versionOfRecord`, mapped by `protocolVersionToLedger`), and the bytes must then carry the
+    header that era writes for a finalized transaction;
+  - a `protocolVersion` that maps to no era is refused (`UnknownProtocolVersionError`, re-reported
+    by the indexer provider as `UnknownRecordEraError`), never labelled with a default.
+- A component never stamps an era literal on a value it did not observe. If the era it derives is
+  one it cannot handle, it throws rather than mislabelling the value.
+- Code that handles the eras differently narrows with `switch (x.era)` and closes the switch with
+  `assertNever(x, '<call site>')` from `@midnight-ntwrk/midnight-js-utils`. While the switch is
+  exhaustive, `x` is `never` in the `default` branch and the call compiles. When an era is added,
+  every such switch stops compiling.
+- `assertNever(value: never, context: string): never` has these properties:
+  - `context` is required. It names the switch, so a runtime throw says where it came from. A
+    required parameter is enforced by `tsc`; a documented convention is not.
+  - It throws the coded `UnhandledUnionMemberError` (`MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`), not a
+    bare `Error`, so a caller can match it by code like every other framework error.
+  - Its message never renders the unhandled value. The members of these unions carry transaction
+    bytes and contract state, so rendering the value would copy them into every log that catches
+    the error. `context` carries the diagnostic instead.
 
-2. **The v8 arm crosses as serialized bytes.** Because the two ledger runtimes
-   are separate WASM instances, a live v8 object cannot safely cross a seam.
-   The bytes are the serialized, tag-prefixed form, and `version` states which
-   runtime produced them.
-
-3. **Read surface.** `watchForTxData` and `watchForDeployTxData` return
-   `VersionedFinalizedTxData` — the closed union of `FinalizedTxData`
-   (`version: 'v9'`) and `FinalizedTxDataV8` (`version: 'v8'`). The two arms
-   share a `FinalizedTxRecord` base so their common metadata is structurally
-   identical rather than kept in step by hand.
-
-4. **The discriminant is derived, never asserted.** A provider that produces a
-   finalized record resolves the era with `versionOfRecord(record)` from
-   `@midnight-ntwrk/midnight-js-protocol/version`. It does not hardcode a
-   literal. If the record resolves to an era the provider cannot decode, it
-   throws rather than mislabelling the record.
-
-5. **v9-only components reject the v8 arm loudly.** Providers that speak only
-   v9 throw `V8PayloadUnsupportedError`. The v9-only contracts flow rejects a
-   v8 payload with `EraInvariantViolationError`, and narrows the read surface at
-   its own boundary so `submitTx` and `findDeployedContract` keep their v9
-   return types. Both errors carry a stable `code` matching the registry in
-   `@midnight-ntwrk/midnight-js-utils` — declared locally, for the reason in
-   point 8 — and a closed `seam` identifier.
-
-6. **One narrowing helper, not a switch per seam.** `unwrapV9(payload, seam)`,
-   exported from `midnight-js-types`, is the narrowing every v9-only provider
-   and consumer uses. It throws `V8PayloadUnsupportedError` for a v8 payload
-   and `UntaggedPayloadError` when `version` is missing or unrecognised — the
-   latter being the path a pre-5.0.0 caller actually reaches, so it carries a
-   `code` rather than surfacing as a bare `TypeError` inside a WASM call. The
-   v9-only contracts flow keeps its own `requireV9`/`requireV9Record` for the
-   *outbound* direction, where a v8 answer means a broken provider rather than
-   an unsupported request.
-
-   Exhaustiveness is enforced two ways: an inline `const unhandled: never`
-   assignment in each `default` branch, and the compile-time bridge in point 7,
-   which fails the build if the era set and the union arms disagree. Adding an
-   era is therefore a compile error, not a runtime surprise.
-
-7. **One era vocabulary.** The discriminant literals are tied to
-   `LedgerVersion` in `@midnight-ntwrk/midnight-js-protocol` by type-only
-   `Exclude` assertions in `versioned.ts`. The era set is one fact, not two.
-
-8. **`types` stays free of internal runtime dependencies.** The two values the
-   package needs — the error-code strings behind its two error classes — are
-   declared locally in `packages/types` rather than imported from
-   `packages/utils`, preserving the documented layer order. `utils` keeps the
-   registry that `hasErrorCode` consults, and its error-codes test pins the same
-   literals on that side. `types` depends on `utils` only as a devDependency,
-   for tests.
+The framework uses the same `assertNever` in its own era switches (for example in
+`createUnprovenDeployTx`).
 
 ## Consequences
 
-- **Positive.** An era mismatch is a compile error at every seam, or a coded
-  runtime error at the one boundary types cannot reach. The read surface can
-  report a v8 record without mislabelling it as v9. A caller writes one
-  `switch` and is correct for both eras. Deriving the discriminant means the
-  field is a statement about observed data, not a hope.
-
-- **Negative.** Every consumer of `proveTx`, `balanceTx`, `submitTx`,
-  `watchForTxData` and `watchForDeployTxData` must change — including external
-  implementations of `WalletProvider` and `MidnightProvider`, which cannot
-  satisfy the new interfaces until they are updated, because the return types
-  are covariant. `createWalletProvider` and `createMidnightProvider` are
-  provided so an implementation can stay v9-only and never write the tag, which
-  also avoids a confusing compiler error: TypeScript reports the parameter
-  mismatch before the return-type one, so an un-migrated implementation is told
-  that `V8TxBytes` lacks 20-odd ledger methods rather than that it is missing a
-  `version` tag. Consumers must narrow on `version` for a v8 arm that no
-  provider produces yet, so the narrowing is currently required but unreachable.
-  Resolving the discriminant means the read path now throws on networks running
-  node 1.x or 0.x instead of silently returning an undecodable record.
-
-  `V8TxBytes` is identical across the three seams, so on the v8 arm the union
-  carries no statement about pipeline stage: an unproven v8 payload is
-  assignable where a finalized one is expected. The v9 arm keeps its stage
-  distinctions. This is accepted for now because nothing produces the v8 arm;
-  closing it later means a phantom type parameter, which is itself breaking.
-
-- **Follow-ups.**
-  - ~~Dual decode: teach the read path to deserialize the v8 arm so
-    `FinalizedTxDataV8` gains a producer. Until then a v8-era record is a
-    loud failure, not a value.~~ **Resolved.** Shipped in #1241: the read path
-    decodes per record with the era that record's own `protocolVersion`
-    selects, covered by
-    `packages/indexer-public-data-provider/src/test/dual-decode.test.ts`. A
-    v8-era record now arrives as a value on the `'v8'` arm, which is what
-    `docs/releases/v5.0.0/breaking-changes.md` tells consumers to expect.
-  - Provider-side v8 support, which retires `V8PayloadUnsupportedError`.
-  - ~~Era-guarding the contract-state read paths. `queryContractState`,
-    `queryDeployContractState`, `queryZSwapAndContractState` and
-    `watchForContractState` decode with the v9-only runtime but resolve no era,
-    because their GraphQL documents do not select `protocolVersion`. On a v8-era
-    network they fail inside the codec — the outcome this ADR exists to remove.
-    Closing it needs a query change, so it is deferred rather than
-    overlooked.~~ **Resolved.** The query change was made:
-    `CONTRACT_STATE_QUERY`, `RAW_CONTRACT_STATE_QUERY`,
-    `CONTRACT_AND_ZSWAP_STATE_QUERY` and `CONTRACT_STATE_SUB` all select
-    `protocolVersion` as a sibling of the bytes they return
-    (`packages/indexer-public-data-provider/src/query-definitions.ts`), so the
-    era arrives with the data, per record. ADR-0007 records why that
-    per-record answer — and not a head reading — is what dates a read.
-    `queryDeployContractState` has since become version-tagged: it returns a
-    `VersionedContractState`, with a v8-era deploy as its stored bytes.
-  - Branding `V8TxBytes.txBytes` as tag-prefixed bytes behind a smart
-    constructor. Free while nothing produces the arm; breaking for every
-    producer once v8 support ships.
-  - ~~Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.~~
-    **Resolved.** That file carries the seam-by-seam narrowing recipe, the
-    `unwrapV9` guidance and the v8-arm read surface.
-  - ~~`assertNever` is not exported from `midnight-js-utils`.~~ **Resolved.**
-    Exported in #1254, which is the change that first needed it: the migration
-    guide publishes a narrowing recipe that closes its `switch` with it, so the
-    helper is consumer-facing. The framework's own seam narrowings still go
-    through `unwrapV9`, and its internal exhaustiveness guards remain inline
-    `never` assignments that throw coded errors — `assertNever` is deliberately
-    for consumer code, not a replacement for those.
-
-    Two shape decisions came with it. Its `context` parameter is **required**,
-    matching `unwrapV9`'s required `seam` rather than the optional `message` of
-    its file-neighbours `assertDefined`/`assertUndefined`: the guide instructs
-    readers to always pass it, and a required argument is enforced by `tsc` at
-    the call site where a documented convention is not. It throws a coded
-    `UnhandledUnionMemberError` (`MIDNIGHT_JS_U_UNHANDLED_UNION_MEMBER`) rather
-    than a bare `Error`, so a consumer can discriminate it with `hasErrorCode`
-    like the rest of the published surface, and so the TROUBLESHOOTING coverage
-    gate covers it.
-
-    The thrown message never renders the unhandled value. The arms of these
-    unions carry transaction bytes and decoded contract state, so serializing
-    the member would copy payloads into every log that catches the error. The
-    `context` string carries the diagnostic instead.
+- An era label is a statement about observed data. A caller can trust it and write one `switch`
+  that is correct for both eras.
+- Adding an era is a compile error at every `switch` closed by `assertNever`, not a runtime
+  surprise.
+- A value that reaches a switch from outside the build (decoded JSON, a mismatched dependency)
+  fails with a coded error that names the call site and leaks no payload.
+- A read against a network this build cannot place fails loudly instead of returning a record
+  with a guessed era.
+- Every caller must narrow on `era` before using era-specific members, even code that only
+  supports v9.
 
 ## Alternatives considered
 
-**Keep passing bare ledger objects and detect the era by duck-typing.**
-Rejected: the two WASM builds expose the same method names, so duck-typing
-cannot distinguish them, and `instanceof` does not cross instances.
-
-**Tag with a boolean or a number instead of a string literal union.** Rejected:
-a string literal reads correctly at the call site, matches the existing
-`LedgerVersion` vocabulary in `protocol`, and extends to a third era without
-re-interpreting old values.
-
-**Tie the output era to the input era in the type system**, via conditional
-generics or an overload pair on each seam. Rejected for now: the conditional
-form cannot be verified inside an implementation body, so every implementer
-would need a cast, which this repo forbids; the overload form would force all
-provider implementations and every test mock to be restructured. The runtime
-check in the contracts flow covers the one caller that matters. Revisit if a
-second v9-only flow appears.
-
-**Hardcode `version: 'v9'` on the read path and defer resolution to the dual
-decode change.** Rejected: it ships a discriminant that can disagree with the
-`protocolVersion` in the same record, which is worse than having no
-discriminant — a consumer that narrows on it is actively misled. Resolving now
-costs one call per construction site.
-
-**Brand `txBytes` as a nominal `SerializedV8Tx`.** Deferred, not rejected.
-Nothing produces the v8 arm yet, so a smart constructor would have no caller.
-Recorded here because adding the brand after the arm ships is itself a breaking
-change, so it should be a deliberate decision at that point rather than an
-oversight.
-
----
-
-## Amendment — provider-side v8 proving ships (2026-09-05)
-
-The decision above stands unchanged. This note records that one of its accepted
-risks rested on a premise that has now expired, and that one follow-up is done.
-Nothing in the original text is edited: it remains the record of what was
-decided and why, at the time it was decided.
-
-**The accepted stage-erasure risk is now reachable.** The original consequence
-notes accept that `V8TxBytes` is identical across the three seams — so an
-unproven v8 payload is assignable where a finalized one is expected — and accept
-it explicitly "because nothing produces the v8 arm". That premise no longer
-holds. `httpClientProofProvider` and `dappConnectorProofProvider` now RETURN the
-v8 arm from `proveTx`, so consumer code can hold one and the erasure is
-reachable in practice rather than only in principle:
-
-```typescript
-const proven = await proofProvider.proveTx({ version: 'v8', txBytes });
-if (proven.version === 'v8') {
-  await midnightProvider.submitTx(proven); // compiles: balanceTx skipped
-}
-```
-
-That compiles. On the v9 arm the equivalent does not, because its stage
-distinctions survive in the type. The mitigation the original text names —
-a phantom type parameter on `V8TxBytes` — is unchanged and is still itself a
-breaking change, so it remains a deliberate decision rather than an oversight.
-The related deferral recorded under "Brand `txBytes` as a nominal
-`SerializedV8Tx`" is affected the same way: it too was deferred on the ground
-that nothing produces the arm, and that ground is gone.
-
-Two things currently limit the blast radius, neither of them a type-level
-guarantee:
-
-- `createWalletProvider` and `createMidnightProvider` still refuse the v8 arm,
-  so the erasure above fails at runtime with `V8PayloadUnsupportedError` rather
-  than submitting an unbalanced transaction. A caller supplying its own
-  `MidnightProvider` — which is what serving the v8 arm end to end requires —
-  loses that accident of protection.
-- `packages/contracts` narrows every retained-era response with `requireV8` at
-  each seam in order, so the framework's own flow cannot skip a stage.
-
-**Follow-up status.** "Provider-side v8 support, which retires
-`V8PayloadUnsupportedError`" is now **partly done**: the two proof providers
-implement the v8 arm, so `proveTx` no longer refuses it. The error is NOT
-retired, and for the three `create*Provider` adapters the refusal is now
-understood as permanent rather than transitional — each lifts a v9-only
-implementation into the version-tagged interface, so refusing the v8 arm is the
-adapter telling the truth about what it wraps. `balanceTx` and `submitTx` have
-no framework-supplied v8 implementation; a consumer needing them implements the
-interfaces directly.
-
-One consequence of that split is worth recording because it is invisible from
-any type signature: a retained-era transaction wired through the `create*`
-adapters now proves successfully and is refused at `balanceTx`, so the refusal
-lands after a full proving cycle rather than at the first seam it meets.
-
----
-
-## Amendment — where the retained proving seam lives (2026-09-07)
-
-Rationale moved out of source comments, per the repo rule that design reasoning
-belongs here rather than in the code it describes.
-
-### The seam lives in `packages/protocol`, on a leaf subpath
-
-`proveV8Transaction` is published from `@midnight-ntwrk/midnight-js-protocol/prove`
-and `PayloadNotATransactionError` from `.../protocol/errors`.
-
-It was first written into `packages/utils`, which forced three things that the
-protocol package does not need:
-
-- `loadLedger8` is exported only from the protocol package ROOT, which also
-  re-exports the `ledger`, `compactRuntime`, `compactJs`, `platform` and
-  `onchainRuntime` namespaces. Reaching it from another package therefore meant
-  either linking all five eagerly or deferring the barrel behind a dynamic
-  `import()`.
-- That dynamic import is invisible in the source — re-adding a static one would
-  restore the cost silently — so it needed a bespoke `dist-laziness` gate in
-  `utils` to hold it.
-- It added a runtime dependency edge from `dapp-connector-proof-provider` to
-  `utils` for one function.
-
-Inside `packages/protocol` the import is an ordinary static one to a sibling
-module, the retained runtime still loads only through `loadLedger8`'s own
-dynamic `import('../../v8.js')`, and the package's existing laziness gate
-already asserts that the v8 chunk is reached from the eager closure *only* by
-dynamic import. The bespoke gate was deleted rather than kept.
-
-Publishing it as a LEAF subpath rather than on the root barrel is the same
-discipline `./errors` and `./version` follow: a proof provider that needs this
-one function should not link the five namespaces the root re-exports.
-
-For the record, one argument originally made for the `utils` placement was
-false: `utils` already statically links `.../protocol/ledger` and
-`.../protocol/compact-runtime` (see `src/deserialization/typed-wrappers.ts`), so
-a static barrel import there would have added `compactJs`, `platform` and
-`onchainRuntime` — not, as the comment claimed, everything. A second was also
-false: `loadLedger8` is already reached from outside the protocol package by a
-static root-barrel import, in `indexer-public-data-provider/src/codec.ts`.
-
-### Bytes on both sides is the contract, not an implementation detail
-
-A retained-era transaction cannot cross a provider boundary as a live object:
-the runtime that owns it is loaded lazily and its instances are not
-interchangeable with the current era's. Inside the seam the bytes necessarily
-become an object — the proof-server protocol is per-CIRCUIT, and it is the
-transaction that drives the proving provider one circuit at a time from within
-`prove()`.
-
-### The cost model may not come from the caller
-
-The retained ledger ships its own `CostModel` class and its `prove()` checks the
-argument against that class across the WASM boundary, so the current era's cost
-model is rejected with `expected instance of CostModel`. The seam therefore
-takes the cost model from the same `loadLedger8()` result as the transaction
-class, and `dappConnectorProofProvider` does not forward its `costModel`
-parameter to the retained arm.
-
-A caller *can* construct a retained-era cost model — `./v8` is a published
-subpath and `CostModel.initialCostModel()` is a public static — so the reason an
-override is not offered is not that it is impossible. It is that pairing the
-transaction with its own era's model is the only correct pairing, and an
-override would only ever be a way to get it wrong.
-
-### Why a constructor name is bounded and filtered
-
-`PayloadNotATransactionError.notBytes` names the kind of value it refused, and
-for a plain object that name is CALLER DATA: `{ constructor: { name: ... } }`
-sets it to anything at all, newlines included. Left unbounded it would carry
-arbitrary text into an error message and from there into whatever the logger
-provider receives. The name is therefore truncated to 32 characters and then
-reported only if what remains is a plain identifier — validated AFTER
-truncation, so that what is checked is exactly what is emitted.
-
-The same treatment has NOT been applied to `describeVersion` in
-`packages/types/src/errors.ts`, which truncates without filtering. That is
-pre-existing and tracked separately.
-
-### The proof-server wire envelope is shared across eras, and now measured
-
-`httpClientProvingProvider` builds every `/check` and `/prove` payload with the
-current era's `createCheckPayload` / `createProvingPayload` / `parseCheckResult`,
-and the retained arm drives the same provider. The retained ledger ships its own
-three. `packages/protocol/src/test/era-proving-payload-parity.test.ts` captures a
-real proof preimage from each runtime and asserts the two eras' builders emit
-byte-identical envelopes for it, in both directions. They do.
-
-That test is the unit-level evidence for reusing the current era's builders. It
-is not a substitute for driving a retained-era contract call against a real
-proof server, which remains untested.
-
----
-
-## Amendment — the seams now say what they serve (2026-09-11)
-
-The decision above stands unchanged. This note records that one consequence its
-first amendment described has been addressed, by
-[ADR-0014](./0014-build-provider-seams-from-per-era-handlers.md).
-
-That amendment closed with:
-
-> a retained-era transaction wired through the `create*` adapters now proves
-> successfully and is refused at `balanceTx`, so the refusal lands after a full
-> proving cycle rather than at the first seam it meets.
-
-It no longer does. The three transaction seams each carry a required
-`supportedEras` declaration, and `packages/contracts` reads all three before an
-operation starts — so a set whose wallet serves only the current era is refused
-with `SeamEraUnsupportedError` before `proveTx` is called at all.
-
-Three points of this ADR are affected, none reversed:
-
-- Point 5, "v9-only components reject the v8 arm loudly", still holds and is
-  still the enforcement. `V8PayloadUnsupportedError` is not retired. A
-  declaration is a claim by an implementation and nothing verifies it, so the
-  narrowing at each seam remains what upholds the arm; the new check only moves
-  a KNOWABLE refusal earlier.
-- Point 6, "one narrowing helper, not a switch per seam", is extended rather
-  than replaced. `unwrapV9` is unchanged and still exported for v9-only
-  providers and consumers. `narrowToEraArm` is its generalisation for a provider
-  serving more than one era, and it reports the same two errors for the same two
-  reasons.
-- The `create*Provider` adapters keep their signatures. Each is now a one-line
-  call to its arms factory and declares exactly the current era, which is the
-  same permanent refusal this ADR's first amendment describes — now stated in
-  the type rather than discoverable only by sending a payload.
-
-The stage-erasure risk that amendment records is NOT affected: `V8TxBytes` is
-still identical across the three seams. The arms narrow what an implementation
-sees, not what the union expresses.
-
-## Amendment — the provider codes move to the package that throws them (2026-09-16)
-
-The decision above stands: `types` still takes no internal runtime dependency.
-What changed is which package owns the provider error codes, and therefore the
-direction of the edge between `types` and `utils`. Point 8 described the old
-arrangement and is superseded by this note; point 5's parenthetical
-("declared locally, for the reason in point 8") should now be read as pointing
-here.
-
-**Point 8 as it stood.** The code strings behind the `types` error classes were
-re-declared as local literals in `packages/types`, because importing them from
-`packages/utils` would have inverted the layer order. `utils` held the registry,
-and its error-codes test pinned the same literals on that side, so the two
-copies could not drift apart unnoticed. `types` carried `utils` as a
-devDependency, for tests only.
-
-**What it is now.** `PROVIDER_ERROR_CODES` is declared once, in
-`packages/types/src/errors.ts`, and exported from a `./errors` leaf subpath.
-`utils` imports the group through that subpath, re-exports it so its own
-published surface is unchanged, and folds it into the registry `hasErrorCode`
-consults. There is one spelling of each code, not two.
-
-Three facts recorded here because they are not visible from the code alone:
-
-- **The duplication was growing, not stable.** Two literals when the first
-  version-tagged seams landed, three once `SEAM_ERA_UNSUPPORTED` arrived. Point
-  8's cross-check was a guard against a hazard that a single declaration removes
-  outright.
-- **The `types` -> `utils` devDependency had to go, not merely could.** Turbo's
-  build graph is topological over devDependencies, so keeping that edge beside
-  the new `utils` -> `types` one would be a cycle. It existed only to run the
-  cross-check this change makes unnecessary.
-- **The leaf subpath is load-bearing.** The `types` root barrel pulls `effect`
-  and the protocol ledger namespace; `packages/types/src/errors.ts` imports
-  nothing at all. Reading a code string must not cost a consumer either. This is
-  the same reasoning `utils` already applies to
-  `@midnight-ntwrk/midnight-js-protocol/errors`.
-
-**What holds the registry in step now.** `packages/utils/src/test/troubleshooting-coverage.test.ts`
-pins `MIDNIGHT_JS_ERROR_CODES` against the `TROUBLESHOOTING.md` table with
-strict equality in both directions, and additionally demands a remediation per
-entry. `TROUBLESHOOTING.md` is listed in `turbo.json`'s `globalDependencies`, so
-that gate cannot be replayed from cache. One guarantee was traded away and is
-worth naming: a code renamed in the registry and in the document within the same
-change now passes, where three independent spellings would have caught it.
-
-**`CONTRACTS_ERROR_CODES` did not move.** Its previous justification was
-circular. The real constraint is that the no-argument `hasErrorCode` needs a
-COMPLETE registry, and that form is called from `contracts` and the registry is
-read by the TROUBLESHOOTING gate — both at or above `utils`, so the registry
-cannot follow the codes up.
-
-### The guard is typed to the registry
-
-Recorded here rather than as its own ADR, because it is the same decision seen
-from the call site.
-
-`hasErrorCode(e, code)` took `C extends string`, so a misspelled code compiled
-and silently returned `false` forever. The loose parameter was deliberate — it
-let one call compare against a foreign code such as Node's `ECONNREFUSED` — but
-that escape hatch had no user anywhere in the tree.
-
-The two questions are now two names. `hasErrorCode` takes
-`C extends MidnightJsErrorCode`, so a typo is a compile error.
-`hasForeignErrorCode` serves the foreign comparison and enforces foreignness
-twice, because neither gate alone covers both cases:
-
-- A code this framework owns is refused by the compiler, through a conditional
-  constraint that resolves to `never` for a member of `MidnightJsErrorCode`.
-- A code that merely LOOKS like one of ours — a misspelling, which is exactly
-  what sends a caller to the foreign form — satisfies that constraint, so it is
-  refused at runtime by its `MIDNIGHT_JS_` prefix. Answering `false` would
-  reinstate the silent guard through the other door. The prefix every registered
-  code carries is pinned by `packages/utils/src/test/error-codes.test.ts`, so
-  the screen cannot quietly go incomplete.
-
-**Consequence, breaking.** A caller comparing against a code outside
-`MidnightJsErrorCode` must use `hasForeignErrorCode`. Packages were at
-`5.0.0-beta.8` when this landed, so it precedes the major.
-
-**Consequence for the `types` tests.** Those tests previously asserted a
-rejection's code through `hasErrorCode` against the `utils` registry. They now
-compare the class field against `PROVIDER_ERROR_CODES` directly, since `utils`
-can no longer be a devDependency of `types`. Two things follow: their names say
-"its stable code" rather than "the registered code", because nothing in `types`
-reaches the registry any more; and each such assertion is paired with
-`toBeInstanceOf`, which the guard used to supply. Without that pairing a
-rejection that stopped being an `Error` at all would have kept the suite green.
-
-## Amendment — "seam" leaves the names (2026-10-14)
-
-Issue #1489. The decision is unchanged; only names change. This ADR says
-"seam" for a provider method that carries a version-tagged payload. A caller
-never writes anything called a seam, so the public names and messages now say
-"method" or "provider":
-
-- `ProviderSeam`, `ReadSeam` and `Seam` are `TransactionMethod`, `ReadMethod`
-  and `ProviderMethod`; the field `seam` is `method` on every error that
-  carried it, and so is the `seam` key of a decode failure's `details` (the full
-  list is in `docs/releases/v5.0.0/breaking-changes.md`, section 12);
-- `SeamEraUnsupportedError` is `ProviderEraUnsupportedError`, with code
-  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`; `assertSeamsSupportEra` is
-  `assertProvidersSupportEra`, and `TransactionSeams` is `TransactionProviders`.
-
-The era prefix is now `Ledger8` / `Ledger9` everywhere, never `V8` / `V9`:
-`VersionedTx`, `V8TxBytes`, `V9Tx`, `unwrapV9` and `V8PayloadUnsupportedError` are
-`VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
-`unwrapLedger9` and `Ledger8PayloadUnsupportedError` (code
-`MIDNIGHT_JS_PR_LEDGER8_PAYLOAD_UNSUPPORTED`). The tag values `'v8'` / `'v9'`
-stay, because they mirror the `ledger-v8` / `ledger-v9` package names.
-
-The title and file name of this ADR keep the old word, and so do the
-amendments above.
-
-## Amendment — the read results follow the same rule (2026-10-16)
-
-Issue #1508. The decision now covers every public value whose shape depends on the era, not
-only the transaction payloads:
-
-1. `version: 'v8' | 'v9'` means one thing: the ledger era that WROTE the value, read from the
-   payload's envelope. The era of the block that dated a read stays only in `protocolVersion`.
-   `RawContractState.version` follows this rule; the event payload schema field is
-   `payloadVersion`.
-2. `era` is kept only on `contracts` pipeline results, where it names the pipeline that produced
-   the result.
-3. An era-dependent value is a `Versioned*` union, `Ledger8X | Ledger9X`. The v8 variant carries
-   the stored bytes, the v9 variant the decoded object: `VersionedContractState`,
-   `VersionedPublicStates`, `VersionedFinalizedTxData`.
-4. Era-neutral values stay plain (`UnshieldedBalances`, `BlockInfo`).
-5. Code that handles only v9 narrows with `requireLedger9` from `@midnight-ntwrk/midnight-js-utils`.
-   It lives in `utils` rather than `types` because both of its errors, `Ledger8ValueUnsupportedError`
-   and `UnrecognisedEraTagError`, carry codes from the `utils` error-code table, while
-   `UntaggedPayloadError` takes only the closed provider-method list.
-
-`submitTx` reads the network head once and routes on it; the input's `version` only says how to
-read the input. The full list of changed signatures is in
-`docs/releases/v5.0.0/breaking-changes.md`, section 14.
-
-
-## Amendment — transactions become handles (2026-10-26)
-
-Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
-Points 1, 2, 5 and 6 no longer describe the transaction methods. A transaction crossing `proveTx`,
-`balanceTx` and `submitTx` is now an opaque handle (`UnprovenTx`, `UnboundTx`, `FinalizedTx`) that
-carries its era as data and holds a live ledger object in both eras. The retained era no longer
-crosses as bytes. `VersionedTransaction`, `Ledger8TransactionBytes`, `Ledger9Transaction`,
-`unwrapLedger9`, `Ledger8PayloadUnsupportedError` and `UntaggedPayloadError` are removed.
-
-The rest of the decision stands: the read side keeps its `version`-tagged records, and `version`
-is still derived, never asserted. On a finalized-transaction record, `tx` is a `FinalizedTx` of
-the record's era (`record.tx.era === record.version`), so point 3 of the amendment of 2026-10-16
-("the v8 variant carries the stored bytes") does not apply to transaction records.
-
-## Amendment — on-chain state is carried as bytes (2026-10-28)
-
-Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-Point 3 of the amendment of 2026-10-16 no longer describes the state reads. A contract state,
-ledger parameters and a zswap chain state are now a `LedgerState`: bytes and the era of the
-ledger that wrote them, in both eras. The caller decodes them with its own runtime.
-`VersionedContractState`, `VersionedPublicStates`, `RawContractState` and their variants are
-removed; the reads return `ContractStateRead`, `ContractStateAndParametersRead` and
-`PublicStatesRead`. `LedgerState.era` is read from the bytes, never from the block. The
-finalized-transaction record keeps its shape but follows the same names:
-`VersionedFinalizedTxData` is now `FinalizedTxRead`, and its `version` is now `era`.
-
-## Amendment — `requireLedger9` is removed (2026-10-29)
-
-Point 5 of the 2026-10-16 amendment no longer holds. `requireLedger9`, `Ledger8ValueUnsupportedError`
-and `UnrecognisedEraTagError` are removed. Code that handles only v9 narrows with `switch (value.era)`,
-closed by `assertNever`. A value with no era raises `UnknownLedgerVersionError`. See the 2026-10-29
-amendment of [ADR 0017](./0017-error-codes-are-the-contract.md).
+- **Pass bare ledger objects and detect the era by duck-typing.** Rejected: both WASM builds
+  expose the same names, and `instanceof` does not work across instances.
+- **Tag with a boolean or a number.** Rejected: a string literal reads correctly at the call site,
+  matches the `ledger-v8` / `ledger-v9` package names, and extends to a third era without
+  re-reading old values.
+- **Stamp `'v9'` on read records and resolve the era later.** Rejected: the label could disagree
+  with the `protocolVersion` in the same record, which is worse than no label.
+- **Make `assertNever`'s context optional, or render the value in the message.** Rejected: an
+  optional context gets skipped, and a rendered value leaks payloads into logs.

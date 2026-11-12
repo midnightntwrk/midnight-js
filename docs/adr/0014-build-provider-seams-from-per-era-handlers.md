@@ -1,328 +1,137 @@
-# 0014. Build the provider seams from per-era handlers, and declare what they serve
+# 0014. Build providers from per-era handlers, and declare what they serve
 
 - Status: Accepted
 - Date: 2026-09-11
-- Deciders: Szymon Paluchowski
-- Related: amends [0006](./0006-version-tagged-payloads-at-provider-seams.md); issue #1004
+- Related: [ADR 0006](./0006-version-tagged-payloads-at-provider-seams.md),
+  [ADR 0017](./0017-error-codes-are-the-contract.md),
+  [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
 
 ## Context
 
-ADR 0006 made every payload crossing `proveTx`, `balanceTx` and `submitTx` a
-`version`-discriminated union, and its amendment of 2026-09-05 recorded what
-shipping the retained arm actually produced:
+A transaction passes through three provider methods in order: `ProofProvider.proveTx`,
+`WalletProvider.balanceTx`, `MidnightProvider.submitTx`. Each carries a `LedgerTransaction`
+handle of era `'v8'` or `'v9'` (ADR 0024).
 
-> a retained-era transaction wired through the `create*` adapters now proves
-> successfully and is refused at `balanceTx`, so the refusal lands after a full
-> proving cycle rather than at the first seam it meets.
+Two problems follow from having two eras:
 
-That is the problem this ADR addresses. It has two halves, and they are
-independent:
+1. **Nobody can ask a provider what it serves.** Without a declaration, the only way to learn that
+   a wallet cannot balance a v8 transaction is to send it one. At `balanceTx` that is after the
+   proof has been paid for, and proving is the expensive step.
+2. **Every multi-era provider writes the same routing by hand.** Read the era, branch, call the
+   right path, seal the answer in the same era. Each hand-written copy is a chance to answer in
+   the wrong era.
 
-1. **Nothing can be asked what it serves.** `ProofProvider`, `WalletProvider`
-   and `MidnightProvider` expose only their methods. Whether an instance handles
-   the retained arm is discoverable only by sending it one and seeing whether it
-   throws — which, at `balanceTx`, is after the proof has been paid for. Two
-   proof providers (`httpClientProofProvider`, `dappConnectorProofProvider`) do
-   serve both eras; the three `create*Provider` adapters permanently do not; a
-   third-party implementation is anyone's guess.
-
-2. **Every dual-era implementation re-writes the same routing.** Both proof
-   providers had grown the same shape by hand: read `payload?.version`, branch,
-   call the retained path with bytes, call the current path with the live
-   object, tag each answer to match, and keep `unwrapV9` on the fall-through so
-   an untagged payload still reports a coded error. Roughly forty lines each, and
-   every line of it is a chance to answer in the wrong arm — which strands a
-   submit mid-flight, because callers narrow the response and reject the other
-   era.
-
-Constraints shaping the decision:
-
-- Capability is STATIC per instance. No provider in the tree discovers at run
-  time what it can serve: `dappConnectorProofProvider` deserializes and proves
-  the retained arm unconditionally rather than asking the wallet. So a plain
-  readonly field is sufficient and an asynchronous probe is not needed.
-- `PROVIDER_ERROR_CODES.ERA_UNSUPPORTED` already exists but belongs to the READ
-  surface — it means "this record cannot be decoded", raised while decoding.
-  Reusing it for "this provider states it does not serve that era" would merge
-  two different faults with two different remedies.
-- This is a 5.0.0 major. A required field on the three interfaces is affordable
-  now and expensive later.
-- `packages/types` may depend on `packages/protocol` and on nothing else
-  internal (ADR 0006, point 8). Whatever names "the current era" has to come
-  from `protocol` or be re-declared, and re-declaring it is the drift this ADR
-  is partly about.
+What a provider serves is static per instance. No provider here learns its capability at run
+time, so a plain readonly field is enough.
 
 ## Decision
 
-We will describe a provider by the eras it serves, and build it from one
-handler per era.
+### Every provider declares `supportedEras`
 
-1. **`protocol` names the current era.** `CURRENT_LEDGER_VERSION` and its type
-   `CurrentLedgerVersion` join `LEDGER_VERSIONS` in
-   `lib/shared/ledger-version.ts`, re-exported from `./version`, with
-   `RetainedLedgerVersion = Exclude<LedgerVersion, CurrentLedgerVersion>` and a
-   `RETAINED_LEDGER_VERSIONS` value list gated at build time against that
-   complement. Which era is current is a protocol fact — it is the era whose
-   objects `./ledger` hands out live — so no package downstream restates it.
+`ProofProvider`, `WalletProvider` and `MidnightProvider` each have a required
+`readonly supportedEras: readonly LedgerEra[]`. Required, so an implementer learns about it from
+the compiler.
 
-2. **Each of the three seams declares `readonly supportedEras: readonly
-   LedgerVersion[]`.** REQUIRED, not optional: the same release already changes
-   these interfaces, and a required member is what tells an implementer through
-   the compiler. An optional one says nothing and defaults to a lie.
+### Providers are built from one handler per era
 
-3. **Providers are assembled from handlers.** `createProofProviderFromHandlers`,
-   `createWalletProviderFromHandlers` and `createMidnightProviderFromHandlers`
-   each take a required `currentEra` handler plus an optional `retainedEras`
-   record, and return the tagged interface. The factory does the routing, the
-   tagging and the refusal of an era it was given no handler for; a handler never
-   writes a `version` tag and cannot answer in the wrong era.
+`createProofProviderFromHandlers`, `createWalletProviderFromHandlers` and
+`createMidnightProviderFromHandlers` take an object keyed by era, `{ v8, v9 }`
+(`ProofProviderHandlers`, `WalletProviderHandlers`, `MidnightProviderHandlers`). Every era key must
+be present; `undefined` means the era is not served.
 
-4. **`RetainedEraHandlers<H>` excludes the current era from its key set.**
-   `Partial<Readonly<Record<RetainedLedgerVersion, H>>>`, where
-   `RetainedLedgerVersion` is `Exclude<LedgerVersion, CurrentLedgerVersion>`.
-   Registering a retained handler for the current era is a build failure, not a
-   convention — the current era crosses as a live object, so such a handler has
-   the wrong signature and serves a request that can never arrive. When the
-   network moves on and today's current era becomes retained, it becomes
-   registrable on its own, with no change to the type.
+- Each handler receives the handle of its own era. It decodes it with its own ledger copy
+  (`tx.deserialize({ v9: Transaction })`) or passes `tx.serialize()` to something that takes
+  bytes.
+- A transaction answer (`proveTx`, `balanceTx`) may be a transaction object of any ledger copy or
+  its bytes. The factory seals it in the request's era at the method's output stage. A handler
+  never chooses the era of its answer. `submitTx`'s `TransactionId` passes through.
+- A handle of an era with no handler is refused by the method with `ProviderEraUnsupportedError`,
+  before any work.
+- `supportedEras` is computed from the handlers, never written beside them. A hand-written list is
+  a second statement of the same fact and drifts.
 
-5. **`supportedEras` is COMPUTED from the handlers, never written beside them.**
-   `erasServedBy(retainedEras)` returns the current era plus each retained era
-   with a handler, frozen. A hand-written list is a second statement of the same
-   fact and drifts the first time a handler moves.
+The factories check the handlers when the provider is built. An entry that is neither a function
+nor `undefined` is refused with `UnusableEraEntryError`. An argument that is not an object, misses
+an era key, or serves no era at all is refused with `InvalidArgumentError`. This checks shape only:
+a well-formed handler paired with the wrong era still passes.
 
-6. **The tagged interface may still be implemented directly.** A class, a test
-   double, or a provider that routes internally writes `supportedEras` itself.
-   The testkit's `MidnightWalletProvider` does exactly that: the wallet SDK
-   adopts a transaction AT a protocol version, so both eras genuinely run through
-   one call, and splitting that into handlers would duplicate the
-   balance/sign/finalize sequence to no purpose.
+Implementing an interface directly is still supported. Such a provider writes `supportedEras`
+itself and gets no per-handle check for free.
 
-7. **The declarations are checked before an operation starts.**
-   `assertSeamsSupportEra(era, seams)` reads all three in pipeline order and
-   throws `SeamEraUnsupportedError` (new code
-   `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED`) naming the first seam that does not
-   list the era. `packages/contracts` calls it in exactly two places — once per
-   pipeline — so a third entry point cannot forget it:
-   `acquireLedger8Runtime`, the single funnel every retained-era operation takes,
-   and `submitTxCore`. The era passed is the one the operation's PAYLOADS will
-   carry, which on the retained pipeline is the head era rather than the
-   artifact's: keep-state runs a retained-era artifact against a post-fork head
-   and composes on the current era, so its payloads cross the seams as
-   `{ version: 'v9', tx }`. Checking the artifact's era there would refuse every
-   keep-state operation whose wallet serves only the current era — the ordinary
-   post-fork wallet.
+### Shorter routes for common cases
 
-8. **A declaration that is absent or malformed reads as "serves nothing".** Not
-   as "serves everything". A provider built against an older `midnight-js-types`,
-   or supplied from JavaScript, has never heard of this field; treating its
-   silence as consent would let exactly the un-migrated provider through.
+- `createProofProviderFromProvingProviders` takes one `ProvingProvider` per era
+  (`ProvingProvidersByEra`: `{ v8, v9, costModel? }`) and builds the handlers itself. It exists for
+  an in-process prover that crosses the fork: each era's circuits need their own key material, and
+  a node rejects a proof made with the other era's, so one instance per era is required. The
+  factory cannot verify the pairing (the v9 `ProvingProvider` shape is a superset of the v8 one),
+  but it is one place where the pairing is written down.
+- `createLedger9ProofProvider`, `createLedger9WalletProvider` and `createLedger9MidnightProvider`
+  lift a v9-only implementation into the interface. They declare `['v9']` and refuse v8. That is an
+  accurate report of what they wrap, not a gap.
 
-9. **The per-seam narrowing stays, unchanged.** `V8PayloadUnsupportedError` is
-   not retired and `unwrapV9` is not removed. A declaration is a claim by an
-   implementation and nothing verifies it, so the seams remain the enforcement
-   and the pre-flight check is only about WHERE a knowable refusal lands.
+### The declarations are checked before an operation starts
 
-10. **The simple adapters keep their signatures.** `createProofProvider(pp,
-    costModel)`, `createWalletProvider(impl)` and `createMidnightProvider(fn)`
-    are unchanged for callers; each is now one line over its handlers factory
-    and declares exactly the current era. A dApp with a v9-only wallet migrates
-    by adding nothing.
+`assertProvidersSupportEra(era, providers)` (`packages/types/src/era-support.ts`) reads the three
+declarations in pipeline order and throws `ProviderEraUnsupportedError`
+(`MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`) naming the first method that does not list the era.
+`packages/contracts` calls it before the first provider call: in `admitLedger8Runtime`, shared by
+`acquireLedger8Runtime` and `acquireLedger8RuntimeForReading`, and in the submit paths of
+`submit-tx.ts`. The builders that take initial states or verifier keys read nothing from the
+network and skip admission; `submitTx` checks their transaction.
+
+The era checked is the one the transaction will carry. On the retained pipeline that is the
+network head's era, not the artifact's: a keep-state call runs a v8 artifact against a post-fork
+head and composes a v9 transaction. Checking the artifact's era would refuse every keep-state call
+made with an ordinary v9-only wallet.
+
+A declaration that is absent or malformed reads as "serves nothing", never as "serves everything".
+A provider built against an older `midnight-js-types`, or written in JavaScript, has never heard of
+the field; treating silence as consent would let exactly that provider through.
+
+The read side keeps its own error, `DecoderEraUnsupportedError`
+(`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), meaning "this record cannot be decoded". Its remedy is
+different (upgrade, or check the indexer), so the two codes stay apart (ADR 0017).
+
+### Retained-era proving
+
+- `proveLedger8Transaction` lives in `protocol` on the leaf subpath
+  `@midnight-ntwrk/midnight-js-protocol/prove`, so a proof provider that needs only this function
+  does not link the root barrel. The v8 runtime stays behind `loadLedger8Protocol`'s dynamic
+  import, so importing the subpath does not load the v8 WASM.
+- The cost model comes from the same era's runtime as the transaction:
+  `v8.CostModel.initialCostModel()` from the same `loadLedger8Protocol()` result. It is not a
+  caller parameter. The retained ledger checks the cost model's class across the WASM boundary and
+  rejects the current era's.
+- The proof-server envelope is shared across eras. `httpClientProvingProvider` builds every
+  `/check` and `/prove` payload with the current era's builders for both eras.
+  `packages/protocol/src/test/era-proving-payload-parity.test.ts` pins that both eras' builders
+  produce byte-identical payloads for captured real preimages, so a vendor bump that changes either
+  framing fails a test instead of failing at the proof server.
 
 ## Consequences
 
-- **Positive.** A provider set that cannot carry a transaction end to end is
-  refused before the proof is paid for, and the error names the seam and the
-  remedy. Both proof providers lose their hand-written routing — the
-  dapp-connector one drops from a twenty-line `proveTx` to two handlers — and
-  with it the class of bug where a seam answers in the arm it was not asked in.
-  "A retained handler for the current era" and "an era outside the vocabulary"
-  are both build failures. A third ledger era adds a member to
-  `LEDGER_VERSIONS` and becomes registrable everywhere at once, without editing
-  `RetainedEraHandlers`, `assertSeamsSupportEra` or any factory.
-
-- **Negative.** `supportedEras` is a required member on three interfaces, so
-  every external implementation and every test double must add it — a breaking
-  change on top of the one ADR 0006 already made. The field is trusted, not
-  verified: a provider that lists an era it cannot serve now fails later than it
-  would have, because the pre-flight check waves it through and the seam refuses
-  it afterwards. That is why point 9 keeps the narrowing rather than replacing
-  it. The check also covers only the two funnels named in point 7; other
-  current-era paths that reach a seam without passing through `submitTxCore`
-  still fail at the seam, as they did before.
-
-  Two eras are now named in more than one vocabulary —`LedgerVersion` in
-  `protocol`, `PipelineEra` in `contracts` — and this ADR adds a third pairing
-  (operation era against declared eras) on top of the artifact/head pairing that
-  `assertEraCompatible` already rules. They are documented together in
-  `packages/contracts/docs/era-dispatch.md`; nothing binds them mechanically.
-
-- **Follow-ups.**
-  - The retained handlers of `balanceTx` and `submitTx` have no
-    framework-supplied implementation. `RetainedEraBalancer` and
-    `RetainedEraSubmitter` are declared and routed, and the testkit wallet
-    serves both eras, but a consumer wanting them outside the testkit still
-    writes them. ADR 0006's "provider-side v8
-    support, which retires `V8PayloadUnsupportedError`" remains partly done.
-  - The stage-erasure risk ADR 0006's amendment records is untouched:
-    `V8TxBytes` is still identical across the three seams, so an unproven
-    retained payload is still assignable where a finalized one is expected. The
-    handlers narrow what an IMPLEMENTATION sees, not what the union expresses.
+- A provider set that cannot carry a transaction end to end is refused before the proof is paid
+  for, and the error names the method.
+- Multi-era providers (`httpClientProofProvider`, `dappConnectorProofProvider`, the testkit's
+  `MidnightWalletProvider`) write no routing of their own, so they cannot answer in the wrong era.
+- `supportedEras` is required on three interfaces, so every external implementation and test
+  double must add it.
+- The declaration is trusted, not verified. A provider that lists an era it cannot serve passes the
+  pre-flight check and fails later. A provider built from handlers still refuses an unserved era at
+  the method; a directly implemented one may not.
+- A new ledger era adds a key to the handler objects and becomes registrable in every factory;
+  `assertProvidersSupportEra` needs no change.
 
 ## Alternatives considered
 
-**An optional `supportedEras?`, defaulting to the current era when absent.**
-Rejected. It reads as compatibility and buys nothing: the release breaks these
-interfaces regardless, so the only thing optionality preserves is the ability to
-leave the field out — which is precisely the provider whose capability nobody can
-establish. A required member says so through the compiler; an optional one is a
-doc comment.
-
-**An `EVERY_ERA` constant a provider can declare.** Rejected. It makes "I serve
-everything" a statement that keeps holding as eras are added, so a provider
-written before a third era silently claims to serve it. Every declaration is an
-explicit list of literals.
-
-**An asynchronous `supportsEra(era)` probe.** Rejected as unnecessary today:
-no provider in the tree discovers its capability at run time, so the probe would
-be a constant behind a promise, and it would force every call site that wants to
-fail fast to become asynchronous. Revisit if a provider appears whose capability
-really is a property of a live connection.
-
-**Reusing `PROVIDER_ERROR_CODES.ERA_UNSUPPORTED`.** Rejected. That code is the
-read surface's, and it means a record could not be decoded. This one is raised
-from a declaration before any payload exists, and its remedy is different: wire a
-different provider, rather than upgrade or check the indexer. Merging them would
-make `hasErrorCode` unable to tell a wiring mistake from a decode failure.
-
-**Replacing `createProofProvider` with the handlers factory.** Rejected. The
-two-argument form is the easy path for the common case — a dApp with a
-`ProvingProvider` and no retained-era ambitions — and keeping it means that dApp
-migrates by changing nothing. Both forms exist; the handlers factory is what the
-documentation points a dual-era implementer at.
-
-**Splitting the testkit's `MidnightWalletProvider` into handlers for uniformity.**
-Rejected on inspection. Its `balanceTx` runs both eras through one wallet-SDK
-call because the SDK adopts a transaction at a protocol version — the era branch
-lives below it, in `adoptVersionedUnbound`/`unwrapVersionedFinalized`. Splitting
-would duplicate the balance/sign/finalize sequence to express a branch that is
-not there. Point 6 exists so that this is a supported shape rather than an
-exception.
-
-**Checking the declarations at `findDeployedContract`, before a contract is
-attached.** Deferred, not rejected — it would fail even earlier. The attach path
-does not receive the write seams today, so it is a signature change in its own
-right, and it would leave the two funnels needing the check anyway for callers
-that never attach.
-
-## Amendment — a second construction route on the proof seam, and the factories renamed (2026-09-28)
-
-Issue #1363. Two changes, neither reversing the decision above.
-
-**The factories are named after what they take.** `createProofProviderFromArms`,
-`createWalletProviderFromArms` and `createMidnightProviderFromArms` are now
-`create…FromHandlers`, and `ProofProviderArms` / `WalletProviderArms` /
-`MidnightProviderArms` are `…Handlers`. What a caller supplies was already
-typed as `RetainedEraHandlers`, so "arms" was the odd word out. The mechanism in
-`era-arms.ts` keeps it — `narrowToEraArm` and `EraArmRequest` describe the
-branch that serves a request, not what the caller registers.
-
-**The proof seam gains `createProofProviderForEras`.** It takes one
-`ProvingProvider` per era rather than one handler per era, and builds the
-handlers itself — `tx.prove(…)` on the current era, `proveV8Transaction` on a
-retained one. The handler route stays for anything whose proving is not a
-`ProvingProvider` call.
-
-The case that motivated it: an in-process prover crossing the fork needs one
-instance per era, because from `@midnightntwrk/wallet-sdk-prover-client`
-2.0.0-rc.0 each era's circuits take their own key material and a node rejects a
-proof made with the other era's. Writing that pairing by hand meant reaching for
-`proveV8Transaction` and assembling the handlers per consumer, and the cost of
-getting it wrong is a refusal at `submitTx`, after the proving has been paid
-for. The factory does not verify the pairing — the two provider shapes are
-structurally compatible and one prover's two accessors return equivalent objects
-— so what it buys is one place where the pairing is written down, with
-`supportedEras` still derived. See
-[the package document](../../packages/types/docs/provider-era-declarations.md).
-
-`createProofProvider` now goes through it: it is one line over
-`createProofProviderForEras`, which builds the handlers and calls
-`createProofProviderFromHandlers`. Point 10 still holds for the proof seam, one
-step removed.
-
-## Amendment — handlers are checked when the provider is built (2026-10-14)
-
-Issue #1475. Point 3 lists what a factory does with the handlers it is given;
-it now also checks them. All four factories refuse a handler of the wrong shape
-with `UnusableEraEntryError`, and a `retainedEras` that is not a plain object
-keyed only by retained eras with `InvalidArgumentError`, before the provider
-exists. The check is shape only: a handler built for the wrong era still passes.
-See [the package document](../../packages/types/docs/provider-era-declarations.md).
-
-## Amendment — "arm" leaves the public surface (2026-10-14)
-
-Issue #1363. The 2026-09-28 amendment kept "arm" for the branch that serves a
-request. In practice the word named three things: a variant of the
-version-tagged union, the branch a request is routed to, and the value a caller
-passes as `currentEra` or under `retainedEras`. A caller never writes anything
-called an arm, so an error that names one sends them to the documentation to
-find out what it means.
-
-The public names now say what they are:
-
-- `narrowToEraArm` is `narrowToEra`, and `EraArmRequest` is `EraRequest`;
-- `UnusableEraArmError` is `UnusableEraEntryError`, with code
-  `MIDNIGHT_JS_PR_UNUSABLE_ERA_ENTRY` and shape type `EraEntryShape`. An entry
-  is a handler for the `…FromHandlers` factories and a `ProvingProvider` for
-  `createProofProviderForEras`, so neither word alone covers both;
-- that error's message names the field the caller passed (`currentEra` or
-  `retainedEras.v8`), and `V8PayloadUnsupportedError` says "v8 payload" rather
-  than "v8 arm";
-- `era-arms.ts` is `era-handlers.ts`.
-
-The decision is unchanged. The amendments above keep the names that were current
-when they were written.
-
-## Amendment — consistent public names (2026-10-14)
-
-Issue #1489. The decision is unchanged; only names change.
-
-- `RetainedEraHandlers<T>` is `RetainedEraEntries<T>`, and `era-handlers.ts` is
-  `era-entries.ts`. In `ProvingProvidersByEra.retainedEras` the entries are
-  `ProvingProvider`s, not handlers, so the type takes the word the amendment
-  above already chose for both.
-- "seam" leaves the public names, as recorded in
-  [ADR-0006](./0006-version-tagged-payloads-at-provider-seams.md):
-  `assertSeamsSupportEra` is `assertProvidersSupportEra`, `TransactionSeams` is
-  `TransactionProviders`, `SeamEraUnsupportedError` is
-  `ProviderEraUnsupportedError` (code `MIDNIGHT_JS_PR_SEAM_ERA_UNSUPPORTED` is
-  `MIDNIGHT_JS_PR_PROVIDER_ERA_UNSUPPORTED`), and `seam-era-declarations.md` is
-  `provider-era-declarations.md`.
-- `PROVIDER_ERROR_CODES.ERA_UNSUPPORTED`, the read-side code this ADR keeps
-  apart from the pre-flight one, is `DECODER_ERA_UNSUPPORTED`
-  (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`), raised by `DecoderEraUnsupportedError`.
-- `createProofProviderForEras` is `createProofProviderFromProvingProviders`.
-  Like the `…FromHandlers` factories, it is named after what it takes:
-  `ProvingProvidersByEra`, one `ProvingProvider` per era.
-
-The amendments above keep the names that were current when they were written.
-
-## Amendment — one handler per era, keyed by `LedgerVersion` (2026-10-26)
-
-Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
-The factories still build a provider from per-era handlers and still compute `supportedEras` from
-them (points 2, 3, 5, 7, 8 and 10 stand). What changed:
-
-- The handlers are keyed by `LedgerVersion`: `{ v8, v9 }`, with `undefined` for an era not served.
-  `currentEra` / `retainedEras` are gone, and so are `RetainedEraEntries`, `erasServedBy`,
-  `narrowToEra`, `EraRequest` and the `Ledger9*` / `RetainedEra*` handler types (point 4 no longer
-  applies). Every handler receives a live ledger object of its own era. (Amended by
-  [ADR-0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md): a handler
-  receives the handle of its own era, and the factory no longer unwraps it.)
-- The factory unwraps the handle for its era's handler and seals a transaction answer (`proveTx`,
-  `balanceTx`) in the same era; `submitTx`'s `TransactionId` passes through. A
-  handle of an era with no handler is refused by the method with `ProviderEraUnsupportedError`;
-  `Ledger8PayloadUnsupportedError` and `unwrapLedger9` are removed (point 9).
-- A provider with no handler at all is refused when it is built.
-- The testkit's `MidnightWalletProvider` is now built from handlers, so the exception in point 6 is
-  no longer used in this repository. Implementing an interface directly is still supported.
+- **An optional `supportedEras`, defaulting to the current era.** Rejected: it keeps exactly the
+  provider whose capability nobody can establish.
+- **An `EVERY_ERA` constant.** Rejected: a provider written before a new era would silently claim
+  to serve it.
+- **An asynchronous `supportsEra(era)` probe.** Rejected: no provider learns its capability at run
+  time, and it would make every fail-fast call site asynchronous.
+- **Reusing the read side's decoder error code.** Rejected: a wiring mistake and a decode failure
+  have different remedies, and `hasErrorCode` must tell them apart.
+- **Checking declarations when a contract is found.** Not done: the find path does not receive the
+  write providers, and the operation entries need the check anyway.

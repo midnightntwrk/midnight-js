@@ -2,122 +2,78 @@
 
 - Status: Accepted
 - Date: 2026-09-07
-- Deciders: Szymon Paluchowski
+- Related: [ADR 0006](./0006-version-tagged-payloads-at-provider-seams.md), [ADR 0007](./0007-never-latch-the-network-head-version.md), [ADR 0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md), [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
 
 ## Context
 
-The indexer public-data provider decodes each finalized-transaction record with
-the runtime of the era that record's own `protocolVersion` selects. When the
-bytes do not decode on that runtime, two very different things may have
-happened:
+The indexer public-data provider reads bytes and dates them. When bytes do not match the era chosen
+for them, two very different things may have happened:
 
-1. The record is internally inconsistent — the indexer dated bytes from one era
-   to a block from another.
-2. The consumer's `@midnightntwrk/ledger`-vN is a different vintage than the
-   network's, so the tag in the payload does not match the tag the installed
-   binding expects. Same era on both sides; ordinary dependency skew.
+1. The record is inconsistent: the indexer dated bytes of one era to a block of another.
+2. The consumer's `@midnightntwrk/ledger`-vN is a different version than the network's, so the
+   serialization tag does not match what the installed ledger expects. Same era on both sides;
+   ordinary dependency skew.
 
-The deserialization layer in `@midnight-ntwrk/midnight-js-utils` classifies the
-underlying failure and attaches a mitigation. For `version-mismatch` that
-mitigation is "align the version of `@midnightntwrk/ledger`-vN … with the
-protocol version of the network and indexer you are connecting to" — case 2.
+The deserialization layer in `@midnight-ntwrk/midnight-js-utils` classifies a failure and attaches a
+mitigation. For `version-mismatch` the mitigation is to align the `@midnightntwrk/ledger`-vN version
+with the network: case 2.
 
-An earlier iteration of this read path wrapped such failures in a provider
-error asserting case 1 ("the record contradicts itself, so this is an
-inconsistent indexer rather than a version mismatch in your dApp's
-dependencies"), gated on the classifier's `direction` field being set. Two facts
-defeat that gate:
-
-- `direction` is inferred by comparing the `[vN]` markers inside a
-  serialization tag. That `vN` is the version of the object's serialized shape,
-  not the ledger era: a **v8** ledger serializes a transaction as
-  `midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):`. So
-  a set `direction` is evidence of object-schema drift, which case 2 produces
-  just as readily as case 1.
-- Two of the classifier's era-identifying patterns — `unrecognised
-  discriminant` and `unsupported (proof|guaranteed transcript|fallible
-  transcript) version` — set no `direction` at all
-  (`packages/utils/src/test/classify-deserialization-error.test.ts`). A genuine
-  cross-era record failing on a nested versioned enum therefore fell outside the
-  gate.
-
-The gate was thus wrong in both directions, and where it fired it demoted the
-one mitigation that helps in case 2 to `cause` and replaced it with a claim
-that case 2 contradicts.
+The evidence available at the read cannot separate the two cases. The `[vN]` markers inside a
+serialization tag are object-schema versions, not ledger eras (a v8 ledger writes
+`midnight:transaction[v9](...)`), so schema drift looks the same in both cases. A provider that
+claims "inconsistent indexer" would bury the one mitigation that helps in case 2.
 
 ## Decision
 
-We will not re-attribute a decode failure at the read boundary. A payload that
-does not decode on the era selected for it leaves as the `DeserializationError`
-the runtime produced.
+We will not re-attribute a decode failure at the read boundary. The provider adds only facts it
+knows; it does not say which side is at fault.
 
-The provider adds only what it knows for certain, as structured diagnostic
-detail on that error's `context.details`: the era it dispatched to, the raw
-`protocolVersion`, the read seam, and the record reference. Those are facts. The
-question of which side is at fault is not, and we will not answer it.
+**Transaction records** (`watchForTxData`, `watchForDeployTxData`):
 
-Era *resolution* failures are unaffected and stay `IndexerError` subclasses:
-`EraUnresolvableError` when a `protocolVersion` maps to no era, and
-`EraUnsupportedError` when the resolved era has no decoder in this build.
+- The era comes from the record's `protocolVersion` (`resolveReadEra`). A value that maps to no era
+  is `UnknownRecordEraError`. An era with no decoder in this build is `DecoderEraUnsupportedError`.
+  Both are `IndexerError` subclasses.
+- The provider does not decode the transaction. `decodeRecordTransaction` checks the hex and builds
+  the handle with `LedgerTransaction.fromBytes(era, 'Finalized', bytes)` (through
+  `deserializeLedgerTransaction`), which checks only the era's header. A failure leaves as the
+  `DeserializationError` that layer produced, with the era, the raw `protocolVersion`, the read
+  method and the record reference in `context.details`.
+- The caller decodes with its own ledger (`record.tx.deserialize({ v9: Transaction })`). A decoder
+  error that is not a `MidnightJsError` becomes `TransactionDecodeFailedError`; a framework error
+  passes through unchanged.
+
+**State reads** (`queryContractState`, `queryZSwapAndContractState`, `queryDeployContractState`,
+`watchForContractState`, `contractStateObservable`):
+
+- A state's era is read from the tag at the start of its bytes. The block's era comes from
+  `protocolVersion`.
+- A `protocolVersion` that maps to no era is refused as `UnknownRecordEraError`. A value that is not
+  a non-negative integer is `IndexerDataError`, kind `'malformed-protocol-version'`.
+- The block era bounds the state's era from above (kind `'era-disagreement'`) when the state and
+  its block come from one pinned read. The check is skipped where they can straddle a fork:
+  `watchForContractState`, and `queryContractState` / `queryZSwapAndContractState` without an
+  offset. The block era is still resolved there, so an unplaceable `protocolVersion` is refused on
+  every state read. Ledger parameters must match the block era exactly
+  (kind `'parameters-era-disagreement'`).
+- The caller decodes with its own runtime. A decoder error that is not a `MidnightJsError` becomes
+  `SerializedStateDecodeFailedError`; a framework decoder's `DeserializationError` reaches the caller
+  unchanged.
 
 ## Consequences
 
-- **Positive:** the mitigation the caller reads is the one the layer that
-  actually diagnosed the failure wrote. Ordinary ledger-package skew is no
-  longer reported as a broken indexer, and a genuine cross-era record is no
-  longer silently excluded from the diagnosis. Consumers matching
-  `isDeserializationError` at the top level keep matching.
-- **Negative:** a consumer who wants to distinguish the two cases gets no help
-  from the type system; they must read `context.details` alongside the
-  classification. We ship one fewer error class and one fewer error code than
-  the earlier iteration advertised.
-- **Follow-ups:** if the two cases must be told apart, the evidence has to come
-  from the era vocabulary rather than from tag `[vN]` numbers — for example, a
-  classifier signal derived from the tag's type namespace, or probing the other
-  era's decoder. Either belongs in `packages/utils`, not at this seam.
+- The mitigation a caller reads is the one written by the layer that diagnosed the failure.
+  Ordinary ledger skew is not reported as a broken indexer.
+- Consumers matching `isDeserializationError` at the top level keep matching.
+- A consumer who wants to tell the two cases apart gets no help from the type system; they read
+  `context.details` beside the classification.
+- A network this build cannot place fails every read, state reads included. Upgrading
+  midnight-js is the fix.
 
 ## Alternatives considered
 
-- **Keep the wrapper, gate it on the classification alone.** Strictly worse:
-  empty, truncated and garbage payloads all reach `version-mismatch` because the
-  tag-header pattern is permissive on the incoming tag, so corruption would be
-  reported as an era disagreement.
-- **Keep the wrapper, prove the claim by decoding with the other era's runtime.**
-  This is real evidence — bytes that decode on the other era do contradict the
-  block that dated them. Rejected for now because it instantiates the second
-  WASM runtime on every failure path, which defeats the lazy-acquisition
-  property this read path exists to preserve, for a diagnosis rather than a
-  result.
-- **Keep the wrapper, soften the message to name both possibilities.** Leaves a
-  provider-specific error class whose only content is "one of two things
-  happened", while burying the actionable mitigation one level down. The
-  underlying error already says as much, better.
-
-## Amendment — the two errors are renamed (2026-10-14)
-
-Issue #1489. `EraUnresolvableError` is `UnknownRecordEraError`
-(`MIDNIGHT_JS_PR_UNKNOWN_RECORD_ERA`), and `EraUnsupportedError` is
-`DecoderEraUnsupportedError` (`MIDNIGHT_JS_PR_DECODER_ERA_UNSUPPORTED`). The
-`IndexerDataError` kind `'unresolvable-era'` is `'unknown-record-era'`. The
-decision is unchanged, and the sections above keep the names that were current
-when they were written.
-
-## Amendment — the raw reads stop refusing an unplaceable block (2026-10-16)
-
-Issue #1508. `RawContractState.version` is read from the envelope of `raw`, so the raw reads no
-longer need to place `protocolVersion` on the era timeline. A `protocolVersion` this build cannot
-place withholds only the upper-bound check, as on the decoding reads, and the `IndexerDataError`
-kind `'unknown-record-era'` is removed. `UnknownRecordEraError` and its code stay, for the reads
-that still date a record by its block. A `protocolVersion` that is not a non-negative integer is still
-refused, as kind `'malformed-protocol-version'`, because the raw record carries it.
-
-## Amendment — the state reads take their era from the envelope (2026-10-28)
-
-Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-`RawContractState` and the raw reads are removed. Every state read now returns a `LedgerState`
-whose `era` is read from the envelope of its bytes, so the amendment above applies to all of them:
-a `protocolVersion` this build cannot place withholds only the upper-bound check. The provider no
-longer decodes, so a decode failure of a state is reported where the caller decodes it, without
-attributing an era beyond the one the envelope names: as `LedgerStateDecodeFailedError` for a
-decoder error that is not a `MidnightJsError`, and as the decoder's own error otherwise, so a
-framework decoder's `DeserializationError` reaches the caller unchanged.
+- **Wrap the failure in a provider error that blames the indexer.** Rejected: tag `[vN]` markers
+  are not era evidence, so the claim is wrong in both directions and hides the useful mitigation.
+- **Prove the claim by decoding with the other era's runtime.** Real evidence, but it loads the
+  second WASM runtime on every failure path for a diagnosis, not a result.
+- **Soften the message to name both possibilities.** Adds an error class whose only content is
+  "one of two things happened"; the underlying error already says it better.

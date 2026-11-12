@@ -112,13 +112,13 @@ jobs:
           zip -r coverage.zip coverage*
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: Coverage Report
           path: coverage.zip
 
       - name: Publish Test Coverage
-        uses: MishaKav/jest-coverage-comment@642ef024cc554a34b7082cea12c7bf63575ae151 # ratchet:MishaKav/jest-coverage-comment@v1.0.36
+        uses: MishaKav/jest-coverage-comment@7032bf8e71aa2b267b6b143be3c4480b625c2b12 # ratchet:MishaKav/jest-coverage-comment@v1.0.38
         with:
           hide-comment: false
           unique-id-for-comment: 'midnightjs-coverage'
@@ -136,7 +136,7 @@ jobs:
             utils, ./packages/utils/coverage/coverage-summary.json
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@a9170d5795813c01ab4901ffb045b52bab4ab09d # ratchet:mikepenz/action-junit-report@v6.5.0
+        uses: mikepenz/action-junit-report@6ef3fdcfcd5f0b5d14df3e659ef19b8c6820f93d # ratchet:mikepenz/action-junit-report@v6.6.1
         if: success() || failure()
         with:
           check_name: 'Unit Test Results (MidnightJS)'
@@ -152,7 +152,7 @@ jobs:
             **/test-report*.xml
 
       - name: Upload dist for it
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
         with:
           name: midnight-js-dist
           path: packages/*/dist/
@@ -178,7 +178,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Download build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
         with:
           name: midnight-js-dist
           path: packages/

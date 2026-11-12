@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0**](../../../README.md)
 
 ***
 
@@ -39,7 +39,8 @@ What each provider declares about the eras it serves is covered in
 [ProviderEraDeclarations](ProviderEraDeclarations.md). The
 decisions this implements are
 `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`,
-`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md` and
+`docs/adr/0014-build-provider-seams-from-per-era-handlers.md`,
+`docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md` and
 `docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md`.
 
 ## A transaction crosses a provider method as a handle

@@ -2,8 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-05
-- Deciders: Szymon Paluchowski
-- Related: #1218, #1576, #1581, [ADR-0021](./0021-mirror-per-era-functions-and-route-each-role-once.md)
+- Related: [ADR 0021](./0021-mirror-per-era-functions-and-route-each-role-once.md)
 
 ## Context
 
@@ -12,8 +11,8 @@
 contract state and private state the call ended on, and merged the transactions with
 `Transaction.merge()`.
 
-The 5.0.0 pre-releases refused a scope while the network is on ledger 8 (`EraMismatchError`,
-reason `'scope-on-ledger8-network'`), and refused a ledger 8 call handed a scope. The reason given
+The 5.0.0 pre-releases refused a scope while the network is on ledger 8 (`EraMismatchError`),
+and refused a ledger 8 call handed a scope. The reason given
 was that the ledger 8 era composes exactly one call per transaction. That is true of
 `composeCallTx`, which builds one call tree; a cross-contract call is a ledger 9 feature. A scope
 does not build a call tree. It merges whole transactions, which the ledger 8 ledger accepts: a
@@ -29,13 +28,12 @@ We will run contract-scoped transactions on a ledger 8 network, and only there f
 contracts.
 
 - `withContractScopedTransaction` reads the head once and runs the scope of that era. It has one
-  overload per era (ADR-0021). The ledger 9 overload is declared first, so an untyped scope
+  overload per era (ADR 0021). The ledger 9 overload is declared first, so an untyped scope
   function keeps the ledger 9 context it had; a ledger 8 caller types the parameter as
   `Ledger8TransactionContext`.
 - `withLedger8ContractScopedTransaction` mirrors `withLedger9ContractScopedTransaction`. Each
   refuses a head of the other era with `EraMismatchError`, reason `'scope-era-mismatch'`, from the
-  head reading alone and before the scope function runs. That reason replaces
-  `'scope-on-ledger8-network'`.
+  head reading alone and before the scope function runs.
 - The ledger 8 scope acquires the retained runtime once, before its function runs. The first call
   added to it reads the contract state and the stored private state; every later call runs on the
   states the call before it ended on.
@@ -70,7 +68,7 @@ contracts.
 - **Keep the refusal.** Rejected: its reason holds for a call tree, not for a merge, and it removes
   a working 4.1.1 feature for the whole time before the fork.
 - **Only add `withLedger8ContractScopedTransaction`, and keep `withContractScopedTransaction`
-  refusing a ledger 8 head.** Rejected: ADR-0021 makes the unprefixed name the router of every era
+  refusing a ledger 8 head.** Rejected: ADR 0021 makes the unprefixed name the router of every era
   it can serve.
 - **Declare the ledger 8 overload first.** Rejected: every untyped ledger 9 scope function would
   receive a ledger 8 context and stop compiling.

@@ -1,0 +1,79 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.36.0",
+  "compiler-commit": "b5d9e4dfc532fe47011c4f6296e254f4853eb469",
+  "language-version": "0.28.0",
+  "runtime-version": "0.21.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 4679,
+      "hash": "538f056ff0be117ba50002ba6912bdb96890875a4919a9ea156e8e1e961a92d3"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 5679,
+      "hash": "b94a65ff297c46cc01d426dfd98bf704861d468cec7078f54fb3183061c1b558"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 49385,
+      "hash": "627d528d27066c5d9b7651349eb77c9c36582a6275139f7c74eca026352900c8"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 2511,
+      "hash": "92a2b00209ab7a132a2cc93d6f22ba2e0318b15cb5e2c16b3b50dbc815a77360"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "deposit.bzkir": {
+      "type": "file",
+      "size": 561,
+      "hash": "ebdb5b7bfc661fdbb9bec7adb1de2c21b921541d23aed3f9f0a9195b57942a3f"
+    },
+    "deposit.zkir": {
+      "type": "file",
+      "size": 2296,
+      "hash": "9a32c0967ca06de0b996f2b36b0877d654948ef1e64b4a141c50294e4754ce22"
+    },
+    "mintAndSend.bzkir": {
+      "type": "file",
+      "size": 3699,
+      "hash": "a59fea503f633d5ac362aea083d6497766794737e1258b880a9bc7bfe308d8a2"
+    },
+    "mintAndSend.zkir": {
+      "type": "file",
+      "size": 12386,
+      "hash": "95cf3b8b85fbf80dcecdf279485066db8adc86c637f4ae65b3970147cb8cc9d6"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "deposit.prover": {
+      "type": "file",
+      "size": 11277121,
+      "hash": "fa1ba61dd0f2be79bb04c97ad03f5eaa8d66d0dc16578b0e89d61c7d6878abc8"
+    },
+    "deposit.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "6326c17e1ec0f08a0f020ce7773ee00b9712ee52982f2bf9a7675a5de5d7c13a"
+    },
+    "mintAndSend.prover": {
+      "type": "file",
+      "size": 45096835,
+      "hash": "86dfa09e74d3a9b7c37c348e96c9d551d5b5470f2f067624cdac65527ac197b6"
+    },
+    "mintAndSend.verifier": {
+      "type": "file",
+      "size": 2121,
+      "hash": "ce73ee7db66b8bd290b3ae9be05ad7c060463b76872909c04276423778c9193c"
+    }
+  }
+}

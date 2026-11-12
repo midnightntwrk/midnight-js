@@ -11,8 +11,8 @@ era a provider does not serve.
 
 The transactions these methods carry are handles, described in
 [VersionTaggedPayloads](./version-tagged-payloads.md). The multi-era construction
-is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`, as amended by
-`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`.
+is `docs/adr/0014-build-provider-seams-from-per-era-handlers.md`, with the handle from
+`docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md`.
 
 ## The pre-flight check is about WHERE it runs
 
