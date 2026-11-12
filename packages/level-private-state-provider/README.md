@@ -109,6 +109,10 @@ await provider.removeSigningKey(contractAddress);
 await provider.clearSigningKeys();
 ```
 
+`getSigningKey`, `setSigningKey` and `removeSigningKey` throw `InvalidArgumentError` for a value that is
+not a contract address. `importSigningKeys` refuses an export that holds such an address with
+`InvalidExportFormatError` and imports nothing.
+
 ### Password Rotation
 
 ```typescript
@@ -126,6 +130,25 @@ await provider.changeSigningKeysPassword(
 ```
 
 Password rotation is atomic—all data is re-encrypted or none is.
+
+Each of the two stores, private states and signing keys, keeps a key check: a known value encrypted
+with the store's password. Every read, write, remove and clear checks the password against it first.
+A password that does not match fails with `PrivateStateDecryptionError` (reason `wrong-key`), and nothing
+is changed. A rotation whose old password does not match fails with `InvalidArgumentError`.
+`clearAll` and `clearSigningKeys` need the password too, so a store whose password is lost can only be
+reset by deleting the database.
+
+Both stores read the same `privateStoragePasswordProvider`, and each has its own rotation. Run
+`changePassword` and `changeSigningKeysPassword`, then make the provider return the new password.
+Until then, operations on a store that is already rotated fail with `wrong-key`; run them again once
+the provider returns the new password.
+
+A store written before the key check gets one on its first operation:
+
+- if the store holds an encrypted record, only after the password has opened that record;
+- if the store holds no encrypted record, with the password of that first operation.
+
+A store that already holds records encrypted under two passwords is not repaired.
 
 ### Export/Import
 
@@ -201,11 +224,11 @@ Compares two `Buffer`s or `Uint8Array`s in constant time. If the inputs differ i
 ```
 LevelDB (midnight-level-db)
 ├── private-states:{hashedAccountId}
-│   ├── __midnight_encryption_metadata__  (salt, version)
+│   ├── __midnight_encryption_metadata__  (salt, version, keyCheck)
 │   └── {contractAddress}:{privateStateId}  (encrypted state)
 │
 └── signing-keys:{hashedAccountId}
-    ├── __midnight_encryption_metadata__  (salt, version)
+    ├── __midnight_encryption_metadata__  (salt, version, keyCheck)
     └── {contractAddress}  (encrypted signing key)
 ```
 
@@ -228,8 +251,8 @@ LevelDB (midnight-level-db)
 │          │                    │                                 │
 │          ▼                    ▼                                 │
 │  ┌──────────────┐    ┌──────────────────┐                       │
-│  │ Rotation     │    │ Account-scoped   │                       │
-│  │ Lock         │    │ Sublevels        │                       │
+│  │ DB access    │    │ Account-scoped   │                       │
+│  │ queue        │    │ Sublevels        │                       │
 │  └──────────────┘    └──────────────────┘                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -241,7 +264,7 @@ LevelDB (midnight-level-db)
 | `levelPrivateStateProvider()`   | Factory returning PrivateStateProvider instance        |
 | `StorageEncryption`             | AES-256-GCM encryption with PBKDF2 key derivation      |
 | `encryptionCache`               | Module-level cache avoiding repeated key derivation    |
-| `passwordRotationLocks`         | Concurrent access protection during password changes   |
+| `dbAccessQueues`                | Runs operations on one database one at a time          |
 | `superjson`                     | Type-preserving serialization (Buffer, BigInt, Uint8Array) |
 
 ### Encryption Specification

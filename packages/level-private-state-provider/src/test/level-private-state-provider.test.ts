@@ -22,6 +22,7 @@ import {
   ExportDecryptionError,
   ImportConflictError,
   InvalidExportFormatError,
+  PrivateStateDecryptionError,
   type PrivateStateExport,
   PrivateStateExportError,
   PrivateStateSerializationError,
@@ -47,6 +48,8 @@ const LEGACY_EXPORT: PrivateStateExport = {
   salt: '56fd1cd5a18bce2e1e4eb58394feebe1f2732674cdd4c96ac13a877b7c2df2cc'
 };
 const LEGACY_EXPORT_PASSWORD = 'Legacy-Export-Pass8!';
+
+const testAddress = (label: string): ContractAddress => crypto.createHash('sha256').update(label).digest('hex');
 
 const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
   try {
@@ -142,7 +145,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'getSigningKey' returns null if the signing key does not exist", async () => {
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    const value = await db.getSigningKey('booleanValue');
+    const value = await db.getSigningKey(testAddress('booleanValue'));
     expect(value).toBeNull();
   });
 
@@ -156,15 +159,15 @@ describe('Level Private State Provider', (): void => {
   test("'get' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    const value = await db.getSigningKey('booleanArrayValue');
+    const value = await db.getSigningKey(testAddress('booleanArrayValue'));
     expect(value).toBeNull();
   });
 
   async function testSetGetSigningKey<K extends PID>(key: K): Promise<void> {
     const stateRepo = levelPrivateStateProvider<PID, PS>(testConfig);
     const signingKey = sampleSigningKey();
-    await stateRepo.setSigningKey(key, signingKey);
-    const value = await stateRepo.getSigningKey(key);
+    await stateRepo.setSigningKey(testAddress(key), signingKey);
+    const value = await stateRepo.getSigningKey(testAddress(key));
     expect(value).toEqual(signingKey);
   }
 
@@ -225,7 +228,7 @@ describe('Level Private State Provider', (): void => {
   test("'set' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    await db.setSigningKey('booleanArrayValue', sampleSigningKey());
+    await db.setSigningKey(testAddress('booleanArrayValue'), sampleSigningKey());
     const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('booleanValue');
     expect(value).toEqual(testStates.booleanValue);
   });
@@ -241,8 +244,8 @@ describe('Level Private State Provider', (): void => {
   test("'removeSigningKey' deletes signing keys", async () => {
     await testSetGetSigningKey('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    await db.removeSigningKey('stringValue');
-    const value = await db.getSigningKey('stringValue');
+    await db.removeSigningKey(testAddress('stringValue'));
+    const value = await db.getSigningKey(testAddress('stringValue'));
     expect(value).toBeNull();
   });
 
@@ -250,7 +253,7 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('stringValue');
     await testSetGetSigningKey('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
-    await db.removeSigningKey('stringValue');
+    await db.removeSigningKey(testAddress('stringValue'));
     const value = await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue');
     expect(value).toEqual(testStates.stringValue);
   });
@@ -271,9 +274,9 @@ describe('Level Private State Provider', (): void => {
     await testSetGetSigningKey('bufferArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.clearSigningKeys();
-    const value0 = await db.getSigningKey('stringValue');
+    const value0 = await db.getSigningKey(testAddress('stringValue'));
     expect(value0).toBeNull();
-    const value2 = await db.getSigningKey('bufferArrayValue');
+    const value2 = await db.getSigningKey(testAddress('bufferArrayValue'));
     expect(value2).toBeNull();
   });
 
@@ -299,7 +302,7 @@ describe('Level Private State Provider', (): void => {
   test("'getSigningKey' rejects a missing address instead of answering null", async () => {
     await expect(
       levelPrivateStateProvider<PID, PS>(testConfig).getSigningKey(null as unknown as ContractAddress)
-    ).rejects.toBeInstanceOf(TypeError);
+    ).rejects.toBeInstanceOf(InvalidArgumentError);
   });
 
   describe('Password provider configuration', () => {
@@ -778,7 +781,7 @@ describe('Level Private State Provider', (): void => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
       const signingKey = sampleSigningKey();
-      await db.setSigningKey('stringValue' as unknown as ContractAddress, signingKey);
+      await db.setSigningKey(testAddress('stringValue'), signingKey);
 
       const exportData = await db.forContract(TEST_CONTRACT_ADDRESS).exportPrivateStates();
 
@@ -790,7 +793,7 @@ describe('Level Private State Provider', (): void => {
       expect(result.imported).toBe(1);
 
       expect(await db.forContract(TEST_CONTRACT_ADDRESS).get('stringValue')).toEqual(testStates.stringValue);
-      expect(await db.getSigningKey('stringValue' as unknown as ContractAddress)).toBeNull();
+      expect(await db.getSigningKey(testAddress('stringValue'))).toBeNull();
     });
 
     test('preserves complex types (Buffer, Uint8Array) through export/import', async () => {
@@ -1945,12 +1948,12 @@ describe('Level Private State Provider', (): void => {
 
       for (let i = 0; i < 5; i++) {
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey(`address-${i}` as ContractAddress, signingKeys[i]);
+        await db.setSigningKey(testAddress(`address-${i}`), signingKeys[i]);
       }
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
       for (let i = 0; i < 5; i++) {
-        const key = await verifyDb.getSigningKey(`address-${i}` as ContractAddress);
+        const key = await verifyDb.getSigningKey(testAddress(`address-${i}`));
         expect(key).toEqual(signingKeys[i]);
       }
     });
@@ -1992,20 +1995,20 @@ describe('Level Private State Provider', (): void => {
       await db1.forContract(SALT_CONTRACT_ADDRESS).set('state-1', 'value-1');
 
       const db2 = levelPrivateStateProvider<string, string>(config);
-      await db2.setSigningKey('key-address-1' as ContractAddress, signingKey);
+      await db2.setSigningKey(testAddress('key-address-1'), signingKey);
 
       const db3 = levelPrivateStateProvider<string, string>(config);
       await db3.forContract(SALT_CONTRACT_ADDRESS).set('state-2', 'value-2');
 
       const db4 = levelPrivateStateProvider<string, string>(config);
-      await db4.setSigningKey('key-address-2' as ContractAddress, signingKey);
+      await db4.setSigningKey(testAddress('key-address-2'), signingKey);
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
 
       expect(await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get('state-1')).toBe('value-1');
       expect(await verifyDb.forContract(SALT_CONTRACT_ADDRESS).get('state-2')).toBe('value-2');
-      expect(await verifyDb.getSigningKey('key-address-1' as ContractAddress)).toEqual(signingKey);
-      expect(await verifyDb.getSigningKey('key-address-2' as ContractAddress)).toEqual(signingKey);
+      expect(await verifyDb.getSigningKey(testAddress('key-address-1'))).toEqual(signingKey);
+      expect(await verifyDb.getSigningKey(testAddress('key-address-2'))).toEqual(signingKey);
     });
 
     test('operations after clearSigningKeys() create new consistent salt for signing keys', async () => {
@@ -2017,19 +2020,19 @@ describe('Level Private State Provider', (): void => {
 
       const signingKey1 = sampleSigningKey();
       const db = levelPrivateStateProvider<string, string>(config);
-      await db.setSigningKey('initial-address' as ContractAddress, signingKey1);
+      await db.setSigningKey(testAddress('initial-address'), signingKey1);
 
       await db.clearSigningKeys();
 
       const signingKeys = Array.from({ length: 3 }, () => sampleSigningKey());
       for (let i = 0; i < 3; i++) {
         const freshDb = levelPrivateStateProvider<string, string>(config);
-        await freshDb.setSigningKey(`post-clear-${i}` as ContractAddress, signingKeys[i]);
+        await freshDb.setSigningKey(testAddress(`post-clear-${i}`), signingKeys[i]);
       }
 
       const verifyDb = levelPrivateStateProvider<string, string>(config);
       for (let i = 0; i < 3; i++) {
-        const key = await verifyDb.getSigningKey(`post-clear-${i}` as ContractAddress);
+        const key = await verifyDb.getSigningKey(testAddress(`post-clear-${i}`));
         expect(key).toEqual(signingKeys[i]);
       }
     });
@@ -2126,10 +2129,10 @@ describe('Level Private State Provider', (): void => {
 
       await db.forContract(CACHE_CONTRACT_ADDRESS).set('state-key', 'state-value');
       const signingKey = sampleSigningKey();
-      await db.setSigningKey('key-address' as ContractAddress, signingKey);
+      await db.setSigningKey(testAddress('key-address'), signingKey);
 
       expect(await db.forContract(CACHE_CONTRACT_ADDRESS).get('state-key')).toBe('state-value');
-      expect(await db.getSigningKey('key-address' as ContractAddress)).toEqual(signingKey);
+      expect(await db.getSigningKey(testAddress('key-address'))).toEqual(signingKey);
     });
 
     test('cache survives multiple provider instances with same config', async () => {
@@ -2506,15 +2509,15 @@ describe('Level Private State Provider', (): void => {
         const signingKey2 = sampleSigningKey();
 
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('address1' as ContractAddress, signingKey1);
-        await db.setSigningKey('address2' as ContractAddress, signingKey2);
+        await db.setSigningKey(testAddress('address1'), signingKey1);
+        await db.setSigningKey(testAddress('address2'), signingKey2);
 
         await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
         currentPassword = NEW_PASSWORD;
 
-        const key1 = await db.getSigningKey('address1' as ContractAddress);
-        const key2 = await db.getSigningKey('address2' as ContractAddress);
+        const key1 = await db.getSigningKey(testAddress('address1'));
+        const key2 = await db.getSigningKey(testAddress('address2'));
         expect(key1).toEqual(signingKey1);
         expect(key2).toEqual(signingKey2);
       });
@@ -2528,13 +2531,13 @@ describe('Level Private State Provider', (): void => {
 
         const signingKey = sampleSigningKey();
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('address1' as ContractAddress, signingKey);
+        await db.setSigningKey(testAddress('address1'), signingKey);
 
         await expect(
           db.changeSigningKeysPassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
         ).rejects.toThrow();
 
-        const key = await db.getSigningKey('address1' as ContractAddress);
+        const key = await db.getSigningKey(testAddress('address1'));
         expect(key).toEqual(signingKey);
       });
 
@@ -2562,12 +2565,12 @@ describe('Level Private State Provider', (): void => {
 
         const signingKey = sampleSigningKey();
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('address1' as ContractAddress, signingKey);
+        await db.setSigningKey(testAddress('address1'), signingKey);
 
         await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
 
-        const key = await db.getSigningKey('address1' as ContractAddress);
+        const key = await db.getSigningKey(testAddress('address1'));
         expect(key).toEqual(signingKey);
       });
 
@@ -2581,13 +2584,13 @@ describe('Level Private State Provider', (): void => {
 
         const signingKey = sampleSigningKey();
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('address1' as ContractAddress, signingKey);
+        await db.setSigningKey(testAddress('address1'), signingKey);
 
         await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
 
         const freshDb = levelPrivateStateProvider<string, string>(config);
-        const key = await freshDb.getSigningKey('address1' as ContractAddress);
+        const key = await freshDb.getSigningKey(testAddress('address1'));
         expect(key).toEqual(signingKey);
       });
     });
@@ -2632,8 +2635,8 @@ describe('Level Private State Provider', (): void => {
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('addr1' as ContractAddress, sampleSigningKey());
-        await db.setSigningKey('addr2' as ContractAddress, sampleSigningKey());
+        await db.setSigningKey(testAddress('addr1'), sampleSigningKey());
+        await db.setSigningKey(testAddress('addr2'), sampleSigningKey());
 
         const result = await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
 
@@ -2679,12 +2682,12 @@ describe('Level Private State Provider', (): void => {
         await db.forContract(ROTATION_CONTRACT_ADDRESS).set('key2', 'value2');
 
         const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
         const removePromise = db.forContract(ROTATION_CONTRACT_ADDRESS).remove('key1');
 
         await rotationPromise;
         await removePromise;
 
-        currentPassword = NEW_PASSWORD;
         const value1 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key1');
         const value2 = await db.forContract(ROTATION_CONTRACT_ADDRESS).get('key2');
 
@@ -2704,18 +2707,18 @@ describe('Level Private State Provider', (): void => {
         const signingKey2 = sampleSigningKey();
 
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('addr1' as ContractAddress, signingKey1);
-        await db.setSigningKey('addr2' as ContractAddress, signingKey2);
+        await db.setSigningKey(testAddress('addr1'), signingKey1);
+        await db.setSigningKey(testAddress('addr2'), signingKey2);
 
         const rotationPromise = db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
-        const removePromise = db.removeSigningKey('addr1' as ContractAddress);
+        currentPassword = NEW_PASSWORD;
+        const removePromise = db.removeSigningKey(testAddress('addr1'));
 
         await rotationPromise;
         await removePromise;
 
-        currentPassword = NEW_PASSWORD;
-        const key1 = await db.getSigningKey('addr1' as ContractAddress);
-        const key2 = await db.getSigningKey('addr2' as ContractAddress);
+        const key1 = await db.getSigningKey(testAddress('addr1'));
+        const key2 = await db.getSigningKey(testAddress('addr2'));
 
         expect(key1).toBeNull();
         expect(key2).toEqual(signingKey2);
@@ -2778,11 +2781,11 @@ describe('Level Private State Provider', (): void => {
         const signingKey = sampleSigningKey();
 
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('addr1' as ContractAddress, signingKey);
+        await db.setSigningKey(testAddress('addr1'), signingKey);
 
         const rotationPromise = db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
-        const getPromise = db.getSigningKey('addr1' as ContractAddress);
+        const getPromise = db.getSigningKey(testAddress('addr1'));
 
         await rotationPromise;
         const key = await getPromise;
@@ -2802,17 +2805,17 @@ describe('Level Private State Provider', (): void => {
         const signingKey2 = sampleSigningKey();
 
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('addr1' as ContractAddress, signingKey1);
+        await db.setSigningKey(testAddress('addr1'), signingKey1);
 
         const rotationPromise = db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
         currentPassword = NEW_PASSWORD;
-        const setPromise = db.setSigningKey('addr2' as ContractAddress, signingKey2);
+        const setPromise = db.setSigningKey(testAddress('addr2'), signingKey2);
 
         await rotationPromise;
         await setPromise;
 
-        const key1 = await db.getSigningKey('addr1' as ContractAddress);
-        const key2 = await db.getSigningKey('addr2' as ContractAddress);
+        const key1 = await db.getSigningKey(testAddress('addr1'));
+        const key2 = await db.getSigningKey(testAddress('addr2'));
 
         expect(key1).toEqual(signingKey1);
         expect(key2).toEqual(signingKey2);
@@ -2852,17 +2855,17 @@ describe('Level Private State Provider', (): void => {
 
         const db = levelPrivateStateProvider<string, string>(config);
 
-        await db.setSigningKey('addr1' as ContractAddress, sampleSigningKey());
-        await db.setSigningKey('addr2' as ContractAddress, sampleSigningKey());
-        await db.setSigningKey('addr3' as ContractAddress, sampleSigningKey());
-        await db.setSigningKey('addr4' as ContractAddress, sampleSigningKey());
-        await db.setSigningKey('addr5' as ContractAddress, sampleSigningKey());
+        await db.setSigningKey(testAddress('addr1'), sampleSigningKey());
+        await db.setSigningKey(testAddress('addr2'), sampleSigningKey());
+        await db.setSigningKey(testAddress('addr3'), sampleSigningKey());
+        await db.setSigningKey(testAddress('addr4'), sampleSigningKey());
+        await db.setSigningKey(testAddress('addr5'), sampleSigningKey());
 
         await expect(
           db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD, { maxEntries: 3 })
         ).rejects.toThrow(/exceeds maximum allowed/);
 
-        const key = await db.getSigningKey('addr1' as ContractAddress);
+        const key = await db.getSigningKey(testAddress('addr1'));
         expect(key).not.toBeNull();
       });
     });
@@ -2895,13 +2898,13 @@ describe('Level Private State Provider', (): void => {
 
         const signingKey = sampleSigningKey();
         const db = levelPrivateStateProvider<string, string>(config);
-        await db.setSigningKey('addr1' as ContractAddress, signingKey);
+        await db.setSigningKey(testAddress('addr1'), signingKey);
 
         await expect(
           db.changeSigningKeysPassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
         ).rejects.toThrow(/incorrect|mismatch|decrypt/i);
 
-        const key = await db.getSigningKey('addr1' as ContractAddress);
+        const key = await db.getSigningKey(testAddress('addr1'));
         expect(key).toEqual(signingKey);
       });
     });
@@ -3366,13 +3369,13 @@ describe('Level Private State Provider', (): void => {
       const results = await Promise.allSettled([
         states.set('mixed', { n: 2 }),
         states.remove('to-remove'),
-        provider.setSigningKey('mixed-address', signingKey)
+        provider.setSigningKey(testAddress('mixed-address'), signingKey)
       ]);
 
       expect(rejectionsOf(results)).toEqual([]);
       expect(await states.get('mixed')).toEqual({ n: 2 });
       expect(await states.get('to-remove')).toBeNull();
-      expect(await provider.getSigningKey('mixed-address')).toEqual(signingKey);
+      expect(await provider.getSigningKey(testAddress('mixed-address'))).toEqual(signingKey);
     });
 
     test('two providers sharing one database both see all concurrent writes', async () => {
@@ -3462,6 +3465,460 @@ describe('Level Private State Provider', (): void => {
       await provider.forContract(CONCURRENCY_CONTRACT_ADDRESS).set('counted', { n: 1 });
 
       expect(factory).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Store key check', () => {
+    const KEY_CHECK_DB = 'midnight-key-check-test-db';
+    const KEY_CHECK_CONTRACT = '2f'.repeat(32) as ContractAddress;
+    const KEY_CHECK_OLD_PASSWORD = 'Old-Password-Check8!';
+    const KEY_CHECK_NEW_PASSWORD = 'New-Password-Check8!';
+    const WRONG_PASSWORD = 'Wrong-Password-Check8!';
+    const METADATA_KEY = '__midnight_encryption_metadata__';
+    const hashedAccountId = crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 32);
+    const STORES = {
+      'private states': `private-states:${hashedAccountId}`,
+      'signing keys': `signing-keys:${hashedAccountId}`
+    } as const;
+    type StoreName = keyof typeof STORES;
+
+    const openRawSubLevel = (level: Level<string, string>, sublevelName: string) =>
+      level.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+
+    const withRawSubLevel = async <A>(
+      sublevelName: string,
+      action: (subLevel: ReturnType<typeof openRawSubLevel>) => Promise<A>
+    ): Promise<A> => {
+      const level = new Level<string, string>(KEY_CHECK_DB, { createIfMissing: true });
+      const subLevel = openRawSubLevel(level, sublevelName);
+      try {
+        await level.open();
+        await subLevel.open();
+        return await action(subLevel);
+      } finally {
+        await subLevel.close();
+        await level.close();
+      }
+    };
+
+    const readRawEntries = (sublevelName: string): Promise<Record<string, string>> =>
+      withRawSubLevel(sublevelName, async (subLevel) => Object.fromEntries(await subLevel.iterator().all()));
+
+    const readRawMetadata = async (sublevelName: string): Promise<Record<string, unknown>> =>
+      JSON.parse((await readRawEntries(sublevelName))[METADATA_KEY]);
+
+    const providerWithPassword = (password: () => string) =>
+      levelPrivateStateProvider<string, string>({
+        midnightDbName: KEY_CHECK_DB,
+        privateStoragePasswordProvider: password,
+        accountId: TEST_ACCOUNT_ID
+      });
+
+    const writeRecord = (provider: ReturnType<typeof providerWithPassword>, store: StoreName, id: string) =>
+      store === 'private states'
+        ? provider.forContract(KEY_CHECK_CONTRACT).set(id, `value-${id}`)
+        : provider.setSigningKey(id as ContractAddress, sampleSigningKey());
+
+    const SIGNING_KEY_ADDRESS = '30'.repeat(32) as ContractAddress;
+    const LATE_SIGNING_KEY_ADDRESS = '31'.repeat(32) as ContractAddress;
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', KEY_CHECK_DB), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', KEY_CHECK_DB), { recursive: true, force: true });
+    });
+
+    test('a write queued after a rotation, with the old password, is refused and stores nothing', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      const view = provider.forContract(KEY_CHECK_CONTRACT);
+      await view.set('existing', 'existing-value');
+
+      const rotation = provider.changePassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+      const late = captureError(() => view.set('late', 'late-value'));
+      await rotation;
+      const lateError = await late;
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+
+      expect(lateError).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(lateError).toMatchObject({ reason: 'wrong-key', message: 'The password does not match this store' });
+      expect(await view.get('late')).toBeNull();
+      expect(await view.get('existing')).toBe('existing-value');
+    });
+
+    test('a write queued before a rotation, with the new password, is refused and the rotation succeeds', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      const view = provider.forContract(KEY_CHECK_CONTRACT);
+      await view.set('existing', 'existing-value');
+
+      const early = captureError(() => view.set('early', 'early-value'));
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+      const rotation = provider.changePassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+
+      const earlyError = await early;
+      expect(earlyError).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(earlyError).toMatchObject({ reason: 'wrong-key' });
+      expect(await rotation).toEqual({ entriesMigrated: 1 });
+      expect(await view.get('early')).toBeNull();
+      expect(await view.get('existing')).toBe('existing-value');
+    });
+
+    test('setSigningKey queued after a rotation, with the old password, is refused and stores nothing', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      const existingKey = sampleSigningKey();
+      await provider.setSigningKey(SIGNING_KEY_ADDRESS, existingKey);
+
+      const rotation = provider.changeSigningKeysPassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+      const late = captureError(() => provider.setSigningKey(LATE_SIGNING_KEY_ADDRESS, sampleSigningKey()));
+      await rotation;
+      const lateError = await late;
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+
+      expect(lateError).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(lateError).toMatchObject({ reason: 'wrong-key' });
+      expect(await provider.getSigningKey(LATE_SIGNING_KEY_ADDRESS)).toBeNull();
+      expect(await provider.getSigningKey(SIGNING_KEY_ADDRESS)).toEqual(existingKey);
+    });
+
+    test('setSigningKey queued before a rotation, with the new password, is refused and the rotation succeeds', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      const existingKey = sampleSigningKey();
+      await provider.setSigningKey(SIGNING_KEY_ADDRESS, existingKey);
+
+      const early = captureError(() => provider.setSigningKey(LATE_SIGNING_KEY_ADDRESS, sampleSigningKey()));
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+      const rotation = provider.changeSigningKeysPassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+
+      const earlyError = await early;
+      expect(earlyError).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(earlyError).toMatchObject({ reason: 'wrong-key' });
+      expect(await rotation).toEqual({ entriesMigrated: 1 });
+      expect(await provider.getSigningKey(LATE_SIGNING_KEY_ADDRESS)).toBeNull();
+      expect(await provider.getSigningKey(SIGNING_KEY_ADDRESS)).toEqual(existingKey);
+    });
+
+    test('rotating an emptied store with a wrong old password is refused', async () => {
+      const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+      const view = provider.forContract(KEY_CHECK_CONTRACT);
+      await view.set('existing', 'existing-value');
+      await view.remove('existing');
+      const entriesBefore = await readRawEntries(STORES['private states']);
+
+      await expect(
+        provider.changePassword(() => WRONG_PASSWORD, () => KEY_CHECK_NEW_PASSWORD)
+      ).rejects.toThrow(InvalidArgumentError);
+
+      expect(await readRawEntries(STORES['private states'])).toEqual(entriesBefore);
+    });
+
+    test('rotating records without metadata with the right old password succeeds', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      await provider.forContract(KEY_CHECK_CONTRACT).set('existing', 'existing-value');
+      await withRawSubLevel(STORES['private states'], (subLevel) => subLevel.del(METADATA_KEY));
+      await provider.invalidateEncryptionCache();
+
+      const result = await provider.changePassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+      expect(result).toEqual({ entriesMigrated: 1 });
+      expect(await provider.forContract(KEY_CHECK_CONTRACT).get('existing')).toBe('existing-value');
+    });
+
+    test('rotating an emptied store moves the store to the new password', async () => {
+      let currentPassword = KEY_CHECK_OLD_PASSWORD;
+      const provider = providerWithPassword(() => currentPassword);
+      const view = provider.forContract(KEY_CHECK_CONTRACT);
+      await view.set('existing', 'existing-value');
+      await view.remove('existing');
+
+      await provider.changePassword(() => KEY_CHECK_OLD_PASSWORD, () => KEY_CHECK_NEW_PASSWORD);
+
+      await expect(view.set('after', 'after-value')).rejects.toMatchObject({ reason: 'wrong-key' });
+      currentPassword = KEY_CHECK_NEW_PASSWORD;
+      await view.set('after', 'after-value');
+      expect(await view.get('after')).toBe('after-value');
+    });
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: a store without a key check gets one on first use with the right password',
+      async (store) => {
+        const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+        await writeRecord(provider, store, SIGNING_KEY_ADDRESS);
+        const { salt } = await readRawMetadata(STORES[store]);
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.put(METADATA_KEY, JSON.stringify({ salt, version: 1 })));
+        await provider.invalidateEncryptionCache();
+
+        await writeRecord(provider, store, LATE_SIGNING_KEY_ADDRESS);
+
+        expect(await readRawMetadata(STORES[store])).toEqual({ salt, version: 1, keyCheck: expect.any(String) });
+        await expect(
+          writeRecord(providerWithPassword(() => WRONG_PASSWORD), store, LATE_SIGNING_KEY_ADDRESS)
+        ).rejects.toMatchObject({ reason: 'wrong-key' });
+        await provider.invalidateEncryptionCache();
+        await writeRecord(provider, store, LATE_SIGNING_KEY_ADDRESS);
+      }
+    );
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: metadata whose salt matches no record refuses a wrong password and is left unchanged',
+      async (store) => {
+        await writeRecord(providerWithPassword(() => KEY_CHECK_OLD_PASSWORD), store, SIGNING_KEY_ADDRESS);
+        const otherSalt = crypto.randomBytes(32).toString('hex');
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.put(METADATA_KEY, JSON.stringify({ salt: otherSalt, version: 1 })));
+        const entriesBefore = await readRawEntries(STORES[store]);
+
+        const error = await captureError(() =>
+          writeRecord(providerWithPassword(() => WRONG_PASSWORD), store, LATE_SIGNING_KEY_ADDRESS)
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+        expect(error).toMatchObject({ reason: 'wrong-key' });
+        expect(await readRawEntries(STORES[store])).toEqual(entriesBefore);
+      }
+    );
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: metadata whose salt matches no record gets a key check with the right password',
+      async (store) => {
+        const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+        await writeRecord(provider, store, SIGNING_KEY_ADDRESS);
+        const otherSalt = crypto.randomBytes(32).toString('hex');
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.put(METADATA_KEY, JSON.stringify({ salt: otherSalt, version: 1 })));
+        await provider.invalidateEncryptionCache();
+
+        await writeRecord(provider, store, LATE_SIGNING_KEY_ADDRESS);
+
+        expect(await readRawMetadata(STORES[store])).toEqual({ salt: otherSalt, version: 1, keyCheck: expect.any(String) });
+      }
+    );
+
+    test('a store holding only v1 records and no key check refuses a wrong password', async () => {
+      const salt = crypto.randomBytes(32);
+      const iv = crypto.randomBytes(12);
+      const key = crypto.pbkdf2Sync(KEY_CHECK_OLD_PASSWORD, salt, 100000, 32, 'sha256');
+      const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+      const encrypted = Buffer.concat([cipher.update(superjson.stringify('v1-value'), 'utf-8'), cipher.final()]);
+      const v1Record = Buffer.concat([Buffer.from([1]), salt, iv, cipher.getAuthTag(), encrypted]).toString('base64');
+      await withRawSubLevel(STORES['private states'], async (subLevel) => {
+        await subLevel.put(METADATA_KEY, JSON.stringify({ salt: salt.toString('hex'), version: 1 }));
+        await subLevel.put(`${KEY_CHECK_CONTRACT}:v1`, v1Record);
+      });
+      const entriesBefore = await readRawEntries(STORES['private states']);
+
+      const error = await captureError(() =>
+        providerWithPassword(() => WRONG_PASSWORD).forContract(KEY_CHECK_CONTRACT).set('x', 'y')
+      );
+
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'wrong-key' });
+      expect(await readRawEntries(STORES['private states'])).toEqual(entriesBefore);
+      expect(await providerWithPassword(() => KEY_CHECK_OLD_PASSWORD).forContract(KEY_CHECK_CONTRACT).get('v1')).toBe('v1-value');
+    });
+
+    const DELETES: Record<string, (provider: ReturnType<typeof providerWithPassword>) => Promise<void>> = {
+      remove: (provider) => provider.forContract(KEY_CHECK_CONTRACT).remove('existing'),
+      clear: (provider) => provider.forContract(KEY_CHECK_CONTRACT).clear(),
+      clearAll: (provider) => provider.clearAll(),
+      removeSigningKey: (provider) => provider.removeSigningKey(SIGNING_KEY_ADDRESS),
+      clearSigningKeys: (provider) => provider.clearSigningKeys()
+    };
+
+    test.each(Object.keys(DELETES))('%s with a wrong password is refused and deletes nothing', async (operation) => {
+      const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+      await provider.forContract(KEY_CHECK_CONTRACT).set('existing', 'existing-value');
+      await provider.setSigningKey(SIGNING_KEY_ADDRESS, sampleSigningKey());
+      const before = {
+        privateStates: await readRawEntries(STORES['private states']),
+        signingKeys: await readRawEntries(STORES['signing keys'])
+      };
+
+      const error = await captureError(() => DELETES[operation](providerWithPassword(() => WRONG_PASSWORD)));
+
+      expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+      expect(error).toMatchObject({ reason: 'wrong-key' });
+      expect({
+        privateStates: await readRawEntries(STORES['private states']),
+        signingKeys: await readRawEntries(STORES['signing keys'])
+      }).toEqual(before);
+    });
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: a store without a key check refuses a wrong password and is left unchanged',
+      async (store) => {
+        await writeRecord(providerWithPassword(() => KEY_CHECK_OLD_PASSWORD), store, SIGNING_KEY_ADDRESS);
+        const { salt } = await readRawMetadata(STORES[store]);
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.put(METADATA_KEY, JSON.stringify({ salt, version: 1 })));
+        const entriesBefore = await readRawEntries(STORES[store]);
+
+        const error = await captureError(() =>
+          writeRecord(providerWithPassword(() => WRONG_PASSWORD), store, LATE_SIGNING_KEY_ADDRESS)
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+        expect(error).toMatchObject({ reason: 'wrong-key' });
+        expect(await readRawEntries(STORES[store])).toEqual(entriesBefore);
+      }
+    );
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: records without metadata refuse a wrong password and are left unchanged',
+      async (store) => {
+        await writeRecord(providerWithPassword(() => KEY_CHECK_OLD_PASSWORD), store, SIGNING_KEY_ADDRESS);
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.del(METADATA_KEY));
+        const entriesBefore = await readRawEntries(STORES[store]);
+
+        const error = await captureError(() =>
+          writeRecord(providerWithPassword(() => WRONG_PASSWORD), store, LATE_SIGNING_KEY_ADDRESS)
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+        expect(error).toMatchObject({ reason: 'wrong-key' });
+        expect(await readRawEntries(STORES[store])).toEqual(entriesBefore);
+      }
+    );
+
+    test.each(Object.keys(STORES) as StoreName[])(
+      '%s: records without metadata stay readable with the right password and the metadata is restored',
+      async (store) => {
+        const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+        await writeRecord(provider, store, SIGNING_KEY_ADDRESS);
+        const { salt } = await readRawMetadata(STORES[store]);
+        await withRawSubLevel(STORES[store], (subLevel) => subLevel.del(METADATA_KEY));
+        await provider.invalidateEncryptionCache();
+
+        const value = store === 'private states'
+          ? await provider.forContract(KEY_CHECK_CONTRACT).get(SIGNING_KEY_ADDRESS)
+          : await provider.getSigningKey(SIGNING_KEY_ADDRESS);
+
+        expect(value).toEqual(store === 'private states' ? `value-${SIGNING_KEY_ADDRESS}` : expect.objectContaining({ tag: 'schnorr' }));
+        expect(await readRawMetadata(STORES[store])).toEqual({ salt, version: 1, keyCheck: expect.any(String) });
+      }
+    );
+
+    test('reads of missing entries with a wrong password are refused instead of answering null', async () => {
+      const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+      await provider.forContract(KEY_CHECK_CONTRACT).set('existing', 'existing-value');
+      await provider.setSigningKey(SIGNING_KEY_ADDRESS, sampleSigningKey());
+      const wrong = providerWithPassword(() => WRONG_PASSWORD);
+
+      await expect(wrong.forContract(KEY_CHECK_CONTRACT).get('missing')).rejects.toMatchObject({ reason: 'wrong-key' });
+      await expect(wrong.getSigningKey(LATE_SIGNING_KEY_ADDRESS)).rejects.toMatchObject({ reason: 'wrong-key' });
+    });
+
+    test.each(['skip', 'error', 'overwrite'] as const)(
+      'importSigningKeys with a wrong store password is refused with the %s strategy and imports nothing',
+      async (conflictStrategy) => {
+        const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+        await provider.setSigningKey(SIGNING_KEY_ADDRESS, sampleSigningKey());
+        await provider.setSigningKey(LATE_SIGNING_KEY_ADDRESS, sampleSigningKey());
+        const exported = await provider.exportSigningKeys({ password: KEY_CHECK_NEW_PASSWORD });
+        await provider.removeSigningKey(LATE_SIGNING_KEY_ADDRESS);
+        const entriesBefore = await readRawEntries(STORES['signing keys']);
+
+        const error = await captureError(() =>
+          providerWithPassword(() => WRONG_PASSWORD).importSigningKeys(exported, { password: KEY_CHECK_NEW_PASSWORD, conflictStrategy })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateDecryptionError);
+        expect(error).toMatchObject({ reason: 'wrong-key' });
+        expect(await readRawEntries(STORES['signing keys'])).toEqual(entriesBefore);
+      }
+    );
+
+    test('a store migrated again after use gets its key check back', async () => {
+      const encryption = await StorageEncryption.create(KEY_CHECK_OLD_PASSWORD);
+      const salt = encryption.getSalt().toString('hex');
+      await withRawSubLevel('private-states', async (subLevel) => {
+        await subLevel.put(METADATA_KEY, JSON.stringify({ salt, version: 1 }));
+        await subLevel.put(`${KEY_CHECK_CONTRACT}:migrated`, await encryption.encrypt(superjson.stringify('migrated-value')));
+      });
+      const migrate = () => migrateToAccountScoped({ midnightDbName: KEY_CHECK_DB, accountId: TEST_ACCOUNT_ID });
+      const provider = providerWithPassword(() => KEY_CHECK_OLD_PASSWORD);
+      await migrate();
+      expect(await provider.forContract(KEY_CHECK_CONTRACT).get('migrated')).toBe('migrated-value');
+
+      await migrate();
+      expect(await provider.forContract(KEY_CHECK_CONTRACT).get('migrated')).toBe('migrated-value');
+
+      expect(await readRawMetadata(STORES['private states'])).toEqual({ salt, version: 1, keyCheck: expect.any(String) });
+      await expect(
+        providerWithPassword(() => WRONG_PASSWORD).forContract(KEY_CHECK_CONTRACT).set('x', 'y')
+      ).rejects.toMatchObject({ reason: 'wrong-key' });
+    });
+  });
+
+  describe('Signing-key addresses', () => {
+    const ADDRESS_DB = 'midnight-signing-key-address-test-db';
+    const STORED_ADDRESS = '32'.repeat(32) as ContractAddress;
+    const IMPORTED_ADDRESS = '33'.repeat(32) as ContractAddress;
+    const IMPORT_PASSWORD = 'Import-Address-Pass8!';
+    const INVALID_ADDRESSES = ['__midnight_encryption_metadata__', '', 'addr1', `0x${'ab'.repeat(32)}`];
+    const addressConfig = {
+      midnightDbName: ADDRESS_DB,
+      privateStoragePasswordProvider: () => TEST_PASSWORD,
+      accountId: TEST_ACCOUNT_ID
+    };
+
+    const exportWithKeys = async (keys: Record<string, unknown>): Promise<SigningKeyExport> => {
+      const salt = crypto.randomBytes(32);
+      const encryption = await StorageEncryption.create(IMPORT_PASSWORD, { existingSalt: salt });
+      const payload = await encryption.encrypt(JSON.stringify({
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        keyCount: Object.keys(keys).length,
+        keys
+      }));
+      return { format: 'midnight-signing-key-export', encryptedPayload: payload, salt: salt.toString('hex') };
+    };
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', ADDRESS_DB), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', ADDRESS_DB), { recursive: true, force: true });
+    });
+
+    test.each(INVALID_ADDRESSES)('signing-key methods refuse %j and leave the store usable', async (invalid) => {
+      const db = levelPrivateStateProvider<string, string>(addressConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(STORED_ADDRESS, signingKey);
+
+      await expect(db.getSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+      await expect(db.setSigningKey(invalid, sampleSigningKey())).rejects.toThrow(InvalidArgumentError);
+      await expect(db.removeSigningKey(invalid)).rejects.toThrow(InvalidArgumentError);
+
+      await db.invalidateEncryptionCache();
+      expect(await db.getSigningKey(STORED_ADDRESS)).toEqual(signingKey);
+    });
+
+    test.each(INVALID_ADDRESSES)('importSigningKeys refuses a payload holding %j and imports nothing', async (invalid) => {
+      const db = levelPrivateStateProvider<string, string>(addressConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(STORED_ADDRESS, signingKey);
+      const crafted = await exportWithKeys({ [IMPORTED_ADDRESS]: sampleSigningKey(), [invalid]: sampleSigningKey() });
+
+      await expect(db.importSigningKeys(crafted, { password: IMPORT_PASSWORD })).rejects.toThrow(InvalidExportFormatError);
+
+      await db.invalidateEncryptionCache();
+      expect(await db.getSigningKey(IMPORTED_ADDRESS)).toBeNull();
+      expect(await db.getSigningKey(STORED_ADDRESS)).toEqual(signingKey);
+    });
+
+    test('importSigningKeys reports why an address is invalid', async () => {
+      const db = levelPrivateStateProvider<string, string>(addressConfig);
+      const crafted = await exportWithKeys({ [`0x${'ab'.repeat(32)}`]: sampleSigningKey() });
+
+      const error = await captureError(() => db.importSigningKeys(crafted, { password: IMPORT_PASSWORD }));
+
+      expect(error).toBeInstanceOf(InvalidExportFormatError);
+      expect(collectErrorMessages(error)).toEqual([expect.stringContaining("Unexpected '0x' prefix")]);
     });
   });
 

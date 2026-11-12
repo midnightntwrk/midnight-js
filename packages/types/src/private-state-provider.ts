@@ -267,13 +267,11 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
    *   not satisfy the minimum strength policy. Validation runs on every
    *   invocation against the password returned by the provider — it is not
    *   cached.
-   * @throws If decryption of the stored value fails (wrong password, salt
-   *   mismatch, unsupported encryption version, or authentication tag
-   *   mismatch). Decryption errors are propagated to the caller and do **not**
-   *   collapse to `null`.
-   * @throws If a concurrent password rotation does not release its lock
-   *   within the internal default timeout (5 minutes on the read path; the
-   *   read path does not expose a configuration knob).
+   * @throws If the password does not match the store, even when no value is
+   *   stored, or if decryption of the stored value fails (salt mismatch,
+   *   unsupported encryption version, or authentication tag mismatch).
+   *   Decryption errors are propagated to the caller and do **not** collapse
+   *   to `null`.
    * @throws Underlying store I/O errors are propagated; callers should not
    *   include them in user-facing messages without redacting paths and
    *   OS-level metadata.
@@ -294,11 +292,14 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
    * Remove the value at the given private state ID.
    *
    * @param privateStateId The private state identifier.
+   * @throws If the password does not match the store. Nothing is removed then.
    */
   remove(privateStateId: PSI): Promise<void>;
 
   /**
    * Remove all private states of this contract. Other contracts are not touched.
+   *
+   * @throws If the password does not match the store. Nothing is removed then.
    */
   clear(): Promise<void>;
 
@@ -316,8 +317,8 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
    *   does not satisfy the minimum strength policy (validation runs on
    *   every invocation).
    * @throws If reading existing entries fails for any of the reasons listed
-   *   on {@link ContractPrivateStates.get} (decryption failure, rotation
-   *   lock timeout, store I/O).
+   *   on {@link ContractPrivateStates.get} (wrong password, decryption
+   *   failure, store I/O).
    */
   exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
 
@@ -371,6 +372,8 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
   /**
    * Remove the private states of every contract in this provider's storage.
    * Signing keys are not touched; see {@link PrivateStateProvider.clearSigningKeys}.
+   *
+   * @throws If the password does not match the store. Nothing is removed then.
    */
   clearAll(): Promise<void>;
 
@@ -379,6 +382,7 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *
    * @param address The address of the contract having the given signing key.
    * @param signingKey The signing key to store.
+   * @throws {InvalidArgumentError} If `address` is not a valid contract address.
    */
   setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void>;
 
@@ -393,17 +397,16 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *   Callers should treat both `null` outcomes equivalently as "no usable
    *   value".
    *
+   * @throws {InvalidArgumentError} If `address` is not a valid contract address.
    * @throws If the password returned by the configured password provider does
    *   not satisfy the minimum strength policy. Validation runs on every
    *   invocation against the password returned by the provider — it is not
    *   cached.
-   * @throws If decryption of the stored value fails (wrong password, salt
-   *   mismatch, unsupported encryption version, or authentication tag
-   *   mismatch). Decryption errors are propagated to the caller and do **not**
-   *   collapse to `null`.
-   * @throws If a concurrent password rotation does not release its lock
-   *   within the internal default timeout (5 minutes on the read path; the
-   *   read path does not expose a configuration knob).
+   * @throws If the password does not match the store, even when no value is
+   *   stored, or if decryption of the stored value fails (salt mismatch,
+   *   unsupported encryption version, or authentication tag mismatch).
+   *   Decryption errors are propagated to the caller and do **not** collapse
+   *   to `null`.
    * @throws Underlying store I/O errors are propagated; callers should not
    *   include them in user-facing messages without redacting paths and
    *   OS-level metadata.
@@ -424,11 +427,15 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Remove the signing key for a contract.
    *
    * @param address The address of the contract for which to delete the signing key.
+   * @throws {InvalidArgumentError} If `address` is not a valid contract address.
+   * @throws If the password does not match the store. Nothing is removed then.
    */
   removeSigningKey(address: ContractAddress): Promise<void>;
 
   /**
    * Remove all contract signing keys.
+   *
+   * @throws If the password does not match the store. Nothing is removed then.
    */
   clearSigningKeys(): Promise<void>;
 
@@ -455,7 +462,8 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * @param options Import options including password, conflict strategy, and key limit.
    * @returns Result indicating how many keys were imported/skipped/overwritten.
    * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
-   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
+   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported, or it
+   *   holds an address that is not a valid contract address. Nothing is imported then.
    * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
    * @throws {SigningKeyExportError} If a caller-supplied `options.password`
    *   does not satisfy the minimum-length policy.
