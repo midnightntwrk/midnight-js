@@ -78,9 +78,20 @@ runs:
         restore-keys: |
           deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc') }}-
 
+    # Only main saves: a PR's entry is readable by that PR alone, and saving one
+    # per push fills the repository cache and evicts the rarely used Docker and LFS entries.
     - name: Cache turbo build output
-      if: inputs.turbo-cache == 'true'
+      if: inputs.turbo-cache == 'true' && github.ref == 'refs/heads/main'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
+      with:
+        path: .turbo/cache
+        key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}
+        restore-keys: |
+          ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
+
+    - name: Restore turbo build output
+      if: inputs.turbo-cache == 'true' && github.ref != 'refs/heads/main'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache/restore@v6.1.0
       with:
         path: .turbo/cache
         key: ${{ inputs.cache-key-prefix }}-build-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.sha }}

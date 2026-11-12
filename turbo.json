@@ -11,7 +11,7 @@
       "inputs": [
         "src/**",
         "!src/**/*.test.ts",
-        "!src/**/test/**",
+        "!src/test/**",
         "rollup.config.mjs",
         "tsconfig.json",
         "tsconfig.build.json"

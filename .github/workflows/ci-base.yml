@@ -28,6 +28,8 @@ jobs:
     name: Build, Lint and Unit/Integration Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
     steps:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
@@ -35,13 +37,11 @@ jobs:
       - name: Check workflow inputs
         run: |
           case "$WORKSPACE_FILTER" in
-            -*|*\"*|*\'*)
+            -*|*\"*|*\'*|*[[:space:]]*)
               echo "::error::yarn_filter must be a bare turbo pattern such as ./packages/*, got: $WORKSPACE_FILTER"
               exit 1
               ;;
           esac
-        env:
-          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
@@ -58,12 +58,11 @@ jobs:
         run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
         run: |
-          read -ra paths <<< "$LINT_PATHS"
+          read -ra paths <<< "${LINT_PATHS//$'\n'/ }"
           yarn lint -- "${paths[@]}"
         env:
           LINT_PATHS: ${{ inputs.yarn_lint_paths }}
@@ -98,7 +97,6 @@ jobs:
           yarn test ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
@@ -106,7 +104,6 @@ jobs:
           yarn it ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          WORKSPACE_FILTER: ${{ inputs.yarn_filter }}
 
       - name: Aggregate coverage reports
         run: |

@@ -68,6 +68,8 @@ jobs:
               - 'TROUBLESHOOTING.md'
               - 'docs/releases/v5.0.0/migration-guide.md'
               - 'llms.txt'
+              # Golden fixtures read by the protocol and contracts tests.
+              - 'testkit-js/testkit-js/src/fixtures/hf/**'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
