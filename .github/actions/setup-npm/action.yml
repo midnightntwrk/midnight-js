@@ -11,14 +11,16 @@ runs:
       shell: bash
       env:
         NPM_VERSION: '12.2.2'
-        NPM_CONFIG_MIN_RELEASE_AGE: '7'
+        MIN_RELEASE_AGE: '7'
       run: |
         set -euo pipefail
+        # The pin is chosen and reviewed by hand, so the cooldown does not apply to it:
+        # a pin younger than MIN_RELEASE_AGE would otherwise fail every job with ETARGET.
         npm install -g "npm@${NPM_VERSION}"
         actual="$(npm --version)"
         if [ "$actual" != "$NPM_VERSION" ]; then
           echo "::error::npm pin did not take effect (expected $NPM_VERSION, got $actual)"
           exit 1
         fi
-        echo "NPM_CONFIG_MIN_RELEASE_AGE=${NPM_CONFIG_MIN_RELEASE_AGE}" >> "$GITHUB_ENV"
+        echo "NPM_CONFIG_MIN_RELEASE_AGE=${MIN_RELEASE_AGE}" >> "$GITHUB_ENV"
         echo "npm $actual"
