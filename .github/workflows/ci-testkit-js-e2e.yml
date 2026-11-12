@@ -232,6 +232,9 @@ jobs:
     # Run on success/failure AND cancelled/skipped so reviewers can still see a row
     # indicating why no test results exist (otherwise the absence is silent).
     if: always()
+    # The always() npx steps still run when setup-npm fails, so the cooldown is set here too.
+    env:
+      NPM_CONFIG_MIN_RELEASE_AGE: '7'
     steps:
 
       - name: Checkout code
