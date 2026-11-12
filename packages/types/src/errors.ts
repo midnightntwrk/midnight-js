@@ -109,6 +109,7 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
   EXPORT_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_EXPORT_DECRYPTION_FAILED',
   INVALID_EXPORT_FORMAT: 'MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT',
   IMPORT_CONFLICT: 'MIDNIGHT_JS_PR_IMPORT_CONFLICT',
+  IMPORT_PASSWORD_INVALID: 'MIDNIGHT_JS_PR_IMPORT_PASSWORD_INVALID',
   PRIVATE_STATE_DECRYPTION_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_DECRYPTION_FAILED',
   PRIVATE_STATE_STORAGE_FAILED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_STORAGE_FAILED',
   PRIVATE_STATE_LIMIT_EXCEEDED: 'MIDNIGHT_JS_PR_PRIVATE_STATE_LIMIT_EXCEEDED',
@@ -153,6 +154,7 @@ export const PROVIDER_ERROR_CATEGORIES: Readonly<Record<ProviderErrorCode, Midni
   [PROVIDER_ERROR_CODES.EXPORT_DECRYPTION_FAILED]: INTEGRITY,
   [PROVIDER_ERROR_CODES.INVALID_EXPORT_FORMAT]: INTEGRITY,
   [PROVIDER_ERROR_CODES.IMPORT_CONFLICT]: USAGE,
+  [PROVIDER_ERROR_CODES.IMPORT_PASSWORD_INVALID]: USAGE,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_DECRYPTION_FAILED]: INTEGRITY,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_STORAGE_FAILED]: ENVIRONMENT,
   [PROVIDER_ERROR_CODES.PRIVATE_STATE_LIMIT_EXCEEDED]: USAGE,
@@ -186,6 +188,7 @@ const {
   EXPORT_DECRYPTION_FAILED,
   INVALID_EXPORT_FORMAT,
   IMPORT_CONFLICT,
+  IMPORT_PASSWORD_INVALID,
   PRIVATE_STATE_DECRYPTION_FAILED,
   PRIVATE_STATE_STORAGE_FAILED,
   PRIVATE_STATE_LIMIT_EXCEEDED,
@@ -748,13 +751,15 @@ export type PrivateStateImportErrorCause =
   | 'decryption_failed'
   | 'invalid_format'
   | 'conflict'
+  | 'invalid_password'
   | 'unknown';
 
 type PrivateStateImportErrorCode =
   | typeof PRIVATE_STATE_IMPORT_FAILED
   | typeof EXPORT_DECRYPTION_FAILED
   | typeof INVALID_EXPORT_FORMAT
-  | typeof IMPORT_CONFLICT;
+  | typeof IMPORT_CONFLICT
+  | typeof IMPORT_PASSWORD_INVALID;
 
 /**
  * Base error thrown when importing private states fails.
@@ -819,6 +824,24 @@ export class ImportConflictError extends PrivateStateImportError {
       'conflict'
     );
     this.name = 'ImportConflictError';
+  }
+}
+
+/**
+ * Error thrown when the password supplied to an import does not satisfy the
+ * password strength policy.
+ *
+ * The failed check is kept on {@link passwordError}: narrow it with
+ * `instanceof PasswordValidationError` from `@midnight-ntwrk/midnight-js-utils`
+ * and read its `reason`.
+ */
+export class ImportPasswordValidationError extends PrivateStateImportError {
+  readonly code = IMPORT_PASSWORD_INVALID;
+  readonly category = PROVIDER_ERROR_CATEGORIES[IMPORT_PASSWORD_INVALID];
+
+  constructor(public readonly passwordError: MidnightJsError) {
+    super(passwordError.message, 'invalid_password');
+    this.name = 'ImportPasswordValidationError';
   }
 }
 
