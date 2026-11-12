@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.1-rc.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0...v5.0.1-rc.0) (2026-11-12)
+
+
+### Bug Fixes
+
+* **midnight-js:** refuse wrong-password writes and invalid signing-key addresses ([#1648](https://github.com/midnightntwrk/midnight-js/pull/1648)) ([d5084b4](https://github.com/midnightntwrk/midnight-js/commit/d5084b41326214a1c04273ffbdbfe402dcfe4a7c)), closes [#1643](https://github.com/midnightntwrk/midnight-js/pull/1643)
+* **midnight-js:** throw import-specific error for invalid import password ([#1656](https://github.com/midnightntwrk/midnight-js/pull/1656)) ([542440f](https://github.com/midnightntwrk/midnight-js/commit/542440fdd162c50129cca149d0dfb84fa1c9611e)), closes [#825](https://github.com/midnightntwrk/midnight-js/pull/825) [#1124](https://github.com/midnightntwrk/midnight-js/pull/1124) [#825](https://github.com/midnightntwrk/midnight-js/pull/825)
+
+
+### Documentation
+
+* API documentation update ([#1647](https://github.com/midnightntwrk/midnight-js/pull/1647)) ([74ea019](https://github.com/midnightntwrk/midnight-js/commit/74ea0199de35b90009623b8be594104320d89866))
+* API documentation update ([#1653](https://github.com/midnightntwrk/midnight-js/pull/1653)) ([1fffb06](https://github.com/midnightntwrk/midnight-js/commit/1fffb0640312e6634eaee2cec5af109b69ed26f8))
+* rewrite ADRs to their current decisions ([#1640](https://github.com/midnightntwrk/midnight-js/pull/1640)) ([67588eb](https://github.com/midnightntwrk/midnight-js/commit/67588ebcbb5bcaa96272df82398fcf8aa25a5bc3)), closes [#1641](https://github.com/midnightntwrk/midnight-js/pull/1641)
+
+
+### Tests
+
+* **midnight-js:** cover cross-contract call assembly ([#1403](https://github.com/midnightntwrk/midnight-js/pull/1403)) ([#1642](https://github.com/midnightntwrk/midnight-js/pull/1642)) ([097cdc4](https://github.com/midnightntwrk/midnight-js/commit/097cdc4e171e0910e0250aa3815d61caf16e84f4)), closes [midnightntwrk/midnight-ledger#773](https://github.com/midnightntwrk/midnight-js/pull/773)
+
+
+### Build System
+
+* **deps:** aggregate passing GitHub Actions bumps ([#1645](https://github.com/midnightntwrk/midnight-js/pull/1645)) ([87147c9](https://github.com/midnightntwrk/midnight-js/commit/87147c99f91fc39c591f927d8162282c55bf2539)), closes [#1500](https://github.com/midnightntwrk/midnight-js/pull/1500) [#1499](https://github.com/midnightntwrk/midnight-js/pull/1499) [#1496](https://github.com/midnightntwrk/midnight-js/pull/1496) [#1495](https://github.com/midnightntwrk/midnight-js/pull/1495) [#1497](https://github.com/midnightntwrk/midnight-js/pull/1497)
+* **deps:** aggregate passing npm dependency bumps ([#1644](https://github.com/midnightntwrk/midnight-js/pull/1644)) ([1b4f052](https://github.com/midnightntwrk/midnight-js/commit/1b4f0521ee3866a04db67407ac3ad045c68c615b)), closes [#1638](https://github.com/midnightntwrk/midnight-js/pull/1638) [#1521](https://github.com/midnightntwrk/midnight-js/pull/1521) [#1503](https://github.com/midnightntwrk/midnight-js/pull/1503) [#1501](https://github.com/midnightntwrk/midnight-js/pull/1501) [#1639](https://github.com/midnightntwrk/midnight-js/pull/1639)
+* **deps:** bump compact-js to 3.0.1-rc.1 ([#1655](https://github.com/midnightntwrk/midnight-js/pull/1655)) ([9add4f2](https://github.com/midnightntwrk/midnight-js/commit/9add4f20902fd28c4b80ab35751a6147f81fb040)), closes [midnightntwrk/midnight-node#2375](https://github.com/midnightntwrk/midnight-js/pull/2375) [#1599](https://github.com/midnightntwrk/midnight-js/pull/1599) [midnightntwrk/midnight-ledger#843](https://github.com/midnightntwrk/midnight-js/pull/843) [#876](https://github.com/midnightntwrk/midnight-js/pull/876) [#731](https://github.com/midnightntwrk/midnight-js/pull/731)
+
 ## [5.0.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.6...v5.0.0) (2026-11-05)
 
 
@@ -33,6 +60,7 @@ All notable changes to this project will be documented in this file. See [commit
 ### Improvements
 
 * **deps:** bump @midnightntwrk/dapp-connector-api to 4.1.0 ([#1631](https://github.com/midnightntwrk/midnight-js/pull/1631)) ([2775c3a](https://github.com/midnightntwrk/midnight-js/commit/2775c3a73706e29e78f0a14842af4f69782db242))
+* **release:** bump version to 5.0.0 ([#1636](https://github.com/midnightntwrk/midnight-js/pull/1636)) ([39725c7](https://github.com/midnightntwrk/midnight-js/commit/39725c71dc5c7681b0a424efae01afcb23107b1c))
 
 ## [5.0.0-rc.6](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.5...v5.0.0-rc.6) (2026-11-05)
 
