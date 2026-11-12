@@ -1,0 +1,23 @@
+name: 'Set up npm'
+description: >-
+  Install the pinned npm CLI over the one bundled with Node.js, and fail if the
+  pin did not take effect. npm 12 blocks dependency lifecycle scripts by default
+  and honours the release-age cooldown in .npmrc. Run it after setup-node: npm
+  12 needs Node.js ^22.22.2 || ^24.15.0 || >=26.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install pinned npm
+      shell: bash
+      env:
+        NPM_VERSION: '12.2.2'
+      run: |
+        set -euo pipefail
+        npm install -g "npm@${NPM_VERSION}"
+        actual="$(npm --version)"
+        if [ "$actual" != "$NPM_VERSION" ]; then
+          echo "::error::npm pin did not take effect (expected $NPM_VERSION, got $actual)"
+          exit 1
+        fi
+        echo "npm $actual"

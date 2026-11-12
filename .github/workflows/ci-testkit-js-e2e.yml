@@ -237,6 +237,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
 
+      # Without it this job runs `npx` and `npm install -g` on the runner image's
+      # own Node.js and npm, outside both the .nvmrc pin and the npm pin.
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up npm
+        uses: ./.github/actions/setup-npm
+
       - name: Download Test Results
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # ratchet:actions/download-artifact@v8.0.2
         with:
