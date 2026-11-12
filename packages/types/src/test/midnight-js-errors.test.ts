@@ -20,6 +20,7 @@ import {
   ArtifactRuntimeVersionUnavailableError,
   ExportDecryptionError,
   ImportConflictError,
+  ImportPasswordValidationError,
   InvalidExportFormatError,
   InvalidProtocolSchemeError,
   InvalidSerializedStateError,
@@ -65,6 +66,7 @@ describe('types error classes', () => {
     ['ExportDecryptionError', new ExportDecryptionError()],
     ['InvalidExportFormatError', new InvalidExportFormatError()],
     ['ImportConflictError', new ImportConflictError(2)],
+    ['ImportPasswordValidationError', new ImportPasswordValidationError(new PrivateStateExportError('weak'))],
     ['ZkArtifactFetchError', new ZkArtifactFetchError('msg', 503)],
     ['ProofServerError', new ProofServerError('msg', 503)],
     ['PrivateStateDecryptionError', new PrivateStateDecryptionError('msg', 'malformed')],
@@ -187,6 +189,22 @@ describe('types error classes', () => {
 
     expect([conflict.code, conflict.category]).toEqual(['MIDNIGHT_JS_PR_IMPORT_CONFLICT', 'USAGE']);
     expect([format.code, format.category]).toEqual(['MIDNIGHT_JS_PR_INVALID_EXPORT_FORMAT', 'INTEGRITY']);
+  });
+
+  it('a rejected import password is a usage import error that keeps the validation error', () => {
+    const passwordError = new PrivateStateExportError('Password is shorter than 16 characters');
+
+    const error = new ImportPasswordValidationError(passwordError);
+
+    expect(error).toBeInstanceOf(PrivateStateImportError);
+    expect([error.name, error.code, error.category, error.cause, error.message, error.passwordError]).toEqual([
+      'ImportPasswordValidationError',
+      'MIDNIGHT_JS_PR_IMPORT_PASSWORD_INVALID',
+      'USAGE',
+      'invalid_password',
+      'Password is shorter than 16 characters',
+      passwordError
+    ]);
   });
 
   it.each([

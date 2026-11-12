@@ -23,6 +23,7 @@ import {
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
   ImportConflictError,
+  ImportPasswordValidationError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
   type ImportSigningKeysOptions,
@@ -37,7 +38,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, isValidSigningKey, PasswordValidationError } from '@midnight-ntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -125,6 +126,14 @@ const validateExportPassword = (password: string): void => {
 const validateSigningKeyExportPassword = (password: string): void => {
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new SigningKeyExportError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+};
+
+const validateImportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new ImportPasswordValidationError(
+      new PasswordValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 'too_short')
+    );
   }
 };
 
@@ -287,7 +296,7 @@ export const inMemoryPrivateStateProvider = <
           throw new InvalidExportFormatError('Password is required for in-memory provider import');
         }
 
-        validateExportPassword(options.password);
+        validateImportPassword(options.password);
 
         let payload: PrivateStatePayload<PSI>;
         try {
@@ -490,7 +499,7 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError('Password is required for in-memory provider import');
       }
 
-      validateSigningKeyExportPassword(options.password);
+      validateImportPassword(options.password);
 
       let payload: SigningKeyPayload;
       try {

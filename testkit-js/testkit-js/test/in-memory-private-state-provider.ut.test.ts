@@ -19,9 +19,12 @@ import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-j
 import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ImportConflictError,
+  ImportPasswordValidationError,
   InvalidExportFormatError,
+  type PrivateStateExport,
   type SigningKeyExport
 } from '@midnight-ntwrk/midnight-js-types';
+import { PasswordValidationError } from '@midnight-ntwrk/midnight-js-utils';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 import { inMemoryPrivateStateProvider } from '../src/contract/in-memory-private-state-provider';
@@ -250,5 +253,46 @@ describe('[Unit tests] inMemoryPrivateStateProvider per-contract view', () => {
 
     expect(intoOther).toEqual({ imported: 1, skipped: 0, overwritten: 0 });
     await expect(intoSame).rejects.toThrow(ImportConflictError);
+  });
+});
+
+describe('[Unit tests] inMemoryPrivateStateProvider rejects a short import password', () => {
+  const SHORT_PASSWORD = 'short';
+
+  const expectShortImportPassword = (error: unknown): void => {
+    expect(error).toBeInstanceOf(ImportPasswordValidationError);
+    if (error instanceof ImportPasswordValidationError) {
+      expect(error.passwordError).toBeInstanceOf(PasswordValidationError);
+      if (error.passwordError instanceof PasswordValidationError) {
+        expect(error.passwordError.reason).toBe('too_short');
+      }
+    }
+  };
+
+  it('importSigningKeys throws ImportPasswordValidationError', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const signingKeyExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
+
+    const error = await provider.importSigningKeys(signingKeyExport, { password: SHORT_PASSWORD }).catch((e: unknown) => e);
+
+    expectShortImportPassword(error);
+  });
+
+  it('importPrivateStates throws ImportPasswordValidationError', async () => {
+    const provider = inMemoryPrivateStateProvider<PSI, PS>();
+    const salt = randomBytes(SALT_LENGTH);
+    const payload = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), stateCount: 0, states: {} });
+    const stateExport: PrivateStateExport = {
+      format: 'midnight-private-state-export',
+      encryptedPayload: encryptPayload(payload, VALID_PASSWORD, salt),
+      salt: salt.toString('hex')
+    };
+
+    const error = await provider
+      .forContract(CONTRACT_ADDRESS_1)
+      .importPrivateStates(stateExport, { password: SHORT_PASSWORD })
+      .catch((e: unknown) => e);
+
+    expectShortImportPassword(error);
   });
 });
