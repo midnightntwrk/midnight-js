@@ -35,7 +35,6 @@ import { SLOW_TEST_TIMEOUT } from '../src/constants';
 import { CompiledCounterContract } from '../src/contract';
 import { CIRCUIT_ID_INCREMENT, CounterConfiguration } from '../src/counter-api';
 import { CounterPrivateStateId, type CounterProviders, privateStateZero } from '../src/types/counter-types';
-import { expectVerifierKeyRemoveRefused } from './utils/verifier-key-remove-refused';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `signing-key_${new Date().toISOString()}.log`)
@@ -180,33 +179,29 @@ describe('Contract maintenance authority signing keys', () => {
       const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
 
-      // midnightntwrk/midnight-node#2375
-      // // Capture the verifier key from the local artifacts before removing it on-chain so it can be
-      // // re-inserted afterwards.
-      // const incrementVk = await providers.zkConfigProvider.getVerifierKey(CIRCUIT_ID_INCREMENT);
-      //
-      // const removeResult = await submitRemoveVerifierKeyTx(
-      //   providers,
-      //   CompiledCounterContract,
-      //   contractAddress,
-      //   CIRCUIT_ID_INCREMENT
-      // );
-      // expect(removeResult.public.status).toBe(SucceedEntirely);
-      //
-      // const insertResult = await submitInsertVerifierKeyTx(
-      //   providers,
-      //   CompiledCounterContract,
-      //   contractAddress,
-      //   CIRCUIT_ID_INCREMENT,
-      //   incrementVk
-      // );
-      // expect(insertResult.public.status).toBe(SucceedEntirely);
-      //
-      // // The authority key kind is unchanged by verifier-key maintenance actions.
-      // expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
-      await expectVerifierKeyRemoveRefused(
-        submitRemoveVerifierKeyTx(providers, CompiledCounterContract, contractAddress, CIRCUIT_ID_INCREMENT)
+      // Capture the verifier key from the local artifacts before removing it on-chain so it can be
+      // re-inserted afterwards.
+      const incrementVk = await providers.zkConfigProvider.getVerifierKey(CIRCUIT_ID_INCREMENT);
+
+      const removeResult = await submitRemoveVerifierKeyTx(
+        providers,
+        CompiledCounterContract,
+        contractAddress,
+        CIRCUIT_ID_INCREMENT
       );
+      expect(removeResult.public.status).toBe(SucceedEntirely);
+
+      const insertResult = await submitInsertVerifierKeyTx(
+        providers,
+        CompiledCounterContract,
+        contractAddress,
+        CIRCUIT_ID_INCREMENT,
+        incrementVk
+      );
+      expect(insertResult.public.status).toBe(SucceedEntirely);
+
+      // The authority key kind is unchanged by verifier-key maintenance actions.
+      expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
     },
     SLOW_TEST_TIMEOUT
   );
