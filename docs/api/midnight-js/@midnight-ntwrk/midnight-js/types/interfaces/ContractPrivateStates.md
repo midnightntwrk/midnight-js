@@ -46,6 +46,10 @@ Remove all private states of this contract. Other contracts are not touched.
 
 `Promise`\<`void`\>
 
+#### Throws
+
+If the password does not match the store. Nothing is removed then.
+
 ***
 
 ### exportPrivateStates()
@@ -85,8 +89,8 @@ If the password returned by the configured password provider
 #### Throws
 
 If reading existing entries fails for any of the reasons listed
-  on [ContractPrivateStates.get](#get) (decryption failure, rotation
-  lock timeout, store I/O).
+  on [ContractPrivateStates.get](#get) (wrong password, decryption
+  failure, store I/O).
 
 ***
 
@@ -126,16 +130,11 @@ If the password returned by the configured password provider does
 
 #### Throws
 
-If decryption of the stored value fails (wrong password, salt
-  mismatch, unsupported encryption version, or authentication tag
-  mismatch). Decryption errors are propagated to the caller and do **not**
-  collapse to `null`.
-
-#### Throws
-
-If a concurrent password rotation does not release its lock
-  within the internal default timeout (5 minutes on the read path; the
-  read path does not expose a configuration knob).
+If the password does not match the store, even when no value is
+  stored, or if decryption of the stored value fails (salt mismatch,
+  unsupported encryption version, or authentication tag mismatch).
+  Decryption errors are propagated to the caller and do **not** collapse
+  to `null`.
 
 #### Throws
 
@@ -227,6 +226,10 @@ The private state identifier.
 #### Returns
 
 `Promise`\<`void`\>
+
+#### Throws
+
+If the password does not match the store. Nothing is removed then.
 
 ***
 
