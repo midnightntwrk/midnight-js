@@ -21,59 +21,59 @@
     },
     "index.js": {
       "type": "file",
-      "size": 55338,
-      "hash": "7cb4168d29e00cf87b7ea7a55afb052b98eeab398827f8cf9e625b0a6db4fa9f"
+      "size": 61168,
+      "hash": "30fa4256bf0dd92515bd1cff6f4e55432fd8ec8ff5249bc49069b5997ed87e96"
     },
     "index.js.map": {
       "type": "file",
-      "size": 2679,
-      "hash": "ede81485c2cae83eab75c9367a8dc3861f5df164a5a8e37375efb1ceb9e55ce5"
+      "size": 2867,
+      "hash": "3b8d0ca082bab4ba76e63b9c5ec535bed91908a3ad1b911644c0c39fc4e56b5a"
     }
   },
   "zkir": {
     "type": "directory",
     "mintWithShieldedFee.bzkir": {
       "type": "file",
-      "size": 9967,
-      "hash": "02fb79f9622a91d30349fc8fa6272f3c46608d016e0642d425606029cdbdb617"
+      "size": 20965,
+      "hash": "807256a1185ca74b65184e434fb899ec4286fb42cc367e2c86969f2402e4c9ee"
     },
     "mintWithShieldedFee.zkir": {
       "type": "file",
-      "size": 31366,
-      "hash": "0a2814b0d5c33ffbaab5515f657196c6d08614d82e8285355df7addef4286ee4"
+      "size": 59106,
+      "hash": "4faadfabe8ebe14f4167a5300a42f08943c3db0232b8b11f1a3180916712c485"
     },
     "mintWithUnshieldedFee.bzkir": {
       "type": "file",
-      "size": 9777,
-      "hash": "82dd9564a1a7bd38cd4d18383df53583d55e04d849922d2df5156886e547c446"
+      "size": 20668,
+      "hash": "ce55ba133bb806eb230bac0a0f0fbfd05fb63783ba1d5a44b6e3521dbb6c899d"
     },
     "mintWithUnshieldedFee.zkir": {
       "type": "file",
-      "size": 30377,
-      "hash": "7493cd7ee2a0032c23a9ad75f641772603272e5dd5f0be727d600eefcd6458d7"
+      "size": 58010,
+      "hash": "474d068d010e3eea0ca5133e8ebc501d7e5c4c7111640b6d6a82f57250385bc4"
     }
   },
   "keys": {
     "type": "directory",
     "mintWithShieldedFee.prover": {
       "type": "file",
-      "size": 360724479,
-      "hash": "c2654229994d643ae5b8915e901106935d65cc292819b764d8cab909d70df6ed"
+      "size": 45114103,
+      "hash": "c47ff5ba78eb5114a9d66c2107f12af21ba91032d4c51f1d38215dd42249964a"
     },
     "mintWithShieldedFee.verifier": {
       "type": "file",
       "size": 2121,
-      "hash": "0df1dda9a7515b9787d9666f38abe519a14e08a6c815658fbc2319c1e7bd9b69"
+      "hash": "849300e0248d13b5cdc5184f59d0675eaf49e54a6acfcd8af44a04440bba3820"
     },
     "mintWithUnshieldedFee.prover": {
       "type": "file",
-      "size": 180369217,
-      "hash": "8c357f2dce80e9848e909b114c58b9c43d0e127235cd1f7ec7f1b62cf6340010"
+      "size": 22569422,
+      "hash": "0dc6b83202ee26201f1ad762f23596ab5974c13ae79cef8832545b204f0c4a95"
     },
     "mintWithUnshieldedFee.verifier": {
       "type": "file",
       "size": 2121,
-      "hash": "f749439d8a8ee7b2e94045975b40b2e2c991d07896a11e69d8d5fcb40c47f548"
+      "hash": "b8acc50ce33d8c78b92772dab776b7060185b13097aa6c342e2ccd1f805ed7d4"
     }
   }
 }

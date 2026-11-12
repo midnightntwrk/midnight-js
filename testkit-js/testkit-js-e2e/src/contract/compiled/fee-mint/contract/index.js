@@ -77,7 +77,28 @@ class _Either_0 {
 
 const _descriptor_7 = new _Either_0();
 
-const _descriptor_8 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
+const _descriptor_8 = new __compactRuntime.CompactTypeBytes(21);
+
+class _CoinPreimage_0 {
+  alignment() {
+    return _descriptor_8.alignment().concat(_descriptor_5.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment())));
+  }
+  fromValue(value_0) {
+    return {
+      domain_sep: _descriptor_8.fromValue(value_0),
+      info: _descriptor_5.fromValue(value_0),
+      dataType: _descriptor_2.fromValue(value_0),
+      data: _descriptor_0.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_8.toValue(value_0.domain_sep).concat(_descriptor_5.toValue(value_0.info).concat(_descriptor_2.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
+  }
+}
+
+const _descriptor_9 = new _CoinPreimage_0();
+
+const _descriptor_10 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
 
 class _Either_1 {
   alignment() {
@@ -95,28 +116,7 @@ class _Either_1 {
   }
 }
 
-const _descriptor_9 = new _Either_1();
-
-const _descriptor_10 = new __compactRuntime.CompactTypeBytes(21);
-
-class _CoinPreimage_0 {
-  alignment() {
-    return _descriptor_10.alignment().concat(_descriptor_5.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment())));
-  }
-  fromValue(value_0) {
-    return {
-      domain_sep: _descriptor_10.fromValue(value_0),
-      info: _descriptor_5.fromValue(value_0),
-      dataType: _descriptor_2.fromValue(value_0),
-      data: _descriptor_0.fromValue(value_0)
-    }
-  }
-  toValue(value_0) {
-    return _descriptor_10.toValue(value_0.domain_sep).concat(_descriptor_5.toValue(value_0.info).concat(_descriptor_2.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
-  }
-}
-
-const _descriptor_11 = new _CoinPreimage_0();
+const _descriptor_11 = new _Either_1();
 
 class _UserAddress_0 {
   alignment() {
@@ -545,7 +545,7 @@ export class Contract {
     return [];
   }
   _coinCommitment_0(coin_0, recipient_0) {
-    return this._persistentHash_0({ domain_sep:
+    return this._persistentHash_1({ domain_sep:
                                       new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 122, 115, 119, 97, 112, 45, 99, 99, 91, 118, 49, 93]),
                                     info: coin_0,
                                     dataType: recipient_0.is_left,
@@ -567,8 +567,8 @@ export class Contract {
                                                          value: { value: _descriptor_15.toValue(6n),
                                                                   alignment: _descriptor_15.alignment() } }] } },
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_9.toValue(tmp_0),
-                                                                                              alignment: _descriptor_9.alignment() }).encode() } },
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_11.toValue(tmp_0),
+                                                                                              alignment: _descriptor_11.alignment() }).encode() } },
                                        { dup: { n: 1 } },
                                        { dup: { n: 1 } },
                                        'member',
@@ -589,15 +589,15 @@ export class Contract {
     return [];
   }
   _persistentHash_0(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_11, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_10, value_0);
     return result_0;
   }
   _persistentHash_1(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_8, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_9, value_0);
     return result_0;
   }
   _persistentCommit_0(value_0, rand_0) {
-    const result_0 = __compactRuntime.persistentCommit(_descriptor_8,
+    const result_0 = __compactRuntime.persistentCommit(_descriptor_10,
                                                        value_0,
                                                        rand_0);
     return result_0;
@@ -620,12 +620,11 @@ export class Contract {
                                  recipient_0,
                                  fee_0)
   {
+    const key_0 = this._persistentHash_0([mintNonce_0, domainSep_0]);
     await this._folder_0(context,
                          partialProofData,
                          (async (context, partialProofData, t_0, i_0) =>
                           {
-                            const key_0 = this._persistentHash_1([mintNonce_0,
-                                                                  domainSep_0]);
                             __compactRuntime.queryLedgerState(context,
                                                               partialProofData,
                                                               [
@@ -679,7 +678,103 @@ export class Contract {
                           28n,
                           29n,
                           30n,
-                          31n]);
+                          31n,
+                          32n,
+                          33n,
+                          34n,
+                          35n,
+                          36n,
+                          37n,
+                          38n,
+                          39n,
+                          40n,
+                          41n,
+                          42n,
+                          43n,
+                          44n,
+                          45n,
+                          46n,
+                          47n,
+                          48n,
+                          49n,
+                          50n,
+                          51n,
+                          52n,
+                          53n,
+                          54n,
+                          55n,
+                          56n,
+                          57n,
+                          58n,
+                          59n,
+                          60n,
+                          61n,
+                          62n,
+                          63n,
+                          64n,
+                          65n,
+                          66n,
+                          67n,
+                          68n,
+                          69n,
+                          70n,
+                          71n,
+                          72n,
+                          73n,
+                          74n,
+                          75n,
+                          76n,
+                          77n,
+                          78n,
+                          79n,
+                          80n,
+                          81n,
+                          82n,
+                          83n,
+                          84n,
+                          85n,
+                          86n,
+                          87n,
+                          88n,
+                          89n,
+                          90n,
+                          91n,
+                          92n,
+                          93n,
+                          94n,
+                          95n,
+                          96n,
+                          97n,
+                          98n,
+                          99n,
+                          100n,
+                          101n,
+                          102n,
+                          103n,
+                          104n,
+                          105n,
+                          106n,
+                          107n,
+                          108n,
+                          109n,
+                          110n,
+                          111n,
+                          112n,
+                          113n,
+                          114n,
+                          115n,
+                          116n,
+                          117n,
+                          118n,
+                          119n,
+                          120n,
+                          121n,
+                          122n,
+                          123n,
+                          124n,
+                          125n,
+                          126n,
+                          127n]);
     __compactRuntime.queryLedgerState(context, partialProofData, [ 'ckpt']);
     const coin_0 = await this._mintShieldedToken_0(context,
                                                    partialProofData,
@@ -701,12 +796,11 @@ export class Contract {
                                recipient_0,
                                feeCoin_0)
   {
+    const key_0 = this._persistentHash_0([mintNonce_0, domainSep_0]);
     await this._folder_1(context,
                          partialProofData,
                          (async (context, partialProofData, t_0, i_0) =>
                           {
-                            const key_0 = this._persistentHash_1([mintNonce_0,
-                                                                  domainSep_0]);
                             __compactRuntime.queryLedgerState(context,
                                                               partialProofData,
                                                               [
@@ -760,7 +854,103 @@ export class Contract {
                           28n,
                           29n,
                           30n,
-                          31n]);
+                          31n,
+                          32n,
+                          33n,
+                          34n,
+                          35n,
+                          36n,
+                          37n,
+                          38n,
+                          39n,
+                          40n,
+                          41n,
+                          42n,
+                          43n,
+                          44n,
+                          45n,
+                          46n,
+                          47n,
+                          48n,
+                          49n,
+                          50n,
+                          51n,
+                          52n,
+                          53n,
+                          54n,
+                          55n,
+                          56n,
+                          57n,
+                          58n,
+                          59n,
+                          60n,
+                          61n,
+                          62n,
+                          63n,
+                          64n,
+                          65n,
+                          66n,
+                          67n,
+                          68n,
+                          69n,
+                          70n,
+                          71n,
+                          72n,
+                          73n,
+                          74n,
+                          75n,
+                          76n,
+                          77n,
+                          78n,
+                          79n,
+                          80n,
+                          81n,
+                          82n,
+                          83n,
+                          84n,
+                          85n,
+                          86n,
+                          87n,
+                          88n,
+                          89n,
+                          90n,
+                          91n,
+                          92n,
+                          93n,
+                          94n,
+                          95n,
+                          96n,
+                          97n,
+                          98n,
+                          99n,
+                          100n,
+                          101n,
+                          102n,
+                          103n,
+                          104n,
+                          105n,
+                          106n,
+                          107n,
+                          108n,
+                          109n,
+                          110n,
+                          111n,
+                          112n,
+                          113n,
+                          114n,
+                          115n,
+                          116n,
+                          117n,
+                          118n,
+                          119n,
+                          120n,
+                          121n,
+                          122n,
+                          123n,
+                          124n,
+                          125n,
+                          126n,
+                          127n]);
     __compactRuntime.queryLedgerState(context, partialProofData, [ 'ckpt']);
     const coin_0 = await this._mintShieldedToken_0(context,
                                                    partialProofData,
@@ -776,11 +966,11 @@ export class Contract {
     return true;
   }
   async _folder_0(context, partialProofData, f, x, a0) {
-    for (let i = 0; i < 32; i++) { x = await f(context, partialProofData, x, a0[i]); }
+    for (let i = 0; i < 128; i++) { x = await f(context, partialProofData, x, a0[i]); }
     return x;
   }
   async _folder_1(context, partialProofData, f, x, a0) {
-    for (let i = 0; i < 32; i++) { x = await f(context, partialProofData, x, a0[i]); }
+    for (let i = 0; i < 128; i++) { x = await f(context, partialProofData, x, a0[i]); }
     return x;
   }
 }
@@ -916,8 +1106,8 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'mintWithShieldedFee': '0df1dda9a7515b9787d9666f38abe519a14e08a6c815658fbc2319c1e7bd9b69',
-  'mintWithUnshieldedFee': 'f749439d8a8ee7b2e94045975b40b2e2c991d07896a11e69d8d5fcb40c47f548',
+  'mintWithShieldedFee': '849300e0248d13b5cdc5184f59d0675eaf49e54a6acfcd8af44a04440bba3820',
+  'mintWithUnshieldedFee': 'b8acc50ce33d8c78b92772dab776b7060185b13097aa6c342e2ccd1f805ed7d4',
 };
 
 export const circuitSignatures = {

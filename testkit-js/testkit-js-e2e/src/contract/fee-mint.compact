@@ -22,8 +22,8 @@ export circuit mintWithUnshieldedFee(
   recipient: ZswapCoinPublicKey,
   fee: Uint<128>
 ): Bytes<32> {
-  for (const i of 0..32) {
-    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  for (const i of 0..128) {
     counters.insertDefault(key);
   }
   kernel.checkpoint();
@@ -52,8 +52,8 @@ export circuit mintWithShieldedFee(
   recipient: ZswapCoinPublicKey,
   feeCoin: ShieldedCoinInfo
 ): Bytes<32> {
-  for (const i of 0..32) {
-    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+  for (const i of 0..128) {
     counters.insertDefault(key);
   }
   kernel.checkpoint();
