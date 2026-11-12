@@ -24,7 +24,14 @@ const OTHER_ADDRESS = `0200${'b2'.repeat(30)}`;
 
 /** A thunk for a module the tests never look inside; only its identity is asserted on. */
 const thunkFor = (tag: string): ModuleThunk => {
-  const module = { tag } as unknown as Module;
+  const module: Module = {
+    Contract: class {
+      readonly provableCircuits = {};
+    },
+    expectedVk: { [tag]: tag },
+    circuitSignatures: {},
+    declaredInterfaces: {}
+  };
   return () => Promise.resolve(module);
 };
 

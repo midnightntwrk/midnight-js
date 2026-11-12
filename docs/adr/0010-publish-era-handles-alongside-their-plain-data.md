@@ -2,368 +2,133 @@
 
 - Status: Accepted
 - Date: 2026-09-09
-- Deciders: Szymon Paluchowski
+- Related: [ADR 0004](./0004-lazy-v8-era-access-via-protocol-subpath.md),
+  [ADR 0009](./0009-share-era-neutral-result-bases-from-the-types-package.md),
+  [ADR 0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md),
+  [ADR 0024](./0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
 
 ## Context
 
-`@midnight-ntwrk/midnight-js-protocol` co-installs two ledger WASM toolchains —
-`@midnightntwrk/ledger-v9` for the current era and `@midnightntwrk/ledger-v8`
-for the retained pre-fork one — alongside the retained pre-fork execution
-toolchain (`compact-runtime@0.16` and `@midnight-ntwrk/onchain-runtime-v3`).
-The package exists to let a caller work with a record from either era without
-knowing which era it holds.
+`@midnightntwrk/midnight-js-protocol` installs two ledger WASM toolchains side by side:
+`@midnightntwrk/ledger-v9` for the current era and `@midnightntwrk/ledger-v8` for the retained
+pre-fork one, plus the retained execution toolchain (`compact-runtime` 0.16, installed as
+`compact-runtime-ledger8`, and `@midnight-ntwrk/onchain-runtime-v3`).
 
-The shape this repo first gave that package let no live WASM handle cross an
-era boundary at all, and drew the line so that a handle produced inside the
-retained pre-fork pipeline never left it. The framework's retained-era result
-types were shaped by that rule: the post-call contract state was absent from
-`Ledger8CallResultPublic` altogether, and the composed transaction was
-published as `txBytes` rather than as an `UnprovenTransaction`.
+A live WASM handle has three properties that make it risky to pass around:
 
-The cost of that rule landed on callers rather than on the framework. A caller
-who wanted the post-call state had to fetch and decode it again through
-`LedgerEra.extractState`, even though the pipeline had held the decoded state
-moments earlier and thrown it away. The same went for the state each call binds
-to, and for the state a retained constructor builds. In each case the framework
-held a usable object, encoded or discarded it, and the caller paid to rebuild
-something equivalent.
+- It is a pointer into one module instance's memory. Passed to another instance it throws where
+  `wasm-bindgen` checks (argument position) and silently misbehaves where it does not (receiver
+  position).
+- It does not survive `structuredClone`, a `postMessage` to a worker, or storage. Anything that
+  walks it sees `__wbg_ptr`, an integer that means nothing outside its module.
+- Two eras describe the same concept with two unrelated objects, so a caller cannot compare them.
 
-The properties that motivated that rule have not changed, and are the reason
-this ADR narrows it rather than deleting it:
-
-- A handle is a pointer into one module instance's linear memory. Passed to a
-  different instance it throws where `wasm-bindgen` checks (argument position)
-  and silently misbehaves where it does not (receiver position).
-- A handle does not survive `structuredClone`, a `postMessage` to a worker, or
-  serialization to storage. Anything that walks it sees `__wbg_ptr`, an integer
-  that means nothing outside its module.
-- Handles from two different eras describe the same concept with two unrelated
-  objects, so a caller cannot compare them.
+But hiding every handle also has a cost. If the framework held a decoded post-call state and threw
+it away, the caller had to fetch and decode the same state again.
 
 ## Decision
 
-We will publish era handles on the framework's ERA-SPECIFIC result types,
-**alongside** the plain-data members already there, and let the caller decide
-which to use. Concretely, on the retained-era surfaces:
+### Era-specific results carry handles and plain data side by side
 
-- `Ledger8CallResultPublic.nextContractState` carries the post-call state as
-  the retained runtime's own handle.
-- Each entry of the retained `calls` list carries BOTH states as handles, under
-  names that mean the same thing in both eras. `contractState` is the state the
-  call ENDED on, because that is what `compact-js` fills the current era's
-  member of that name from; the state the call BOUND to is published beside it
-  as `preContractState`, which the current era has no counterpart for.
-- The retained deploy publishes the constructor's state handle next to the
-  serialized bytes it composes from.
+On the framework's era-specific result types we publish the handle **alongside** a plain-data
+member for the same value. The caller chooses.
 
-Four rules bound this:
+- `Ledger9CallResultPublic.nextContractState` (`StateValue`) and
+  `Ledger8CallResultPublic.nextContractState` are live handles. Both results also carry
+  `nextContractStateEncoded`, an `EncodedStateValue` that survives cloning and storage.
+  Era-agnostic code reads the encoded member.
+- Each `Ledger8ContractCall` entry carries `public.contractState` (the state the call ended on,
+  as in the current era) and `public.preContractState` (the state the call bound to), each with an
+  `...Encoded` twin.
+- A handle is named as one: its doc comment says which runtime made it and that it is live, so a
+  reader learns the lifetime rule from the type.
 
-1. **Additive, never a replacement.** Every plain-data member the earlier rule
-   introduced as a substitute stays exactly where it is — `txBytes` alongside a
-   handle, `initialState` bytes (now `initialContractStateBytes`) alongside the
-   constructor's handle. A caller that clones, persists or ships a result keeps
-   a member it can use; nothing
-   that works today stops working.
-2. **`LedgerEra` still trades only plain data, in both directions.** That
-   facade's caller is era-agnostic by construction — it holds whichever era the
-   network answered with — so a handle there would be a value the caller cannot
-   type, compare or safely pass on. Every value on that surface is era-crossing
-   and is therefore encoded: `extractState` returns an `EncodedStateValue`,
-   `decodeContractState` a `ContractStatePojo`, `composeCallTx` a
-   `ComposeCallResultPojo` of bytes and the ledger's own declared transcript
-   algebra, `composeDeployTx` a `DeployResultPojo` of bytes and a string. Inward too —
-   `composeEraV8DeployTx` (`src/lib/v8/adapt.ts`) hands the contract state to
-   the v8-native deploy leg as BYTES, which that leg deserializes into its own
-   era rather than accepting a handle.
+Transactions and full ledger states are not handles on the `contracts` surface. The composed
+transaction is `unprovenTx`, a `LedgerTransaction` handle that holds bytes (ADR 0024). The
+deploy-time state is a `SerializedContractState` (ADR 0020): `Ledger8FoundDeployTxData` and
+`Ledger8FinalizedDeployTxData` carry it as `deployTxData.public.initialContractState`.
 
-   The `structuredClone` gate in
-   `packages/protocol/src/test/era-parity.test.ts` stays, but it DOCUMENTS the
-   rule rather than mechanising it: a `wasm-bindgen` instance is a plain object
-   with an own `__wbg_ptr` number, so it clones without throwing and the gate
-   records a meaningless value instead of failing. Closing that is its own
-   change; until then the rule rests on review, not on the gate.
-3. **`Ledger8Engine` may hand back pre-fork handles, because it is bound to the
-   pre-fork era and says so.** `DownConvertedState.data` is an
-   `onchain-runtime-v3` `ChargedState`; `TranscriptPojo` carries two of them;
-   `ConstructorResultPojo.contractState` is a pre-fork state handle. These
-   circulate within the retained pipeline and never leave it. The one method on
-   that surface which does cross, `wrapKeepStateCall`, encodes first —
-   `transcript.preContractState.data.state.encode()` (`src/lib/v9/wrap.ts`) —
-   so the pre-fork handle never reaches the ledger-v9 module, only the plain
-   value it encoded to.
-4. **A handle is named as one.** The declaring member says which runtime
-   produced it and that it is a live handle, so a reader learns the lifetime
-   rule from the type rather than from this document.
+### The deployer's data sits under `deployTxData` in both eras
 
-None of this is an immutability rule. `readonly` on a result's members freezes
-each reference, not the bytes behind it, so a value that survives a
-`structuredClone` is not thereby protected from a caller writing through the
-arrays it carries. Immutability, where this package needs it, is bought
-separately by freezing the object. For the same reason `readonly` and "Pojo" in
-a type name are not on their own evidence that a value is plain —
-`TranscriptPojo` is `readonly` throughout and still carries handles.
+Every found or deployed handle, in both eras, has `deployTxData: { era, public, private }`. The
+deploy record and `initialContractState` are under `public`; `signingKey` and
+`initialPrivateState` are under `private` (a deployed handle adds `initialZswapState`). A caller
+reads `deployTxData.public.txId` and `deployTxData.private.signingKey` without branching on the
+era. A found retained handle has `signingKey` and `initialPrivateState` present but possibly
+`undefined`. The retained key uses the current era's `SigningKey` type, in its
+`{ tag: 'schnorr', value }` form; the bare hex string the retained runtime signs with stays off the
+`contracts` surface.
+
+### `LedgerEraFacade` trades only plain data, in both directions
+
+`LedgerEraFacade` (`packages/protocol/src/lib/era/era.ts`) exists so a caller can work with a
+record without knowing its era. A handle there would be a value the caller cannot type, compare or
+pass on. So every value crossing it is encoded: `extractState` returns an `EncodedStateValue`,
+`decodeContractState` a `ContractStatePojo`, `composeCallTx` a `ComposeCallResultPojo`,
+`composeDeployTx` a `DeployResultPojo`. Inputs are bytes too: the v8 legs in
+`src/lib/v8/adapt.ts` deserialize `contractStateBytes` into their own era rather than accept a
+handle. `protocol-type-acl.test.ts` pins the member sets of `DeployResultPojo` and
+`ComposeCallResultPojo`.
+
+`Ledger8Engine` may return retained-era handles, because it is bound to the retained era and says
+so: `TranscriptPojo` and `ConstructorResultPojo` carry compact-js ledger-8 state handles. They stay
+inside the retained pipeline. Where a value leaves it, the engine encodes first:
+`wrapKeepStateCall` (`src/lib/v9/wrap.ts`) passes `transcript.preContractState.encode()` to
+ledger-v9, never the handle.
+
+The rule is enforced by `expectStructuredCloneable` (`packages/protocol/src/test/clone-assertions.ts`),
+used in `era-parity.test.ts` and `shared-contract-state.test.ts`. It walks a value for any object
+with an own `__wbg_ptr` and fails naming the path. A plain "`structuredClone` did not throw" check
+is not enough, because a handle clones without throwing. The walk reads own enumerable properties,
+array elements and `Map`/`Set` members. A handle behind a non-enumerable property or a prototype
+getter is not seen; that gap rests on review.
+
+### A member holding serialized bytes ends in `Bytes`
+
+A name like `contractState` can mean a handle, a plain object or bytes. So on the compose surface a
+member that holds serialized bytes ends in `Bytes`: `txBytes`, `contractStateBytes`,
+`ledgerParametersBytes`, `guaranteedZswapOfferBytes`, `initialContractStateBytes`,
+`guaranteedBytes` / `fallibleBytes`. `ComposeOptionError.option` (`ComposeOption`) uses the same
+names. `Encoded` is reserved for `EncodedStateValue`, the structured value `StateValue.encode()`
+returns. On the `contracts` surface serialized state is a `SerializedContractState` class, whose
+type already says it is bytes.
+
+### The decoded state carries the contract balance
+
+`ContractStatePojo` has a required `balance`, and `Ledger8CircuitOptions.contractState` is that
+pojo, so state and balance travel as one value. The balance is a `ReadonlyMap` with no handle in it,
+so it is plain data. It is required, not defaulted: an empty map is a real value (a contract holding
+nothing), and a default would make a missing balance look like zero. The chain then refuses the
+transcript because it re-runs the read against the real balance. For the same reason
+`decodeContractStateWith` refuses a state that resolves no usable balance. `maintenanceAuthority`
+stays off `DecodableContractState`: nothing reads it from a decoded state.
+
+`readonly` and "Pojo" in a name are not proof that a value is plain or immutable. `readonly`
+freezes references, not bytes, and `TranscriptPojo` is `readonly` throughout yet carries handles.
 
 ## Consequences
 
-- **Positive:** a caller reads what the pipeline computed instead of re-fetching
-  and re-decoding it; the retained era's public result stops being a subset of
-  the current era's for reasons the caller cannot see; the era key-set parity
-  gate's allow-list shrinks to absences that are about the retained toolchain
-  itself rather than about transport.
-- **Positive:** the encoded pair is published in BOTH eras. Rule 1 was first
-  applied to the retained era alone, which left `nextContractStateEncoded` in
-  the parity gate's allow-list under the claim that the current era "publishes
-  its post-state as a handle only, so there is nothing on that side for this to
-  pair with". `StateValue.encode()` exists, so the pair was available and had
-  simply not been built. The current-era result carries it too and the
-  allow-list entry is gone, which is what makes the encoded form the member
-  era-agnostic code can read without branching -- the point of rule 1, and one
-  that did not hold while a single era obeyed it.
-- **Negative:** one encode per current-era call, paid whether or not the caller
-  reads the member. The retained era already paid its equivalent, and the cost
-  buys the branch-free read above.
-- **Negative:** a result object is no longer uniformly cloneable. Calling
-  `structuredClone`, `postMessage` or a JSON/superjson serializer on a whole
-  retained result now throws or, worse, records a meaningless `__wbg_ptr`.
-  Callers that persist results must pick the plain-data members explicitly.
-- **Negative:** a published handle ties that result's usefulness to the module
-  instance that produced it. ADR-0004's single-path rule keeps one instance per
-  era in this framework, but a consumer that installs a second copy of the
-  retained runtime can now reach the dual-instantiation failure through a
-  result object, which the plain-data-only rule made unreachable.
-- **Negative:** the two eras' results are less comparable member for member,
-  because the handle types differ per era by construction.
-- **Follow-ups:** a new operation on `LedgerEra` must return plain data; a new
-  one on `Ledger8Engine` may return a pre-fork handle only if it stays inside
-  the retained pipeline, and must encode at the point it does not.
-  `Ledger8CallResultPrivate` still publishes only `txBytes` and no live
-  `UnprovenTransaction`: deserializing one eagerly would pay ledger-v8
-  deserialization on every call for an object most callers never read, and a
-  caller who wants it can build it from the bytes through the same public
-  loader the framework uses. Publishing it is a decision to take on its own
-  evidence, not a gap this ADR leaves open by oversight.
+- A caller reads what the pipeline computed instead of fetching and decoding it again.
+- The encoded twin exists in both eras, so era-agnostic code reads it without branching. It costs
+  one encode per call, paid whether or not the caller reads it.
+- A whole result object is not cloneable. `structuredClone`, `postMessage` or a serializer on it
+  throws or stores a meaningless `__wbg_ptr`. Callers that persist results must pick the
+  plain-data members.
+- A published handle ties the result to the module instance that made it. A consumer that installs
+  a second copy of the retained runtime can hit the dual-instantiation failure through a result
+  object (see ADR 0004).
+- A new operation on `LedgerEraFacade` must return plain data. A new one on `Ledger8Engine` may
+  return a retained handle only if it stays inside the retained pipeline.
 
 ## Alternatives considered
 
-- **Keep the plain-data-only rule everywhere, as first written.** Rejected by
-  the owner: on the era-specific surfaces it was costing callers access to
-  values the framework already had, and the transport concerns it protects
-  against are ones a caller can be told about rather than be prevented from
-  reaching.
-- **Replace the plain-data members with handles.** Rejected: it would break
-  every caller that clones, persists or transfers a result, and would remove
-  the only members that work across a worker boundary.
-- **Publish handles on `LedgerEra` too.** Rejected: that surface exists to let
-  a caller work with a record without knowing its era, and a handle there has
-  no type the caller could name for both eras. It would also tie a result's
-  lifetime to its module and reintroduce, between two eras that are distinct
-  modules by design, the cross-copy failure ADR-0004's single-path rule exists
-  to prevent.
-- **Plain data everywhere, including inside `Ledger8Engine`.** Rejected: the
-  retained pipeline is three steps in one era, and encoding between each would
-  buy nothing. The cost is real — `downConvertForExecution` already re-encodes
-  once for its integrity check — and there is no boundary there to protect.
-- **Deep-freeze every result instead of publishing the encoded twin.**
-  Rejected: it answers a different question. Freezing stops a caller mutating a
-  value; it does nothing about module lifetime, cloneability or cross-era
-  comparability, which are what the transport rule is for.
-
-## Amendment — the transport rule is now mechanised, not merely documented (2026-09-23)
-
-The decision above stands unchanged. This note records that the gap point 2
-left open has been closed.
-
-Point 2 closed with:
-
-> The `structuredClone` gate in
-> `packages/protocol/src/test/era-parity.test.ts` stays, but it DOCUMENTS the
-> rule rather than mechanising it: a `wasm-bindgen` instance is a plain object
-> with an own `__wbg_ptr` number, so it clones without throwing and the gate
-> records a meaningless value instead of failing. Closing that is its own
-> change; until then the rule rests on review, not on the gate.
-
-That change has landed. `expectStructuredCloneable`
-(`packages/protocol/src/test/clone-assertions.ts`) replaces
-`expect(() => structuredClone(x)).not.toThrow()` at every call site — the
-`LedgerEra` method sweep in `era-parity.test.ts` and the decoder result in
-`shared-contract-state.test.ts`. It walks the value's own structure for an
-object carrying an own `__wbg_ptr` and throws naming the path it found one at.
-A `wasm-bindgen` instance carries that property whether it is live or has
-already collapsed under a clone, so both shapes are rejected.
-
-Three things this does NOT change:
-
-- **`structuredClone` is still called**, and still for its own throw — a
-  function or a live proxy genuinely cannot cross a boundary. What is retired
-  is treating "did not throw" as evidence that anything crossed intact.
-- **The rule itself is unchanged.** Point 2 governs the `LedgerEra` facade, and
-  every member it names still carries plain data for the same reasons.
-- **The gate is a test, not a type.** It runs on the values these suites
-  actually produce; nothing stops a new member from carrying a handle until a
-  test exercises it.
-
-What is still NOT mechanised, and still rests on review: the walk reads own
-ENUMERABLE properties, plus `Map` and `Set` members and array elements. A
-handle behind a non-enumerable own property, or behind a prototype getter of a
-containing object, is not reached. The helper's own doc comment states this;
-closing it fully is not practical, and the values guarded here are decoded
-plain objects whose members are ordinary own enumerable properties.
-
-So point 2's sentence "the rule rests on review, not on the gate" should now be
-read as applying only to those unreachable shapes. For everything the walk
-reaches, deleting the plain-data guarantee makes a test fail. The walk is itself
-guarded: `era-parity.test.ts` asserts it rejects a collapsed-handle shape that
-the previous form accepted, and a handle behind a `Set`, behind a `Map` value,
-and used as a `Map` key — each with the path in the message, so a dead walk
-cannot stay green.
-
-## Amendment — the decoded pojo now carries the contract balance (2026-09-24)
-
-The decision above stands unchanged. This note records a **breaking** addition
-to the plain-data side of it, and why the rule permitted it.
-
-`ContractStatePojo` gains a required `balance` member, and
-`ExecuteCircuitOptions` — the retained engine's `executeCircuit` option bag,
-published from the barrel and from the `./engine` subpath — gains a required
-`balance` option. Both are additive in shape and breaking in practice: a
-consumer that builds an `ExecuteCircuitOptions` by hand stops compiling, and one
-that builds a `ContractStatePojo` by hand does too.
-
-**Why it belongs on the plain-data side.** The balance is a
-`ReadonlyMap<TokenType, bigint>` keyed by string-tagged objects. Nothing in it
-is a live WASM handle, so it satisfies the transport rule the same way the
-encoded state and the entry points do, and it is guarded by the same walk — the
-`expectStructuredCloneable` assertion in `shared-contract-state.test.ts` is made
-on the balance itself, not only on the pojo containing it.
-
-**Why the option is required rather than defaulted.** An empty balance is a
-legitimate value: a contract holding nothing has one. Defaulting would make
-"holds nothing" indistinguishable from "the caller did not carry one", and the
-second answers every balance read with zero — a transcript the chain refuses,
-because it re-runs the read against the balance the contract really holds. That
-is the defect this amendment's change fixes (#1345). The same reasoning applies
-to the decoder: `decodeContractStateWith` refuses a state that resolves no
-usable balance rather than substituting an empty map.
-
-**What this does NOT change.** `maintenanceAuthority` stays absent from
-`DecodableContractState` for the reason it always was — nothing reads it off a
-decoded state. The addition here is not a general licence to carry ledger fields
-"in case"; it is the one field an execution path demonstrably could not run
-without.
-
-## Amendment — the retained deployed handle keeps its flat layout, and bytes are named as bytes (2026-10-07)
-
-The decision above stands. This note settles where the retained deployed
-handle keeps the deployer's data, and how a member holding serialized bytes
-is named.
-
-**The layout stays as it is.** The current era nests the deployer's data under
-`deployTxData.private` (`signingKey`, `initialPrivateState`,
-`initialZswapState`) and `deployTxData.public` (`initialContractState`).
-`Ledger8DeployedContract` carries the same facts at the top level. Both eras
-hold every fact; they disagree only about the path. The two paths are
-documented in the v5.0.0 migration guide.
-
-Moving the retained members under `deployTxData` was rejected. It would not
-give a caller one path across the eras: the retained `deployTxData` is the read
-surface's flat `VersionedFinalizedTxData`, so `txId` already sits at a
-different path from the current era's `deployTxData.public.txId`, and
-`Ledger8DeployedContract` extends `Ledger8FoundContract`, whose `signingKey`
-has to stay at the top level: a found handle's `deployTxData` is that same read
-record, which has no private half to nest a key in. The change would
-mix two record shapes in one object and still leave the caller branching on
-`era`. Hoisting the current era's members to the top level was rejected
-because it breaks every current-era caller. The divergence ends with the
-retained era itself.
-
-**A serialized member is named with a `Bytes` suffix.** A name that also
-belongs to a live handle somewhere in the framework does not say which of the
-two a member holds, and `contractState` was a live handle, a POJO and bytes in
-different places. A member that holds serialized bytes therefore ends in
-`Bytes`, as `txBytes` already did. `Encoded` is NOT used for bytes: it already
-names `EncodedStateValue`, the structured value `StateValue.encode()` returns,
-on `nextContractStateEncoded`. Renamed under this rule:
-
-| Type | Was | Now |
-|---|---|---|
-| `Ledger8DeployedContract` (contracts) | `initialState` | `initialContractStateBytes` |
-| `ComposeCallEntry`, `ComposeDeployOptions` (protocol) | `contractState` | `contractStateBytes` |
-| `ComposeDeployOptions` (protocol) | `guaranteedZswapOffer` | `guaranteedZswapOfferBytes` |
-| `ZswapOfferFactory` result (protocol) | `guaranteed`, `fallible` | `guaranteedBytes`, `fallibleBytes` |
-| `ComposeCallResultPojo`, `DeployResultPojo` (protocol) | `transaction` | `txBytes` |
-| `DeployResultPojo` (protocol) | `initialState` | `initialContractStateBytes` |
-| `ComposeCallEntry`, `ComposeV8CallOptions`, `WrapKeepStateCallOptions` (protocol) | `ledgerParameters` | `ledgerParametersBytes` |
-| `ComposeOption`, the `option` on `ComposeOptionError` (protocol) | `'contractState'`, `'ledgerParameters'` | `'contractStateBytes'`, `'ledgerParametersBytes'` |
-
-`ComposeOptionError.option` names the field that was unusable, so a deploy
-whose offer bytes are rejected now reports `'guaranteedZswapOfferBytes'`. A
-call keeps `'zswapOffer'`, because there the option really is the `zswapOffer`
-factory.
-
-The rule covers the compose surface and the retained deploy handle. Two
-`Uint8Array` members of `RawContractState` in `packages/types` keep their
-names: `raw` already says what it is, and `ledgerParameters` sits beside it in
-a type whose name says its members are undecoded. Renaming either would be a
-breaking change to the package every other package depends on, for no gain in
-clarity.
-
-`packages/protocol/src/test/protocol-type-acl.test.ts` pins the member sets of
-`DeployResultPojo` and `ComposeCallResultPojo`, so a member added to either --
-a live handle in particular -- fails the build.
-
-`packages/protocol/src/test/v8-deploy.test.ts` pins that
-`initialContractStateBytes` and the constructor's handle are the same state:
-given the verifier keys the deploy registers, the bytes the deploy derives the
-address from are byte-identical to the handle serialized.
-
-## Amendment — the retained deploy record moves under `public` (2026-10-16)
-
-Issue #1508. `Ledger8FoundContract.deployTxData` is `{ public: VersionedFinalizedTxData }`,
-not the flat record. The deploy record now sits at `deployTxData.public` in both eras, so
-`deployTxData.public.txId` and `deployTxData.public.version` read the same on every found or
-deployed handle, and `AnyEraFoundContract` / `AnyEraDeployedContract` can be read without
-branching on `era` for the record.
-
-Only the record moves. The rest of the note above stands: the retained handle keeps
-`signingKey`, `initialPrivateState`, `initialZswapState` and the initial contract state at the
-top level, because a found handle's `deployTxData` still has no private half.
-
-## Amendment — the deployer's data moves under `deployTxData` (2026-10-16)
-
-Issue #1514. This supersedes "The layout stays as it is" above and the last paragraph of the
-#1508 amendment. Both rested on one fact: a found handle's `deployTxData` had no private half to
-nest a key in. It now has one. `Ledger8FoundContract.deployTxData` is
-`{ era: 'v8', public: VersionedFinalizedTxData & { contractAddress }, private: { signingKey,
-initialPrivateState } }`, where `initialPrivateState` is `undefined` for an attach that named no
-private-state id, and `Ledger8DeployedContract.deployTxData` adds `initialContractState`
-and `initialContractStateBytes` to `public` and `initialZswapState` to `private`. The top-level
-members are removed.
-
-`deployTxData` therefore has the same shape on every found or deployed handle in both eras, so
-`deployTxData.private.signingKey` reads without branching on `era`. The retained key is published
-as the current era's `SigningKey`, `{ tag: 'schnorr', value }`, which is the shape the store
-already holds it in; the bare hex string the retained runtime signs with stays off the `contracts`
-surface. A deployed handle's record is typed as the ledger 8 one, because a retained-era deploy runs
-only on a pre-fork head.
-
-The handle-and-bytes rule above is unchanged: `initialContractState` and
-`initialContractStateBytes` both stay, now under `deployTxData.public`.
-
-## Amendment — the retained call result carries a transaction handle (2026-10-26)
-
-Issue #1533, recorded in [ADR-0019](./0019-carry-transactions-as-opaque-era-carrying-handles.md).
-`Ledger8CallResultPrivate` no longer publishes the composed transaction as bytes. It carries
-`unprovenTx: UnprovenTx`, a transaction handle: a v8 handle before the fork, a v9 handle after it.
-Every package from `types` up now speaks transaction handles in its public API. The rule for
-`LedgerEra` is unchanged: it still returns plain data, including the composed transaction's bytes.
-
-## Amendment — the read surface hands out no state handle (2026-10-28)
-
-Issue #1550, recorded in [ADR-0020](./0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-`getAnyEraContractState` and `AnyEraContractState` are removed, and with them the plain-data read
-of a contract state from `contracts`. `PublicDataProvider` now returns every state as a
-`LedgerState` of bytes, decoded by the caller's own runtime. The note above on the `Uint8Array`
-members of `RawContractState` no longer applies: that type is removed. The internal
-`Ledger8SnapshotBytes` in `contracts` reuses the member names `raw` and `ledgerParameters`; it is
-not public, so this ADR's naming rule does not bind it. The rules for the retained-era result types
-and for `LedgerEra` are unchanged.
+- **Plain data only, everywhere.** Rejected: on era-specific results it denied callers values the
+  framework already had. The transport risks can be documented instead.
+- **Handles instead of plain data.** Rejected: it breaks every caller that clones, persists or
+  sends a result to a worker.
+- **Handles on `LedgerEraFacade` too.** Rejected: the caller there does not know the era, so no
+  type could name the handle for both eras.
+- **Plain data inside `Ledger8Engine` as well.** Rejected: the retained pipeline runs in one era
+  and there is no boundary to protect between its steps.
+- **Deep-freeze results instead of publishing the encoded twin.** Rejected: freezing stops
+  mutation; it does nothing for module lifetime, cloneability or cross-era comparison.

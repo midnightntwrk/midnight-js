@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
 import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -133,6 +134,17 @@ const validateSalt = (salt: string): void => {
   }
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
+  }
+};
+
+const validateSigningKeyAddress = (address: string): void => {
+  try {
+    assertIsContractAddress(address);
+  } catch (error: unknown) {
+    if (!(error instanceof InvalidArgumentError)) {
+      throw error;
+    }
+    throw new InvalidExportFormatError(`Invalid contract address in import: ${error.message}`);
   }
 };
 
@@ -373,28 +385,31 @@ export const inMemoryPrivateStateProvider = <
      * @param {ContractAddress} address - The contract address.
      * @param {SigningKey} signingKey - The signing key to set.
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+    async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      assertIsContractAddress(address);
       signingKeys[storedAddress(address)] = signingKey;
-      return Promise.resolve();
     },
     /**
      * Gets the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      const value = signingKeys[storedAddress(address)] ?? null;
-      return Promise.resolve(value);
+    async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      assertIsContractAddress(address);
+      return signingKeys[storedAddress(address)] ?? null;
     },
     /**
      * Removes the signing key for a given contract address.
      * @param {ContractAddress} address - The contract address.
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
+     * @throws {InvalidArgumentError} If `address` is not a contract address.
      */
-    removeSigningKey(address: ContractAddress): Promise<void> {
+    async removeSigningKey(address: ContractAddress): Promise<void> {
+      assertIsContractAddress(address);
       delete signingKeys[storedAddress(address)];
-      return Promise.resolve();
     },
     /**
      * Clears all signing keys.
@@ -514,6 +529,7 @@ export const inMemoryPrivateStateProvider = <
       }
 
       for (const address of addresses) {
+        validateSigningKeyAddress(address);
         validateSigningKeyValue(payload.keys[address]);
       }
 

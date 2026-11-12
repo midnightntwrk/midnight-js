@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0**](../../../README.md)
 
 ***
 
@@ -261,8 +261,9 @@ record it finalizes as carries the era that produced it. Providers take the
 same transaction handle in both eras, which is why
 `Ledger8ContractProviders` is the ordinary provider set keyed by a retained-era
 circuit id, and why there is no separate retained-era provider surface. Both
-follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md` and
-`docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md`.
+follow from `docs/adr/0006-version-tagged-payloads-at-provider-seams.md`,
+`docs/adr/0014-build-provider-seams-from-per-era-handlers.md` and
+`docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md`.
 
 ## The weak-type trap in the shared options reader
 

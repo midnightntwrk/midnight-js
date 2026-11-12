@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-rc.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0**](../../../../README.md)
 
 ***
 
@@ -39,6 +39,10 @@ Signing keys are not touched; see [PrivateStateProvider.clearSigningKeys](#clear
 
 `Promise`\<`void`\>
 
+#### Throws
+
+If the password does not match the store. Nothing is removed then.
+
 ***
 
 ### clearSigningKeys()
@@ -50,6 +54,10 @@ Remove all contract signing keys.
 #### Returns
 
 `Promise`\<`void`\>
+
+#### Throws
+
+If the password does not match the store. Nothing is removed then.
 
 ***
 
@@ -148,6 +156,10 @@ The stored signing key, or `null` if either:
 
 #### Throws
 
+If `address` is not a valid contract address.
+
+#### Throws
+
 If the password returned by the configured password provider does
   not satisfy the minimum strength policy. Validation runs on every
   invocation against the password returned by the provider — it is not
@@ -155,16 +167,11 @@ If the password returned by the configured password provider does
 
 #### Throws
 
-If decryption of the stored value fails (wrong password, salt
-  mismatch, unsupported encryption version, or authentication tag
-  mismatch). Decryption errors are propagated to the caller and do **not**
-  collapse to `null`.
-
-#### Throws
-
-If a concurrent password rotation does not release its lock
-  within the internal default timeout (5 minutes on the read path; the
-  read path does not expose a configuration knob).
+If the password does not match the store, even when no value is
+  stored, or if decryption of the stored value fails (salt mismatch,
+  unsupported encryption version, or authentication tag mismatch).
+  Decryption errors are propagated to the caller and do **not** collapse
+  to `null`.
 
 #### Throws
 
@@ -217,7 +224,8 @@ If decryption fails (wrong password or corrupted data).
 
 #### Throws
 
-If the export format is invalid or unsupported.
+If the export format is invalid or unsupported, or it
+  holds an address that is not a valid contract address. Nothing is imported then.
 
 #### Throws
 
@@ -254,6 +262,14 @@ The address of the contract for which to delete the signing key.
 
 `Promise`\<`void`\>
 
+#### Throws
+
+If `address` is not a valid contract address.
+
+#### Throws
+
+If the password does not match the store. Nothing is removed then.
+
 ***
 
 ### setSigningKey()
@@ -279,3 +295,7 @@ The signing key to store.
 #### Returns
 
 `Promise`\<`void`\>
+
+#### Throws
+
+If `address` is not a valid contract address.

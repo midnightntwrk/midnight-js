@@ -53,6 +53,7 @@ import {
   decryptValue,
   getPasswordFromProvider,
   type PrivateStoragePasswordProvider,
+  readEmbeddedSalt,
   StorageEncryption,
   timingSafeEqual
 } from './storage-encryption';
@@ -336,26 +337,83 @@ interface EncryptionCacheEntry {
  */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
-const readOrCreateSalt = async (subLevel: StringSubLevel): Promise<Buffer> => {
+const KEY_CHECK_PLAINTEXT = 'midnight-private-state-key-check';
+
+interface StoreMetadata {
+  readonly salt: string;
+  readonly version: number;
+  readonly keyCheck?: string;
+}
+
+const readMetadata = async (subLevel: StringSubLevel): Promise<StoreMetadata | undefined> => {
   try {
     const metadataJson = await subLevel.get(METADATA_KEY);
-    if (metadataJson) {
-      const metadata = JSON.parse(metadataJson);
-      return Buffer.from(metadata.salt, 'hex');
-    }
+    return metadataJson ? JSON.parse(metadataJson) : undefined;
   } catch (error: unknown) {
-    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND')) {
-      throw error;
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+};
+
+const findEncryptedRecord = async (subLevel: StringSubLevel): Promise<string | undefined> => {
+  for await (const [key, value] of subLevel.iterator()) {
+    if (key !== METADATA_KEY && StorageEncryption.isEncrypted(value)) {
+      return value;
     }
   }
+  return undefined;
+};
 
-  const salt = Buffer.from(randomBytes(32));
-  const metadata = {
-    salt: salt.toString('hex'),
-    version: 1
+interface StoreSalt {
+  readonly salt: Buffer;
+  readonly unverifiedRecord?: string;
+}
+
+const resolveStoreSalt = async (subLevel: StringSubLevel, metadata: StoreMetadata | undefined): Promise<StoreSalt> => {
+  if (metadata?.keyCheck !== undefined) {
+    return { salt: Buffer.from(metadata.salt, 'hex') };
+  }
+  const record = await findEncryptedRecord(subLevel);
+  if (metadata !== undefined) {
+    return { salt: Buffer.from(metadata.salt, 'hex'), unverifiedRecord: record };
+  }
+  return {
+    salt: record === undefined ? Buffer.from(randomBytes(32)) : readEmbeddedSalt(record),
+    unverifiedRecord: record
   };
-  await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
-  return salt;
+};
+
+const isWrongKeyError = (error: unknown): boolean =>
+  error instanceof PrivateStateDecryptionError && error.reason === 'wrong-key';
+
+const verifyKeyCheck = async (encryption: StorageEncryption, keyCheck: string): Promise<void> => {
+  let plaintext: string;
+  try {
+    plaintext = await encryption.decrypt(keyCheck);
+  } catch (error: unknown) {
+    if (isWrongKeyError(error)) {
+      throw new PrivateStateDecryptionError('The password does not match this store', 'wrong-key', { cause: error });
+    }
+    throw error;
+  }
+  if (plaintext !== KEY_CHECK_PLAINTEXT) {
+    throw new PrivateStateDecryptionError('The password does not match this store', 'wrong-key');
+  }
+};
+
+const verifyPasswordOpensRecord = async (
+  record: string,
+  password: string,
+  storeEncryption: StorageEncryption,
+  cryptoBackend?: CryptoBackendType,
+): Promise<void> => {
+  const recordSalt = readEmbeddedSalt(record);
+  const recordEncryption = recordSalt.equals(storeEncryption.getSalt())
+    ? storeEncryption
+    : await StorageEncryption.create(password, { existingSalt: recordSalt, cryptoBackend });
+  await recordEncryption.decryptWithPassword(record, password);
 };
 
 const resolveEncryption = async (
@@ -364,17 +422,32 @@ const resolveEncryption = async (
   passwordProvider: PrivateStoragePasswordProvider,
   cryptoBackend?: CryptoBackendType,
 ): Promise<StorageEncryption> => {
-  const salt = await readOrCreateSalt(subLevel);
-  const saltHex = salt.toString('hex');
   const password = await getPasswordFromProvider(passwordProvider);
+  const metadata = await readMetadata(subLevel);
+  const { salt, unverifiedRecord } = await resolveStoreSalt(subLevel, metadata);
+  const saltHex = salt.toString('hex');
   const fingerprint = computePasswordFingerprint(password, saltHex);
 
   const cached = encryptionCache.get(cacheKey);
-  if (cached && cached.saltHex === saltHex && timingSafeEqual(fingerprint, cached.passwordFingerprint)) {
-    return cached.encryption;
+  const encryption = cached && cached.saltHex === saltHex && timingSafeEqual(fingerprint, cached.passwordFingerprint)
+    ? cached.encryption
+    : await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
+
+  if (metadata?.keyCheck !== undefined) {
+    await verifyKeyCheck(encryption, metadata.keyCheck);
+  } else {
+    if (unverifiedRecord !== undefined) {
+      await verifyPasswordOpensRecord(unverifiedRecord, password, encryption, cryptoBackend);
+    }
+    const upgraded: StoreMetadata = {
+      ...metadata,
+      salt: saltHex,
+      version: metadata?.version ?? 1,
+      keyCheck: await encryption.encrypt(KEY_CHECK_PLAINTEXT)
+    };
+    await subLevel.put(METADATA_KEY, JSON.stringify(upgraded));
   }
 
-  const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
   encryptionCache.set(cacheKey, { encryption, saltHex, passwordFingerprint: fingerprint });
   return encryption;
 };
@@ -394,9 +467,6 @@ interface RotateStorePasswordParams {
   readonly maxEntries: number;
 }
 
-const isWrongKeyError = (error: unknown): boolean =>
-  error instanceof PrivateStateDecryptionError && error.reason === 'wrong-key';
-
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
 ): Promise<PasswordRotationResult> => {
@@ -409,10 +479,22 @@ const rotateStorePassword = async (
       const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
       const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
-      const salt = await readOrCreateSalt(subLevel);
+      const metadata = await readMetadata(subLevel);
+      const { salt } = await resolveStoreSalt(subLevel, metadata);
       const oldEncryption = await StorageEncryption.create(oldPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
       const newEncryption = await StorageEncryption.create(newPassword, { cryptoBackend: ctx.cryptoBackend });
       const newSalt = newEncryption.getSalt();
+
+      if (metadata?.keyCheck !== undefined) {
+        try {
+          await verifyKeyCheck(oldEncryption, metadata.keyCheck);
+        } catch (error: unknown) {
+          if (isWrongKeyError(error)) {
+            throw new InvalidArgumentError('Old password is incorrect: failed to decrypt existing data', { cause: error });
+          }
+          throw error;
+        }
+      }
 
       const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
       let firstEntryValidated = false;
@@ -453,10 +535,6 @@ const rotateStorePassword = async (
         }
       }
 
-      if (entriesToMigrate.length === 0) {
-        return { entriesMigrated: 0 };
-      }
-
       const operations: { type: 'put'; key: string; value: string }[] = [];
       for (const { key, decryptedValue } of entriesToMigrate) {
         try {
@@ -472,11 +550,12 @@ const rotateStorePassword = async (
         }
       }
 
-      const metadata = {
+      const newMetadata: StoreMetadata = {
         salt: newSalt.toString('hex'),
-        version: 1
+        version: 1,
+        keyCheck: await newEncryption.encrypt(KEY_CHECK_PLAINTEXT)
       };
-      operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
+      operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(newMetadata) });
 
       try {
         await subLevel.batch(operations);
@@ -657,6 +736,17 @@ const validateSalt = (salt: string): void => {
   }
 };
 
+const validateSigningKeyAddress = (address: string): void => {
+  try {
+    assertIsContractAddress(address);
+  } catch (error: unknown) {
+    if (!(error instanceof InvalidArgumentError)) {
+      throw error;
+    }
+    throw new InvalidExportFormatError(`Invalid contract address in import: ${error.message}`);
+  }
+};
+
 const validateSigningKeyValue = (value: unknown): void => {
   if (!isValidSigningKey(value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
@@ -773,6 +863,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   showBrowserWarning();
 
+  const verifyStorePassword = async (subLevel: StringSubLevel, levelName: string): Promise<void> => {
+    await resolveEncryption(subLevel, `${ctx.dbName}:${levelName}`, passwordProvider, ctx.cryptoBackend);
+  };
+
   const contractPrivateStates = (contractAddress: ContractAddress): ContractPrivateStates<PSI, PS> => {
     const prefix = `${contractAddress}:`;
     const view: ContractPrivateStates<PSI, PS> = {
@@ -787,9 +881,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       async remove(privateStateId: PSI): Promise<void> {
         const { privateState } = scopedNames;
         const scopedKey = `${prefix}${privateStateId}`;
-        return withSubLevel<void>(ctx, privateState, (subLevel) =>
-          subLevel.del(scopedKey),
-        );
+        return withSubLevel<void>(ctx, privateState, async (subLevel) => {
+          await verifyStorePassword(subLevel, privateState);
+          await subLevel.del(scopedKey);
+        });
       },
       /** {@inheritDoc ContractPrivateStates.set} */
       async set(privateStateId: PSI, state: PS): Promise<void> {
@@ -812,6 +907,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       async clear(): Promise<void> {
         const { privateState } = scopedNames;
         return withSubLevel(ctx, privateState, async (subLevel) => {
+          await verifyStorePassword(subLevel, privateState);
           const keys = (await subLevel.keys().all()).filter((key) => key.startsWith(prefix));
           await subLevel.batch(keys.map((key) => ({ type: 'del' as const, key })));
         });
@@ -987,9 +1083,25 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   };
 
   const hasStoredSigningKey = (address: ContractAddress): Promise<boolean> =>
-    withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) =>
-      (await subLevel.get(storedAddress(address))) !== undefined
-    );
+    withSubLevel<boolean>(ctx, scopedNames.signingKey, async (subLevel) => {
+      await verifyStorePassword(subLevel, scopedNames.signingKey);
+      return (await subLevel.get(storedAddress(address))) !== undefined;
+    });
+
+  const writeSigningKey = (address: ContractAddress, signingKey: SigningKey): Promise<void> => {
+    const { signingKey: signingKeyLevelName } = scopedNames;
+    const serialized = superjson.stringify(signingKey);
+
+    return withSubLevel<void>(ctx, signingKeyLevelName, async (subLevel) => {
+      const encryption = await resolveEncryption(
+        subLevel,
+        `${ctx.dbName}:${signingKeyLevelName}`,
+        passwordProvider,
+        ctx.cryptoBackend
+      );
+      await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
+    });
+  };
 
   return {
     /** {@inheritDoc PrivateStateProvider.forContract} */
@@ -1000,40 +1112,39 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.clearAll} */
     async clearAll(): Promise<void> {
       const { privateState } = scopedNames;
-      return withSubLevel(ctx, privateState, (subLevel) => subLevel.clear());
+      return withSubLevel(ctx, privateState, async (subLevel) => {
+        await verifyStorePassword(subLevel, privateState);
+        await subLevel.clear();
+      });
     },
     /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      assertIsContractAddress(address);
       const { signingKey } = scopedNames;
       const stored = await subLevelMaybeGet<ContractAddress, unknown>(ctx, signingKey, storedAddress(address), passwordProvider);
       return stored === null ? null : readStoredSigningKey(stored, address);
     },
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
+      assertIsContractAddress(address);
       const { signingKey } = scopedNames;
-      return withSubLevel<void>(ctx, signingKey, (subLevel) =>
-        subLevel.del(storedAddress(address)),
-      );
+      return withSubLevel<void>(ctx, signingKey, async (subLevel) => {
+        await verifyStorePassword(subLevel, signingKey);
+        await subLevel.del(storedAddress(address));
+      });
     },
     /** {@inheritDoc PrivateStateProvider.setSigningKey} */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      const { signingKey: signingKeyLevelName } = scopedNames;
-      const serialized = superjson.stringify(signingKey);
-
-      return withSubLevel<void>(ctx, signingKeyLevelName, async (subLevel) => {
-        const encryption = await resolveEncryption(
-          subLevel,
-          `${ctx.dbName}:${signingKeyLevelName}`,
-          passwordProvider,
-          ctx.cryptoBackend
-        );
-        await subLevel.put(storedAddress(address), await encryption.encrypt(serialized));
-      });
+      assertIsContractAddress(address);
+      return writeSigningKey(address, signingKey);
     },
     /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
       const { signingKey } = scopedNames;
-      return withSubLevel(ctx, signingKey, (subLevel) => subLevel.clear());
+      return withSubLevel(ctx, signingKey, async (subLevel) => {
+        await verifyStorePassword(subLevel, signingKey);
+        await subLevel.clear();
+      });
     },
 
     /** {@inheritDoc PrivateStateProvider.exportSigningKeys} */
@@ -1140,6 +1251,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       for (const address of addresses) {
+        validateSigningKeyAddress(address);
         validateSigningKeyValue(payload.keys[address]);
       }
 
@@ -1172,7 +1284,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           }
         }
 
-        await this.setSigningKey(address, signingKey);
+        await writeSigningKey(address, signingKey);
 
         if (!exists) {
           imported++;

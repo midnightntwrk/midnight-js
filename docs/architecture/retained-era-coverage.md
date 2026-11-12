@@ -155,7 +155,7 @@ where the same alias *does* collapse the two names. `consumer-e2e/personas.mjs` 
 and why it is needed; the isolated linker is what the lane actually runs under.
 
 The rule the fix follows: **a transaction crosses into another ledger copy as bytes, and the receiver
-inflates them with its own module** (ADR 0019). `adoptInWallet` serializes the framework's handle and
+inflates them with its own module** (ADR 0024). `adoptInWallet` serializes the framework's handle and
 decodes it with the SDK's copy, in both eras; `finalizedFromWallet` returns the bytes of the SDK's
 answer, and the wallet provider factory seals them in the era the transaction was handed over in and
 decodes them once (ADR 0024). The SDK's v8 copy is loaded through the SDK's own `./ledger/v8` subpath — by definition

@@ -79,8 +79,8 @@ On-chain state is bytes, never a decoded object. `watchForContractState`,
 `queryDeployContractState` and `contractStateObservable` return
 `ContractStateRead`; `queryContractState` returns
 `ContractStateAndParametersRead` (adds `ledgerParameters`);
-`queryZSwapAndContractState` and `Ledger9TransactionContext.getCurrentStates()` return
-`PublicStatesRead`. Each state is one class per kind from `types`:
+`queryZSwapAndContractState` returns `PublicStatesRead`, and
+`Ledger9TransactionContext.getCurrentStates()` returns `PublicStatesRead | undefined`. Each state is one class per kind from `types`:
 `SerializedContractState`, `SerializedLedgerParameters` or
 `SerializedZswapChainState` (bytes + `era`, the ledger that wrote them), made
 only by its own `fromBytes(era, bytes)`. The caller decodes it with its own runtime:
@@ -107,11 +107,10 @@ before an operation starts so a set that cannot carry a transaction end to end i
 refused before the proof is paid for. A handler that talks to another ledger copy
 (wallet-sdk, a DApp Connector wallet) passes `tx.serialize()` and can return the
 bytes it gets back. See
-[ADR 0019](./docs/adr/0019-carry-transactions-as-opaque-era-carrying-handles.md),
-which amends [ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md)
-and [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md), and
-[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md),
-which amends ADR 0019, ADR 0014 and ADR 0013.
+[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
+(the transaction handle) and
+[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md)
+(providers built from per-era handlers).
 
 ## CI Pipeline & PR Gates
 
