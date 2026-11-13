@@ -19,7 +19,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
         with:
-          node-version: '22'
+          node-version-file: '.nvmrc'
+
+      - name: Set up npm
+        uses: ./.github/actions/setup-npm
 
       - name: Install dependency
         run: |

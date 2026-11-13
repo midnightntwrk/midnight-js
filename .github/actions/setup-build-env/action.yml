@@ -1,7 +1,7 @@
 name: 'Setup build environment'
 description: >-
   Shared bootstrap for CI jobs: direnv-loaded .envrc, optional GHCR login,
-  Node.js with the GitHub Packages registry, yarn auth, and the Turbo/Yarn
+  Node.js with the GitHub Packages registry, the pinned npm, yarn auth, and the Turbo/Yarn
   cache. Extracted to remove the setup block that was duplicated across ~8 jobs.
   The caller must run actions/checkout BEFORE this action — a local composite
   action cannot check out the repo it is loaded from.
@@ -58,6 +58,9 @@ runs:
         cache: 'yarn'
       env:
         NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
+
+    - name: Set up npm
+      uses: ./.github/actions/setup-npm
 
     - name: Configure yarn
       shell: bash

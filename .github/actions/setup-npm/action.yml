@@ -1,0 +1,28 @@
+name: 'Set up npm'
+description: >-
+  Install the pinned npm CLI over the one bundled with Node.js, fail if the pin
+  did not take effect, and apply the release-age cooldown to every later npm
+  call in the job. Run it after setup-node.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install pinned npm
+      shell: bash
+      env:
+        NPM_VERSION: '12.2.2'
+        MIN_RELEASE_AGE: '7'
+        # The pin is chosen and reviewed by hand, so the cooldown does not apply to it, even
+        # when the caller already sets it: a pin younger than MIN_RELEASE_AGE would otherwise
+        # fail every job with ETARGET.
+        NPM_CONFIG_MIN_RELEASE_AGE: '0'
+      run: |
+        set -euo pipefail
+        npm install -g "npm@${NPM_VERSION}"
+        actual="$(npm --version)"
+        if [ "$actual" != "$NPM_VERSION" ]; then
+          echo "::error::npm pin did not take effect (expected $NPM_VERSION, got $actual)"
+          exit 1
+        fi
+        echo "NPM_CONFIG_MIN_RELEASE_AGE=${MIN_RELEASE_AGE}" >> "$GITHUB_ENV"
+        echo "npm $actual"
