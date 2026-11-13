@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0**](../../../../README.md)
+[**Midnight.js API Reference v5.0.1-rc.1**](../../../../README.md)
 
 ***
 
@@ -234,7 +234,7 @@ If conflictStrategy is 'error' and conflicts exist.
 #### Throws
 
 If a caller-supplied `options.password`
-  does not satisfy the minimum-length policy.
+  does not satisfy the password policy. The failed check is on `passwordError`.
 
 #### Throws
 

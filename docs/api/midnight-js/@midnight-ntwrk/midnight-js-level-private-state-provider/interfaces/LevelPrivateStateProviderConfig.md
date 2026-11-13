@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.1-rc.1**](../../../README.md)
 
 ***
 
@@ -79,9 +79,10 @@ from `@midnight-ntwrk/midnight-js-utils`:
 The same policy is applied to custom passwords passed to
 [ContractPrivateStates.exportPrivateStates](../../midnight-js/types/interfaces/ContractPrivateStates.md#exportprivatestates) / `exportSigningKeys` and
 their `importPrivateStates` / `importSigningKeys` counterparts. Violations
-surface as `PasswordValidationError` on storage paths, or wrapped as
+surface as `PasswordValidationError` on storage paths, wrapped as
 `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
-export/import paths.
+export paths, and as `ImportPasswordValidationError` (with
+`passwordError`) on import paths.
 
 SECURITY: Use a strong, secret password. Never use public key material
 or other non-secret values as the password source.
