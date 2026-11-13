@@ -1953,9 +1953,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:3.0.1-rc.1":
-  version: 3.0.1-rc.1
-  resolution: "@midnight-ntwrk/compact-js@npm:3.0.1-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.1-rc.1%2F7c5b1674bd4efa5f6ffc502b3b6bad084268bcfb"
+"@midnight-ntwrk/compact-js@npm:3.0.1-rc.2":
+  version: 3.0.1-rc.2
+  resolution: "@midnight-ntwrk/compact-js@npm:3.0.1-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.1-rc.2%2F86278e1e6fbfa01e8b0f1f9aab9802131176ffa5"
   dependencies:
     "@effect/platform": "npm:^0.97.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
@@ -1967,7 +1967,7 @@ __metadata:
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
-  checksum: 10/0061a1bde51e5eede39d10e62cde6dcfe6d95c9f65b8436c4142508b3544a5842d5e244a524d3d24783d8d859c59849e564246895e10d38178e2207db879016b
+  checksum: 10/0946e1a49ba98e716cee10c547d7a503132d969a6a9cc58fd65e61e7da18f907878ac3e2d4e620f7a95aeca3a066a4c59da6b6afe0fbc05f480466a0d4dc24ed
   languageName: node
   linkType: hard
 
@@ -2199,7 +2199,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:3.0.1-rc.1"
+    "@midnight-ntwrk/compact-js": "npm:3.0.1-rc.2"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
     "@midnight-ntwrk/ledger-v8": "npm:@midnightntwrk/ledger-v8@8.1.3"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
