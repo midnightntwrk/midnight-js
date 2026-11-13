@@ -164,7 +164,6 @@ services:
       - '6300'
     environment:
       RUST_BACKTRACE: 'full'
-      EXTRA_ARGS: -v
 
   # The proof server of the epoch before the boundary. It runs from the start, because ledger-8
   # operation happens before the fork is enacted. Why there are two of these rather than one
@@ -180,7 +179,6 @@ services:
       - '6300'
     environment:
       RUST_BACKTRACE: 'full'
-      EXTRA_ARGS: -v
 
   # Never started by `up` -- `ForkTestEnvironment.enactFork()` drives it with
   # `docker compose ... --profile tools run --rm toolkit runtime-upgrade ...`, which joins the
