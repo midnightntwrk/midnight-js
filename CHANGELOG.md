@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.1-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1-rc.0...v5.0.1-rc.1) (2026-11-13)
+
+
+### Build System
+
+* **deps:** bump compactc to 0.36.1 and compact-js to 3.0.1-rc.2 ([#1660](https://github.com/midnightntwrk/midnight-js/pull/1660)) ([2618126](https://github.com/midnightntwrk/midnight-js/commit/26181266e520953ce3592fd3387913d1f3b1547b)), closes [compact#616](https://github.com/midnightntwrk/midnight-js/pull/616) [compact#856](https://github.com/midnightntwrk/midnight-js/pull/856)
+
+
+### Continuous Integration
+
+* **testkit-js:** drop proof-server verbose logging in e2e stacks ([#1662](https://github.com/midnightntwrk/midnight-js/pull/1662)) ([e03dfb9](https://github.com/midnightntwrk/midnight-js/commit/e03dfb944de00dd5727273f666a4047d23ef84b5))
+
 ## [5.0.1-rc.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0...v5.0.1-rc.0) (2026-11-12)
 
 
@@ -28,6 +40,11 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps:** aggregate passing GitHub Actions bumps ([#1645](https://github.com/midnightntwrk/midnight-js/pull/1645)) ([87147c9](https://github.com/midnightntwrk/midnight-js/commit/87147c99f91fc39c591f927d8162282c55bf2539)), closes [#1500](https://github.com/midnightntwrk/midnight-js/pull/1500) [#1499](https://github.com/midnightntwrk/midnight-js/pull/1499) [#1496](https://github.com/midnightntwrk/midnight-js/pull/1496) [#1495](https://github.com/midnightntwrk/midnight-js/pull/1495) [#1497](https://github.com/midnightntwrk/midnight-js/pull/1497)
 * **deps:** aggregate passing npm dependency bumps ([#1644](https://github.com/midnightntwrk/midnight-js/pull/1644)) ([1b4f052](https://github.com/midnightntwrk/midnight-js/commit/1b4f0521ee3866a04db67407ac3ad045c68c615b)), closes [#1638](https://github.com/midnightntwrk/midnight-js/pull/1638) [#1521](https://github.com/midnightntwrk/midnight-js/pull/1521) [#1503](https://github.com/midnightntwrk/midnight-js/pull/1503) [#1501](https://github.com/midnightntwrk/midnight-js/pull/1501) [#1639](https://github.com/midnightntwrk/midnight-js/pull/1639)
 * **deps:** bump compact-js to 3.0.1-rc.1 ([#1655](https://github.com/midnightntwrk/midnight-js/pull/1655)) ([9add4f2](https://github.com/midnightntwrk/midnight-js/commit/9add4f20902fd28c4b80ab35751a6147f81fb040)), closes [midnightntwrk/midnight-node#2375](https://github.com/midnightntwrk/midnight-js/pull/2375) [#1599](https://github.com/midnightntwrk/midnight-js/pull/1599) [midnightntwrk/midnight-ledger#843](https://github.com/midnightntwrk/midnight-js/pull/843) [#876](https://github.com/midnightntwrk/midnight-js/pull/876) [#731](https://github.com/midnightntwrk/midnight-js/pull/731)
+
+
+### Improvements
+
+* **release:** bump version to 5.0.1-rc.0 ([#1657](https://github.com/midnightntwrk/midnight-js/pull/1657)) ([404621b](https://github.com/midnightntwrk/midnight-js/commit/404621b177112d83e67627f29294d1295afd0817))
 
 ## [5.0.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-rc.6...v5.0.0) (2026-11-05)
 
