@@ -162,6 +162,7 @@ in both directions. Every registered code appears here exactly once, with its ca
 | PR | `EXPORT_DECRYPTION_FAILED` | INTEGRITY | `ExportDecryptionError` |
 | PR | `INVALID_EXPORT_FORMAT` | INTEGRITY | `InvalidExportFormatError` |
 | PR | `IMPORT_CONFLICT` | USAGE | `ImportConflictError` |
+| PR | `IMPORT_PASSWORD_INVALID` | USAGE | `ImportPasswordValidationError` |
 | PR | `PRIVATE_STATE_DECRYPTION_FAILED` | INTEGRITY | `PrivateStateDecryptionError` |
 | PR | `PRIVATE_STATE_STORAGE_FAILED` | ENVIRONMENT | `PrivateStateStorageError` |
 | PR | `PRIVATE_STATE_LIMIT_EXCEEDED` | USAGE | `PrivateStateLimitExceededError` |

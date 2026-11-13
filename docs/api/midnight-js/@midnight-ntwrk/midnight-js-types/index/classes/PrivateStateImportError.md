@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0**](../../../../README.md)
+[**Midnight.js API Reference v5.0.1-rc.1**](../../../../README.md)
 
 ***
 
@@ -17,6 +17,7 @@ Base error thrown when importing private states fails.
 - [`ExportDecryptionError`](ExportDecryptionError.md)
 - [`InvalidExportFormatError`](InvalidExportFormatError.md)
 - [`ImportConflictError`](ImportConflictError.md)
+- [`ImportPasswordValidationError`](ImportPasswordValidationError.md)
 
 ## Constructors
 

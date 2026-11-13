@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0**](../../../../README.md)
+[**Midnight.js API Reference v5.0.1-rc.1**](../../../../README.md)
 
 ***
 
@@ -329,6 +329,12 @@ Re-exports [FinalizedTxRecord](../../types/interfaces/FinalizedTxRecord.md)
 ### ImportConflictError
 
 Re-exports [ImportConflictError](../../types/classes/ImportConflictError.md)
+
+***
+
+### ImportPasswordValidationError
+
+Re-exports [ImportPasswordValidationError](../../types/classes/ImportPasswordValidationError.md)
 
 ***
 
