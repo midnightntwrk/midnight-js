@@ -35,7 +35,7 @@
   "devDependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "rollup": "^4.60.4",
+    "rollup": "^4.67.5",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },
