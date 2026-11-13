@@ -36,9 +36,7 @@ import { readHexFixture } from './fixtures';
 //
 // The fixtures are read by path rather than through testkit-js's typed
 // accessor because testkit-js depends on midnight-js-protocol — a devDependency
-// back would close a workspace cycle. packages/protocol/turbo.json therefore
-// declares the fixture directory as a test input, so editing a golden
-// invalidates this package's test cache.
+// back would close a workspace cycle.
 
 /**
  * Reads a hex fixture, failing if the file did not decode in full.
