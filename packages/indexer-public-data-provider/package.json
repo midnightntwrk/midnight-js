@@ -41,7 +41,7 @@
     "@graphql-codegen/typescript": "^6.1.2",
     "@graphql-codegen/typescript-operations": "^6.1.10",
     "@types/ws": "^8.18.2",
-    "rollup": "^4.60.4",
+    "rollup": "^4.67.5",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },
