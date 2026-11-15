@@ -87,22 +87,50 @@ const makeKeyMaterialResolver = <K extends string>(
   };
 };
 
+/**
+ * Upper bound on how much of a proof-server error body is copied into the thrown
+ * error. The body is the only place the server explains a rejection, but it is
+ * server-controlled text, so it is never echoed unbounded.
+ */
+const MAX_ERROR_BODY_LENGTH = 1_000;
+
+const readErrorBody = async (response: Awaited<ReturnType<typeof fetchRetry>>): Promise<string | undefined> => {
+  try {
+    const body = (await response.text()).trim();
+    if (!body) {
+      return undefined;
+    }
+    return body.length > MAX_ERROR_BODY_LENGTH ? `${body.slice(0, MAX_ERROR_BODY_LENGTH)}…` : body;
+  } catch {
+    return undefined;
+  }
+};
+
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
+  const signal = AbortSignal.timeout(timeout);
   let response: Awaited<ReturnType<typeof fetchRetry>>;
   try {
     response = await fetchRetry(url, {
       method: 'POST',
       body: new Uint8Array(payload),
       headers: { 'Content-Type': 'application/octet-stream', ...headers },
-      signal: AbortSignal.timeout(timeout)
+      signal
     });
   } catch (cause) {
+    // The timeout signal created above is the only abort source for this request
+    // (no caller signal is threaded in), so an abort here means the timeout fired:
+    // name it, instead of surfacing the fetch layer's "The user aborted a request."
+    const causeName = (cause as { name?: unknown } | null | undefined)?.name;
+    if (signal.aborted || causeName === 'TimeoutError' || causeName === 'AbortError') {
+      throw new ProofServerError(`Proof Server request timed out after ${timeout} ms: url="${url}"`, undefined, { cause });
+    }
     throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
   }
 
   if (!response.ok) {
+    const body = await readErrorBody(response);
     throw new ProofServerError(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`,
+      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"${body === undefined ? '' : `, body="${body}"`}`,
       response.status
     );
   }
