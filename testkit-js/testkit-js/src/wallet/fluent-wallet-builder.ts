@@ -57,7 +57,7 @@ export class FluentWalletBuilder {
 
   withRandomSeed(): FluentWalletBuilder {
     this.seeds = WalletSeeds.generateRandom();
-    logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
+    logger.info('Generated a random wallet seed');
     return this;
   }
 
