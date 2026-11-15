@@ -345,6 +345,69 @@ describe('Fetch ZK config Provider', () => {
       });
     });
 
+    it.each([
+      [401, 'Unauthorized'],
+      [403, 'Forbidden']
+    ])('reports a contract description refused with %i as a fetch failure, not as a missing file', async (status, statusText) => {
+      // Arrange
+      const provider = new FetchZkConfigProvider(BASE, {
+        fetchFunc: async (input) =>
+          String(input).endsWith('contract-info.json')
+            ? new Response('x', { status, statusText })
+            : new Response('x', { status: 404 })
+      });
+
+      // Act
+      const error = await provider.getArtifactRuntimeVersion().catch((e: unknown) => e);
+
+      // Assert: the file is there; the source refused to serve it. Reporting that as
+      // ZkArtifactContractInfoError would send the caller to serve a file that already exists.
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect(error).not.toBeInstanceOf(ZkArtifactContractInfoError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED',
+        category: 'ENVIRONMENT',
+        status,
+        message: `Failed to fetch ZK artifact from ${BASE}/compiler/contract-info.json: ${status} ${statusText}`
+      });
+    });
+
+    it('does not cache a refused manifest as an absent one; a later call retries', async () => {
+      // Arrange
+      let manifestReads = 0;
+      const provider = new FetchZkConfigProvider(BASE, {
+        verify: 'require-if-present',
+        fetchFunc: async (input) => {
+          if (String(input).endsWith('contract-manifest.json')) {
+            manifestReads += 1;
+            return manifestReads === 1
+              ? new Response('x', { status: 403, statusText: 'Forbidden' })
+              : new Response('x', { status: 404 });
+          }
+          return new Response(JSON.stringify({ 'runtime-version': '0.21.0' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+      });
+
+      // Act
+      const error = await provider.getArtifactRuntimeVersion().catch((e: unknown) => e);
+
+      // Assert
+      expect(error).toBeInstanceOf(ZkArtifactFetchError);
+      expect(error).toMatchObject({
+        code: 'MIDNIGHT_JS_PR_ZK_ARTIFACT_NOT_SERVED',
+        status: 403,
+        message: `Failed to fetch ZK artifact from ${BASE}/compiler/contract-manifest.json: 403 Forbidden`
+      });
+
+      // The refusal was not cached as "no manifest": the next call reads the manifest again and,
+      // finding none, falls back to the contract description.
+      await expect(provider.getArtifactRuntimeVersion()).resolves.toBe('0.21.0');
+      expect(manifestReads).toBe(2);
+    });
+
     it('wraps a failure while reading an artifact body and keeps it on cause', async () => {
       // Arrange
       const bodyFailure = new TypeError('terminated');
