@@ -187,15 +187,15 @@ copy or its bytes:
 ```typescript
 import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnightntwrk/midnight-js-types';
 
-// The wallet runs its own copy of the ledger, so transactions cross as bytes.
-
-const walletProvider = createLedger9WalletProvider({
-  balanceTx: (tx, ttl) => wallet.balanceTransaction(tx.serialize(), ttl),
-  getCoinPublicKey: () => wallet.coinPublicKey,
-  getEncryptionPublicKey: () => wallet.encryptionPublicKey
-});
-const midnightProvider = createLedger9MidnightProvider((tx) => wallet.submitTransaction(tx.serialize()));
+const walletProvider = createLedger9WalletProvider(myWallet);
+const midnightProvider = createLedger9MidnightProvider((tx) => myWallet.submitTx(tx));
 ```
+
+`myWallet` is your wallet integration. It implements `balanceTx`,
+`getCoinPublicKey` and `getEncryptionPublicKey`, and submits finalized
+transactions. For one built on `@midnightntwrk/wallet-sdk`, see
+[`MidnightWalletProvider`](../../testkit-js/testkit-js/src/wallet/midnight-wallet-provider.ts)
+in testkit-js.
 
 ### Declaring the eras a provider serves
 
