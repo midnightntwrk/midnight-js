@@ -143,9 +143,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       : await builder.withRandomSeed().buildWithoutStarting();
 
     const initialState = await getInitialShieldedState(wallet.shielded);
-    logger.info(
-      `Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`
-    );
+    logger.info(`Your wallet address is: ${initialState.address.coinPublicKeyString()}`);
 
     return new MidnightWalletProvider(logger, env, wallet, seeds, keystore);
   }
