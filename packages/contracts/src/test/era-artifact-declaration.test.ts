@@ -14,8 +14,15 @@
  */
 
 import { type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { ArtifactRuntimeVersionUnavailableError, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  ArtifactRuntimeVersionUnavailableError,
+  PROVIDER_ERROR_CODES,
+  type ProverKey,
+  type VerifierKey,
+  ZKConfigProvider,
+  type ZKIR
+} from '@midnight-ntwrk/midnight-js-types';
+import { UTILS_ERROR_CODES, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';
@@ -94,6 +101,40 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
     expect(error).toBeInstanceOf(EraMismatchError);
     expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
     expect((error as EraMismatchError).cause).toBe(unavailable);
+  });
+
+  it('refuses a ledger 9 container whose artifacts declare nothing, when the failure comes from another installed copy', async () => {
+    // A second installed copy of midnight-js-utils builds an error this copy's `instanceof`
+    // cannot see; the error CODE is the stable part (ADR 0017), so the mapping must key on it.
+    const foreign = Object.assign(new Error('no contract-info.json at https://cdn.example/compiler/'), {
+      code: UTILS_ERROR_CODES.ZK_ARTIFACT_CONTRACT_INFO_INVALID
+    });
+    expect(foreign).not.toBeInstanceOf(ZkArtifactContractInfoError);
+
+    const error = await resolveArtifactEra(createMockCompiledContract(), refusing(foreign)).catch(
+      (thrown: unknown) => thrown
+    );
+
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect(error).toMatchObject({ reason: 'artifact-era-undeclared' });
+    expect((error as EraMismatchError).cause).toBe(foreign);
+  });
+
+  it('refuses a provider that cannot declare an era, when the failure comes from another installed copy', async () => {
+    // Same version-skew case for midnight-js-types: a foreign copy's
+    // ArtifactRuntimeVersionUnavailableError fails this copy's `instanceof` but keeps its code.
+    const foreign = Object.assign(new Error('the provider does not report a runtime version'), {
+      code: PROVIDER_ERROR_CODES.ARTIFACT_RUNTIME_VERSION_UNAVAILABLE
+    });
+    expect(foreign).not.toBeInstanceOf(ArtifactRuntimeVersionUnavailableError);
+
+    const error = await resolveArtifactEra(createMockCompiledContract(), refusing(foreign)).catch(
+      (thrown: unknown) => thrown
+    );
+
+    expect(error).toBeInstanceOf(EraMismatchError);
+    expect(error).toMatchObject({ reason: 'provider-cannot-declare-era' });
+    expect((error as EraMismatchError).cause).toBe(foreign);
   });
 
   it('places a retained artifact from the runtime version its compiler recorded', async () => {
