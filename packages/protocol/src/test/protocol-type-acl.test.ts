@@ -110,9 +110,7 @@ describe('Protocol type ACL', () => {
       'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
-      // The current/retained split of `LedgerEra`, published beside it:
-      // a consumer writing a per-era handler cannot name which half it is
-      // writing for without these.
+      // The era this build links eagerly, published beside `LedgerEra`.
       'CurrentLedgerEra',
       'DeployResultPojo',
       'EncodedStateValue',
@@ -141,7 +139,6 @@ describe('Protocol type ACL', () => {
       'ProtocolErrorCode',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
-      'RetainedLedgerEra',
       'StateConversionStage',
       'StateKind',
       'TransactionStage',
