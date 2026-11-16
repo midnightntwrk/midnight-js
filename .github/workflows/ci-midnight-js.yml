@@ -33,7 +33,7 @@ jobs:
     if: inputs.should_run == 'true'
     uses: ./.github/workflows/ci-base.yml
     with:
-      yarn_filter: --filter="./packages/*"
+      yarn_filter: ./packages/*
       # `.github/scripts` and `consumer-e2e` ride along here because this is the
       # only leg that lints, and neither had a lint of its own: the
       # workflow-permissions gate lives in the first, and the second is the code
@@ -56,6 +56,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: |
@@ -76,6 +77,6 @@ jobs:
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy --filter="./packages/*" --cache-dir ./turbo -- --tag pre
+        run: yarn deploy --filter="./packages/*" -- --tag pre
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
