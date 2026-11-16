@@ -31,7 +31,7 @@ import { fixturePath } from './fixtures';
 // What this does NOT claim, and used to: that no v8 WASM is instantiated at all.
 // compact-js's ledger-8 line brings ledger-v8 with it -- `Ledger` on
 // `@midnight-ntwrk/compact-js/v8/effect` IS ledger-v8, and `lib/v8/executable.ts`
-// decodes chain bytes through it -- so a retained-era execution does load that
+// decodes chain bytes through it -- so a ledger 8 execution does load that
 // module now. The property still worth gating is that there is exactly ONE
 // acquisition path: `loadLedger8Protocol` exists for the composition legs, and an engine
 // method reaching for it would be a second one.
@@ -65,7 +65,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
     // a method that reached for this package's v8 loader lazily would pass the
     // assertion above and fail here. `reexpressOperationsForLedger9` is the
     // cheapest real work on the surface and targets the CURRENT era, so it has
-    // no business touching the retained ledger at all. It refuses an empty
+    // no business touching ledger 8 at all. It refuses an empty
     // entry-point list, so a real registered key is supplied.
     expect(
       engine.reexpressOperationsForLedger9([
@@ -80,7 +80,7 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
 
     // The three methods that could PLAUSIBLY reach the loader lazily, which the
     // call above cannot speak for: it targets the current era, so it has no
-    // business touching the retained ledger either way. Each is driven far
+    // business touching ledger 8 either way. Each is driven far
     // enough to run their own body -- each refuses its arguments before any
     // execution -- which is all this gate needs: an `await loadLedger8Protocol()` added
     // inside any one fires before the refusal does.

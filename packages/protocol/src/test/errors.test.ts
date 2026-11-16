@@ -130,7 +130,7 @@ describe('Ledger8RuntimeMissingError', () => {
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 
-  // The two chunks pull different retained-era dependencies, so a message that
+  // The two chunks pull different ledger 8 dependencies, so a message that
   // names the wrong one sends an operator to an entry point that loaded fine.
   it('names the engine subpath, not the v8 one, when the engine chunk is what failed', () => {
     const error = new Ledger8RuntimeMissingError('/v8/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
@@ -493,7 +493,7 @@ describe('ComposeOptionError', () => {
     expect(error.message).toMatch(/epoch/i);
   });
 
-  // The retained era composes exactly one call. Refusing a longer list is the
+  // Ledger 8 composes exactly one call. Refusing a longer list is the
   // difference between the two eras a caller most needs told, since composing
   // only the first entry would look like success.
   it('explains that a call list longer than one is not composable on the era that refuses it', () => {

@@ -78,7 +78,7 @@ describe('dist engine error gate', () => {
     expect(DIST_BUNDLES.filter((path) => !existsSync(resolve(PKG_ROOT, path)))).toEqual([]);
   });
 
-  it('loads the engine facade out of the built package and binds the retained era', async () => {
+  it('loads the engine facade out of the built package and binds ledger 8', async () => {
     const { loadLedger8Engine } = await import('@midnight-ntwrk/midnight-js-protocol');
 
     const engine = await loadLedger8Engine();

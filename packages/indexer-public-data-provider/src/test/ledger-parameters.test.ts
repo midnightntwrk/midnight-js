@@ -38,7 +38,7 @@ const tagOf = (bytes: Uint8Array): string => parseSerializedTag(bytes).tag;
 // ---------------------------------------------------------------------------
 
 describe('the ledger parameters each runtime writes', () => {
-  test('the retained era writes the envelope this client maps onto v8', async () => {
+  test('ledger 8 writes the envelope this client maps onto v8', async () => {
     const bytes = await mintLedger8LedgerParametersBytes();
 
     expect(tagOf(bytes)).toBe('midnight:ledger-parameters[v5]');

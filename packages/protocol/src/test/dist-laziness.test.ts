@@ -95,7 +95,7 @@ const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chun
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 describe('dist laziness gate', () => {
-  // Both halves of the retained pre-fork stack, not just ledger-v8:
+  // Both halves of the ledger 8 stack, not just ledger-v8:
   // onchain-runtime-v3 is a runtime dependency of this package and carries its
   // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
   // exactly as much. The engine modules reference it only through erased
@@ -145,7 +145,7 @@ describe('dist laziness gate', () => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
-  // Every route to the two retained chunks, in one place. The tests above show
+  // Every route to the two ledger 8 chunks, in one place. The tests above show
   // each chunk is absent from the eager closure and that a dynamic import of it
   // survives; this one closes the remaining gap — that no chunk in that closure
   // reaches either one by a STATIC specifier under some other name. A static
@@ -173,7 +173,7 @@ describe('dist laziness gate', () => {
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${LEDGER8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
-  // The static walk above says the v9 era CAN run without the retained chunks.
+  // The static walk above says the v9 era CAN run without the ledger 8 chunks.
   // This says it DOES: the built package is driven through `loadLedgerEra('v9')`
   // and made to do real work, so a v9-only consumer's path is exercised rather
   // than only inspected.

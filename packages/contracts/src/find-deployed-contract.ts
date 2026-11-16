@@ -134,10 +134,10 @@ const queryFoundDeployTxPublicData = async (
 };
 
 /**
- * The RETAINED era's half of the same rule. It differs in THREE ways, not one.
+ * The ledger 8 half of the same rule. It differs in THREE ways, not one.
  *
  * Supplied key: VALIDATED through the read's own rule and then stored. Nothing supplied and a
- * retained-era entry stored: that key is reported. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
+ * ledger 8 entry stored: that key is reported. Nothing supplied and nothing stored: NOTHING is sampled. Nothing supplied and an
  * entry that is not usable, or one that cannot be read at all: reported as nothing stored, with a
  * breadcrumb.
  *
@@ -177,7 +177,7 @@ const setOrGetLedger8SigningKey = async (
     // `getSigningKey` is documented as THROWING -- a wrong store password, a password-policy
     // failure, a rotation-lock timeout, store I/O, an entry the provider refuses as not a signing
     // key -- so propagated, a store whose signing-key
-    // sublevel was written under a different password fails EVERY retained attach to this address
+    // sublevel was written under a different password fails EVERY ledger 8 attach to this address
     // and makes its circuit calls unreachable over a value none of them reads. That is the same
     // blast radius an unusable ENTRY is already refused for; this extends the guarantee from the
     // entry's content to the read itself.
@@ -201,7 +201,7 @@ const setOrGetLedger8SigningKey = async (
  * The private-state half of a find's configuration, as the rule below reads it.
  *
  * Structural rather than either era's own options type, because the rule is ONE rule and the
- * retained-era path reaches it holding a `Ledger8FindDeployedContractOptions`.
+ * ledger 8 path reaches it holding a `Ledger8FindDeployedContractOptions`.
  *
  * DO NOT DROP THE `& object` on any use of this type. Both members are optional, which makes this
  * a weak type, and without the intersection the ordinary current-era find stops compiling.
@@ -603,14 +603,14 @@ const ledger9FindFlow = async <C extends Contract.Any>(
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Nothing is COMPOSED and nothing is submitted: no transaction leaves this call. It reads the

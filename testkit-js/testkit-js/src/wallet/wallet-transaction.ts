@@ -36,7 +36,7 @@ let walletLedger8Module: Promise<typeof LedgerV8> | undefined;
  * Lazy, and a failed load is not memoised: the next call retries rather than
  * serving the first rejection forever.
  *
- * @see docs/architecture/retained-era-coverage.md
+ * @see docs/architecture/ledger8-coverage.md
  */
 export const loadWalletLedger8 = (): Promise<typeof LedgerV8> =>
   (walletLedger8Module ??= import('@midnightntwrk/wallet-sdk/ledger/v8').catch((error: unknown) => {
@@ -78,7 +78,7 @@ const activeProtocolVersion = async (wallet: VersionedWallet): Promise<ProtocolV
  * unwrap into.
  *
  * Derived from the wallet's own `activeProtocolVersion` rather than pinned to a
- * single era: below the fork version that is the retained epoch, from it the
+ * single era: below the fork version that is the ledger 8 epoch, from it the
  * current one, and a caller that hardcodes either is wrong on one side of the
  * boundary.
  */

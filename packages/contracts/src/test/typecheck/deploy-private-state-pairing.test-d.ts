@@ -33,9 +33,9 @@ import {
 // Compile-level tests, run by the typecheck pass this package enables in `vitest.config.ts` -- see
 // the note at the top of `./overloads.test-d.ts` for how they are gated.
 //
-// `./overloads.test-d.ts` pins this same table for the RETAINED era, on
+// `./overloads.test-d.ts` pins this same table for the LEDGER 8 era, on
 // `Ledger8DeployContractOptions*`. This file is the current-era twin of it: #1316 closed the hole
-// on the retained-era types and left the current era alone, and #1321 is that hole here.
+// on the ledger 8 types and left the current era alone, and #1321 is that hole here.
 
 type Twin018PrivateState = { readonly round: bigint };
 type Twin018 = Twin018Contract<Twin018PrivateState>;

@@ -22,10 +22,10 @@ import { hfFixturePath } from '../src/fixtures-hf';
 /**
  * The toolchain that produced `counter-016/compiled/`, from the spike's own
  * `contract-info.json`. These three together are what makes the artifacts
- * retained-era ones; a set built by any other toolchain is a different fixture
+ * ledger 8 ones; a set built by any other toolchain is a different fixture
  * wearing the same name.
  */
-const RETAINED_TOOLCHAIN = {
+const LEDGER8_TOOLCHAIN = {
   'compiler-version': '0.31.1',
   'language-version': '0.23.0',
   'runtime-version': '0.16.0'
@@ -64,8 +64,8 @@ const circuitNames = (contractInfo: Record<string, unknown>): string[] => {
   });
 };
 
-describe('counter-016 retained-era ZK artifacts', () => {
-  test('are declared as produced by the retained toolchain, not the current one', () => {
+describe('counter-016 ledger 8 ZK artifacts', () => {
+  test('are declared as produced by the ledger 8 toolchain, not the current one', () => {
     // Arrange.
     const contractInfo = asRecord(
       readJson('counter-016/compiled/compiler/contract-info.json'),
@@ -73,12 +73,12 @@ describe('counter-016 retained-era ZK artifacts', () => {
     );
 
     // Act.
-    const declared = Object.fromEntries(Object.keys(RETAINED_TOOLCHAIN).map((key) => [key, contractInfo[key]]));
+    const declared = Object.fromEntries(Object.keys(LEDGER8_TOOLCHAIN).map((key) => [key, contractInfo[key]]));
 
     // Assert: the assertion that matters most. A current-era key set committed
     // here would still load, still be the right shape, and be wrong in a way that
     // only shows up as an unprovable transaction on a pre-fork chain.
-    expect(declared).toEqual(RETAINED_TOOLCHAIN);
+    expect(declared).toEqual(LEDGER8_TOOLCHAIN);
   });
 
   test('carry the pre-fork ZKIR version and verifier-key envelope', () => {
@@ -136,7 +136,7 @@ describe('counter-016 retained-era ZK artifacts', () => {
   // that as the AC3 negative becoming constructible, not as a fixture breaking.
   test('are indistinguishable from the v9-compiled twin, which is why AC3 needs zkir-v3', () => {
     // Arrange.
-    const retained = readFileSync(hfFixturePath('counter-016/compiled/keys/increment.verifier'));
+    const ledger8 = readFileSync(hfFixturePath('counter-016/compiled/keys/increment.verifier'));
     const twin = readFileSync(hfFixturePath('twin-contract/compiled/keys/increment.verifier'));
 
     // Act.
@@ -144,6 +144,6 @@ describe('counter-016 retained-era ZK artifacts', () => {
 
     // Assert.
     expect(twinMajor).toBe(2);
-    expect(retained.equals(twin)).toBe(true);
+    expect(ledger8.equals(twin)).toBe(true);
   });
 });

@@ -27,7 +27,7 @@ around it, and a failure that only appears against a chain that has crossed the 
 
 | # | Site | Payload | State |
 |---|------|---------|-------|
-| 1 | keep-state envelope check (`assertRetainedStateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
+| 1 | keep-state envelope check (`assertLedger8StateEnvelope`), `packages/contracts` | contract state | fixed — dates the envelope, no longer the head |
 | 2 | `composeCallTx` operation registry, `packages/protocol` | contract state | fixed — the registry is re-expressed for the composing era |
 | 3 | `assemble-call.ts` partitioner | ledger parameters | fixed — the chain's own parameters are carried in as bytes |
 | 4 | `parseHexLedgerParameters`, `packages/indexer-public-data-provider` | ledger parameters | fixed, then removed: the read no longer decodes (ADR 0020) |
@@ -166,7 +166,7 @@ from a wallet this process just handed a transaction to, so the era is in practi
 era. Recorded rather than changed because the fix is a method change to a third-party-facing
 interface, not a local guard.
 
-**The fork window between the head read and the state read.** A retained-era operation resolves the
+**The fork window between the head read and the state read.** A ledger 8 operation resolves the
 head era first (`acquireLedger8Runtime`) and reads the contract state after it
 (`readLedger8Snapshot`), and the state read is what brings back the block's ledger parameters. The
 fork can be enacted between the two: the head is read as `v8`, the state read then lands on a
@@ -193,4 +193,4 @@ not run. Testkit only, and not on the path of any defect above.
   `LEDGER_STATE_TAGS` satisfies that by being keyed by kind and ERA, and searched rather than keyed
   by tag and indexed, which also makes a new `LedgerEra` member with no tag a build failure.
 - `packages/protocol/docs/fail-closed-decoding.md` — what a decode guarantees once the era is settled
-- `packages/contracts/docs/keep-state-pipeline.md` — the retained-era read path
+- `packages/contracts/docs/keep-state-pipeline.md` — the ledger 8 read path

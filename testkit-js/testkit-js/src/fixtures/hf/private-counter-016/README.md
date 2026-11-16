@@ -3,7 +3,7 @@
 Generated code only. **The source lives one directory over**, at
 [`../private-counter-twin/private-counter.compact`](../private-counter-twin/private-counter.compact),
 because both builds are compiled from that one file: this directory is the
-RETAINED-toolchain build of it (compiler 0.31.1, language 0.23.0, runtime
+ledger 8 toolchain build of it (compiler 0.31.1, language 0.23.0, runtime
 0.16.0), and `../private-counter-twin/compiled/` is the current-toolchain build
 of the same source (compiler 0.36.0, runtime 0.21.0).
 

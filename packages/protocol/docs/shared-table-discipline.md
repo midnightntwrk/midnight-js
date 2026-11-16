@@ -106,7 +106,7 @@ against the vendor's `StateValue` variants. Nothing in the package walks that
 union any more — `structurallyEqual` compares the ENCODED algebra structurally
 rather than switching on a variant tag — so a vendor bump that adds a variant no
 longer fails a build here. Why that walk did not come back is in
-[RetainedEraExecution](./retained-era-execution.md).
+[Ledger8Execution](./ledger8-execution.md).
 
 ## Why the runtime guard is not redundant with it
 

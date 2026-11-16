@@ -64,7 +64,7 @@ describe('reading a real migrated state', () => {
 
   // The CROSS-CODEC round trip, on real committed migrated states. This is the
   // comparison `decodeExecutableStateValue` (`lib/v8/executable.ts`) runs on
-  // EVERY retained-era call, and in production it is cross-codec by
+  // EVERY ledger 8 call, and in production it is cross-codec by
   // construction: a migrated contract's state is encoded by ledger-v9 and
   // decoded by compact-runtime 0.16. The rows above compare two extractions
   // without decoding either, and the executable suite drives freshly built
@@ -72,12 +72,12 @@ describe('reading a real migrated state', () => {
   // disagreed on any real migrated shape, every call on every migrated contract
   // would fail closed with `StateConversionFailedError` and both suites stay green.
   it.each(['state-migrated-v9.hex', 'state-migrated-v9-merkle.hex'])(
-    'decodes %s with the retained runtime and re-encodes it to the same bytes',
+    'decodes %s with the ledger 8 runtime and re-encodes it to the same bytes',
     (fixture) => {
       // Arrange. Extracted by the era that WROTE it, as the pipeline does.
       const ledger9Encoded = extractEncodedStateValue(readHexFixture(fixture), 'v9', ocrt3.ContractState);
 
-      // Act. Decoded by the retained runtime, which is the other codec.
+      // Act. Decoded by the ledger 8 runtime, which is the other codec.
       const decoded = ocrt3.StateValue.decode(ledger9Encoded);
 
       // Assert.
@@ -105,7 +105,7 @@ describe('the envelope reader refuses before it decodes', () => {
     ).toThrow(UnknownLedgerEraError);
   });
 
-  it('refuses a retained runtime that cannot deserialize, naming the missing binding', () => {
+  it('refuses a ledger 8 runtime that cannot deserialize, naming the missing binding', () => {
     // A runtime object assembled by hand rather than taken from the one copy
     // the caller already loaded -- the substitution this guard exists to catch.
     const withoutDeserialize = {} as typeof ocrt3.ContractState;

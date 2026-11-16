@@ -24,7 +24,7 @@ It carries the era, the `protocolVersion`, the method and the record on its
 ## `Ledger8RuntimeMissingError`
 
 From `@midnight-ntwrk/midnight-js-protocol`. The pre-fork ledger runtime could
-not be acquired for a retained-era record.
+not be acquired for a ledger 8 record.
 
 That is an installation or bundling failure in the CONSUMER'S OWN dependency
 tree, not a bad record and not a bad response. A caller who saw it as an

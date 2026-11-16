@@ -38,7 +38,7 @@ import {
   setContainersConfiguration
 } from '@midnight-ntwrk/testkit-js';
 
-import { buildRetainedTwins } from './build-retained-twins.mjs';
+import { buildLedger8Twins } from './build-ledger8-twins.mjs';
 import { buildPersona, stageTarballs } from './linker-smoke.mjs';
 import { readManifest, REPOSITORY_ROOT, resolveContractSelection } from './personas.mjs';
 
@@ -51,7 +51,7 @@ const LINKER = argv.find((argument) => !argument.startsWith('--')) ?? 'pnp';
  *
  * Sharded one contract per CI job: the legs are strictly sequential and the
  * proving in them is what the run costs, so splitting the matrix is what shortens
- * it. A shard also builds only its OWN retained twin, so the largest prover
+ * it. A shard also builds only its OWN ledger 8 twin, so the largest prover
  * keys stop being everyone's bill.
  *
  *   node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=simple
@@ -98,7 +98,7 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
       ledger8ProofServer: environment.preForkProofServer,
       ledger9ProofServer: environment.postForkProofServer,
       walletSeed: WALLET_SEED,
-      retainedZkConfigPath: contractDir,
+      ledger8ZkConfigPath: contractDir,
       // The ZK artifacts each matrix contract proves against. Handed over as
       // paths rather than derived in the dApp: the persona's layout is this
       // script's doing, and a second copy of that knowledge would go stale on
@@ -109,10 +109,10 @@ const runScenario = (cwd, linker, environment, contractDir, enactFork) =>
       // Which contracts this shard is answerable for. The dApp narrows both its
       // matrices to these, so a shard cannot report on a leg it never ran.
       contracts: SELECTION,
-      // The retained twins, under the same keys their current-era namesakes use,
+      // The ledger 8 twins, under the same keys their current-era namesakes use,
       // so the dApp can pair the two eras of one contract without a second table.
-      retainedMatrixZkConfigPaths: Object.fromEntries(
-        SELECTION.retained.map((key) => [key, path.join(cwd, 'contracts', `retained-${key}`)])
+      ledger8MatrixZkConfigPaths: Object.fromEntries(
+        SELECTION.ledger8.map((key) => [key, path.join(cwd, 'contracts', `ledger8-${key}`)])
       ),
       logPath: path.join(cwd, 'dapp.log')
     };
@@ -251,13 +251,13 @@ const main = async () => {
 
     // Before the install, because the persona copies these directories into
     // itself: a twin built afterwards would not be in the tree that gets linked.
-    stage = 'building the retained-era contract twins';
+    stage = 'building the ledger 8 contract twins';
     process.stdout.write(
-      `Building the retained-era contract twins (compactc 0.31.1): ${SELECTION.retained.join(', ') || '(none)'}...\n`
+      `Building the ledger 8 contract twins (compactc 0.31.1): ${SELECTION.ledger8.join(', ') || '(none)'}...\n`
     );
-    const built = buildRetainedTwins(SELECTION.retained);
+    const built = buildLedger8Twins(SELECTION.ledger8);
     process.stdout.write(
-      built.length === 0 ? 'Retained twins already built.\n' : `Built retained twins: ${built.join(', ')}\n`
+      built.length === 0 ? 'Ledger 8 twins already built.\n' : `Built ledger 8 twins: ${built.join(', ')}\n`
     );
 
     stage = 'installing the dApp persona';
@@ -266,7 +266,7 @@ const main = async () => {
     stageTarballs(manifest);
     const { cwd, linker } = buildPersona(PERSONA, LINKER, manifest, 'fork-matrix-entry', [
       ...SELECTION.current,
-      ...SELECTION.retained.map((key) => `retained-${key}`)
+      ...SELECTION.ledger8.map((key) => `ledger8-${key}`)
     ]);
     linker.install(cwd);
 
@@ -279,7 +279,7 @@ const main = async () => {
         preForkProofServer: environment.getPreForkProofServer(),
         postForkProofServer: environment.getPostForkProofServer()
       },
-      path.join(cwd, 'contracts', 'retained'),
+      path.join(cwd, 'contracts', 'ledger8'),
       async (contractAddress) => {
         process.stdout.write('The dApp is mid-session; enacting the fork...\n');
         const enactment = await environment.enactFork();

@@ -39,7 +39,7 @@ const logger = createLogger(
 class NoCircuitConfiguration implements ContractConfiguration {
   readonly privateStateStoreName = `submit-tx-v8era-private-store-${Date.now()}`;
 
-  readonly zkConfigPath = path.resolve(__dirname, '../src/contract/compiled-retained/unshielded');
+  readonly zkConfigPath = path.resolve(__dirname, '../src/contract/compiled-ledger8/unshielded');
 
   get zkConfigIntegrity(): ZkConfigIntegrityOptions {
     return { verify: 'warn' };

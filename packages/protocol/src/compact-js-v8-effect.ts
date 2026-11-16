@@ -23,7 +23,7 @@
  * `executeCircuit` does NOT take one of these containers — it takes a
  * {@link Ledger8EngineContract}, the constructed artifact the previous toolchain
  * emits, and `containerFor` adapts it at that point. Making `CompiledContract`
- * the retained era's public surface was attempted and reverted; see ADR 0015.
+ * ledger 8's public surface was attempted and reverted; see ADR 0015.
  */
 
 export * from '@midnight-ntwrk/compact-js/v8/effect';

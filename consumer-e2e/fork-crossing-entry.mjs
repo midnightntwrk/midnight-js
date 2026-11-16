@@ -34,9 +34,9 @@ const require = createRequire(import.meta.url);
 // Layout, as `linker-smoke.mjs` builds it:
 //   argv[2] persona name
 //   argv[3] the persona's own runtime, empty for this one -- it declares none
-//   argv[4] expected retained runtime
+//   argv[4] expected ledger 8 runtime
 //   argv[5] expected current runtime
-const [expectedRetainedRuntime, expectedCurrentRuntime] = process.argv.slice(4);
+const [expectedLedger8Runtime, expectedCurrentRuntime] = process.argv.slice(4);
 
 const failures = [];
 const observed = {};
@@ -56,17 +56,17 @@ const runtimeSeenBy = (packageName) => {
 
 // 1. Each wrapped contract resolves the runtime its own codegen demands. These are
 //    two different physical copies in one install; a hoisted tree has only one.
-if (!expectedRetainedRuntime || !expectedCurrentRuntime) {
+if (!expectedLedger8Runtime || !expectedCurrentRuntime) {
   throw new Error('the harness did not pass both expected runtime versions');
 }
-check('retained contract sees runtime', runtimeSeenBy('@midnight-ntwrk/fork-retained-baseline'), expectedRetainedRuntime);
+check('ledger 8 contract sees runtime', runtimeSeenBy('@midnight-ntwrk/fork-ledger8-baseline'), expectedLedger8Runtime);
 check('current contract sees runtime', runtimeSeenBy('@midnight-ntwrk/fork-current-baseline'), expectedCurrentRuntime);
 
 // 2. Both modules import. `checkRuntimeVersion` runs at import time and throws on a
 //    mismatch, so a successful import of BOTH is the assertion -- and it is the one
 //    that fails the moment the two copies above collapse into one.
 for (const [label, specifier] of [
-  ['retained contract module', '@midnight-ntwrk/fork-retained-baseline'],
+  ['ledger 8 contract module', '@midnight-ntwrk/fork-ledger8-baseline'],
   ['current contract module', '@midnight-ntwrk/fork-current-baseline']
 ]) {
   try {
@@ -81,7 +81,7 @@ for (const [label, specifier] of [
   }
 }
 
-// 3. The framework loads alongside both of them, and reaches the retained era on
+// 3. The framework loads alongside both of them, and reaches ledger 8 on
 //    demand -- the dApp holds two eras' contracts and one framework.
 try {
   const protocol = await import('@midnight-ntwrk/midnight-js-protocol');

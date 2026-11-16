@@ -35,7 +35,7 @@ const DIST_INDEX_PATH = 'dist/index.js';
  * `contracts-type-acl.test.ts`, which reads them off the barrel with the
  * compiler's own resolution.
  *
- * The retained-era error classes are flat names here; `ledger8-flat-errors.test.ts` pins them on
+ * The ledger 8 error classes are flat names here; `ledger8-flat-errors.test.ts` pins them on
  * their own as well.
  */
 const RUNTIME_EXPORTS: readonly string[] = [

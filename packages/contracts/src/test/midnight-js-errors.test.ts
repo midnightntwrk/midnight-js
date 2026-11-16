@@ -115,7 +115,7 @@ describe('contracts error classes', () => {
     expect([error.name, error.code]).toEqual(['ProviderFailedError', 'MIDNIGHT_JS_C_PROVIDER_FAILED']);
   });
 
-  it('the retained-deploy refusal carries the era-mismatch name, reason and code', () => {
+  it('the ledger 8 deploy refusal carries the era-mismatch name, reason and code', () => {
     const error = new errors.EraMismatchError('ledger8-deploy-on-ledger9-network');
 
     expect([error.name, error.reason, error.code]).toEqual([

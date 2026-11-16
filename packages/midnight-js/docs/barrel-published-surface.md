@@ -33,7 +33,7 @@ So the shape was decided on two other grounds:
   constraint, blocking the very optimisation someone will eventually want.
 - A wholesale namespace would publish `loadLedger8Protocol`, `loadLedger8Engine`,
   `ledger` and `onchainRuntime` from the barrel — the opposite of keeping the
-  retained-era runtime off the eager path.
+  ledger 8 runtime off the eager path.
 
 ## Which names qualify
 
@@ -86,7 +86,7 @@ did not already have — `utils.MIDNIGHT_JS_ERROR_CODES` already aggregates ever
 protocol code, and `utils` is one of the four namespaces — but it gives named
 members to discriminate on instead of hand-written strings.
 
-Publishing codes alone was not enough. `contracts` calls into the retained-era
+Publishing codes alone was not enough. `contracts` calls into the ledger 8
 pipeline from public entry points without wrapping what it throws, so these
 protocol errors reach a barrel consumer directly:
 
@@ -161,7 +161,7 @@ instantiates the v9 ledger and onchain-runtime WASM artifacts, because
 *barrel itself* does not add a second, direct pin of that cost — so shaking it
 out later stays possible instead of becoming a breaking change.
 
-The retained pre-fork (v8) runtime is a different matter, and the promise there
+The pre-fork ledger 8 runtime is a different matter, and the promise there
 is absolute: it is absent from the barrel's static closure entirely, reached
 only through the loaders that dynamically import it. There is no `protocol/v8`
 re-export in any form. The mechanism is decided in

@@ -14,7 +14,7 @@
  */
 
 /**
- * Drives the REAL retained toolchain through compact-js's era-pinned ledger-8
+ * Drives the REAL ledger 8 toolchain through compact-js's era-pinned ledger-8
  * entries, against the artifacts this repo already committed goldens for.
  *
  * The golden assertion is the oracle that retiring the hand-maintained
@@ -76,7 +76,7 @@ import type { Assert, MutuallyAssignable } from './type-assertions';
 
 // The compiled artifact opens with `checkRuntimeVersion('0.16.0')` against a
 // bare `@midnight-ntwrk/compact-runtime` import, so the specifier is redirected
-// to the retained alias for this file only -- the same redirect the retired
+// to the ledger 8 alias for this file only -- the same redirect the retired
 // `v8-execute.test.ts` used.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
@@ -121,7 +121,7 @@ interface CounterModule {
  * Builds the contract state the call runs against, as the SERIALIZED bytes the
  * chain serves — which is the only form {@link runLedger8Circuit} accepts.
  *
- * Runs the artifact's own constructor through the retained glue rather than
+ * Runs the artifact's own constructor through the ledger 8 glue rather than
  * through `runLedger8Constructor`, so a fault in the constructor path cannot
  * make the circuit assertions below pass or fail for the wrong reason.
  */
@@ -143,7 +143,7 @@ const freshCounterState = async (contractModule: CounterModule, balance: Contrac
 };
 
 /**
- * The `StateValue` builders the state-guard suite needs, over the retained
+ * The `StateValue` builders the state-guard suite needs, over the ledger 8
  * runtime's own algebra. A map is the only container whose encoding carries an
  * ORDER, which is what makes the round-trip comparison testable against the
  * real decoder rather than an injected one.
@@ -228,7 +228,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
     expect(transcript.postContractStateEncoded).not.toEqual(transcript.preContractState.encode());
   });
 
-  it('records the context the retained runtime actually built', async () => {
+  it('records the context the ledger 8 runtime actually built', async () => {
     // Arrange.
     const { module: contractModule, contract } = await loadCounter();
     const contractState = await freshCounterState(contractModule);
@@ -278,7 +278,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
   it('carries the balance the contract holds into the executing context', async () => {
     // Arrange. The balance travels on the SAME value as the state, so the two
     // cannot come off different reads. This is the regression #1345 was: handed
-    // a bare state value rather than a whole contract state, the retained
+    // a bare state value rather than a whole contract state, the ledger 8
     // runtime substitutes an empty balance map and a circuit reading a balance
     // sees nothing, with every guard green.
     const { module: contractModule, contract } = await loadCounter();
@@ -303,13 +303,13 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
 
   it('executes a contract whose state carries a CURRENT-era envelope', async () => {
     // Arrange. A contract an earlier post-fork call has already MIGRATED: its
-    // state is written in the current era while its artifacts stay the retained
-    // toolchain's, so it must keep executing on the retained runtime. A real
+    // state is written in the current era while its artifacts stay the ledger 8
+    // toolchain's, so it must keep executing on the ledger 8 runtime. A real
     // committed v9 envelope, decoded by the era that wrote it -- which is what
     // the pipeline threads.
     //
     // This is a regression test with a known failure: handing the chain's own
-    // bytes to the retained decoder instead refuses them on the envelope tag,
+    // bytes to the ledger 8 decoder instead refuses them on the envelope tag,
     // which silently broke every keep-state call after the first.
     const receiverDir = fixturePath('coin-receiver-016');
     const receiverModule = (await import(/* @vite-ignore */ `${receiverDir}/compiled/contract/index.js`)) as CounterModule;
@@ -335,7 +335,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
     expect(transcript.publicTranscript.length).toBeGreaterThan(0);
   });
 
-  // The retained runtime's own refusals name neither the option, the era, nor
+  // The ledger 8 runtime's own refusals name neither the option, the era, nor
   // the caller: a short key reads back as `failed to fill whole buffer`, a
   // non-hex one as `Invalid character 'z' at position 0`. Measured against the
   // pinned runtime, a signing key is 32 bytes written as 64 hex characters, so
@@ -347,7 +347,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
     ['too long', 'a1'.repeat(33)],
     ['odd length', `${'a1'.repeat(31)}a`]
   ])('refuses a signing key that is %s, by name and before the constructor runs', async (_label, signingKey) => {
-    // Arrange. A key the retained runtime cannot read at all: the refusal has
+    // Arrange. A key the ledger 8 runtime cannot read at all: the refusal has
     // to name the option, not leave the runtime's own buffer message to stand
     // for it, and it has to happen before anything executes.
     const { contract } = await loadCounter();
@@ -411,7 +411,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
     }).catch((error: unknown) => error);
 
     // Assert. STRICTER than the leg this replaced, and deliberately recorded:
-    // a retained-era constructor used to leave every entry point's key slot
+    // a ledger 8 constructor used to leave every entry point's key slot
     // blank, and the deploy composition was the only thing that checked
     // coverage. compact-js refuses before a state is built at all, naming the
     // circuit whose key is missing.
@@ -422,7 +422,7 @@ describe('runLedger8Circuit against the counter-016 artifact (real compact-runti
   it('codes a verifier key the ledger rejects, naming the circuit it was served for', async () => {
     // Arrange. A blob the reader answers with but the ledger refuses. compact-js
     // writes the keys itself inside `initialize`, so this is the first thing to
-    // touch the bytes -- the retained composer, which used to raise the coded
+    // touch the bytes -- the ledger 8 composer, which used to raise the coded
     // refusal, is never reached.
     const { contract } = await loadCounter();
 
@@ -629,12 +629,12 @@ describe('pinnedClock refuses a second it cannot pin to', () => {
 });
 
 describe('soleCall', () => {
-  it('reads the one call a retained-era execution produces', () => {
+  it('reads the one call a ledger 8 execution produces', () => {
     expect(soleCall(['only'], 'increment')).toBe('only');
   });
 
   it('refuses an empty call list by naming the circuit', () => {
-    // The retained era cannot make a cross-contract call, so its adapter
+    // Ledger 8 cannot make a cross-contract call, so its adapter
     // synthesises exactly one entry. An empty list is a contract this era
     // cannot honour, and is refused rather than read as `undefined` and carried
     // into a composition.
@@ -646,7 +646,7 @@ describe('soleCall', () => {
 describe('a failing circuit', () => {
   it('surfaces the runtime\'s own reason, not just compact-js\'s wrapper', async () => {
     // Arrange. `receive_coin` on a contract state that does not fit it: the
-    // retained runtime refuses inside the circuit, and compact-js reports that
+    // ledger 8 runtime refuses inside the circuit, and compact-js reports that
     // as `Error executing circuit '...'` with the real diagnostic on `cause`.
     const { module: contractModule, contract } = await loadCounter();
     const contractState = await freshCounterState(contractModule);
@@ -996,7 +996,7 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
   // The structural round trip: decode the state, re-encode it, and refuse a
   // value that did not come back. The comparison is cross-codec in production
   // -- a MIGRATED contract's state is encoded by ledger-v9 and decoded by the
-  // retained runtime -- so what it catches is the two disagreeing about a
+  // ledger 8 runtime -- so what it catches is the two disagreeing about a
   // shape one of them accepts. Both rows below are refused by the REAL
   // decoder; neither needs an injected one.
   const notItsOwnSource: readonly [label: string, mangle: (encoded: EncodedMapStateValue) => EncodedStateValue][] = [
@@ -1028,7 +1028,7 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     expect((rejection as StateConversionFailedError).cause).toBeDefined();
   });
 
-  // A state the retained decoder THROWS on, rather than one that decodes and
+  // A state the ledger 8 decoder THROWS on, rather than one that decodes and
   // fails the round trip. The retired `downConvertForExecution` wrapped the
   // whole decode in a try/catch and coded every failure; only the round-trip
   // mismatch is coded without one, so these leave as bare vendor errors
@@ -1037,7 +1037,7 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     Object.assign({} as EncodedStateValue, shape);
 
   const refusedByTheDecoder: readonly [label: string, state: EncodedStateValue][] = [
-    ['a tag no retained-era variant declares', undecodable({ tag: 'nonsense' })],
+    ['a tag no ledger 8 variant declares', undecodable({ tag: 'nonsense' })],
     ['a value carrying no tag at all', undecodable({})],
     ['a cell with no content', undecodable({ tag: 'cell' })]
   ];
@@ -1057,7 +1057,7 @@ describe('runLedger8Circuit refuses a state it cannot execute against', () => {
     expect((rejection as StateConversionFailedError).cause).toBeDefined();
   });
 
-  it('codes a colour the retained runtime cannot read, rather than leaking the WASM error', async () => {
+  it('codes a colour the ledger 8 runtime cannot read, rather than leaking the WASM error', async () => {
     // Arrange. `isContractBalance` checks only that a colour's `tag` is a
     // string -- never `raw` -- so this passes the guard and reaches the WASM
     // `balance` setter, which refuses it. An untyped caller, or a migrated
@@ -1247,7 +1247,7 @@ describe('structurallyEqual', () => {
 
 // Compile-time drift detector, restored from the retired `v8-down-convert.test.ts`.
 // If a vendor bump changes the wire shape of EncodedStateValue, Op, AlignedValue,
-// Transcript, CallContext or Effects between the retained (onchain-runtime-v3 /
+// Transcript, CallContext or Effects between the ledger 8 (onchain-runtime-v3 /
 // ledger-v8) and current (ledger-v9) packages this engine bridges, this block
 // stops compiling. It is deliberately not paired with a runtime assertion, which
 // would be a tautology after erasure.
@@ -1269,7 +1269,7 @@ type _TranscriptUnchanged = Expect<
 // The ledger-v8 axis, pinned for the same reason: `assemble-call.ts` crosses the
 // envelope into whichever ledger module it is handed, and its safety argument --
 // a safe envelope crossing, not a lossy re-encode -- covers ledger-v8 as soon as
-// the retained leg binds to it.
+// the ledger 8 leg binds to it.
 type _Ledger8EncodedStateValueUnchanged = Expect<AssertEqual<Ledger8EncodedStateValue, Ledger9EncodedStateValue>>;
 type _Ledger8OpUnchanged = Expect<AssertEqual<Ledger8Op<null>, Ledger9Op<null>>>;
 type _Ledger8AlignedValueUnchanged = Expect<AssertEqual<Ledger8AlignedValue, Ledger9AlignedValue>>;
@@ -1279,7 +1279,7 @@ type _Ledger8TranscriptUnchanged = Expect<
 
 // `CallContext` and `Effects` join them one step further out, and this is the row
 // closest to the new code: `runLedger8Circuit` reads `partitionInputs.block` and
-// `.effects` off compact-js's RETAINED types and publishes them as
+// `.effects` off compact-js's ledger 8 types and publishes them as
 // `PartitionContext`, declared once against ledger-v9, which a composition leg
 // then writes onto whichever era's `QueryContext` it partitions against. Three
 // axes have to agree for that to be a move rather than a re-encode, and the WASM
@@ -1293,7 +1293,7 @@ type _Ledger8EffectsUnchanged = Expect<AssertEqual<Ledger8Effects, Ledger9Effect
 // ADR-0009 declares `nextZswapLocalState` once, as the CURRENT era's
 // `ZswapLocalState`, rather than behind a third type parameter -- and rests that
 // on the two runtimes' declarations being interchangeable. This is the check that
-// claim names. `packages/types` cannot host it (it may not reach the retained
+// claim names. `packages/types` cannot host it (it may not reach the ledger 8
 // runtime), so it lives here, where both are in scope.
 type _ZswapLocalStateInterchangeable = Assert<
   MutuallyAssignable<glue.ZswapLocalState, CurrentZswapLocalState>

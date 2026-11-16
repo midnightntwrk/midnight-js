@@ -42,10 +42,10 @@
     "compact-shielded": "run-compactc src/contract/shielded.compact ./src/contract/compiled/shielded",
     "compact-shielded-fallible": "run-compactc src/contract/shielded-fallible.compact ./src/contract/compiled/shielded-fallible",
     "compact-fee-mint": "run-compactc src/contract/fee-mint.compact ./src/contract/compiled/fee-mint",
-    "compact-retained": "rimraf ./src/contract/compiled-retained && yarn fetch-compactc --version=0.31.1 && yarn compact-retained-unshielded && yarn compact-retained-block-time && yarn compact-retained-double-counter && node ./scripts/rewrite-retained-runtime.mjs ./src/contract/compiled-retained",
-    "compact-retained-unshielded": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/unshielded.compact ./src/contract/compiled-retained/unshielded",
-    "compact-retained-block-time": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/block-time.compact ./src/contract/compiled-retained/block-time",
-    "compact-retained-double-counter": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/double-counter.compact ./src/contract/compiled-retained/double-counter"
+    "compact-ledger8": "rimraf ./src/contract/compiled-ledger8 && yarn fetch-compactc --version=0.31.1 && yarn compact-ledger8-unshielded && yarn compact-ledger8-block-time && yarn compact-ledger8-double-counter && node ./scripts/rewrite-ledger8-runtime.mjs ./src/contract/compiled-ledger8",
+    "compact-ledger8-unshielded": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/unshielded.compact ./src/contract/compiled-ledger8/unshielded",
+    "compact-ledger8-block-time": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/block-time.compact ./src/contract/compiled-ledger8/block-time",
+    "compact-ledger8-double-counter": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/double-counter.compact ./src/contract/compiled-ledger8/double-counter"
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-bundled-contract-module-provider": "workspace:*",

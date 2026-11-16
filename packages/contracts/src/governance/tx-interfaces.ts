@@ -55,8 +55,8 @@ export interface Ledger9CircuitMaintenanceTxInterface {
 }
 
 /**
- * Creates a {@link Ledger9CircuitMaintenanceTxInterface}, or the retained era's
- * `Ledger8CircuitMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+ * Creates a {@link Ledger9CircuitMaintenanceTxInterface}, or ledger 8's
+ * `Ledger8CircuitMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
  *
  * The contract's shape only picks which overload each method calls; the era itself is resolved by
  * that call, when the method runs.
@@ -110,8 +110,8 @@ export function createCircuitMaintenanceTxInterface<C extends Contract.Any>(
 export type Ledger9CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ProvableCircuitId<C>, Ledger9CircuitMaintenanceTxInterface>;
 
 /**
- * Creates a {@link Ledger9CircuitMaintenanceTxInterfaces}, or the retained era's
- * `Ledger8CircuitMaintenanceTxInterfaces` for a contract the retained Compact toolchain produced.
+ * Creates a {@link Ledger9CircuitMaintenanceTxInterfaces}, or ledger 8's
+ * `Ledger8CircuitMaintenanceTxInterfaces` for a contract the ledger 8 Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract to use to execute circuits.
@@ -167,8 +167,8 @@ export interface Ledger9ContractMaintenanceTxInterface {
 }
 
 /**
- * Creates a {@link Ledger9ContractMaintenanceTxInterface}, or the retained era's
- * `Ledger8ContractMaintenanceTxInterface` for a contract the retained Compact toolchain produced.
+ * Creates a {@link Ledger9ContractMaintenanceTxInterface}, or ledger 8's
+ * `Ledger8ContractMaintenanceTxInterface` for a contract the ledger 8 Compact toolchain produced.
  *
  * @param providers The providers to use to build transactions.
  * @param compiledContract The contract the interface is for.
