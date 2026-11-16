@@ -79,6 +79,7 @@ const EXPECTED_PUBLISHED_NAMES = [
   'FinalizedTxRecord',
   'hashVerifierKey',
   'ImportConflictError',
+  'ImportPasswordValidationError',
   'ImportPrivateStatesOptions',
   'ImportPrivateStatesResult',
   'ImportSigningKeysOptions',

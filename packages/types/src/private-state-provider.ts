@@ -334,8 +334,8 @@ export interface ContractPrivateStates<PSI extends PrivateStateId = PrivateState
    * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
    * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
    * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
-   * @throws {PrivateStateExportError} If a caller-supplied `options.password`
-   *   does not satisfy the minimum-length policy.
+   * @throws {ImportPasswordValidationError} If a caller-supplied `options.password`
+   *   does not satisfy the password policy. The failed check is on `passwordError`.
    * @throws If reading or writing the underlying store fails for any of the
    *   reasons listed on {@link ContractPrivateStates.get} or
    *   {@link ContractPrivateStates.set}.
@@ -465,8 +465,8 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * @throws {InvalidExportFormatError} If the export format is invalid or unsupported, or it
    *   holds an address that is not a valid contract address. Nothing is imported then.
    * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
-   * @throws {SigningKeyExportError} If a caller-supplied `options.password`
-   *   does not satisfy the minimum-length policy.
+   * @throws {ImportPasswordValidationError} If a caller-supplied `options.password`
+   *   does not satisfy the password policy. The failed check is on `passwordError`.
    * @throws If reading or writing the underlying store fails for any of the
    *   reasons listed on {@link PrivateStateProvider.getSigningKey} or
    *   {@link PrivateStateProvider.setSigningKey}.
