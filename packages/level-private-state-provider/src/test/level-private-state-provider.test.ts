@@ -21,6 +21,7 @@ import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight
 import {
   ExportDecryptionError,
   ImportConflictError,
+  ImportPasswordValidationError,
   InvalidExportFormatError,
   PrivateStateDecryptionError,
   type PrivateStateExport,
@@ -78,6 +79,24 @@ const expectPasswordValidationCause = (
     expect(error.cause).toBeInstanceOf(PasswordValidationError);
     if (error.cause instanceof PasswordValidationError) {
       expect(error.cause.reason).toBe(reason);
+    }
+  }
+};
+
+const expectImportPasswordError = (
+  error: unknown,
+  reason: PasswordValidationFailure
+): void => {
+  expect(error).toBeInstanceOf(ImportPasswordValidationError);
+  if (error instanceof ImportPasswordValidationError) {
+    expect([error.code, error.category, error.cause]).toEqual([
+      'MIDNIGHT_JS_PR_IMPORT_PASSWORD_INVALID',
+      'USAGE',
+      'invalid_password'
+    ]);
+    expect(error.passwordError).toBeInstanceOf(PasswordValidationError);
+    if (error.passwordError instanceof PasswordValidationError) {
+      expect(error.passwordError.reason).toBe(reason);
     }
   }
 };
@@ -609,7 +628,7 @@ describe('Level Private State Provider', (): void => {
       ).rejects.toThrow(PrivateStateExportError);
     });
 
-    test('throws PrivateStateExportError for short import password', async () => {
+    test('throws ImportPasswordValidationError for short import password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       await db.forContract(TEST_CONTRACT_ADDRESS).set('stringValue', testStates.stringValue);
 
@@ -618,7 +637,7 @@ describe('Level Private State Provider', (): void => {
 
       await expect(
         db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: 'short' })
-      ).rejects.toThrow(PrivateStateExportError);
+      ).rejects.toThrow(ImportPasswordValidationError);
     });
 
     describe('strict password policy on export/import', () => {
@@ -640,6 +659,7 @@ describe('Level Private State Provider', (): void => {
       });
 
       test.each<[PasswordValidationFailure, string]>([
+        ['missing', ''],
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -654,8 +674,7 @@ describe('Level Private State Provider', (): void => {
           db.forContract(TEST_CONTRACT_ADDRESS).importPrivateStates(exportData, { password: weakPassword })
         );
 
-        expect(error).toBeInstanceOf(PrivateStateExportError);
-        expectPasswordValidationCause(error, reason);
+        expectImportPasswordError(error, reason);
       });
     });
 
@@ -1179,7 +1198,7 @@ describe('Level Private State Provider', (): void => {
       ).rejects.toThrow(SigningKeyExportError);
     });
 
-    test('throws SigningKeyExportError for short import password', async () => {
+    test('throws ImportPasswordValidationError for short import password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       const signingKey = sampleSigningKey();
       await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
@@ -1189,7 +1208,7 @@ describe('Level Private State Provider', (): void => {
 
       await expect(
         db.importSigningKeys(exportData, { password: 'short' })
-      ).rejects.toThrow(SigningKeyExportError);
+      ).rejects.toThrow(ImportPasswordValidationError);
     });
 
     describe('strict password policy on signing keys export/import', () => {
@@ -1211,6 +1230,7 @@ describe('Level Private State Provider', (): void => {
       });
 
       test.each<[PasswordValidationFailure, string]>([
+        ['missing', ''],
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -1225,8 +1245,7 @@ describe('Level Private State Provider', (): void => {
           db.importSigningKeys(exportData, { password: weakPassword })
         );
 
-        expect(error).toBeInstanceOf(SigningKeyExportError);
-        expectPasswordValidationCause(error, reason);
+        expectImportPasswordError(error, reason);
       });
     });
 

@@ -21,6 +21,7 @@ import {
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
   ImportConflictError,
+  ImportPasswordValidationError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
   type ImportSigningKeysOptions,
@@ -38,7 +39,12 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, isValidSigningKey, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertIsContractAddress,
+  isValidSigningKey,
+  PasswordValidationError,
+  validatePassword
+} from '@midnight-ntwrk/midnight-js-utils';
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
@@ -103,9 +109,10 @@ export interface LevelPrivateStateProviderConfig {
    * The same policy is applied to custom passwords passed to
    * {@link ContractPrivateStates.exportPrivateStates} / `exportSigningKeys` and
    * their `importPrivateStates` / `importSigningKeys` counterparts. Violations
-   * surface as `PasswordValidationError` on storage paths, or wrapped as
+   * surface as `PasswordValidationError` on storage paths, wrapped as
    * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
-   * export/import paths.
+   * export paths, and as `ImportPasswordValidationError` (with
+   * `passwordError`) on import paths.
    *
    * SECURITY: Use a strong, secret password. Never use public key material
    * or other non-secret values as the password source.
@@ -727,6 +734,17 @@ const validateSigningKeyExportPassword = (password: string): void => {
   }
 };
 
+const validateImportPassword = (password: string): void => {
+  try {
+    validatePassword(password);
+  } catch (error) {
+    if (error instanceof PasswordValidationError) {
+      throw new ImportPasswordValidationError(error);
+    }
+    throw error;
+  }
+};
+
 const validateSalt = (salt: string): void => {
   if (salt.length !== EXPECTED_SALT_LENGTH) {
     throw new InvalidExportFormatError('Invalid salt length');
@@ -986,7 +1004,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         // Validate custom password if provided
         if (options?.password !== undefined) {
-          validateExportPassword(options.password);
+          validateImportPassword(options.password);
         }
 
         // Determine import password - use provided password or storage password
@@ -1208,7 +1226,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       validateSalt(exportData.salt);
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validateImportPassword(options.password);
       }
 
       const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);

@@ -132,30 +132,30 @@ const _descriptor_10 = new _Either_0();
 
 const _descriptor_11 = __compactRuntime.CompactTypeField;
 
-const _descriptor_12 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
-
-const _descriptor_13 = new __compactRuntime.CompactTypeVector(2, _descriptor_11);
-
-const _descriptor_14 = new __compactRuntime.CompactTypeBytes(21);
+const _descriptor_12 = new __compactRuntime.CompactTypeBytes(21);
 
 class _CoinPreimage_0 {
   alignment() {
-    return _descriptor_14.alignment().concat(_descriptor_6.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment())));
+    return _descriptor_12.alignment().concat(_descriptor_6.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment())));
   }
   fromValue(value_0) {
     return {
-      domain_sep: _descriptor_14.fromValue(value_0),
+      domain_sep: _descriptor_12.fromValue(value_0),
       info: _descriptor_6.fromValue(value_0),
       dataType: _descriptor_2.fromValue(value_0),
       data: _descriptor_0.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_14.toValue(value_0.domain_sep).concat(_descriptor_6.toValue(value_0.info).concat(_descriptor_2.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
+    return _descriptor_12.toValue(value_0.domain_sep).concat(_descriptor_6.toValue(value_0.info).concat(_descriptor_2.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
   }
 }
 
-const _descriptor_15 = new _CoinPreimage_0();
+const _descriptor_13 = new _CoinPreimage_0();
+
+const _descriptor_14 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
+
+const _descriptor_15 = new __compactRuntime.CompactTypeVector(2, _descriptor_11);
 
 class _Either_1 {
   alignment() {
@@ -640,7 +640,7 @@ export class Contract {
     return { nonce: coin_0.nonce, color: coin_0.color, value: coin_0.value };
   }
   _coinCommitment_0(coin_0, recipient_0) {
-    return this._persistentHash_0({ domain_sep:
+    return this._persistentHash_1({ domain_sep:
                                       new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 122, 115, 119, 97, 112, 45, 99, 99, 91, 118, 49, 93]),
                                     info: coin_0,
                                     dataType: recipient_0.is_left,
@@ -650,26 +650,26 @@ export class Contract {
                                       recipient_0.right.bytes });
   }
   _coinNullifier_0(coin_0, addr_0) {
-    return this._persistentHash_0({ domain_sep:
+    return this._persistentHash_1({ domain_sep:
                                       new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 122, 115, 119, 97, 112, 45, 99, 110, 91, 118, 49, 93]),
                                     info: coin_0,
                                     dataType: false,
                                     data: addr_0.bytes });
   }
   _transientHash_0(value_0) {
-    const result_0 = __compactRuntime.transientHash(_descriptor_13, value_0);
+    const result_0 = __compactRuntime.transientHash(_descriptor_15, value_0);
     return result_0;
   }
   _persistentHash_0(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_15, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_14, value_0);
     return result_0;
   }
   _persistentHash_1(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_12, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_13, value_0);
     return result_0;
   }
   _persistentCommit_0(value_0, rand_0) {
-    const result_0 = __compactRuntime.persistentCommit(_descriptor_12,
+    const result_0 = __compactRuntime.persistentCommit(_descriptor_14,
                                                        value_0,
                                                        rand_0);
     return result_0;
@@ -708,12 +708,11 @@ export class Contract {
                                       publicKey_0,
                                       sendValue_0)
   {
+    const key_0 = this._persistentHash_0([mintNonce_0, domainSep_0]);
     await this._folder_0(context,
                          partialProofData,
                          (async (context, partialProofData, t_0, i_0) =>
                           {
-                            const key_0 = this._persistentHash_1([mintNonce_0,
-                                                                  domainSep_0]);
                             __compactRuntime.queryLedgerState(context,
                                                               partialProofData,
                                                               [
@@ -767,7 +766,103 @@ export class Contract {
                           28n,
                           29n,
                           30n,
-                          31n]);
+                          31n,
+                          32n,
+                          33n,
+                          34n,
+                          35n,
+                          36n,
+                          37n,
+                          38n,
+                          39n,
+                          40n,
+                          41n,
+                          42n,
+                          43n,
+                          44n,
+                          45n,
+                          46n,
+                          47n,
+                          48n,
+                          49n,
+                          50n,
+                          51n,
+                          52n,
+                          53n,
+                          54n,
+                          55n,
+                          56n,
+                          57n,
+                          58n,
+                          59n,
+                          60n,
+                          61n,
+                          62n,
+                          63n,
+                          64n,
+                          65n,
+                          66n,
+                          67n,
+                          68n,
+                          69n,
+                          70n,
+                          71n,
+                          72n,
+                          73n,
+                          74n,
+                          75n,
+                          76n,
+                          77n,
+                          78n,
+                          79n,
+                          80n,
+                          81n,
+                          82n,
+                          83n,
+                          84n,
+                          85n,
+                          86n,
+                          87n,
+                          88n,
+                          89n,
+                          90n,
+                          91n,
+                          92n,
+                          93n,
+                          94n,
+                          95n,
+                          96n,
+                          97n,
+                          98n,
+                          99n,
+                          100n,
+                          101n,
+                          102n,
+                          103n,
+                          104n,
+                          105n,
+                          106n,
+                          107n,
+                          108n,
+                          109n,
+                          110n,
+                          111n,
+                          112n,
+                          113n,
+                          114n,
+                          115n,
+                          116n,
+                          117n,
+                          118n,
+                          119n,
+                          120n,
+                          121n,
+                          122n,
+                          123n,
+                          124n,
+                          125n,
+                          126n,
+                          127n]);
     __compactRuntime.queryLedgerState(context, partialProofData, [ 'ckpt']);
     const coin_0 = await this._mintShieldedToken_0(context,
                                                    partialProofData,
@@ -805,7 +900,7 @@ export class Contract {
     return true;
   }
   async _folder_0(context, partialProofData, f, x, a0) {
-    for (let i = 0; i < 32; i++) { x = await f(context, partialProofData, x, a0[i]); }
+    for (let i = 0; i < 128; i++) { x = await f(context, partialProofData, x, a0[i]); }
     return x;
   }
 }
@@ -941,7 +1036,7 @@ const _emptyContext = {
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const expectedVk = {
-  'heavyCheckpointMintAndSend': 'b008bda2dd1fbbc4aa7c4a2ef23c9e9b8d6ea3c7c7f573250dbd6f468e12e1a0',
+  'heavyCheckpointMintAndSend': '0b2192064fe189458a640cc7300d66a295350046ba6214c93274bd52a1622958',
 };
 
 export const circuitSignatures = {
