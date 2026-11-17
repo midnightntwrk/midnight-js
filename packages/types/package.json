@@ -15,15 +15,18 @@
     }
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/types"
+  },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run --passWithNoTests",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run --passWithNoTests"
   },
   "files": [
     "dist/"

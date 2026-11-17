@@ -11,7 +11,11 @@
     }
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/contracts"
+  },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
@@ -21,8 +25,7 @@
     "compact-shielded": "run-compactc src/test/resources/shielded-map.compact ./src/test/resources/compiled/shielded-map",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
-    "test-no-utils": "vitest run --exclude src/test/*.test.ts",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test-no-utils": "vitest run --exclude src/test/*.test.ts"
   },
   "dependencies": {
     "@midnightntwrk/midnight-js-protocol": "workspace:*",

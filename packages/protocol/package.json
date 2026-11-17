@@ -76,7 +76,11 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/protocol"
+  },
   "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
@@ -84,8 +88,7 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "lint": "eslint src/",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "files": [
     "dist/"
