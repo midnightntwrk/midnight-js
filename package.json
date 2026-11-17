@@ -7,6 +7,11 @@
     "type": "git",
     "url": "git+https://github.com/midnightntwrk/midnight-js.git"
   },
+  "homepage": "https://github.com/midnightntwrk/midnight-js#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "engines": {
     "node": ">=22.12"
   },

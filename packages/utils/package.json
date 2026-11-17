@@ -15,8 +15,12 @@
     "url": "git+https://github.com/midnightntwrk/midnight-js.git",
     "directory": "packages/utils"
   },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/utils#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",

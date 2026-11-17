@@ -6,7 +6,11 @@
     "url": "git+https://github.com/midnightntwrk/midnight-js.git",
     "directory": "packages/compact"
   },
-  "author": "IOG",
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/compact#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "engines": {
     "node": ">=22.12"
   },
