@@ -54,15 +54,16 @@ See [migration-guide.md](./migration-guide.md) if you catch import errors or rot
 
 ## Test Evidence
 
-- **CI on the release commit `1b492fca7` (`chore(release): bump version to 5.0.1`):**
-  [run 44084498050](https://github.com/midnightntwrk/midnight-js/actions/runs/44084498050). Attempt 1
-  was cancelled; attempt 2 re-ran it, and all 55 jobs passed: build, lint, unit and integration
-  tests, testkit e2e (both eras), Hard fork lanes and consumer e2e.
-- **CI on the tagged commit `e55e489f1`:**
-  [run 44086109779](https://github.com/midnightntwrk/midnight-js/actions/runs/44086109779). Attempt 1
-  was cancelled before the e2e jobs finished; build, lint, unit tests and 7 of 8 Hard fork lanes
-  passed. Attempt 2 re-runs the cancelled jobs. This commit (#1654) changes only the build tooling
-  (`.nvmrc`, `.npmrc`, `.envrc`, CI workflows), not package source.
+- **Release run:** [run 44084498050](https://github.com/midnightntwrk/midnight-js/actions/runs/44084498050)
+  on the release commit `1b492fca7` (`chore(release): bump version to 5.0.1`). Its `Publish release`
+  job built and published the 5.0.1 packages from `1b492fca7`. Attempt 1 was cancelled; in attempt 2
+  all 55 jobs passed: build, lint, unit and integration tests, testkit e2e (both eras), Hard fork
+  lanes, consumer e2e and the publish.
+- **Tagged commit:** the `v5.0.1` tag points to `e55e489f1`, because the GitHub release targets the
+  head of `main` at publish time. That commit (#1654) changes only the build tooling (`.nvmrc`,
+  `.npmrc`, `.envrc`, CI workflows), not package source.
+  [Run 44086109779](https://github.com/midnightntwrk/midnight-js/actions/runs/44086109779) on it
+  passed in attempt 2: 54 jobs green, `Publish release` skipped.
 
 ## Testing Checklist
 
