@@ -174,12 +174,14 @@ jobs:
   # v<version> tag on this main commit). Gated on the build/test/e2e jobs in the
   # SAME run, so a release can never publish ahead of its e2e — replacing the
   # former standalone CD workflow, which re-ran e2e that CI had already run.
+  # The test evidence of those jobs is attached to the GitHub Release.
   publish:
     name: Publish release
-    needs: [ci-midnightjs, ci-testkit, detect-release]
+    needs: [ci-midnightjs, ci-testkit, consumer-e2e, hardfork, detect-release]
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
       id-token: write
       packages: write
@@ -215,6 +217,23 @@ jobs:
             found
           ' CHANGELOG.md > release_notes.md
 
+      # Before the first publish: publishing is not atomic, so a release with
+      # missing or failed evidence must stop here.
+      - name: Collect test evidence
+        id: evidence
+        uses: ./.github/actions/collect-test-evidence
+        with:
+          run-id: ${{ github.run_id }}
+          version: ${{ needs.detect-release.outputs.version_number }}
+          sha: ${{ github.sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Link test evidence in release notes
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SUMMARY: ${{ steps.evidence.outputs.summary }}
+        run: printf "\n**Test evidence:** \`%s\` and the tarball attached to this release (CI run %s).\n" "$SUMMARY" "$RUN_URL" >> release_notes.md
+
       - name: Determine Build Targets
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # ratchet:dorny/paths-filter@v4.0.3
         id: changes
@@ -245,6 +264,9 @@ jobs:
           tag_name: ${{ needs.detect-release.outputs.version }}
           name: Release ${{ needs.detect-release.outputs.version }}
           body_path: release_notes.md
+          files: |
+            ${{ steps.evidence.outputs.bundle }}
+            ${{ steps.evidence.outputs.summary }}
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
           # as a pre-release and must NOT become the "Latest" release.

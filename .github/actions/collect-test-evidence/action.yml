@@ -1,0 +1,100 @@
+name: 'Collect test evidence'
+description: 'Downloads the test evidence of a CI run, fails on missing or failed evidence, and packs it for the GitHub Release'
+
+inputs:
+  run-id:
+    description: 'Id of the ci.yml run whose tests gated the release'
+    required: true
+  version:
+    description: 'Version being released, without the leading v (e.g. 5.1.0)'
+    required: true
+  sha:
+    description: 'Commit the release is made from'
+    required: true
+  github-token:
+    description: 'Token with actions: read on this repository'
+    required: true
+
+outputs:
+  bundle:
+    description: 'Path of the evidence tarball'
+    value: ${{ steps.pack.outputs.bundle }}
+  summary:
+    description: 'Path of the evidence summary'
+    value: ${{ steps.pack.outputs.summary }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download evidence artifacts
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        set -euo pipefail
+        rm -rf evidence
+        mkdir evidence
+        gh run download "$RUN_ID" -R "$REPO" -D evidence \
+          -n evidence-unit-packages \
+          -n evidence-unit-testkit \
+          -n test-results-junit-summary-devnet \
+          -n test-results-junit-summary-v8era \
+          -n test-results-ctrf-summary-devnet \
+          -n test-results-ctrf-summary-v8era \
+          -n 'Coverage Report'
+
+    # Logs come from the API rather than from a file the job writes itself,
+    # because GitHub masks secrets in them and the bundle is published.
+    - name: Download job results and logs
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ inputs.run-id }}
+      run: |
+        set -euo pipefail
+        gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --paginate \
+          --jq '.jobs[] | {id, name, conclusion}' | jq -s . > evidence-jobs.json
+        mkdir -p evidence/job-logs
+        mapfile -t ids < <(jq -r '.[]
+          | select(.conclusion == "success")
+          | select((.name | startswith("Hard fork / ")) or (.name | startswith("Consumer E2E / ")))
+          | .id' evidence-jobs.json)
+        # curl, not `gh api`: gh refuses to print a response holding terminal
+        # escape sequences, and job logs hold colour codes.
+        for id in "${ids[@]}"; do
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -o "evidence/job-logs/$id.log" \
+            "$GITHUB_API_URL/repos/$REPO/actions/jobs/$id/logs"
+        done
+
+    - name: Check evidence and write SUMMARY.md
+      shell: bash
+      env:
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ inputs.run-id }}
+        VERSION: ${{ inputs.version }}
+        SHA: ${{ inputs.sha }}
+      run: |
+        node .github/scripts/summarize-test-evidence.mjs \
+          --evidence-dir evidence \
+          --jobs evidence-jobs.json \
+          --version "$VERSION" \
+          --sha "$SHA" \
+          --run-url "$GITHUB_SERVER_URL/$REPO/actions/runs/$RUN_ID"
+
+    - name: Pack evidence
+      id: pack
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        (cd evidence && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+        bundle="test-evidence-v${VERSION}.tar.gz"
+        summary="test-evidence-v${VERSION}.md"
+        tar -czf "$bundle" -C evidence .
+        cp evidence/SUMMARY.md "$summary"
+        echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
+        echo "summary=$summary" >> "$GITHUB_OUTPUT"

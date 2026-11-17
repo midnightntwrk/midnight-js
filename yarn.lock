@@ -2163,6 +2163,7 @@ __metadata:
     eslint-plugin-prettier: "npm:^5.5.6"
     eslint-plugin-simple-import-sort: "npm:^12.1.1"
     eslint-plugin-unused-imports: "npm:^4.4.1"
+    fast-xml-parser: "npm:^5.8.0"
     husky: "npm:^9.1.7"
     lint-staged: "npm:^17.6.0"
     pinst: "npm:^3.0.0"

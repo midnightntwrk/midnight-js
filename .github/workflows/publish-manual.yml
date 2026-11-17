@@ -1,7 +1,8 @@
 name: Publish (manual)
 #
 # Workaround to publish the current `main` on demand, WITHOUT a version-bump
-# commit and WITHOUT the full CI/e2e cycle (main is assumed already tested).
+# commit and WITHOUT re-running CI/e2e: it requires instead the test evidence of
+# the completed ci.yml push run for the same commit, and attaches it to the release.
 #
 # It publishes the version currently in the root package.json AS-IS, for a
 # version that has NOT yet been published — e.g. to finish a release whose
@@ -22,6 +23,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: write
   id-token: write
   packages: write
@@ -75,6 +77,33 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=v${version}" >> "$GITHUB_OUTPUT"
 
+      - name: Find the CI run of this commit
+        id: ci_run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh run list -R "$REPO" -w ci.yml -e push -c "$SHA" -s completed -L 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$run_id" ]; then
+            echo "::error::No completed ci.yml push run for ${SHA}. Wait for CI on main to finish, then run this workflow again."
+            exit 1
+          fi
+          echo "Using test evidence from ci.yml run ${run_id}."
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+
+      # Before the first publish: a release without evidence must stop here.
+      # Artifacts expire after 90 days, so an older commit cannot be published this way.
+      - name: Collect test evidence
+        id: evidence
+        uses: ./.github/actions/collect-test-evidence
+        with:
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          version: ${{ steps.guard.outputs.version }}
+          sha: ${{ github.sha }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build packages
         run: yarn build:core
         env:
@@ -96,6 +125,12 @@ jobs:
           if [ ! -s release_notes.md ]; then
             echo "Manual release of v${VERSION_NUMBER} from main @ $(git rev-parse --short HEAD)." > release_notes.md
           fi
+
+      - name: Link test evidence in release notes
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ steps.ci_run.outputs.run_id }}
+          SUMMARY: ${{ steps.evidence.outputs.summary }}
+        run: printf "\n**Test evidence:** \`%s\` and the tarball attached to this release (CI run %s).\n" "$SUMMARY" "$RUN_URL" >> release_notes.md
 
       - name: Validate packages before publishing
         uses: ./.github/actions/validate-packages
@@ -133,6 +168,9 @@ jobs:
           tag_name: ${{ steps.guard.outputs.tag }}
           name: Release ${{ steps.guard.outputs.tag }}
           body_path: release_notes.md
+          files: |
+            ${{ steps.evidence.outputs.bundle }}
+            ${{ steps.evidence.outputs.summary }}
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
           # as a pre-release and must NOT become the "Latest" release.
