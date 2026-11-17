@@ -17,17 +17,19 @@ runs.
 
 ## Breaking Changes
 
-None in the API. Three behaviour changes in `level-private-state-provider` (and the testkit
-`InMemoryPrivateStateProvider`):
+None in the API. Three behaviour changes in the private state provider:
 
-- **A wrong password is refused on every operation**, including writes, removes and clears. It fails
-  with `PrivateStateDecryptionError` (reason `wrong-key`) and changes nothing. Before, a write with
-  the wrong password succeeded and left records encrypted under two passwords (#1648).
+- **A wrong password is refused on every operation**, including writes, removes, clears, imports and
+  exports. It fails with `PrivateStateDecryptionError` (reason `wrong-key`) and changes nothing.
+  Before, a write with the wrong password succeeded and left records encrypted under two passwords
+  (#1648). `level-private-state-provider` only.
 - **Signing-key methods validate the contract address.** A value that is not a contract address
   fails with `InvalidArgumentError`; an import that holds one fails with `InvalidExportFormatError`
-  and imports nothing (#1648).
+  and imports nothing (#1648). `level-private-state-provider` and the testkit
+  `InMemoryPrivateStateProvider`.
 - **A weak password on import throws `ImportPasswordValidationError`**, not
-  `PrivateStateExportError` / `SigningKeyExportError` (#1656).
+  `PrivateStateExportError` / `SigningKeyExportError` (#1656). `level-private-state-provider` and
+  the testkit `InMemoryPrivateStateProvider`.
 
 ## Key Security Fixes
 
@@ -38,8 +40,8 @@ None in the API. Three behaviour changes in `level-private-state-provider` (and 
 
 ## Dependencies
 
-- Ledger 9 stack moves from release candidates to final releases: `ledger-v9` 1.0.2,
-  `onchain-runtime-v4` 4.0.2, `compact-js` 3.0.2 (#1655, #1660, #1671).
+- Ledger 9 stack patch bumps: `ledger-v9` 1.0.0 → 1.0.2, `onchain-runtime-v4` 4.0.0 → 4.0.2,
+  `compact-js` 3.0.0 → 3.0.2 (#1655, #1660, #1671).
 - `wallet-sdk-address-format` 4.0.1, `graphql-ws` 6.4.1, `pino` 10.4.0 (#1644, #1671).
 
 ## Quick Migration
@@ -53,14 +55,14 @@ See [migration-guide.md](./migration-guide.md) if you catch import errors or rot
 ## Test Evidence
 
 - **CI on the release commit `1b492fca7` (`chore(release): bump version to 5.0.1`):**
-  [run 44084498050](https://github.com/midnightntwrk/midnight-js/actions/runs/44084498050). All 55
-  jobs passed: build, lint, unit and integration tests, testkit e2e (both eras), Hard fork lanes and
-  consumer e2e.
+  [run 44084498050](https://github.com/midnightntwrk/midnight-js/actions/runs/44084498050). Attempt 1
+  was cancelled; attempt 2 re-ran it, and all 55 jobs passed: build, lint, unit and integration
+  tests, testkit e2e (both eras), Hard fork lanes and consumer e2e.
 - **CI on the tagged commit `e55e489f1`:**
-  [run 44086109779](https://github.com/midnightntwrk/midnight-js/actions/runs/44086109779) was
-  cancelled before the e2e jobs finished. Build, lint, unit tests and 8 of 9 Hard fork lanes passed.
-  This commit (#1654) changes only the build tooling (`.nvmrc`, `.npmrc`, `.envrc`, CI workflows),
-  not package source, so the run above covers the published code.
+  [run 44086109779](https://github.com/midnightntwrk/midnight-js/actions/runs/44086109779). Attempt 1
+  was cancelled before the e2e jobs finished; build, lint, unit tests and 7 of 8 Hard fork lanes
+  passed. Attempt 2 re-runs the cancelled jobs. This commit (#1654) changes only the build tooling
+  (`.nvmrc`, `.npmrc`, `.envrc`, CI workflows), not package source.
 
 ## Testing Checklist
 

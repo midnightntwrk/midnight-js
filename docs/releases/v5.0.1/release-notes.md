@@ -5,7 +5,7 @@
 **Node.js Requirement:** >=22.12
 
 v5.0.1 is a patch release. It fixes two security gaps in the private state provider, gives import
-its own password error, and moves the ledger 9 stack from release candidates to final releases.
+its own password error, and moves the ledger 9 stack to new patch releases.
 No public API is removed or renamed.
 
 ## Security
@@ -19,17 +19,20 @@ password and succeeded. The store then held records under two passwords, and the
 failed.
 
 Now each store (private states, signing keys) keeps a **key check**: a fixed text encrypted with the
-store key, kept in the store metadata. Every read, write, remove, clear and `importSigningKeys`
-verifies it first.
+store key, kept in the store metadata. Every read, write, remove, clear, import and export verifies
+it first. This applies to `level-private-state-provider`; the testkit `InMemoryPrivateStateProvider`
+has no storage password.
 
 - A password that does not match fails with `PrivateStateDecryptionError` (reason `wrong-key`) and
   changes nothing. This also applies when no value is stored for the key.
-- `changePassword` / `changeSigningKeysPassword` verify the old password against the key check and
-  write the new key check in the same batch as the re-encrypted records. A rotation with a wrong
-  old password fails with `InvalidArgumentError`, also on an empty store.
+- `changePassword` / `changeSigningKeysPassword` (on the object `levelPrivateStateProvider` returns)
+  verify the old password against the key check and write the new key check in the same batch as
+  the re-encrypted records. A wrong old password was already refused with `InvalidArgumentError`
+  when the store held a record; it is now also refused on an empty store that has a key check.
 - **Stores written by 4.x or 5.0.0** get the key check on their first operation. If the store holds
-  an encrypted record, the key check is written only after the password has opened that record.
-  The metadata keeps `salt` and `version`, so older versions still open the store.
+  an encrypted record, the key check is written only after the password has opened that record. If
+  it holds none, the password of that first operation is used without a check. The metadata keeps
+  `salt` and `version`, so older versions still open the store.
 - A store that already holds records under two passwords is not repaired.
 - `clearAll` and `clearSigningKeys` now need the right password. A store whose password is lost can
   only be reset by deleting the database.
@@ -118,8 +121,8 @@ deserialized `Boolean` values). Contracts compiled with 0.36.0 do not need recom
 
 - The turbo build cache is reused between runs; test tasks are never cached. e2e shards no longer
   rebuild every package (#1608).
-- The proof server no longer runs in verbose mode in e2e stacks. The cross-contract-call job drops
-  from about 24 min to about 5 min (#1662).
+- The proof server no longer runs in verbose mode in e2e stacks. Its debug output made the
+  cross-contract-call job take about 24 min for 220 s of tests (#1662).
 
 ## Links
 

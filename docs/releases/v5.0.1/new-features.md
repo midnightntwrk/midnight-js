@@ -34,5 +34,6 @@ try {
 }
 ```
 
-`reason` is one of `'missing'`, `'too_short'`, `'insufficient_classes'`, `'repeated_characters'`,
-`'sequential_pattern'`.
+With `level-private-state-provider`, `reason` is one of `'missing'`, `'too_short'`,
+`'insufficient_classes'`, `'repeated_characters'`, `'sequential_pattern'`. The testkit
+`InMemoryPrivateStateProvider` checks only the length, so its `reason` is always `'too_short'`.
