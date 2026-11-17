@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { randomBytes } from 'crypto';
 
 import { toHex } from '../hex-utils';

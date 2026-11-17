@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { ContractAddress, SigningKey,ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   Ledger8FinalizedTxData,
   Ledger9FinalizedTxData,
@@ -22,7 +22,7 @@ import type {
   SerializedContractState,
   SubmittedCallTxBase,
   UnsubmittedTxDataBase
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import type { Ledger9CallResult, Ledger9CallResultPrivate, Ledger9CallResultPublic } from './call';
 

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { sampleContractAddress, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { PublicDataProvider, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
+import { sampleContractAddress, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PublicDataProvider, PublicStatesRead } from '@midnightntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError } from '../../errors';
@@ -48,7 +48,7 @@ const decode = vi.hoisted(() => ({
   deserializeLedger9Parameters: vi.fn()
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+vi.mock('@midnightntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
   ...decode
 }));

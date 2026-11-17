@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, ContractAddress, EncPublicKey, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, ContractAddress, EncPublicKey, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { PublicDataProvider, WatchOptions } from '../public-data-provider';

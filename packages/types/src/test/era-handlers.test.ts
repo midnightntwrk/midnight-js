@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import { LEDGER_TRANSACTION_TAGS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { TransactionStage } from '@midnightntwrk/midnight-js-protocol/transaction';
+import { LEDGER_TRANSACTION_TAGS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

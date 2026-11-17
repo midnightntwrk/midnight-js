@@ -23,7 +23,7 @@ if (era === 'v9') {
   ledger(ContractState.deserialize(bytes).data);
   parentPort.postMessage({ decodedBy: 'compact-runtime', ledgerAccepted: true });
 } else {
-  const { loadLedger8Protocol } = await import('@midnight-ntwrk/midnight-js-protocol');
+  const { loadLedger8Protocol } = await import('@midnightntwrk/midnight-js-protocol');
   const { ContractState } = await loadLedger8Protocol();
   parentPort.postMessage({ decodedBy: 'ledger-v8', operations: ContractState.deserialize(bytes).operations().length });
 }

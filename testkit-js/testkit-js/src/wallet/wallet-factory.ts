@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type DefaultConfiguration,
   type DefaultDustConfiguration,

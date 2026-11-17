@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { ContractExecutionError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { CoinPublicKey,SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   exitResultOrError,
   LedgerTransaction,
@@ -26,8 +26,8 @@ import {
   type PrivateStateId,
   SerializedContractState,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';

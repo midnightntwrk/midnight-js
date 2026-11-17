@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type PrivateStateId, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type PrivateStateId, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import * as Ledger8Scope from './internal/ledger8-scope';

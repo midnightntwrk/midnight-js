@@ -64,8 +64,8 @@ jobs:
         run: |
           set -euo pipefail
           version=$(jq -r .version package.json)
-          echo "Checking whether @midnight-ntwrk/midnight-js@${version} is already published..."
-          exists=$(yarn npm info "@midnight-ntwrk/midnight-js" --json 2>/dev/null \
+          echo "Checking whether @midnightntwrk/midnight-js@${version} is already published..."
+          exists=$(yarn npm info "@midnightntwrk/midnight-js" --json 2>/dev/null \
             | jq -r --arg v "$version" '.versions | has($v)' 2>/dev/null || echo "false")
           if [ "$exists" = "true" ]; then
             echo "::error::v${version} is already published — refusing to run. Bump the version to publish new code."

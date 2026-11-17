@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { CostModel, Intent, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type FinalizedTx, LedgerTransaction, type UnboundTx } from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, PROTOCOL_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import { CostModel, Intent, type ProvingProvider, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type FinalizedTx, LedgerTransaction, type UnboundTx } from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, toHex } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { type DAppConnectorWalletAPI, dappConnectorWalletProviders } from '../dapp-connector-wallet-providers';

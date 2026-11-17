@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
+  "name": "@midnightntwrk/midnight-js-level-private-state-provider",
   "version": "5.0.1",
   "type": "module",
   "description": "Private state provider implementation that uses browser localStorage or Node.js file storage",
@@ -21,9 +21,9 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "@noble/ciphers": "^2.4.0",
     "@noble/hashes": "^2.4.0",
     "abstract-level": "^3.1.1",

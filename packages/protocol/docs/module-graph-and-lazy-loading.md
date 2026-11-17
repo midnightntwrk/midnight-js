@@ -4,7 +4,7 @@ title: ModuleGraphAndLazyLoading
 
 # The module graph and lazy loading
 
-`@midnight-ntwrk/midnight-js-protocol` co-installs two ledger runtimes and a
+`@midnightntwrk/midnight-js-protocol` co-installs two ledger runtimes and a
 retained pre-fork toolchain, each carrying its own WASM artifact. Which of
 them a consumer actually pays for is decided by the shape of the module graph:
 which modules are build entries, which direction the imports run, and which

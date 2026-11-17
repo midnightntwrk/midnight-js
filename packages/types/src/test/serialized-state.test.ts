@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import * as ledger9 from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_ERAS, LEDGER_STATE_KINDS, type LedgerEra, type StateKind } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import * as ledger9 from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_ERAS, LEDGER_STATE_KINDS, type LedgerEra, type StateKind } from '@midnightntwrk/midnight-js-protocol/version';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {

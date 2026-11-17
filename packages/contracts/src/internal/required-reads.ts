@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PrivateStateProvider, PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 
 import { ContractNotFoundError } from '../errors';
 import { decodeLedger9ContractState } from './era';

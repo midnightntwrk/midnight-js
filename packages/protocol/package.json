@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-protocol",
+  "name": "@midnightntwrk/midnight-js-protocol",
   "version": "5.0.1",
   "type": "module",
   "description": "Protocol type re-exports for midnight-js framework",

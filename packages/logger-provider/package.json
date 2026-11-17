@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-logger-provider",
+  "name": "@midnightntwrk/midnight-js-logger-provider",
   "version": "5.0.1",
   "type": "module",
   "description": "MidnightJS module for configuring an application specific pino logger",
@@ -21,7 +21,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
     "pino": "^10.4.0"
   },
   "devDependencies": {

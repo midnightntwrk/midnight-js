@@ -5,7 +5,7 @@ Shared data types, interfaces, and provider contracts for all Midnight.js module
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-types
+yarn add @midnightntwrk/midnight-js-types
 ```
 
 ## Quick Start
@@ -19,7 +19,7 @@ import {
   SucceedEntirely,
   FailFallible,
   FailEntirely
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Provider Interfaces
@@ -125,7 +125,7 @@ three ways in and out of a handle:
   `TransactionDecodeFailedError`.
 
 ```typescript
-import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerTransaction, type UnprovenTx } from '@midnightntwrk/midnight-js-types';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const unprovenTx: UnprovenTx = LedgerTransaction.seal('v9', 'Unproven', ledgerUnprovenTx);
@@ -185,7 +185,7 @@ adapter also seals its answer, which can be a transaction object of any ledger
 copy or its bytes:
 
 ```typescript
-import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createLedger9MidnightProvider, createLedger9WalletProvider } from '@midnightntwrk/midnight-js-types';
 
 // The wallet runs its own copy of the ledger, so transactions cross as bytes.
 
@@ -223,10 +223,10 @@ that same era at the stage the method produces, and refuses an era you did not s
 disagree with what the provider does:
 
 ```typescript
-import { createProofProviderFromHandlers } from '@midnight-ntwrk/midnight-js-types';
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import { CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { createProofProviderFromHandlers } from '@midnightntwrk/midnight-js-types';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { proveLedger8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import { CostModel, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 
 const proofProvider = createProofProviderFromHandlers({
   v8: async (tx) =>
@@ -347,7 +347,7 @@ import {
   ExportDecryptionError,
   InvalidExportFormatError,
   ImportConflictError
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Exports
@@ -467,7 +467,7 @@ import {
 
   // Re-exports
   Transaction
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 ```
 
 ## Architecture Documents

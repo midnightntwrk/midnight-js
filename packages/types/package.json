@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-types",
+  "name": "@midnightntwrk/midnight-js-types",
   "version": "5.0.1",
   "type": "module",
   "description": "Shared data types and interfaces for MidnightJS modules",
@@ -29,7 +29,7 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
     "effect": "^3.22.1",
     "pino": "^10.4.0",
     "rxjs": "^7.8.2"

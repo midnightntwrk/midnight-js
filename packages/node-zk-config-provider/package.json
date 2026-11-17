@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-node-zk-config-provider",
+  "name": "@midnightntwrk/midnight-js-node-zk-config-provider",
   "version": "5.0.1",
   "type": "module",
   "description": "MidnightJS module for reading proving and verifying keys and ZK intermediate representation",
@@ -21,9 +21,9 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "rollup": "^4.60.4",

@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js",
+  "name": "@midnightntwrk/midnight-js",
   "version": "5.0.1",
   "type": "module",
   "description": "Barrel package for Midnight.js core framework",
@@ -39,10 +39,10 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",

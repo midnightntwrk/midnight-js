@@ -14,7 +14,7 @@ for them, two very different things may have happened:
    serialization tag does not match what the installed ledger expects. Same era on both sides;
    ordinary dependency skew.
 
-The deserialization layer in `@midnight-ntwrk/midnight-js-utils` classifies a failure and attaches a
+The deserialization layer in `@midnightntwrk/midnight-js-utils` classifies a failure and attaches a
 mitigation. For `version-mismatch` the mitigation is to align the `@midnightntwrk/ledger`-vN version
 with the network: case 2.
 

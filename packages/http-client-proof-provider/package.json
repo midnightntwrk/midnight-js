@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
+  "name": "@midnightntwrk/midnight-js-http-client-proof-provider",
   "version": "5.0.1",
   "type": "module",
   "description": "Implementation of proof provider based on the Midnight ledger proof server",
@@ -26,15 +26,15 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "cross-fetch": "^4.1.0",
     "fetch-retry": "^6.0.0"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
     "rollup": "^4.60.4",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"

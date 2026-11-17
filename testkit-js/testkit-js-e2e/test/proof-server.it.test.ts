@@ -16,9 +16,9 @@
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+} from '@midnightntwrk/midnight-js-contracts';
+import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { NodeZkConfigProvider } from '@midnightntwrk/midnight-js-node-zk-config-provider';
 import {
   ContractCall,
   ContractDeploy,
@@ -31,8 +31,8 @@ import {
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type Ledger9UnboundTransaction,
   LedgerTransaction,
@@ -40,12 +40,12 @@ import {
   type ProveTxConfig,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
   type ProofServerContainer
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { createInitialPrivateState } from '../src/contract/witnesses';

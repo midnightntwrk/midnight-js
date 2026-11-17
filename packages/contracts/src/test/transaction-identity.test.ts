@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { ChargedState, ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ChargedState, ContractState, StateValue } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   type PrivateStateId,
   SerializedContractState
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ScopedTransactionIdentityMismatchError } from '../errors';

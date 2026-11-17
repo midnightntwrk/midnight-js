@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import type {
   ContractAddress,
   TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
+} from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -36,9 +36,9 @@ import type {
   PublicStatesRead,
   UnshieldedBalances,
   WatchOptions
-} from '@midnight-ntwrk/midnight-js-types';
-import { type WatchOperation, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { type WatchOperation, WatchTimeoutError } from '@midnightntwrk/midnight-js-types/errors';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
 import { toContractStateAndParametersRead, toContractStateRead, toPublicStatesRead, toUnshieldedBalances } from './codec';

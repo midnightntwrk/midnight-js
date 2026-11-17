@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   type CoinPublicKey,
   type ContractAddress,
   type EncPublicKey,
   Transaction as Ledger9Transaction
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ChargedState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -31,7 +31,7 @@ import {
   type PublicStatesRead,
   SerializedContractState,
   SucceedEntirely
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
@@ -462,7 +462,7 @@ export const unrecognisedScopeContext = (entryPoint: ScopeEntryPoint): InvalidAr
 export const foreignLedger8ScopeContext = (entryPoint: ScopeEntryPoint): InvalidArgumentError =>
   new InvalidArgumentError(
     `${entryPoint} was passed a ledger 8 transaction context made by another copy of ` +
-      '@midnight-ntwrk/midnight-js-contracts. Install one copy of the package.'
+      '@midnightntwrk/midnight-js-contracts. Install one copy of the package.'
   );
 
 /**

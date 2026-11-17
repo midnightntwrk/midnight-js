@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerTransactionTypes } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
+import { CostModel, type ProvingProvider, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 
 import { type FinalizedTx, LedgerTransaction, type UnboundTx, type UnprovenTx } from '../ledger-transaction';
 

@@ -52,8 +52,8 @@ import {
   submitCallTxAsync,
   submitReplaceAuthorityTx,
   submitTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnight-ntwrk/midnight-js';
+} from '@midnightntwrk/midnight-js-contracts';
+import { latestNetworkLedgerVersion, ledger9Protocol, types } from '@midnightntwrk/midnight-js';
 
 const { CompiledContract } = ledger9Protocol;
 
@@ -1499,7 +1499,7 @@ const driveCallsAcrossTheBoundary = async (forkOutcome) => {
   };
 };
 
-const testkit = await import('@midnight-ntwrk/testkit-js');
+const testkit = await import('@midnightntwrk/testkit-js');
 const logger = testkit.createLogger(config.logPath);
 
 let session = await buildProviders('v8', testkit, logger);

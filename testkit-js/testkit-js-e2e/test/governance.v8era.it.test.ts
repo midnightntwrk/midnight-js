@@ -24,12 +24,12 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { MaintenanceAuthorityMismatchError, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-contracts';
+import { MaintenanceAuthorityMismatchError, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   createLogger,
@@ -38,7 +38,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { VERY_SLOW_TEST_TIMEOUT } from '../src/constants';

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';

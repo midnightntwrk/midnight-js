@@ -48,7 +48,7 @@ class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = Le
 
 1. **`fromBytes` is the only way in.** It checks that the bytes start with the full header the ledger
    of `era` writes for `stage`: schema version and signature, proof and binding markers, from
-   `LEDGER_TRANSACTION_TAGS` (`@midnight-ntwrk/midnight-js-protocol/version`, one row per era and
+   `LEDGER_TRANSACTION_TAGS` (`@midnightntwrk/midnight-js-protocol/version`, one row per era and
    stage). The check asks "is this header valid for this era and stage", never "which era does this
    header name". An era with no row is a build error. A refusal is `InvalidTransactionHandleError`
    (`MIDNIGHT_JS_PR_INVALID_TRANSACTION_HANDLE`) with reason `header-mismatch`, `not-bytes` or
@@ -90,7 +90,7 @@ class LedgerTransaction<S extends TransactionStage, out E extends LedgerEra = Le
    and lose that check. Keep this signature.
 9. **Bytes that enter from outside are decoded once, at once.** Where a provider answer, a DApp
    Connector wallet or a composed transaction hands bytes back, the framework decodes them with its
-   own copy (`deserializeTransactionAtStage` from `@midnight-ntwrk/midnight-js-protocol/transaction`)
+   own copy (`deserializeTransactionAtStage` from `@midnightntwrk/midnight-js-protocol/transaction`)
    before it makes the handle. Bytes that do not decode are refused with
    `PayloadNotATransactionError` (`MIDNIGHT_JS_P_PAYLOAD_NOT_A_TRANSACTION`, USAGE). So a corrupt
    body fails there, not later in the proof or the submit.
