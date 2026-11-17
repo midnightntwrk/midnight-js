@@ -21,10 +21,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # PR runs share one group per PR, so a new push cancels the superseded run.
-  # Every other run gets its own group: GitHub keeps only one pending run per
-  # group, so a shared group on main let a newer push or the nightly schedule
-  # cancel a pending release run. The `publish` job serializes releases itself.
+  # Non-PR runs get their own group: a group keeps only one pending run, so a
+  # shared group would let a newer push or the nightly run cancel a waiting release.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -180,7 +178,8 @@ jobs:
     needs: [ci-midnightjs, ci-testkit, detect-release]
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
-    # Publishing is non-atomic, so two releases must never publish at once.
+    # Publishing is non-atomic, so releases publish one at a time. Only one
+    # release can wait here; a third one cancels the waiting one.
     concurrency:
       group: ${{ github.workflow }}-publish
       cancel-in-progress: false
@@ -192,6 +191,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Refuse out-of-order release
+        if: ${{ !contains(needs.detect-release.outputs.version_number, '-') }}
+        env:
+          VERSION: ${{ needs.detect-release.outputs.version_number }}
+        run: |
+          highest=$( (echo "$VERSION"; git tag -l 'v*' | grep -vF -e '-' | sed 's/^v//') | sort -V | tail -1)
+          if [ "$highest" != "$VERSION" ]; then
+            echo "::error::v$highest is already released; refusing to publish older v$VERSION"
+            exit 1
+          fi
 
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env

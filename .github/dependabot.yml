@@ -43,6 +43,7 @@ updates:
     groups:
       npm-minor-patch:
         patterns: ["*"]
+        exclude-patterns: ["@midnight-ntwrk/*", "@midnightntwrk/*"]
         update-types: ["minor", "patch"]
 
 #  - package-ecosystem: "docker"
