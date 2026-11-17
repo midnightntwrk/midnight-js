@@ -271,7 +271,7 @@ type. The rule it feeds is one rule, and the ledger 8 path reaches it holding a
 `Ledger8FindDeployedContractOptions`.
 
 Both of its members are optional, because the current era's three option
-interfaces differ in which of them they declare and the ledger 8 declares
+interfaces differ in which of them they declare and ledger 8's declares
 both as optional. That makes it a WEAK type, and TypeScript refuses a source that
 shares no property with a weak type — which is exactly
 `Ledger9FindDeployedContractOptionsBase`, the commonest find of all.

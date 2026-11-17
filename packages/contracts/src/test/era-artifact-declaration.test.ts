@@ -154,8 +154,9 @@ describe('resolveArtifactEra: the era comes from what the artifact declares', ()
 
   it('separates a provider that CANNOT declare an era from artifacts that do not', async () => {
     // The real third-party case, through the real base class rather than a stand-in: a provider
-    // written before the ledger 8 era existed never overrode the member. Its fix is to implement
-    // the method, not to serve a file, so it may not be reported as an artifact problem.
+    // written before the framework served more than one era never overrode the member. Its fix
+    // is to implement the method, not to serve a file, so it may not be reported as an artifact
+    // problem.
     class ArtifactOnlyProvider extends ZKConfigProvider<string> {
       async getZKIR(): Promise<ZKIR> {
         return new Uint8Array() as ZKIR;

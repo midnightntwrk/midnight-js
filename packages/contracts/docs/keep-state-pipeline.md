@@ -401,7 +401,7 @@ stored against the minted address through `privateStateProvider.setSigningKey`,
 which is where the current era's deploy writes its own key too.
 
 One store holds both eras' keys, and its key type is the current era's
-`{ tag, value }` where the ledger 8 is a bare hex string. They are the same
+`{ tag, value }` where ledger 8's is a bare hex string. They are the same
 thing: both runtimes sample a 32-byte Schnorr key written as 64 hex characters,
 and `{ tag: 'schnorr', value: <ledger 8 key> }` satisfies `isValidSigningKey`.
 (The ledger 8 runtime's `signatureVerifyingKey` also accepts a current-era key's

@@ -12,10 +12,11 @@ Today that is only ledger 8. ADR 0018 already names code bound to one ledger aft
 (`Ledger8*`), and ADR 0022 published the term as `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` from
 `@midnight-ntwrk/midnight-js-protocol/version`.
 
-Nothing in the framework uses those two exports. Every place that says "retained" in code, tests,
-comments and documentation means ledger 8, because ledger 8 is the only older era. So the term is a
-second name for "ledger 8", and the reader has to translate it. Like "current", it is relative to
-the last fork: after the next fork the same word would describe a different set of ledgers.
+Nothing in the framework uses those two exports. Every place that uses "retained" as an era name in
+code, tests, comments and documentation means ledger 8, because ledger 8 is the only older era. So
+the term is a second name for "ledger 8", and the reader has to translate it. Like "current", it is
+relative to the last fork: after the next fork the same word would describe a different set of
+ledgers.
 
 ## Decision
 
