@@ -21,10 +21,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Cancel superseded PR runs to save CI, but never cancel push-to-main runs:
-  # the `publish` job runs there and is non-atomic, so a mid-flight release must
-  # queue behind a newer main push rather than be cancelled into a partial state.
+  # PR runs share one group per PR, so a new push cancels the superseded run.
+  # Every other run gets its own group: GitHub keeps only one pending run per
+  # group, so a shared group on main let a newer push or the nightly schedule
+  # cancel a pending release run. The `publish` job serializes releases itself.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -179,6 +180,10 @@ jobs:
     needs: [ci-midnightjs, ci-testkit, detect-release]
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
+    # Publishing is non-atomic, so two releases must never publish at once.
+    concurrency:
+      group: ${{ github.workflow }}-publish
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
