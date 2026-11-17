@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1-rc.1...v5.0.1) (2026-11-17)
+
+
+### Build System
+
+* **deps:** bump ledger 9 stack, compact-js and wallet-sdk to final releases ([#1671](https://github.com/midnightntwrk/midnight-js/pull/1671)) ([568e4d6](https://github.com/midnightntwrk/midnight-js/commit/568e4d6b612ac7bf6d9567900717aacd6014d1c5)), closes [#1660](https://github.com/midnightntwrk/midnight-js/pull/1660)
+
+
+### Continuous Integration
+
+* **config:** reuse the turbo build cache and never cache test results ([#1608](https://github.com/midnightntwrk/midnight-js/pull/1608)) ([9704e51](https://github.com/midnightntwrk/midnight-js/commit/9704e5146e355de0d1a58a33edb6a62421ede337)), closes [#1185](https://github.com/midnightntwrk/midnight-js/pull/1185) [#1607](https://github.com/midnightntwrk/midnight-js/pull/1607) [#1209](https://github.com/midnightntwrk/midnight-js/pull/1209) [#1185](https://github.com/midnightntwrk/midnight-js/pull/1185)
+
 ## [5.0.1-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1-rc.0...v5.0.1-rc.1) (2026-11-13)
 
 
@@ -13,6 +25,11 @@ All notable changes to this project will be documented in this file. See [commit
 ### Continuous Integration
 
 * **testkit-js:** drop proof-server verbose logging in e2e stacks ([#1662](https://github.com/midnightntwrk/midnight-js/pull/1662)) ([e03dfb9](https://github.com/midnightntwrk/midnight-js/commit/e03dfb944de00dd5727273f666a4047d23ef84b5))
+
+
+### Improvements
+
+* **release:** bump version to 5.0.1-rc.1 ([#1666](https://github.com/midnightntwrk/midnight-js/pull/1666)) ([66096e0](https://github.com/midnightntwrk/midnight-js/commit/66096e0e35d46709ae3227349d71a7652e06422e))
 
 ## [5.0.1-rc.0](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0...v5.0.1-rc.0) (2026-11-12)
 
