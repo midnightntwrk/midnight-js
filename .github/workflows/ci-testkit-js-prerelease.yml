@@ -68,4 +68,4 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
-          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN || 'false' }}
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}

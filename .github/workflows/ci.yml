@@ -238,7 +238,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'packages'
-          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN || 'false' }}
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
 
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true' && vars.NPM_PUBLISH_DRY_RUN != 'true'
@@ -279,4 +279,4 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
-          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN || 'false' }}
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
