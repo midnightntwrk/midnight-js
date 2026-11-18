@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type ContractStateRead, InvalidSerializedStateError, type PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
+import { UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type ContractStateRead, InvalidSerializedStateError, type PublicStatesRead } from '@midnightntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { assert, beforeAll, describe, expect, test, vi } from 'vitest';

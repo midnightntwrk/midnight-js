@@ -1,0 +1,23 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [utils](../README.md) / fromHex
+
+# Variable: fromHex
+
+> `const` **fromHex**: (`str`) => `Buffer`
+
+Converts a hex string into a byte string.
+
+## Parameters
+
+### str
+
+`string`
+
+The hex string to decode.
+
+## Returns
+
+`Buffer`

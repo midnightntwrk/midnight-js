@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { FinalizedTxRead,FinalizedTxRecord, ReadMethod } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import type { FinalizedTxRead,FinalizedTxRecord, ReadMethod } from '@midnightntwrk/midnight-js-types';
 
 import {
   correlateDeployTxId,

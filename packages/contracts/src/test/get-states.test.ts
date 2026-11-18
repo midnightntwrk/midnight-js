@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { PrivateStateId, PublicStatesRead } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { PrivateStateId, PublicStatesRead } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError, PrivateStateNotFoundError } from '../errors';

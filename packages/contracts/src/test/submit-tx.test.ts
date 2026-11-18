@@ -17,13 +17,13 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { inspect } from 'node:util';
 
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
+import { UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol';
 import {
   InvalidArgumentError,
   PROTOCOL_ERROR_CODES,
   UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction as Ledger9Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+} from '@midnightntwrk/midnight-js-protocol/errors';
+import { Transaction as Ledger9Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type AnyProvableCircuitId,
   type FinalizedTx,
@@ -32,8 +32,8 @@ import {
   ProviderEraUnsupportedError,
   TransactionEraMismatchError,
   type UnboundTx
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { Data, Effect } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 

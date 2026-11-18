@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import { LEDGER_ERAS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type Ledger9FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedDeployTxData } from '@midnightntwrk/midnight-js-contracts';
+import { LEDGER_ERAS, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type Ledger9FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import fetch from 'cross-fetch';
 import path from 'path';
 

@@ -10,14 +10,14 @@ All three serve ledger 8 and ledger 9 transactions.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
+yarn add @midnightntwrk/midnight-js-dapp-connector-proof-provider
 ```
 
 ## Quick Start
 
 ```typescript
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
-import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { dappConnectorProofProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
+import { LedgerTransaction } from '@midnightntwrk/midnight-js-types';
 import { Transaction } from '@midnightntwrk/ledger-v9';
 
 const proofProvider = await dappConnectorProofProvider(
@@ -36,7 +36,7 @@ const ledgerProvenTx = provenTx.deserialize({ v9: Transaction });
 ### Wallet and midnight providers
 
 ```typescript
-import { dappConnectorWalletProviders } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { dappConnectorWalletProviders } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 
 const { walletProvider, midnightProvider } = await dappConnectorWalletProviders(walletConnectedAPI);
 ```
@@ -80,7 +80,7 @@ DApp Connector Wallet (getProvingProvider)
 Use `dappConnectorProofProvider` for most use cases. It wraps the wallet's proving capabilities with a cost model to handle complete transactions.
 
 ```typescript
-import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { dappConnectorProofProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 
 const proofProvider = await dappConnectorProofProvider(
   walletConnectedAPI,
@@ -96,7 +96,7 @@ const provenTx = await proofProvider.proveTx(unprovenTx);
 Use `dappConnectorProvingProvider` for advanced scenarios requiring direct access to the wallet's proving provider without cost model integration.
 
 ```typescript
-import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { dappConnectorProvingProvider } from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 
 const provingProvider = await dappConnectorProvingProvider(
   walletConnectedAPI,
@@ -172,7 +172,7 @@ import {
   // Transaction balancing and submission
   dappConnectorWalletProviders,
   type DAppConnectorWalletAPI
-} from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+} from '@midnightntwrk/midnight-js-dapp-connector-proof-provider';
 ```
 
 ## Resources

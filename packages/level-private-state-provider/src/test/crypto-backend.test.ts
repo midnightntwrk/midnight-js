@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { EnvironmentUnsupportedError } from '@midnightntwrk/midnight-js-protocol/errors';
 
 import { resolveCryptoBackend } from '../crypto-backend';
 import { NobleCryptoBackend } from '../crypto-backend-noble';

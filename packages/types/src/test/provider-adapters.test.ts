@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import type { LedgerTransactionTypes } from '@midnightntwrk/midnight-js-protocol/transaction';
 import { describe, expect, it, vi } from 'vitest';
 
 import { InvalidTransactionHandleError, PROVIDER_ERROR_CODES, ProviderEraUnsupportedError } from '../errors';

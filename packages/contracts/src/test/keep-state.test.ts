@@ -35,7 +35,7 @@
 
 import { readFileSync } from 'node:fs';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   type ContractBalance,
@@ -44,10 +44,10 @@ import {
   type Ledger8EngineContract,
   type LedgerEraFacade,
   loadLedger8Protocol,
-  loadLedgerEra} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractState, LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+  loadLedgerEra} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractState, LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type ContractStateAndParametersRead,
   type ContractStateRead,
@@ -59,8 +59,8 @@ import {
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -114,7 +114,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('./ledger8-runtime-stub'
 
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

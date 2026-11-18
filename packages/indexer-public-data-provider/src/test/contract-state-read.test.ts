@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
+import { loadLedger8Protocol, UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/v9';
+import { SerializedLedgerParameters } from '@midnightntwrk/midnight-js-types';
 import {
   DeserializationError,
   fromHex,
@@ -25,7 +25,7 @@ import {
   parseSerializedTag,
   toHex,
   UTILS_ERROR_CODES
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { assert, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError, UnknownRecordEraError } from '../errors';
@@ -123,7 +123,7 @@ describe('contract-state version tags', () => {
   // runtime bump that changes the state format version fails here, loudly,
   // instead of turning every state read into a rejected version tag.
   //
-  // The table itself is `LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol`; these
+  // The table itself is `LEDGER_STATE_TAGS` in `@midnightntwrk/midnight-js-protocol`; these
   // assertions exercise `ledgerVersionOfContractState` from `utils`, which reads it, on a real state
   // produced by each runtime.
   test('maps the tag the v9 runtime writes onto the v9 ledger era', () => {

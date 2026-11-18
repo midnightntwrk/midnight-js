@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expect, it, vi } from 'vitest';
 
 import { submitDeployTx, submitLedger9DeployTx } from '../submit-deploy-tx';
@@ -38,7 +38,7 @@ import {
   createMockSigningKey
 } from './test-mocks';
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof Protocol>();
   return {
     ...original,

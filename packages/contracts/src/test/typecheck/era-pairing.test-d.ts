@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { EraPairing, EraPairingTable, EraRulings } from '../../internal/era';

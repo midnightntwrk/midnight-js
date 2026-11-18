@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { MidnightJsError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { MidnightJsError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_TRANSACTION_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

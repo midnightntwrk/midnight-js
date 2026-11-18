@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { EraMismatchError, type EraMismatchReason } from '../errors';

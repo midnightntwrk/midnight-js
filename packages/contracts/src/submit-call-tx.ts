@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress, assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from './call';
 import { type Ledger9ContractProviders } from './contract-providers';

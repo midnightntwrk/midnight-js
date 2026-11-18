@@ -1,0 +1,14 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / FailFallible
+
+# Variable: FailFallible
+
+> `const` **FailFallible**: `"FailFallible"`
+
+Indicates that the transaction is valid but the portion of the transcript
+that is allowed to fail (the portion after a checkpoint) did fail. All effects
+from the guaranteed part of the transaction are kept but the effects from the
+fallible part of the transaction are discarded.

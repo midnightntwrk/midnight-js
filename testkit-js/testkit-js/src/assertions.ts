@@ -21,17 +21,17 @@ import type {
   Ledger9FinalizedDeployTxData,
   Ledger9FinalizedDeployTxPublicData,
   Ledger9FoundDeployTxData
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { type Bindingish, type Proofish, type Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { ContractState, type StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-contracts';
+import { type Bindingish, type Proofish, type Signaturish, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { ContractState, type StateValue } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type Ledger9FinalizedTxData,
   type MidnightProviders,
   type PrivateStateId,
   SucceedEntirely
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertDefined } from '@midnightntwrk/midnight-js-utils';
 
 export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);

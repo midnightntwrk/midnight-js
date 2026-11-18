@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import * as PlatformContractAddress from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type CoinCommitment,
   coinCommitment,
@@ -45,8 +45,8 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type AlignedValue,
   type CommunicationCommitmentData,
@@ -56,9 +56,9 @@ import {
   decodeZswapLocalState,
   QueryContext,
   type Recipient
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { MidnightConfig } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, CONTRACTS_ERROR_CODES, isDeserializationError, toHex } from '@midnightntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { Option } from 'effect';
 import { readFileSync } from 'fs';
@@ -1465,7 +1465,7 @@ describe('ledger-utils', () => {
   // with the fully-qualified caller string. Locks the wiring against future
   // accidental reverts to raw .deserialize/.decode calls.
   describe('deserialization wrapper wiring (issue-816)', () => {
-    const PKG = '@midnight-ntwrk/midnight-js-contracts';
+    const PKG = '@midnightntwrk/midnight-js-contracts';
 
     // Object with a .serialize() that returns invalid bytes. Casting to the
     // expected nominal type because runtime only invokes .serialize().

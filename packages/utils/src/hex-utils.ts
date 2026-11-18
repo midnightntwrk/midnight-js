@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type NetworkId } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type NetworkId } from '@midnightntwrk/midnight-js-types';
 import {
   MidnightBech32m,
   ShieldedCoinPublicKey,

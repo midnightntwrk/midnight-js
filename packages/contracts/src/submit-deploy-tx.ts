@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import { TxFailedError } from './errors';

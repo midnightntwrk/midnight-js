@@ -32,8 +32,8 @@ import type {
   ProviderMethod,
   UnprovenTx,
   WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, intentTtl } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, intentTtl } from '@midnightntwrk/midnight-js-utils';
 import { Cause, Runtime } from 'effect';
 
 import { ProviderFailedError } from '../errors';

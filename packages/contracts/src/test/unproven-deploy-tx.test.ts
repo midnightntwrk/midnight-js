@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerTransaction, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
+import { ContractExecutionError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { LedgerTransaction, SerializedContractState } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '../internal/utils';
@@ -34,12 +34,12 @@ vi.mock('../call-constructor', () => ({
 }));
 
 const BUILT_DEPLOY_TX = vi.hoisted(async () => {
-  const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/v9');
+  const { Transaction } = await import('@midnightntwrk/midnight-js-protocol/v9');
   return Transaction.fromParts('undeployed');
 });
 
 const DEPLOYED_STATE = vi.hoisted(async () => {
-  const { ContractState } = await import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
+  const { ContractState } = await import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime');
   return new ContractState();
 });
 

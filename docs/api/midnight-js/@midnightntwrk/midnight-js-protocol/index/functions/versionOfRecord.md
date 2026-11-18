@@ -1,0 +1,31 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-protocol](../../README.md) / [index](../README.md) / versionOfRecord
+
+# Function: versionOfRecord()
+
+> **versionOfRecord**(`record`): `"v8"` \| `"v9"`
+
+Resolves the ledger era for a record's `protocolVersion` field (e.g. a
+transaction or block already read from the indexer).
+
+## Parameters
+
+### record
+
+[`VersionedRecord`](../interfaces/VersionedRecord.md)
+
+Any object carrying a raw `protocolVersion` integer field.
+
+## Returns
+
+`"v8"` \| `"v9"`
+
+The [LedgerEra](../type-aliases/LedgerEra.md) that record was written under.
+
+## Throws
+
+[UnknownProtocolVersionError](../classes/UnknownProtocolVersionError.md) tagged with the `read` path, on
+the same two conditions as [protocolVersionToLedger](protocolVersionToLedger.md).

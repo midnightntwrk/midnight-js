@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   FailEntirely,
   FailFallible,
@@ -21,8 +21,8 @@ import {
   SegmentFail,
   SegmentSuccess,
   SucceedEntirely
-} from '@midnight-ntwrk/midnight-js-types';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { toHex } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -492,7 +492,7 @@ describe('IndexerInvariantError', () => {
 // string. Locks the wiring against future accidental reverts to raw
 // .deserialize/.decode calls.
 describe('deserialization adapter wiring (issue-816)', () => {
-  const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+  const PKG = '@midnightntwrk/midnight-js-indexer-public-data-provider';
   const garbageHex = 'ffffff';
 
   test('parseHexTransaction returns a finalized handle of the era it is given', async () => {
@@ -506,7 +506,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   });
 
   test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
-    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+    const { isDeserializationError } = await import('@midnightntwrk/midnight-js-utils');
 
     const caught = await parseHexTransaction('v9', garbageHex).catch((e: unknown) => e);
 

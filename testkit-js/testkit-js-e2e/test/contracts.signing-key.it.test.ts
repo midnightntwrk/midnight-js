@@ -18,17 +18,17 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/midnight-js-contracts';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnightntwrk/testkit-js';
 import {
   createLogger,
   expectSuccessfulDeployTx,
   getTestEnvironment,
   initializeMidnightProviders
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 
 import { SLOW_TEST_TIMEOUT } from '../src/constants';
