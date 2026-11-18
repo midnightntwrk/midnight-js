@@ -90,21 +90,6 @@ jobs:
         with:
           workspace-path: './packages'
 
-      # TEMPORARY (revert after the first run): the @midnightntwrk/* packages do
-      # not exist on npmjs yet, and npm only accepts a Trusted Publisher for an
-      # existing package. This one-off run creates them with the org npm token.
-      # Once npmjs has the Trusted Publishers configured, delete this step;
-      # every later publish is OIDC only. (shieldedtech/shielded-sre#761)
-      - name: TEMPORARY - npmjs token for first @midnightntwrk publish
-        env:
-          NPMJS_BOOTSTRAP_TOKEN: ${{ secrets.MIDNIGHTCI_NPMJS_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${NPMJS_BOOTSTRAP_TOKEN}" ]; then
-            echo "::error::MIDNIGHTCI_NPMJS_TOKEN is not available to this repo"; exit 1
-          fi
-          echo "//registry.npmjs.org/:_authToken=${NPMJS_BOOTSTRAP_TOKEN}" >> "$HOME/.npmrc"
-
       - name: Publish packages
         run: node .github/scripts/publish-packages.mjs
         env:
