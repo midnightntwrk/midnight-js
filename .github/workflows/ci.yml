@@ -181,7 +181,7 @@ jobs:
     needs: [ci-midnightjs, ci-testkit, detect-release]
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
-    environment: npm-publish
+    environment: npm-publish-stable
     permissions:
       contents: write
       id-token: write

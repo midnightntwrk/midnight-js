@@ -34,7 +34,7 @@ jobs:
   publish:
     name: Publish current main
     runs-on: ubuntu-latest
-    environment: npm-publish
+    environment: npm-publish-stable
     steps:
       - name: Guard - main only
         if: github.ref != 'refs/heads/main'
