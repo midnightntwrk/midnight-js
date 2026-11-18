@@ -1,0 +1,29 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [contracts](../README.md) / verifierKeysEqual
+
+# Variable: verifierKeysEqual
+
+> `const` **verifierKeysEqual**: (`a`, `b`) => `boolean`
+
+Checks that two verifier keys are equal. Does initial length check match for efficiency.
+
+## Parameters
+
+### a
+
+`Uint8Array`
+
+First verifier key.
+
+### b
+
+`Uint8Array`
+
+Second verifier key.
+
+## Returns
+
+`boolean`
