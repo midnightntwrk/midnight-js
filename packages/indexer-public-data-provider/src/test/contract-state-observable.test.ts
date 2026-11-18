@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type ContractStateRead, type PositionedRecord, SerializedContractState } from '@midnight-ntwrk/midnight-js-types';
-import { fromHex, ledgerVersionOfContractState, TagParseError, toHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type ContractStateRead, type PositionedRecord, SerializedContractState } from '@midnightntwrk/midnight-js-types';
+import { fromHex, ledgerVersionOfContractState, TagParseError, toHex } from '@midnightntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { assert, describe, expect, test, vi } from 'vitest';

@@ -19,8 +19,8 @@ import type {
   RawTokenType,
   TransactionHash,
   TransactionId
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 
 import type { LedgerTransaction } from './ledger-transaction';
 

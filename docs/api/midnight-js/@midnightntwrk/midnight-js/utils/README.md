@@ -1,0 +1,120 @@
+[**Midnight.js API Reference v5.0.1**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js](../README.md) / utils
+
+# utils
+
+## Classes
+
+- [DeserializationError](classes/DeserializationError.md)
+- [PasswordValidationError](classes/PasswordValidationError.md)
+- [TagParseError](classes/TagParseError.md)
+- [UnhandledUnionMemberError](classes/UnhandledUnionMemberError.md)
+- [ZkArtifactContractInfoError](classes/ZkArtifactContractInfoError.md)
+- [ZkArtifactIntegrityError](classes/ZkArtifactIntegrityError.md)
+
+## Interfaces
+
+- [CallSiteContext](interfaces/CallSiteContext.md)
+- [DeserializationCallSite](interfaces/DeserializationCallSite.md)
+- [DeserializationContext](interfaces/DeserializationContext.md)
+- [ExtractedInfo](interfaces/ExtractedInfo.md)
+- [MidnightNetwork](interfaces/MidnightNetwork.md)
+- [ParsedSerializedTag](interfaces/ParsedSerializedTag.md)
+- [PatternEntry](interfaces/PatternEntry.md)
+- [ZkArtifactManifest](interfaces/ZkArtifactManifest.md)
+- [ZkArtifactManifestFile](interfaces/ZkArtifactManifestFile.md)
+- [ZkConfigIntegrityOptions](interfaces/ZkConfigIntegrityOptions.md)
+
+## Type Aliases
+
+- [Classification](type-aliases/Classification.md)
+- [ContractsErrorCode](type-aliases/ContractsErrorCode.md)
+- [Direction](type-aliases/Direction.md)
+- [MidnightJsErrorCode](type-aliases/MidnightJsErrorCode.md)
+- [ParsedHexString](type-aliases/ParsedHexString.md)
+- [PasswordValidationFailure](type-aliases/PasswordValidationFailure.md)
+- [ProviderErrorCode](type-aliases/ProviderErrorCode.md)
+- [SourceLibrary](type-aliases/SourceLibrary.md)
+- [UtilsErrorCode](type-aliases/UtilsErrorCode.md)
+- [ZkArtifactIntegrityMode](type-aliases/ZkArtifactIntegrityMode.md)
+
+## Variables
+
+- [classify](variables/classify.md)
+- [computeSha256Hex](variables/computeSha256Hex.md)
+- [CONTRACTS\_ERROR\_CATEGORIES](variables/CONTRACTS_ERROR_CATEGORIES.md)
+- [CONTRACTS\_ERROR\_CODES](variables/CONTRACTS_ERROR_CODES.md)
+- [createMidnightProviders](variables/createMidnightProviders.md)
+- [decodeLedger9StateValue](variables/decodeLedger9StateValue.md)
+- [deserializeLedger9CompactContractState](variables/deserializeLedger9CompactContractState.md)
+- [deserializeLedger9ContractState](variables/deserializeLedger9ContractState.md)
+- [deserializeLedger9Parameters](variables/deserializeLedger9Parameters.md)
+- [deserializeLedger9ZswapChainState](variables/deserializeLedger9ZswapChainState.md)
+- [deserializeLedgerTransaction](variables/deserializeLedgerTransaction.md)
+- [errorCategory](variables/errorCategory.md)
+- [fromHex](variables/fromHex.md)
+- [intentTtl](variables/intentTtl.md)
+- [isDeserializationError](variables/isDeserializationError.md)
+- [isHex](variables/isHex.md)
+- [isMidnightJsError](variables/isMidnightJsError.md)
+- [isValidSigningKey](variables/isValidSigningKey.md)
+- [ledgerVersionOfContractState](variables/ledgerVersionOfContractState.md)
+- [ledgerVersionOfLedgerParameters](variables/ledgerVersionOfLedgerParameters.md)
+- [MAX\_CONSECUTIVE\_REPEATED](variables/MAX_CONSECUTIVE_REPEATED.md)
+- [MAX\_SAFE\_NAME\_LENGTH](variables/MAX_SAFE_NAME_LENGTH.md)
+- [MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE](variables/MIDNIGHT_JS_ERROR_CATEGORY_BY_CODE.md)
+- [MIDNIGHT\_JS\_ERROR\_CODES](variables/MIDNIGHT_JS_ERROR_CODES.md)
+- [MIN\_CHARACTER\_CLASSES](variables/MIN_CHARACTER_CLASSES.md)
+- [MIN\_PASSWORD\_LENGTH](variables/MIN_PASSWORD_LENGTH.md)
+- [MIN\_SEQUENTIAL\_LENGTH](variables/MIN_SEQUENTIAL_LENGTH.md)
+- [networks](variables/networks.md)
+- [parseCoinPublicKeyToHex](variables/parseCoinPublicKeyToHex.md)
+- [parseEncPublicKeyToHex](variables/parseEncPublicKeyToHex.md)
+- [parseHex](variables/parseHex.md)
+- [parseSerializedTag](variables/parseSerializedTag.md)
+- [PATTERNS](variables/PATTERNS.md)
+- [PROVIDER\_ERROR\_CATEGORIES](variables/PROVIDER_ERROR_CATEGORIES.md)
+- [PROVIDER\_ERROR\_CODES](variables/PROVIDER_ERROR_CODES.md)
+- [SOURCE\_PACKAGES](variables/SOURCE_PACKAGES.md)
+- [toHex](variables/toHex.md)
+- [ttlOneHour](variables/ttlOneHour.md)
+- [UTILS\_ERROR\_CATEGORIES](variables/UTILS_ERROR_CATEGORIES.md)
+- [UTILS\_ERROR\_CODES](variables/UTILS_ERROR_CODES.md)
+- [validatePassword](variables/validatePassword.md)
+- [withDeserializationContext](variables/withDeserializationContext.md)
+- [ZK\_CONTRACT\_INFO\_FILE\_NAME](variables/ZK_CONTRACT_INFO_FILE_NAME.md)
+- [ZK\_MANIFEST\_DIR](variables/ZK_MANIFEST_DIR.md)
+- [ZK\_MANIFEST\_FILE\_NAME](variables/ZK_MANIFEST_FILE_NAME.md)
+
+## Functions
+
+- [assertDefined](functions/assertDefined.md)
+- [assertIsContractAddress](functions/assertIsContractAddress.md)
+- [assertIsHex](functions/assertIsHex.md)
+- [assertManifestHash](functions/assertManifestHash.md)
+- [assertNever](functions/assertNever.md)
+- [assertSafeName](functions/assertSafeName.md)
+- [assertSemVer](functions/assertSemVer.md)
+- [assertUndefined](functions/assertUndefined.md)
+- [assertValidMidnightConfig](functions/assertValidMidnightConfig.md)
+- [hasErrorCode](functions/hasErrorCode.md)
+- [hasForeignErrorCode](functions/hasForeignErrorCode.md)
+- [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
+- [parseZkArtifactRuntimeVersion](functions/parseZkArtifactRuntimeVersion.md)
+- [verifyZkArtifactIntegrity](functions/verifyZkArtifactIntegrity.md)
+- [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)
+
+## References
+
+### MIDNIGHT\_JS\_ERROR\_CATEGORIES
+
+Re-exports [MIDNIGHT_JS_ERROR_CATEGORIES](../variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
+
+***
+
+### MidnightJsErrorCategory
+
+Re-exports [MidnightJsErrorCategory](../type-aliases/MidnightJsErrorCategory.md)

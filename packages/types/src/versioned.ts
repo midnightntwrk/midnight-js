@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import type { FinalizedTx, LedgerTransaction } from './ledger-transaction';
 import type { FinalizedTxRecord, Ledger9FinalizedTxData } from './midnight-types';
@@ -54,7 +54,7 @@ export interface Ledger8FinalizedTxData extends FinalizedTxRecord {
 export type FinalizedTxRead = Ledger8FinalizedTxData | Ledger9FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
-// `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
+// `@midnightntwrk/midnight-js-protocol`, which owns the mapping from a raw
 // `protocolVersion` to an era. These two assertions keep the discriminant sets
 // here and `LedgerEra` there as one fact: if either side gains an era the
 // other lacks, the difference is non-empty and `Assert` fails to satisfy its

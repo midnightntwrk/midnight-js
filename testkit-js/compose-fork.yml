@@ -3,7 +3,7 @@
 #
 # Adapted from the midnight-wallet repository's `infra/compose/docker-compose-fork-dynamic.yml`
 # (as of 2026-09; re-check that file if this stack starts behaving differently). Driven from
-# `ForkTestEnvironment` in `@midnight-ntwrk/testkit-js`. Why the stack is shaped this way is recorded
+# `ForkTestEnvironment` in `@midnightntwrk/testkit-js`. Why the stack is shaped this way is recorded
 # in `docs/architecture/fork-e2e-environment.md`.
 #
 # Every image tag has a default here and is overridable from the environment, so a workflow input

@@ -10,7 +10,7 @@ the `ContractModuleProvider` the Compact runtime consults at each cross-contract
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-bundled-contract-module-provider
+yarn add @midnightntwrk/midnight-js-bundled-contract-module-provider
 ```
 
 ## Quick Start
@@ -19,7 +19,7 @@ yarn add @midnight-ntwrk/midnight-js-bundled-contract-module-provider
 import {
   bundledContractModuleProvider,
   type ModulesByAddress
-} from '@midnight-ntwrk/midnight-js-bundled-contract-module-provider';
+} from '@midnightntwrk/midnight-js-bundled-contract-module-provider';
 
 // Generated: literal `import()` specifiers, so a bundler splits each implementation into its own
 // chunk and fetches it only if a call reaches that address.

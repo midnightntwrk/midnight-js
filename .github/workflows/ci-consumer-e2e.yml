@@ -63,7 +63,7 @@ jobs:
       #
       # THIS LANE AND NOT THE MIDNIGHT.JS ONE, which is where it was first put
       # and where it cannot work: that leg builds only `./packages/*`, and
-      # `fork-matrix-smoke.mjs` imports `@midnight-ntwrk/testkit-js` by name.
+      # `fork-matrix-smoke.mjs` imports `@midnightntwrk/testkit-js` by name.
       # With testkit unbuilt the check reports `TS2307` for it and nothing else
       # -- a red lane carrying no information. Resolving testkit from source
       # instead is not an option either: its sources are `moduleResolution:
@@ -76,20 +76,5 @@ jobs:
       - name: Pack the framework
         run: node consumer-e2e/pack-framework.mjs
 
-      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
-      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
-      # configuration, so each needs the credential written where it looks.
-      - name: Authorize the persona installs
-        run: |
-          {
-            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
-          } >> "$HOME/.npmrc"
-        env:
-          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
       - name: Run the linker smoke
         run: node consumer-e2e/linker-smoke.mjs
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

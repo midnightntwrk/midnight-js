@@ -17,7 +17,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import * as PlatformContractAddress from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import * as PlatformContractAddress from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import {
   type AlignedValue,
   communicationCommitment,
@@ -29,8 +29,8 @@ import {
   Transaction,
   type Transcript,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type CircuitContext,
   type CircuitResults,
@@ -41,8 +41,8 @@ import {
   decodeZswapLocalState,
   type EncodedZswapLocalState,
   type ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type MidnightConfig } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type MidnightConfig } from '@midnightntwrk/midnight-js-types';
 import { Option } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

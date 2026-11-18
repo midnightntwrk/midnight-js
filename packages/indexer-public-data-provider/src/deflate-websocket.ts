@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { EnvironmentUnsupportedError } from '@midnightntwrk/midnight-js-protocol/errors';
 import type * as ws from 'isomorphic-ws';
 
 import { inflate } from './inflate';

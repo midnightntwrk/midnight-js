@@ -167,7 +167,7 @@ it('should return undefined when private state does not exist', async () => { })
 yarn test
 
 # Specific package
-yarn test --filter=@midnight-ntwrk/midnight-js-contracts
+yarn test --filter=@midnightntwrk/midnight-js-contracts
 
 # Watch mode
 yarn test --watch
@@ -178,37 +178,37 @@ yarn test --coverage
 
 ## Package-Specific Guidelines
 
-### @midnight-ntwrk/midnight-js-types
+### @midnightntwrk/midnight-js-types
 
 - Define all shared interfaces here
 - Export types that other packages depend on
 - Keep type definitions minimal and focused
 
-### @midnight-ntwrk/midnight-js-contracts
+### @midnightntwrk/midnight-js-contracts
 
 - High-level API for contract operations
 - Functions should accept `MidnightProviders` as first argument
 - Return well-typed results with transaction data
 
-### @midnight-ntwrk/midnight-js-level-private-state-provider
+### @midnightntwrk/midnight-js-level-private-state-provider
 
 - Security-critical: encryption, key derivation
 - Use established crypto libraries only
 - Never log sensitive data (passwords, keys, decrypted state)
 
-### @midnight-ntwrk/midnight-js-indexer-public-data-provider
+### @midnightntwrk/midnight-js-indexer-public-data-provider
 
 - GraphQL queries and subscriptions
 - Handle network errors with retries
 - Support both polling and real-time subscriptions
 
-### @midnight-ntwrk/midnight-js-http-client-proof-provider
+### @midnightntwrk/midnight-js-http-client-proof-provider
 
 - HTTP communication with proof server
 - Implement retry logic for transient failures
 - Respect timeout configurations
 
-### @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
+### @midnightntwrk/midnight-js-dapp-connector-proof-provider
 
 - Delegates proving to DApp Connector wallet
 - Two abstraction levels: high-level (`dappConnectorProofProvider`) and low-level (`dappConnectorProvingProvider`)
@@ -216,7 +216,7 @@ yarn test --coverage
 - Proving provider is obtained once during setup and cached — do not re-obtain per call
 - `dappConnectorWalletProviders` builds `WalletProvider` + `MidnightProvider` from `Pick<ConnectedAPI, 'getShieldedAddresses' | 'balanceUnsealedTransaction' | 'submitTransaction'>`, both eras; wallet errors are not wrapped here (contracts' `atProviderMethod` wraps them); `ttl` is not forwarded (connector has none)
 
-### @midnight-ntwrk/midnight-js
+### @midnightntwrk/midnight-js
 
 - Barrel package re-exporting core modules (contracts, types, utils)
 - Namespace exports via `index.ts` and sub-path exports for tree-shaking
@@ -279,7 +279,7 @@ See [CLAUDE.md](./CLAUDE.md) for basic build/test/lint commands. Additional usef
 
 ```bash
 # Build specific package
-yarn build --filter=@midnight-ntwrk/midnight-js-contracts
+yarn build --filter=@midnightntwrk/midnight-js-contracts
 
 # Type check
 yarn typecheck:tests

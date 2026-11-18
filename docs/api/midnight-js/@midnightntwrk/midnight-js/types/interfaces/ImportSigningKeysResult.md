@@ -1,0 +1,33 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / ImportSigningKeysResult
+
+# Interface: ImportSigningKeysResult
+
+Result of a signing key import operation.
+
+## Properties
+
+### imported
+
+> `readonly` **imported**: `number`
+
+Number of keys successfully imported.
+
+***
+
+### overwritten
+
+> `readonly` **overwritten**: `number`
+
+Number of keys that overwrote existing keys (when conflictStrategy is 'overwrite').
+
+***
+
+### skipped
+
+> `readonly` **skipped**: `number`
+
+Number of keys skipped due to conflicts (when conflictStrategy is 'skip').

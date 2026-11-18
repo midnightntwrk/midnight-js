@@ -17,11 +17,11 @@ import {
   COMMON_ERROR_CODES,
   InvalidArgumentError,
   UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/errors';
+import { type CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CURRENT_LEDGER_ERA } from '@midnightntwrk/midnight-js-protocol/version';
+import { FailEntirely, FailFallible, type PrivateStateId } from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, IncompleteDeployContractPrivateStateConfig, TxFailedError } from '../errors';
@@ -44,7 +44,7 @@ import {
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
-vi.mock('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime');
+vi.mock('@midnightntwrk/midnight-js-protocol/v9/compact-runtime');
 
 describe('submit-deploy-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any

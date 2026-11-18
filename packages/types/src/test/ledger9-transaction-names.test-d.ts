@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { PreBinding, Proof, SignatureEnabled, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { PreBinding, Proof, SignatureEnabled, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type * as Types from '../index';
@@ -27,7 +27,7 @@ describe('ledger 9 transaction types', () => {
   it('publishes no ledger 9 transaction under a name without the ledger', () => {
     // @ts-expect-error renamed to Ledger9UnboundTransaction
     type _UnboundTransaction = Types.UnboundTransaction;
-    // @ts-expect-error import the ledger 9 class from @midnight-ntwrk/midnight-js-protocol/v9
+    // @ts-expect-error import the ledger 9 class from @midnightntwrk/midnight-js-protocol/v9
     type _Transaction = Types.Transaction;
   });
 });

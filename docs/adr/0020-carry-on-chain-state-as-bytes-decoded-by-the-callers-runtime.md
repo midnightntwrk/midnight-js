@@ -35,7 +35,7 @@ There is one class per kind, in `packages/types/src/serialized-state.ts`:
 (`isSerializedContractState`, `isSerializedLedgerParameters`, `isSerializedZswapChainState`).
 
 1. **`fromBytes` checks the tag against the era.** `LEDGER_STATE_TAGS` in
-   `@midnight-ntwrk/midnight-js-protocol/version` holds the tag each ledger era writes for each kind
+   `@midnightntwrk/midnight-js-protocol/version` holds the tag each ledger era writes for each kind
    (`StateKind`). Bytes that do not start with that tag are refused with
    `InvalidSerializedStateError` (`MIDNIGHT_JS_PR_INVALID_LEDGER_STATE`, reason `tag-mismatch`); a
    value that is not a `Uint8Array` with reason `not-bytes`; an unknown era with

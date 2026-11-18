@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import type { UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { sampleContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { PublicDataProvider } from '@midnightntwrk/midnight-js-types';
+import type { UnshieldedBalances } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError } from '../errors';

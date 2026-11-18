@@ -28,4 +28,4 @@ export {
   encodeContractKeyLocation,
   hashVerifierKey,
   parseContractKeyLocation
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-js';

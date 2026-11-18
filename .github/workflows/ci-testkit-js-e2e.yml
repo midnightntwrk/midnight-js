@@ -160,7 +160,7 @@ jobs:
         uses: ./.github/actions/pull-lfs
 
       - name: Copy the prover keys into the e2e dist
-        run: yarn workspace @midnight-ntwrk/testkit-js-e2e compact-copy
+        run: yarn workspace @midnightntwrk/testkit-js-e2e compact-copy
 
       - name: Post-Install dependencies
         run: yarn postinstall

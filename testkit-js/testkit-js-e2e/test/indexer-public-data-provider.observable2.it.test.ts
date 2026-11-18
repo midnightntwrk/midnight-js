@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type All,
   type ContractStateRead,
@@ -21,13 +21,13 @@ import {
   type Latest,
   type Ledger9FinalizedTxData,
   type PositionedRecord,
-  type PublicDataProvider} from '@midnight-ntwrk/midnight-js-types';
+  type PublicDataProvider} from '@midnightntwrk/midnight-js-types';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { firstValueFrom, type Observable, ReplaySubject, take, timeout, toArray } from 'rxjs';
 

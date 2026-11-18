@@ -15,7 +15,7 @@
 
 import { deflateSync } from 'node:zlib';
 
-import { EnvironmentUnsupportedError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { EnvironmentUnsupportedError } from '@midnightntwrk/midnight-js-protocol/errors';
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 

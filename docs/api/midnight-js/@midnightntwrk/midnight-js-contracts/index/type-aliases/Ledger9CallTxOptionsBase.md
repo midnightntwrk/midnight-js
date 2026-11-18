@@ -1,0 +1,21 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-contracts](../../README.md) / [index](../README.md) / Ledger9CallTxOptionsBase
+
+# Type Alias: Ledger9CallTxOptionsBase\<C, PCK\>
+
+> **Ledger9CallTxOptionsBase**\<`C`, `PCK`\> = [`Ledger9CallOptionsWithArguments`](Ledger9CallOptionsWithArguments.md)\<`C`, `PCK`\>
+
+Base type for configuration for a call transaction; identical to [Ledger9CallOptionsWithArguments](Ledger9CallOptionsWithArguments.md).
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
+### PCK
+
+`PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>

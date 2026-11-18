@@ -33,8 +33,8 @@ interface MidnightProviders {
 - `config`, `config.networkId` and `config.ttlSeconds` are required, with no defaults, so a dApp
   that has not migrated fails to compile.
 - There is no global network id and no fallback to one. The package that held it,
-  `@midnight-ntwrk/midnight-js-network-id`, and the `./network-id` subpath of
-  `@midnight-ntwrk/midnight-js` are removed in 5.0.0. Code that still calls `setNetworkId()` fails
+  `@midnightntwrk/midnight-js-network-id`, and the `./network-id` subpath of
+  `@midnightntwrk/midnight-js` are removed in 5.0.0. Code that still calls `setNetworkId()` fails
   to compile instead of being silently ignored.
 - `ttlSeconds` is a duration, not a date or a date factory. The framework adds it to the current
   time when it starts building a transaction, and again when balancing starts; it passes the

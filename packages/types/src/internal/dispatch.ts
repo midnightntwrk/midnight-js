@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { deserializeTransactionAtStage, type TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { deserializeTransactionAtStage, type TransactionStage } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { ProviderEraUnsupportedError, type TransactionMethod } from '../errors';
 import { LedgerTransaction, type TransactionAnswer } from '../ledger-transaction';

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import { UnhandledUnionMemberError } from '../assertion-utils';
@@ -27,7 +27,7 @@ import { ZkArtifactIntegrityError } from '../zk-artifact-manifest';
 const deserializationContext: DeserializationContext = {
   dataType: 'ContractState',
   source: 'ledger',
-  caller: '@midnight-ntwrk/midnight-js-utils:test',
+  caller: '@midnightntwrk/midnight-js-utils:test',
   classification: 'version-mismatch',
   mitigation: ['Hint']
 };

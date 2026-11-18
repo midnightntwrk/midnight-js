@@ -14,9 +14,9 @@
  */
 
 export * as ledger9Protocol from './protocol/v9';
-export * as contracts from '@midnight-ntwrk/midnight-js-contracts';
-export * as types from '@midnight-ntwrk/midnight-js-types';
-export * as utils from '@midnight-ntwrk/midnight-js-utils';
+export * as contracts from '@midnightntwrk/midnight-js-contracts';
+export * as types from '@midnightntwrk/midnight-js-types';
+export * as utils from '@midnightntwrk/midnight-js-utils';
 
 // The era vocabulary: what a consumer needs to say which ledger produced a
 // payload or a record, and to handle the failure when that resolution has no
@@ -32,7 +32,7 @@ export {
   type ProtocolVersionSource,
   type VersionedRecord,
   versionOfRecord
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 
 // The resolvers above reject or throw with `UnknownProtocolVersionError`. The
 // remaining classes are the protocol errors that reach a barrel consumer
@@ -71,7 +71,7 @@ export {
   UnknownLedgerEraError,
   UnknownProtocolVersionError,
   type VersionResolutionPath
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
+} from '@midnightntwrk/midnight-js-protocol/errors';
 
 // No `protocol/v8` re-export in any form, in either block above: the retained
 // pre-fork runtime is reachable only through the loaders that dynamically

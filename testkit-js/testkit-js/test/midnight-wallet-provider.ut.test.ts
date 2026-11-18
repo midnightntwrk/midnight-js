@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Ledger8Protocol, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import type { LedgerTransactionTypes } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { type Ledger8Protocol, loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import type { LedgerTransactionTypes } from '@midnightntwrk/midnight-js-protocol/transaction';
 import {
   CostModel,
   DustSecretKey,
@@ -22,14 +22,14 @@ import {
   Transaction,
   type TransactionId,
   ZswapSecretKeys
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
+} from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type FinalizedTx,
   InvalidTransactionHandleError,
   LedgerTransaction,
   type UnboundTx
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import {
   type BalancingRecipe,
   ProtocolVersion,
