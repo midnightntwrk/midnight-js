@@ -15,8 +15,7 @@
 // Publishes every non-private workspace under MIDNIGHT_WORKSPACE_DIR, in
 // dependency order, to:
 //   1. @midnightntwrk  on registry.npmjs.org  (OIDC trusted publishing + provenance)
-//   2. @midnight-ntwrk on registry.npmjs.org  (transitional alias, OIDC + provenance)
-//   3. @midnight-ntwrk on npm.pkg.github.com  (token from the .npmrc that
+//   2. @midnight-ntwrk on npm.pkg.github.com  (transitional alias, token from the .npmrc that
 //      setup-build-env writes from NODE_AUTH_TOKEN)
 //
 // Each workspace is packed once with `yarn pack` (resolves `workspace:*`). The
@@ -29,7 +28,7 @@
 // publish finishes it.
 //
 // npmjs trusted publishing checks the calling workflow (ci.yml for the reusable
-// prerelease workflows) and its environment; every package in both scopes needs
+// prerelease workflows) and its environment; every @midnightntwrk package needs
 // those registered on npmjs.com.
 //
 // Env:
@@ -50,7 +49,6 @@ const MIN_NPM_FOR_OIDC = '11.5.1';
 
 const TARGETS = [
   { scope: CANONICAL_SCOPE, registry: NPMJS, provenance: true },
-  { scope: ALIAS_SCOPE, registry: NPMJS, provenance: true },
   { scope: ALIAS_SCOPE, registry: GITHUB_PACKAGES, provenance: false }
 ];
 
