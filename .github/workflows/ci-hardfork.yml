@@ -136,18 +136,6 @@ jobs:
               hashFiles(format('testkit-js/testkit-js-e2e/src/contract/{0}.compact', matrix.contract))
             }}
 
-      # The personas resolve `@midnight-ntwrk/compact-runtime` from GitHub
-      # Packages, and neither pnpm nor a PnP install inherits Yarn's own scope
-      # configuration, so each needs the credential written where it looks.
-      - name: Authorize the persona installs
-        run: |
-          {
-            echo "@midnight-ntwrk:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${MIDNIGHTCI_PACKAGES_WRITE}"
-          } >> "$HOME/.npmrc"
-        env:
-          MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
       # Every image in `compose-fork.yml` comes from ghcr except the toolkit, and
       # none of them are in the image cache the e2e lane restores, so this login
       # is unconditional here.
@@ -180,17 +168,12 @@ jobs:
       - name: Run the fork-crossing scenario
         run: node consumer-e2e/fork-matrix-smoke.mjs pnp --contracts=${{ matrix.contract }}
         env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       # AFTER the step above, `env:` block included, and that placement is the
       # whole of this step's history. Inserting it between that step's `run:` and
       # its `env:` re-parents the block onto THIS step -- which needs no
-      # credentials -- and leaves the scenario without `YARN_NPM_AUTH_TOKEN`. The
-      # persona install then resolves the `@midnight-ntwrk` scope anonymously
-      # against GitHub Packages and every shard fails alike on
-      # `YN0041: Invalid authentication (as an anonymous user)`. That took the
+      # credentials -- and leaves the scenario without its own. That took the
       # lane from 6/7 to 0/7 once, and the diff read as innocent because the
       # `env:` lines never appeared in it.
       #

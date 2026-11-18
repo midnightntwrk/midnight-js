@@ -1955,7 +1955,7 @@ __metadata:
 
 "@midnight-ntwrk/compact-js@npm:3.0.2":
   version: 3.0.2
-  resolution: "@midnight-ntwrk/compact-js@npm:3.0.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F3.0.2%2Ffe9e60e5a5cfa29b37882fe047e1fd3ba041527d"
+  resolution: "@midnight-ntwrk/compact-js@npm:3.0.2"
   dependencies:
     "@effect/platform": "npm:^0.97.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.21.0"
@@ -1973,7 +1973,7 @@ __metadata:
 
 "@midnight-ntwrk/compact-runtime@npm:0.21.0":
   version: 0.21.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.21.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.21.0%2F6cea7f85f0b8d818c06e8fd75bf4a53a188d292a"
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.21.0"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/curves": "npm:^2.2.0"
@@ -1993,14 +1993,14 @@ __metadata:
 
 "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.2":
   version: 3.1.2
-  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.2%2F5b2a16606bc912521b2ab67297124cbfba444713"
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.2"
   checksum: 10/daeee876fb066133bba2abc2e7fffb2e9f87aaee4ceec20e7c67cd75b7c944e9dfc43b89e2b82c42e7e176523c162960df76ae2388eb9ce68633228eb96833aa
   languageName: node
   linkType: hard
 
 "@midnight-ntwrk/platform-js@npm:3.0.0":
   version: 3.0.0
-  resolution: "@midnight-ntwrk/platform-js@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F3.0.0%2Fb18da0d7b112c09f071e2569392aaf7b8f97eb8d"
+  resolution: "@midnight-ntwrk/platform-js@npm:3.0.0"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     effect: "npm:^3.21.0"
@@ -5891,7 +5891,7 @@ __metadata:
 
 "compact-runtime-ledger8@npm:@midnight-ntwrk/compact-runtime@0.16.0":
   version: 0.16.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.16.0%2F4a2d38a4237b0abd6d833c0ee94baa6318323a79"
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0"
   dependencies:
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@types/object-inspect": "npm:^1.8.1"

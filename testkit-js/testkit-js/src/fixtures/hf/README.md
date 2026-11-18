@@ -775,10 +775,7 @@ actually imports.
 The user's global `~/.npmrc` routes `@midnight-ntwrk` and `@midnightntwrk` to
 GitHub Packages with tokens that may not resolve public npm packages. This
 repo uses **Yarn Berry** (`nodeLinker: node-modules`), which ignores
-`~/.npmrc` entirely and uses `.yarnrc.yml`'s `npmScopes` instead.
-`.yarnrc.yml` already pins `midnight-ntwrk` (hyphenated) to GitHub Packages,
-but has **no entry for `midnightntwrk`** (no hyphen) — so `@midnightntwrk/*`
-packages (`ledger-v8`, `ledger-v9`) fell through to the default public
-registry and resolved without any `.npmrc`/`.yarnrc.yml` change. Both
-`yarn install` runs in this task (root install, and after adding the two new
-devDependencies) completed with no 401s. No registry fix was needed or made.
+`~/.npmrc` entirely and uses `.yarnrc.yml` instead. `.yarnrc.yml` declares
+no scope registry, so both `@midnight-ntwrk/*` and `@midnightntwrk/*`
+packages resolve from the default public registry (npmjs) without any
+`.npmrc`/`.yarnrc.yml` change.
