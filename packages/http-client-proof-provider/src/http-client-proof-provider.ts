@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import { CostModel, type ProvingProvider, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { ConfigurationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { proveLedger8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import { CostModel, type ProvingProvider, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
   type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 

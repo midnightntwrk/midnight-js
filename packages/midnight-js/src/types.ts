@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/midnight-js-types';
+export * from '@midnightntwrk/midnight-js-types';

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   ContractAddress,
   ContractState,
   ContractStateProvider
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PublicDataProvider } from '@midnightntwrk/midnight-js-types';
 
 import { decodeLedger9PublicStates } from '../era';
 

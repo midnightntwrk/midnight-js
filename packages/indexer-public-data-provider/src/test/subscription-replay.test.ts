@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractStateObservableConfig, PositionedRecord } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, TransactionId } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractStateObservableConfig, PositionedRecord } from '@midnightntwrk/midnight-js-types';
 import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';

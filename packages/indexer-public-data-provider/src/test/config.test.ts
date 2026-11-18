@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type MidnightNetwork, networks } from '@midnight-ntwrk/midnight-js-utils';
+import { type MidnightNetwork, networks } from '@midnightntwrk/midnight-js-utils';
 import type * as ws from 'isomorphic-ws';
 import { describe, expect, test } from 'vitest';
 

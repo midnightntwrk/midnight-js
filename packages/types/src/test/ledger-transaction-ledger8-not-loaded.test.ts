@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import type * as protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type * as protocol from '@midnightntwrk/midnight-js-protocol';
+import { LEDGER_TRANSACTION_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import { LedgerTransaction } from '../ledger-transaction';
 
 const { loadLedger8Spy } = vi.hoisted(() => ({ loadLedger8Spy: vi.fn() }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const original = await importOriginal<typeof protocol>();
   loadLedger8Spy.mockImplementation(original.loadLedger8Protocol);
   return { ...original, loadLedger8Protocol: loadLedger8Spy };

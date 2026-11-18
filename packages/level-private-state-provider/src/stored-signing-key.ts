@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
-import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types';
+import { isValidSigningKey } from '@midnightntwrk/midnight-js-utils';
 
 const LEGACY_SIGNING_KEY = /^[0-9a-fA-F]{64}$/;
 

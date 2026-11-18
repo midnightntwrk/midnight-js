@@ -18,15 +18,15 @@ import {
   type LedgerEra,
   protocolVersionToLedger,
   UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { type ContractAddress, type IntentHash, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/v9';
+} from '@midnightntwrk/midnight-js-protocol';
+import { type ContractAddress, type IntentHash, type RawTokenType } from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   ContractStateAndParametersRead,
   ContractStateRead,
   FinalizedTxRead,
   PublicStatesRead,
   ReadMethod,
-  StateReadMethod} from '@midnight-ntwrk/midnight-js-types';
+  StateReadMethod} from '@midnightntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -43,14 +43,14 @@ import {
   type UnshieldedBalances,
   type UnshieldedUtxo,
   type UnshieldedUtxos
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   deserializeLedgerTransaction,
   isHex,
   ledgerVersionOfContractState,
   ledgerVersionOfLedgerParameters,
   parseHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { DecoderEraUnsupportedError, IndexerDataError, UnknownRecordEraError } from './errors';
@@ -68,7 +68,7 @@ import type { ContractBalance, Segment, TransactionResult } from './gen/schema-t
  */
 const toByteArray = (s: string): Buffer => Buffer.from(parseHex(s).byteChars, 'hex');
 
-const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+const PKG = '@midnightntwrk/midnight-js-indexer-public-data-provider';
 
 /**
  * Facts identifying one read, carried onto a decode failure so it names the
@@ -78,7 +78,7 @@ type ReadDetails = Readonly<Record<string, string | number>>;
 
 /**
  * Takes a hex-encoded indexer transaction, decodes it to bytes, and dispatches to the typed
- * deserialization wrapper from `@midnight-ntwrk/midnight-js-utils`. Re-exported from the package
+ * deserialization wrapper from `@midnightntwrk/midnight-js-utils`. Re-exported from the package
  * entry point, so its signature is public API.
  */
 export const parseHexTransaction = <E extends LedgerEra>(
@@ -119,7 +119,7 @@ export type DecodedRecordTransaction = DistributivePick<FinalizedTxRead, 'era' |
  * `packages/protocol/docs/shared-table-discipline.md`. The era set is gated by
  * `LedgerEra`: an era added there stops this table type-checking. That an
  * era also has a *read variant* is asserted separately, by `_EveryEraHasAReadVariant`
- * in `@midnight-ntwrk/midnight-js-types`.
+ * in `@midnightntwrk/midnight-js-types`.
  */
 type TransactionDecoders = {
   readonly [V in LedgerEra]: (

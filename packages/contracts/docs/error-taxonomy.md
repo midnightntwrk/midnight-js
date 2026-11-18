@@ -146,7 +146,7 @@ Before that check each state is rebuilt from its `era` and `serialize()` with th
 `fromBytes` of the class of its kind (`SerializedContractState`,
 `SerializedLedgerParameters`, `SerializedZswapChainState`). The class guards, such as
 `SerializedContractState.isSerializedContractState`, answer `false` for
-a state made by a second installed copy of `@midnight-ntwrk/midnight-js-types`,
+a state made by a second installed copy of `@midnightntwrk/midnight-js-types`,
 and a dApp can end up with two copies the same way it ends up with two runtimes.
 Refusing such a state would name a provider fault where there is none. The
 rebuild checks the tag again, so forged bytes and a state of another kind are

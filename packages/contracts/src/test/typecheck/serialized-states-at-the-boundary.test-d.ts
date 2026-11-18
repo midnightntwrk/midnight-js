@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   SerializedContractState,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type {

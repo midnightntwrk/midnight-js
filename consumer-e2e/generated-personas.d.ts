@@ -77,14 +77,14 @@
  * declared for it, and the call site has to name this type itself.
  */
 type ForkCurrentContractCtor = new (
-  witnesses: import('@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Witnesses<undefined>
+  witnesses: import('@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Witnesses<undefined>
 ) => {
-  witnesses: import('@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Witnesses<undefined>;
-  circuits: import('@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Circuits;
-  provableCircuits: import('@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').ProvableCircuits;
+  witnesses: import('@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Witnesses<undefined>;
+  circuits: import('@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').Circuits;
+  provableCircuits: import('@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract').ProvableCircuits;
   initialState(
-    context: import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime').ConstructorContext<undefined>
-  ): Promise<import('@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime').ConstructorResult<undefined>>;
+    context: import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime').ConstructorContext<undefined>
+  ): Promise<import('@midnightntwrk/midnight-js-protocol/v9/compact-runtime').ConstructorResult<undefined>>;
 };
 
 declare module '@midnight-ntwrk/fork-retained-*' {
@@ -129,5 +129,5 @@ declare module '@midnight-ntwrk/fork-current-*' {
  * its codegen imports. Named exactly, because the wildcard above would type it as the contract.
  */
 declare module '@midnight-ntwrk/fork-current-baseline/runtime' {
-  export * from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+  export * from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 }

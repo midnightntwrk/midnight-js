@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-logger-provider",
+  "name": "@midnightntwrk/midnight-js-logger-provider",
   "version": "5.0.1",
   "type": "module",
   "description": "MidnightJS module for configuring an application specific pino logger",
@@ -10,18 +10,25 @@
       "default": "./dist/index.js"
     }
   },
-  "author": "IOG",
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/logger-provider"
+  },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/logger-provider#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
     "pino": "^10.4.0"
   },
   "devDependencies": {

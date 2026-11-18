@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { SerializedContractState, SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
+import type { SerializedContractState, SerializedLedgerParameters } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { Contract as Twin018Contract } from '../../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/contract/index.js';

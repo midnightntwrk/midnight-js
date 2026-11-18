@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { ConfigurationError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import type {
   MidnightProvider,
   MidnightProviders,
@@ -22,7 +22,7 @@ import type {
   PublicDataProvider,
   WalletProvider,
   ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import { createMidnightProviders } from '../midnight-providers';

@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError, PROTOCOL_ERROR_CODES, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { ContractOperation } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type * as midnightJsTypes from '@midnightntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { assert, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ContractNotFoundError, ContractTypeError, EraInvariantViolationError, EraMismatchError, PrivateStateNotFoundError } from '../errors';
@@ -52,12 +52,12 @@ vi.mock('../governance/tx-interfaces', () => ({
 // The framework decodes the read with its own runtime; the mock contract state stands in for the result.
 const deserializeLedger9CompactContractState = vi.hoisted(() => vi.fn());
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+vi.mock('@midnightntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
   deserializeLedger9CompactContractState
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-types', async (importOriginal) => {
   const actual = await importOriginal<typeof midnightJsTypes>();
   return {
     ...actual,

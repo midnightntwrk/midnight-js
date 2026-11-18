@@ -1,7 +1,7 @@
 name: 'Setup build environment'
 description: >-
   Shared bootstrap for CI jobs: direnv-loaded .envrc, optional GHCR login,
-  Node.js with the GitHub Packages registry, the pinned npm, yarn auth, the
+  Node.js, the GitHub Packages publish token, the pinned npm, the
   node_modules cache and the turbo build cache. Extracted to remove the setup
   block that was duplicated across ~8 jobs.
   The caller must run actions/checkout BEFORE this action — a local composite
@@ -9,7 +9,7 @@ description: >-
 
 inputs:
   node-auth-token:
-    description: Token for the @midnight-ntwrk GitHub Packages registry (npm auth).
+    description: Token for publishing the @midnight-ntwrk alias to GitHub Packages.
     required: true
   docker-login:
     description: "Set 'true' to log in to ghcr.io (build/e2e jobs that pull images)."
@@ -57,21 +57,19 @@ runs:
     - name: Set up Node.js
       uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # ratchet:actions/setup-node@v7.1.0
       with:
-        registry-url: https://npm.pkg.github.com/
-        scope: '@midnight-ntwrk'
         node-version-file: '.nvmrc'
         cache: 'yarn'
-      env:
-        NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
 
     - name: Set up npm
       uses: ./.github/actions/setup-npm
 
-    - name: Configure yarn
+    # A token only, no scope route: every @midnight-ntwrk dependency installs
+    # from npmjs, and publish-packages.mjs names the GitHub Packages registry itself.
+    - name: Authorize GitHub Packages publishing
       shell: bash
       env:
         NODE_AUTH_TOKEN: ${{ inputs.node-auth-token }}
-      run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$NODE_AUTH_TOKEN"
+      run: echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> "$HOME/.npmrc"
 
     - name: Cache node_modules
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0

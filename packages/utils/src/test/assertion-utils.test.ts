@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
 
 import { assertDefined, assertUndefined } from '../assertion-utils';
 

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { type LedgerEra, NO_CIRCUIT } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { type LedgerEra, NO_CIRCUIT } from '@midnightntwrk/midnight-js-protocol';
+import { InvariantViolationError, MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress, SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CURRENT_LEDGER_ERA } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   FailFallible,
@@ -25,8 +25,8 @@ import {
   type ProviderMethod,
   SegmentFail,
   type SerializedContractState
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CATEGORIES, CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 
 import { NEITHER_ERA_CONTRACT_MESSAGE } from './ledger8-contract';
 

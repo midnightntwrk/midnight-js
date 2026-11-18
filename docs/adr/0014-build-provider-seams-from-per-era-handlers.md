@@ -96,7 +96,7 @@ different (upgrade, or check the indexer), so the two codes stay apart (ADR 0017
 ### Retained-era proving
 
 - `proveLedger8Transaction` lives in `protocol` on the leaf subpath
-  `@midnight-ntwrk/midnight-js-protocol/prove`, so a proof provider that needs only this function
+  `@midnightntwrk/midnight-js-protocol/prove`, so a proof provider that needs only this function
   does not link the root barrel. The v8 runtime stays behind `loadLedger8Protocol`'s dynamic
   import, so importing the subpath does not load the v8 WASM.
 - The cost model comes from the same era's runtime as the transaction:

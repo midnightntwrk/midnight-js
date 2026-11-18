@@ -9,7 +9,7 @@
 Across the ledger fork the framework asks two different questions about eras.
 
 **Which era does this value belong to?** The answer comes with the data. Every era-sensitive read
-in `@midnight-ntwrk/midnight-js-indexer-public-data-provider` selects `protocolVersion` as a sibling
+in `@midnightntwrk/midnight-js-indexer-public-data-provider` selects `protocolVersion` as a sibling
 of the bytes it returns, in the same GraphQL document. A state's era is read from the version tag
 at the start of its bytes (`SerializedContractState` and its siblings); the record's
 `protocolVersion` dates the block. A transaction record's era comes from its `protocolVersion`,

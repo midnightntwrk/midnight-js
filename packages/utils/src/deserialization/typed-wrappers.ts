@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   ContractState as LedgerContractState,
   type EncodedStateValue,
   LedgerParameters,
   StateValue as LedgerStateValue,
   ZswapChainState
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { LedgerTransaction } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractState as CompactContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { LedgerTransaction } from '@midnightntwrk/midnight-js-types';
 
 import { withDeserializationContext } from './with-deserialization-context';
 
@@ -51,7 +51,7 @@ export interface CallSiteContext {
  * @example
  * ```ts
  * const state = deserializeLedger9ContractState(buf, {
- *   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
+ *   caller: '@midnightntwrk/midnight-js-indexer-public-data-provider:queryContractState'
  * });
  * ```
  *

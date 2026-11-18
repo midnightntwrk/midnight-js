@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { type EncodedStateValue, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type EncodedStateValue, type EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CompiledContract, ContractExecutable  } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   type ContractAddress,
   type LogEvent,
   type StateValue
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -29,7 +29,7 @@ import type {
   SerializedContractState,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 
 /**
  * Describes the target of a circuit invocation.

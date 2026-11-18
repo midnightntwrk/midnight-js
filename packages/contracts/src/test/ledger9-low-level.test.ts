@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';

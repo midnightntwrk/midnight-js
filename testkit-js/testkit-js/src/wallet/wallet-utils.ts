@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { unshieldedToken } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   type ShieldedWalletAPI,
   type ShieldedWalletState,

@@ -14,10 +14,10 @@ the other.
 ## Decision
 
 Every error thrown through a public API extends the abstract `MidnightJsError` from
-`@midnight-ntwrk/midnight-js-protocol/errors`. It carries a registered `code` and a `category`.
+`@midnightntwrk/midnight-js-protocol/errors`. It carries a registered `code` and a `category`.
 
 **The code is the contract.** Consumers recognise errors with `hasErrorCode`, `isMidnightJsError`
-and `errorCategory` from `@midnight-ntwrk/midnight-js-utils`. They read `e.code`, so they work
+and `errorCategory` from `@midnightntwrk/midnight-js-utils`. They read `e.code`, so they work
 across package copies. `instanceof` is a convenience, not a guarantee.
 
 **Categories** say what the caller should do:

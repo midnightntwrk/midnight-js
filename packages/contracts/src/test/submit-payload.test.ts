@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { COMMON_ERROR_CODES, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createProofProviderFromHandlers,
@@ -23,8 +23,8 @@ import {
   type ProofProvider,
   type UnprovenTx,
   type WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraInvariantViolationError } from '../errors';

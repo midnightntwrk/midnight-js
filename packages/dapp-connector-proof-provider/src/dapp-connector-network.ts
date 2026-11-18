@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { MidnightNetwork } from '@midnight-ntwrk/midnight-js-utils';
 import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { MidnightNetwork } from '@midnightntwrk/midnight-js-utils';
 
 /** The part of the DApp Connector's `ConnectedAPI` that {@link dappConnectorNetwork} calls. */
 export type DAppConnectorNetworkAPI = Pick<WalletConnectedAPI, 'getConfiguration'>;

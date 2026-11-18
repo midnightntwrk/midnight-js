@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
+import { UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractStateRead } from '@midnightntwrk/midnight-js-types';
 import { assert, describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError, UnknownRecordEraError } from '../errors';

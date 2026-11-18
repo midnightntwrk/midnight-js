@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvariantViolationError, MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvariantViolationError, MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 
 import { UTILS_ERROR_CATEGORIES, UTILS_ERROR_CODES } from './error-codes';
 
