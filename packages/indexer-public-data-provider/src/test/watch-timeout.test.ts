@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { WatchOptions } from '@midnight-ntwrk/midnight-js-types';
-import { type WatchOperation, WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { WatchOptions } from '@midnightntwrk/midnight-js-types';
+import { type WatchOperation, WatchTimeoutError } from '@midnightntwrk/midnight-js-types/errors';
 import * as Rx from 'rxjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 

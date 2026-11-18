@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
+import type { ProverKey, VerifierKey, ZKIR } from '@midnightntwrk/midnight-js-types';
 import {
   createProverKey,
   createVerifierKey,
@@ -21,7 +21,7 @@ import {
   InvalidProtocolSchemeError,
   ZkArtifactFetchError,
   ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertManifestHash,
   assertSafeName,
@@ -35,7 +35,7 @@ import {
   ZkArtifactIntegrityError,
   type ZkArtifactManifest,
   type ZkConfigIntegrityOptions
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 
 const KEY_PATH = 'keys';

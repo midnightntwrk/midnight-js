@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   ImportConflictError,
   ImportPasswordValidationError,
   InvalidExportFormatError,
   type PrivateStateExport,
   type SigningKeyExport
-} from '@midnight-ntwrk/midnight-js-types';
-import { PasswordValidationError } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { PasswordValidationError } from '@midnightntwrk/midnight-js-utils';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 import { inMemoryPrivateStateProvider } from '../src/contract/in-memory-private-state-provider';

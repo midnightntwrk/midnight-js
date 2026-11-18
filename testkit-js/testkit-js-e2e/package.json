@@ -1,6 +1,6 @@
 {
-  "name": "@midnight-ntwrk/testkit-js-e2e",
-  "version": "5.0.1-rc.1",
+  "name": "@midnightntwrk/testkit-js-e2e",
+  "version": "5.0.1",
   "type": "module",
   "description": "E2E tests for Midnight JS packages",
   "private": true,
@@ -13,10 +13,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "testkit-js/testkit-js-e2e"
   },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/testkit-js/testkit-js-e2e#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache midnight-level-db src/contract/compiled",
@@ -48,18 +53,18 @@
     "compact-retained-double-counter": "COMPACTC_VERSION=0.31.1 run-compactc src/contract/double-counter.compact ./src/contract/compiled-retained/double-counter"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-bundled-contract-module-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "@midnight-ntwrk/testkit-js": "workspace:*",
+    "@midnightntwrk/midnight-js-bundled-contract-module-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-dapp-connector-proof-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-level-private-state-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-node-zk-config-provider": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/testkit-js": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "rimraf": "^6.1.3",

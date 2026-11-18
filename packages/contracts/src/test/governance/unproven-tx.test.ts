@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   MaintenanceUpdate,
   sampleCoinPublicKey,
@@ -21,10 +21,10 @@ import {
   sampleSigningKey,
   Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LedgerTransaction, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractState as CompactContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LedgerTransaction, type UnprovenTx } from '@midnightntwrk/midnight-js-types';
+import { assertDefined } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SerializedContractState } from '../serialized-state';

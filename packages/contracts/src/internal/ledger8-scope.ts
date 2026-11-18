@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LedgerTransaction, type LoggerProvider, type PrivateStateId, type UnprovenTx } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { deserializeTransactionAtStage } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import { LedgerTransaction, type LoggerProvider, type PrivateStateId, type UnprovenTx } from '@midnightntwrk/midnight-js-types';
 
 import { IncompleteCallTxPrivateStateConfig, ScopedTransactionIdentityMismatchError } from '../errors';
 import type { AnyLedger8FinalizedCallTxData, AnyLedger8UnsubmittedCallTxData } from '../ledger8-contract';

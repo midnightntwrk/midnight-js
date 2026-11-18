@@ -18,7 +18,7 @@ import {
   InvalidArgumentError,
   MIDNIGHT_JS_ERROR_CATEGORIES,
   MidnightJsError
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
+} from '@midnightntwrk/midnight-js-protocol/errors';
 
 import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from './errors';
 import type { VerifierKey, ZKConfig } from './midnight-types';

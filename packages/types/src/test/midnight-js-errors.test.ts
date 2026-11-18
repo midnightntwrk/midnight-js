@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import {

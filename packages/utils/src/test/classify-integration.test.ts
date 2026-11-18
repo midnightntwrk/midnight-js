@@ -38,7 +38,7 @@ import {
   deserializeLedger9ZswapChainState,
   deserializeLedgerTransaction} from '../deserialization/typed-wrappers';
 
-const caller = '@midnight-ntwrk/midnight-js-test:classify-integration';
+const caller = '@midnightntwrk/midnight-js-test:classify-integration';
 
 const headerBytes = (tag: string): Uint8Array => new TextEncoder().encode(tag);
 

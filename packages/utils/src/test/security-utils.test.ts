@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { assertSafeName, assertSemVer, MAX_SAFE_NAME_LENGTH, warnIfInsecureRemoteUrl } from '../security-utils';

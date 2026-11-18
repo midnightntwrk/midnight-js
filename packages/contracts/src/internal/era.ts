@@ -19,14 +19,14 @@ import {
   loadLedgerEra,
   protocolVersionToLedger,
   UnknownLedgerEraError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { LedgerParameters, ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   LEDGER_ERAS,
   type StateKind
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type ContractStateRead,
   type FinalizedTxRead,
@@ -43,7 +43,7 @@ import {
   type TransactionMethod,
   type TransactionStage,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertNever,
   deserializeLedger9CompactContractState,
@@ -51,7 +51,7 @@ import {
   deserializeLedger9ZswapChainState,
   hasErrorCode,
   UTILS_ERROR_CODES
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 import {
   EraInvariantViolationError,
@@ -96,7 +96,7 @@ export function requireProviderResult<S extends TransactionStage>(
   return handle;
 }
 
-const CONTRACTS_PACKAGE = '@midnight-ntwrk/midnight-js-contracts';
+const CONTRACTS_PACKAGE = '@midnightntwrk/midnight-js-contracts';
 
 const describeEraTag = (era: unknown): string =>
   (typeof era === 'object' && era !== null) || typeof era === 'function'
@@ -1121,7 +1121,7 @@ export const assertEraCompatible = (
  * tag does not match it, so it is the era of these exact bytes.
  *
  * Do not declare the tag-to-era mapping here — it lives once, as `LEDGER_STATE_TAGS` in
- * `@midnight-ntwrk/midnight-js-protocol`.
+ * `@midnightntwrk/midnight-js-protocol`.
  *
  * @see {@link EraDispatch} for what each step buys and what breaks if it moves.
  *

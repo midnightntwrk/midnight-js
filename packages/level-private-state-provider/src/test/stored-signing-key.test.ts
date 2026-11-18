@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types';
 
 import { readStoredSigningKey, StoredSigningKeyFormatError } from '../stored-signing-key';
 

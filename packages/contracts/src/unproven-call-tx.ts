@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { ContractExecutionError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { type EncPublicKey, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type MidnightProviders, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress, assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { ContractExecutionError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractAddress } from '@midnightntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
+import { type EncPublicKey, type ZswapChainState } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { type Contract, ProvableCircuitId } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { exitResultOrError, LedgerTransaction, makeLedger9ContractExecutableRuntime, type MidnightConfig, type MidnightProviders, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnightntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertNever, assertValidMidnightConfig, parseCoinPublicKeyToHex } from '@midnightntwrk/midnight-js-utils';
 
 import type {
   Ledger9CallOptions,

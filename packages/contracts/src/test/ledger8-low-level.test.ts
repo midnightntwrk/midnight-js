@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { SerializedLedgerParameters } from '@midnight-ntwrk/midnight-js-types';
+import { LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
+import { SerializedLedgerParameters } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it, type MockInstance, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';

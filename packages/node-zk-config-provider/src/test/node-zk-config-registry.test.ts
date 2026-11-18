@@ -17,8 +17,8 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ConfigurationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
+import { ConfigurationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ZKConfigRegistry } from '@midnightntwrk/midnight-js-types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { nodeZkConfigRegistry } from '../node-zk-config-provider';

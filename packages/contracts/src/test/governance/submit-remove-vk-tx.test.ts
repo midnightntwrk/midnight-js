@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { ContractOperation } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { COMMON_ERROR_CODES, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { ContractOperation } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitRemoveVerifierKeyTx } from '../../governance/submit-remove-vk-tx';
@@ -43,7 +43,7 @@ const decode = vi.hoisted(() => ({
   deserializeLedger9Parameters: vi.fn()
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+vi.mock('@midnightntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
   ...decode
 }));
@@ -186,7 +186,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
     it('should throw TxFailedError when transaction fails', async () => {
       const { TxFailedError } = await import('../../errors');
-      const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
+      const { FailEntirely } = await import('@midnightntwrk/midnight-js-types');
 
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);

@@ -13,16 +13,9 @@
  * limitations under the License.
  */
 
-import { type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import {
-  ArtifactRuntimeVersionUnavailableError,
-  PROVIDER_ERROR_CODES,
-  type ProverKey,
-  type VerifierKey,
-  ZKConfigProvider,
-  type ZKIR
-} from '@midnight-ntwrk/midnight-js-types';
-import { UTILS_ERROR_CODES, ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+import { type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { ArtifactRuntimeVersionUnavailableError, PROVIDER_ERROR_CODES, type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnightntwrk/midnight-js-types';
+import { UTILS_ERROR_CODES, ZkArtifactContractInfoError } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, type Mock, vi } from 'vitest';
 
 import { EraMismatchError } from '../errors';

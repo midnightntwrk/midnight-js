@@ -27,14 +27,14 @@ import {
   PROTOCOL_ERROR_CATEGORIES,
   PROTOCOL_ERROR_CODES,
   type ProtocolErrorCode
-} from '@midnight-ntwrk/midnight-js-protocol/errors';
+} from '@midnightntwrk/midnight-js-protocol/errors';
 // Same leaf-subpath reasoning as above: the `types` root barrel pulls `effect`
 // and the protocol ledger namespace, neither of which reading a code needs.
 import {
   PROVIDER_ERROR_CATEGORIES,
   PROVIDER_ERROR_CODES,
   type ProviderErrorCode
-} from '@midnight-ntwrk/midnight-js-types/errors';
+} from '@midnightntwrk/midnight-js-types/errors';
 
 // Declared here, above the package that throws them, because the no-argument
 // `hasErrorCode` needs a COMPLETE registry. That form is called from `contracts`
@@ -73,8 +73,8 @@ export const CONTRACTS_ERROR_CODES = Object.freeze({
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
-// Re-exported, not re-declared: the categories are owned by `@midnight-ntwrk/midnight-js-protocol`,
-// the provider group by `@midnight-ntwrk/midnight-js-types`.
+// Re-exported, not re-declared: the categories are owned by `@midnightntwrk/midnight-js-protocol`,
+// the provider group by `@midnightntwrk/midnight-js-types`.
 export {
   MIDNIGHT_JS_ERROR_CATEGORIES,
   type MidnightJsErrorCategory,

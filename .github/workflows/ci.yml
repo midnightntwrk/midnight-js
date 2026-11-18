@@ -52,12 +52,24 @@ jobs:
               - '.github/scripts/**'
               - 'yarn.lock'
               - 'package.json'
+              - '**/turbo.json'
+              - 'tsconfig.base.json'
+              - 'build-tools/**'
+              - 'scripts/**'
+              - '.nvmrc'
+              - '.yarnrc.yml'
+              - 'eslint.config.mjs'
+              - '.envrc'
+              - 'yarn.config.cjs'
             midnight-js:
               - 'packages/**'
               # Subjects of the doc gates in packages/*/src/test: without these
               # a doc-only commit skips the job that enforces them entirely.
               - 'TROUBLESHOOTING.md'
               - 'docs/releases/v5.0.0/migration-guide.md'
+              - 'llms.txt'
+              # Golden fixtures read by the protocol and contracts tests.
+              - 'testkit-js/testkit-js/src/fixtures/hf/**'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
@@ -95,7 +107,7 @@ jobs:
   # The fork-crossing gate: blocking, and expected green -- a red shard is a
   # regression to investigate, never a known state to wave through. The path
   # filter below also means the lane is SKIPPED, not passing, on a range that
-  # touches neither `packages/**` nor `consumer-e2e/**`.
+  # touches none of `packages/**`, `consumer-e2e/**` or the `shared` paths.
   hardfork:
     needs: ci
     name: Hard fork
@@ -158,15 +170,18 @@ jobs:
             echo "No version change (${curr}); not a release."
           fi
 
-  # Publishes to GitHub Packages and cuts the GitHub Release (which creates the
-  # v<version> tag on this main commit). Gated on the build/test/e2e jobs in the
-  # SAME run, so a release can never publish ahead of its e2e — replacing the
-  # former standalone CD workflow, which re-ran e2e that CI had already run.
+  # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing) and GitHub
+  # Packages (@midnight-ntwrk alias), and cuts the GitHub
+  # Release (which creates the v<version> tag on this main commit). Gated on the
+  # build/test/e2e jobs in the SAME run, so a release can never publish ahead of
+  # its e2e — replacing the former standalone CD workflow, which re-ran e2e that
+  # CI had already run.
   publish:
     name: Publish release
     needs: [ci-midnightjs, ci-testkit, detect-release]
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
+    environment: npm-publish-stable
     permissions:
       contents: write
       id-token: write
@@ -180,6 +195,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -218,13 +234,14 @@ jobs:
 
       - name: Publish packages
         if: steps.changes.outputs.midnight-js == 'true'
-        run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_DIR: 'packages'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
 
       - name: Create GitHub Release
-        if: steps.changes.outputs.midnight-js == 'true'
+        if: steps.changes.outputs.midnight-js == 'true' && vars.NPM_PUBLISH_DRY_RUN != 'true'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # ratchet:softprops/action-gh-release@v3.0.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -244,6 +261,12 @@ jobs:
           VERSION_NUMBER: ${{ needs.detect-release.outputs.version_number }}
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
 
+      - name: Build testkit-js packages
+        if: steps.changes.outputs.testkit-js == 'true'
+        run: yarn build:testkit
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
       - name: Validate testkit-js Packages Before Publishing
         if: steps.changes.outputs.testkit-js == 'true'
         uses: ./.github/actions/validate-packages
@@ -252,53 +275,8 @@ jobs:
 
       - name: Publish testkit-js packages
         if: steps.changes.outputs.testkit-js == 'true'
-        run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        run: node .github/scripts/publish-packages.mjs
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      # ---------------------------------------------------------------------------
-      # Dual-publish to the @midnightntwrk npm org via OIDC trusted publishing.
-      #
-      # Additive and independent: the @midnight-ntwrk GitHub-registry publishes above
-      # are untouched, and midnight-ntwrk/artifacts keeps mirroring @midnight-ntwrk to
-      # public npm. @midnightntwrk is the migration target (see shielded-sre#258).
-      #
-      # OIDC uses the workflow-level `id-token: write` — no long-lived NPM_TOKEN.
-      #
-      # Gated OFF by default. Enable by setting repo variable PUBLISH_MIDNIGHTNTWRK=true
-      # ONLY after each @midnightntwrk/* package has this repo + this workflow
-      # registered as a Trusted Publisher on npmjs.com (npm UI, org admin).
-      # ---------------------------------------------------------------------------
-      - name: Verify npm supports OIDC trusted publishing
-        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && (steps.changes.outputs.midnight-js == 'true' || steps.changes.outputs.testkit-js == 'true')
-        run: |
-          # OIDC trusted publishing requires npm >= 11.5.1. The npm version is pinned
-          # via .nvmrc (node 24.11.1 bundles npm 11.6.2) — this only asserts the floor,
-          # it does NOT install/upgrade npm (that would unpin the toolchain).
-          need="11.5.1"
-          have="$(npm --version)"
-          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
-            echo "::error::npm $have < $need — OIDC trusted publishing unsupported. Bump .nvmrc node so its bundled npm is >= $need."
-            exit 1
-          fi
-          echo "npm $have supports OIDC trusted publishing"
-
-      - name: Publish packages to @midnightntwrk (public npm, OIDC)
-        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.midnight-js == 'true'
-        run: node .github/scripts/publish-public-npm.mjs
-        env:
-          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
-          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
-          MIDNIGHT_WORKSPACE_GLOB: 'packages'
-          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}
-
-      - name: Publish testkit-js to @midnightntwrk (public npm, OIDC)
-        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.testkit-js == 'true'
-        run: node .github/scripts/publish-public-npm.mjs
-        env:
-          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
-          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
-          MIDNIGHT_WORKSPACE_GLOB: 'testkit-js'
-          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}
+          MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}

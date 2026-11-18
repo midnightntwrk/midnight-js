@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { bundledContractModuleProvider } from '@midnight-ntwrk/midnight-js-bundled-contract-module-provider';
-import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { nodeZkConfigRegistry } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { bundledContractModuleProvider } from '@midnightntwrk/midnight-js-bundled-contract-module-provider';
+import { deployContract, submitCallTx } from '@midnightntwrk/midnight-js-contracts';
+import { httpClientProofProvider } from '@midnightntwrk/midnight-js-http-client-proof-provider';
+import { nodeZkConfigRegistry } from '@midnightntwrk/midnight-js-node-zk-config-provider';
+import { type ContractAddress, sampleSigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { SucceedEntirely } from '@midnightntwrk/midnight-js-types';
 import {
   type ContractConfiguration,
   createLogger,
@@ -29,7 +29,7 @@ import {
   type MidnightWalletProvider,
   syncWallet,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
