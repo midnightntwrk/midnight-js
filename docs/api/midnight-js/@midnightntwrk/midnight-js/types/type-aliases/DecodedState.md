@@ -1,0 +1,21 @@
+[**Midnight.js API Reference v5.0.1**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / DecodedState
+
+# Type Alias: DecodedState\<D, E\>
+
+> **DecodedState**\<`D`, `E`\> = `DecodedByEra`\<`D`, `E`\>
+
+What `deserialize` returns for decoders `D` and a value of era `E`.
+
+## Type Parameters
+
+### D
+
+`D` *extends* [`StateDecoders`](StateDecoders.md)
+
+### E
+
+`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)
