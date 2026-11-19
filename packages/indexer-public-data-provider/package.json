@@ -46,7 +46,7 @@
     "@graphql-codegen/cli": "^7.4.6",
     "@graphql-codegen/client-preset": "^6.2.0",
     "@graphql-codegen/typescript": "^6.1.2",
-    "@graphql-codegen/typescript-operations": "^6.1.10",
+    "@graphql-codegen/typescript-operations": "^7.0.1",
     "@types/ws": "^8.18.2",
     "rollup": "^4.68.2",
     "vite": "^8.3.4",
