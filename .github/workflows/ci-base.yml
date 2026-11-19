@@ -105,6 +105,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      # Read by `.github/actions/collect-test-evidence` when a release is published.
+      - name: Upload test evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: evidence-unit-packages
+          path: packages/*/reports/report/test-report*.xml
+          if-no-files-found: error
+
       - name: Aggregate coverage reports
         run: |
           mkdir -p .nyc_output

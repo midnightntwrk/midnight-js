@@ -20,6 +20,11 @@
 // A version already on the registry is skipped, so re-running a failed publish
 // finishes it.
 //
+// With MIDNIGHT_PUBLISHED_MANIFEST set, one line `<sha512 integrity>
+// <name>@<version>  <status>` is appended per @midnightntwrk package; status is
+// published, skipped or dry-run. The integrity has the format of `npm view
+// <pkg>@<ver> dist.integrity`; in a dry run it is the local tarball's hash.
+//
 // npmjs trusted publishing checks the calling workflow (ci.yml for the reusable
 // prerelease workflows) and its environment; every @midnightntwrk package needs
 // those registered on npmjs.com.
@@ -27,9 +32,11 @@
 // Env:
 //   MIDNIGHT_WORKSPACE_DIR    workspace dir to publish ("packages" | "testkit-js")
 //   MIDNIGHT_PUBLISH_DRY_RUN  "true" => npm publish --dry-run
+//   MIDNIGHT_PUBLISHED_MANIFEST  optional file for the integrity lines
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,6 +49,7 @@ const TARGET = { scope: CANONICAL_SCOPE, registry: NPMJS, provenance: true };
 
 const WORKSPACE_DIR = process.env.MIDNIGHT_WORKSPACE_DIR || 'packages';
 const DRY_RUN = process.env.MIDNIGHT_PUBLISH_DRY_RUN === 'true';
+const PUBLISHED_MANIFEST = process.env.MIDNIGHT_PUBLISHED_MANIFEST;
 
 const run = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'inherit', ...opts });
 
@@ -88,6 +96,8 @@ const inDependencyOrder = (workspaces) => {
 
 const registryArgs = (target) => ['--registry', target.registry, `--${target.scope}:registry=${target.registry}`];
 
+const isNotFound = (err) => err.status === 1 && /npm error code E404/.test(String(err.stderr ?? ''));
+
 const isPublished = (name, version, target) => {
   try {
     const out = execFileSync('npm', ['view', `${name}@${version}`, 'version', ...registryArgs(target)], {
@@ -97,8 +107,45 @@ const isPublished = (name, version, target) => {
     return out.trim() === version;
   } catch (err) {
     const stderr = String(err.stderr ?? '');
-    if (err.status === 1 && /npm error code E404/.test(stderr)) return false;
+    if (isNotFound(err)) return false;
     throw new Error(`npm view ${name}@${version} on ${target.registry} failed:\n${stderr}`, { cause: err });
+  }
+};
+
+export const tarballIntegrity = (file) => `sha512-${createHash('sha512').update(readFileSync(file)).digest('base64')}`;
+
+const SHA512_INTEGRITY = /^sha512-[A-Za-z0-9+/]+={0,2}$/;
+
+export const recordIntegrity = (manifestPath, { integrity, name, version, status }) => {
+  if (!SHA512_INTEGRITY.test(integrity)) {
+    throw new Error(`${name}@${version}: "${integrity}" is not a sha512 integrity`);
+  }
+  appendFileSync(manifestPath, `${integrity}  ${name}@${version}  ${status}\n`);
+};
+
+const npmViewIntegrity = (name, version, target) =>
+  execFileSync('npm', ['view', `${name}@${version}`, 'dist.integrity', ...registryArgs(target)], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  }).trim();
+
+const sleep = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// A skipped package may come from an earlier run, so only the registry knows its
+// bytes. Right after a publish conflict npmjs may still answer "not found".
+export const registryIntegrity = (name, version, target, { view = npmViewIntegrity, attempts = 10, waitMs = 30_000 } = {}) => {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return view(name, version, target);
+    } catch (err) {
+      if (attempt >= attempts || !isNotFound(err)) {
+        throw new Error(
+          `npm view ${name}@${version} dist.integrity on ${target.registry} failed after ${attempt} attempt(s):\n${String(err.stderr ?? '')}`,
+          { cause: err }
+        );
+      }
+      sleep(waitMs);
+    }
   }
 };
 
@@ -144,8 +191,13 @@ const publishWorkspace = (workspace, results) => {
   }
   console.log(`\n=== ${name}@${version} ===`);
   const tag = distTagFor(version);
-  const status = publishArtifact(pack(workspace.location), name, version, tag, TARGET);
+  const tarball = pack(workspace.location);
+  const status = publishArtifact(tarball, name, version, tag, TARGET);
   results.push({ name, version, registry: TARGET.registry, status });
+  if (PUBLISHED_MANIFEST) {
+    const integrity = status === 'skipped' ? registryIntegrity(name, version, TARGET) : tarballIntegrity(tarball);
+    recordIntegrity(PUBLISHED_MANIFEST, { integrity, name, version, status });
+  }
 };
 
 const printSummary = (results) => {
