@@ -34,10 +34,7 @@ const junit = (...cases) => `<?xml version="1.0" encoding="UTF-8"?>
 
 const PASSING = junit(testcase('passes'));
 
-const TESTED_PACKAGES = [
-  { name: 'contracts', allowEmpty: false },
-  { name: 'types', allowEmpty: true }
-];
+const TESTED_PACKAGES = ['contracts', 'types'];
 
 const GREEN_JOBS = [
   { id: 1, name: 'Build Midnight.js / ci / Build, Lint and Unit/Integration Tests', conclusion: 'success' },
@@ -224,21 +221,29 @@ describe('summarizeEvidence', () => {
     expect(problems).toEqual(['evidence-unit-packages: no junit report for package "contracts"']);
   });
 
-  it('reports a package with no test case unless its tests may be empty', () => {
+  it('reports a package with no test case although other packages passed', () => {
     writeCompleteEvidence();
-    write('evidence-unit-packages/contracts/reports/report/test-report.xml', '<testsuites></testsuites>');
     write('evidence-unit-packages/types/reports/report/test-report.xml', '<testsuites></testsuites>');
-    write('evidence-unit-packages/utils/reports/report/test-report.xml', PASSING);
-    const testedPackages = [...TESTED_PACKAGES, { name: 'utils', allowEmpty: false }];
 
-    const { problems } = summarizeEvidence({ evidenceDir, jobs: GREEN_JOBS, testedPackages });
+    const problems = problemsOf();
 
-    expect(problems).toEqual(['evidence-unit-packages: no test case found for package "contracts"']);
+    expect(problems).toEqual(['evidence-unit-packages: no test case found for package "types"']);
+  });
+
+  it('reports a package in which every test case was skipped although other packages passed', () => {
+    writeCompleteEvidence();
+    write('evidence-unit-packages/contracts/reports/report/test-report.xml', junit(testcase('later', '<skipped/>')));
+
+    const problems = problemsOf();
+
+    expect(problems).toEqual(['evidence-unit-packages: no test case passed for package "contracts"']);
   });
 
   it.each([
     ['failure', 'ended with failure'],
     ['cancelled', 'ended with cancelled'],
+    ['timed_out', 'ended with timed_out'],
+    ['startup_failure', 'ended with startup_failure'],
     [null, 'ended with no conclusion']
   ])('reports a required job that ended with %s', (conclusion, outcome) => {
     writeCompleteEvidence();
@@ -303,7 +308,7 @@ describe('summarizeEvidence', () => {
 });
 
 describe('findTestedPackages', () => {
-  it('lists the packages with a test script and marks those whose tests may be empty', () => {
+  it('lists the packages with a test script', () => {
     const writePackage = (name, scripts) => {
       mkdirSync(path.join(workDir, 'packages', name), { recursive: true });
       writeFileSync(path.join(workDir, 'packages', name, 'package.json'), JSON.stringify({ scripts }));
@@ -314,10 +319,7 @@ describe('findTestedPackages', () => {
 
     const packages = findTestedPackages(workDir);
 
-    expect(packages).toEqual([
-      { name: 'contracts', allowEmpty: false },
-      { name: 'types', allowEmpty: true }
-    ]);
+    expect(packages).toEqual(['contracts', 'types']);
   });
 });
 
@@ -335,13 +337,34 @@ describe('renderSummary', () => {
       runUrl: 'https://example.test/runs/42'
     });
 
-    expect(markdown).toContain('# Test evidence for v5.1.0');
-    expect(markdown).toContain('- CI run: https://example.test/runs/42');
-    expect(markdown).toContain('- Commit: `abc123`');
-    expect(markdown).toContain('| End-to-end tests, current era (`devnet`) | 2 | 1 | 1 | 0 | 0 |');
-    expect(markdown).toContain('| End-to-end tests, ledger v8 era (`v8era`) | 2 | 1 | 0 | 1 | 0 |');
-    expect(markdown).toContain('| **Total** | **7** | **5** | **1** | **1** | **0** |');
-    expect(markdown).toContain('| Hard fork / simple | success | `job-logs/3.log` |');
+    expect(markdown).toBe(
+      [
+        '# Test evidence for v5.1.0',
+        '',
+        '- CI run: https://example.test/runs/42',
+        '- Commit: `abc123`',
+        '',
+        '## Test results',
+        '',
+        '| Suite | Tests | Passed | Failed | Errors | Skipped |',
+        '| --- | ---: | ---: | ---: | ---: | ---: |',
+        '| Unit and integration tests, `packages/*` | 2 | 2 | 0 | 0 | 0 |',
+        '| Unit tests, `testkit-js/testkit-js` | 1 | 1 | 0 | 0 | 0 |',
+        '| End-to-end tests, current era (`devnet`) | 2 | 1 | 1 | 0 | 0 |',
+        '| End-to-end tests, ledger v8 era (`v8era`) | 2 | 1 | 0 | 1 | 0 |',
+        '| **Total** | **7** | **5** | **1** | **1** | **0** |',
+        '',
+        '## Jobs without junit output',
+        '',
+        '| Job | Result | Log |',
+        '| --- | --- | --- |',
+        '| Hard fork / simple | success | `job-logs/3.log` |',
+        '| Consumer E2E / Isolated-linker install smoke | success | `job-logs/4.log` |',
+        '',
+        'Coverage: `Coverage Report/coverage.zip`. End-to-end CTRF reports: `test-results-ctrf-summary-*`.',
+        ''
+      ].join('\n')
+    );
   });
 });
 
@@ -349,7 +372,7 @@ describe('command line', () => {
   const run = (...extraArgs) => {
     const jobsFile = path.join(workDir, 'jobs.json');
     writeFileSync(jobsFile, JSON.stringify(GREEN_JOBS));
-    for (const { name } of TESTED_PACKAGES) {
+    for (const name of TESTED_PACKAGES) {
       mkdirSync(path.join(workDir, 'packages', name), { recursive: true });
       writeFileSync(
         path.join(workDir, 'packages', name, 'package.json'),

@@ -3,7 +3,7 @@ description: 'Downloads the test evidence of a CI run, fails on missing or faile
 
 inputs:
   run-id:
-    description: 'Id of the ci.yml run whose tests gated the release'
+    description: 'Id of the ci.yml run whose test results are the release evidence'
     required: true
   version:
     description: 'Version being released, without the leading v (e.g. 5.1.0)'

@@ -36,7 +36,7 @@ export const OTHER_ARTIFACTS = [
   'Coverage Report'
 ];
 
-/** Display names (`name:`) of the `ci.yml` jobs the release depends on. */
+/** Display names (`name:`) of the ci.yml test jobs the release needs; jobs inside them are matched by the `<name> / ` prefix. */
 export const JOB_GROUPS = ['Build Midnight.js', 'Build Testkit.js', 'Hard fork', 'Consumer E2E'];
 
 /** Groups with no junit output, whose job log is their evidence; the jq filter in collect-test-evidence selects the same. */
@@ -69,10 +69,7 @@ const countTestcases = (testcases) => {
   return { tests: testcases.length, passed: testcases.length - failed - errors - skipped, failed, errors, skipped };
 };
 
-/**
- * Every `packages/*` workspace with a `test` script must leave a junit report;
- * a package whose test script has `--passWithNoTests` may report no test case.
- */
+/** Lists the `packages/*` directories whose package.json has a `test` script; each must report a passed test case. */
 export const findTestedPackages = (repoRoot) => {
   const packagesDir = path.join(repoRoot, 'packages');
   return readdirSync(packagesDir)
@@ -81,20 +78,25 @@ export const findTestedPackages = (repoRoot) => {
       const manifest = path.join(packagesDir, name, 'package.json');
       if (!existsSync(manifest)) return [];
       const test = JSON.parse(readFileSync(manifest, 'utf8')).scripts?.test;
-      return test ? [{ name, allowEmpty: test.includes('--passWithNoTests') }] : [];
+      return test ? [name] : [];
     });
 };
 
 const packageReport = (name) => `${name}/reports/report/test-report.xml`;
 
 const checkPackageReports = (artifact, testcasesByFile, testedPackages, problems) => {
-  for (const { name, allowEmpty } of testedPackages) {
+  for (const name of testedPackages) {
     const report = packageReport(name);
     const file = [...testcasesByFile.keys()].find((relative) => relative === report || relative.endsWith(`/${report}`));
     if (file === undefined) {
       problems.push(`${artifact}: no junit report for package "${name}"`);
-    } else if (testcasesByFile.get(file).length === 0 && !allowEmpty) {
-      problems.push(`${artifact}: no test case found for package "${name}"`);
+    } else {
+      const { tests, passed, failed, errors } = countTestcases(testcasesByFile.get(file));
+      if (tests === 0) {
+        problems.push(`${artifact}: no test case found for package "${name}"`);
+      } else if (passed === 0 && failed === 0 && errors === 0) {
+        problems.push(`${artifact}: no test case passed for package "${name}"`);
+      }
     }
   }
 };
@@ -156,11 +158,13 @@ const checkJobGroups = (evidenceDir, jobs, problems) => {
 };
 
 /**
+ * Checks the evidence without throwing; any entry in `problems` means the release must stop.
  * @param {{
  *   evidenceDir: string,
  *   jobs: { id: number, name: string, conclusion: string | null }[],
- *   testedPackages: { name: string, allowEmpty: boolean }[]
+ *   testedPackages: string[]
  * }} input
+ * @returns {{ suites: object[], logs: object[], problems: string[] }}
  */
 export const summarizeEvidence = ({ evidenceDir, jobs, testedPackages }) => {
   const problems = [];
