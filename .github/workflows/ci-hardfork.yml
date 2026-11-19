@@ -47,10 +47,6 @@ on:
       DOCKERHUB_TOKEN:
         required: false
 
-concurrency:
-  group: hardfork-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   fork-crossing:
     name: ${{ matrix.contract }}
