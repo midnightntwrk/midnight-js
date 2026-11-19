@@ -27,6 +27,10 @@
 // A version already present on a target is skipped, so re-running a failed
 // publish finishes it.
 //
+// With MIDNIGHT_PUBLISHED_MANIFEST set, one line per @midnightntwrk package is
+// appended to that file: its sha512 integrity, as `npm view <pkg>@<ver>
+// dist.integrity` reports it, then name@version and the publish status.
+//
 // npmjs trusted publishing checks the calling workflow (ci.yml for the reusable
 // prerelease workflows) and its environment; every @midnightntwrk package needs
 // those registered on npmjs.com.
@@ -34,9 +38,11 @@
 // Env:
 //   MIDNIGHT_WORKSPACE_DIR    workspace dir to publish ("packages" | "testkit-js")
 //   MIDNIGHT_PUBLISH_DRY_RUN  "true" => npm publish --dry-run
+//   MIDNIGHT_PUBLISHED_MANIFEST  optional file the integrity lines are appended to
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +60,7 @@ const TARGETS = [
 
 const WORKSPACE_DIR = process.env.MIDNIGHT_WORKSPACE_DIR || 'packages';
 const DRY_RUN = process.env.MIDNIGHT_PUBLISH_DRY_RUN === 'true';
+const PUBLISHED_MANIFEST = process.env.MIDNIGHT_PUBLISHED_MANIFEST;
 
 const DEP_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 
@@ -165,6 +172,18 @@ const isPublished = (name, version, target) => {
   }
 };
 
+export const tarballIntegrity = (file) => `sha512-${createHash('sha512').update(readFileSync(file)).digest('base64')}`;
+
+export const recordIntegrity = (manifestPath, { integrity, name, version, status }) =>
+  appendFileSync(manifestPath, `${integrity}  ${name}@${version}  ${status}\n`);
+
+// A skipped package may come from an earlier run, so only the registry knows its bytes.
+const registryIntegrity = (name, version, target) =>
+  execFileSync('npm', ['view', `${name}@${version}`, 'dist.integrity', ...registryArgs(target)], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'inherit']
+  }).trim();
+
 const packArtifacts = (dir, alias) => {
   const work = mkdtempSync(join(tmpdir(), 'mn-pub-'));
   const canonical = join(work, 'canonical.tgz');
@@ -222,6 +241,11 @@ const publishWorkspace = (workspace, alias, results) => {
     const targetName = target.scope === ALIAS_SCOPE ? alias(name) : name;
     const status = publishArtifact(artifacts[target.scope], targetName, version, tag, target);
     results.push({ name: targetName, version, registry: target.registry, status });
+    if (PUBLISHED_MANIFEST && target.scope === CANONICAL_SCOPE) {
+      const integrity =
+        status === 'skipped' ? registryIntegrity(targetName, version, target) : tarballIntegrity(artifacts[CANONICAL_SCOPE]);
+      recordIntegrity(PUBLISHED_MANIFEST, { integrity, name: targetName, version, status });
+    }
   }
 };
 

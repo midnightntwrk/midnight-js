@@ -11,9 +11,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { describe, expect, it } from 'vitest';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
-import { aliasRewriter } from './publish-packages.mjs';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { aliasRewriter, recordIntegrity, tarballIntegrity } from './publish-packages.mjs';
 
 const OWN_NAMES = ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-types', '@midnightntwrk/compact-js.utils'];
 
@@ -76,5 +81,39 @@ describe('aliasRewriter', () => {
     const alias = aliasRewriter(OWN_NAMES);
 
     expect(alias.leftoverIn(alias(`'@midnightntwrk/midnight-js' '@midnightntwrk/midnight-js-types'`))).toEqual([]);
+  });
+});
+
+describe('package integrity', () => {
+  let workDir;
+
+  beforeEach(() => {
+    workDir = mkdtempSync(path.join(tmpdir(), 'integrity-'));
+  });
+
+  afterEach(() => {
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  it('computes the same integrity npm records for the tarball', () => {
+    writeFileSync(path.join(workDir, 'package.json'), JSON.stringify({ name: 'tiny', version: '1.0.0' }));
+    writeFileSync(path.join(workDir, 'index.js'), 'export {};\n');
+    const pack = spawnSync('npm', ['pack', '--json', '--pack-destination', workDir], { cwd: workDir, encoding: 'utf8' });
+    const [{ filename, integrity }] = JSON.parse(pack.stdout);
+
+    const computed = tarballIntegrity(path.join(workDir, filename));
+
+    expect(computed).toBe(integrity);
+  });
+
+  it('appends one line per package, so both publish runs end up in one file', () => {
+    const manifest = path.join(workDir, 'published-packages.txt');
+
+    recordIntegrity(manifest, { integrity: 'sha512-a', name: '@midnightntwrk/midnight-js', version: '5.1.0', status: 'published' });
+    recordIntegrity(manifest, { integrity: 'sha512-b', name: '@midnightntwrk/testkit-js', version: '5.1.0', status: 'skipped' });
+
+    expect(readFileSync(manifest, 'utf8')).toBe(
+      'sha512-a  @midnightntwrk/midnight-js@5.1.0  published\nsha512-b  @midnightntwrk/testkit-js@5.1.0  skipped\n'
+    );
   });
 });
