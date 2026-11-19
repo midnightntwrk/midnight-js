@@ -19,14 +19,12 @@ import {
   createVerifierKey,
   createZKIR,
   InvalidProtocolSchemeError,
-  PROVIDER_ERROR_CODES,
   ZkArtifactFetchError,
   ZKConfigProvider
 } from '@midnightntwrk/midnight-js-types';
 import {
   assertManifestHash,
   assertSafeName,
-  hasErrorCode,
   parseZkArtifactManifest,
   parseZkArtifactRuntimeVersion,
   verifyZkArtifactIntegrity,
@@ -109,11 +107,14 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     );
   }
 
-  // An absent file may be legitimate; a source that is down says nothing about absence.
-  private static throwIfUnavailable(url: string, response: Response): void {
-    const failure = FetchZkConfigProvider.httpFailure(url, response);
-    if (hasErrorCode(failure, PROVIDER_ERROR_CODES.ZK_ARTIFACT_FETCH_FAILED)) {
-      throw failure;
+  // Only a 404 says the file is not there; the HTML fallback page the callers check for is the
+  // other shape of "missing". Every other failure — a 401/403 refusal, a 410, a 5xx — is a
+  // statement about the source, not about the file, so it propagates as the fetch failure it
+  // is. Relabelling a refusal as "missing" sends the caller to serve a file that is already
+  // there, and caching one as "no manifest" would silently drop the manifest's era anchor.
+  private static throwUnlessMissing(url: string, response: Response): void {
+    if (response.status !== 404) {
+      throw FetchZkConfigProvider.httpFailure(url, response);
     }
   }
 
@@ -158,7 +159,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     const { expectedManifestHash } = this.integrityOptions;
     const response = await this.fetchArtifact(url);
     if (!response.ok) {
-      FetchZkConfigProvider.throwIfUnavailable(url, response);
+      FetchZkConfigProvider.throwUnlessMissing(url, response);
     }
     if (!response.ok || FetchZkConfigProvider.isHtmlFallback(response)) {
       if (expectedManifestHash !== undefined) {
@@ -215,7 +216,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_CONTRACT_INFO_FILE_NAME}`, this.base).toString();
     const response = await this.fetchArtifact(url);
     if (!response.ok) {
-      FetchZkConfigProvider.throwIfUnavailable(url, response);
+      FetchZkConfigProvider.throwUnlessMissing(url, response);
       throw new ZkArtifactContractInfoError(
         `No ${ZK_CONTRACT_INFO_FILE_NAME} was available at ${url} (status ${response.status}), so the ` +
           `era of these artifacts cannot be established. Serve the compiler output directory that ` +

@@ -28,12 +28,12 @@ import {
   type StateKind
 } from '@midnightntwrk/midnight-js-protocol/version';
 import {
-  ArtifactRuntimeVersionUnavailableError,
   type ContractStateRead,
   type FinalizedTxRead,
   InvalidSerializedStateError,
   type Ledger9FinalizedTxData,
   LedgerTransaction,
+  PROVIDER_ERROR_CODES,
   type PublicDataProvider,
   type PublicStatesRead,
   type ReadMethod,
@@ -49,7 +49,8 @@ import {
   deserializeLedger9CompactContractState,
   deserializeLedger9Parameters,
   deserializeLedger9ZswapChainState,
-  ZkArtifactContractInfoError
+  hasErrorCode,
+  UTILS_ERROR_CODES
 } from '@midnightntwrk/midnight-js-utils';
 
 import {
@@ -714,10 +715,14 @@ export const resolveArtifactEra = async (
     // fault, a permission fault or a bug in a caller's provider says nothing about which ledger
     // executes this call, and relabelling it sends the caller to serve a file that is already
     // there. `readHeadEra` states the same rule for the head read.
-    if (error instanceof ZkArtifactContractInfoError) {
+    // The match is on the error CODES, not `instanceof` (ADR 0017): with two installed copies
+    // of midnight-js-utils or midnight-js-types in one process, a provider built against the
+    // other copy throws errors this copy's `instanceof` cannot see, and the caller would lose
+    // the reason it branches on.
+    if (hasErrorCode(error, UTILS_ERROR_CODES.ZK_ARTIFACT_CONTRACT_INFO_INVALID)) {
       throw new EraMismatchError('artifact-era-undeclared', { cause: error });
     }
-    if (error instanceof ArtifactRuntimeVersionUnavailableError) {
+    if (hasErrorCode(error, PROVIDER_ERROR_CODES.ARTIFACT_RUNTIME_VERSION_UNAVAILABLE)) {
       throw new EraMismatchError('provider-cannot-declare-era', { cause: error });
     }
     throw error;
