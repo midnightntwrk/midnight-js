@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-level-private-state-provider",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "Private state provider implementation that uses browser localStorage or Node.js file storage",
   "types": "dist/index.d.ts",
@@ -39,7 +39,7 @@
     "superjson": "^2.2.6"
   },
   "devDependencies": {
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

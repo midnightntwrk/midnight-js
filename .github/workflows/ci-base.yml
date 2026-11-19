@@ -105,6 +105,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      # Read by `.github/actions/collect-test-evidence` when a release is published.
+      - name: Upload test evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # ratchet:actions/upload-artifact@v7.0.2
+        with:
+          name: evidence-unit-packages
+          path: packages/*/reports/report/test-report*.xml
+          if-no-files-found: error
+
       - name: Aggregate coverage reports
         run: |
           mkdir -p .nyc_output
@@ -159,7 +167,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # ratchet:EnricoMi/publish-unit-test-result-action@v2.24.0
+        uses: EnricoMi/publish-unit-test-result-action@da5b7be67623cd59bbbd1a0ce4f022050a55605f # ratchet:EnricoMi/publish-unit-test-result-action@v2.26.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'

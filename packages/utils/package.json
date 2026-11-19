@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-utils",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "Shared utilities for MidnightJS modules",
   "types": "dist/index.d.ts",
@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

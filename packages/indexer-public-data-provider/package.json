@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-indexer-public-data-provider",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "types": "dist/index.d.ts",
@@ -29,7 +29,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@apollo/client": "^4.2.12",
+    "@apollo/client": "^4.3.8",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@midnightntwrk/midnight-js-protocol": "workspace:*",
     "@midnightntwrk/midnight-js-types": "workspace:*",
@@ -48,7 +48,7 @@
     "@graphql-codegen/typescript": "^6.1.2",
     "@graphql-codegen/typescript-operations": "^6.1.10",
     "@types/ws": "^8.18.2",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

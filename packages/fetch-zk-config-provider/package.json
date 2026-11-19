@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-fetch-zk-config-provider",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "MidnightJS module for retrieving proving and verifying keys and ZK intermediate representation",
   "types": "dist/index.d.ts",
@@ -38,7 +38,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "express": "^5.3.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

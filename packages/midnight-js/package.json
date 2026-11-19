@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "Barrel package for Midnight.js core framework",
   "types": "dist/index.d.ts",
@@ -43,7 +43,7 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
     "@midnightntwrk/midnight-js-contracts": "workspace:*",
@@ -53,7 +53,7 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "rollup-plugin-dts": "^6.5.1",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",

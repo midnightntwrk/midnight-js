@@ -2,17 +2,49 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.2](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1...v5.0.2) (2026-11-19)
+
+
+### Documentation
+
+* add release notes for v5.0.1 ([#1687](https://github.com/midnightntwrk/midnight-js/pull/1687)) ([82c91dc](https://github.com/midnightntwrk/midnight-js/commit/82c91dcbfbb997b0de6c97684f118c3b874ad4a9)), closes [#1648](https://github.com/midnightntwrk/midnight-js/pull/1648) [#1656](https://github.com/midnightntwrk/midnight-js/pull/1656) [#1655](https://github.com/midnightntwrk/midnight-js/pull/1655) [#1660](https://github.com/midnightntwrk/midnight-js/pull/1660) [#1671](https://github.com/midnightntwrk/midnight-js/pull/1671) [#1654](https://github.com/midnightntwrk/midnight-js/pull/1654)
+* API documentation update ([#1700](https://github.com/midnightntwrk/midnight-js/pull/1700)) ([c3ff968](https://github.com/midnightntwrk/midnight-js/commit/c3ff9687874c1f807ba61cfdfd9cbfb93032a75b))
+
+
+### Build System
+
+* **deps:** bump dependencies from green Dependabot PRs ([#1701](https://github.com/midnightntwrk/midnight-js/pull/1701)) ([63931ca](https://github.com/midnightntwrk/midnight-js/commit/63931ca915bd6c7178225414d6e1e1feb95b669b)), closes [#1665](https://github.com/midnightntwrk/midnight-js/pull/1665) [#1664](https://github.com/midnightntwrk/midnight-js/pull/1664) [#1652](https://github.com/midnightntwrk/midnight-js/pull/1652) [#1651](https://github.com/midnightntwrk/midnight-js/pull/1651) [#1649](https://github.com/midnightntwrk/midnight-js/pull/1649) [#1677](https://github.com/midnightntwrk/midnight-js/pull/1677) [#1676](https://github.com/midnightntwrk/midnight-js/pull/1676) [#1675](https://github.com/midnightntwrk/midnight-js/pull/1675) [#1674](https://github.com/midnightntwrk/midnight-js/pull/1674) [#1664](https://github.com/midnightntwrk/midnight-js/pull/1664) [#1678](https://github.com/midnightntwrk/midnight-js/pull/1678)
+
+
+### Continuous Integration
+
+* attach test evidence to each GitHub Release ([#1686](https://github.com/midnightntwrk/midnight-js/pull/1686)) ([0e79107](https://github.com/midnightntwrk/midnight-js/commit/0e7910701c398406d8bb74d9b06885d9fa119ef9)), closes [#1684](https://github.com/midnightntwrk/midnight-js/pull/1684)
+* **release:** publish to npmjs via OIDC trusted publishing under [@midnightntwrk](https://github.com/midnightntwrk) ([#1689](https://github.com/midnightntwrk/midnight-js/pull/1689)) ([7c5484c](https://github.com/midnightntwrk/midnight-js/commit/7c5484c082f975fe6b6a1cec573e571b8f5b718b)), closes [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [#1406](https://github.com/midnightntwrk/midnight-js/pull/1406) [shielded-sre#258](https://github.com/midnightntwrk/midnight-js/pull/258)
+* **release:** stop publishing the [@midnight-ntwrk](https://github.com/midnight-ntwrk) alias to GitHub Packages ([#1702](https://github.com/midnightntwrk/midnight-js/pull/1702)) ([d76c0cb](https://github.com/midnightntwrk/midnight-js/commit/d76c0cbe041a7a902aba139e5eda372581367b65)), closes [#1699](https://github.com/midnightntwrk/midnight-js/pull/1699) [shieldedtech/shielded-sre#761](https://github.com/midnightntwrk/midnight-js/pull/761)
+* **release:** TEMPORARY npmjs token for the first [@midnightntwrk](https://github.com/midnightntwrk) publish ([#1697](https://github.com/midnightntwrk/midnight-js/pull/1697)) ([1d95107](https://github.com/midnightntwrk/midnight-js/commit/1d95107ea713b0dee084028913f827ced2f03032)), closes [#1689](https://github.com/midnightntwrk/midnight-js/pull/1689) [#1689](https://github.com/midnightntwrk/midnight-js/pull/1689) [shieldedtech/shielded-sre#761](https://github.com/midnightntwrk/midnight-js/pull/761)
+
+
+### Reverts
+
+* ci(release): TEMPORARY npmjs token for the first [@midnightntwrk](https://github.com/midnightntwrk) ([#1699](https://github.com/midnightntwrk/midnight-js/pull/1699)) ([91ad965](https://github.com/midnightntwrk/midnight-js/commit/91ad9659513cd47cb112ba8e26098f70d30045e1))
+
 ## [5.0.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1-rc.1...v5.0.1) (2026-11-17)
 
 
 ### Build System
 
+* bump Node.js to 24.22.3 and pin npm to 12.2.2 ([#1654](https://github.com/midnightntwrk/midnight-js/pull/1654)) ([e55e489](https://github.com/midnightntwrk/midnight-js/commit/e55e489f1a590806e2ff40f41586c66c177addf9)), closes [#1586](https://github.com/midnightntwrk/midnight-js/pull/1586) [#1135](https://github.com/midnightntwrk/midnight-js/pull/1135)
 * **deps:** bump ledger 9 stack, compact-js and wallet-sdk to final releases ([#1671](https://github.com/midnightntwrk/midnight-js/pull/1671)) ([568e4d6](https://github.com/midnightntwrk/midnight-js/commit/568e4d6b612ac7bf6d9567900717aacd6014d1c5)), closes [#1660](https://github.com/midnightntwrk/midnight-js/pull/1660)
 
 
 ### Continuous Integration
 
 * **config:** reuse the turbo build cache and never cache test results ([#1608](https://github.com/midnightntwrk/midnight-js/pull/1608)) ([9704e51](https://github.com/midnightntwrk/midnight-js/commit/9704e5146e355de0d1a58a33edb6a62421ede337)), closes [#1185](https://github.com/midnightntwrk/midnight-js/pull/1185) [#1607](https://github.com/midnightntwrk/midnight-js/pull/1607) [#1209](https://github.com/midnightntwrk/midnight-js/pull/1209) [#1185](https://github.com/midnightntwrk/midnight-js/pull/1185)
+
+
+### Improvements
+
+* **release:** bump version to 5.0.1 ([#1679](https://github.com/midnightntwrk/midnight-js/pull/1679)) ([1b492fc](https://github.com/midnightntwrk/midnight-js/commit/1b492fca7d8734ee8529ed0679a075e0fe2f64f9))
 
 ## [5.0.1-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.1-rc.0...v5.0.1-rc.1) (2026-11-13)
 

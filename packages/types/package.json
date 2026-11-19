@@ -1,6 +1,6 @@
 {
   "name": "@midnightntwrk/midnight-js-types",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "type": "module",
   "description": "Shared data types and interfaces for MidnightJS modules",
   "types": "dist/index.d.ts",
@@ -30,7 +30,7 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "files": [
     "dist/"
@@ -42,7 +42,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
