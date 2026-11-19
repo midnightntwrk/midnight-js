@@ -170,8 +170,7 @@ jobs:
             echo "No version change (${curr}); not a release."
           fi
 
-  # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing) and GitHub
-  # Packages (@midnight-ntwrk alias), and cuts the GitHub
+  # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing) and cuts the GitHub
   # Release (which creates the v<version> tag on this main commit). Gated on the
   # build/test/e2e jobs in the SAME run, so a release can never publish ahead of
   # its e2e — replacing the former standalone CD workflow, which re-ran e2e that
