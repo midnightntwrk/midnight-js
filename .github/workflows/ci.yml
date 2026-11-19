@@ -271,6 +271,7 @@ jobs:
           files: |
             ${{ steps.evidence.outputs.bundle }}
             ${{ steps.evidence.outputs.summary }}
+          fail_on_unmatched_files: true
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
           # as a pre-release and must NOT become the "Latest" release.

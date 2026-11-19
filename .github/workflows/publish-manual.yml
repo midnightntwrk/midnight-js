@@ -1,20 +1,22 @@
 name: Publish (manual)
 #
 # Workaround to publish the current `main` on demand, WITHOUT a version-bump
-# commit and WITHOUT re-running CI/e2e: it requires instead the test evidence of
-# the completed ci.yml push run for the same commit, and attaches it to the release.
+# commit and WITHOUT re-running CI/e2e. Instead it requires the test evidence of
+# this commit's completed ci.yml push run and attaches it to the release.
 #
 # It publishes the version currently in the root package.json AS-IS — e.g. to
 # finish a release whose automatic publish never completed (CI timed out
 # mid-run), or to publish main ahead of the last release.
+#
+# HEAD must be a commit whose ci.yml push run ran every test lane. A commit the
+# path filter skips (docs only, for example) has no evidence, so this refuses it.
 #
 # Already-published artefacts are never touched: publish-packages.mjs skips
 # every package/registry that already has this version, so a run on a fully
 # published version publishes nothing. Re-running the failed ci.yml publish job
 # finishes a partial release the same way.
 #
-# This does NOT touch ci.yml or the automatic release path. See
-# docs/superpowers/specs/2026-07-08-manual-publish-from-main-design.md.
+# It reads the ci.yml run of this commit but does not change the automatic release path.
 
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
@@ -81,8 +83,9 @@ jobs:
           echo "Using test evidence from ci.yml run ${run_id}."
           echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
 
-      # Before the first publish: a release without evidence must stop here.
-      # Artifacts expire after 90 days, so an older commit cannot be published this way.
+      # Before the first publish: a release with missing or failed evidence must stop here.
+      # Artifacts and logs expire with the repository's retention period, so an older
+      # commit cannot be published this way.
       - name: Collect test evidence
         id: evidence
         uses: ./.github/actions/collect-test-evidence
@@ -179,6 +182,7 @@ jobs:
           files: |
             ${{ steps.evidence.outputs.bundle }}
             ${{ steps.evidence.outputs.summary }}
+          fail_on_unmatched_files: true
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
           # as a pre-release and must NOT become the "Latest" release.
