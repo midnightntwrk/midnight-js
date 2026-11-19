@@ -170,13 +170,12 @@ jobs:
             echo "No version change (${curr}); not a release."
           fi
 
-  # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing) and GitHub
-  # Packages (@midnight-ntwrk alias). Gated on the build/test/e2e jobs in the
-  # SAME run, so a release can never publish ahead of its e2e — replacing the
-  # former standalone CD workflow, which re-ran e2e that CI had already run.
-  # When packages/** changed, it then cuts the GitHub Release (and its
-  # v<version> tag on this commit) with the test evidence of those jobs and the
-  # integrity of the published packages attached.
+  # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing). Gated on the
+  # build/test/e2e jobs in the SAME run, so a release can never publish ahead of
+  # its e2e — replacing the former standalone CD workflow, which re-ran e2e that
+  # CI had already run. When packages/** changed, it then cuts the GitHub Release
+  # (and its v<version> tag on this commit) with the test evidence of those jobs
+  # and the integrity of the published packages attached.
   publish:
     name: Publish release
     needs: [ci-midnightjs, ci-testkit, consumer-e2e, hardfork, detect-release]
@@ -292,7 +291,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true' && vars.NPM_PUBLISH_DRY_RUN != 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # ratchet:softprops/action-gh-release@v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # ratchet:softprops/action-gh-release@v3.0.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
