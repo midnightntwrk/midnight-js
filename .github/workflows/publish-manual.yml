@@ -177,6 +177,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: Release ${{ steps.version.outputs.tag }}
           body_path: release_notes.md
           files: |
