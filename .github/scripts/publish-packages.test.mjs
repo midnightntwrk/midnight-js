@@ -99,7 +99,8 @@ describe('package integrity', () => {
     writeFileSync(path.join(workDir, 'package.json'), JSON.stringify({ name: 'tiny', version: '1.0.0' }));
     writeFileSync(path.join(workDir, 'index.js'), 'export {};\n');
     const pack = spawnSync('npm', ['pack', '--json', '--pack-destination', workDir], { cwd: workDir, encoding: 'utf8' });
-    const [{ filename, integrity }] = JSON.parse(pack.stdout);
+    expect(pack.status).toBe(0);
+    const [{ filename, integrity }] = Object.values(JSON.parse(pack.stdout));
 
     const computed = tarballIntegrity(path.join(workDir, filename));
 
