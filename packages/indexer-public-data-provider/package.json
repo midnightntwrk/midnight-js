@@ -36,11 +36,11 @@
     "@midnightntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
-    "graphql": "^17.0.1",
-    "graphql-ws": "^6.4.1",
+    "graphql": "^17.1.0",
+    "graphql-ws": "^6.4.2",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.8.2",
-    "ws": "^8.20.0"
+    "ws": "^8.22.2"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^7.4.6",
@@ -49,8 +49,8 @@
     "@graphql-codegen/typescript-operations": "^6.1.10",
     "@types/ws": "^8.18.2",
     "rollup": "^4.68.2",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.4"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
   },
   "files": [
     "dist/"
