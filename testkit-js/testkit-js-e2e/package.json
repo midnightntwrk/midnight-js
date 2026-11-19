@@ -76,7 +76,7 @@
     "@vitest/runner": "^4.1.11",
     "allure-commandline": "^2.46.1",
     "allure-js-commons": "^3.13.0",
-    "allure-vitest": "^3.13.0",
+    "allure-vitest": "^3.14.0",
     "axios": "^1.20.0",
     "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0",
     "pino": "^10.4.0",
