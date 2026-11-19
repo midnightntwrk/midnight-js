@@ -2182,7 +2182,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@rollup/plugin-replace": "npm:^6.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
-    "@tsconfig/node24": "npm:^24.0.5"
+    "@tsconfig/node24": "npm:^24.0.6"
     "@types/node": "npm:^24.0.0"
     "@vitest/coverage-v8": "npm:^5.1.0"
     "@vitest/ui": "npm:^5.0.5"
@@ -3987,10 +3987,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node24@npm:^24.0.5":
-  version: 24.0.5
-  resolution: "@tsconfig/node24@npm:24.0.5"
-  checksum: 10/d7b57e0a2065d00b219119746e668016a15547fac5a9c3ac766d0913b543b937dc69d6c9fa703ed32ab559a4bb5f87438fea3cdc0eee96f0bf14adff0829cb77
+"@tsconfig/node24@npm:^24.0.6":
+  version: 24.0.6
+  resolution: "@tsconfig/node24@npm:24.0.6"
+  checksum: 10/71dda851caf234c911be4e60def5f69de3e0f2583a4c015451c6f773c89fe6d8e727af4d9e41bdd85d2dcfd5b08fc692f7e40fbd8841b1f3cc7b3209655e7919
   languageName: node
   linkType: hard
 
