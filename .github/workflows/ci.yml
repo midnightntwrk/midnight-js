@@ -21,8 +21,8 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # Non-PR runs get their own group: a group keeps only one pending run, so a
-  # shared group would let a newer push or the nightly run cancel a waiting release.
+  # Each non-PR run gets its own group. A group keeps only one pending run, so a
+  # shared group would let a newer main run cancel a waiting release.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -182,7 +182,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish-stable
     # Publishing is non-atomic, so releases publish one at a time. Only one
-    # release can wait here; a third one cancels the waiting one.
+    # release can wait here; a newer one cancels the waiting one, which is not
+    # retried because the newer release contains it.
     concurrency:
       group: ${{ github.workflow }}-publish
       cancel-in-progress: false
