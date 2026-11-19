@@ -171,12 +171,12 @@ jobs:
           fi
 
   # Publishes to npmjs (@midnightntwrk, OIDC trusted publishing) and GitHub
-  # Packages (@midnight-ntwrk alias), and cuts the GitHub
-  # Release (which creates the v<version> tag on this main commit). Gated on the
-  # build/test/e2e jobs in the SAME run, so a release can never publish ahead of
-  # its e2e — replacing the former standalone CD workflow, which re-ran e2e that
-  # CI had already run. The test evidence of those jobs is attached to the
-  # GitHub Release.
+  # Packages (@midnight-ntwrk alias). Gated on the build/test/e2e jobs in the
+  # SAME run, so a release can never publish ahead of its e2e — replacing the
+  # former standalone CD workflow, which re-ran e2e that CI had already run.
+  # When packages/** changed, it then cuts the GitHub Release (and its
+  # v<version> tag on this commit) with the test evidence of those jobs and the
+  # integrity of the published packages attached.
   publish:
     name: Publish release
     needs: [ci-midnightjs, ci-testkit, consumer-e2e, hardfork, detect-release]

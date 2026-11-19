@@ -12,13 +12,13 @@
 // limitations under the License.
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { aliasRewriter, recordIntegrity, tarballIntegrity } from './publish-packages.mjs';
+import { aliasRewriter, recordIntegrity, registryIntegrity, tarballIntegrity } from './publish-packages.mjs';
 
 const OWN_NAMES = ['@midnightntwrk/midnight-js', '@midnightntwrk/midnight-js-types', '@midnightntwrk/compact-js.utils'];
 
@@ -115,5 +115,61 @@ describe('package integrity', () => {
     expect(readFileSync(manifest, 'utf8')).toBe(
       'sha512-a  @midnightntwrk/midnight-js@5.1.0  published\nsha512-b  @midnightntwrk/testkit-js@5.1.0  skipped\n'
     );
+  });
+
+  it('refuses a value that is not a sha512 integrity and writes nothing', () => {
+    const manifest = path.join(workDir, 'published-packages.txt');
+
+    const record = () =>
+      recordIntegrity(manifest, { integrity: '', name: '@midnightntwrk/midnight-js', version: '5.1.0', status: 'skipped' });
+
+    expect(record).toThrow('@midnightntwrk/midnight-js@5.1.0: "" is not a sha512 integrity');
+    expect(existsSync(manifest)).toBe(false);
+  });
+});
+
+describe('registryIntegrity', () => {
+  const NPMJS = { registry: 'https://registry.npmjs.org/' };
+  const notFound = () => Object.assign(new Error('npm view failed'), { status: 1, stderr: 'npm error code E404' });
+
+  it('asks again while the registry still answers not found after a publish', () => {
+    let calls = 0;
+    const view = () => {
+      calls += 1;
+      if (calls < 3) throw notFound();
+      return 'sha512-abc';
+    };
+
+    const integrity = registryIntegrity('@midnightntwrk/midnight-js', '5.1.0', NPMJS, { view, attempts: 3, waitMs: 0 });
+
+    expect({ integrity, calls }).toEqual({ integrity: 'sha512-abc', calls: 3 });
+  });
+
+  it('fails with the package and registry once every attempt answered not found', () => {
+    let calls = 0;
+    const view = () => {
+      calls += 1;
+      throw notFound();
+    };
+
+    const lookup = () => registryIntegrity('@midnightntwrk/midnight-js', '5.1.0', NPMJS, { view, attempts: 3, waitMs: 0 });
+
+    expect(lookup).toThrow(
+      'npm view @midnightntwrk/midnight-js@5.1.0 dist.integrity on https://registry.npmjs.org/ failed after 3 attempt(s)'
+    );
+    expect(calls).toBe(3);
+  });
+
+  it('does not ask again after an error other than not found', () => {
+    let calls = 0;
+    const view = () => {
+      calls += 1;
+      throw Object.assign(new Error('npm view failed'), { status: 1, stderr: 'npm error code E401' });
+    };
+
+    const lookup = () => registryIntegrity('@midnightntwrk/midnight-js', '5.1.0', NPMJS, { view, attempts: 3, waitMs: 0 });
+
+    expect(lookup).toThrow('failed after 1 attempt(s)');
+    expect(calls).toBe(1);
   });
 });
