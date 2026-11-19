@@ -24,13 +24,13 @@
  */
 import { readFileSync } from 'node:fs';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   loadLedger8Protocol,
   MaintenanceAuthorityMismatchError
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
   FailFallible,
@@ -39,7 +39,7 @@ import {
   type UnprovenTx,
   type VerifierKey,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -70,7 +70,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('../ledger8-runtime-stub
 
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

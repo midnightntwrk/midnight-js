@@ -27,13 +27,13 @@
  * functions bound to one era refuse a head of the other before the scope body
  * runs; the ledger 8 scope itself is covered by `./ledger8-scope.test.ts`.
  */
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { AnyProvableCircuitId } from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, NetworkVersionReadFailedError } from '../errors';
@@ -68,7 +68,7 @@ vi.mock('../submit-tx');
  */
 const eraLoadSlot = vi.hoisted((): { readonly acquired: string[]; rejectFor?: string } => ({ acquired: [] }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

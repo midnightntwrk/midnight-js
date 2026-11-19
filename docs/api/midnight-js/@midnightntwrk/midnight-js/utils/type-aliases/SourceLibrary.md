@@ -1,0 +1,11 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [utils](../README.md) / SourceLibrary
+
+# Type Alias: SourceLibrary
+
+> **SourceLibrary** = `"ledger"` \| `"compact-runtime"` \| `"onchain-runtime"`
+
+Underlying library that produced the deserialization error.

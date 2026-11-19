@@ -39,6 +39,8 @@ jobs:
         with:
           node-version-file: '.nvmrc'
 
+      - uses: ./.github/actions/setup-npm
+
       # `yaml` is public and dependency-free, so it needs no registry auth. The
       # range is read out of package.json rather than repeated here, so the gate
       # and the workspace cannot drift apart; removing the devDependency fails

@@ -14,7 +14,7 @@ caller to investigate the indexer over a problem that is somewhere else entirely
 
 ## `DeserializationError`
 
-From `@midnight-ntwrk/midnight-js-utils`. Bytes that will not decode, whichever
+From `@midnightntwrk/midnight-js-utils`. Bytes that will not decode, whichever
 era's runtime read them.
 
 It carries the era, the `protocolVersion`, the method and the record on its
@@ -23,7 +23,7 @@ It carries the era, the `protocolVersion`, the method and the record on its
 
 ## `Ledger8RuntimeMissingError`
 
-From `@midnight-ntwrk/midnight-js-protocol`. The pre-fork ledger runtime could
+From `@midnightntwrk/midnight-js-protocol`. The pre-fork ledger runtime could
 not be acquired for a ledger 8 record.
 
 That is an installation or bundling failure in the CONSUMER'S OWN dependency
@@ -33,7 +33,7 @@ tree, not a bad record and not a bad response. A caller who saw it as an
 ## Catching everything a read can raise
 
 Branch on `errorCategory(e)` first, then on `code` via `hasErrorCode`, both from
-`@midnight-ntwrk/midnight-js-utils`. Both escaping errors above are midnight-js
+`@midnightntwrk/midnight-js-utils`. Both escaping errors above are midnight-js
 errors too, so `isMidnightJsError` recognises them. Do not treat
 `instanceof IndexerError` as exhaustive over a read — it is exhaustive over this
 provider's own faults, which is a narrower thing — and do not rely on `instanceof`

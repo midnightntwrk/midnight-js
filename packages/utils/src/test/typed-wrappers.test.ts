@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_TRANSACTION_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { LedgerTransaction, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_TRANSACTION_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
+import { LedgerTransaction, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, it } from 'vitest';
 
 import { isDeserializationError } from '../deserialization';
@@ -30,7 +30,7 @@ import {
   deserializeLedgerTransaction} from '../deserialization/typed-wrappers';
 
 const garbage = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
-const caller = '@midnight-ntwrk/midnight-js-test:typed-wrapper-fixture';
+const caller = '@midnightntwrk/midnight-js-test:typed-wrapper-fixture';
 
 const expectThrowsDeserializationError = (
   fn: () => unknown,

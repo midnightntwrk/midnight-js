@@ -17,13 +17,13 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { COMMON_ERROR_CODES, ConfigurationError, InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+import { COMMON_ERROR_CODES, ConfigurationError, InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   PrivateStateDecryptionError,
   PrivateStateLimitExceededError,
   PrivateStateStorageError
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';

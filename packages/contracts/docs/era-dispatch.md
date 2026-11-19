@@ -424,9 +424,9 @@ The order is load-bearing:
    cannot be decoded at all is still dated and a decoder is never handed bytes
    from the wrong era. The tag-to-era mapping is NOT declared here: it decides
    which era's decoder is handed attacker-supplied bytes, so it lives in exactly
-   one place, `LEDGER_STATE_TAGS` in `@midnight-ntwrk/midnight-js-protocol/version`,
+   one place, `LEDGER_STATE_TAGS` in `@midnightntwrk/midnight-js-protocol/version`,
    read here through `ledgerVersionOfContractState` from
-   `@midnight-ntwrk/midnight-js-utils`
+   `@midnightntwrk/midnight-js-utils`
    (`packages/protocol/docs/shared-table-discipline.md`).
 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node
    minor bump (2_000_000 to 2_001_000) is not a disagreement and must not be
@@ -475,7 +475,7 @@ The table above pairs the ARTIFACT's era with the NETWORK's. A third pairing
 exists and is checked separately: the era an operation runs on against the eras
 the three transaction providers say they serve.
 
-`assertProvidersSupportEra(era, providers)` from `@midnight-ntwrk/midnight-js-types`
+`assertProvidersSupportEra(era, providers)` from `@midnightntwrk/midnight-js-types`
 reads `supportedEras` off `proofProvider`, `walletProvider` and
 `midnightProvider`, in that order, and refuses with `ProviderEraUnsupportedError`
 naming the first that does not list `era`.

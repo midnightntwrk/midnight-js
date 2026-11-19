@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ZkArtifactFetchError } from '@midnight-ntwrk/midnight-js-types';
+import { ZkArtifactFetchError } from '@midnightntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
 import { FetchZkConfigProvider, fetchZkConfigProvider } from '../index';

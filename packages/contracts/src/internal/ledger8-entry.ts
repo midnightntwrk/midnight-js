@@ -34,17 +34,17 @@
 import type {
   Ledger8SigningKey,
   LedgerEraFacade
-} from '@midnight-ntwrk/midnight-js-protocol';
+} from '@midnightntwrk/midnight-js-protocol';
 import {
   LEDGER_ERAS,
   type LedgerEra,
   loadLedger8Engine,
   loadLedgerEra,
   NO_CIRCUIT
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type CoinPublicKey, type EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type CoinPublicKey, type EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   assertProvidersSupportEra,
   type ContractPrivateStates,
@@ -64,14 +64,14 @@ import {
   type UnprovenTx,
   type WalletProvider,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import {
   assertIsContractAddress,
   assertNever,
   assertValidMidnightConfig,
   intentTtl,
   parseCoinPublicKeyToHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 import {
   EraInvariantViolationError,

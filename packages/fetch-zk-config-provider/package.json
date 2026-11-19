@@ -1,6 +1,6 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-fetch-zk-config-provider",
-  "version": "5.0.1-rc.1",
+  "name": "@midnightntwrk/midnight-js-fetch-zk-config-provider",
+  "version": "5.0.2",
   "type": "module",
   "description": "MidnightJS module for retrieving proving and verifying keys and ZK intermediate representation",
   "types": "dist/index.d.ts",
@@ -10,19 +10,26 @@
       "default": "./dist/index.js"
     }
   },
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/fetch-zk-config-provider"
+  },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/fetch-zk-config-provider#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "cross-fetch": "^4.1.0"
   },
   "files": [
@@ -31,7 +38,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "express": "^5.3.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"
   },

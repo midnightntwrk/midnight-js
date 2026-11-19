@@ -23,12 +23,12 @@ import {
   submitCallTx,
   withContractScopedTransaction,
   withLedger8ContractScopedTransaction
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
-import { ContractExecutionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-contracts';
+import { versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
+import { ContractExecutionError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type PrivateStateId, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   createLogger,
@@ -37,7 +37,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { ContractState } from 'compact-runtime-ledger8';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 

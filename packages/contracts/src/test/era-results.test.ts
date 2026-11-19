@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { CONTRACTS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { isLedger8Result } from '../era-results';

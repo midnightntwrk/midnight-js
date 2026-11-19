@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
-import { type EncodedStateValue, loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
+import { type EncodedStateValue, loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   FailEntirely,
   type FinalizedTx,
@@ -27,8 +27,8 @@ import {
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -70,7 +70,7 @@ import {
 
 const eraLoadSlot = vi.hoisted((): { readonly acquired: string[] } => ({ acquired: [] }));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

@@ -15,11 +15,11 @@
 
 import { readFileSync } from 'node:fs';
 
-import { InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { ContractOperation, ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { LEDGER_STATE_TAGS } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { LedgerParameters } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ProvableCircuitId } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { ContractOperation, ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { LEDGER_STATE_TAGS } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   createVerifierKey,
   InvalidSerializedStateError,
@@ -27,8 +27,8 @@ import {
   SerializedContractState,
   SerializedLedgerParameters,
   type VerifierKey
-} from '@midnight-ntwrk/midnight-js-types';
-import { UTILS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { UTILS_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { ContractTypeError } from '../errors';

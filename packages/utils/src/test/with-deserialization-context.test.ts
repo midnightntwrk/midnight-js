@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import { DeserializationError, isDeserializationError } from '../deserialization';
@@ -23,7 +23,7 @@ import { withDeserializationContext } from '../deserialization/with-deserializat
 const callSite: DeserializationCallSite = {
   dataType: 'ContractState',
   source: 'ledger',
-  caller: '@midnight-ntwrk/midnight-js-test:fixture'
+  caller: '@midnightntwrk/midnight-js-test:fixture'
 };
 
 describe('withDeserializationContext', () => {
@@ -71,7 +71,7 @@ describe('withDeserializationContext', () => {
         if (isDeserializationError(e)) {
           expect(e.context.source).toBe('ledger');
           expect(e.context.classification).toBe('version-mismatch');
-          expect(e.context.caller).toBe('@midnight-ntwrk/midnight-js-test:fixture');
+          expect(e.context.caller).toBe('@midnightntwrk/midnight-js-test:fixture');
         }
       }
     });

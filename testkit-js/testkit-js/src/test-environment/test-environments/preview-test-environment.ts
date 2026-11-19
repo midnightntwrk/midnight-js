@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { networks } from '@midnight-ntwrk/midnight-js-utils';
+import { networks } from '@midnightntwrk/midnight-js-utils';
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 
 import type { EnvironmentConfiguration } from '..';

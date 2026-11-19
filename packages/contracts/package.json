@@ -1,6 +1,6 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-contracts",
-  "version": "5.0.1-rc.1",
+  "name": "@midnightntwrk/midnight-js-contracts",
+  "version": "5.0.2",
   "type": "module",
   "description": "MidnightJS module for interacting with contracts",
   "types": "dist/index.d.ts",
@@ -11,9 +11,17 @@
     }
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/contracts"
+  },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/contracts#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
@@ -21,13 +29,12 @@
     "compact-shielded": "run-compactc src/test/resources/shielded-map.compact ./src/test/resources/compiled/shielded-map",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
-    "test-no-utils": "vitest run --exclude src/test/*.test.ts",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test-no-utils": "vitest run --exclude src/test/*.test.ts"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*",
     "effect": "^3.22.1"
   },
   "files": [
@@ -35,8 +42,8 @@
   ],
   "devDependencies": {
     "@fast-check/vitest": "^0.5.0",
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "rollup": "^4.60.4",
+    "@midnightntwrk/midnight-js-compact": "workspace:*",
+    "rollup": "^4.68.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"

@@ -1,0 +1,9 @@
+[**Midnight.js API Reference v5.0.2**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnightntwrk/midnight-js](../README.md) / [](../README.md) / MIDNIGHT\_JS\_ERROR\_CATEGORIES
+
+# Variable: MIDNIGHT\_JS\_ERROR\_CATEGORIES
+
+> `const` **MIDNIGHT\_JS\_ERROR\_CATEGORIES**: `Readonly`\<\{ `ENVIRONMENT`: `"ENVIRONMENT"`; `INTEGRITY`: `"INTEGRITY"`; `INTERNAL`: `"INTERNAL"`; `REJECTED`: `"REJECTED"`; `TRANSIENT`: `"TRANSIENT"`; `UNCERTAIN`: `"UNCERTAIN"`; `USAGE`: `"USAGE"`; \}\>

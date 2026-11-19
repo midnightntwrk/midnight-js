@@ -5,13 +5,13 @@ Utilities for deploying and interacting with Midnight smart contracts.
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts
+yarn add @midnightntwrk/midnight-js-contracts
 ```
 
 ## Quick Start
 
 ```typescript
-import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract, findDeployedContract } from '@midnightntwrk/midnight-js-contracts';
 
 // Deploy a new contract
 const deployed = await deployContract(providers, {
@@ -69,7 +69,7 @@ const found = await findDeployedContract(providers, {
 ### Transaction Submission
 
 ```typescript
-import { submitCallTx, submitDeployTx, submitTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { submitCallTx, submitDeployTx, submitTx } from '@midnightntwrk/midnight-js-contracts';
 
 // Submit a call transaction
 await submitCallTx(providers, callOptions);
@@ -90,7 +90,7 @@ if (record.era === 'v9') {
 }
 ```
 
-`LedgerTransaction` comes from `@midnight-ntwrk/midnight-js-types`. A handle you
+`LedgerTransaction` comes from `@midnightntwrk/midnight-js-types`. A handle you
 get from `createUnprovenCallTx` or `createUnprovenDeployTx`
 (`result.private.unprovenTx`) is already sealed, so you pass it on as it is.
 
@@ -173,7 +173,7 @@ import {
   submitInsertVerifierKeyTx,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 
 // Remove the verifier key a circuit holds, then insert one
 await submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, 'increment');
@@ -193,7 +193,7 @@ contract with the same stored key.
 ### State Queries
 
 ```typescript
-import { getPublicStates, getStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+import { getPublicStates, getStates, getUnshieldedBalances } from '@midnightntwrk/midnight-js-contracts';
 
 // Get contract states (public + private)
 const states = await getStates(
@@ -237,7 +237,7 @@ import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createContractMaintenanceTxInterface
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 Each factory takes a ledger 8 or a ledger 9 contract and builds the interface for that contract's era:
@@ -250,7 +250,7 @@ await callTx.increment();
 ### Utility Functions
 
 ```typescript
-import { verifierKeysEqual, verifyContractState } from '@midnight-ntwrk/midnight-js-contracts';
+import { verifierKeysEqual, verifyContractState } from '@midnightntwrk/midnight-js-contracts';
 
 // Compare verifier keys
 const equal = verifierKeysEqual(keyA, keyB);
@@ -367,7 +367,7 @@ import {
   ContractTypeError,
   EraInvariantViolationError,
   TxFailedError
-} from '@midnight-ntwrk/midnight-js-contracts';
+} from '@midnightntwrk/midnight-js-contracts';
 ```
 
 ## Handling Errors
@@ -375,7 +375,7 @@ import {
 One class covers one fault. A field on it says which case it was.
 
 ```typescript
-import { EraMismatchError, TxFailedError } from '@midnight-ntwrk/midnight-js-contracts';
+import { EraMismatchError, TxFailedError } from '@midnightntwrk/midnight-js-contracts';
 
 try {
   await submitCallTx(providers, options);

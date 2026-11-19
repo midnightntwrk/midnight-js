@@ -36,7 +36,7 @@ import {
   defaultContainersConfiguration,
   ForkTestEnvironment,
   setContainersConfiguration
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 
 import { buildLedger8Twins } from './build-ledger8-twins.mjs';
 import { buildPersona, stageTarballs } from './linker-smoke.mjs';

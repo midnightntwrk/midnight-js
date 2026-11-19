@@ -15,9 +15,9 @@
 
 import { createHash } from 'node:crypto';
 
-import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { PrivateStateDecryptionError } from '@midnight-ntwrk/midnight-js-types';
-import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { PrivateStateDecryptionError } from '@midnightntwrk/midnight-js-types';
+import { PasswordValidationError,type PasswordValidationFailure } from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';

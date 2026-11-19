@@ -1,0 +1,16 @@
+[**Midnight.js API Reference v5.0.2**](../../README.md)
+
+***
+
+[Midnight.js API Reference](../../packages.md) / @midnightntwrk/midnight-js-indexer-public-data-provider
+
+# @midnightntwrk/midnight-js-indexer-public-data-provider
+
+## Documents
+
+- [ErrorBoundaries](documents/ErrorBoundaries.md)
+- [SubscriptionShapes](documents/SubscriptionShapes.md)
+
+## Modules
+
+- [index](index/README.md)

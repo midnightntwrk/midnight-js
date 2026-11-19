@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { resolveArtifactEra } from '../internal/era';

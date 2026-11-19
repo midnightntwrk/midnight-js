@@ -31,7 +31,7 @@
 import { readFileSync } from 'node:fs';
 import { inspect } from 'node:util';
 
-import type * as Protocol from '@midnight-ntwrk/midnight-js-protocol';
+import type * as Protocol from '@midnightntwrk/midnight-js-protocol';
 import {
   type ComposeCallOptions,
   ComposeFailedError,
@@ -39,16 +39,16 @@ import {
   type LedgerEraFacade,
   loadLedger8Protocol,
   loadLedgerEra
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+} from '@midnightntwrk/midnight-js-protocol';
+import { COMMON_ERROR_CODES, InvalidArgumentError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
 import {
   LedgerParameters,
   type ProvingProvider,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { type Recipient, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { type Recipient, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyProvableCircuitId,
   type ContractStateAndParametersRead,
@@ -69,8 +69,8 @@ import {
   type UnboundTx,
   type UnprovenTx,
   type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertDefined, CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -165,7 +165,7 @@ vi.mock('@midnight-ntwrk/compact-runtime', () => import('./ledger8-runtime-stub'
 // engine's construction guard exists to catch a second acquisition path for it.
 const engineSlot = vi.hoisted((): { engine?: unknown } => ({}));
 
-vi.mock('@midnight-ntwrk/midnight-js-protocol', async (importOriginal) => {
+vi.mock('@midnightntwrk/midnight-js-protocol', async (importOriginal) => {
   const actual = await importOriginal<typeof Protocol>();
   return {
     ...actual,

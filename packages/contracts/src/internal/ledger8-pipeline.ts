@@ -35,20 +35,20 @@ import type {
   LedgerEra,
   LedgerEraFacade,
   TranscriptPojo
-} from '@midnight-ntwrk/midnight-js-protocol';
-import { ComposeFailedError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { deserializeTransactionAtStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
-import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { AlignedValue, Op, ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol';
+import { ComposeFailedError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { deserializeTransactionAtStage } from '@midnightntwrk/midnight-js-protocol/transaction';
+import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { AlignedValue, Op, ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type ContractStateAndParametersRead,
   LedgerTransaction,
   type PublicDataProvider,
   type SerializedLedgerParameters,
   type UnprovenTx
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { assertDefined } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {

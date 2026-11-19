@@ -1,0 +1,9 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-protocol](../../README.md) / [index](../README.md) / CommonErrorCode
+
+# Type Alias: CommonErrorCode
+
+> **CommonErrorCode** = *typeof* [`COMMON_ERROR_CODES`](../variables/COMMON_ERROR_CODES.md)\[keyof *typeof* [`COMMON_ERROR_CODES`](../variables/COMMON_ERROR_CODES.md)\]

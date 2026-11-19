@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { VerifierKey } from '@midnight-ntwrk/midnight-js-types';
-import { ZkArtifactContractInfoError } from '@midnight-ntwrk/midnight-js-utils';
+import type { VerifierKey } from '@midnightntwrk/midnight-js-types';
+import { ZkArtifactContractInfoError } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError } from '../../errors';

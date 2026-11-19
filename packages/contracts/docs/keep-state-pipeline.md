@@ -263,7 +263,7 @@ provider looking for a runtime it does not need.
 
 The composition returns bytes either way. `sealComposed` reads them back with
 `deserializeTransactionAtStage(era, 'Unproven', txBytes)` from
-`@midnight-ntwrk/midnight-js-protocol/transaction` and seals the result in that
+`@midnightntwrk/midnight-js-protocol/transaction` and seals the result in that
 same era. That is not a re-encode across eras: they are the composing era's OWN
 bytes, produced moments earlier by the same runtime that reads them. The era
 comes from the head the composition ran on, never from the bytes.

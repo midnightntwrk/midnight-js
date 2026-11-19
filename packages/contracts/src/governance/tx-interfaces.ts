@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import type { ContractAddress } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { type VerifierKey } from '@midnightntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from '../contract-providers';
 import { hasLedger8ContractShape } from '../internal/era';

@@ -33,7 +33,7 @@ jobs:
     if: inputs.should_run == 'true'
     uses: ./.github/workflows/ci-base.yml
     with:
-      yarn_filter: --filter="./packages/*"
+      yarn_filter: ./packages/*
       # `.github/scripts` and `consumer-e2e` ride along here because this is the
       # only leg that lints, and neither had a lint of its own: the
       # workflow-permissions gate lives in the first, and the second is the code
@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: ci
     if: inputs.should_prerelease == 'true'
+    environment: npm-publish-canary
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
@@ -56,6 +57,7 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          turbo-cache: 'false'
 
       - name: Install dependencies
         run: |
@@ -75,7 +77,14 @@ jobs:
       - name: Bump versions
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
-      - name: Publish packages
-        run: yarn deploy --filter="./packages/*" --cache-dir ./turbo -- --tag pre
+      - name: Build packages
+        run: yarn build:core
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Publish packages
+        run: node .github/scripts/publish-packages.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MIDNIGHT_WORKSPACE_DIR: 'packages'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}

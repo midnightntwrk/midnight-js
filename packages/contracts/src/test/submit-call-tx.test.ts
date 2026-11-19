@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { COMMON_ERROR_CODES } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CURRENT_LEDGER_ERA } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { COMMON_ERROR_CODES } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnightntwrk/midnight-js-protocol/v9';
+import { type CompiledContract, type Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { StateValue } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CURRENT_LEDGER_ERA } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
@@ -27,7 +27,7 @@ import {
   type PrivateStateId,
   SegmentFail,
   SegmentSuccess
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isLedger8Result } from '../era-results';

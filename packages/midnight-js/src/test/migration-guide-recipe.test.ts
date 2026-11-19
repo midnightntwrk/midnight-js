@@ -18,7 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Stands in for the dApp's own `@midnightntwrk/ledger-v9`, which the guide imports.
-import { Transaction, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { Transaction, type UnprovenTransaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expect, test } from 'vitest';
 
 import { contracts, type ledger9Protocol, PROTOCOL_ERROR_CODES, types, utils } from '../index';
@@ -102,9 +102,8 @@ const PACKAGE_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '.
 const REPOSITORY_ROOT = path.resolve(PACKAGE_ROOT, '..', '..');
 const GUIDE_PATH = path.join(REPOSITORY_ROOT, 'docs', 'releases', 'v5.0.0', 'migration-guide.md');
 
-/** This package's own npm name, so the guide's import line is not pinned to a scope. */
-const packageName = (): string =>
-  JSON.parse(readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')).name as string;
+/** The released v5.0.0 guide imports this package by the scope 5.0.0 shipped under. */
+const GUIDE_PACKAGE_NAME = '@midnight-ntwrk/midnight-js';
 
 /**
  * Lifts a `#region <name>` .. `#endregion <name>` block out of this file's own
@@ -154,7 +153,7 @@ describe('migration guide recipes', () => {
     const { region, marker, imports } = recipe;
     const compiled = regionSource(region);
     const ledgerImport = 'ledgerImport' in recipe ? `\n${recipe.ledgerImport}` : '';
-    const importLine = `import { ${imports} } from '${packageName()}';${ledgerImport}`;
+    const importLine = `import { ${imports} } from '${GUIDE_PACKAGE_NAME}';${ledgerImport}`;
 
     // Act.
     const printed = guideTypeScriptBlocks().filter((block) => block.includes(marker));

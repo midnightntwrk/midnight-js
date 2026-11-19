@@ -1,0 +1,33 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [types](../README.md) / UnsubmittedTxDataBase
+
+# Interface: UnsubmittedTxDataBase
+
+What every era carries alongside the transaction it composed.
+
+The composed transaction itself is NOT here: each era's own unsubmitted data
+carries it as `unprovenTx`, an `UnprovenTx` handle of that era, beside the
+fields only that era has.
+
+## Remarks
+
+**Privacy-sensitive.** `newCoins` is shielded coin material.
+
+## Extended by
+
+- [`Ledger8CallResultPrivate`](../../contracts/interfaces/Ledger8CallResultPrivate.md)
+- [`Ledger9UnsubmittedTxData`](../../contracts/interfaces/Ledger9UnsubmittedTxData.md)
+- [`Ledger8CallResultPrivate`](../../../midnight-js-contracts/index/interfaces/Ledger8CallResultPrivate.md)
+- [`Ledger9UnsubmittedTxData`](../../../midnight-js-contracts/index/interfaces/Ledger9UnsubmittedTxData.md)
+
+## Properties
+
+### newCoins
+
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](https://github.com/midnightntwrk/midnight-ledger)[]
+
+New coins created for the caller during the construction of the
+transaction. Empty when the call minted nothing to the caller's own key.

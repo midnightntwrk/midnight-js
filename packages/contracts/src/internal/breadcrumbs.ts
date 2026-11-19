@@ -34,7 +34,7 @@
  *      and what is deliberately not recorded.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol';
 
 import type { HeadEraReading } from './era';
 

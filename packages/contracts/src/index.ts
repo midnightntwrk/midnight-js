@@ -284,5 +284,5 @@ export {
 // the events (`Ledger9LogEvent`) and decode them (`Ledger9ContractLog.decodeAll`) without depending on
 // compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
 // `Ledger9ContractLog.ContractEvent`.
-export { ContractLog as Ledger9ContractLog } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-export type { LogEvent as Ledger9LogEvent } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+export { ContractLog as Ledger9ContractLog } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+export type { LogEvent as Ledger9LogEvent } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';

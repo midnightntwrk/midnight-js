@@ -10,7 +10,7 @@
 "Retained era" meant every ledger era older than the last hard fork that this build still serves.
 Today that is only ledger 8. ADR 0018 already names code bound to one ledger after that ledger
 (`Ledger8*`), and ADR 0022 published the term as `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` from
-`@midnight-ntwrk/midnight-js-protocol/version`.
+`@midnightntwrk/midnight-js-protocol/version`.
 
 Nothing in the framework uses those two exports. Every place that uses "retained" as an era name in
 code, tests, comments and documentation means ledger 8, because ledger 8 is the only older era. So
@@ -23,7 +23,7 @@ ledgers.
 We remove the term "retained era".
 
 - `RetainedLedgerEra` and `RETAINED_LEDGER_ERAS` are removed from
-  `@midnight-ntwrk/midnight-js-protocol/version`. A consumer that needs the set of older eras derives
+  `@midnightntwrk/midnight-js-protocol/version`. A consumer that needs the set of older eras derives
   it: `Exclude<LedgerEra, CurrentLedgerEra>`, or
   `LEDGER_ERAS.filter((era) => era !== CURRENT_LEDGER_ERA)`.
 - Code, tests, comments and documentation that mean ledger 8 say "ledger 8". Internal names use the

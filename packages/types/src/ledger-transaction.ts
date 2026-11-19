@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { MidnightJsError, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerTransactionTypes, TransactionStage } from '@midnight-ntwrk/midnight-js-protocol/transaction';
+import { MidnightJsError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { LedgerTransactionTypes, TransactionStage } from '@midnightntwrk/midnight-js-protocol/transaction';
 import {
   LEDGER_ERAS,
   LEDGER_TRANSACTION_TAGS,
   type LedgerEra,
   TRANSACTION_STAGES
-} from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/version';
 
 import {
   InvalidTransactionHandleError,

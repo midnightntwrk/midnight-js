@@ -23,7 +23,7 @@
  * or with a union of its contracts (`FoundContract<C | L8>`), and narrows it here.
  */
 
-import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { CURRENT_LEDGER_ERA, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { EraMismatchError } from './errors';
 import { readEraTag } from './internal/era';

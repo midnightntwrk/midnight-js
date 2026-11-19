@@ -41,7 +41,7 @@ import type {
   EncodedStateValue,
   LedgerEra,
   TranscriptPojo
-} from '@midnight-ntwrk/midnight-js-protocol';
+} from '@midnightntwrk/midnight-js-protocol';
 
 /**
  * The ledger 8 contract-state handle.
@@ -52,13 +52,13 @@ import type {
  */
 type Ledger8StateValue = TranscriptPojo['postContractState'];
 
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
 import type {
   CommunicationCommitmentData,
   ContractAddress,
   SigningKey,
   ZswapLocalState
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import type {
   CallResultPrivateBase,
   CallResultPublicBase,
@@ -74,7 +74,7 @@ import type {
   SubmittedCallTxBase,
   UnprovenTx,
   UnsubmittedTxDataBase,
-  VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+  VerifierKey} from '@midnightntwrk/midnight-js-types';
 import type { Option } from 'effect';
 
 import type { Ledger8TransactionContext } from './transaction';

@@ -1,6 +1,6 @@
 {
-  "name": "@midnight-ntwrk/midnight-js",
-  "version": "5.0.1-rc.1",
+  "name": "@midnightntwrk/midnight-js",
+  "version": "5.0.2",
   "type": "module",
   "description": "Barrel package for Midnight.js core framework",
   "types": "dist/index.d.ts",
@@ -28,25 +28,32 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/midnightntwrk/midnight-js.git",
+    "directory": "packages/midnight-js"
+  },
+  "homepage": "https://github.com/midnightntwrk/midnight-js/tree/main/packages/midnight-js#readme",
+  "bugs": {
+    "url": "https://github.com/midnightntwrk/midnight-js/issues"
+  },
+  "author": "Midnight Foundation",
   "packageManager": "yarn@4.14.1",
-  "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
-    "test": "vitest run --passWithNoTests",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnightntwrk/midnight-js-contracts": "workspace:*",
+    "@midnightntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.60.4",
+    "rollup": "^4.68.2",
     "rollup-plugin-dts": "^6.5.1",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",

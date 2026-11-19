@@ -13,27 +13,27 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
 import {
   type ContractAddress,
   sampleSigningKey,
   type SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
 import {
   type AnyProvableCircuitId,
   type ContractPrivateStates,
   type FinalizedTxRead,  type PrivateStateId,
   type PrivateStateProvider,
   type SerializedContractState,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey} from '@midnightntwrk/midnight-js-types';
 import {
   assertIsContractAddress,
   assertNever,
   deserializeLedger9CompactContractState,
   toHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9ContractProviders } from './contract-providers';
 import {
@@ -305,7 +305,7 @@ const decodeForVerification = async (contractState: SerializedContractState): Pr
   return contractState.deserialize({
     v9: {
       deserialize: (bytes): VerifiableContractState =>
-        deserializeLedger9CompactContractState(bytes, { caller: '@midnight-ntwrk/midnight-js-contracts:verifyContractState' })
+        deserializeLedger9CompactContractState(bytes, { caller: '@midnightntwrk/midnight-js-contracts:verifyContractState' })
     }
   });
 };

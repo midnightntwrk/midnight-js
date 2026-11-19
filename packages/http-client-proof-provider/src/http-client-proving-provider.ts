@@ -18,7 +18,7 @@ import {
   createProvingPayload,
   parseCheckResult,
   type ProvingKeyMaterial,
-  type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/v9';
+  type ProvingProvider} from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   InvalidProtocolSchemeError,
   ProofServerError,
@@ -26,8 +26,8 @@ import {
   type ZKConfigProvider,
   ZKConfigRegistry,
   zkConfigToProvingKeyMaterial
-} from '@midnight-ntwrk/midnight-js-types';
-import { hasErrorCode, warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { hasErrorCode, warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnightntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 

@@ -5,14 +5,14 @@ Configurable [pino](https://getpino.io/) logger wrapper for Midnight.js diagnost
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-logger-provider
+yarn add @midnightntwrk/midnight-js-logger-provider
 ```
 
 ## Quick Start
 
 ```typescript
 import pino from 'pino';
-import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
+import { LoggerProvider } from '@midnightntwrk/midnight-js-logger-provider';
 
 const logger = new LoggerProvider(pino({ level: 'debug' }));
 
@@ -55,7 +55,7 @@ class LoggerProvider {
 
 ```typescript
 import pino from 'pino';
-import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
+import { LoggerProvider } from '@midnightntwrk/midnight-js-logger-provider';
 
 const loggerProvider = new LoggerProvider(
   pino({
@@ -76,7 +76,7 @@ const providers = {
 ## Exports
 
 ```typescript
-import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
+import { LoggerProvider } from '@midnightntwrk/midnight-js-logger-provider';
 ```
 
 ## Resources

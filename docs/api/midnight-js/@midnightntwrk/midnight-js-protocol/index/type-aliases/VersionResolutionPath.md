@@ -1,0 +1,14 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-protocol](../../README.md) / [index](../README.md) / VersionResolutionPath
+
+# Type Alias: VersionResolutionPath
+
+> **VersionResolutionPath** = `"read"` \| `"construct"`
+
+Which call path asked for a ledger era:
+- `'read'` — the version was taken off an existing record.
+- `'construct'` — the version was chosen to build something new against the
+  network's latest block.

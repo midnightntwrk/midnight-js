@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import * as ledger from '@midnight-ntwrk/midnight-js-protocol/v9';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import * as ledger from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   ledgerVersionOfLedgerParameters,
   parseSerializedTag,
   toHex
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, test } from 'vitest';
 
 import {

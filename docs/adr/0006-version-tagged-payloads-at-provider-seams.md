@@ -20,7 +20,7 @@ the bytes beside it, and a caller who narrows on a wrong label is actively misle
 The era is data on the value, and it is derived from what was observed, never asserted.
 
 - Every era-dependent value carries `era: LedgerEra` (`'v8' | 'v9'`, from
-  `@midnight-ntwrk/midnight-js-protocol`). This holds for transaction handles (`LedgerTransaction`),
+  `@midnightntwrk/midnight-js-protocol`). This holds for transaction handles (`LedgerTransaction`),
   for state (`SerializedContractState`, `SerializedLedgerParameters`, `SerializedZswapChainState`),
   for read records (`FinalizedTxRead`) and for `contracts` results.
 - The era comes from observed data:
@@ -33,7 +33,7 @@ The era is data on the value, and it is derived from what was observed, never as
 - A component never stamps an era literal on a value it did not observe. If the era it derives is
   one it cannot handle, it throws rather than mislabelling the value.
 - Code that handles the eras differently narrows with `switch (x.era)` and closes the switch with
-  `assertNever(x, '<call site>')` from `@midnight-ntwrk/midnight-js-utils`. While the switch is
+  `assertNever(x, '<call site>')` from `@midnightntwrk/midnight-js-utils`. While the switch is
   exhaustive, `x` is `never` in the `default` branch and the call compiles. When an era is added,
   every such switch stops compiling.
 - `assertNever(value: never, context: string): never` has these properties:

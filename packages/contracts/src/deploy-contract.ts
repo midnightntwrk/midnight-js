@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever, assertValidMidnightConfig } from '@midnight-ntwrk/midnight-js-utils';
+import type { CoinPublicKey, EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import { sampleSigningKey, type SigningKey } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { PrivateStateId } from '@midnightntwrk/midnight-js-types';
+import { assertNever, assertValidMidnightConfig } from '@midnightntwrk/midnight-js-utils';
 
 import type { Ledger9ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type Ledger9ContractProviders } from './contract-providers';

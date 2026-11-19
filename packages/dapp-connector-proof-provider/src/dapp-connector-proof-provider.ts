@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import { type CostModel, Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { proveLedger8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import { type CostModel, Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import {
   createProofProviderFromHandlers,
   type ProofProvider,
   type ProveTxConfig,
   type ZKConfigProvider,
   type ZKConfigRegistry
-} from '@midnight-ntwrk/midnight-js-types';
-import type { KeyMaterialProvider, ProvingProvider } from '@midnightntwrk/dapp-connector-api';
+} from '@midnightntwrk/midnight-js-types';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 

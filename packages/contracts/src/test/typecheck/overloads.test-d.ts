@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import type { Ledger8SigningKey } from '@midnight-ntwrk/midnight-js-protocol';
-import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
+import type { Ledger8SigningKey } from '@midnightntwrk/midnight-js-protocol';
+import type { EncPublicKey } from '@midnightntwrk/midnight-js-protocol/v9';
+import type { CompiledContract, ContractExecutable } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import type {
   CoinPublicKey,
   ContractAddress,
   LogEvent,
   SigningKey
-} from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { CurrentLedgerEra, LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { FinalizedTxRead, PrivateStateId, SerializedContractState, UnprovenTx, VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+} from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import type { CurrentLedgerEra, LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import type { FinalizedTxRead, PrivateStateId, SerializedContractState, UnprovenTx, VerifierKey } from '@midnightntwrk/midnight-js-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 // The current-era twin of the ledger 8 fixture. Imported TYPE-ONLY from the artifact's own

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { InvalidArgumentError, InvariantViolationError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { PrivateStateDecryptionError } from '@midnight-ntwrk/midnight-js-types';
-import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { PrivateStateDecryptionError } from '@midnightntwrk/midnight-js-types';
+import { validatePassword } from '@midnightntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { type CryptoBackend, type CryptoBackendType, resolveCryptoBackend } from './crypto-backend';

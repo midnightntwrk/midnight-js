@@ -111,19 +111,14 @@ export const LINKERS = {
     // repository, not whatever a resolver decides to fetch.
     packageManager: undefined,
     install: (cwd) => {
-      // The scope registry has to be declared here. Yarn finds configuration by
-      // walking up from the project, and the persona deliberately sits outside
-      // this repository, so it no longer inherits the root `.yarnrc.yml`.
-      // `npmAuthToken` comes from YARN_NPM_AUTH_TOKEN in the environment.
+      // Yarn finds configuration by walking up from the project, and the persona
+      // deliberately sits outside this repository, so it does not inherit the
+      // root `.yarnrc.yml`; its settings are declared here.
       writeFileSync(
         path.join(cwd, '.yarnrc.yml'),
         [
           'nodeLinker: pnp',
           'enableGlobalCache: false',
-          'npmScopes:',
-          '  midnight-ntwrk:',
-          '    npmAlwaysAuth: true',
-          '    npmRegistryServer: "https://npm.pkg.github.com/"',
           // Upstream packaging defects, surfaced by PnP because it refuses an
           // undeclared dependency where a hoisted tree silently satisfies one.
           // These are patches for OTHER people's manifests, not for ours; each

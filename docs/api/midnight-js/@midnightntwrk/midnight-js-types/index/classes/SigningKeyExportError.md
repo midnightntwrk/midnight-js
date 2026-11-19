@@ -1,0 +1,57 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js-types](../../README.md) / [index](../README.md) / SigningKeyExportError
+
+# Class: SigningKeyExportError
+
+An error thrown when exporting signing keys fails.
+
+## Extends
+
+- [`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md)
+
+## Constructors
+
+### Constructor
+
+> **new SigningKeyExportError**(`message`, `options?`): `SigningKeyExportError`
+
+#### Parameters
+
+##### message
+
+`string`
+
+##### options?
+
+`ErrorOptions`
+
+#### Returns
+
+`SigningKeyExportError`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js-protocol/index/type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`category`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#category)
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_PR_SIGNING_KEY_EXPORT_FAILED"` = `SIGNING_KEY_EXPORT_FAILED`
+
+#### Overrides
+
+[`MidnightJsError`](../../../midnight-js-protocol/index/classes/MidnightJsError.md).[`code`](../../../midnight-js-protocol/index/classes/MidnightJsError.md#code)

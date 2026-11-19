@@ -4,7 +4,7 @@ title: SharedTableDiscipline
 
 # Shared table discipline
 
-Almost every era-keyed decision in `@midnight-ntwrk/midnight-js-protocol` is a
+Almost every era-keyed decision in `@midnightntwrk/midnight-js-protocol` is a
 table rather than a chain of comparisons, and every one of those tables is built
 the same way: a null prototype where it is indexed by a value, frozen, typed so
 that a missing entry is a build failure, and guarded at runtime anyway. This

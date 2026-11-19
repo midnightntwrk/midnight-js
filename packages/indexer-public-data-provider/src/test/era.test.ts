@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
+import { UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-utils';
 import { describe, expect, it } from 'vitest';
 
 import { resolveReadEra } from '../era';

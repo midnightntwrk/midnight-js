@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction as Ledger9FinalizedTransaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v9';
+import type { FinalizedTransaction as Ledger9FinalizedTransaction } from '@midnightntwrk/midnight-js-protocol/v9';
+import { Transaction } from '@midnightntwrk/midnight-js-protocol/v9';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import {

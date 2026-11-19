@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
-import { LEDGER_STATE_TAGS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol';
+import { LEDGER_STATE_TAGS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   InvalidSerializedStateError,
   type PublicStatesRead,
   SerializedContractState,
   SerializedLedgerParameters,
   SerializedZswapChainState
-} from '@midnight-ntwrk/midnight-js-types';
-import type * as MidnightJsUtils from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import type * as MidnightJsUtils from '@midnightntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraMismatchError, PublicStatesEraMismatchError } from '../errors';
@@ -35,13 +35,13 @@ const decode = vi.hoisted(() => ({
   deserializeLedger9Parameters: vi.fn()
 }));
 
-vi.mock('@midnight-ntwrk/midnight-js-utils', async (importOriginal) => ({
+vi.mock('@midnightntwrk/midnight-js-utils', async (importOriginal) => ({
   ...(await importOriginal<typeof MidnightJsUtils>()),
   ...decode
 }));
 
 const contractAddress = createMockContractAddress();
-const CALLER = { caller: '@midnight-ntwrk/midnight-js-contracts:createUnprovenCallTx' };
+const CALLER = { caller: '@midnightntwrk/midnight-js-contracts:createUnprovenCallTx' };
 
 const tagged = (era: LedgerEra, kind: keyof typeof LEDGER_STATE_TAGS, body: string): Uint8Array =>
   new TextEncoder().encode(`${LEDGER_STATE_TAGS[kind][era]}:${body}`);

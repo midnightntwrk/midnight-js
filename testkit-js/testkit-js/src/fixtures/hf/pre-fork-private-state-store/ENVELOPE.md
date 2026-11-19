@@ -1,7 +1,7 @@
 # Persistence-envelope generations
 
 `store/` is a LevelDB database written by
-`@midnight-ntwrk/midnight-js-level-private-state-provider` and then **frozen**.
+`@midnightntwrk/midnight-js-level-private-state-provider` and then **frozen**.
 The suite that reads it (`test/cross-window.ut.test.ts`) is the only test in
 this repo whose *input* bytes were not produced by the same process that reads
 them. Every other private-state round trip writes and reads with one build, so a
@@ -63,7 +63,7 @@ from any real wallet, and do not copy its password into anything.
 ## Generation 1 — 2026-09-06
 
 - digest: f1287f56122cb46823ccaaa8a91e1754a6dd4e0ca9fd42740702f739be01e0fc
-- provider: `@midnight-ntwrk/midnight-js-level-private-state-provider` 5.0.0-beta.7
+- provider: `@midnightntwrk/midnight-js-level-private-state-provider` 5.0.0-beta.7
 - envelope: superjson, AES-256-GCM, PBKDF2-SHA256 600k iterations, 32-byte salt
   persisted in the store's own metadata record
 - reason: initial freeze. No break accepted; this is the first generation, so

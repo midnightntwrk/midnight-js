@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { MidnightJsError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
-import type { ReadMethod, StateReadMethod } from '@midnight-ntwrk/midnight-js-types';
-import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-types/errors';
+import { MidnightJsError } from '@midnightntwrk/midnight-js-protocol/errors';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import type { ReadMethod, StateReadMethod } from '@midnightntwrk/midnight-js-types';
+import { PROVIDER_ERROR_CATEGORIES, PROVIDER_ERROR_CODES } from '@midnightntwrk/midnight-js-types/errors';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
@@ -24,14 +24,14 @@ import type { GraphQLFormattedError } from 'graphql';
  * them with a single `instanceof IndexerError` check.
  *
  * NOT EXHAUSTIVE OVER A READ. Two failure classes deliberately escape this
- * check: `DeserializationError` (`@midnight-ntwrk/midnight-js-utils`) and
- * `Ledger8RuntimeMissingError` (`@midnight-ntwrk/midnight-js-protocol`). Both
+ * check: `DeserializationError` (`@midnightntwrk/midnight-js-utils`) and
+ * `Ledger8RuntimeMissingError` (`@midnightntwrk/midnight-js-protocol`). Both
  * are `MidnightJsError`s, so `isMidnightJsError` recognises them as well as
  * every `IndexerError`. A failure from a dependency can still pass through
  * uncoded.
  *
  * To branch on one failure, match on `code` via `hasErrorCode` from
- * `@midnight-ntwrk/midnight-js-utils`.
+ * `@midnightntwrk/midnight-js-utils`.
  *
  * @see {@link ErrorBoundaries} for what each escaping class reports, and why
  * wrapping it here would mislead.
@@ -397,7 +397,7 @@ export class IndexerInvariantError extends IndexerError {
  * Within one build this cannot happen: the era is a `LedgerEra` and the
  * decoder table is total over that union, so a missing entry is a compile
  * error. It is reachable across builds — a consumer whose installed
- * `@midnight-ntwrk/midnight-js-protocol` is newer than this package, whose era
+ * `@midnightntwrk/midnight-js-protocol` is newer than this package, whose era
  * resolver therefore answers an era this decoder table predates.
  *
  * `protocolVersion` is the raw integer the indexer reported, kept so a report
@@ -450,7 +450,7 @@ export class DecoderEraUnsupportedError extends IndexerError {
  * Exists so that both era-resolution failures reach a consumer through
  * `IndexerError`.
  * The underlying `UnknownProtocolVersionError` from
- * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
+ * `@midnightntwrk/midnight-js-protocol` is preserved on `cause`.
  */
 export class UnknownRecordEraError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.UNKNOWN_RECORD_ERA;

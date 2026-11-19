@@ -15,10 +15,10 @@
 
 import path from 'node:path';
 
-import { submitTx } from '@midnight-ntwrk/midnight-js-contracts';
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { LedgerTransaction, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ZkConfigIntegrityOptions } from '@midnight-ntwrk/midnight-js-utils';
+import { submitTx } from '@midnightntwrk/midnight-js-contracts';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { LedgerTransaction, SucceedEntirely } from '@midnightntwrk/midnight-js-types';
+import type { ZkConfigIntegrityOptions } from '@midnightntwrk/midnight-js-utils';
 import {
   type ContractConfiguration,
   createLogger,
@@ -27,7 +27,7 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
+} from '@midnightntwrk/testkit-js';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';

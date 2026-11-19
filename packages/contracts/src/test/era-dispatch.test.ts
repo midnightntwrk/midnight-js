@@ -17,15 +17,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { type LedgerEra, UnknownLedgerEraError } from '@midnight-ntwrk/midnight-js-protocol';
-import type { ContractStateRead } from '@midnight-ntwrk/midnight-js-types';
+import { type LedgerEra, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol';
+import type { ContractStateRead } from '@midnightntwrk/midnight-js-types';
 import {
   CONTRACTS_ERROR_CODES,
   DeserializationError,
   errorCategory,
   hasErrorCode,
   UTILS_ERROR_CODES
-} from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-utils';
 import { beforeAll, describe, expect, it, type Mock, vi } from 'vitest';
 
 import {
@@ -535,7 +535,7 @@ describe('decodeLedger9ContractState: a corrupt body behind a valid tag', () => 
     expect(hasErrorCode(caught, UTILS_ERROR_CODES.DESERIALIZATION_FAILED)).toBe(true);
     expect(errorCategory(caught)).toBe('INTEGRITY');
     expect(caught).toMatchObject({
-      context: { caller: '@midnight-ntwrk/midnight-js-contracts:createUnprovenCallTx' }
+      context: { caller: '@midnightntwrk/midnight-js-contracts:createUnprovenCallTx' }
     });
   });
 });

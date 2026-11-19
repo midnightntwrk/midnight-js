@@ -1,0 +1,22 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [utils](../README.md) / validatePassword
+
+# Variable: validatePassword
+
+> `const` **validatePassword**: (`password`) => `void`
+
+Shared password strength policy for private storage and export/import operations.
+Throws [PasswordValidationError](../classes/PasswordValidationError.md) on the first violated rule.
+
+## Parameters
+
+### password
+
+`string`
+
+## Returns
+
+`void`

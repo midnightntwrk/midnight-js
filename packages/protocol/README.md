@@ -4,7 +4,7 @@ Era-named re-exports of the Midnight protocol packages (`./v8`, `./v9`, `./v9/*`
 
 ## Versioning Contract
 
-**This package must never include a protocol version number in its name.** The package name `@midnight-ntwrk/midnight-js-protocol` is permanent. If the package were renamed to `midnight-js-protocol-v2` or similar, every consumer import would need updating, defeating the purpose of this abstraction.
+**This package must never include a protocol version number in its name.** The package name `@midnightntwrk/midnight-js-protocol` is permanent. If the package were renamed to `midnight-js-protocol-v2` or similar, every consumer import would need updating, defeating the purpose of this abstraction.
 
 Protocol version changes are handled through:
 - **semver** (npm package version): major bump when underlying protocol packages change in a breaking way
@@ -13,7 +13,7 @@ Protocol version changes are handled through:
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-protocol
+yarn add @midnightntwrk/midnight-js-protocol
 ```
 
 ## Usage
@@ -21,11 +21,11 @@ yarn add @midnight-ntwrk/midnight-js-protocol
 Import ledger 9 through the era-named subpaths:
 
 ```typescript
-import { type ContractAddress, CostModel } from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-runtime';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/v9/compact-js';
-import { entryPointHash } from '@midnight-ntwrk/midnight-js-protocol/v9/onchain-runtime';
-import { Configuration } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
+import { type ContractAddress, CostModel } from '@midnightntwrk/midnight-js-protocol/v9';
+import { ContractState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
+import { CompiledContract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js';
+import { entryPointHash } from '@midnightntwrk/midnight-js-protocol/v9/onchain-runtime';
+import { Configuration } from '@midnightntwrk/midnight-js-protocol/platform-js';
 ```
 
 An era-named subpath always means the same ledger. At the next fork, a new
@@ -100,10 +100,10 @@ it built this way" belongs in a document above, stated once.
 
 ## Accessing the v8 Ledger Era
 
-The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
+The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnightntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
 
 ```typescript
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
 
 const v8 = await loadLedger8Protocol();
 const transaction = v8.Transaction.deserialize(rawTransaction);
@@ -112,7 +112,7 @@ const transaction = v8.Transaction.deserialize(rawTransaction);
 Type-only imports of the subpath are allowed:
 
 ```typescript
-import type { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { Transaction } from '@midnightntwrk/midnight-js-protocol/v8';
 ```
 
 If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8Protocol()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. Its `subpath` field is `'/v8'`, naming which chunk failed. The failed load is not memoised — the next call retries.
@@ -122,7 +122,7 @@ If the v8 module cannot be loaded (usually a broken or partial install), `loadLe
 Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./v8/engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
 ```typescript
-import { loadLedger8Engine, loadLedgerEra, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, loadLedgerEra, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
 
 const engine = await loadLedger8Engine();
 const era = await loadLedgerEra(versionOfRecord(indexerRecord));
@@ -154,7 +154,7 @@ The engine exposes `executeCircuit`, `executeConstructor` and `wrapKeepStateCall
 
 `migratedLedger9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
-Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`). You do not hand that offer to `composeCallTx` as ready-made bytes: you hand it a `zswapOffer` factory, which the composer calls back with each call's guaranteed/fallible split once it has drawn it. That split is the fourth argument `zswapStateToSegmentedOffer` routes by — without it every movement lands in the guaranteed segment, and a circuit whose transcript is wholly fallible produces an offer the wallet cannot balance. Omitting the factory altogether leaves you composing a transaction missing the coin movements the circuit recorded.
+Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnightntwrk/midnight-js-contracts`). You do not hand that offer to `composeCallTx` as ready-made bytes: you hand it a `zswapOffer` factory, which the composer calls back with each call's guaranteed/fallible split once it has drawn it. That split is the fourth argument `zswapStateToSegmentedOffer` routes by — without it every movement lands in the guaranteed segment, and a circuit whose transcript is wholly fallible produces an offer the wallet cannot balance. Omitting the factory altogether leaves you composing a transaction missing the coin movements the circuit recorded.
 
 The transcript also carries `partitionContext` — the block, the starting effects and the commitment indices the pre-fork query context recorded while the circuit ran. Pass it on unchanged: a transcript composed without it is partitioned against a context the circuit never ran on, and a circuit that RECEIVED a coin in-contract cannot be partitioned at all, because the index its commitment was registered at lives only in that context. `wrapKeepStateCall` carries it for you; a hand-built call entry has to supply it. A context the target era cannot read throws `ComposeFailedError` with `stage: 'call-partition-context'`.
 
@@ -165,7 +165,7 @@ A failure to load the chunk itself rejects with `Ledger8RuntimeMissingError` who
 Two ledger eras are live at once: `v8` backs the node 1.x line and `v9` the 2.x line. `loadLedgerEra` hands you one of them as a single object with the same methods on both, so code that has resolved which era a record belongs to does not then have to branch on it.
 
 ```typescript
-import { loadLedgerEra, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedgerEra, versionOfRecord } from '@midnightntwrk/midnight-js-protocol';
 
 const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
@@ -254,8 +254,8 @@ import {
   protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'   (path defaults to 'construct')
   versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
   latestNetworkLedgerVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
-} from '@midnight-ntwrk/midnight-js-protocol/version';
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+} from '@midnightntwrk/midnight-js-protocol/version';
+import { UnknownProtocolVersionError } from '@midnightntwrk/midnight-js-protocol/errors';
 ```
 
 Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `latestNetworkLedgerVersion` for the network's current ledger version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
@@ -266,17 +266,17 @@ Three rules in the repo's `eslint.config.mjs` govern how other packages reach pr
 
 **1. The protocol ACL** — a `no-restricted-imports` rule prevents direct imports of the underlying protocol packages outside of this package. If you see an error like:
 
-> Import from `@midnight-ntwrk/midnight-js-protocol/v9` (or `import type` from /v8 for ledger 8) instead.
+> Import from `@midnightntwrk/midnight-js-protocol/v9` (or `import type` from /v8 for ledger 8) instead.
 
 Replace the direct protocol import with the corresponding subpath from this package. For the v8 era specifically, the error
 
-> Runtime v8 access only via loadLedger8Protocol() from @midnight-ntwrk/midnight-js-protocol.
+> Runtime v8 access only via loadLedger8Protocol() from @midnightntwrk/midnight-js-protocol.
 
 means: replace the direct `./v8` runtime import with `loadLedger8Protocol()` (type-only imports stay as they are).
 
-**2. The v8 static-import gate** — `@typescript-eslint/no-restricted-imports` blocks runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` outside `packages/protocol/src/`. Type-only imports (`import type`) are allowed.
+**2. The v8 static-import gate** — `@typescript-eslint/no-restricted-imports` blocks runtime imports of `@midnightntwrk/midnight-js-protocol/v8` outside `packages/protocol/src/`. Type-only imports (`import type`) are allowed.
 
-**3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnight-ntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
+**3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnightntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
 
 Both v8 gates point at `loadLedger8Protocol()`, the accessor on the root barrel — the only sanctioned runtime path to the v8 era.
 

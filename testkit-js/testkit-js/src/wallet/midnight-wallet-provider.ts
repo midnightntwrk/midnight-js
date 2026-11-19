@@ -18,8 +18,8 @@ import {
   DustSecretKey,
   type EncPublicKey,
   ZswapSecretKeys
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   createMidnightProviderFromHandlers,
   createWalletProviderFromHandlers,
@@ -28,8 +28,8 @@ import {
   type MidnightProvider,
   type UnboundTx,
   type WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+} from '@midnightntwrk/midnight-js-types';
+import { ttlOneHour } from '@midnightntwrk/midnight-js-utils';
 import { type UnshieldedKeystore, type WalletFacade, type WalletSeeds } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 

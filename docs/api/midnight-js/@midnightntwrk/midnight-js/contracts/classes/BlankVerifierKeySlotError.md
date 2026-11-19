@@ -1,0 +1,66 @@
+[**Midnight.js API Reference v5.0.2**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnightntwrk/midnight-js](../../README.md) / [contracts](../README.md) / BlankVerifierKeySlotError
+
+# Class: BlankVerifierKeySlotError
+
+An error indicating that a contract's on-chain entry point declares no verifier key at all.
+
+An absent key means that entry point was never deployed — the shape a constructor-built state
+has before a deploy fills it in — rather than a key that happens to be empty
+(`packages/protocol/docs/fail-closed-decoding.md`). There is nothing for a proof to be verified
+against, so the call is refused before any proving happens.
+
+## Extends
+
+- [`MidnightJsError`](../../classes/MidnightJsError.md)
+
+## Constructors
+
+### Constructor
+
+> **new BlankVerifierKeySlotError**(`circuitId`): `BlankVerifierKeySlotError`
+
+#### Parameters
+
+##### circuitId
+
+`string`
+
+The entry point whose slot is blank.
+
+#### Returns
+
+`BlankVerifierKeySlotError`
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+
+## Properties
+
+### category
+
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+
+***
+
+### circuitId
+
+> `readonly` **circuitId**: `string`
+
+***
+
+### code
+
+> `readonly` **code**: `"MIDNIGHT_JS_C_BLANK_VERIFIER_KEY_SLOT"`
+
+#### Overrides
+
+[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)

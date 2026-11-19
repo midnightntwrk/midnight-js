@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { loadLedger8Protocol } from '@midnight-ntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnight-ntwrk/midnight-js-protocol/errors';
-import { proveLedger8Transaction } from '@midnight-ntwrk/midnight-js-protocol/prove';
-import type { ProvingProvider as Ledger8ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import { loadLedger8Protocol } from '@midnightntwrk/midnight-js-protocol';
+import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { proveLedger8Transaction } from '@midnightntwrk/midnight-js-protocol/prove';
+import type { ProvingProvider as Ledger8ProvingProvider } from '@midnightntwrk/midnight-js-protocol/v8';
 import {
   CostModel,
   type PreBinding,
@@ -24,8 +24,8 @@ import {
   type ProvingProvider,
   type SignatureEnabled,
   Transaction
-} from '@midnight-ntwrk/midnight-js-protocol/v9';
-import { LEDGER_ERAS, type LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+} from '@midnightntwrk/midnight-js-protocol/v9';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 
 import { dispatch, type Route, sealAnswer, type TransactionAnswers } from './internal/dispatch';
 import { describeArgument, isObject, readEraEntries } from './internal/read-era-entries';
@@ -214,7 +214,7 @@ const refuseTimeout = (config: ProveTxConfig | undefined): void => {
  *         `httpClientProofProvider`, which honours it.
  * @throws Ledger8RuntimeMissingError raised by `proveTx` if a v8 handle arrives
  *         and the v8 runtime cannot be loaded. Defined in
- *         `@midnight-ntwrk/midnight-js-protocol/errors`.
+ *         `@midnightntwrk/midnight-js-protocol/errors`.
  *
  * @example
  * ```typescript

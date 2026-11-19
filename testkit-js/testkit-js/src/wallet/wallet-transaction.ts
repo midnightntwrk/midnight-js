@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerEra } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import { ProtocolVersion, type WalletFacade, WalletTransaction } from '@midnightntwrk/wallet-sdk';
 // From the same copy `loadWalletLedger8()` loads at runtime.
 import type * as LedgerV8 from '@midnightntwrk/wallet-sdk/ledger/v8';
