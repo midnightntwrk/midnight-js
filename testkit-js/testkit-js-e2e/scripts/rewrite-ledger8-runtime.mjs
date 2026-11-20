@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-// Points a retained-era twin at the retained Compact runtime.
+// Points a ledger 8 twin at the ledger 8 Compact runtime.
 //
 // `compactc` emits the bare `@midnight-ntwrk/compact-runtime` specifier, which the
 // root `resolutions` pin to the CURRENT runtime, so an untouched twin throws on
-// import. `compact-runtime-ledger8` is this repository's alias for the retained
+// import. `compact-runtime-ledger8` is this repository's alias for the ledger 8
 // one.
 //
-// @see docs/architecture/retained-era-coverage.md
+// @see docs/architecture/ledger8-coverage.md
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -31,11 +31,11 @@ import { pathToFileURL } from 'node:url';
 /** The specifier `compactc` emits, which the workspace pins to the current runtime. */
 export const BARE_SPECIFIER = '@midnight-ntwrk/compact-runtime';
 
-/** This repository's alias for the retained runtime. */
-export const RETAINED_SPECIFIER = 'compact-runtime-ledger8';
+/** This repository's alias for the ledger 8 runtime. */
+export const LEDGER8_SPECIFIER = 'compact-runtime-ledger8';
 
-/** The runtime version a retained-era artifact set must declare. */
-export const RETAINED_RUNTIME_VERSION = '0.16.0';
+/** The runtime version a ledger 8 artifact set must declare. */
+export const LEDGER8_RUNTIME_VERSION = '0.16.0';
 
 /** The emitted files that name the runtime: the module and its declaration. */
 const REWRITTEN_FILES = ['index.js', 'index.d.ts'];
@@ -57,12 +57,12 @@ const rewriteFile = (file) => {
     if (before.includes(BARE_SPECIFIER)) {
       throw new Error(`${file} names '${BARE_SPECIFIER}' in a form this rewrite does not match`);
     }
-    if (before.includes(`'${RETAINED_SPECIFIER}'`)) {
+    if (before.includes(`'${LEDGER8_SPECIFIER}'`)) {
       return false;
     }
-    throw new Error(`${file} names neither '${BARE_SPECIFIER}' nor '${RETAINED_SPECIFIER}'`);
+    throw new Error(`${file} names neither '${BARE_SPECIFIER}' nor '${LEDGER8_SPECIFIER}'`);
   }
-  const after = before.replaceAll(`'${BARE_SPECIFIER}'`, `'${RETAINED_SPECIFIER}'`);
+  const after = before.replaceAll(`'${BARE_SPECIFIER}'`, `'${LEDGER8_SPECIFIER}'`);
   writeFileSync(file, after);
   // Compared whole rather than re-scanned for the specifier: `replaceAll` already
   // guarantees the specifier is gone, so re-checking it proves nothing, while a
@@ -80,7 +80,7 @@ const rewriteFile = (file) => {
  *
  * @param twinDir Absolute path of one twin's artifact set.
  */
-const assertRetainedArtifacts = (twinDir) => {
+const assertLedger8Artifacts = (twinDir) => {
   const infoFile = path.join(twinDir, 'compiler', 'contract-info.json');
   let info;
   try {
@@ -92,8 +92,8 @@ const assertRetainedArtifacts = (twinDir) => {
     throw new Error(`${infoFile} does not hold a JSON object`);
   }
   const declared = info['runtime-version'];
-  if (declared !== RETAINED_RUNTIME_VERSION) {
-    throw new Error(`${infoFile} declares runtime-version ${declared}, expected ${RETAINED_RUNTIME_VERSION}`);
+  if (declared !== LEDGER8_RUNTIME_VERSION) {
+    throw new Error(`${infoFile} declares runtime-version ${declared}, expected ${LEDGER8_RUNTIME_VERSION}`);
   }
 };
 
@@ -126,16 +126,16 @@ const assertNoBareSpecifierLeft = (twinDir) => {
  * @param root Directory holding one subdirectory per twin.
  * @returns The files that were changed.
  */
-export const rewriteRetainedTwins = (root) => {
+export const rewriteLedger8Twins = (root) => {
   const twins = readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => path.join(root, entry.name));
   if (twins.length === 0) {
-    throw new Error(`${root} holds no retained twins`);
+    throw new Error(`${root} holds no ledger 8 twins`);
   }
   const rewritten = [];
   for (const twinDir of twins) {
-    assertRetainedArtifacts(twinDir);
+    assertLedger8Artifacts(twinDir);
     for (const name of REWRITTEN_FILES) {
       const file = path.join(twinDir, 'contract', name);
       if (!statSync(file, { throwIfNoEntry: false })?.isFile()) {
@@ -153,14 +153,14 @@ export const rewriteRetainedTwins = (root) => {
 const main = () => {
   const [root] = process.argv.slice(2);
   if (root === undefined) {
-    process.stderr.write('Usage: rewrite-retained-runtime.mjs <retained-twin-directory>\n');
+    process.stderr.write('Usage: rewrite-ledger8-runtime.mjs <ledger8-twin-directory>\n');
     process.exit(1);
   }
-  const rewritten = rewriteRetainedTwins(path.resolve(root));
+  const rewritten = rewriteLedger8Twins(path.resolve(root));
   process.stdout.write(
     rewritten.length === 0
-      ? `Every twin in ${root} already names ${RETAINED_SPECIFIER}\n`
-      : `Pointed ${rewritten.length} file(s) at ${RETAINED_SPECIFIER}\n`
+      ? `Every twin in ${root} already names ${LEDGER8_SPECIFIER}\n`
+      : `Pointed ${rewritten.length} file(s) at ${LEDGER8_SPECIFIER}\n`
   );
 };
 

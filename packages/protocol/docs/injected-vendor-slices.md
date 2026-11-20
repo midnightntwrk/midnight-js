@@ -6,7 +6,7 @@ title: InjectedVendorSlices
 
 Several functions in this package take a vendor's class by injection rather than
 importing it: the era paths take the ledger module they compose against, and the
-retained-engine functions take the pre-fork runtime they execute through. A
+ledger 8 engine functions take the pre-fork runtime they execute through. A
 function that takes a class by injection still has to name the shape it expects, and
 this document records how that shape is written down.
 
@@ -42,7 +42,7 @@ runtime no longer has.
 build here. It is narrowed to `deserialize` because that is the only member its
 function calls. That narrowing carries one further consequence: it pins the slice to
 the pre-fork era, so a post-fork module cannot satisfy it. That consequence is
-recorded in [RetainedEraExecution](./retained-era-execution.md).
+recorded in [Ledger8Execution](./ledger8-execution.md).
 
 ## Structural where a function serves both eras
 
@@ -64,22 +64,22 @@ deriving the shape from either era's class would pick a side. Its `inputs` and
 because this function only ever aggregates OUTPUTS, so `[]` is the only value that
 can be passed and the type says so instead of a comment.
 
-## The retained engine no longer injects its runtime
+## The ledger 8 engine no longer injects its runtime
 
 It used to. Three slices — `Ledger8CompactRuntime` (down-convert),
 `Ledger8ExecutionRuntime` (circuit execution) and `Ledger8ConstructorRuntime`
-(constructor execution) — reached the retained engine's functions by injection, and
+(constructor execution) — reached the ledger 8 engine's functions by injection, and
 `createLedger8Engine` assembled all three out of one acquisition so that
 nothing on the engine's public surface took a runtime parameter.
 
 All three are gone with the hand-maintained execution layer
 (`docs/adr/0015-retained-era-execution-on-compact-js.md`). compact-js owns the
-retained runtime now, `lib/v8/executable.ts` imports the 0.16 glue directly
+ledger 8 runtime now, `lib/v8/executable.ts` imports the 0.16 glue directly
 under this package's own alias, and what a test would once have substituted by
 injecting a fake is now supplied as an Effect service instead — the verifier-key
 reader, the key configuration and the pinned clock. Which service carries what,
 and why the clock is not one of them, is in
-[RetainedEraExecution](./retained-era-execution.md).
+[Ledger8Execution](./ledger8-execution.md).
 
 `createLedger8Engine` (`lib/v8/engine.ts`) survives and still takes no
 parameters, but it no longer assembles anything: it builds the public surface

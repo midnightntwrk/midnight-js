@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-// The retained-era fixture contracts, typed from the artifacts' OWN generated declarations.
+// The ledger 8 fixture contracts, typed from the artifacts' OWN generated declarations.
 //
 // All three fixtures ship a `contract/index.d.ts` that `compactc` 0.31.1 emitted beside the
 // `contract/index.js` the runtime tests load, so the two halves of the pairing now look at the
 // same artifact:
 //
 //  - `ledger8-contract.test.ts` loads the generated JavaScript and asserts, at runtime, the
-//    structural facts the retained-era family in `../ledger8-contract.ts` encodes.
+//    structural facts the ledger 8 family in `../ledger8-contract.ts` encodes.
 //  - `typecheck/overloads.test-d.ts` asserts, at compile time, that the generated DECLARATIONS
-//    satisfy that family and that the retained-era overloads resolve for them.
+//    satisfy that family and that the ledger 8 overloads resolve for them.
 //
 // Nothing here restates a circuit or witness signature. An earlier revision did, in terms of
 // `Ledger8CircuitContext`, which made the compile assertions unable to fail on the one axis that
@@ -39,7 +39,7 @@ import type * as PrivateCounter016 from '../../../../testkit-js/testkit-js/src/f
 export type Counter016PrivateState = Record<string, never>;
 
 /**
- * The zero-argument retained-era fixture contract.
+ * The zero-argument ledger 8 fixture contract.
  *
  * Its `increment` takes only the framework-built context, which is what exercises
  * `Ledger8CircuitParameters` at the empty tuple.
@@ -53,11 +53,11 @@ export interface Counter016Module {
   readonly pureCircuits: Counter016.PureCircuits;
 }
 
-// The SECOND retained-era fixture, and it exists for one reason: its circuit takes an ARGUMENT.
+// The SECOND ledger 8 fixture, and it exists for one reason: its circuit takes an ARGUMENT.
 //
 // `counter-016`'s `increment` takes only the framework-built context, so every assertion written
 // against it exercises `Ledger8CircuitParameters` at the empty tuple and says nothing about what
-// happens when a circuit has real arguments. That gap hid a defect that made the retained-era
+// happens when a circuit has real arguments. That gap hid a defect that made the ledger 8
 // overload unselectable for any such contract: widening `Ledger8Circuit`'s argument tail to
 // `unknown[]` broke contravariance, so `(context, coin: ShieldedCoinInfo)` failed the
 // `Ledger8Contract` constraint and the call fell through to the current-era overloads. Nothing caught it,
@@ -69,7 +69,7 @@ export interface Counter016Module {
 /** The private state the coin receiver's circuits carry: it declares none. */
 export type CoinReceiver016PrivateState = Record<string, never>;
 
-/** The argument-taking retained-era fixture contract. */
+/** The argument-taking ledger 8 fixture contract. */
 export type CoinReceiver016Contract = CoinReceiver016.Contract<CoinReceiver016PrivateState>;
 
 /**
@@ -83,7 +83,7 @@ export type CoinReceiver016Coin = Parameters<
 /**
  * The coin receiver's witnesses and circuit collection, named separately because
  * `v8-native.test.ts` builds a SYNTHETIC variant of this contract whose constructor takes an
- * argument -- no real retained artifact has one, so `deployContract`'s `args` hop is measurable
+ * argument -- no real ledger 8 artifact has one, so `deployContract`'s `args` hop is measurable
  * nowhere else. Only the type varies there; the runtime object stays the real artifact.
  *
  * Derived rather than restated, like everything else here.
@@ -92,7 +92,7 @@ export type CoinReceiver016Witnesses = CoinReceiver016.Witnesses<CoinReceiver016
 export type CoinReceiver016Circuits = CoinReceiver016.ImpureCircuits<CoinReceiver016PrivateState>;
 
 /**
- * The retained runtime's constructor context and result, read off the fixture's own
+ * The ledger 8 runtime's constructor context and result, read off the fixture's own
  * `initialState` rather than described. Opaque by construction: they are live values of the
  * previous runtime.
  */
@@ -106,7 +106,7 @@ export interface CoinReceiver016Module {
   readonly pureCircuits: CoinReceiver016.PureCircuits;
 }
 
-// The THIRD retained-era fixture, and the only one that declares a WITNESS.
+// The THIRD ledger 8 fixture, and the only one that declares a WITNESS.
 //
 // Both fixtures above emit `export type Witnesses<PS> = {}`, so every claim the family makes about
 // `Ledger8Witness` -- that it threads `PS`, and that a witness declared over the wrong private
@@ -118,7 +118,7 @@ export interface CoinReceiver016Module {
 /** The private state the private counter carries -- a real one, unlike the other two fixtures. */
 export type PrivateCounter016PrivateState = { readonly privateCounter: bigint };
 
-/** The witness-declaring retained-era fixture contract. */
+/** The witness-declaring ledger 8 fixture contract. */
 export type PrivateCounter016Contract = PrivateCounter016.Contract<PrivateCounter016PrivateState>;
 
 /** The fixture's single witness, read off its own generated signature. */

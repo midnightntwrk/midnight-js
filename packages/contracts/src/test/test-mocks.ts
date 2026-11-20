@@ -335,7 +335,7 @@ export const createMockProviders = (): Ledger9ContractProviders<Contract.Any, An
   privateStateProvider: createMockPrivateStateProvider(),
   zkConfigProvider: {
     // The ledger 9 value, because this is the ledger 9 provider set: every contract operation reads
-    // it, and a ledger 9 container served with a retained value is refused.
+    // it, and a ledger 9 container served with a ledger 8 value is refused.
     getArtifactRuntimeVersion: vi.fn().mockResolvedValue('0.21.0'),
     getVerifierKeys: vi.fn(),
     getZKIR: vi.fn(),

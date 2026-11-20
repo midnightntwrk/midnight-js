@@ -635,7 +635,7 @@ describe('submit-call-tx', () => {
           callTxData: mockUnprovenCallTxData
         });
         // The other side of the published guard: a current-era result is not
-        // the retained variant. Asserted on a result this suite actually produced,
+        // the ledger 8 variant. Asserted on a result this suite actually produced,
         // so the guard is checked against the era tag the pipeline really set.
         expect(isLedger8Result(result)).toBe(false);
       });

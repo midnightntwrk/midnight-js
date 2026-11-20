@@ -77,7 +77,6 @@ describe('Protocol ACL package', () => {
         'PROTOCOL_ERROR_CATEGORIES',
         'PROTOCOL_ERROR_CODES',
         'protocolVersionToLedger',
-        'RETAINED_LEDGER_ERAS',
         'StateConversionFailedError',
         'StateDecodeFailedError',
         'StateInconsistentError',

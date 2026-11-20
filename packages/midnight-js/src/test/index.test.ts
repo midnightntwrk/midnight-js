@@ -198,7 +198,7 @@ describe('ledger era failures', () => {
   });
 });
 
-describe('retained-era error classes', () => {
+describe('ledger 8 error classes', () => {
   // These codes were already reachable through `utils.MIDNIGHT_JS_ERROR_CODES`
   // before the classes were published; what a barrel consumer could not do was
   // `instanceof` the class or read its payload without a cast. Both halves are

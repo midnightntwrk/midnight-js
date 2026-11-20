@@ -128,18 +128,18 @@ const ledger9CallFlow = async <C extends Contract.Any, PCK extends Contract.Prov
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.
@@ -308,18 +308,18 @@ const ledger9CallAsyncFlow = async <C extends Contract.Any, PCK extends Contract
 };
 
 /*
- * OVERLOAD ORDER IS LOAD-BEARING: the retained-era overload below is declared FIRST, and the
+ * OVERLOAD ORDER IS LOAD-BEARING: the ledger 8 overload below is declared FIRST, and the
  * overload that was already LAST stays last. Do not append. Pinned by
  * `src/test/typecheck/overloads.test-d.ts`. Every overload carries its own TSDoc, because TypeDoc
  * gives an uncommented signature the comment of the first commented sibling -- which published
  * this overload's caveat on the current-era overloads.
  */
 /**
- * The retained-era overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * The ledger 8 overload. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
  * the raw contract instance rather than inside a `CompiledContract` container.
  *
  * Which pipeline runs is decided by the NETWORK'S LEDGER VERSION, not by this overload: before the fork the
- * retained-era-native pipeline runs, after it the keep-state one.
+ * ledger 8 pipeline runs, after it the keep-state one.
  *
  * @see {@link KeepStatePipeline} for the era table, and for why a provider needs to serve v8
  *      handles only while the network is still before the fork.

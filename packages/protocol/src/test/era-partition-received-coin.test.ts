@@ -31,7 +31,7 @@ import { fixturePath } from './fixtures';
 
 // The fixture's compiled module imports `@midnight-ntwrk/compact-runtime`
 // bare and asserts `checkRuntimeVersion('0.16.0')`, so the specifier is
-// redirected to the retained alias for this file only — the same redirect
+// redirected to the ledger 8 alias for this file only — the same redirect
 // the retired v8-execute.test.ts used for counter-016.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
@@ -155,13 +155,13 @@ describe('partitioning a transcript that received a shielded coin in-contract', 
     transcript = await runReceiveCoin();
   });
 
-  it('was compiled by the retained era toolchain, not the current one', () => {
+  it('was compiled by the ledger 8 toolchain, not the current one', () => {
     const info = JSON.parse(
       readFileSync(fixturePath('coin-receiver-016', 'compiled', 'compiler', 'contract-info.json'), 'utf8')
     ) as ContractInfo;
 
     // The fixture is only worth anything while it emits the SYNC codegen the
-    // retained leg runs. A recompile with the repo's own pinned compactc would
+    // ledger 8 leg runs. A recompile with the repo's own pinned compactc would
     // silently produce current-era async codegen that never reaches the code under
     // test, so the artifact carries its provenance and this asserts it.
     expect(info['runtime-version']).toBe('0.16.0');

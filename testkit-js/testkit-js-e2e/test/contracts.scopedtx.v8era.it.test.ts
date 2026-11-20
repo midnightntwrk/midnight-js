@@ -43,9 +43,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
 import {
-  Contract as RetainedDoubleCounterContract,
+  Contract as Ledger8DoubleCounterContract,
   ledger
-} from '../src/contract/compiled-retained/double-counter/contract/index.js';
+} from '../src/contract/compiled-ledger8/double-counter/contract/index.js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_v8era_${new Date().toISOString()}.log`)
@@ -55,16 +55,16 @@ interface CounterPrivateState {
   readonly privateCounter: number;
 }
 
-const PRIVATE_STATE_ID: PrivateStateId = 'retained-double-counter';
+const PRIVATE_STATE_ID: PrivateStateId = 'ledger8-double-counter';
 const RUN_SUFFIX = Date.now().toString();
 
-class RetainedDoubleCounterConfiguration implements ContractConfiguration {
+class Ledger8DoubleCounterConfiguration implements ContractConfiguration {
   get privateStateStoreName(): string {
-    return `retained-double-counter-private-store-${RUN_SUFFIX}`;
+    return `ledger8-double-counter-private-store-${RUN_SUFFIX}`;
   }
 
   get zkConfigPath(): string {
-    return path.resolve(__dirname, '../src/contract/compiled-retained/double-counter');
+    return path.resolve(__dirname, '../src/contract/compiled-ledger8/double-counter');
   }
 
   /** `compactc` 0.31.1 emits no manifest, so the default `require` mode has nothing to read. */
@@ -73,7 +73,7 @@ class RetainedDoubleCounterConfiguration implements ContractConfiguration {
   }
 }
 
-const contract = new RetainedDoubleCounterContract<CounterPrivateState>({
+const contract = new Ledger8DoubleCounterContract<CounterPrivateState>({
   privateCircuitCall: ({ privateState }) => [{ privateCounter: privateState.privateCounter + 1 }, []]
 });
 
@@ -116,7 +116,7 @@ describe('Contract-scoped transactions on a pre-fork (ledger v8) network', () =>
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
-    providers = initializeMidnightProviders(wallet, environmentConfiguration, new RetainedDoubleCounterConfiguration());
+    providers = initializeMidnightProviders(wallet, environmentConfiguration, new Ledger8DoubleCounterConfiguration());
 
     const protocolVersion = await providers.publicDataProvider.queryLatestProtocolVersion();
     expect(versionOfRecord({ protocolVersion })).toBe('v8');
@@ -127,7 +127,7 @@ describe('Contract-scoped transactions on a pre-fork (ledger v8) network', () =>
       initialPrivateState: { privateCounter: 0 }
     });
     contractAddress = deployed.deployTxData.public.contractAddress;
-    logger.info(`Deployed retained double-counter twin at address: ${contractAddress}`);
+    logger.info(`Deployed ledger 8 double-counter twin at address: ${contractAddress}`);
   }, VERY_SLOW_TEST_TIMEOUT);
 
   afterAll(async () => {

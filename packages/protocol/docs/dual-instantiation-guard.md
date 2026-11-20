@@ -126,14 +126,14 @@ two physical copies, and calling it one would send the reader to `npm why`
 after a duplicate that is not there.
 
 `onchain-runtime-v3` was the only package the guard checked, because it was the
-only retained pre-fork package this one both depended on directly and could
+only ledger 8 package this one both depended on directly and could
 receive from a consumer's own resolution. No other WASM package the engine
 acquired had a comparable second acquisition path.
 
 ## Where the mixing still happens
 
 `lib/v8/executable.ts` takes `StateValue`, `ChargedState` and `ContractState`
-from ONE module — the retained glue under this package's own alias — precisely
+from ONE module — the ledger 8 glue under this package's own alias — precisely
 so no mixed runtime is assembled. Deliberate: compact-js's `CompactRuntime`
 re-exports none of the three as a value, and reaching for ledger-v8's own
 same-named classes instead would BE the dual instantiation this era must not

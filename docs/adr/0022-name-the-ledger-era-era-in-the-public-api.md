@@ -3,7 +3,8 @@
 - Status: Accepted
 - Date: 2026-11-03
 - Related: [ADR 0014](./0014-build-provider-seams-from-per-era-handlers.md),
-  [ADR 0018](./0018-name-single-ledger-code-after-its-ledger.md)
+  [ADR 0018](./0018-name-single-ledger-code-after-its-ledger.md),
+  [ADR 0026](./0026-drop-the-retained-era-term.md)
 
 ## Context
 
@@ -24,8 +25,8 @@ from its `./v9/compact-js/effect` subpath, so our names must fit beside it.
 We use the word "era" for the ledger era in the public API. The values are `'v8' | 'v9'`. They
 match the transaction handle's `era` and the package names `ledger-v8` / `ledger-v9`.
 
-- The era value type is `LedgerEra`, with `CurrentLedgerEra`, `RetainedLedgerEra`, `LEDGER_ERAS`,
-  `CURRENT_LEDGER_ERA` and `RETAINED_LEDGER_ERAS` (from `@midnightntwrk/midnight-js-protocol/version`),
+- The era value type is `LedgerEra`, with `CurrentLedgerEra`, `LEDGER_ERAS` and
+  `CURRENT_LEDGER_ERA` (from `@midnightntwrk/midnight-js-protocol/version`),
   and `UnknownLedgerEraError` (`MIDNIGHT_JS_P_UNKNOWN_LEDGER_ERA`) for a value that is not an era.
 - The object `loadLedgerEra` returns is `LedgerEraFacade`. It hides one era's ledger package
   behind methods that trade only plain data (ADR 0010). There is one facade per era, with the same

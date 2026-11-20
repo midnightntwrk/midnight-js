@@ -23,7 +23,7 @@ pieces under `packages/protocol/src/lib/shared/`.
 `composeLedger8CallTx` is the "same-era" leg: both the circuit's execution and the
 call it produces are bound entirely on the ledger-v8 axis, as opposed to
 `wrapKeepStateCall` (`packages/protocol/src/lib/v9/wrap.ts`), which binds a
-retained-execution transcript natively onto the current ledger-v9 axis instead.
+ledger 8 execution transcript natively onto the current ledger-v9 axis instead.
 
 ## Refusal order on both era paths
 
@@ -90,12 +90,12 @@ targets and how long a transaction should live remain the caller's decisions.
 
 ## Zswap offers are carried on both eras
 
-A Zswap offer is not refused on either era. The retained era executes
+A Zswap offer is not refused on either era. Ledger 8 executes
 coin-moving circuits and hands their post-call Zswap local state back on the
 transcript, which is what a caller turns into the offer its factory
 answers with (`zswapStateToSegmentedOffer`,
 `packages/contracts/src/internal/utils/zswap-utils.ts`). Refusing the offer on the
-retained era would take away the only way to attach those coin movements to the
+ledger 8 would take away the only way to attach those coin movements to the
 transaction that carries the call.
 
 An absent offer is the normal shape of a call that moved no shielded coins: a
@@ -112,7 +112,7 @@ that cannot be READ is a different fault from an option that cannot be USED, and
 the two carry different remediations.
 
 Inside the v8-native DEPLOY leg the offer is a v8-native offer HANDLE rather
-than bytes: that leg runs inside the retained era with the module already in
+than bytes: that leg runs inside ledger 8 with the module already in
 hand, so the era path that read the caller's offer bytes hands the decoded offer
 straight over. The contract state is different: it crosses as
 `contractStateBytes` and that leg decodes it itself. The v8-native
@@ -122,7 +122,7 @@ that leg has assembled the call.
 
 ## One call per v8 transaction
 
-One shape the facade allows is not expressible on the retained era and is
+One shape the facade allows is not expressible on ledger 8 and is
 refused rather than silently narrowed: a call tree with more than one entry. A
 cross-contract call is a ledger-9-only feature that a pre-fork contract cannot
 emit at all, so this era has no call tree to compose, and composing only the

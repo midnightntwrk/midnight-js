@@ -105,27 +105,25 @@ describe('Protocol type ACL', () => {
       'ConstructorResultPojo',
       // The balances a contract holds, published because they are a member of
       // `ContractStatePojo` and a REQUIRED option of the engine's
-      // `executeCircuit`: a consumer driving the retained-era path cannot name what
+      // `executeCircuit`: a consumer driving the ledger 8 path cannot name what
       // it has to carry without this.
       'ContractBalance',
       'ContractEntryPointPojo',
       'ContractStatePojo',
-      // The current/retained split of `LedgerEra`, published beside it:
-      // a consumer writing a per-era handler cannot name which half it is
-      // writing for without these.
+      // The era this build links eagerly, published beside `LedgerEra`.
       'CurrentLedgerEra',
       'DeployResultPojo',
       'EncodedStateValue',
       'Ledger8CircuitOptions',
       'Ledger8ConstructorOptions',
-      // The retained era's execution surface: a consumer holding one needs to
+      // Ledger 8's execution surface: a consumer holding one needs to
       // name it to annotate a variable or write a helper. Its option and result
       // types are published beside it for the same reason.
       'Ledger8Engine',
       'Ledger8EngineContract',
       'Ledger8Protocol',
       // Named by `Ledger8ConstructorOptions.signingKey` and reported back
-      // on `ConstructorResultPojo`. The retained era's signing key is a
+      // on `ConstructorResultPojo`. Ledger 8's signing key is a
       // different shape from the current era's, so a consumer cannot name it by
       // reusing the current-era one.
       'Ledger8SigningKey',
@@ -141,7 +139,6 @@ describe('Protocol type ACL', () => {
       'ProtocolErrorCode',
       'ProtocolVersionSource',
       'ProtocolVersionUnknownReason',
-      'RetainedLedgerEra',
       'StateConversionStage',
       'StateKind',
       'TransactionStage',
