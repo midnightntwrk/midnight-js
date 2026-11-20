@@ -104,6 +104,17 @@ const engineDynamicImportSelectors = [
   }
 ];
 
+// An `=== 'v8'` branch keeps compiling when an era is added, and its else-branch
+// silently takes the new era. Outside packages/protocol/src/, which owns the era
+// list, branch on an era with a `switch` closed by `assertNever`.
+const eraComparisonSelectors = [
+  {
+    selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^v[0-9]+$/]",
+    message:
+      "Do not compare an era with a literal. Use a `switch` closed by `assertNever` from utils, so a new era is a compile error; a reviewed exception needs an inline eslint-disable with the reason."
+  }
+];
+
 // Shared file scopes for the v8 and unsafe-cast gates below -- both the
 // `@typescript-eslint/no-restricted-imports` block and the four
 // `no-restricted-syntax` blocks. They exempt different files, so the globs are
@@ -375,16 +386,23 @@ export default tseslint.config(
         ...unsafeCastSelectors,
         ...plainThrowSelectors,
         ...ledger8DynamicImportSelectors,
-        ...engineDynamicImportSelectors
+        ...engineDynamicImportSelectors,
+        ...eraComparisonSelectors
       ]
     }
   },
   {
-    // Exempt from the plain-throw gate only: casts and v8 stay gated.
+    // Exempt from the plain-throw gate only: casts, v8 and era comparisons stay gated.
     files: PLAIN_THROW_EXEMPT_DIRS,
     ignores: [PACKAGE_TEST_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...ledger8DynamicImportSelectors, ...engineDynamicImportSelectors]
+      'no-restricted-syntax': [
+        'error',
+        ...unsafeCastSelectors,
+        ...ledger8DynamicImportSelectors,
+        ...engineDynamicImportSelectors,
+        ...eraComparisonSelectors
+      ]
     }
   },
   {

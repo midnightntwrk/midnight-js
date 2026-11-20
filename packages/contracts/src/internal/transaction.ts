@@ -22,7 +22,7 @@ import {
 } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { Contract } from '@midnightntwrk/midnight-js-protocol/v9/compact-js/effect/Contract';
 import { ChargedState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
-import type { LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
+import { LEDGER_ERAS, type LedgerEra } from '@midnightntwrk/midnight-js-protocol/version';
 import {
   type AnyProvableCircuitId,
   LedgerTransaction,
@@ -213,6 +213,7 @@ export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: Breadcrum
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding.
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (reading.head !== 'v9') {
     throw scopeEraMismatch('withLedger9ContractScopedTransaction', reading.head);
   }
@@ -431,7 +432,7 @@ export const readScopeEra = (u: unknown): LedgerEra | 'unrecognised' | undefined
     return undefined;
   }
   const era: unknown = Reflect.get(u, ScopeEra);
-  return era === 'v8' || era === 'v9' ? era : 'unrecognised';
+  return LEDGER_ERAS.find((known) => known === era) ?? 'unrecognised';
 };
 
 /** @internal Whether `u` is a scope context of the ledger 9 era. */
@@ -440,6 +441,7 @@ export const isLedger9ScopeContext = <
   PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
   u: unknown
+// eslint-disable-next-line no-restricted-syntax -- a predicate for one named era: every other era answers false
 ): u is Transaction.Ledger9TransactionContext<C, PCK> => readScopeEra(u) === 'v9';
 
 /** @internal The refusal of a value passed where a transaction context goes that is not one. */

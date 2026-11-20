@@ -48,7 +48,7 @@ import {
   type SerializedLedgerParameters,
   type UnprovenTx
 } from '@midnightntwrk/midnight-js-types';
-import { assertDefined } from '@midnightntwrk/midnight-js-utils';
+import { assertDefined, assertNever } from '@midnightntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
 import {
@@ -349,6 +349,7 @@ export const decodeLedger8Snapshot = (
   // what a contract looks like once the fork has translated it; its retained
   // verifier keys survive that unchanged, so this pipeline is still the right
   // one to run it.
+  // eslint-disable-next-line no-restricted-syntax -- resolveContractStateEra admits only a v8 envelope or the head's own, so the else-branch is the head era
   const reader = stateEra === 'v8' ? retainedEra : headEra;
   const encoded = reader.extractState(state.raw);
   const decoded = reader.decodeContractState(state.raw);
@@ -465,6 +466,7 @@ export const assertSnapshotVerifierKey = (
     //
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
+    // eslint-disable-next-line no-restricted-syntax -- names one known mismatch; every other case rethrows the original cause
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
       throw new EraMismatchError('ledger8-artifact-on-ledger9-contract', {
         detail: `Contract address: ${contractAddress}.`,
@@ -749,8 +751,17 @@ export const composeLedger8Call = async <TState>(
   // current composer cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
   // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
   // the local artifact against.
-  const registeredOperations =
-    head === 'v9' ? engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints) : snapshot.state.raw;
+  let registeredOperations: Uint8Array;
+  switch (head) {
+    case 'v8':
+      registeredOperations = snapshot.state.raw;
+      break;
+    case 'v9':
+      registeredOperations = engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints);
+      break;
+    default:
+      return assertNever(head, 'composeLedger8Call');
+  }
 
   // Undefined until the composer calls the factory back, which is the fact the
   // refusal below rests on: an offer that is absent because the call moved no

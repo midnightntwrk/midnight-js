@@ -263,6 +263,7 @@ export async function withLedger8ContractScopedTransaction(
       throw Internal.unrecognisedScopeContext('withLedger8ContractScopedTransaction');
   }
   const reading = await Internal.readScopeHead(providers.publicDataProvider, providers.loggerProvider);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (reading.head !== 'v8') {
     throw Internal.scopeEraMismatch('withLedger8ContractScopedTransaction', reading.head);
   }
