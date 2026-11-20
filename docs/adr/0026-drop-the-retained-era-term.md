@@ -29,6 +29,8 @@ We remove the term "retained era".
 - Code, tests, comments and documentation that mean ledger 8 say "ledger 8". Internal names use the
   `ledger8` / `Ledger8` / `LEDGER8` spelling.
 - `CurrentLedgerEra` and `CURRENT_LEDGER_ERA` stay: the framework uses them.
+- Earlier ADRs keep the term, because an accepted ADR is a record. Only ADRs whose decision names
+  the removed exports are amended: ADR 0018 and ADR 0022.
 
 ## Consequences
 
