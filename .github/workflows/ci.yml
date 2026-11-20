@@ -21,10 +21,9 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Cancel superseded PR runs to save CI, but never cancel push-to-main runs:
-  # the `publish` job runs there and is non-atomic, so a mid-flight release must
-  # queue behind a newer main push rather than be cancelled into a partial state.
+  # Each non-PR run gets its own group. A group keeps only one pending run, so a
+  # shared group would let a newer main run cancel a waiting release.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -182,6 +181,12 @@ jobs:
     if: needs.detect-release.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     environment: npm-publish-stable
+    # Publishing is non-atomic, so releases publish one at a time. Only one
+    # release can wait here; a newer one cancels the waiting one, which is not
+    # retried because the newer release contains it.
+    concurrency:
+      group: ${{ github.workflow }}-publish
+      cancel-in-progress: false
     permissions:
       actions: read
       contents: write
@@ -191,6 +196,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Refuse out-of-order release
+        if: ${{ !contains(needs.detect-release.outputs.version_number, '-') }}
+        env:
+          VERSION: ${{ needs.detect-release.outputs.version_number }}
+        run: |
+          highest=$( (echo "$VERSION"; git tag -l 'v*' | grep -vF -e '-' | sed 's/^v//') | sort -V | tail -1)
+          if [ "$highest" != "$VERSION" ]; then
+            echo "::error::v$highest is already released; refusing to publish older v$VERSION"
+            exit 1
+          fi
 
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env

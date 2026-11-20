@@ -50,12 +50,6 @@ on:
       GH_TOKEN:
         required: false
 
-concurrency:
-  group: TK-JS-e2e-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
-  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
-  # release (gated on this workflow in ci.yml) is never cancelled half-done.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   prepare_images:
     name: Prepare Docker Images

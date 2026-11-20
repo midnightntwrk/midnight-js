@@ -21,13 +21,6 @@ permissions:
   checks: write
   pull-requests: write
 
-concurrency:
-  group: MN-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Only cancel superseded PR runs. On push-to-main this workflow feeds the
-  # non-atomic `publish` job in ci.yml; cancelling a mid-flight release build
-  # would leave the release half-published, so main runs must queue instead.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   ci:
     if: inputs.should_run == 'true'

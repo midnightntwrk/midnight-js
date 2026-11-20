@@ -46,12 +46,6 @@ on:
         description: JSON array of e2e test filenames that must run against the pre-fork (ledger v8) image set.
         value: ${{ jobs.generate-test-matrix.outputs.v8-era-test-files }}
 
-concurrency:
-  group: TK-JS-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
-  # release (gated on this workflow in ci.yml) is never cancelled half-done.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   ci:
     if: inputs.should_run == 'true'
