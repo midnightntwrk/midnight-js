@@ -47,12 +47,9 @@ const retryAfterDelay = (response: Response): number | undefined => {
   return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
 };
 
-const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
-  new Promise((resolve, reject) => {
-    if (signal.aborted) {
-      reject(signal.reason);
-      return;
-    }
+const sleep = (ms: number, signal: AbortSignal): Promise<void> => {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
     const timer = setTimeout(resolve, ms);
     signal.addEventListener(
       'abort',
@@ -63,6 +60,7 @@ const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
       { once: true }
     );
   });
+};
 
 const fetchWithRetry = async (url: URL, init: RequestInit, timeout: number): Promise<Response> => {
   const signal = AbortSignal.timeout(timeout);
