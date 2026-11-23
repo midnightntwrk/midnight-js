@@ -254,6 +254,20 @@ set -a; . testkit-js/env/preprod.env; set +a
 docker compose -f testkit-js/compose.yml up
 ```
 
+## Optional: GitNexus Code Intelligence
+
+We suggest [GitNexus](https://github.com/abhigyanpatwari/GitNexus) for AI-assisted
+work: it gives your coding agent impact analysis and a call graph of the repository.
+Index the repository with:
+
+```bash
+npx gitnexus analyze --skip-agents-md
+```
+
+`--skip-agents-md` stops GitNexus from writing its section into the tracked
+`CLAUDE.md` and `AGENTS.md`. Keep your GitNexus rules in your personal agent
+configuration (for Claude Code, `~/.claude/CLAUDE.md`).
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
