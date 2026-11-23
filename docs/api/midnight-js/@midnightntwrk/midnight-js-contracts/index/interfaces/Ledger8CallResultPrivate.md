@@ -22,7 +22,8 @@ or transmitting.
 
 ## Extends
 
-- [`CallResultPrivateBase`](../../../midnight-js/types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `PCK`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>.[`UnsubmittedTxDataBase`](../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md)
+- [`CallResultPrivateBase`](../../../midnight-js/types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `PCK`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>
+- [`UnsubmittedTxDataBase`](../../../midnight-js/types/interfaces/UnsubmittedTxDataBase.md)
 
 ## Type Parameters
 

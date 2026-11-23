@@ -12,6 +12,12 @@ The publicly visible states of a contract, as bytes, together with the private s
 contract. Decode a public state with your own runtime, e.g.
 `states.contractState.deserialize({ v9: ContractState })`.
 
+## Type Parameters
+
+### PS
+
+`PS`
+
 ## Type Declaration
 
 ### privateState
@@ -19,9 +25,3 @@ contract. Decode a public state with your own runtime, e.g.
 > `readonly` **privateState**: `PS`
 
 The private state of a contract.
-
-## Type Parameters
-
-### PS
-
-`PS`

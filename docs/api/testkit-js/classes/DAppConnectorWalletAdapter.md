@@ -302,7 +302,7 @@ The wallet can use these calls as an opportunity to ask user for permissions and
 
 ##### \_methodNames
 
-keyof `WalletConnectedAPI`[]
+(keyof `WalletConnectedAPI`)[]
 
 #### Returns
 

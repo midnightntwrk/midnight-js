@@ -32,7 +32,7 @@ The stage the transaction is at.
 
 ### E
 
-`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md) = [`LedgerEra`](../../type-aliases/LedgerEra.md)
+`E` *extends* [`LedgerEra`](../../index/type-aliases/LedgerEra.md) = [`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 The era the transaction belongs to; any era when not known.
 
@@ -263,6 +263,8 @@ The stage the object is at.
 The transaction.
 
 ###### serialize
+
+() => `Uint8Array`
 
 ##### method?
 

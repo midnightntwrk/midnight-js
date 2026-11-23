@@ -54,7 +54,7 @@ Construct via the static factory methods to ensure the message and
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 

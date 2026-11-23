@@ -11,14 +11,6 @@
 A retained-era call transaction configuration that also names where to store
 the private state the call produces.
 
-## Type Declaration
-
-### privateStateId
-
-> `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
-
-The identifier for the private state of the contract.
-
 ## Type Parameters
 
 ### C
@@ -28,3 +20,11 @@ The identifier for the private state of the contract.
 ### PCK
 
 `PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+
+## Type Declaration
+
+### privateStateId
+
+> `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
+
+The identifier for the private state of the contract.

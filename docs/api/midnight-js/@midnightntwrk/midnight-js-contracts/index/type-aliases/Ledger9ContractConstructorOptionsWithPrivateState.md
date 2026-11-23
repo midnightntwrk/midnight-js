@@ -11,6 +11,12 @@
 Conditional type that optionally adds the inferred circuit argument types to
 the target of a circuit invocation.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### initialPrivateState
@@ -18,9 +24,3 @@ the target of a circuit invocation.
 > `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The private state to run the circuit against.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

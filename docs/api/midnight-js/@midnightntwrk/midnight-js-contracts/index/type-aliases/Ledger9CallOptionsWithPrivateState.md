@@ -10,14 +10,6 @@
 
 Call options for contracts with private state.
 
-## Type Declaration
-
-### initialPrivateState
-
-> `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
-
-The private state to run the circuit against.
-
 ## Type Parameters
 
 ### C
@@ -27,3 +19,11 @@ The private state to run the circuit against.
 ### PCK
 
 `PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+## Type Declaration
+
+### initialPrivateState
+
+> `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+The private state to run the circuit against.

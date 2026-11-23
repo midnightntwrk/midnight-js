@@ -6,4 +6,4 @@
 
 # Variable: CONTRACTS\_ERROR\_CATEGORIES
 
-> `const` **CONTRACTS\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`ContractsErrorCode`](../type-aliases/ContractsErrorCode.md), [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)\>\>
+> `const` **CONTRACTS\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`ContractsErrorCode`](../type-aliases/ContractsErrorCode.md), [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)\>\>

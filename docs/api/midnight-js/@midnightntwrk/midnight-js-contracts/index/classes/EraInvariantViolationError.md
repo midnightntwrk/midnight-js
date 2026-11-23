@@ -33,7 +33,7 @@ record whose `era` is missing or unrecognised raises
 
 ## Extends
 
-- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
+- [`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -59,7 +59,7 @@ The circuit, or circuits, whose flow this happened on,
 
 ##### expected?
 
-`"v9"` \| `"v8"`
+`"v9"` \| `"v8"` = `'v9'`
 
 The only era this flow can accept back. Defaults to
                 `'v9'`. See the class comment for which fact this names
@@ -95,17 +95,17 @@ The transaction the payload belongs to, when it is already on
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`category`](../../../midnight-js/index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -125,7 +125,7 @@ The circuit, or circuits, whose flow this happened on,
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`code`](../../../midnight-js/index/classes/MidnightJsError.md#code)
 
 ***
 

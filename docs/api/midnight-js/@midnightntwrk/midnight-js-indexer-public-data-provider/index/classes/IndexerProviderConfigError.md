@@ -39,7 +39,7 @@ issues — separate semantic category from [IndexerDataError](IndexerDataError.m
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 

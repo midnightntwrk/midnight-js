@@ -26,7 +26,7 @@ wrapping it here would mislead.
 
 ## Extends
 
-- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
+- [`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md)
 
 ## Extended by
 
@@ -58,7 +58,7 @@ wrapping it here would mislead.
 
 #### Inherited from
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ### Constructor
 
@@ -80,17 +80,17 @@ wrapping it here would mislead.
 
 #### Inherited from
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `abstract` `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `abstract` `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Inherited from
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`category`](../../../midnight-js/index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -100,4 +100,4 @@ wrapping it here would mislead.
 
 #### Inherited from
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`code`](../../../midnight-js/index/classes/MidnightJsError.md#code)

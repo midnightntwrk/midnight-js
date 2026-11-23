@@ -12,7 +12,8 @@ finalized transaction data ([Ledger9FinalizedTxData](../../types/interfaces/Ledg
 
 ## Extends
 
-- [`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md).[`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
+- [`Ledger9UnsubmittedDeployTxPublicData`](Ledger9UnsubmittedDeployTxPublicData.md)
+- [`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
 
 ## Properties
 

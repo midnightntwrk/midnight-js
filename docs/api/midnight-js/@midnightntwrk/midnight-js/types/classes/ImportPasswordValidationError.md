@@ -27,7 +27,7 @@ and read its `reason`.
 
 ##### passwordError
 
-[`MidnightJsError`](../../classes/MidnightJsError.md)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md)
 
 #### Returns
 
@@ -41,7 +41,7 @@ and read its `reason`.
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
@@ -71,4 +71,4 @@ and read its `reason`.
 
 ### passwordError
 
-> `readonly` **passwordError**: [`MidnightJsError`](../../classes/MidnightJsError.md)
+> `readonly` **passwordError**: [`MidnightJsError`](../../index/classes/MidnightJsError.md)

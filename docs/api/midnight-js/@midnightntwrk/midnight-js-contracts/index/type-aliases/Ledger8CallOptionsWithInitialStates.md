@@ -13,6 +13,16 @@ Configuration for building a retained-era call on states the caller read itself,
 era that wrote it, because after the fork a retained-era contract's state may already be a ledger 9
 one.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
+
+### PCK
+
+`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>
+
 ## Type Declaration
 
 ### coinPublicKey
@@ -56,13 +66,3 @@ The private state the circuit runs against.
 > `readonly` **ledgerParameters**: [`SerializedLedgerParameters`](../../../midnight-js/types/classes/SerializedLedgerParameters.md)
 
 The ledger parameters of the block the state was read at, as read: pass `read.ledgerParameters`.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Ledger8Contract`](../interfaces/Ledger8Contract.md)
-
-### PCK
-
-`PCK` *extends* [`Ledger8CircuitId`](Ledger8CircuitId.md)\<`C`\>

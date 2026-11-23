@@ -12,7 +12,8 @@ transaction data ([Ledger9UnsubmittedTxData](Ledger9UnsubmittedTxData.md)).
 
 ## Extends
 
-- [`Ledger9CallResultPrivate`](../type-aliases/Ledger9CallResultPrivate.md)\<`C`, `PCK`\>.[`Ledger9UnsubmittedTxData`](Ledger9UnsubmittedTxData.md)
+- [`Ledger9CallResultPrivate`](../type-aliases/Ledger9CallResultPrivate.md)\<`C`, `PCK`\>
+- [`Ledger9UnsubmittedTxData`](Ledger9UnsubmittedTxData.md)
 
 ## Type Parameters
 

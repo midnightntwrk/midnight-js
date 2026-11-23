@@ -40,7 +40,7 @@ Error thrown when import conflicts with existing data and conflictStrategy is 'e
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 

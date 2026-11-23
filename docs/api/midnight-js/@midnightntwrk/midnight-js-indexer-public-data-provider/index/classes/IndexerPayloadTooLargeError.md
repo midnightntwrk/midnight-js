@@ -36,7 +36,7 @@ A compressed subscription message inflated beyond the size limit.
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
