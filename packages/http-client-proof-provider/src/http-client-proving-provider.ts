@@ -29,14 +29,60 @@ import {
 } from '@midnightntwrk/midnight-js-types';
 import { hasErrorCode, warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnightntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
-import fetchBuilder from 'fetch-retry';
 
-const retryOptions = {
-  retries: 3,
-  retryDelay: (attempt: number) => 2 ** attempt * 1_000,
-  retryOn: [500, 503]
+const RETRYABLE_STATUSES = new Set([429, 500, 503]);
+const MAX_RETRIES = 3;
+
+const backoffDelay = (retry: number): number => 2 ** retry * 1_000;
+
+const retryAfterDelay = (response: Response): number | undefined => {
+  const value = response.headers.get('Retry-After')?.trim();
+  if (value === undefined) {
+    return undefined;
+  }
+  if (/^\d+$/.test(value)) {
+    return Number(value) * 1_000;
+  }
+  const date = /GMT$/.test(value) ? Date.parse(value) : Number.NaN;
+  return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
 };
-const fetchRetry = fetchBuilder(fetch, retryOptions);
+
+const sleep = (ms: number, signal: AbortSignal): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      },
+      { once: true }
+    );
+  });
+
+const fetchWithRetry = async (url: URL, init: RequestInit, timeout: number): Promise<Response> => {
+  const signal = AbortSignal.timeout(timeout);
+  for (let retry = 0; ; retry++) {
+    let response: Response;
+    try {
+      response = await fetch(url, { ...init, signal });
+    } catch (error) {
+      if (signal.aborted || retry === MAX_RETRIES) {
+        throw error;
+      }
+      await sleep(backoffDelay(retry), signal);
+      continue;
+    }
+    if (!RETRYABLE_STATUSES.has(response.status) || retry === MAX_RETRIES) {
+      return response;
+    }
+    await sleep(Math.min(retryAfterDelay(response) ?? backoffDelay(retry), timeout), signal);
+  }
+};
 
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
@@ -88,14 +134,17 @@ const makeKeyMaterialResolver = <K extends string>(
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
-  let response: Awaited<ReturnType<typeof fetchRetry>>;
+  let response: Response;
   try {
-    response = await fetchRetry(url, {
-      method: 'POST',
-      body: new Uint8Array(payload),
-      headers: { 'Content-Type': 'application/octet-stream', ...headers },
-      signal: AbortSignal.timeout(timeout)
-    });
+    response = await fetchWithRetry(
+      url,
+      {
+        method: 'POST',
+        body: new Uint8Array(payload),
+        headers: { 'Content-Type': 'application/octet-stream', ...headers }
+      },
+      timeout
+    );
   } catch (cause) {
     throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
   }
