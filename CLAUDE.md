@@ -180,3 +180,18 @@ All derived from actual PR rejections in this repo:
 | Provider interface shape | All implementations must update | Update all providers in same PR |
 | `midnight-js` barrel exports | Consumer import paths change | Verify sub-path exports match |
 | `build-tools/` config | All packages affected | `yarn clean-build` + full test run |
+
+## GitNexus (optional)
+
+These rules apply only if you have GitNexus installed and the repository has a
+`.gitnexus/` index. Setup: [DEVELOPMENT.md](./DEVELOPMENT.md#optional-gitnexus-code-intelligence).
+
+- Re-index with `npx gitnexus analyze --skip-agents-md` (add `--embeddings` when
+  `.gitnexus/meta.json` shows `stats.embeddings > 0`). Without
+  `--skip-agents-md`, analyze writes a generated section into this file.
+- Before editing a function, class or method, run `gitnexus_impact` (direction
+  `upstream`) and report the blast radius; warn on HIGH or CRITICAL risk.
+- Before committing, run `gitnexus_detect_changes` to confirm the change affects
+  only the expected symbols.
+- In a worktree the index is named after the folder: pass `repo: "<folder-name>"`.
+- For exploring, debugging and refactoring, use the `gitnexus-*` skills.

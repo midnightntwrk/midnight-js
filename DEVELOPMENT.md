@@ -258,15 +258,21 @@ docker compose -f testkit-js/compose.yml up
 
 We suggest [GitNexus](https://github.com/abhigyanpatwari/GitNexus) for AI-assisted
 work: it gives your coding agent impact analysis and a call graph of the repository.
-Index the repository with:
 
 ```bash
+# 1. Once per machine: connect GitNexus to your agent (MCP server and skills)
+npx gitnexus setup
+
+# 2. In the repository root: build the index, and re-run it after you pull or commit
 npx gitnexus analyze --skip-agents-md
+
+# Check whether the index is current
+npx gitnexus status
 ```
 
-`--skip-agents-md` stops GitNexus from writing its section into the tracked
-`CLAUDE.md` and `AGENTS.md`. Keep your GitNexus rules in your personal agent
-configuration (for Claude Code, `~/.claude/CLAUDE.md`).
+`--skip-agents-md` stops GitNexus from writing its generated section into the
+tracked `CLAUDE.md` and `AGENTS.md`. The rules your agent should follow are
+already in the "GitNexus (optional)" section of both files.
 
 ## Troubleshooting
 
