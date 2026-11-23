@@ -260,8 +260,8 @@ We suggest [GitNexus](https://github.com/abhigyanpatwari/GitNexus) for AI-assist
 work: it gives your coding agent impact analysis and a call graph of the repository.
 
 ```bash
-# 1. Once per machine: connect GitNexus to your agent
-npx gitnexus setup -c claude
+# 1. Once per machine: connect GitNexus to every coding agent it detects
+npx gitnexus setup
 
 # 2. In the repository root: build the index, and re-run it after you pull or commit
 npx gitnexus analyze --index-only
@@ -270,10 +270,12 @@ npx gitnexus analyze --index-only
 npx gitnexus status
 ```
 
-`setup` writes only to your home directory. For Claude Code it adds the GitNexus
-MCP server to `~/.claude.json`, copies the `gitnexus-*` skills to
-`~/.claude/skills/` and registers its hooks in `~/.claude/settings.json`. Drop
-`-c claude` to configure every agent it detects (Cursor, Codex, and others).
+`setup` writes only to your home directory, never to the repository. It
+configures every agent it detects (Claude Code, Codex, Cursor, OpenCode and
+others): the GitNexus MCP server and, where the agent supports them, its skills
+and hooks. For Claude Code that means `~/.claude.json`, `~/.claude/skills/` and
+`~/.claude/settings.json`. To configure only some agents, pass
+`--coding-agent <agents>` (for example `npx gitnexus setup --coding-agent codex`).
 
 `--index-only` stops `analyze` from writing a generated section into the tracked
 `CLAUDE.md` and `AGENTS.md` and skills into the repository; `setup` already
