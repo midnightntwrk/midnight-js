@@ -6,4 +6,4 @@
 
 # Variable: MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE
 
-> `const` **MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE**: `Readonly`\<`Record`\<[`MidnightJsErrorCode`](../type-aliases/MidnightJsErrorCode.md), [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)\>\>
+> `const` **MIDNIGHT\_JS\_ERROR\_CATEGORY\_BY\_CODE**: `Readonly`\<`Record`\<[`MidnightJsErrorCode`](../type-aliases/MidnightJsErrorCode.md), [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)\>\>

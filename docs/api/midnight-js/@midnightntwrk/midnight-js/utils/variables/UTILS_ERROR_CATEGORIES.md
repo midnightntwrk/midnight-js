@@ -6,4 +6,4 @@
 
 # Variable: UTILS\_ERROR\_CATEGORIES
 
-> `const` **UTILS\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`UtilsErrorCode`](../type-aliases/UtilsErrorCode.md), [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)\>\>
+> `const` **UTILS\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`UtilsErrorCode`](../type-aliases/UtilsErrorCode.md), [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)\>\>
