@@ -10,6 +10,12 @@
 
 Base type for deploy transaction configuration.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### additionalCoinEncPublicKeyMappings?
@@ -25,9 +31,3 @@ outputs to addresses that don't belong to the current user.
 > `readonly` **signingKey**: [`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The signing key to add as the to-be-deployed contract's maintenance authority.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

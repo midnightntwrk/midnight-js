@@ -11,7 +11,7 @@ A network failure, HTTP 408, 429 or 5xx is TRANSIENT; any other status is ENVIRO
 
 ## Extends
 
-- [`MidnightJsError`](../../classes/MidnightJsError.md)
+- [`MidnightJsError`](../../index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -50,17 +50,17 @@ The HTTP status, absent when the request itself failed.
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`constructor`](../../index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`category`](../../index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -70,7 +70,7 @@ The HTTP status, absent when the request itself failed.
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`code`](../../index/classes/MidnightJsError.md#code)
 
 ***
 

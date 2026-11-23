@@ -22,7 +22,8 @@ or transmitting.
 
 ## Extends
 
-- [`CallResultPrivateBase`](../../types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `PCK`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>.[`UnsubmittedTxDataBase`](../../types/interfaces/UnsubmittedTxDataBase.md)
+- [`CallResultPrivateBase`](../../types/interfaces/CallResultPrivateBase.md)\<[`Ledger8CircuitReturnType`](../type-aliases/Ledger8CircuitReturnType.md)\<`C`, `PCK`\>, [`Ledger8PrivateState`](../type-aliases/Ledger8PrivateState.md)\<`C`\>\>
+- [`UnsubmittedTxDataBase`](../../types/interfaces/UnsubmittedTxDataBase.md)
 
 ## Type Parameters
 

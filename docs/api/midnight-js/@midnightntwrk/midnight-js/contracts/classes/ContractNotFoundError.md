@@ -10,7 +10,7 @@ No contract is deployed at the given address on the network the providers point 
 
 ## Extends
 
-- [`MidnightJsError`](../../classes/MidnightJsError.md)
+- [`MidnightJsError`](../../index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -34,17 +34,17 @@ No contract is deployed at the given address on the network the providers point 
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`constructor`](../../index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`category`](../../index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -54,4 +54,4 @@ No contract is deployed at the given address on the network the providers point 
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`code`](../../index/classes/MidnightJsError.md#code)

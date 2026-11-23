@@ -13,6 +13,12 @@ NOWHERE: the constructor runs against `undefined` and nothing is written.
 
 The other variant is [Ledger9DeployContractOptionsWithPrivateState](Ledger9DeployContractOptionsWithPrivateState.md).
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### initialPrivateState?
@@ -36,9 +42,3 @@ satisfies this one. The constructor then ran against `undefined`,
 `undefined` was stored under the caller's id, and
 `deployTxData.private.initialPrivateState` was typed non-optional while
 actually undefined.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

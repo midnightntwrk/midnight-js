@@ -15,6 +15,12 @@ Both members together or neither: a state with no id has nowhere to go, and
 an id with no state stores `undefined` under a name a later call will read
 back.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### initialPrivateState
@@ -28,9 +34,3 @@ The private state to run the circuit against.
 > `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
 
 An identifier for the private state of the contract being deployed.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

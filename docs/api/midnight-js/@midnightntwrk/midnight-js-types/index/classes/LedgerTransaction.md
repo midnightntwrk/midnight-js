@@ -264,6 +264,8 @@ The transaction.
 
 ###### serialize
 
+() => `Uint8Array`
+
 ##### method?
 
 [`TransactionHandleMethod`](../type-aliases/TransactionHandleMethod.md) = `'LedgerTransaction.seal'`
