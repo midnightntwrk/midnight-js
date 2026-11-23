@@ -290,7 +290,11 @@ describe('era-comparison gate', () => {
   it.each([
     ['=== on the right', "export const f = (era: string) => era === 'v8';\n"],
     ['!== on the left', "export const f = (era: string) => 'v9' !== era;\n"],
-    ['== loose equality', "export const f = (era: string) => era == 'v10';\n"]
+    ['== loose equality', "export const f = (era: string) => era == 'v10';\n"],
+    ['!= loose inequality', "export const f = (era: string) => era != 'v8';\n"],
+    ['a template literal', 'export const f = (era: string) => era === `v8`;\n'],
+    ['an `as const` literal', "export const f = (era: string) => era === ('v8' as const);\n"],
+    ['a `satisfies` literal', "export const f = (era: string) => ('v9' satisfies string) !== era;\n"]
   ])('flags an era literal compared with %s', async (_name, code) => {
     const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
 
@@ -304,7 +308,7 @@ describe('era-comparison gate', () => {
   });
 
   it('allows a comparison with a string that is not an era', async () => {
-    const code = "export const f = (name: string) => name === 'v8-legacy';\n";
+    const code = "export const f = (name: string) => name === 'v8-legacy' || name === `v${name.length}`;\n";
 
     expect(await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).toEqual([]);
   });
@@ -332,7 +336,15 @@ describe('era-comparison gate', () => {
       'export const g = () => { throw new Error("x"); };\n' +
       dynamicImportStatement(LEDGER8_SUBPATH);
 
-    expect(await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID)).toHaveLength(4);
+    const messages = await lintMessagesFor(code, CONSUMER_PATH, SYNTAX_RULE_ID);
+
+    expect(messages.map(({ line }) => line)).toEqual([1, 2, 3, 4]);
+    expect(messages.map(({ message }) => message)).toEqual([
+      expect.stringContaining('assertNever'),
+      expect.stringContaining("Unsafe cast to 'any'"),
+      expect.stringContaining('MidnightJsError subclass'),
+      expect.stringContaining('Dynamic imports of protocol/v8 are not allowed')
+    ]);
   });
 });
 

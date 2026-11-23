@@ -32,6 +32,7 @@ import {
   SerializedContractState,
   SucceedEntirely
 } from '@midnightntwrk/midnight-js-types';
+import { assertNever } from '@midnightntwrk/midnight-js-utils';
 
 import { type Ledger9CallResult } from '../call';
 import { type Ledger9ContractProviders } from '../contract-providers';
@@ -691,11 +692,17 @@ export const scopedTransaction = async <
   // would be created and the transaction the caller believed was nested would
   // be submitted on its own. That is the same "silently ran outside the scope
   // it was handed" failure `'ledger8-call-in-scope'` exists to stop, one case over.
-  switch (readScopeEra(txCtxOrOptions)) {
+  const outerEra = readScopeEra(txCtxOrOptions);
+  switch (outerEra) {
     case 'v8':
       throw scopeEraMismatch('withLedger9ContractScopedTransaction', 'v8');
     case 'unrecognised':
       throw unrecognisedScopeContext('withLedger9ContractScopedTransaction');
+    case 'v9':
+    case undefined:
+      break;
+    default:
+      return assertNever(outerEra, 'withLedger9ContractScopedTransaction');
   }
   const outerTxCtx = isLedger9ScopeContext<C, PCK>(txCtxOrOptions) ? txCtxOrOptions : undefined;
   if (outerTxCtx !== undefined) {

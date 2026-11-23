@@ -105,13 +105,19 @@ const engineDynamicImportSelectors = [
 ];
 
 // An `=== 'v8'` branch keeps compiling when an era is added, and its else-branch
-// silently takes the new era. Outside packages/protocol/src/, which owns the era
-// list, branch on an era with a `switch` closed by `assertNever`.
+// silently takes the new era. Branch on an era with a `switch` closed by
+// `assertNever` instead. Exempt: packages/protocol/src/ (it owns the era list),
+// package test folders and testkit-js.
+const ERA_COMPARISON_MESSAGE =
+  'Do not compare an era with a literal. Use a `switch` closed by `assertNever` from utils, so a new era is a compile error; a reviewed exception needs an inline eslint-disable with the reason.';
+const ERA_COMPARISON = 'BinaryExpression[operator=/^[!=]==?$/]';
+const ERA_LITERAL = 'Literal[value=/^v[0-9]+$/]';
 const eraComparisonSelectors = [
+  { selector: `${ERA_COMPARISON} > ${ERA_LITERAL}`, message: ERA_COMPARISON_MESSAGE },
+  { selector: `${ERA_COMPARISON} > :matches(TSAsExpression, TSSatisfiesExpression) > ${ERA_LITERAL}`, message: ERA_COMPARISON_MESSAGE },
   {
-    selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^v[0-9]+$/]",
-    message:
-      "Do not compare an era with a literal. Use a `switch` closed by `assertNever` from utils, so a new era is a compile error; a reviewed exception needs an inline eslint-disable with the reason."
+    selector: `${ERA_COMPARISON} > TemplateLiteral[quasis.length=1] > TemplateElement[value.raw=/^v[0-9]+$/]`,
+    message: ERA_COMPARISON_MESSAGE
   }
 ];
 

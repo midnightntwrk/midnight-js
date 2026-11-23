@@ -33,14 +33,17 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 
 // What each retained era ships: the entry chunk its loader imports lazily, and
 // the packages that carry its runtime. Typed by `RetainedLedgerEra`, so an era
-// that becomes retained does not compile here until it has a row.
+// that becomes retained does not compile here until it has a row. List both
+// halves of an era's stack: v8's onchain-runtime-v3 carries its own
+// multi-megabyte WASM, so a static link to it costs a v9-only consumer as much
+// as one to ledger-v8.
 const RETAINED_ERA_ARTIFACTS = {
   v8: { chunk: 'v8', packages: ['ledger-v8', 'onchain-runtime-v3'] }
 } as const satisfies Record<RetainedLedgerEra, { readonly chunk: string; readonly packages: readonly string[] }>;
 
 // An entry chunk as rollup writes it into whichever eagerly-loaded chunk
-// reaches the loader: the dynamic import of `../../v8.js` in src/lib/v8/load.ts
-// comes out as an output-relative specifier, at whatever depth that chunk sits.
+// reaches the loader: the dynamic import of, for example, `../../v8.js` in
+// src/lib/v8/load.ts comes out as an output-relative specifier, at whatever depth that chunk sits.
 const chunkPattern = (chunk: string): string => `(?:\\.{1,2}/)+${escapeRegExp(chunk)}\\.js`;
 // The `./v8/engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/v8/load-engine.ts comes
@@ -101,10 +104,7 @@ const eagerClosureOf = (entry: string): string[] => {
 const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readDistFile(chunk)).join('\n');
 
 describe('dist laziness gate', () => {
-  // Both halves of the retained pre-fork stack, not just ledger-v8:
-  // onchain-runtime-v3 is a runtime dependency of this package and carries its
-  // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
-  // exactly as much. The engine modules reference it only through erased
+  // The engine modules reference a retained runtime only through erased
   // `import type`s and injected parameters, which is what keeps this green.
   const retainedPackages = RETAINED_LEDGER_ERAS.flatMap((era) =>
     RETAINED_ERA_ARTIFACTS[era].packages.map((pkg) => [era, pkg] as const)
@@ -158,10 +158,10 @@ describe('dist laziness gate', () => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
-  // Every route to the two retained chunks, in one place. The tests above show
-  // each chunk is absent from the eager closure and that a dynamic import of it
+  // Every route to each retained-era chunk and the engine chunk, in one place.
+  // The tests above show each chunk is absent from the eager closure and that a dynamic import of it
   // survives; this one closes the remaining gap — that no chunk in that closure
-  // reaches either one by a STATIC specifier under some other name. A static
+  // reaches any of them by a STATIC specifier under some other name. A static
   // `from './v8.js'` anywhere in the closure would defeat both of the others
   // while still leaving the dynamic import in place.
   it.each([

@@ -114,7 +114,7 @@ const queryFoundDeployTxPublicData = async (
       };
     case 'v9': {
       const stateEra: unknown = deployState?.contractState?.era;
-      // eslint-disable-next-line no-restricted-syntax -- stateEra is unknown, so it cannot be switched on; requireLedger9ContractStateRead below refuses every other era
+      // eslint-disable-next-line no-restricted-syntax -- names v8 only to throw EraInvariantViolationError for it; requireLedger9ContractStateRead below refuses every other era
       if (stateEra === 'v8') {
         throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
       }

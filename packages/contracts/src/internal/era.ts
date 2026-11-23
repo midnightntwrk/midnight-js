@@ -1171,9 +1171,13 @@ export const resolveContractStateEra = async (
   // The retained ledger wrote it, which is the only thing this pipeline can
   // read -- under EITHER head. Pre-fork this is a native call; post-fork it is
   // keep-state. Both are ordinary, and neither involves the head.
-  // eslint-disable-next-line no-restricted-syntax -- one of the two pairings the v8 to v9 fork allows; any other falls to the fresh head read below, which refuses it
-  if (stateEra === 'v8') {
-    return stateEra;
+  switch (stateEra) {
+    case 'v8':
+      return stateEra;
+    case 'v9':
+      break;
+    default:
+      return assertNever(stateEra, 'resolveContractStateEra');
   }
 
   // From here the state carries a CURRENT-era envelope.
@@ -1189,8 +1193,7 @@ export const resolveContractStateEra = async (
   // contract. The key check
   // answers it, against the keys this state actually declares; see
   // `assertSnapshotVerifierKey`.
-  // eslint-disable-next-line no-restricted-syntax -- one of the two pairings the v8 to v9 fork allows; any other falls to the fresh head read below, which refuses it
-  if (head === 'v9') {
+  if (head === stateEra) {
     return stateEra;
   }
 
