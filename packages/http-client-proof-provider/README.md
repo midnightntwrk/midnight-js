@@ -189,6 +189,12 @@ The provider retries a request up to 3 times when the proof server answers 429, 
 - A retried network failure carries the same risk: the server may have received the request before the
   connection broke. It is still retried, to keep the behaviour of earlier versions.
 
+## Redirects
+
+The provider does not follow redirects. A redirect from the proof server fails the request with a
+`ProofServerError` and is not retried. The request body and the configured `headers` are never sent to the
+redirect target. Configure the final proof server URL directly.
+
 ## Error Handling
 
 ### Invalid Protocol
