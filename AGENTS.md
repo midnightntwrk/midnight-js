@@ -114,51 +114,7 @@ async function deployAndCall(): Promise<Result> {
 
 ## Testing Requirements
 
-### Test Structure
-
-```typescript
-// ✅ Use Arrange-Act-Assert pattern
-describe('deployContract', () => {
-  it('should deploy contract with initial state', async () => {
-    // Arrange
-    const providers = createMockProviders();
-    const options = { compiledContract, privateStateId: 'test' };
-
-    // Act
-    const deployed = await deployContract(providers, options);
-
-    // Assert
-    expect(deployed.contractAddress).toBeDefined();
-    expect(deployed.callTx).toBeDefined();
-  });
-});
-```
-
-### Test Categories
-
-1. **Unit Tests** - Test individual functions in isolation
-2. **Integration Tests** - Test provider interactions
-3. **E2E Tests** - Test full transaction flows against network
-
-### Testing Guidelines
-
-```typescript
-// ✅ Test meaningful scenarios, not implementation details
-it('should encrypt state with provided password', async () => { });
-it('should reject weak passwords', async () => { });
-
-// ❌ Don't test internal methods or trivial getters
-it('should call internal helper', async () => { }); // BAD
-
-// ✅ Test error cases through behavior
-it('should throw when contract address is invalid', async () => {
-  await expect(findContract(invalidAddress))
-    .rejects.toThrow(ContractNotFoundError);
-});
-
-// ✅ Use descriptive test names
-it('should return undefined when private state does not exist', async () => { });
-```
+Test structure and guidelines: [.claude/rules/testing.md](.claude/rules/testing.md).
 
 ### Running Tests
 
@@ -178,50 +134,14 @@ yarn test --coverage
 
 ## Package-Specific Guidelines
 
-### @midnightntwrk/midnight-js-types
+These packages have their own rules file. Claude Code loads it when it reads a file in that package; other tools should open the link.
 
-- Define all shared interfaces here
-- Export types that other packages depend on
-- Keep type definitions minimal and focused
-
-### @midnightntwrk/midnight-js-contracts
-
-- High-level API for contract operations
-- Functions should accept `MidnightProviders` as first argument
-- Return well-typed results with transaction data
-
-### @midnightntwrk/midnight-js-level-private-state-provider
-
-- Security-critical: encryption, key derivation
-- Use established crypto libraries only
-- Never log sensitive data (passwords, keys, decrypted state)
-
-### @midnightntwrk/midnight-js-indexer-public-data-provider
-
-- GraphQL queries and subscriptions
-- Handle network errors with retries
-- Support both polling and real-time subscriptions
-
-### @midnightntwrk/midnight-js-http-client-proof-provider
-
-- HTTP communication with proof server
-- Implement retry logic for transient failures
-- Respect timeout configurations
-
-### @midnightntwrk/midnight-js-dapp-connector-proof-provider
-
-- Delegates proving to DApp Connector wallet
-- Two abstraction levels: high-level (`dappConnectorProofProvider`) and low-level (`dappConnectorProvingProvider`)
-- Minimal interface coupling via `Pick<WalletConnectedAPI, 'getProvingProvider'>`
-- Proving provider is obtained once during setup and cached — do not re-obtain per call
-- `dappConnectorWalletProviders` builds `WalletProvider` + `MidnightProvider` from `Pick<ConnectedAPI, 'getShieldedAddresses' | 'balanceUnsealedTransaction' | 'submitTransaction'>`, both eras; wallet errors are not wrapped here (contracts' `atProviderMethod` wraps them); `ttl` is not forwarded (connector has none)
-
-### @midnightntwrk/midnight-js
-
-- Barrel package re-exporting core modules (contracts, types, utils)
-- Namespace exports via `index.ts` and sub-path exports for tree-shaking
-- Changes to this package should only be structural (adding/removing re-exports)
-- When adding a new core package, add both namespace export and sub-path export
+- `packages/types`: [.claude/rules/types.md](.claude/rules/types.md)
+- `packages/contracts`: [.claude/rules/contracts.md](.claude/rules/contracts.md)
+- `packages/level-private-state-provider`: [.claude/rules/private-state-provider.md](.claude/rules/private-state-provider.md)
+- `packages/indexer-public-data-provider`: [.claude/rules/indexer-public-data-provider.md](.claude/rules/indexer-public-data-provider.md)
+- `packages/*-proof-provider`: [.claude/rules/proof-providers.md](.claude/rules/proof-providers.md)
+- `packages/midnight-js`: [.claude/rules/midnight-js-barrel.md](.claude/rules/midnight-js-barrel.md)
 
 ## Common Tasks
 
