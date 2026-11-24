@@ -54,6 +54,7 @@ import {
   readHeadEra,
   type ResolvedOperationEra
 } from './era';
+import { mergeUnprovenTransactions } from './utils/merge-unproven';
 
 /**
  * Where a call's next private state is stored once the call succeeds.
@@ -158,7 +159,10 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
     unprovenTx: LedgerTransaction.seal(
       'v9',
       'Unproven',
-      current.unprovenTx.deserialize({ v9: Ledger9Transaction }).merge(next.unprovenTx.deserialize({ v9: Ledger9Transaction }))
+      mergeUnprovenTransactions(
+        current.unprovenTx.deserialize({ v9: Ledger9Transaction }),
+        next.unprovenTx.deserialize({ v9: Ledger9Transaction })
+      )
     ),
     circuitId: Array.from(circuitIds)
   };
