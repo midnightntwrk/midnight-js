@@ -13,7 +13,8 @@ produced by running the contract constructor.
 
 ## Extends
 
-- [`Ledger9UnsubmittedDeployTxPrivateData`](Ledger9UnsubmittedDeployTxPrivateData.md)\<`C`\>.[`Ledger9UnsubmittedTxData`](Ledger9UnsubmittedTxData.md)
+- [`Ledger9UnsubmittedDeployTxPrivateData`](Ledger9UnsubmittedDeployTxPrivateData.md)\<`C`\>
+- [`Ledger9UnsubmittedTxData`](Ledger9UnsubmittedTxData.md)
 
 ## Type Parameters
 

@@ -12,7 +12,8 @@ transaction data ([Ledger9FinalizedTxData](../../../midnight-js/types/interfaces
 
 ## Extends
 
-- [`Ledger9CallResultPublic`](Ledger9CallResultPublic.md).[`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
+- [`Ledger9CallResultPublic`](Ledger9CallResultPublic.md)
+- [`Ledger9FinalizedTxData`](../../../midnight-js/types/interfaces/Ledger9FinalizedTxData.md)
 
 ## Properties
 

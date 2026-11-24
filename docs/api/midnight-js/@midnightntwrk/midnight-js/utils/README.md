@@ -111,10 +111,10 @@
 
 ### MIDNIGHT\_JS\_ERROR\_CATEGORIES
 
-Re-exports [MIDNIGHT_JS_ERROR_CATEGORIES](../variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
+Re-exports [MIDNIGHT_JS_ERROR_CATEGORIES](../index/variables/MIDNIGHT_JS_ERROR_CATEGORIES.md)
 
 ***
 
 ### MidnightJsErrorCategory
 
-Re-exports [MidnightJsErrorCategory](../type-aliases/MidnightJsErrorCategory.md)
+Re-exports [MidnightJsErrorCategory](../index/type-aliases/MidnightJsErrorCategory.md)

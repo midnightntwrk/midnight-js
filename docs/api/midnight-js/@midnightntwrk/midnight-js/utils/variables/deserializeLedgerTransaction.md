@@ -17,7 +17,7 @@ record does not load the v8 runtime.
 
 ### E
 
-`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)
+`E` *extends* [`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 ## Parameters
 

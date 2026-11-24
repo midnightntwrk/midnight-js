@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+/**
+ * @module index
+ */
+
 export * as ledger9Protocol from './protocol/v9';
 export * as contracts from '@midnightntwrk/midnight-js-contracts';
 export * as types from '@midnightntwrk/midnight-js-types';

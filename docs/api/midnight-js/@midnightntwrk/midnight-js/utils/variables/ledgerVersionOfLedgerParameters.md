@@ -6,7 +6,7 @@
 
 # Variable: ledgerVersionOfLedgerParameters
 
-> `const` **ledgerVersionOfLedgerParameters**: (`raw`) => [`LedgerEra`](../../type-aliases/LedgerEra.md)
+> `const` **ledgerVersionOfLedgerParameters**: (`raw`) => [`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 Reads which ledger runtime wrote a serialized set of ledger parameters, from the version tag in
 front of the body — without deserializing the body.
@@ -35,7 +35,7 @@ The serialized ledger parameters, as the network returned it.
 
 ## Returns
 
-[`LedgerEra`](../../type-aliases/LedgerEra.md)
+[`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 The ledger era whose runtime wrote `raw`.
 

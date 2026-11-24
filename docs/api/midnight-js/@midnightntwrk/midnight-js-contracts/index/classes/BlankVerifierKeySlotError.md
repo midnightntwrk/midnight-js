@@ -15,7 +15,7 @@ against, so the call is refused before any proving happens.
 
 ## Extends
 
-- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
+- [`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -37,17 +37,17 @@ The entry point whose slot is blank.
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`category`](../../../midnight-js/index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -65,4 +65,4 @@ The entry point whose slot is blank.
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`code`](../../../midnight-js/index/classes/MidnightJsError.md#code)
