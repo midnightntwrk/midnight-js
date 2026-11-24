@@ -62,9 +62,15 @@ const found = await findDeployedContract(providers, {
   contractAddress,           // Address of deployed contract
   privateStateId,            // ID for retrieving/storing private state (optional)
   initialPrivateState,       // Private state to store (optional, uses existing if omitted)
-  signingKey                 // Maintenance authority key (optional, auto-generated if needed)
+  signingKey,                // Maintenance authority key (optional, auto-generated if needed)
+  circuitIds                 // Circuits to check and call (optional, ledger 9 only, all if omitted)
 });
 ```
+
+A contract can have only some of its circuits on chain and receive the rest later through
+maintenance updates. To attach to it, name the circuits you will call in `circuitIds`. Only those
+are checked, and a call to any other circuit is refused. After a maintenance update adds a circuit,
+find the contract again with that circuit in the list.
 
 ### Transaction Submission
 

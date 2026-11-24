@@ -355,9 +355,10 @@ The cost: a contract that had a verifier key REMOVED by a maintenance update can
 no longer be attached to at all, because the removed slot now reads as
 never-deployed. That is not a retained-era quirk — the current era refuses the
 same contract for the same reason — so the two eras behave alike, which is what
-makes it the right default here. A caller that must attach to such a contract
-needs a narrower check, and that would be a change to both eras rather than to
-this path alone.
+makes it the right default here. On the current era, a caller that must attach
+to such a contract passes `circuitIds` to `findDeployedContract`: only the named
+circuits are checked, and a call to any other circuit is refused. This retained-era
+path has no such option and still checks every circuit.
 
 The names come off the ARTIFACT rather than off the state, so a circuit the
 caller can call but the chain never registered is reported as a blank slot
