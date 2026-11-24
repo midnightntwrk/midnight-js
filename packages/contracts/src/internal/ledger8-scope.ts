@@ -181,6 +181,7 @@ export class Ledger8TransactionContextImpl implements Transaction.AnyLedger8Tran
  * @internal
  */
 export const isLedger8ScopeContext = (u: unknown): u is Transaction.AnyLedger8TransactionContext =>
+  // eslint-disable-next-line no-restricted-syntax -- a predicate for one named era: every other era answers false
   readScopeEra(u) === 'v8';
 
 /**
