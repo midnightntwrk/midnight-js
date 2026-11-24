@@ -385,17 +385,14 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 5. An ADR that has not yet reached `main` has no published number — edit or
    delete it in place and close the numbering up behind it.
 
-## GitNexus (optional)
+## Code navigation
 
-These rules apply only if you have GitNexus installed and the repository has a
-`.gitnexus/` index. Setup: [DEVELOPMENT.md](./DEVELOPMENT.md#optional-gitnexus-code-intelligence).
+Use the editor's TypeScript language server (LSP) and ripgrep (`rg`). Packages
+import each other through `dist/`, so LSP finds references only inside one package.
 
-- Re-index with `npx gitnexus analyze --index-only` (add `--embeddings` when
-  `.gitnexus/meta.json` shows `stats.embeddings > 0`). Without `--index-only`,
-  analyze writes a generated section into this file and skills into the repository.
-- Before editing a function, class or method, run `gitnexus_impact` (direction
-  `upstream`) and report the blast radius; warn on HIGH or CRITICAL risk.
-- Before committing, run `gitnexus_detect_changes` to confirm the change affects
-  only the expected symbols.
-- In a worktree the index is named after the folder: pass `repo: "<folder-name>"`.
-- For exploring, debugging and refactoring, use the `gitnexus-*` skills.
+- Before editing a function, class or method, list its callers: LSP
+  `findReferences` or `incomingCalls` inside the package and, for an exported
+  symbol, `rg -w <name> packages testkit-js`. Report what is affected.
+- Before committing, check that `git diff --stat` touches only the expected files.
+- To rename a symbol, find every use with `rg -w <name>`, then run `yarn build`
+  and `yarn test`.
