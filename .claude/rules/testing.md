@@ -1,6 +1,7 @@
 ---
 paths:
   - "**/*.test.ts"
+  - "**/*.test-d.ts"
 ---
 
 # Testing

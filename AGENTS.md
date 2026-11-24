@@ -134,7 +134,7 @@ yarn test --coverage
 
 ## Package-Specific Guidelines
 
-Each package has its own rules file. Claude Code loads it automatically when working in that package; other tools should read it directly.
+These packages have their own rules file. Claude Code loads it when it reads a file in that package; other tools should open the link.
 
 - `packages/types`: [.claude/rules/types.md](.claude/rules/types.md)
 - `packages/contracts`: [.claude/rules/contracts.md](.claude/rules/contracts.md)
