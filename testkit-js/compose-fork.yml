@@ -15,7 +15,7 @@ services:
   # One-shot. The OLD release writes the genesis, so the chain starts on the runtime the fork moves
   # off. Runs as root purely to write into the shared volume, and only re-builds if the spec is absent.
   chainspec:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:${FORK_FROM_NODE_TAG:-1.0.1}'
+    image: 'midnightntwrk/midnight-node:${FORK_FROM_NODE_TAG:-1.0.1}'
     container_name: chainspec_$TESTCONTAINERS_UID
     user: '0:0'
     entrypoint: ['/bin/bash', '-c']
@@ -39,7 +39,7 @@ services:
   # One-shot. Lifts the new runtime blob out of the new node image into a volume the toolkit can read,
   # in place of a `docker create` + `docker cp` on the host.
   runtime-blob:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.101}'
+    image: 'midnightntwrk/midnight-node:${NODE_TAG:-2.1.101}'
     container_name: runtime-blob_$TESTCONTAINERS_UID
     user: '0:0'
     entrypoint: ['/bin/bash', '-c']
@@ -61,7 +61,7 @@ services:
   # New binary, old chain. `restart: "no"` on purpose: if the boundary breaks the node, the test
   # should show that rather than paper over it with a restart.
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:${NODE_TAG:-2.1.101}'
+    image: 'midnightntwrk/midnight-node:${NODE_TAG:-2.1.101}'
     container_name: node_$TESTCONTAINERS_UID
     depends_on:
       chainspec:
@@ -111,7 +111,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_TAG:-4.4.101}'
+    image: 'midnightntwrk/indexer-standalone:${INDEXER_TAG:-4.4.101}'
     container_name: indexer_$TESTCONTAINERS_UID
     cap_drop:
       - ALL
@@ -154,7 +154,7 @@ services:
         condition: service_healthy
 
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_TAG:-9.0.2}'
+    image: 'midnightntwrk/proof-server:${PROOF_SERVER_TAG:-9.0.2}'
     container_name: proof-server_$TESTCONTAINERS_UID
     cap_drop:
       - ALL
@@ -169,7 +169,7 @@ services:
   # operation happens before the fork is enacted. Why there are two of these rather than one
   # dual-capable endpoint: `docs/architecture/fork-e2e-environment.md`.
   proof-server-v8:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.2}'
+    image: 'midnightntwrk/proof-server:${PROOF_SERVER_V8_TAG:-8.1.3}'
     container_name: proof-server-v8_$TESTCONTAINERS_UID
     cap_drop:
       - ALL
@@ -184,10 +184,6 @@ services:
   # `docker compose ... --profile tools run --rm toolkit runtime-upgrade ...`, which joins the
   # project network so the node's `node:9944` address resolves. No `container_name`: `compose run`
   # names its own.
-  #
-  # This is the one image on Docker Hub rather than ghcr: as of 2026-09 ghcr carried no toolkit at
-  # the pinned tag. So a ghcr login does not authorize this pull -- the CI lane logs in to Docker Hub
-  # as well. Re-check the registry when bumping TOOLKIT_TAG.
   toolkit:
     profiles: ['tools']
     image: 'midnightntwrk/midnight-node-toolkit:${TOOLKIT_TAG:-2.1.101}'
