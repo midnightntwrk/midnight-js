@@ -19,14 +19,17 @@ patch release:
 
 - Version 5.0.2 exists only under `@midnightntwrk/*`. Under `@midnight-ntwrk/*` the last version is
   5.0.1, and a range such as `@midnight-ntwrk/midnight-js@^5.0.0` stays on 5.0.1.
+- `@midnightntwrk/*@5.0.1` also exists on npmjs. It was built from `main` during the move to the new
+  scope, not from the `v5.0.1` tag. Use 5.0.2.
 - Imports must use the new names. Example: `@midnight-ntwrk/midnight-js-contracts` becomes
   `@midnightntwrk/midnight-js-contracts`.
 
-The public API is unchanged: no export is added, removed or renamed.
+The public API is unchanged: no export is added, removed or renamed. Error messages that name a
+package now use the new name. Update any code that matches on error text.
 
 ## Dependencies
 
-- `@apollo/client` 4.2.12 → 4.3.8 in `indexer-public-data-provider` (#1701). It is the only runtime
+- `@apollo/client` 4.2.12 → 4.3.8 in `indexer-public-data-provider` (#1701). It is the only direct runtime
   dependency that changed.
 
 ## Quick Migration

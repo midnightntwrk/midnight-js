@@ -62,12 +62,16 @@ import { indexerPublicDataProvider } from '@midnightntwrk/midnight-js-indexer-pu
 ```
 
 This command changes only the names of this repository's packages (macOS `sed`; on Linux use
-`sed -i`):
+`sed -i`). Run it from the project root:
 
 ```bash
-rg -l '@midnight-ntwrk/(midnight-js|testkit-js)' src \
-  | xargs sed -i '' -E 's#@midnight-ntwrk/(midnight-js|testkit-js)#@midnightntwrk/\1#g'
+rg -l0 -g '!*.lock' -g '!package-lock.json' '@midnight-ntwrk/(midnight-js|testkit-js)' . \
+  | xargs -0 sed -i '' -E 's#@midnight-ntwrk/(midnight-js|testkit-js)#@midnightntwrk/\1#g'
 ```
+
+`rg` skips files listed in `.gitignore` (so `node_modules`) and the command skips lock files. Check the diff before you
+commit. The command also rewrites `Symbol.for('@midnight-ntwrk/midnight-js#…')` keys. Restore those,
+because the keys did not change.
 
 ## Step 3 — Check for a second copy
 
