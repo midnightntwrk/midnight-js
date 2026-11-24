@@ -37,7 +37,7 @@ import type {
   TranscriptPojo
 } from '@midnightntwrk/midnight-js-protocol';
 import { ComposeFailedError, UnknownLedgerEraError } from '@midnightntwrk/midnight-js-protocol';
-import { InvalidArgumentError } from '@midnightntwrk/midnight-js-protocol/errors';
+import { InvalidArgumentError, InvariantViolationError } from '@midnightntwrk/midnight-js-protocol/errors';
 import { deserializeTransactionAtStage } from '@midnightntwrk/midnight-js-protocol/transaction';
 import type { PartitionedTranscript, ShieldedCoinInfo } from '@midnightntwrk/midnight-js-protocol/v9';
 import type { AlignedValue, Op, ZswapLocalState } from '@midnightntwrk/midnight-js-protocol/v9/compact-runtime';
@@ -335,6 +335,7 @@ const servedLedgerParameters = (
  * @returns The snapshot, its extracted state and its decoded entry points.
  * @throws StateDecodeFailedError if this era's decoder rejects the envelope.
  * @throws StateInconsistentError if the decoded state is internally inconsistent.
+ * @throws InvariantViolationError if neither facade reads `stateEra`: the state was not dated against the head.
  */
 export const decodeLedger8Snapshot = (
   retainedEra: LedgerEraFacade,
@@ -349,7 +350,13 @@ export const decodeLedger8Snapshot = (
   // what a contract looks like once the fork has translated it; its retained
   // verifier keys survive that unchanged, so this pipeline is still the right
   // one to run it.
-  const reader = stateEra === 'v8' ? retainedEra : headEra;
+  const reader = [retainedEra, headEra].find((facade) => facade.version === stateEra);
+  if (reader === undefined) {
+    throw new InvariantViolationError(
+      `A contract state written by the '${stateEra}' ledger reached the ledger 8 call pipeline, which reads only ` +
+        `'${retainedEra.version}' and '${headEra.version}' states here. The state was not dated against the head before decoding.`
+    );
+  }
   const encoded = reader.extractState(state.raw);
   const decoded = reader.decodeContractState(state.raw);
 
@@ -465,6 +472,7 @@ export const assertSnapshotVerifierKey = (
     //
     // Only the MISMATCH is re-reported. A blank slot is left alone: it says the chain declares no
     // key for this circuit at all, which is not an era statement.
+    // eslint-disable-next-line no-restricted-syntax -- names one known mismatch; every other case rethrows the original cause
     if (snapshot.stateEra === 'v9' && cause instanceof VerifierKeyMismatchError) {
       throw new EraMismatchError('ledger8-artifact-on-ledger9-contract', {
         detail: `Contract address: ${contractAddress}.`,
@@ -749,8 +757,11 @@ export const composeLedger8Call = async <TState>(
   // current composer cannot deserialize at all. The registry is therefore re-expressed in the current era, carrying
   // the same keys the chain holds -- the ones `assertSnapshotVerifierKey` above has just checked
   // the local artifact against.
-  const registeredOperations =
-    head === 'v9' ? engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints) : snapshot.state.raw;
+  const registeredOperationsByHead: Record<LedgerEra, () => Uint8Array> = {
+    v8: () => snapshot.state.raw,
+    v9: () => engine.reexpressOperationsForLedger9(snapshot.decoded.entryPoints)
+  };
+  const registeredOperations = registeredOperationsByHead[head]();
 
   // Undefined until the composer calls the factory back, which is the fact the
   // refusal below rests on: an offer that is absent because the call moved no

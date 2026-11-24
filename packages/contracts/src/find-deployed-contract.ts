@@ -114,6 +114,7 @@ const queryFoundDeployTxPublicData = async (
       };
     case 'v9': {
       const stateEra: unknown = deployState?.contractState?.era;
+      // eslint-disable-next-line no-restricted-syntax -- names v8 only to throw EraInvariantViolationError for it; requireLedger9ContractStateRead below refuses every other era
       if (stateEra === 'v8') {
         throw new EraInvariantViolationError('queryDeployContractState', undefined, 'v9', 'v8', contractAddress);
       }
@@ -298,9 +299,15 @@ interface VerifiableContractState {
 }
 
 const decodeForVerification = async (contractState: SerializedContractState): Promise<VerifiableContractState> => {
-  if (contractState.era === 'v8') {
-    const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
-    return contractState.deserialize({ v8: { deserialize: (bytes): VerifiableContractState => Ledger8ContractState.deserialize(bytes) } });
+  switch (contractState.era) {
+    case 'v8': {
+      const { ContractState: Ledger8ContractState } = await loadLedger8Protocol();
+      return contractState.deserialize({ v8: { deserialize: (bytes): VerifiableContractState => Ledger8ContractState.deserialize(bytes) } });
+    }
+    case 'v9':
+      break;
+    default:
+      return assertNever(contractState.era, 'decodeForVerification');
   }
   return contractState.deserialize({
     v9: {

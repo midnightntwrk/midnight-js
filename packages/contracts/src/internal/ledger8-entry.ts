@@ -579,6 +579,7 @@ const requireLedger8Record = (
   method: ReadMethod
 ): Ledger8FinalizedTxData => {
   const tagged = requireTaggedRecord(record, method, circuitId);
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 8 path refuses every other era
   if (tagged.era !== 'v8') {
     throw new EraInvariantViolationError(method, circuitId, head, tagged.era);
   }

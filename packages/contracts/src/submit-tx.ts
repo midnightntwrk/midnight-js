@@ -79,6 +79,7 @@ export const submitLedger9PayloadAsync = async <C extends Contract.Any, PCK exte
   options: Ledger9PayloadSubmitOptions<PCK>
 ): Promise<string> => {
   const unprovenTx = LedgerTransaction.require(options.unprovenTx, 'Unproven', 'submitTx');
+  // eslint-disable-next-line no-restricted-syntax -- fail-closed guard: a ledger 9 path refuses every other era
   if (unprovenTx.era !== 'v9') {
     throw new TransactionEraMismatchError('v9', unprovenTx.era);
   }
