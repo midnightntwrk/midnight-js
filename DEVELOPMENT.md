@@ -254,6 +254,34 @@ set -a; . testkit-js/env/preprod.env; set +a
 docker compose -f testkit-js/compose.yml up
 ```
 
+## Optional: GitNexus Code Intelligence
+
+We suggest [GitNexus](https://github.com/abhigyanpatwari/GitNexus) for AI-assisted
+work: it gives your coding agent impact analysis and a call graph of the repository.
+
+```bash
+# 1. Once per machine: connect GitNexus to every coding agent it detects
+npx gitnexus setup
+
+# 2. In the repository root: build the index, and re-run it after you pull or commit
+npx gitnexus analyze --index-only
+
+# Check whether the index is current
+npx gitnexus status
+```
+
+`setup` writes only to your home directory, never to the repository. It
+configures every agent it detects (Claude Code, Codex, Cursor, OpenCode and
+others): the GitNexus MCP server and, where the agent supports them, its skills
+and hooks. For Claude Code that means `~/.claude.json`, `~/.claude/skills/` and
+`~/.claude/settings.json`. To configure only some agents, pass
+`--coding-agent <agents>` (for example `npx gitnexus setup --coding-agent codex`).
+
+`--index-only` stops `analyze` from writing a generated section into the tracked
+`CLAUDE.md` and `AGENTS.md` and skills into the repository; `setup` already
+installed the skills. The rules your agent should follow are in the
+"GitNexus (optional)" section of both files.
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
