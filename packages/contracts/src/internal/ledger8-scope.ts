@@ -45,6 +45,7 @@ import {
   Submit,
   TypeId
 } from './transaction';
+import { mergeUnprovenTransactions } from './utils/merge-unproven';
 
 type PrivateStateProvider = NonNullable<Ledger8CallEntryProviders['privateStateProvider']>;
 
@@ -63,7 +64,7 @@ const mergeUnproven = async (current: UnprovenTx | undefined, next: UnprovenTx):
     deserializeTransactionAtStage('v8', 'Unproven', current.serialize()),
     deserializeTransactionAtStage('v8', 'Unproven', next.serialize())
   ]);
-  return LedgerTransaction.seal('v8', 'Unproven', left.merge(right));
+  return LedgerTransaction.seal('v8', 'Unproven', mergeUnprovenTransactions(left, right));
 };
 
 /**
