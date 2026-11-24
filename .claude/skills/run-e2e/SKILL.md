@@ -49,4 +49,3 @@ GITHUB_TOKEN=$(gh auth token) node consumer-e2e/fork-matrix-smoke.mjs pnp --cont
 - `GITHUB_TOKEN` must be a GitHub token. An npm token gives `401 Unauthorized` when the
   compactc download starts.
 - Node must match `.nvmrc`. An older Node crashes in undici's `decompress.js`.
-- The run leaves untracked `consumer-e2e/stack-logs/` and `.tarballs/` behind.

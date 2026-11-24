@@ -15,13 +15,14 @@ description: Bump the Compact toolchain (compactc compiler, compact-runtime, com
      and the version is the commit hash.
    - `COMPACT_REPO=LFDT-Minokawa/compact`. The download needs `GITHUB_TOKEN`
      (`export GITHUB_TOKEN=$(gh auth token)`).
-2. **Runtime and compact-js versions**: root `package.json` `resolutions`
-   (`@midnight-ntwrk/compact-runtime`, `@midnight-ntwrk/compact-js`) and the
-   `packages/protocol/package.json` dependency must name the same version. Then `yarn install`.
+2. **Runtime and compact-js versions**: set `@midnight-ntwrk/compact-runtime` to the same
+   version in the root `package.json` `resolutions` and in the dependencies of
+   `packages/protocol` and `testkit-js/testkit-js`. Set `@midnight-ntwrk/compact-js` in the
+   `packages/protocol` dependencies. Then run `yarn install` and `yarn constraints`.
 3. **New runtime minor only**: replace the old minor's row in `RUNTIME_VERSION_TO_ERA`
    (`packages/contracts/src/internal/era.ts`). Unit tests mock the runtime version, so
    nothing local catches a missing row: only e2e and the Hard fork lane fail, with
-   `EraMismatchError`.
+   `EraMismatchError` reason `'unknown-artifact-runtime-version'`.
 4. **Recompile everything**: `yarn turbo compact` in the repository root. It runs the
    `compact` task in `packages/contracts`, `packages/http-client-proof-provider` and
    `testkit-js/testkit-js-e2e`, and regenerates every `compiled/` directory.
@@ -36,7 +37,8 @@ description: Bump the Compact toolchain (compactc compiler, compact-runtime, com
 - **Corrupt download on a cold cache**: the three `compact` tasks download the same zip in
   parallel and can corrupt it (`invalid compressed data to inflate`). Run
   `yarn fetch-compactc` once in `packages/contracts` first, then `yarn turbo compact`.
-- **Recompile all contracts together**: the e2e `@/contract` barrel constructs every
+- **Recompile all contracts together**: the e2e barrel
+  `testkit-js/testkit-js-e2e/src/contract/index.ts` constructs every
   contract at import, so a mix of compiler versions fails at load.
 - **compact-js must match the runtime**: if it targets another `createCircuitContext`
   signature, `packages/contracts/src/test/utils/ledger-utils.test.ts` fails typecheck and the
