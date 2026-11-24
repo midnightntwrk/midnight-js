@@ -54,61 +54,25 @@ UnprovenTx → ProofProvider.proveTx() → UnboundTx
   → MidnightProvider.submitTx() → TransactionId
 ```
 
-Every transaction passed to those three methods is a transaction handle,
-`LedgerTransaction<Stage>` from `types`. The handle holds the transaction's
-bytes and carries the era (`'v8'` / `'v9'`) as data; the stage is in the type.
-Make one with `LedgerTransaction.fromBytes(era, stage, bytes)` or
-`LedgerTransaction.seal(era, stage, tx)` (an object of any ledger copy), and
-decode it with the caller's own ledger copy:
-`handle.deserialize({ v9: Transaction })`. Bytes without the header that era
-writes for that stage, or a value that is not a transaction, are refused with
-`InvalidTransactionHandleError`. Layer rule: `protocol` speaks
-raw ledger objects; every package from `types` up speaks only handles in its
-public API.
+Rules that hold across the codebase (API details in [llms.txt](./llms.txt)):
 
-The read surface (`watchForTxData`, `watchForDeployTxData`) reports a
-era-tagged *record*, `FinalizedTxRead`. Its `tx` is a `FinalizedTx`
-of the same era (`record.tx.era === record.era`); narrow on `record.era` and
-read it with `record.tx.deserialize({ v9: Transaction })`. To treat the eras
-differently, narrow with a `switch (record.era)` closed by
-`assertNever(record, '<call site>')` from `utils`.
-
-On-chain state is bytes, never a decoded object. `watchForContractState`,
-`queryDeployContractState` and `contractStateObservable` return
-`ContractStateRead`; `queryContractState` returns
-`ContractStateAndParametersRead` (adds `ledgerParameters`);
-`queryZSwapAndContractState` returns `PublicStatesRead`, and
-`Ledger9TransactionContext.getCurrentStates()` returns `PublicStatesRead | undefined`. Each state is one class per kind from `types`:
-`SerializedContractState`, `SerializedLedgerParameters` or
-`SerializedZswapChainState` (bytes + `era`, the ledger that wrote them), made
-only by its own `fromBytes(era, bytes)`. The caller decodes it with its own runtime:
-`read.contractState.deserialize({ v9: ContractState })`. Every full ledger state
-on the `contracts` API is one of these classes too, in both eras, except
-`Ledger9ContractConstructorResult.nextContractState`: call inputs
-(pass `read.contractState` as it is), deploy and found `initialContractState`,
-`verifyContractState` and `ContractTypeError.contractState`. `contracts` decodes
-with the framework's copy only where it builds a transaction. See
-[ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
-
-Implementing `WalletProvider` or `MidnightProvider` for v9 only? Use
-`createLedger9WalletProvider` / `createLedger9MidnightProvider` from `types` rather than
-sealing by hand.
-
-Serving more than one era? Use `createProofProviderFromHandlers` /
-`createWalletProviderFromHandlers` / `createMidnightProviderFromHandlers` — one
-handler per era, keyed `v8` / `v9` (`undefined` for an era you do not serve).
-Each handler receives the handle of its era. A transaction answer (`proveTx`,
-`balanceTx`) is a transaction object of any ledger copy or its bytes; the factory
-seals it in the request's era at the method's output stage and derives
-`supportedEras`. All three providers carry a required `supportedEras`, read
-before an operation starts so a set that cannot carry a transaction end to end is
-refused before the proof is paid for. A handler that talks to another ledger copy
-(wallet-sdk, a DApp Connector wallet) passes `tx.serialize()` and can return the
-bytes it gets back. See
-[ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md)
-(the transaction handle) and
-[ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md)
-(providers built from per-era handlers).
+- Transactions are handles, `LedgerTransaction<Stage>` from `types`: bytes plus
+  the era (`'v8'` / `'v9'`). The caller decodes with its own ledger copy:
+  `handle.deserialize({ v9: Transaction })`. See
+  [ADR 0024](./docs/adr/0024-hold-transactions-as-bytes-decoded-by-the-callers-ledger.md).
+- On-chain state is bytes, never a decoded object: one `Serialized*` class per
+  kind, decoded by the caller's runtime. See
+  [ADR 0020](./docs/adr/0020-carry-on-chain-state-as-bytes-decoded-by-the-callers-runtime.md).
+- Layer rule: `protocol` speaks raw ledger objects; every package from `types`
+  up speaks only handles in its public API.
+- To treat eras differently, `switch` on `era` and close it with
+  `assertNever(value, '<call site>')` from `utils`.
+- Providers serving more than one era are built from per-era handlers
+  (`create*ProviderFromHandlers`); v9-only providers use
+  `createLedger9WalletProvider` / `createLedger9MidnightProvider`. Proof, wallet
+  and midnight providers carry a required `supportedEras`, checked before an
+  operation starts. See
+  [ADR 0014](./docs/adr/0014-build-provider-seams-from-per-era-handlers.md).
 
 ## CI Pipeline & PR Gates
 
