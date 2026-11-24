@@ -387,12 +387,12 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 
 ## Code navigation
 
-Use the editor's TypeScript language server (LSP) and ripgrep (`rg`). Packages
-import each other through `dist/`, so LSP finds references only inside one package.
+Use the editor's TypeScript language server (LSP). Packages import each other
+through `dist/`, so LSP finds references only inside one package. For an exported
+symbol, also search the whole repository by name, with any text search tool
+(for example `rg -w <name> packages testkit-js`).
 
-- Before editing a function, class or method, list its callers: LSP
-  `findReferences` or `incomingCalls` inside the package and, for an exported
-  symbol, `rg -w <name> packages testkit-js`. Report what is affected.
+- Before editing a function, class or method, list its callers and report what
+  is affected.
 - Before committing, check that `git diff --stat` touches only the expected files.
-- To rename a symbol, find every use with `rg -w <name>`, then run `yarn build`
-  and `yarn test`.
+- To rename a symbol, find every use by name, then run `yarn build` and `yarn test`.
