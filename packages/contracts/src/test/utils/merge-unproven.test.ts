@@ -21,6 +21,20 @@ import { mergeUnprovenTransactions } from '../../internal/utils/merge-unproven';
 
 const ttl = () => new Date(Date.now() + 600_000);
 
+const segmentIds = (segments: Map<number, unknown> | undefined): number[] => [...(segments?.keys() ?? [])].sort((a, b) => a - b);
+
+const fallibleOffer = () =>
+  v9.ZswapOffer.fromOutput(
+    v9.ZswapOutput.new(
+      v9.createShieldedCoinInfo(v9.shieldedToken().raw, 1n),
+      1,
+      v9.sampleCoinPublicKey(),
+      v9.sampleEncryptionPublicKey()
+    ),
+    v9.shieldedToken().raw,
+    1n
+  );
+
 describe('mergeUnprovenTransactions', () => {
   it('keeps both intents when two ledger 8 transactions sit in the same segment', async () => {
     // Arrange
@@ -33,6 +47,7 @@ describe('mergeUnprovenTransactions', () => {
 
     // Assert
     expect(merged.intents?.size).toBe(2);
+    expect(merged.intents?.has(1)).toBe(true);
   });
 
   it('keeps both intents when two ledger 9 transactions sit in the same segment', () => {
@@ -45,5 +60,19 @@ describe('mergeUnprovenTransactions', () => {
 
     // Assert
     expect(merged.intents?.size).toBe(2);
+    expect(merged.intents?.has(1)).toBe(true);
+  });
+
+  it('moves the fallible offer together with its intent', () => {
+    // Arrange
+    const left = v9.Transaction.fromParts('undeployed', undefined, fallibleOffer(), v9.Intent.new(ttl()));
+    const right = v9.Transaction.fromParts('undeployed', undefined, fallibleOffer(), v9.Intent.new(ttl()));
+
+    // Act
+    const merged = mergeUnprovenTransactions(left, right);
+
+    // Assert
+    expect(segmentIds(merged.intents)).toHaveLength(2);
+    expect(segmentIds(merged.fallibleOffer)).toEqual(segmentIds(merged.intents));
   });
 });
