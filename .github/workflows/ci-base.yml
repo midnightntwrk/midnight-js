@@ -1,6 +1,4 @@
 name: Continuous Integration
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   contents: read
@@ -45,10 +43,6 @@ jobs:
 
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-        with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Install dependencies
         run: |
@@ -57,7 +51,7 @@ jobs:
       - name: Run build
         run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
@@ -96,14 +90,14 @@ jobs:
         run: |
           yarn test ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: |
           yarn it ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"} --concurrency 1
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       # Read by `.github/actions/collect-test-evidence` when a release is published.
       - name: Upload test evidence
@@ -193,9 +187,6 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           turbo-cache: 'false'
 
       - name: Install dependencies
