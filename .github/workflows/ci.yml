@@ -1,6 +1,4 @@
 name: CI
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 on:
   push:
@@ -100,8 +98,6 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
     uses: ./.github/workflows/ci-consumer-e2e.yml
-    secrets:
-      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
   # The fork-crossing gate: blocking, and expected green -- a red shard is a
   # regression to investigate, never a known state to wave through. The path
@@ -114,7 +110,6 @@ jobs:
       should_run: ${{ needs.ci.outputs.build_consumer_e2e == 'true' || needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
     uses: ./.github/workflows/ci-hardfork.yml
     secrets:
-      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -178,7 +173,7 @@ jobs:
   publish:
     name: Publish release
     needs: [ci-midnightjs, ci-testkit, consumer-e2e, hardfork, detect-release]
-    if: needs.detect-release.outputs.is_release == 'true'
+    if: needs.detect-release.outputs.is_release == 'true' && github.repository == 'midnightntwrk/midnight-js'
     runs-on: ubuntu-latest
     environment: npm-publish-stable
     # Publishing is non-atomic, so releases publish one at a time. Only one
@@ -211,7 +206,6 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           turbo-cache: 'false'
 
       - name: Install dependencies
@@ -220,7 +214,7 @@ jobs:
       - name: Build packages
         run: yarn build:core
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Extract release notes
         id: release_notes
@@ -273,7 +267,6 @@ jobs:
         if: steps.changes.outputs.midnight-js == 'true'
         run: node .github/scripts/publish-packages.mjs
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'packages'
           MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
           MIDNIGHT_PUBLISHED_MANIFEST: published-packages-v${{ needs.detect-release.outputs.version_number }}.txt
@@ -288,7 +281,7 @@ jobs:
         if: steps.changes.outputs.testkit-js == 'true'
         run: yarn build:testkit
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Validate testkit-js Packages Before Publishing
         if: steps.changes.outputs.testkit-js == 'true'
@@ -300,7 +293,6 @@ jobs:
         if: steps.changes.outputs.testkit-js == 'true'
         run: node .github/scripts/publish-packages.mjs
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
           MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}
           MIDNIGHT_PUBLISHED_MANIFEST: published-packages-v${{ needs.detect-release.outputs.version_number }}.txt

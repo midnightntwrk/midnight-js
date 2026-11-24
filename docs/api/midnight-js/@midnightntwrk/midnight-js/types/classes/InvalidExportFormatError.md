@@ -36,7 +36,7 @@ Error thrown when the export data format is invalid.
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 

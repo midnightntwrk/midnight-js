@@ -133,8 +133,9 @@ yarn e2e
 ### Ledger 8 (pre-fork) tests
 
 A file named `*.v8era.it.test.ts` is excluded from the default matrix and run by
-its own CI lane against `testkit-js/env/v8era.env` — node 1.0.0, indexer
-4.4.0-rc.6, proof server 8.1.2, which is a real ledger-v8 network.
+its own CI lane against `testkit-js/env/v8era.env` — node 2.1.101 on a genesis
+written by node 1.0.1, indexer 4.4.101, proof server 8.1.3, which is a real
+ledger-v8 network.
 
 Contracts for those tests are **ledger 8 twins**: the same `.compact` sources,
 compiled with `compactc` 0.31.1 so the framework routes them to the ledger 8

@@ -19,7 +19,7 @@ type of the caller's own class at that stage.
 
 ### E
 
-`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)
+`E` *extends* [`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 ### S
 

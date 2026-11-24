@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}"
+    image: "midnightntwrk/proof-server:${PROOF_SERVER_VERSION}"
     container_name: proof-server_$TESTCONTAINERS_UID
     command: ['midnight-proof-server']
     ports:
@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: "${INDEXER_IMAGE:-ghcr.io/midnight-ntwrk/indexer-standalone}:${INDEXER_VERSION}"
+    image: "${INDEXER_IMAGE:-midnightntwrk/indexer-standalone}:${INDEXER_VERSION}"
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088'
@@ -45,9 +45,36 @@ services:
       node:
         condition: service_healthy
 
+  # One-shot. Writes the genesis. `GENESIS_NODE_VERSION` lets an older release write it, so the
+  # chain starts on that release's runtime (v8era.env); unset, the node writes its own.
+  chainspec:
+    image: "${MIDNIGHT_NODE_IMAGE:-midnightntwrk/midnight-node}:${GENESIS_NODE_VERSION:-${MIDNIGHT_NODE_VERSION}}"
+    container_name: chainspec_$TESTCONTAINERS_UID
+    user: '0:0'
+    entrypoint: ['/bin/bash', '-c']
+    command:
+      - 'test -s /chainspec/chainspec.json || /midnight-node build-spec > /chainspec/chainspec.json'
+    environment:
+      CFG_PRESET: 'dev'
+    volumes:
+      - chainspec:/chainspec
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+
   node:
-    image: "${MIDNIGHT_NODE_IMAGE:-ghcr.io/midnight-ntwrk/midnight-node}:${MIDNIGHT_NODE_VERSION}"
+    image: "${MIDNIGHT_NODE_IMAGE:-midnightntwrk/midnight-node}:${MIDNIGHT_NODE_VERSION}"
     container_name: node_$TESTCONTAINERS_UID
+    depends_on:
+      chainspec:
+        condition: service_completed_successfully
+    volumes:
+      - chainspec:/chainspec:ro
     ports:
       - '9944'
     healthcheck:
@@ -58,4 +85,8 @@ services:
       start_period: 20s
     environment:
       CFG_PRESET: 'dev'
+      CHAIN: '/chainspec/chainspec.json'
       SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'
+
+volumes:
+  chainspec:

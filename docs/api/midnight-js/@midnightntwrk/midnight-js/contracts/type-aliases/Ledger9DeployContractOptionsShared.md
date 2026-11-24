@@ -32,6 +32,12 @@ interface inherits, but renders an unexported alias as bare text, which would
 delete `signingKey` and `additionalCoinEncPublicKeyMappings` from the
 reference for both variants.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### additionalCoinEncPublicKeyMappings?
@@ -51,9 +57,3 @@ If undefined, a new signing key is sampled and used as the CMA then stored
 in the private state provider under the newly deployed contract's address.
 Otherwise, the passed signing key is added as the CMA. The second case is
 useful when you want to use the same CMA for two different contracts.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

@@ -56,7 +56,7 @@ transactions it decodes at each stage.
 
 ##### prove()
 
-> **prove**(...`args`): `Promise`\<\{ `bind`: `unknown`; \}\>
+> **prove**(...`args`): `Promise`\<\{ `bind`(): `unknown`; \}\>
 
 ###### Parameters
 
@@ -66,4 +66,4 @@ transactions it decodes at each stage.
 
 ###### Returns
 
-`Promise`\<\{ `bind`: `unknown`; \}\>
+`Promise`\<\{ `bind`(): `unknown`; \}\>

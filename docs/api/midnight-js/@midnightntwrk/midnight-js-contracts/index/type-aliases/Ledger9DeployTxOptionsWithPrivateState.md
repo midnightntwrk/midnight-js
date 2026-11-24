@@ -14,6 +14,12 @@ It is also used directly as parameter to [createUnprovenDeployTx](../functions/c
 to save private state (and therefore doesn't need a private state ID) but does need to supply an
 initial private state to run the contract constructor against.
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### initialPrivateState
@@ -21,9 +27,3 @@ initial private state to run the contract constructor against.
 > `readonly` **initialPrivateState**: [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
 
 The private state to run the contract constructor against.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

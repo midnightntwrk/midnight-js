@@ -25,7 +25,7 @@ The key is never rendered, and is not carried as a member: the caller already ho
 
 ## Extends
 
-- [`MidnightJsError`](../../classes/MidnightJsError.md)
+- [`MidnightJsError`](../../index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -54,7 +54,7 @@ deploy, which has no address until it is composed.
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`constructor`](../../index/classes/MidnightJsError.md#constructor)
 
 ### Constructor
 
@@ -80,17 +80,17 @@ deploy, which has no address until it is composed.
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`constructor`](../../classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`constructor`](../../index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`category`](../../classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`category`](../../index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -100,7 +100,7 @@ deploy, which has no address until it is composed.
 
 #### Overrides
 
-[`MidnightJsError`](../../classes/MidnightJsError.md).[`code`](../../classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../index/classes/MidnightJsError.md).[`code`](../../index/classes/MidnightJsError.md#code)
 
 ***
 
