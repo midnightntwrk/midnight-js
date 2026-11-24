@@ -165,15 +165,29 @@ const proofProvider = httpClientProofProvider(
 );
 ```
 
+The timeout applies to each HTTP request to the proof server (`/check` or `/prove`), and covers every retry
+and every wait between retries. When it runs out, the request stops at once and is not retried.
+
 ## Retry Behavior
 
-The provider automatically retries failed requests with exponential backoff:
+The provider retries a request up to 3 times when the proof server answers 429, 500 or 503:
 
-| Attempt | Delay    | Retried Status Codes |
-| ------- | -------- | -------------------- |
-| 1       | 1 second | 500, 503             |
-| 2       | 2 seconds| 500, 503             |
-| 3       | 4 seconds| 500, 503             |
+| Retry | Wait before it                         |
+| ----- | -------------------------------------- |
+| 1     | `Retry-After` if present, else 1 second  |
+| 2     | `Retry-After` if present, else 2 seconds |
+| 3     | `Retry-After` if present, else 4 seconds |
+
+- `Retry-After` may be a number of seconds or an HTTP date. An invalid value falls back to the wait above.
+  A wait longer than the timeout ends the request at the timeout. In a browser, a cross-origin proof server must
+  expose `Retry-After` through CORS (`Access-Control-Expose-Headers`), otherwise the wait above is used.
+- A network failure is also retried, with the waits above.
+- 502 and 504 are not retried. A gateway sends them when it gives up waiting, but the proof server keeps
+  proving: it proves on a blocking worker thread and cannot cancel a job that has started
+  ([`worker_pool.rs`](https://github.com/midnightntwrk/midnight-ledger/blob/main/proof-server/src/worker_pool.rs)).
+  A retry would queue the same proof again and double the work.
+- A retried network failure carries the same risk: the server may have received the request before the
+  connection broke. It is still retried, to keep the behaviour of earlier versions.
 
 ## Error Handling
 

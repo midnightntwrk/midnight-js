@@ -36,8 +36,7 @@
     "@midnightntwrk/midnight-js-protocol": "workspace:*",
     "@midnightntwrk/midnight-js-types": "workspace:*",
     "@midnightntwrk/midnight-js-utils": "workspace:*",
-    "cross-fetch": "^4.1.0",
-    "fetch-retry": "^6.0.0"
+    "cross-fetch": "^4.1.0"
   },
   "devDependencies": {
     "@midnightntwrk/midnight-js-compact": "workspace:*",
