@@ -13,14 +13,6 @@ state resulting from the circuit call. Since a private state should already be
 stored at the given private state ID, we don't need an 'initialPrivateState' like
 in [Ledger9DeployTxOptionsWithPrivateState](Ledger9DeployTxOptionsWithPrivateState.md).
 
-## Type Declaration
-
-### privateStateId
-
-> `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
-
-The identifier for the private state of the contract.
-
 ## Type Parameters
 
 ### C
@@ -30,3 +22,11 @@ The identifier for the private state of the contract.
 ### PCK
 
 `PCK` *extends* [`Contract.ProvableCircuitId`](https://github.com/midnightntwrk/midnight-sdk)\<`C`\>
+
+## Type Declaration
+
+### privateStateId
+
+> `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
+
+The identifier for the private state of the contract.

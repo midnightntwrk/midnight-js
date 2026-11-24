@@ -28,7 +28,7 @@ even where only one write can strand it.
 
 ## Extends
 
-- [`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md)
+- [`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md)
 
 ## Constructors
 
@@ -78,7 +78,7 @@ What the private-state provider rejected with.
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ### Constructor
 
@@ -112,17 +112,17 @@ What the private-state provider rejected with.
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/classes/MidnightJsError.md#constructor)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`constructor`](../../../midnight-js/index/classes/MidnightJsError.md#constructor)
 
 ## Properties
 
 ### category
 
-> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/type-aliases/MidnightJsErrorCategory.md)
+> `readonly` **category**: [`MidnightJsErrorCategory`](../../../midnight-js/index/type-aliases/MidnightJsErrorCategory.md)
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`category`](../../../midnight-js/classes/MidnightJsError.md#category)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`category`](../../../midnight-js/index/classes/MidnightJsError.md#category)
 
 ***
 
@@ -132,7 +132,7 @@ What the private-state provider rejected with.
 
 #### Overrides
 
-[`MidnightJsError`](../../../midnight-js/classes/MidnightJsError.md).[`code`](../../../midnight-js/classes/MidnightJsError.md#code)
+[`MidnightJsError`](../../../midnight-js/index/classes/MidnightJsError.md).[`code`](../../../midnight-js/index/classes/MidnightJsError.md#code)
 
 ***
 

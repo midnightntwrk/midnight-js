@@ -24,7 +24,7 @@ Generic in the era, so a further ledger era needs no change here.
 
 ### era
 
-[`LedgerEra`](../../type-aliases/LedgerEra.md)
+[`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 The ledger era this operation will run on.
 

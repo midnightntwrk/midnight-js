@@ -7,8 +7,6 @@ name: CI - TestKit.js (prerelease)
 # original monolithic workflow had. DO NOT merge this back into build.yml without
 # redesigning the wrapper DAG.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   contents: read
@@ -37,7 +35,6 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
           turbo-cache: 'false'
 
@@ -61,11 +58,10 @@ jobs:
       - name: Build packages
         run: yarn build:testkit
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Publish packages
         run: node .github/scripts/publish-packages.mjs
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MIDNIGHT_WORKSPACE_DIR: 'testkit-js'
           MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.NPM_PUBLISH_DRY_RUN == 'true' }}

@@ -5,8 +5,6 @@ name: CI - TestKit.js (build)
 # The wrapper (ci-testkit-js.yml) schedules build → (prerelease || e2e) in
 # parallel via two separate `needs: build` jobs.
 
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
   actions: read
@@ -74,9 +72,6 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
         with:
-          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
 
@@ -87,7 +82,7 @@ jobs:
       - name: Run build
         run: yarn build ${WORKSPACE_FILTER:+"--filter=$WORKSPACE_FILTER"}
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Run linter
         run: |
@@ -106,7 +101,7 @@ jobs:
         run: |
           yarn test --filter="./testkit-js/*"
         env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       # Read by `.github/actions/collect-test-evidence` when a release is published.
       - name: Upload test evidence

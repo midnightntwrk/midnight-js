@@ -187,8 +187,8 @@ Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## Modules
 
-- [](README.md)
 - [contracts](contracts/README.md)
+- [index](index/README.md)
 - [protocol/v9](protocol/v9/README.md)
 - [types](types/README.md)
 - [utils](utils/README.md)

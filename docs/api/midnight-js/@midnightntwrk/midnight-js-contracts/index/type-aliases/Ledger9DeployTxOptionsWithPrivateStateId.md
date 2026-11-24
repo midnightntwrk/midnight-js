@@ -12,6 +12,12 @@ Configuration for creating deploy transactions for contracts with private state.
 configuration is used when a deployment transaction is created and an initial private
 state needs to be stored, as is the case in [submitDeployTx](../functions/submitDeployTx.md).
 
+## Type Parameters
+
+### C
+
+`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)
+
 ## Type Declaration
 
 ### privateStateId
@@ -19,9 +25,3 @@ state needs to be stored, as is the case in [submitDeployTx](../functions/submit
 > `readonly` **privateStateId**: [`PrivateStateId`](../../../midnight-js/types/type-aliases/PrivateStateId.md)
 
 The identifier for the private state of the contract.
-
-## Type Parameters
-
-### C
-
-`C` *extends* [`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)

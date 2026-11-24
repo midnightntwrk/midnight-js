@@ -18,4 +18,4 @@ What `deserialize` returns for decoders `D` and a value of era `E`.
 
 ### E
 
-`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md)
+`E` *extends* [`LedgerEra`](../../index/type-aliases/LedgerEra.md)

@@ -6,7 +6,7 @@
 
 # Type Alias: Ledger8DeployContractOptions\<C\>
 
-> **Ledger8DeployContractOptions**\<`C`\> = [`Ledger8ConstructorParameters`](Ledger8ConstructorParameters.md)\<`C`\> *extends* \[\] ? [`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\> : [`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\> & `object`
+> **Ledger8DeployContractOptions**\<`C`\> = [`Ledger8ConstructorParameters`](Ledger8ConstructorParameters.md)\<`C`\> *extends* \[\] ? [`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\> : ([`Ledger8DeployContractOptionsBase`](../interfaces/Ledger8DeployContractOptionsBase.md)\<`C`\> \| [`Ledger8DeployContractOptionsWithPrivateState`](../interfaces/Ledger8DeployContractOptionsWithPrivateState.md)\<`C`\>) & `object`
 
 Configuration for deploying a retained-era contract.
 

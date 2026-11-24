@@ -17,7 +17,7 @@ one elsewhere, send `serialize()` and `era`, and rebuild it with
 
 ### E
 
-`E` *extends* [`LedgerEra`](../../type-aliases/LedgerEra.md) = [`LedgerEra`](../../type-aliases/LedgerEra.md)
+`E` *extends* [`LedgerEra`](../../index/type-aliases/LedgerEra.md) = [`LedgerEra`](../../index/type-aliases/LedgerEra.md)
 
 The era of the ledger that wrote them.
 

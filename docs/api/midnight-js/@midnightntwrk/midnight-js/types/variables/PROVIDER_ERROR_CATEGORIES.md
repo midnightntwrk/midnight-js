@@ -6,4 +6,4 @@
 
 # Variable: PROVIDER\_ERROR\_CATEGORIES
 
-> `const` **PROVIDER\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`ProviderErrorCode`](../type-aliases/ProviderErrorCode.md), [`MidnightJsErrorCategory`](../../type-aliases/MidnightJsErrorCategory.md)\>\>
+> `const` **PROVIDER\_ERROR\_CATEGORIES**: `Readonly`\<`Record`\<[`ProviderErrorCode`](../type-aliases/ProviderErrorCode.md), [`MidnightJsErrorCategory`](../../index/type-aliases/MidnightJsErrorCategory.md)\>\>

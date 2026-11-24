@@ -6,6 +6,6 @@
 
 # Type Alias: TransactionDecoders
 
-> **TransactionDecoders** = `Readonly`\<`Partial`\<`Record`\<[`LedgerEra`](../../type-aliases/LedgerEra.md), [`TransactionDecoder`](../interfaces/TransactionDecoder.md)\>\>\>
+> **TransactionDecoders** = `Readonly`\<`Partial`\<`Record`\<[`LedgerEra`](../../index/type-aliases/LedgerEra.md), [`TransactionDecoder`](../interfaces/TransactionDecoder.md)\>\>\>
 
 One `Transaction` class per ledger era. Only the class of the handle's own era is called.

@@ -12,7 +12,8 @@ transaction data ([Ledger9FinalizedTxData](../../types/interfaces/Ledger9Finaliz
 
 ## Extends
 
-- [`Ledger9CallResultPublic`](Ledger9CallResultPublic.md).[`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
+- [`Ledger9CallResultPublic`](Ledger9CallResultPublic.md)
+- [`Ledger9FinalizedTxData`](../../types/interfaces/Ledger9FinalizedTxData.md)
 
 ## Properties
 

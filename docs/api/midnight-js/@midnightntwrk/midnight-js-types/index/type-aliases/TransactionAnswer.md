@@ -6,7 +6,7 @@
 
 # Type Alias: TransactionAnswer
 
-> **TransactionAnswer** = \{ `serialize`: `Uint8Array`; \} \| `Uint8Array`
+> **TransactionAnswer** = \{ `serialize`(): `Uint8Array`; \} \| `Uint8Array`
 
 What a handler of `createProofProviderFromHandlers` or `createWalletProviderFromHandlers` answers
 with: a transaction object of any ledger copy, or its bytes. The provider makes the handle, in the
