@@ -139,12 +139,18 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
       {
         method: 'POST',
         body: new Uint8Array(payload),
-        headers: { 'Content-Type': 'application/octet-stream', ...headers }
+        headers: { 'Content-Type': 'application/octet-stream', ...headers },
+        // 'manual', not 'error': a redirect must come back as a response, which is not retried.
+        redirect: 'manual'
       },
       timeout
     );
   } catch (cause) {
     throw new ProofServerError(`Proof Server request failed: url="${url}"`, undefined, { cause });
+  }
+
+  if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+    throw new ProofServerError(`Proof Server redirected the request, redirects are refused: url="${url}"`, response.status);
   }
 
   if (!response.ok) {
