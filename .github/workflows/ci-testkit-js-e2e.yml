@@ -162,7 +162,7 @@ jobs:
       # lane relies on meanwhile is the thing being hardened against, not a supported arrangement.
       - name: Log in to Docker Hub
         if: startsWith(matrix.test-file, 'fork.') && env.DOCKERHUB_USERNAME != ''
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # ratchet:docker/login-action@v4.8.0
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ env.DOCKERHUB_TOKEN }}
