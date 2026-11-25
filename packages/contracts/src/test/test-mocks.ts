@@ -154,6 +154,7 @@ type MockCircuit = ReturnType<typeof createDefaultCircuit>;
 
 type MockContractClassOptions = {
   testCircuit: MockCircuit;
+  circuits?: Record<string, MockCircuit>;
   constructorErrorMessage?: string;
   initialStateErrorMessage?: string;
 }
@@ -182,7 +183,7 @@ const createMockContractClass = (options?: Partial<MockContractClassOptions>) =>
           currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
         };
       });
-      this.circuits = {
+      this.circuits = finalOptions.circuits ?? {
         testCircuit: finalOptions.testCircuit
       };
       this.provableCircuits = this.circuits;

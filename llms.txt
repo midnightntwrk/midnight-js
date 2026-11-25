@@ -145,6 +145,15 @@ const existing = await findDeployedContract(providers, {
   privateStateId: 'my-state'
 });
 
+// Find a contract that has only some circuits on chain: only the named circuits
+// are checked, and a call to any other circuit is refused
+const partial = await findDeployedContract(providers, {
+  compiledContract,
+  contractAddress,
+  privateStateId: 'my-state',
+  circuitIds: ['increment']
+});
+
 // Call circuit
 const result = await deployed.callTx.increment();
 
